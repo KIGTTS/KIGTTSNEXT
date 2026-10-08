@@ -80,7 +80,8 @@ open class PluginWorkerService : Service() {
                     val chunks = flow {
                         while (true) {
                             currentCoroutineContext().ensureActive()
-                            val tag = AudioWire.tag(data) ?: break
+                            val tag = AudioWire.tag(data) ?: error("录音流意外中断")
+                            if (tag == AudioWire.END_INPUT) break
                             require(tag == AudioWire.AUDIO); emit(AudioWire.readPcm(data))
                         }
                     }

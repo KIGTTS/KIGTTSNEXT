@@ -29,6 +29,7 @@ class PackageVerifier(private val paths: PluginPaths) {
         val names = entries.map { it.name }
         require(names.distinct().size == names.size) { "插件包包含重复路径" }
         require(entries.all { safeName(it.name) && it.size in 0..512L * 1024 * 1024 }) { "插件包包含不合法的路径或过大文件" }
+        require(entries.none { it.name.removeSuffix("/") == "code/oat" || it.name.startsWith("code/oat/") }) { "插件包不得携带运行时优化缓存" }
         require(entries.sumOf { it.size } <= 768L * 1024 * 1024) { "插件包过大，请把模型作为独立资源导入" }
         fun read(name: String, limit: Int): ByteArray {
             val entry = zip.getEntry(name) ?: error("缺少 $name")

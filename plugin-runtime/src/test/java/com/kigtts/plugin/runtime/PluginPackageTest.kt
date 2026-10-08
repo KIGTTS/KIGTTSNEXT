@@ -77,6 +77,15 @@ class PluginPackageTest {
         File(store.currentDirectory("test.engine"), "code/classes2.dex").writeBytes(byteArrayOf(9))
         assertThrows(IllegalArgumentException::class.java) { store.verifyInstalled("test.engine") }
     }
+    @Test fun runtimeArtCacheIsDiscardedWhileSignedDexRemainsVerified() {
+        val valid = pack(); store.install(valid, store.inspect(valid).publisherSha256)
+        val directory = store.currentDirectory("test.engine")
+        File(directory, "code/oat/arm64/classes.odex").apply { parentFile!!.mkdirs(); writeText("ART cache") }
+        File(directory, "code/oat/classes.dex.cur.prof").writeText("profile")
+        assertEquals(1, store.verifyInstalled("test.engine").versionCode)
+        assertFalse(File(directory, "code/oat").exists())
+        assertTrue(File(directory, "code/classes.dex").exists())
+    }
     @Test fun specifiedAppdataDirectoryIsUsed() {
         assertTrue(paths.storage("test.engine").root.path.replace('\\', '/').endsWith("appdata/Kigtts/plugin/plugindata/test.engine"))
     }

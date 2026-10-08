@@ -14,11 +14,12 @@ import java.io.File
 /** Real DEX/JNI/IPC verification. Test APK assets never enter the production APK. */
 @RunWith(AndroidJUnit4::class)
 class PluginRuntimeDeviceTest {
-    @Test fun independentEnginePackagesLoadInWorkersAndNativeRuntimeResolves() = runBlocking {
+    @Test fun independentEnginePackagesLoadInWorkersAndNativeRuntimeResolves() = runBlocking<Unit> {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val target = instrumentation.targetContext
         val manager = PluginManager(target, emptyList())
         val existing = manager.packages.installed().map { it.manifest.id }.toSet()
+        val keepPackages = InstrumentationRegistry.getArguments().getString("keepPackages") == "true"
         val added = mutableListOf<String>()
         try {
             for (name in listOf("engine.system-tts-0.1.0.kigplugin", "engine.sensevoice-0.1.0.kigplugin")) {
@@ -31,8 +32,9 @@ class PluginRuntimeDeviceTest {
                     }
                 } finally { input.delete() }
             }
+            for (id in listOf("engine.system-tts", "engine.sensevoice")) manager.enable(id, true)
             manager.reload()
-            assertTrue(manager.status.all { it.error == null })
+            assertTrue(manager.status.toString(), manager.status.all { it.error == null })
             val asr = requireNotNull(manager.registry.plugin("engine.sensevoice"))
             assertEquals(StreamingKind.SEGMENTED, asr.asr!!.info.streaming)
             if ("engine.sensevoice" in added) assertEquals(EngineAvailability.NEEDS_RESOURCES, asr.asr!!.info.availability)
@@ -46,13 +48,26 @@ class PluginRuntimeDeviceTest {
             val count = audio.filterIsInstance<SynthesisEvent.Audio>().sumOf { it.audio.bytes.size }
             assertTrue("System TTS produced no PCM", count > 0)
             android.util.Log.i("KigPluginDeviceTest", "System TTS synthesized $count PCM bytes through IPC")
+            if (InstrumentationRegistry.getArguments().getString("playAudio") == "true") {
+                val player = com.kigtts.next.audio.AndroidAudioPlatform(target).player()
+                try {
+                    audio.filterIsInstance<SynthesisEvent.Audio>().forEach { player.write(it.audio) }
+                    player.finish()
+                } finally { player.close() }
+                android.util.Log.i("KigPluginDeviceTest", "PCM playback completed through host AudioTrack")
+            }
             manager.enable("engine.system-tts", false)
             assertNull(manager.registry.plugin("engine.system-tts"))
             manager.enable("engine.system-tts", true)
+            assertTrue(manager.status.toString(), manager.status.all { it.error == null })
             assertNotNull(manager.registry.plugin("engine.system-tts"))
+            val arguments = InstrumentationRegistry.getArguments()
+            arguments.getString("resourceZip")?.let { archive ->
+                recognitionDeviceChecks(manager, archive, requireNotNull(arguments.getString("sampleWav")))
+            }
         } finally {
             // Preserve pre-existing plugins/data; remove only packages created by this test.
-            for (id in added) manager.uninstall(id)
+            if (!keepPackages) for (id in added) manager.uninstall(id)
             manager.close()
         }
     }

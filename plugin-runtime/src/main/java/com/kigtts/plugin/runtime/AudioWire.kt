@@ -9,6 +9,7 @@ import java.io.EOFException
 internal object AudioWire {
     const val START = 1; const val AUDIO = 2; const val FINISH = 3
     const val PARTIAL = 4; const val FINAL = 5; const val ERROR = 6
+    const val END_INPUT = 7
     const val MAX_FRAME = 128 * 1024
     fun pcm(out: DataOutputStream, audio: PcmAudio) {
         val stride = 2 * audio.channels

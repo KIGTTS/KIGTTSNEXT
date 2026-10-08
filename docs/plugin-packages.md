@@ -69,6 +69,12 @@ PluginStorage 只接受相对路径并检查规范路径；下载接口要求 HT
 
 单元与原生 UI 回归覆盖包签名/实际产物、发布者/版本/完整性、额外 DEX、数据路径/越界、导入回滚/清理、二进制 PCM 帧、无模型不打开麦克风、规范引擎调度与取消、端点分段、RIFF 解码、以及主 APK 无引擎类/库检查。
 
-真实 Android DEX/JNI 动态加载、系统 TTS 服务兼容、录音效果、模型推理与设备速度仍需要真机测试。主应用已通过 ADB 覆盖安装与冷启动；设备取消了测试辅助包的安装（INSTALL_FAILED_USER_RESTRICTED），实际 DEX/JNI/语音烟测未执行，不能把本地单元测试等同于已验证真实语音输出。SenseVoice 设置提供“检查推理运行库”以便在设备上先验证 JNI/ORT 加载。
+Android 16 真机已执行实际 DEX/JNI/ONNX 加载、系统 TTS 合成（84,096 字节 PCM）和宿主 AudioTrack 播放、停用/重新启用、资源导入、完整录音与分段流式识别，以及取消流式后再次完整识别，最终 OK（1 项综合仪器测试，16.646 秒）。两个插件及模型已保留并启用，测试辅助包与手机上的测试暂存文件已移除。
 
-真机烟测位于 app/src/androidTest 的 PluginRuntimeDeviceTest。先打包插件，再构建 :app:assembleDebugAndroidTest，安装主 APK 和测试 APK（-t），通过 AndroidJUnitRunner 运行。测试包含实际包加载、推理运行库检查、系统 TTS PCM、启停；只清理自己创建的插件，保留已有插件和资源。测试包里的引擎 ZIP 仅存在于 AndroidTest APK，主 APK 没有这些资产。
+测试使用官方固定版本 SenseVoice int8 模型（提交 2365baeacb507f821a0c8120fcee3d484dba7a07，model SHA-256 c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51）及 zh.wav。源 https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17 。模型/tokens/LICENSE 存在插件 models 下，没有进入主 APK 或 Git。
+
+固定录音完整识别为“开放时间早上9点至下午5点。”，包括初次模型加载约 1823 ms；分段结果为“开饭时间早上9点至下午5点。”，存在一处错字。功能链路通过不代表模型精度验收通过。现场麦克风、嘈杂环境与长时间会话需要后续验证。
+
+真机检查修复了两个宿主问题：ART 自动生成的 code/oat 不是签名有效载荷，加载前使用不跟随符号链接的清理方法删除缓存，仍拒绝额外 DEX；输入管道改用普通管道和显式 END_INPUT，避免可靠管道在 AIDL 参数复制时误报远端死亡，缺少结束帧仍报告输入中断。
+
+烟测位于 app/src/androidTest 的 PluginRuntimeDeviceTest。先打包插件，再构建 :app:assembleDebugAndroidTest，安装主 APK 和测试 APK（-t），通过 AndroidJUnitRunner 运行。keepPackages=true 保留本次安装包；playAudio=true 测试实际播放。resourceZip 与 sampleWav 参数必须指向对应插件数据目录，可增加模型导入和识别测试。测试包里的引擎 ZIP 仅存在于 AndroidTest APK，主 APK 没有这些资产。默认只清理自己创建的插件。

@@ -73,6 +73,7 @@ class PluginPackageStore(val paths: PluginPaths) {
     }
     fun verifyInstalled(id: String): PackageManifest {
         val directory = currentDirectory(id)
+        clearRuntimeCodeCache(directory)
         val raw = File(directory, MANIFEST).readBytes()
         val manifest = PluginJson.decodeFromString<PackageManifest>(raw.toString(Charsets.UTF_8))
         require(manifest.id == id && manifest.apiVersion == com.kigtts.plugin.api.PLUGIN_API_VERSION)
@@ -89,5 +90,23 @@ class PluginPackageStore(val paths: PluginPaths) {
             require(PackageVerifier.safeName(path) && File(directory, path).sha256() == hash) { "已安装插件文件损坏" }
         }
         return manifest
+    }
+    /** ART creates oat/profile files beside dynamically loaded DEX. They are disposable, unsigned
+     * runtime output, never package payload. Delete before verification/load instead of trusting them. */
+    private fun clearRuntimeCodeCache(directory: File) {
+        val cache = File(directory, "code/oat").toPath()
+        require(cache.normalize().startsWith(directory.toPath().normalize()))
+        if (!java.nio.file.Files.exists(cache, java.nio.file.LinkOption.NOFOLLOW_LINKS)) return
+        java.nio.file.Files.walkFileTree(cache, object : java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+            override fun visitFile(file: java.nio.file.Path, attributes: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
+                java.nio.file.Files.delete(file)
+                return java.nio.file.FileVisitResult.CONTINUE
+            }
+            override fun postVisitDirectory(dir: java.nio.file.Path, error: java.io.IOException?): java.nio.file.FileVisitResult {
+                if (error != null) throw error
+                java.nio.file.Files.delete(dir)
+                return java.nio.file.FileVisitResult.CONTINUE
+            }
+        })
     }
 }

@@ -49,13 +49,16 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
         override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = recognizeEvents(audio, config, true)
         private fun recognizeEvents(audio: Flow<PcmAudio>, config: RecognitionConfig, streaming: Boolean) = channelFlow {
             val token = UUID.randomUUID().toString()
-            val inputPipe = ParcelFileDescriptor.createReliablePipe()
+            // Ordinary pipe + explicit EOF avoids reliable-pipe status sockets being aliased
+            // when its reader endpoint is transferred as an AIDL argument.
+            val inputPipe = ParcelFileDescriptor.createPipe()
             val output = try { connection.worker.recognize(inputPipe[0], streaming, PluginJson.encodeToString(config), token) }
                 catch (error: Exception) { inputPipe.forEach { it.close() }; throw error }
             inputPipe[0].close()
             val writer = launch(Dispatchers.IO) {
                 DataOutputStream(ParcelFileDescriptor.AutoCloseOutputStream(inputPipe[1])).use { data ->
                     audio.collect { AudioWire.pcm(data, it) }
+                    data.writeInt(AudioWire.END_INPUT); data.flush()
                 }
             }
             // Closing descriptors on cancellation unblocks a blocking pipe read/write immediately.
