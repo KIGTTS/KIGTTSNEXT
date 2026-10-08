@@ -36,7 +36,7 @@ class AdaptiveUiTest {
         app.getSharedPreferences("appearance", 0).edit().clear().commit()
         app.getSharedPreferences("home-panel", 0).edit().clear().commit()
         app.getSharedPreferences("voice-input", 0).edit().clear().commit()
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         return model
     }

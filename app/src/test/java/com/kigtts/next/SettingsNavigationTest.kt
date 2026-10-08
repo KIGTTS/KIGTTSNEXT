@@ -26,7 +26,7 @@ class SettingsNavigationTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model -> compose.setContent { KigttsApp(model) } }
+        return testAppModel(app).also { model -> compose.setContent { KigttsApp(model) } }
     }
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
@@ -106,7 +106,7 @@ class SettingsNavigationTest {
         back()
         compose.onNodeWithText("触感反馈").performClick()
         compose.onNodeWithContentDescription("按键震动反馈").performClick().assertIsOff()
-        compose.runOnIdle { assertFalse(AppViewModel(ApplicationProvider.getApplicationContext()).state.value.hapticsEnabled) }
+        compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.hapticsEnabled) }
         back()
         compose.onNodeWithText("显示与形状").performClick()
         compose.onNodeWithText("恢复默认显示").performScrollTo().performClick()

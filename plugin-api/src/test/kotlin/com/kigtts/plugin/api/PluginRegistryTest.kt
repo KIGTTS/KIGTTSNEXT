@@ -3,14 +3,14 @@ package com.kigtts.plugin.api
 import kotlin.test.*
 
 class PluginRegistryTest {
-    private fun plugin(id: String, api: Int = 1, actions: List<UiAction> = emptyList()) = object : KigPlugin {
+    private fun plugin(id: String, api: Int = PLUGIN_API_VERSION, actions: List<UiAction> = emptyList()) = object : KigPlugin {
         override val descriptor = PluginDescriptor(id, id, "test", apiVersion = api)
         override val contributions = PluginContributions(actions)
         override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.Message(actionId)
     }
     @Test fun rejectsDuplicateAndIncompatiblePlugins() {
         assertFailsWith<IllegalArgumentException> { PluginRegistry(listOf(plugin("test.a"), plugin("test.a"))) }
-        assertFailsWith<IllegalArgumentException> { PluginRegistry(listOf(plugin("test.a", api = 2))) }
+        assertFailsWith<IllegalArgumentException> { PluginRegistry(listOf(plugin("test.a", api = 1))) }
     }
     @Test fun actionsRemainNamespacedAndDeterministicallyOrdered() {
         val registry = PluginRegistry(listOf(

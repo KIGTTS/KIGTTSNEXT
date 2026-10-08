@@ -24,7 +24,7 @@ class QuickTextLibraryTest {
         assertTrue(restored.phrases.value.none { it.category == "常用" })
         assertEquals(CategoryIcon.MESSAGE, restored.categoryIcons.value["常用交流"])
         assertFalse(restored.categoryIcons.value.containsKey("常用"))
-        assertEquals("常用交流", AppViewModel(app).state.value.selectedCategory)
+        assertEquals("常用交流", testAppModel(app).state.value.selectedCategory)
     }
     @Test fun transferringToEmptyGroupsKeepsIdentityAndPersistsDestinationOrder() {
         val app = app(); val library = QuickTextLibrary(QuickPhraseStore(app))

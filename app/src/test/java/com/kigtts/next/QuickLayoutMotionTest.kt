@@ -26,7 +26,7 @@ class QuickLayoutMotionTest {
     @Test fun layoutSwitchesAnimateBothWaysAndRetainHorizontalScroll() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
         compose.onNodeWithTag("phrases-horizontal").performTouchInput { swipeLeft() }
@@ -71,7 +71,7 @@ class QuickLayoutMotionTest {
     @Test fun verticalSwipesScrollContentWithoutResizingThePanel() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle {
             repeat(24) { model.addPhrase("滚动条目 " + it, "常用") }

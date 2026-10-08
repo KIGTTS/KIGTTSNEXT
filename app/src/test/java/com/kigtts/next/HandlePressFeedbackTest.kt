@@ -36,7 +36,7 @@ class HandlePressFeedbackTest {
         val native = object : HapticFeedback {
             override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType }
         }
-        return AppViewModel(app).also { model ->
+        return testAppModel(app).also { model ->
             compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { KigttsApp(model) } }
         }
     }

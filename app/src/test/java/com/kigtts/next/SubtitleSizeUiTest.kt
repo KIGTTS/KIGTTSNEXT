@@ -31,7 +31,7 @@ class SubtitleSizeUiTest {
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach {
             app.getSharedPreferences(it, 0).edit().clear().commit()
         }
-        return AppViewModel(app)
+        return testAppModel(app)
     }
     @Test fun percentagePersistsAndActualGlyphWidthTracksWindowWidthAcrossFontScales() {
         val model = model()
@@ -60,12 +60,12 @@ class SubtitleSizeUiTest {
         compose.runOnIdle { fontScale = 2f }
         assertEquals(2358f * .12f, width(), 2f)
         val app = ApplicationProvider.getApplicationContext<Application>()
-        assertEquals(12f, AppViewModel(app).state.value.subtitleSizePercent)
+        assertEquals(12f, testAppModel(app).state.value.subtitleSizePercent)
         assertEquals(12f, app.getSharedPreferences("appearance", 0).getFloat("subtitleWidthPercent", -1f))
         compose.onRoot().captureRoboImage("build/previews/subtitle-window-percentage.png")
         compose.runOnIdle { model.text("长文本".repeat(200)) }
         width()
-        assertEquals(12f, AppViewModel(app).state.value.subtitleSizePercent)
+        assertEquals(12f, testAppModel(app).state.value.subtitleSizePercent)
     }
     @Test fun listeningFontBarAndLargeContentKeepTheirReservedLayout() {
         val model = model()

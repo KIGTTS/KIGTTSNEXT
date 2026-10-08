@@ -21,12 +21,14 @@ android {
     }
     kotlin { jvmToolchain(17) }
     testOptions { unitTests.isIncludeAndroidResources = true }
+    sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("plugin-test-assets"))
 }
 dependencies {
     implementation(project(":plugin-api"))
     implementation(project(":material-color"))
-    implementation(project(":plugins:placeholder-tts"))
-    implementation(project(":plugins:placeholder-asr"))
+    implementation(project(":plugin-runtime"))
+    testImplementation(project(":plugins:placeholder-tts"))
+    testImplementation(project(":plugins:placeholder-asr"))
     implementation(project(":plugins:debug-ui"))
     implementation(project(":plugins:listening-panel"))
     implementation(project(":plugins:voice-input"))
@@ -47,8 +49,15 @@ dependencies {
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.51.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }
 tasks.withType<Test>().configureEach {
     maxHeapSize = "2g"
     systemProperty("roborazzi.test.record", "true")
 }
+val copyPluginTestAssets = tasks.register<Copy>("copyPluginTestAssets") {
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*.kigplugin") }
+    into(layout.buildDirectory.dir("plugin-test-assets"))
+}
+tasks.matching { it.name.contains("AndroidTest") }.configureEach { dependsOn(copyPluginTestAssets) }

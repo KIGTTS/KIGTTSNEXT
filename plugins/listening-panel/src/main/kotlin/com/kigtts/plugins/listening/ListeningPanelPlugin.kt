@@ -15,7 +15,7 @@ class ListeningPanelPlugin : KigPlugin {
     override suspend fun execute(actionId: String, context: PluginContext) = when (actionId) {
         "toggle" -> PluginOutcome.HostAction(HostCommand.TOGGLE_LISTENING)
         "close" -> PluginOutcome.HostAction(HostCommand.CLOSE_LISTENING_PANEL)
-        "mode" -> PluginOutcome.Menu("识别方式", listOf(PageAction("stream", "流式识别演示"), PageAction("batch", "非流式识别演示")))
+        "mode" -> PluginOutcome.Menu("识别方式", listOf(PageAction("stream", "流式识别"), PageAction("batch", "完整录音识别（最多 8 秒）")))
         "stream" -> PluginOutcome.HostAction(HostCommand.USE_STREAMING)
         "batch" -> PluginOutcome.HostAction(HostCommand.USE_BATCH)
         else -> PluginOutcome.Message("未知聆听面板操作")

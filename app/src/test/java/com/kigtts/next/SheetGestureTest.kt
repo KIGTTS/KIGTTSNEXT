@@ -26,7 +26,7 @@ class SheetGestureTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model -> compose.setContent { KigttsApp(model) } }
+        return testAppModel(app).also { model -> compose.setContent { KigttsApp(model) } }
     }
     @Test fun buttonAndDragCollapseRestoreLastExpandedHeight() {
         val model = show()
@@ -40,7 +40,7 @@ class SheetGestureTest {
         compose.onNodeWithTag("dock-main").performClick()
         compose.runOnIdle {
             assertEquals(340f, model.state.value.panelHeight)
-            assertEquals(340f, AppViewModel(ApplicationProvider.getApplicationContext()).state.value.lastExpandedPanelHeight)
+            assertEquals(340f, testAppModel(ApplicationProvider.getApplicationContext()).state.value.lastExpandedPanelHeight)
         }
     }
     @Test fun upwardDockDragSurvivesMorphAndPublishesOnlyOnRelease() {

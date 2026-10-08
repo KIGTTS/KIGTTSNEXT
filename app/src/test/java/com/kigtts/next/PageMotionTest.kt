@@ -39,7 +39,7 @@ class PageMotionTest {
     private fun show(compact: Boolean = false, statusGuard: Boolean = false): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model ->
+        return testAppModel(app).also { model ->
             compose.setContent {
                 if (statusGuard) Column(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxWidth().height(24.dp).background(Color(0xFFCFECEE)).testTag("test-system-status"))

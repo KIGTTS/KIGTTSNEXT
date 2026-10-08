@@ -17,7 +17,7 @@ class VoiceInputPluginTest {
         assertEquals(PluginOutcome.RefreshUi, plugin.execute("toggle", context))
         assertTrue(saved)
         assertEquals("input", plugin.contributions.gestures.single().id)
-        assertIs<PluginOutcome.Message>(plugin.execute("input", context))
+        assertEquals(PluginOutcome.HostAction(HostCommand.VOICE_INPUT), plugin.execute("input", context))
         plugin.execute("toggle", context)
         assertFalse(saved)
         assertTrue(plugin.contributions.gestures.isEmpty())

@@ -33,7 +33,7 @@ class ListeningResponsiveTest {
     private fun model(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app)
+        return testAppModel(app)
     }
     @Test fun panelBecomesOneLineThenHidesAndRestoresPreferredHeightWithCenteredHandle() {
         val model = model()

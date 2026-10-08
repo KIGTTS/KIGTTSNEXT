@@ -28,6 +28,7 @@ data class AppState(
     val quickTextEditing: Boolean = false,
     val subtitleRevision: Int = 0,
     val pluginRevision: Int = 0,
+    val busyPlugins: Set<String> = emptySet(),
     val editorValue: TextFieldValue = TextFieldValue("这里是输入的\n文本", TextRange(9)),
     val transcript: String = "",
     val listening: Boolean = false,

@@ -10,3 +10,4 @@ include(":app", ":plugin-api", ":material-color", ":plugins:placeholder-tts", ":
 include(":plugins:debug-ui")
 include(":plugins:listening-panel")
 include(":plugins:voice-input")
+include(":plugin-android-api", ":plugin-runtime", ":engine-plugins:system-tts", ":engine-plugins:sensevoice-asr")

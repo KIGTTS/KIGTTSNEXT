@@ -1,0 +1,47 @@
+package com.kigtts.next.ui.plugins
+
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.plugin.api.PluginOutcome
+import kotlinx.coroutines.launch
+
+/** Native host UI mediates text/file selection and hardware permission requests. */
+@Composable
+fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextInput>?,
+    import: Pair<String, PluginOutcome.ImportResource>?, dismissInput: () -> Unit, dismissImport: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), model::microphoneResult)
+    LaunchedEffect(model) { model.microphoneRequests.collect { permission.launch(Manifest.permission.RECORD_AUDIO) } }
+    var importing by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val request = importing; importing = null
+        if (uri != null && request != null) scope.launch {
+            try { importPluginResource(context, model, request.first, request.second, uri) }
+            catch (error: Exception) { model.message(error.message ?: "资源导入失败") }
+        }
+    }
+    LaunchedEffect(import) { import?.let { importing = it; picker.launch(it.second.mimeTypes.toTypedArray()); dismissImport() } }
+    input?.let { (id, request) ->
+        key(id, request.actionId) {
+        val text = rememberTextFieldState(initialText = request.initialValue)
+        AlertDialog(onDismissRequest = dismissInput, title = { Text(request.title) },
+            text = { Column(Modifier.fillMaxWidth()) { OutlinedTextField(state = text,
+                modifier = Modifier.fillMaxWidth().testTag("plugin-input-value"), lineLimits = TextFieldLineLimits.SingleLine) } },
+            confirmButton = { TextButton(onClick = feedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text("确定") } },
+            dismissButton = { TextButton(onClick = feedbackClick(dismissInput)) { Text("取消") } })
+        }
+    }
+}

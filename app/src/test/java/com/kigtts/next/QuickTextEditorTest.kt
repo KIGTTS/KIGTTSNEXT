@@ -28,7 +28,7 @@ class QuickTextEditorTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model ->
+        return testAppModel(app).also { model ->
             compose.setContent { KigttsApp(model) }
             compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f) }
         }
@@ -100,7 +100,7 @@ class QuickTextEditorTest {
         compose.onNodeWithTag("add-phrase").performClick()
         compose.onNodeWithTag("phrase-detail-text").performTextInput("组内文本")
         compose.onNodeWithTag("save-phrase-details").performClick()
-        val restored = AppViewModel(ApplicationProvider.getApplicationContext())
+        val restored = testAppModel(ApplicationProvider.getApplicationContext())
         assertEquals(model.phrases.value, restored.phrases.value)
         assertEquals(model.categories.value, restored.categories.value)
         assertEquals("辅助文字", restored.phrases.value.first { it.id == item.id }.description)
@@ -159,7 +159,7 @@ class QuickTextEditorTest {
         grid.captureRoboImage("build/previews/quick-edit-drag-auto-scroll.png")
         grid.performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1500); compose.mainClock.autoAdvance = true
-        assertEquals(model.phrases.value, AppViewModel(ApplicationProvider.getApplicationContext()).phrases.value)
+        assertEquals(model.phrases.value, testAppModel(ApplicationProvider.getApplicationContext()).phrases.value)
     }
     @Test fun inlineGripKeepsRowsCompactAndDeleteStaysCircularWhilePressed() {
         val model = show()
@@ -220,7 +220,7 @@ class QuickTextEditorTest {
         compose.onNodeWithTag("quick-edit-done").performClick()
         compose.onNodeWithTag("category-tabs").performScrollToNode(hasTestTag("category-购物交流"))
         compose.onNodeWithTag("category-icon-购物交流", useUnmergedTree = true).assertContentDescriptionEquals("分组图标：购物")
-        val restored = AppViewModel(ApplicationProvider.getApplicationContext())
+        val restored = testAppModel(ApplicationProvider.getApplicationContext())
         assertEquals(model.quickTexts.categoryIcons.value, restored.quickTexts.categoryIcons.value)
         capture("quick-group-icon")
     }

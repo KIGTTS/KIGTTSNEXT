@@ -37,7 +37,7 @@ class PrototypeUiTest {
         app.getSharedPreferences("appearance", 0).edit().clear().commit()
         app.getSharedPreferences("home-panel", 0).edit().clear().commit()
         app.getSharedPreferences("voice-input", 0).edit().clear().commit()
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         return model
     }
@@ -51,7 +51,7 @@ class PrototypeUiTest {
         compose.runOnIdle { assertTrue(UiSlot.entries.all { slot -> model.registry.actions(slot).none { it.plugin.descriptor.id == "debug.ui" } }) }
         capture("home-collapsed")
         compose.onNodeWithContentDescription("文本菜单").performClick()
-        compose.onNodeWithText("非流式识别演示").assertExists()
+        compose.onNodeWithText("完整录音识别（最多 8 秒）").assertExists()
         capture("editor-menu")
     }
 
@@ -238,7 +238,7 @@ class PrototypeUiTest {
     }
 
     @Test fun editorRemainsUsableInKeyboardSizedViewport() {
-        val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         compose.setContent { Box(Modifier.size(320.dp, 360.dp)) { KigttsApp(model) } }
         compose.onNodeWithTag("speech-editor").performClick()
         compose.onNodeWithTag("home-sheet").assertDoesNotExist()

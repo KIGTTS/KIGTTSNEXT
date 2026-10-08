@@ -27,7 +27,7 @@ class DrawerReturnTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model -> compose.setContent { drawer = rememberDrawerNavigation(); KigttsApp(model, drawer) } }
+        return testAppModel(app).also { model -> compose.setContent { drawer = rememberDrawerNavigation(); KigttsApp(model, drawer) } }
     }
     private fun assertFullyClosed() {
         val sheet = compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot()

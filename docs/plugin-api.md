@@ -1,6 +1,6 @@
-# 插件 API v1（原型）
+# 插件 API v2
 
-插件实现 KigPlugin，声明 PluginDescriptor、可选 TtsEngine / AsrEngine 与 PluginContributions，然后由宿主 PluginRegistry 注册。当前为进程内、编译期集成，尚无外部插件安装、签名或隔离。
+插件实现 KigPlugin，声明 PluginDescriptor、可选 TtsEngine / AsrEngine 与 PluginContributions，然后由宿主 PluginRegistry 注册。内置功能 UI 仍为源码模块；外部引擎通过 .kigplugin 安装，在独立工作进程中加载。宿主注册远程代理，具体引擎类与依赖不进入主程序。包、生命周期、目录与限制详见 [专用插件包](plugin-packages.md)。
 
 ## 语音接口
 
@@ -34,13 +34,13 @@ Tab 使用与分组相同的原生 FilterChip、圆形外端与弹性接邻圆�
 
 扩展按钮的添加、撤销、名称/图标/样式切换由宿主统一提供出入及替换动效，退出快照不产生重复无障碍入口或菜单；点击按当前贡献 ID 路由，已撤销动作不执行。底部五个槽位保持稳定身份与宽度过渡，贡献变化不会重建正在拖动的快捷入口。聆听上面板压缩为单行时，宿主临时不显示其底部扩展按钮，空间恢复后还原。
 
-动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配。
+动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 2）。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
 
 ## 手势贡献
 
 PluginContributions.gestures 可返回 GestureAction，当前规范入口为 PluginGesture.QUICK_TEXT_LONG_PRESS。宿主调用同一插件的 execute(actionId, context)，手势动作 ID 与按钮动作 ID 共用唯一命名空间。
 
-没有贡献时长按无行为，也不提供长按无障碍动作；普通点击和上滑仍用于展开快捷文本。当前按注册顺序选择第一个贡献者，第三方竞争/用户选择规则留待插件安装机制实现。语音输入插件可动态移除手势并返回 RefreshUi，开关由插件持久化。
+没有贡献时长按无行为，也不提供长按无障碍动作；普通点击和上滑仍用于展开快捷文本。手势冲突暂按注册顺序选择第一个贡献者；语音引擎由插件管理页面选择并持久化，不与手势入口绑定。语音输入插件可动态移除手势并返回 RefreshUi，开关由插件持久化。
 
 ## 动态贡献、宿主行为与页面
 
@@ -61,11 +61,21 @@ DrawerEntry 声明右侧抽屉条目和目标页面。page(pageId, context) 返�
 
 ## 内置示例
 
-- placeholder-tts / placeholder-asr：实现语音占位接口与说明页面，不添加设计图外的主页按钮。
+- placeholder-tts / placeholder-asr：只作为测试夹具，生产 APK 不包含占位引擎。
 - listening-panel（字幕插件）：按 listeningPanelVisible 动态注册“开始聆听 / 关闭聆听”、识别模式和上面板收起按钮，发出宿主命令，自身不实现 ASR 引擎。TOGGLE_LISTENING 在面板开启时关闭面板并取消任务，关闭时启动识别并显示面板。面板没有标题栏，缩放入口由宿主放右下，滑条临时替换左侧按钮区。
-- voice-input：默认关闭，通过 QUICK_TEXT_LONG_PRESS 注册可选的快捷文本长按入口，关闭后不贡献手势。当前仅显示占位提示，不访问麦克风、不触发聆听。
+- voice-input：默认关闭，通过 QUICK_TEXT_LONG_PRESS 注册可选的快捷文本长按入口，关闭后不贡献手势。开启后请求宿主录音最多 5 秒，通过所选 ASR 完整录音接口更新大字幕；不打开聆听面板。
 - debug-ui：13 个扩展区域各配置 0–20 个入口、图标/图标文字样式并持久化，默认数量为零；演示菜单、弹窗与自建页面，配置集中于插件管理。
+
+## 引擎能力与调用
+
+TtsInfo 声明资源就绪状态、可选声音列表和单次文本长度；TtsRequest 支持语言、语速和声音 ID。SynthesisEvent.Audio 必须返回 PCM16，宿主负责播放。主程序没有系统 TTS、Piper、sherpa 或 ONNX 的引擎实现。
+
+AsrInfo 声明输入格式、完整录音能力、录音长度上限、资源就绪状态及 StreamingKind：NONE、SEGMENTED（离线分句）或 INCREMENTAL（增量解码）。recognize 接收完整 PCM；recognizeStream 接收有背压的 PCM 流，Partial 是可选的真实中间结果，Final 可以表示一句话结束，EOF 冲刷最后一段。不得伪造中间识别文本。引擎在空输入、取消、失败时释放自己的资源，不吞掉 CancellationException。
+
+音频格式为有帧对齐的有符号小端 PCM16，8–192 kHz、单/双声道；宿主按 AsrInfo.inputFormat 录音，格式不支持时报告 EngineException。跨进程 PCM 分块最大 128 KiB，使用管道避免 Binder 大事务。失败分为未配置、格式不支持、初始化、推理、超时、不可用。
+
+PluginOutcome.ImportResource 请求宿主选择并复制文件或 ZIP 到该插件数据目录，完成后按 actionId 回调，inputs["resourcePath"] 为相对路径。TextInput 请求原生输入弹窗，提交后以 inputs["value"] 回调。网络下载由环境接口提供并写入该插件目录。设置仍由插件自己管理，宿主不识别引擎专属参数。
 
 ## 当前边界
 
-尚无第三方插件包加载/卸载、权限申请、跨进程通信或沙箱。编译期注册不构成不受信任代码隔离。引擎暂使用首个声明相应能力的插件；引擎选择、兼容性协商与权限模型待后续确定。声明式页面当前仅提供上述块，复杂第三方控件需要扩展协议。
+外部包首版支持 Android DEX 与可选 JNI；Lua/Python 尚未集成。每插件独立普通工作进程，不构成权限沙箱，现阶段仅用于可信插件。声明式 UI 和运行上下文通过节流快照实时同步，按钮仍由宿主渲染。当前最多同时启用 4 个外部插件；复杂自定义控件、第三方手势争用选择和真正的权限隔离需后续协议升级。

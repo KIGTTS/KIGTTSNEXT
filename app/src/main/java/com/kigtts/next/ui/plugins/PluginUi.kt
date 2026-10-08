@@ -35,9 +35,10 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, invoke: (String) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, invoke: (String) -> Unit) {
     if (page == null) { Text("插件页面暂不可用", Modifier.padding(24.dp)); return }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在处理插件任务…") }
         page.blocks.forEach { RenderBlock(it, invoke) }
     }
 }

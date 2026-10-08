@@ -27,7 +27,7 @@ class CategoryInteractionTest {
     private fun show(editing: Boolean = false): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model ->
+        return testAppModel(app).also { model ->
             compose.setContent { KigttsApp(model) }
             compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); if (editing) model.editQuickTexts() }
             compose.waitForIdle()
@@ -61,7 +61,7 @@ class CategoryInteractionTest {
         compose.onNodeWithTag("edit-category-name").performTextReplacement("不应保存")
         compose.onNodeWithText("取消").performClick()
         assertFalse("不应保存" in model.categories.value)
-        assertEquals(model.categories.value, AppViewModel(ApplicationProvider.getApplicationContext()).categories.value)
+        assertEquals(model.categories.value, testAppModel(ApplicationProvider.getApplicationContext()).categories.value)
     }
     @Test fun diagonalGroupDragIsHorizontalOnlyWithSolidElevatedTab() {
         val model = show(true)
@@ -108,7 +108,7 @@ class CategoryInteractionTest {
         compose.mainClock.advanceTimeBy(1500); compose.mainClock.autoAdvance = true
         assertEquals(original.id, model.phrases.value.filter { it.category == "常用" }.first().id)
         assertEquals(1, model.phrases.value.count { it.id == original.id })
-        assertEquals(model.phrases.value, AppViewModel(ApplicationProvider.getApplicationContext()).phrases.value)
+        assertEquals(model.phrases.value, testAppModel(ApplicationProvider.getApplicationContext()).phrases.value)
         compose.onNodeWithTag("phrase-detail-text").assertDoesNotExist()
         compose.onNodeWithTag("dragged-phrase").assertDoesNotExist()
         val next = model.phrases.value.filter { it.category == "常用" }[1]

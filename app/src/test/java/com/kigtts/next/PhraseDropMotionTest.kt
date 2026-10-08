@@ -37,7 +37,7 @@ class PhraseDropMotionTest {
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach {
             app.getSharedPreferences(it, 0).edit().clear().commit()
         }
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.editQuickTexts() }
         val phrase = model.phrases.value.first()

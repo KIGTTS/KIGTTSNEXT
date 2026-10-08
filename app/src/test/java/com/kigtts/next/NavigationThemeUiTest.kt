@@ -27,7 +27,7 @@ class NavigationThemeUiTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        return AppViewModel(app).also { model -> compose.setContent { KigttsApp(model) } }
+        return testAppModel(app).also { model -> compose.setContent { KigttsApp(model) } }
     }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }

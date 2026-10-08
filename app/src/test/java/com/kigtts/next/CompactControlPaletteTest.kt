@@ -77,7 +77,7 @@ class CompactControlPaletteTest {
     @Test fun smallHomeAndPluginActionsUseTheImprovedLightPalette() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
-        val model = AppViewModel(app)
+        val model = testAppModel(app)
         model.theme(ThemeSettings(mode = ThemeMode.LIGHT))
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); model.toggleListening(); model.invoke("debug.ui", "EDITOR_TOP_START/add") }

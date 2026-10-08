@@ -28,7 +28,7 @@ class ExtensionUiTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
         app.getSharedPreferences("ui-debug", 0).edit().putInt(UiSlot.EDITOR_TOP_END.name, count).commit()
-        return AppViewModel(app).also { model -> compose.setContent { KigttsApp(model) } }
+        return testAppModel(app).also { model -> compose.setContent { KigttsApp(model) } }
     }
     private fun right(tag: String) = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot().right.value
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
@@ -97,7 +97,7 @@ class ExtensionUiTest {
         compose.runOnIdle { model.invoke("input.voice", "toggle") }
         compose.onNodeWithTag("dock-main").assert(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
         compose.onNodeWithTag("dock-main").performTouchInput { longClick() }
-        compose.onNodeWithText("语音输入占位插件：暂未接入录音和识别").assertIsDisplayed()
+        compose.onNodeWithText("开始语音输入，录音最多 5 秒").assertIsDisplayed()
         compose.runOnIdle { assertFalse(model.state.value.captionsVisible); model.invoke("input.voice", "toggle") }
         compose.onNodeWithTag("dock-main").assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnLongClick))
         compose.runOnIdle { assertTrue(model.registry.gestureActions(PluginGesture.QUICK_TEXT_LONG_PRESS, model.context()).isEmpty()) }

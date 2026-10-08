@@ -15,6 +15,7 @@ import com.kigtts.next.ui.home.ObserveImeDismissal
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.next.ui.sketch.SketchState
 import com.kigtts.plugin.api.PluginOutcome
+import com.kigtts.next.ui.plugins.PluginRequests
 import kotlinx.coroutines.launch
 
 @Composable
@@ -31,12 +32,16 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    var pluginInput by remember { mutableStateOf<Pair<String, PluginOutcome.TextInput>?>(null) }
+    var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     LaunchedEffect(model) {
         model.events.collect { (plugin, outcome) ->
             when (outcome) {
                 is PluginOutcome.Message -> scope.launch { snackbar.showSnackbar(outcome.text) }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                is PluginOutcome.TextInput -> pluginInput = plugin to outcome
+                is PluginOutcome.ImportResource -> pluginImport = plugin to outcome
                 else -> Unit
             }
         }
@@ -64,6 +69,7 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     }
     KigttsTheme(state.theme) {
         ProvideButtonFeedback(state.hapticsEnabled) {
+            PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
             RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
                 Scaffold(snackbarHost = { SnackbarHost(snackbar) },
                     contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),

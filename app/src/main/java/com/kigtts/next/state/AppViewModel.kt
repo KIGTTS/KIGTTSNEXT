@@ -6,31 +6,27 @@ import androidx.lifecycle.viewModelScope
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeSettingsStore
 import com.kigtts.plugin.api.*
-import com.kigtts.plugins.asr.PlaceholderAsrPlugin
-import com.kigtts.plugins.tts.PlaceholderTtsPlugin
-import com.kigtts.plugins.debug.UiDebugPlugin
-import com.kigtts.plugins.listening.ListeningPanelPlugin
-import com.kigtts.plugins.voice.VoiceInputPlugin
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
+import com.kigtts.next.audio.*
+import com.kigtts.plugin.runtime.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
+import androidx.core.content.edit
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
-    private val debugPreferences = application.getSharedPreferences("ui-debug", android.content.Context.MODE_PRIVATE)
-    private val voicePreferences = application.getSharedPreferences("voice-input", android.content.Context.MODE_PRIVATE)
-    val registry = PluginRegistry(listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), ListeningPanelPlugin(),
-        VoiceInputPlugin(voicePreferences.getBoolean("enabled", false)) { voicePreferences.edit().putBoolean("enabled", it).apply() }, UiDebugPlugin(
-        UiSlot.entries.associateWith { debugPreferences.getInt(it.name, 0) },
-        { counts -> debugPreferences.edit().apply { counts.forEach { (slot, count) -> putInt(slot.name, count) } }.apply() },
-        UiSlot.entries.associateWith { if (debugPreferences.getBoolean(it.name + "_text", false)) UiButtonStyle.ICON_TEXT else UiButtonStyle.ICON },
-        { styles -> debugPreferences.edit().apply { styles.forEach { (slot, style) -> putBoolean(slot.name + "_text", style == UiButtonStyle.ICON_TEXT) } }.apply() },
-    )))
+class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
+    audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
+    val pluginManager = PluginManager(application, engineFixtures + builtinPlugins(application))
+    val registry = pluginManager.registry
+    private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
+    val selectedTtsId get() = engineSelection.getString("tts", null)
+    val selectedAsrId get() = engineSelection.getString("asr", null)
     private val themeStore = ThemeSettingsStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
     private val phraseStore = QuickPhraseStore(application)
@@ -45,8 +41,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
     private val outcomes = Channel<Pair<String, PluginOutcome>>(Channel.BUFFERED)
     val events = outcomes.receiveAsFlow()
-    private var recognitionJob: Job? = null
-    private var speechJob: Job? = null
+    private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text) {
+        if (it) selectedTtsId else selectedAsrId
+    }
+    val microphoneRequests = speech.permissionRequests
+    fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
+    init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    private fun observePluginContext() = viewModelScope.launch {
+        state.map { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible) }
+            .distinctUntilChanged().debounce(100).collect { context ->
+                if (pluginManager.refreshContext(context)) update { it.copy(pluginRevision = it.pluginRevision + 1) }
+            }
+    }
+    init { if (engineFixtures.isEmpty()) observePluginContext() }
     private val navigationHistory = ArrayDeque<Destination>()
 
     private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
@@ -78,10 +86,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         update { it.copy(panelHeight = value,
             lastExpandedPanelHeight = if (value > HomePanelSizes.COLLAPSED) value else it.lastExpandedPanelHeight) }
     }
-    fun closeListeningPanel() {
-        recognitionJob?.cancel()
-        update { it.copy(captionsVisible = false, listening = false) }
-    }
+    fun closeListeningPanel() = speech.closeListening()
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
     fun editing(editing: Boolean) { update { it.copy(editing = editing) } }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
@@ -110,7 +115,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun flipSubtitle() { update { it.copy(subtitleFlipped = !it.subtitleFlipped) } }
     fun category(category: String) { update { it.copy(selectedCategory = category) } }
     fun streaming(enabled: Boolean) {
-        recognitionJob?.cancel()
+        closeListeningPanel()
         update { it.copy(streaming = enabled, listening = false) }
     }
     fun theme(settings: ThemeSettings) {
@@ -124,17 +129,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         quickTexts.remove(phrase.id)
     }
     fun invoke(action: RegisteredAction) = invoke(action.plugin.descriptor.id, action.action.id)
-    fun invoke(pluginId: String, actionId: String) {
+    fun invoke(pluginId: String, actionId: String, inputs: Map<String, String> = emptyMap()) {
         val plugin = registry.plugin(pluginId) ?: return
+        if (pluginId in state.value.busyPlugins) return
+        update { it.copy(busyPlugins = it.busyPlugins + pluginId) }
         viewModelScope.launch {
             try {
-                when (val outcome = plugin.execute(actionId, context())) {
+                when (val outcome = plugin.execute(actionId, context().copy(inputs = inputs))) {
                     PluginOutcome.RefreshUi -> update { it.copy(pluginRevision = it.pluginRevision + 1) }
                     is PluginOutcome.HostAction -> when (outcome.command) {
                         HostCommand.TOGGLE_LISTENING -> toggleListening()
                         HostCommand.CLOSE_LISTENING_PANEL -> closeListeningPanel()
                         HostCommand.USE_STREAMING -> streaming(true)
                         HostCommand.USE_BATCH -> streaming(false)
+                        HostCommand.VOICE_INPUT -> speech.voiceInput()
                     }
                     is PluginOutcome.OpenPage -> {
                         if (plugin.page(outcome.pageId, context()) != null) navigate(Destination.PluginPage(pluginId, outcome.pageId))
@@ -144,49 +152,47 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                     else -> outcomes.send(pluginId to outcome)
                 }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { message("插件操作失败，请重试") }
+            catch (error: Exception) { message(error.message ?: "插件操作失败，请重试") }
+            finally { update { it.copy(busyPlugins = it.busyPlugins - pluginId) } }
         }
     }
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
 
-    fun toggleListening() {
-        if (state.value.captionsVisible) { closeListeningPanel(); return }
-        val engine = registry.plugins.firstNotNullOfOrNull { it.asr } ?: return
-        recognitionJob = viewModelScope.launch {
-            update { it.copy(listening = true, captionsVisible = true, transcript = "准备演示字幕…") }
-            try {
-                if (state.value.streaming) {
-                    val demoPcm = flow { repeat(4) { delay(650); emit(PcmAudio(ByteArray(3200))) } }
-                    engine.recognizeStream(demoPcm).collect { event ->
-                        when (event) {
-                            is RecognitionEvent.Partial -> update { it.copy(transcript = event.text) }
-                            is RecognitionEvent.Final -> update { it.copy(transcript = event.result.text) }
-                            RecognitionEvent.Started -> Unit
-                        }
-                    }
-                } else {
-                    val result = engine.recognize(PcmAudio(ByteArray(32000)))
-                    update { it.copy(transcript = result.text) }
-                }
-            } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { message("聆听演示失败，请重试") }
-            finally { update { it.copy(listening = false) } }
+    fun toggleListening() = speech.toggleListening()
+    fun speak() = speech.speak()
+    suspend fun refreshPlugins() {
+        pluginManager.reload()
+        val active = registry.plugins.map { it.descriptor.id }.toSet()
+        for (key in listOf("tts", "asr")) if (engineSelection.getString(key, null) !in active) {
+            val candidates = registry.plugins.filter { if (key == "tts") it.tts != null else it.asr != null }
+            val first = candidates.firstOrNull { if (key == "tts") it.tts?.info?.availability == EngineAvailability.READY
+                else it.asr?.info?.availability == EngineAvailability.READY } ?: candidates.firstOrNull()
+            engineSelection.edit { putString(key, first?.descriptor?.id) }
+        }
+        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+    }
+    fun selectEngine(id: String, tts: Boolean) {
+        val plugin = registry.plugin(id) ?: return
+        require(if (tts) plugin.tts != null else plugin.asr != null)
+        viewModelScope.launch {
+            speech.stopAll()
+            engineSelection.edit { putString(if (tts) "tts" else "asr", id) }
+            update { it.copy(pluginRevision = it.pluginRevision + 1) }
         }
     }
-    fun speak() {
-        if (state.value.speaking) { speechJob?.cancel(); update { it.copy(speaking = false) }; return }
-        if (state.value.editorText.isBlank()) { message("请先输入文本"); return }
-        val engine = registry.plugins.firstNotNullOfOrNull { it.tts } ?: return
-        val request = TtsRequest(state.value.editorText)
-        speechJob = viewModelScope.launch {
-            update { it.copy(speaking = true) }
+    fun changePlugin(id: String, enabled: Boolean? = null) {
+        viewModelScope.launch {
             try {
-                engine.synthesize(request).collect { event ->
-                    if (event is SynthesisEvent.Finished) message(event.notice ?: "朗读完成")
-                }
-            } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { message("朗读演示失败，请重试") }
-            finally { update { it.copy(speaking = false) } }
+                speech.stopAll()
+                if (enabled == null) pluginManager.uninstall(id) else pluginManager.enable(id, enabled)
+                refreshPlugins()
+            } catch (error: Exception) { message(error.message ?: "插件操作失败") }
         }
+    }
+    suspend fun stopSpeech() = speech.stopAll()
+    fun onBackground() { viewModelScope.launch { speech.stopAll() } }
+    override fun onCleared() {
+        super.onCleared()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); pluginManager.close() }
     }
 }

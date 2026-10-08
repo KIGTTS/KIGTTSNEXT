@@ -1,0 +1,146 @@
+package com.kigtts.plugin.runtime
+
+import android.app.Service
+import android.content.Intent
+import android.os.*
+import com.kigtts.plugin.api.*
+import dalvik.system.DexClassLoader
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.flow
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
+
+/** One plugin per disposable process; this is crash isolation, NOT an isolated-UID sandbox. */
+open class PluginWorkerService : Service() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var plugin: KigPlugin? = null
+    private val pages = mutableSetOf<String>()
+    private data class Session(val job: Job, val descriptors: List<ParcelFileDescriptor>)
+    private val sessions = ConcurrentHashMap<String, Session>()
+    private val binder = object : IPluginWorker.Stub() {
+        override fun initialize(pluginId: String): String = runBlocking(Dispatchers.IO) {
+            check(plugin == null) { "工作进程已分配" }
+            val paths = PluginPaths(this@PluginWorkerService)
+            val store = PluginPackageStore(paths)
+            val manifest = store.verifyInstalled(pluginId)
+            val directory = store.currentDirectory(pluginId)
+            val dex = manifest.files.keys.filter { it.matches(Regex("code/classes([2-9]|[1-9][0-9]+)?\\.dex")) }
+                .sorted().map { File(directory, it) }
+            require(dex.isNotEmpty())
+            val abi = Build.SUPPORTED_ABIS.firstOrNull { File(directory, "lib/$it").isDirectory }
+            val libraries = abi?.let { File(directory, "lib/$it").absolutePath }
+            val loader = DexClassLoader(dex.joinToString(File.pathSeparator) { it.absolutePath },
+                File(paths.storage(pluginId).temporary, "dex").apply { mkdirs() }.absolutePath, libraries, classLoader)
+            val instance = loader.loadClass(manifest.entryClass).getDeclaredConstructor().newInstance() as KigPlugin
+            require(instance.descriptor.id == manifest.id && instance.descriptor.apiVersion == manifest.apiVersion &&
+                instance.descriptor.version == manifest.version && instance.descriptor.license == manifest.license)
+            plugin = instance
+            try {
+                instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities))
+                require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
+                require(instance.asr == null || "asr-batch" in manifest.capabilities || "asr-segmented" in manifest.capabilities || "asr-incremental" in manifest.capabilities)
+            }
+            catch (error: Exception) { instance.close(); plugin = null; throw error }
+            snapshot(PluginJson.encodeToString(PluginContext("", "")))
+        }
+        override fun snapshot(context: String): String {
+            require(context.toByteArray().size <= 256 * 1024)
+            val instance = requireNotNull(plugin)
+            val decoded = PluginJson.decodeFromString<PluginContext>(context)
+            val contributions = instance.contributions(decoded)
+            synchronized(pages) { pages.addAll(contributions.drawerEntries.map { it.pageId }) }
+            val snapshot = PluginSnapshot(instance.descriptor, contributions,
+                synchronized(pages) { pages.mapNotNull { instance.page(it, decoded) } }, instance.tts?.info, instance.asr?.info)
+            PluginRegistry(listOf(instance))
+            return PluginJson.encodeToString(snapshot).also { require(it.toByteArray().size <= 512 * 1024) }
+        }
+        override fun execute(actionId: String, context: String): String = runBlocking(Dispatchers.IO) {
+            require(context.toByteArray().size <= 256 * 1024 && actionId.length <= 256)
+            val result = requireNotNull(plugin).execute(actionId, PluginJson.decodeFromString(context))
+            if (result is PluginOutcome.OpenPage) synchronized(pages) { pages.add(result.pageId) }
+            PluginJson.encodeToString(result)
+        }
+        override fun synthesize(request: String, token: String): ParcelFileDescriptor = launchSession(token) { output ->
+            val engine = requireNotNull(plugin?.tts) { "插件没有 TTS 能力" }
+            engine.synthesize(PluginJson.decodeFromString(request)).collect { event ->
+                when (event) {
+                    SynthesisEvent.Started -> { output.writeInt(AudioWire.START); output.flush() }
+                    is SynthesisEvent.Audio -> AudioWire.pcm(output, event.audio)
+                    is SynthesisEvent.Finished -> AudioWire.text(output, AudioWire.FINISH, event.notice.orEmpty())
+                }
+            }
+        }
+        override fun recognize(input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor =
+            launchSession(token, listOf(input)) { output ->
+                val engine = requireNotNull(plugin?.asr) { "插件没有 ASR 能力" }
+                val settings = PluginJson.decodeFromString<RecognitionConfig>(config)
+                DataInputStream(ParcelFileDescriptor.AutoCloseInputStream(input)).use { data ->
+                    val chunks = flow {
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val tag = AudioWire.tag(data) ?: break
+                            require(tag == AudioWire.AUDIO); emit(AudioWire.readPcm(data))
+                        }
+                    }
+                    if (streaming) {
+                        require(engine.info.streaming != StreamingKind.NONE)
+                        engine.recognizeStream(chunks, settings).collect { event ->
+                            when (event) {
+                                RecognitionEvent.Started -> { output.writeInt(AudioWire.START); output.flush() }
+                                is RecognitionEvent.Partial -> AudioWire.text(output, AudioWire.PARTIAL, event.text)
+                                is RecognitionEvent.Final -> AudioWire.text(output, AudioWire.FINAL, PluginJson.encodeToString(event.result))
+                            }
+                        }
+                    } else {
+                        require(engine.info.batch)
+                        val bytes = java.io.ByteArrayOutputStream()
+                        var format: AudioFormat? = null
+                        chunks.collect { chunk ->
+                            val current = AudioFormat(chunk.sampleRate, chunk.channels)
+                            require(format == null || format == current); format = current
+                            require(bytes.size().toLong() + chunk.bytes.size <= current.sampleRate.toLong() * current.channels * 2 * engine.info.maxBatchSeconds)
+                            bytes.write(chunk.bytes)
+                        }
+                        val pcm = format ?: engine.info.inputFormat
+                        AudioWire.text(output, AudioWire.FINAL, PluginJson.encodeToString(engine.recognize(PcmAudio(bytes.toByteArray(), pcm.sampleRate, pcm.channels), settings)))
+                    }
+                }
+            }
+        override fun cancel(token: String) { sessions.remove(token)?.let { session -> session.descriptors.forEach { runCatching { it.close() } }; session.job.cancel() } }
+        override fun shutdown() {
+            Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, 4_000)
+            scope.launch {
+                val active = sessions.keys.toList()
+                val jobs = sessions.values.map { it.job }
+                active.forEach(::cancel)
+                if (withTimeoutOrNull(3_000) { jobs.joinAll(); true } == true) runCatching { plugin?.close() }
+                plugin = null
+                // Exit guarantees native libraries and model mappings are no longer resident.
+                Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, 100)
+            }
+        }
+    }
+    private fun launchSession(token: String, inputs: List<ParcelFileDescriptor> = emptyList(),
+        block: suspend (DataOutputStream) -> Unit): ParcelFileDescriptor {
+        require(token.length in 1..80 && !sessions.containsKey(token))
+        val pipe = ParcelFileDescriptor.createReliablePipe()
+        val job = scope.launch(start = CoroutineStart.LAZY) {
+            DataOutputStream(ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])).use { output ->
+                try { block(output) }
+                catch (cancel: CancellationException) { throw cancel }
+                catch (error: Exception) { if (isActive) runCatching { AudioWire.error(output, error) } }
+                finally { inputs.forEach { runCatching { it.close() } }; sessions.remove(token) }
+            }
+        }
+        sessions[token] = Session(job, inputs + pipe[1]); job.start()
+        return pipe[0]
+    }
+    override fun onBind(intent: Intent) = binder
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
+}
+class PluginWorker0 : PluginWorkerService()
+class PluginWorker1 : PluginWorkerService()
+class PluginWorker2 : PluginWorkerService()
+class PluginWorker3 : PluginWorkerService()

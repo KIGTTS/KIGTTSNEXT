@@ -38,7 +38,7 @@ class PanelInteractionTest {
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
         app.getSharedPreferences("ui-debug", 0).edit().putInt(UiSlot.QUICK_PANEL_START.name, plugins).putInt(UiSlot.QUICK_PANEL_END.name, plugins).commit()
         val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }
-        return AppViewModel(app).also { model ->
+        return testAppModel(app).also { model ->
             compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { drawer = rememberDrawerNavigation(); KigttsApp(model, drawer) } }
         }
     }

@@ -37,8 +37,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.DISPLAY -> DisplaySettingsScreen(state.theme, model::theme)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics)
                 }
-                Destination.Plugins -> PluginsScreen(model.registry) { plugin, page -> model.navigate(Destination.PluginPage(plugin, page)) }
-                is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())) {
+                Destination.Plugins -> PluginsScreen(model)
+                is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context()), destination.pluginId in state.busyPlugins) {
                     model.invoke(destination.pluginId, it)
                 }
             }

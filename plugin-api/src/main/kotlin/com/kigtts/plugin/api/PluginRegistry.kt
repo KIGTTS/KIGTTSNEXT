@@ -6,12 +6,14 @@ data class RegisteredAction(val plugin: KigPlugin, val action: UiAction) {
 data class RegisteredDrawerEntry(val plugin: KigPlugin, val entry: DrawerEntry)
 data class RegisteredGesture(val plugin: KigPlugin, val action: GestureAction)
 
-/** Explicit registration for this prototype; not an arbitrary APK/dex loader. */
+/** UI and engine catalog. External runtimes register proxies, never their implementation classes. */
 class PluginRegistry(plugins: List<KigPlugin>) {
-    val plugins: List<KigPlugin> = plugins.toList()
-    init {
-        require(this.plugins.map { it.descriptor.id }.distinct().size == this.plugins.size) { "Duplicate plugin ID" }
-        this.plugins.forEach { plugin ->
+    @Volatile var plugins: List<KigPlugin> = emptyList()
+        private set
+    init { replace(plugins) }
+    fun replace(next: List<KigPlugin>) {
+        require(next.map { it.descriptor.id }.distinct().size == next.size) { "Duplicate plugin ID" }
+        next.forEach { plugin ->
             require(plugin.descriptor.id.matches(Regex("[a-z][a-z0-9.-]+"))) { "Invalid plugin ID" }
             require(plugin.descriptor.apiVersion == PLUGIN_API_VERSION) { "Incompatible plugin API" }
             val actions = plugin.contributions.actions
@@ -27,6 +29,7 @@ class PluginRegistry(plugins: List<KigPlugin>) {
             require((actions.map { it.id } + gestures.map { it.id }).distinct().size == actions.size + gestures.size) { "Duplicate gesture/action ID" }
             require(gestures.all { it.id.isNotBlank() && it.label.isNotBlank() })
         }
+        plugins = next.toList()
     }
 
     fun actions(slot: UiSlot, context: PluginContext = PluginContext("", "")): List<RegisteredAction> = plugins.flatMap { plugin ->

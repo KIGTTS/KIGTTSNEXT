@@ -1,38 +1,84 @@
 package com.kigtts.plugin.api
 
+import kotlinx.serialization.Serializable
+
 import kotlinx.coroutines.flow.Flow
 
 /** Signed 16-bit little-endian PCM. Chunk boundaries must align with a full sample frame. */
+@Serializable
 data class PcmAudio(val bytes: ByteArray, val sampleRate: Int = 16_000, val channels: Int = 1) {
     init {
-        require(sampleRate > 0 && channels in 1..2)
+        require(sampleRate in 8_000..192_000 && channels in 1..2)
         require(bytes.size % (2 * channels) == 0) { "PCM must contain complete sample frames" }
     }
 }
 
-data class TtsRequest(val text: String, val language: String = "zh-CN", val rate: Float = 1f)
+@Serializable
+data class AudioFormat(val sampleRate: Int = 16_000, val channels: Int = 1) {
+    init { require(sampleRate in 8_000..192_000 && channels in 1..2) }
+}
+@Serializable
+enum class EngineAvailability { READY, NEEDS_RESOURCES }
+@Serializable
+enum class StreamingKind { NONE, SEGMENTED, INCREMENTAL }
+@Serializable
+data class VoiceInfo(val id: String, val name: String, val language: String)
+@Serializable
+data class TtsInfo(val availability: EngineAvailability = EngineAvailability.READY,
+    val voices: List<VoiceInfo> = emptyList(), val maxTextLength: Int = 4_000) {
+    init { require(maxTextLength in 2..100_000) }
+}
+@Serializable
+data class AsrInfo(val inputFormat: AudioFormat = AudioFormat(), val batch: Boolean = true,
+    val streaming: StreamingKind = StreamingKind.INCREMENTAL,
+    val availability: EngineAvailability = EngineAvailability.READY, val maxBatchSeconds: Int = 30) {
+    init { require(maxBatchSeconds in 1..120 && (batch || streaming != StreamingKind.NONE)) }
+}
+@Serializable
+data class TtsRequest(val text: String, val language: String = "zh-CN", val rate: Float = 1f,
+    val voiceId: String? = null) {
+    init { require(rate.isFinite() && rate in 0.25f..4f) }
+}
+@Serializable
+enum class EngineError { NOT_CONFIGURED, UNSUPPORTED_FORMAT, INITIALIZATION, INFERENCE, TIMEOUT, UNAVAILABLE }
+class EngineException(val code: EngineError, message: String, cause: Throwable? = null) : Exception(message, cause)
+@Serializable
 sealed interface SynthesisEvent {
+    @Serializable
     data object Started : SynthesisEvent
+    @Serializable
     data class Audio(val audio: PcmAudio) : SynthesisEvent
+    @Serializable
     data class Finished(val notice: String? = null) : SynthesisEvent
 }
 
 interface TtsEngine {
+    val info: TtsInfo get() = TtsInfo()
     /** Cold flow; cancelling its collection must release engine resources. */
     fun synthesize(request: TtsRequest): Flow<SynthesisEvent>
+    suspend fun close() {}
 }
 
+@Serializable
 data class RecognitionConfig(val language: String = "zh-CN")
+@Serializable
 data class RecognitionResult(val text: String, val placeholder: Boolean = false)
+@Serializable
 sealed interface RecognitionEvent {
+    @Serializable
     data object Started : RecognitionEvent
+    @Serializable
     data class Partial(val text: String) : RecognitionEvent
+    @Serializable
     data class Final(val result: RecognitionResult) : RecognitionEvent
 }
 
 interface AsrEngine {
+    val info: AsrInfo get() = AsrInfo()
     /** One complete recording, one result. Cancellation propagates to the engine. */
     suspend fun recognize(audio: PcmAudio, config: RecognitionConfig = RecognitionConfig()): RecognitionResult
-    /** Cold flow consuming PCM chunks with backpressure. Input completion finalizes the session. */
+    /** Cold flow with backpressure. Final may end each utterance; EOF flushes the last utterance.
+     * SEGMENTED means offline inference with endpointing, not an incremental neural decoder. */
     fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig = RecognitionConfig()): Flow<RecognitionEvent>
+    suspend fun close() {}
 }
