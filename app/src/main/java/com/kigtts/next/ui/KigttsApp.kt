@@ -1,0 +1,97 @@
+package com.kigtts.next.ui
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kigtts.next.state.*
+import com.kigtts.next.theme.KigttsTheme
+import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.home.HomeScreen
+import com.kigtts.next.ui.home.ObserveImeDismissal
+import com.kigtts.next.ui.navigation.*
+import com.kigtts.next.ui.sketch.SketchState
+import com.kigtts.plugin.api.PluginOutcome
+import kotlinx.coroutines.launch
+
+@Composable
+fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavigation()) {
+    val state by model.state.collectAsStateWithLifecycle()
+    val phrases by model.phrases.collectAsStateWithLifecycle()
+    val categories by model.categories.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    val sketch = remember { SketchState() }
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
+    ObserveImeDismissal(state.editing) { model.editing(false) }
+    var sketchShare by remember { mutableIntStateOf(0) }
+    var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
+    var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    LaunchedEffect(model) {
+        model.events.collect { (plugin, outcome) ->
+            when (outcome) {
+                is PluginOutcome.Message -> scope.launch { snackbar.showSnackbar(outcome.text) }
+                is PluginOutcome.Dialog -> dialog = outcome
+                is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                else -> Unit
+            }
+        }
+    }
+    val drawerActive = drawer.active
+    val navigation = rememberPageNavigation(state)
+    LaunchedEffect(navigation.current.identity) {
+        focus.clearFocus()
+        keyboard?.hide()
+    }
+    val back = rememberPredictiveReturn(!drawerActive &&
+        (navigation.returningHome || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
+        identity = navigation.current.identity) {
+        when {
+            // Back can arrive before recomposition updates callback enablement during opening.
+            drawer.active -> drawer.close()
+            state.destination != Destination.Home -> model.navigateBack()
+            navigation.returningHome -> Unit
+            state.sidePage != null -> model.closeSidePage()
+            state.quickTextEditing -> { focus.clearFocus(); keyboard?.hide(); model.finishQuickTextEditing() }
+            state.subtitleExpanded -> { focus.clearFocus(); keyboard?.hide(); model.exitSubtitleFullscreen() }
+            state.panel != null -> model.closePanel()
+            else -> model.closeListeningPanel()
+        }
+    }
+    KigttsTheme(state.theme) {
+        ProvideButtonFeedback(state.hapticsEnabled) {
+            RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
+                Scaffold(snackbarHost = { SnackbarHost(snackbar) },
+                    contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
+                    containerColor = MaterialTheme.colorScheme.background) { insets ->
+                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding()) {
+                        PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
+                            drawer::open, if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, drawerActive) { active ->
+                            HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, drawer::open,
+                                if (active) back.progress else 0f, back.edge)
+                        }
+                    }
+                }
+            }
+            dialog?.let { content -> AlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
+                confirmButton = { TextButton(onClick = feedbackClick { dialog = null }) { Text("知道了") } }) }
+            pluginMenu?.let { (plugin, content) ->
+                AlertDialog(
+                    onDismissRequest = { pluginMenu = null }, title = { Text(content.title) },
+                    text = {
+                        Column {
+                            content.items.forEach { item ->
+                                TextButton(onClick = feedbackClick { pluginMenu = null; model.invoke(plugin, item.id) }) { Text(item.label) }
+                            }
+                        }
+                    },
+                    confirmButton = { TextButton(onClick = feedbackClick { pluginMenu = null }) { Text("关闭") } },
+                )
+            }
+        }
+    }
+}

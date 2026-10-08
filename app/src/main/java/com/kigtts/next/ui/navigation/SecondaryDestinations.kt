@@ -1,0 +1,47 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+package com.kigtts.next.ui.navigation
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.state.*
+import com.kigtts.next.ui.plugins.*
+import com.kigtts.next.ui.settings.*
+
+/** Page content is independent of its lifetime and transition in the navigation host. */
+@Composable
+fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel, openDrawer: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        val title = when (destination) {
+            Destination.Home -> "KIGTTS"
+            Destination.Settings -> "设置"
+            is Destination.SettingsDetail -> destination.category.title
+            Destination.Plugins -> "插件管理"
+            is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
+        }
+        TopAppBar(title = { Text(title) }, windowInsets = WindowInsets(0.dp),
+            navigationIcon = { IconButton(feedbackClick(model::navigateBack)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回上一页") } },
+            actions = { IconButton(feedbackClick(openDrawer)) { Icon(Icons.Default.Menu, "打开抽屉菜单") } })
+        Box(Modifier.weight(1f)) {
+            when (destination) {
+                Destination.Home -> Unit
+                Destination.Settings -> SettingsScreen(model::navigate)
+                is Destination.SettingsDetail -> when (destination.category) {
+                    SettingsCategory.COLORS -> ColorSettingsScreen(state.theme, model::theme)
+                    SettingsCategory.DISPLAY -> DisplaySettingsScreen(state.theme, model::theme)
+                    SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics)
+                }
+                Destination.Plugins -> PluginsScreen(model.registry) { plugin, page -> model.navigate(Destination.PluginPage(plugin, page)) }
+                is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())) {
+                    model.invoke(destination.pluginId, it)
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,83 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+package com.kigtts.next.ui.home
+
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.state.*
+import com.kigtts.next.ui.components.*
+
+@Composable
+fun QuickTextPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel, motion: HomeSheetMotion, modifier: Modifier = Modifier) {
+    val singleRow by remember(motion) { derivedStateOf { motion.height <= 192f } }
+    Column(modifier.padding(horizontal = 8.dp)) {
+        CategoryContentMotion(state.selectedCategory, categories, !singleRow, model::category, Modifier.weight(1f)) { category, _ ->
+            QuickPhraseLayout(phrases.filter { it.category == category }, singleRow, model)
+        }
+        CategoryTabs(state, categories, model)
+    }
+}
+
+@Composable
+private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, model: AppViewModel) {
+    val sources = remember(filtered.map { it.id }) { filtered.map { MutableInteractionSource() } }
+    val pressed = sources.map { it.collectIsPressedAsState().value }
+    val currentRow by rememberUpdatedState(singleRow)
+    val currentPhrases by rememberUpdatedState(filtered)
+    val currentSources by rememberUpdatedState(sources)
+    val currentPressed by rememberUpdatedState(pressed)
+    val grid = rememberLazyGridState()
+    val row = rememberLazyListState()
+    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+    val spatial = MaterialTheme.motionScheme.fastSpatialSpec<androidx.compose.ui.unit.IntOffset>()
+    if (filtered.isEmpty()) Box(Modifier.fillMaxSize()) { Text("还没有短语，点击编辑添加。", Modifier.padding(12.dp)) }
+    else AnimatedContent(singleRow, modifier = Modifier.fillMaxSize().clipToBounds().testTag("phrases-layout-transition"),
+        label = "quick-text-layout", transitionSpec = {
+            val direction = if (targetState) -1 else 1
+            (fadeIn(effects) + slideInVertically(spatial) { direction * it / 8 })
+                .togetherWith(fadeOut(effects) + slideOutVertically(spatial) { -direction * it / 8 }).using(null)
+        }) { isRow ->
+        val filtered = currentPhrases; val sources = currentSources; val pressed = currentPressed
+        val listModifier = Modifier.fillMaxSize().then(if (isRow == currentRow) Modifier else Modifier.clearAndSetSemantics {})
+        if (isRow) LazyRow(listModifier.testTag("phrases-horizontal"), state = row, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
+                PhraseTile(phrase, { model.text(phrase.text) }, CornerNeighbors(start = index > 0, end = index < filtered.lastIndex),
+                    pressed[index], pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
+                    sources[index], Modifier.width(164.dp).height(64.dp))
+            }
+        } else LazyVerticalGrid(GridCells.Fixed(2), state = grid, modifier = listModifier.testTag("phrases-vertical"),
+            verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
+                val neighbors = listOf(index - 2, index + 2, if (index % 2 == 0) index + 1 else index - 1)
+                PhraseTile(phrase, { model.text(phrase.text) },
+                    CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < filtered.lastIndex,
+                        above = index >= 2, below = index + 2 <= filtered.lastIndex),
+                    pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index], Modifier.height(64.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: CornerNeighbors,
+    pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier) {
+    Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors, pressed, neighborPressed)) {
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(phrase.text, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(phrase.description.ifBlank { "点击填入文本" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}

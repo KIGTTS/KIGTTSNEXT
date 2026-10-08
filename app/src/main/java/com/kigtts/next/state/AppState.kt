@@ -1,0 +1,45 @@
+package com.kigtts.next.state
+
+import com.kigtts.next.theme.ThemeSettings
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
+
+enum class HomePanel(val label: String) { QUICK_TEXT("快捷文本") }
+enum class SidePage(val label: String) { SKETCH("画板"), CARDS("名片") }
+sealed interface Destination {
+    data object Home : Destination
+    data object Settings : Destination
+    data class SettingsDetail(val category: SettingsCategory) : Destination
+    data object Plugins : Destination
+    data class PluginPage(val pluginId: String, val pageId: String) : Destination
+}
+data class QuickPhrase(val text: String, val category: String, val id: String = java.util.UUID.randomUUID().toString(), val description: String = "")
+data class AppState(
+    val destination: Destination = Destination.Home,
+    val navigationStack: List<Destination> = emptyList(),
+    val captionsVisible: Boolean = false,
+    val captionHeight: Float = 128f,
+    val panel: HomePanel? = null,
+    val sidePage: SidePage? = null,
+    val panelHeight: Float = 184f,
+    val lastExpandedPanelHeight: Float = 184f,
+    val editing: Boolean = false,
+    val forcedFullscreen: Boolean = false,
+    val quickTextEditing: Boolean = false,
+    val subtitleRevision: Int = 0,
+    val pluginRevision: Int = 0,
+    val editorValue: TextFieldValue = TextFieldValue("这里是输入的\n文本", TextRange(9)),
+    val transcript: String = "",
+    val listening: Boolean = false,
+    val speaking: Boolean = false,
+    val streaming: Boolean = true,
+    val subtitleSizePercent: Float = SubtitleSize.DEFAULT_PERCENT,
+    val captionTextSize: Float = 14f,
+    val subtitleFlipped: Boolean = false,
+    val selectedCategory: String = "常用",
+    val theme: ThemeSettings = ThemeSettings(),
+    val hapticsEnabled: Boolean = true,
+) {
+    val editorText: String get() = editorValue.text
+    val subtitleExpanded: Boolean get() = editing || forcedFullscreen
+}
