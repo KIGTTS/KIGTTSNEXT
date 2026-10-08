@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.navigation
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.*
@@ -17,7 +19,7 @@ import kotlin.math.abs
 
 enum class PageRole { FOREGROUND, BACKGROUND, EXITING }
 
-private class PageMotionMemory(initial: Float) {
+private class PageMotionMemory(initial: Float, var role: PageRole) {
     var animation = Animatable(initial)
     var gesture = 0f
     var gestureEdge = 0
@@ -29,7 +31,8 @@ private class PageMotionMemory(initial: Float) {
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
     parentPreview: Float, finished: () -> Unit, content: @Composable () -> Unit) {
     val memory = remember(entry) { PageMotionMemory(if (entry.scene == PageScene.Home) 0f else
-        if (role == PageRole.FOREGROUND) entry.direction else -.08f) }
+        if (role == PageRole.FOREGROUND) entry.direction else -.08f, role) }
+    val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
     val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
     val leavingDirection = remember(role) {
         if (role == PageRole.EXITING && prediction > 0f) { if (memory.gestureEdge == 0) 1f else -1f } else entry.direction
@@ -39,11 +42,14 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     }
     val latestFinished by rememberUpdatedState(finished)
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val entrance = tween<Float>(durationMillis = 320, easing = FastOutSlowInEasing)
     LaunchedEffect(role, animation) {
-        animation.animateTo(when (role) { PageRole.FOREGROUND -> 0f; PageRole.BACKGROUND -> -.08f; PageRole.EXITING -> leavingDirection }, spatial)
+        animation.animateTo(when (role) { PageRole.FOREGROUND -> 0f; PageRole.BACKGROUND -> -.08f; PageRole.EXITING -> leavingDirection },
+            if (role == PageRole.FOREGROUND && !restoringParent) entrance else spatial)
         if (role == PageRole.EXITING) latestFinished()
     }
     SideEffect {
+        memory.role = role
         memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
         memory.gestureEdge = edge
         memory.parentPreview = parentPreview
