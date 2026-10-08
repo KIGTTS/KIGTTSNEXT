@@ -2,7 +2,7 @@
 
 ## 独立构建
 
-主程序 APK 不携带语音引擎。`engine-plugins/system-tts` 和 `engine-plugins/sensevoice-asr` 是独立源码目录，依赖不进入 app 的生产依赖图。Android 专用 API 仅提供工作进程 Context 与统一数据目录，不包含引擎 SDK。
+主程序 APK 不携带语音引擎。Piper、SenseVoice、语音合成服务都是独立插件；`system-support` 仅供插件构建时复用系统 TTS 实现，实际内置在服务包。旧 `system-tts` 独立包保留兼容选项，使用服务时无需启用它。依赖不进入 app 的生产依赖图。Android 专用 API 仅提供工作进程 Context 与统一数据目录，不包含引擎 SDK。
 
 使用 PowerShell 7、JDK 17 和 Android SDK 36：
 
@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出为 `build/plugin-packages/engine.system-tts-0.1.0.kigplugin` 与 `engine.sensevoice-0.1.0.kigplugin`。也可先单独构建两个 Android library，再加 `-SkipBuild` 打包。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.2.0.kigplugin`、`engine.piper-0.2.0.kigplugin`、`engine.sensevoice-0.2.0.kigplugin`、旧兼容 `engine.system-tts-0.2.0.kigplugin`。也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -26,7 +26,7 @@ signature/public.der        # RSA SubjectPublicKeyInfo
 signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 ```
 
-API v2 首版运行时为 `android-dex`。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
+API v3 当前运行时为 `android-dex`。API2 包与新主程序不兼容，需用同一发布者的 0.2.0/API3 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
 
 ## 安装与生命周期
 
@@ -59,17 +59,25 @@ PluginStorage 只接受相对路径并检查规范路径；下载接口要求 HT
 
 ## 本次引擎
 
+- 语音合成服务：统一引擎目录、声音分页、语速与系统语言配置。自身内置系统 TTS，未导入 Piper 时可直接使用；外部引擎停用/缺模型/合成前失败时保底，取消不重播，已输出音频的当前分段失败不重复朗读。
+- Piper：移植旧 ONNX、eSpeak、中文拼音/日文读音与跨语言近似适配；支持旧 `.kigvpk`/ZIP manifest 与标准 ONNX+同名 JSON ZIP、嵌套目录、多个声音、导入/选择/重命名/二次确认删除语音包。模型属于 `engine.piper/models/voices`，发音数据属于 `engine.piper/resources`，不会混入服务或主程序。首版完整本地库仅支持 arm64-v8a。源码、固定 eSpeak 完整源归档与独立构建参考在 Piper 的 `native-source/`；本次使用原工程预编译库，独立 NDK 构建入口尚未实编。
 - 系统 TTS：沿用原版系统服务初始化、候选回退和文件合成流程；改成可取消等待、超时、规范 PCM16 WAV 读取及插件临时文件清理。依赖设备安装的系统 TTS 服务和相应语言数据。
 - SenseVoice：沿用原版 sherpa 离线配置、16 kHz 单声道输入和文件模型加载；完整录音接口最多 30 秒。分段流式入口基于音量端点、500 ms 静音与最长 12 秒切段，逐句执行离线推理、发布 Final，输入结束冲刷剩余语句。没有凭空制造 Partial 文本，也不宣称原生增量解码。
-- 模型须自行导入 ONNX 与同目录的 tokens.txt，或包含二者的 ZIP；支持原资源包的嵌套目录。7z、Piper/Kokoro、降噪、声纹、AEC 和说话人分离没有在这一版迁移，应作为后续独立插件迭代。
+- SenseVoice 模型须自行导入 ONNX 与同目录的 tokens.txt，或包含二者的 ZIP；支持原资源包的嵌套目录。7z、Kokoro、降噪、声纹、AEC 和说话人分离没有在这一版迁移，应作为后续独立插件迭代。
 
-两个移植插件保留原工程 GPLv3 许可与来源；主程序/API/通用运行时保持 MIT。sherpa/ONNX Runtime 的第三方许可随插件包保存，模型许可随模型资源保留。
+移植插件与系统共享实现保留原工程 GPLv3 许可与来源；主程序/API/通用运行时保持 MIT。sherpa/ONNX Runtime、eSpeak、发音器和词典的第三方许可随插件包保存，模型许可随模型资源保留。
+
+## 使用语音合成服务
+
+先安装并启用服务包，再安装并启用 Piper；服务会成为统一朗读入口。通过右侧抽屉“语音合成服务 → Piper → 导入语音包”选择 ZIP/.kigvpk，导入后选用声音。删除需确认，并删除该语音包的所有声音。没有 Piper 包时服务仍能调用自身的系统 TTS，旧 `engine.system-tts` 可停用以节省工作进程。
+
+系统 TTS 的“管理引擎与语音包 → 刷新声音列表”读取 Android 已安装声音，支持选择具体声音；系统语音数据本身由系统 TTS 应用安装。导入文件临时经过服务 `resources/inbox`，broker 的副本在 Piper `tmp`，完成或失败均清理；下载、外置文件、模型、词典和配置都留在各插件 Appdata 子目录。
 
 ## 验证范围
 
 单元与原生 UI 回归覆盖包签名/实际产物、发布者/版本/完整性、额外 DEX、数据路径/越界、导入回滚/清理、二进制 PCM 帧、无模型不打开麦克风、规范引擎调度与取消、端点分段、RIFF 解码、以及主 APK 无引擎类/库检查。
 
-Android 16 真机已执行实际 DEX/JNI/ONNX 加载、系统 TTS 合成（84,096 字节 PCM）和宿主 AudioTrack 播放、停用/重新启用、资源导入、完整录音与分段流式识别，以及取消流式后再次完整识别，最终 OK（1 项综合仪器测试，16.646 秒）。两个插件及模型已保留并启用，测试辅助包与手机上的测试暂存文件已移除。
+上一版 API2 的 Android 16 真机已执行实际 DEX/JNI/ONNX 加载、系统 TTS 合成（84,096 字节 PCM）和宿主 AudioTrack 播放、停用/重新启用、资源导入、完整录音与分段流式识别，以及取消流式后再次完整识别，最终 OK（1 项综合仪器测试，16.646 秒）。当时两个插件及模型已保留并启用，测试辅助包与手机上的测试暂存文件已移除。本次 API3 更新后的验证另列于下；旧包已同发布者升级，原有模型与配置保留。
 
 测试使用官方固定版本 SenseVoice int8 模型（提交 2365baeacb507f821a0c8120fcee3d484dba7a07，model SHA-256 c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51）及 zh.wav。源 https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17 。模型/tokens/LICENSE 存在插件 models 下，没有进入主 APK 或 Git。
 
@@ -78,3 +86,9 @@ Android 16 真机已执行实际 DEX/JNI/ONNX 加载、系统 TTS 合成（84,09
 真机检查修复了两个宿主问题：ART 自动生成的 code/oat 不是签名有效载荷，加载前使用不跟随符号链接的清理方法删除缓存，仍拒绝额外 DEX；输入管道改用普通管道和显式 END_INPUT，避免可靠管道在 AIDL 参数复制时误报远端死亡，缺少结束帧仍报告输入中断。
 
 烟测位于 app/src/androidTest 的 PluginRuntimeDeviceTest。先打包插件，再构建 :app:assembleDebugAndroidTest，安装主 APK 和测试 APK（-t），通过 AndroidJUnitRunner 运行。keepPackages=true 保留本次安装包；playAudio=true 测试实际播放。resourceZip 与 sampleWav 参数必须指向对应插件数据目录，可增加模型导入和识别测试。测试包里的引擎 ZIP 仅存在于 AndroidTest APK，主 APK 没有这些资产。默认只清理自己创建的插件。
+
+新增 `SpeechServiceDeviceTest` 验证服务内置系统 TTS、经 broker 的 Piper 实际 DEX/JNI/PCM、语音包导入/选用/重命名/删除确认、取消后重用以及停用提供者后的保底。执行时必须传 `piperVoiceZip`，指向 Piper 对应数据目录中的测试语音包。可传 `keepPackages=true` 保留安装的插件与声音，`playAudio=true` 播放音频；测试会同签名更新旧包、停用旧独立系统 TTS。没有测试模型时不声称 Piper 验证通过。
+
+本次 API3 真机两项综合仪器检查全部通过：SpeechServiceDeviceTest 用时 20.535 秒，内置系统 TTS 93,312 字节 PCM、经服务/broker 的 Piper DEX/JNI/eSpeak/ORT 55,296 字节 PCM，均通过宿主实际播放；Piper 取消后重用 56,320 字节，停用提供者后系统保底 87,552 字节。语音包导入/选用/重命名/删除确认链路通过，Piper 使用旧工程的英文开发测试模型，仅作功能检查，不能作为中文或自然度验收。
+
+SpeechUpgradeDeviceTest 用时 6.689 秒，直接复用原已安装 SenseVoice 模型，完整录音结果“开放时间早上9点至下午5点。”；分段仍为“开饭时间早上9点至下午5点。”，同一处识别错字仍在。服务默认已恢复内置系统 TTS；Piper、SenseVoice、语音合成服务启用，旧独立系统插件 0.2.0 已更新并停用。Piper 测试声音保留在对应模型目录，测试辅助 APK 与识别录音暂存已清理，主应用冷启动通过。171 项本地测试与签名/载荷检查通过，主 APK 没有任何引擎实现/库/模型/插件包资产；本次只验证 arm64 真机，独立 NDK 构建入口未实编。

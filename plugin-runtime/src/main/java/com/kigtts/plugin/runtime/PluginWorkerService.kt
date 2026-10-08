@@ -20,7 +20,7 @@ open class PluginWorkerService : Service() {
     private data class Session(val job: Job, val descriptors: List<ParcelFileDescriptor>)
     private val sessions = ConcurrentHashMap<String, Session>()
     private val binder = object : IPluginWorker.Stub() {
-        override fun initialize(pluginId: String): String = runBlocking(Dispatchers.IO) {
+        override fun initialize(pluginId: String, broker: IHostSpeechBroker?): String = runBlocking(Dispatchers.IO) {
             check(plugin == null) { "工作进程已分配" }
             val paths = PluginPaths(this@PluginWorkerService)
             val store = PluginPackageStore(paths)
@@ -38,8 +38,12 @@ open class PluginWorkerService : Service() {
                 instance.descriptor.version == manifest.version && instance.descriptor.license == manifest.license)
             plugin = instance
             try {
-                instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities))
+                instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities,
+                    if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null))
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
+                require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }
+                require(instance.voiceManager == null || "voice-packs" in manifest.capabilities) { "插件未声明语音包管理能力" }
+                require(instance.tts?.info?.managesVoices != true || instance.voiceManager != null) { "缺少已声明的语音管理接口" }
                 require(instance.asr == null || "asr-batch" in manifest.capabilities || "asr-segmented" in manifest.capabilities || "asr-incremental" in manifest.capabilities)
             }
             catch (error: Exception) { instance.close(); plugin = null; throw error }
@@ -61,6 +65,11 @@ open class PluginWorkerService : Service() {
             val result = requireNotNull(plugin).execute(actionId, PluginJson.decodeFromString(context))
             if (result is PluginOutcome.OpenPage) synchronized(pages) { pages.add(result.pageId) }
             PluginJson.encodeToString(result)
+        }
+        override fun voiceCommand(command: String): String = runBlocking(Dispatchers.IO) {
+            require(command.length <= 8192)
+            PluginJson.encodeToString(requireNotNull(plugin?.voiceManager) { "此引擎不支持语音包管理" }
+                .command(PluginJson.decodeFromString(command)))
         }
         override fun synthesize(request: String, token: String): ParcelFileDescriptor = launchSession(token) { output ->
             val engine = requireNotNull(plugin?.tts) { "插件没有 TTS 能力" }

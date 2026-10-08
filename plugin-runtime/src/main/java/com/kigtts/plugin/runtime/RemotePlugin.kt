@@ -14,33 +14,18 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
     @Volatile private var snapshot = initial
     override val descriptor get() = snapshot.descriptor
     override val contributions get() = snapshot.contributions
+    override val voiceManager: VoiceManager? = initial.tts?.takeIf { it.managesVoices }?.let { object : VoiceManager {
+        override suspend fun command(command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {
+            val result = PluginJson.decodeFromString<PluginOutcome>(connection.worker.voiceCommand(PluginJson.encodeToString(command)))
+            refresh(PluginContext("", "")); result
+        }
+    } }
     override fun page(pageId: String, context: PluginContext) = snapshot.pages.firstOrNull { it.id == pageId }
     override val tts: TtsEngine? = initial.tts?.let { object : TtsEngine {
         override val info get() = requireNotNull(snapshot.tts)
-        override fun synthesize(request: TtsRequest) = channelFlow {
-            val token = UUID.randomUUID().toString()
-            val pipe = connection.worker.synthesize(PluginJson.encodeToString(request), token)
-            val unblock = launch(start = CoroutineStart.UNDISPATCHED) {
-                try { awaitCancellation() } finally { pipe.close(); runCatching { connection.worker.cancel(token) } }
-            }
-            var finished = false
-            try {
-                DataInputStream(ParcelFileDescriptor.AutoCloseInputStream(pipe)).use { input ->
-                    while (true) {
-                        currentCoroutineContext().ensureActive()
-                        when (AudioWire.tag(input)) {
-                            null -> break
-                            AudioWire.START -> send(SynthesisEvent.Started)
-                            AudioWire.AUDIO -> send(SynthesisEvent.Audio(AudioWire.readPcm(input)))
-                            AudioWire.FINISH -> { finished = true; send(SynthesisEvent.Finished(AudioWire.readText(input).ifEmpty { null })) }
-                            AudioWire.ERROR -> AudioWire.failure(input)
-                            else -> error("非法 TTS 响应")
-                        }
-                    }
-                }
-                check(finished) { "插件进程中断了朗读" }
-            } finally { unblock.cancelAndJoin() }
-        }.flowOn(Dispatchers.IO)
+        override fun synthesize(request: TtsRequest) =
+            synthesisPipe({ token -> connection.worker.synthesize(PluginJson.encodeToString(request), token) },
+                { token -> connection.worker.cancel(token) })
     } }
     override val asr: AsrEngine? = initial.asr?.let { object : AsrEngine {
         override val info get() = requireNotNull(snapshot.asr)

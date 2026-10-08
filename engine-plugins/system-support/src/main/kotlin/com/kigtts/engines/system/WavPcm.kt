@@ -7,7 +7,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /** RIFF chunks may be in any order and have padding; never assume a fixed 44-byte header. */
-internal object WavPcm {
+object WavPcm {
     fun read(file: File): PcmAudio {
         require(file.length() in 12..64L * 1024 * 1024) { "无效或过大的 WAV" }
         return decode(file.readBytes())

@@ -1,8 +1,10 @@
 package com.kigtts.plugin.runtime;
 import android.os.ParcelFileDescriptor;
+import com.kigtts.plugin.runtime.IHostSpeechBroker;
 
 interface IPluginWorker {
-    String initialize(String pluginId);
+    String initialize(String pluginId, IHostSpeechBroker broker);
+    String voiceCommand(String command);
     String snapshot(String context);
     String execute(String actionId, String context);
     ParcelFileDescriptor synthesize(String request, String token);

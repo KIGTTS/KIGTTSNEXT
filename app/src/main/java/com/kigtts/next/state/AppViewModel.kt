@@ -136,6 +136,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         viewModelScope.launch {
             try {
                 when (val outcome = plugin.execute(actionId, context().copy(inputs = inputs))) {
+                    is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
                     PluginOutcome.RefreshUi -> update { it.copy(pluginRevision = it.pluginRevision + 1) }
                     is PluginOutcome.HostAction -> when (outcome.command) {
                         HostCommand.TOGGLE_LISTENING -> toggleListening()
@@ -162,18 +163,19 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun speak() = speech.speak()
     suspend fun refreshPlugins() {
         pluginManager.reload()
-        val active = registry.plugins.map { it.descriptor.id }.toSet()
-        for (key in listOf("tts", "asr")) if (engineSelection.getString(key, null) !in active) {
-            val candidates = registry.plugins.filter { if (key == "tts") it.tts != null else it.asr != null }
-            val first = candidates.firstOrNull { if (key == "tts") it.tts?.info?.availability == EngineAvailability.READY
-                else it.asr?.info?.availability == EngineAvailability.READY } ?: candidates.firstOrNull()
-            engineSelection.edit { putString(key, first?.descriptor?.id) }
+        for (key in listOf("tts", "asr")) {
+            val current = engineSelection.getString(key, null)
+            val next = chooseEngine(registry.plugins, current, key == "tts")
+            if (next != current) engineSelection.edit { putString(key, next) }
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
     }
     fun selectEngine(id: String, tts: Boolean) {
         val plugin = registry.plugin(id) ?: return
         require(if (tts) plugin.tts != null else plugin.asr != null)
+        if (tts && plugin.tts?.info?.role != TtsRole.SERVICE && registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE }) {
+            message("请在语音合成服务中选择引擎和声音"); return
+        }
         viewModelScope.launch {
             speech.stopAll()
             engineSelection.edit { putString(if (tts) "tts" else "asr", id) }

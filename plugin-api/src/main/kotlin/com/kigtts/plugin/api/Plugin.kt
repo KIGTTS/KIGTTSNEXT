@@ -2,7 +2,7 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 2
+const val PLUGIN_API_VERSION = 3
 
 @Serializable
 data class PluginDescriptor(
@@ -22,6 +22,7 @@ interface KigPlugin {
     fun contributions(context: PluginContext): PluginContributions = contributions
     val tts: TtsEngine? get() = null
     val asr: AsrEngine? get() = null
+    val voiceManager: VoiceManager? get() = null
     suspend fun execute(actionId: String, context: PluginContext): PluginOutcome
     fun page(pageId: String, context: PluginContext): PluginPage? = null
     /** Called once before any other operation. All mutable files belong to this environment. */
@@ -39,6 +40,8 @@ enum class HostCommand { TOGGLE_LISTENING, CLOSE_LISTENING_PANEL, USE_STREAMING,
 
 @Serializable
 sealed interface PluginOutcome {
+    @Serializable
+    data class SelectTtsService(val pluginId: String) : PluginOutcome
     @Serializable
     data object RefreshUi : PluginOutcome
     @Serializable

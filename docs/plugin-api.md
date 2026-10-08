@@ -1,4 +1,4 @@
-# 插件 API v2
+# 插件 API v3
 
 插件实现 KigPlugin，声明 PluginDescriptor、可选 TtsEngine / AsrEngine 与 PluginContributions，然后由宿主 PluginRegistry 注册。内置功能 UI 仍为源码模块；外部引擎通过 .kigplugin 安装，在独立工作进程中加载。宿主注册远程代理，具体引擎类与依赖不进入主程序。包、生命周期、目录与限制详见 [专用插件包](plugin-packages.md)。
 
@@ -34,7 +34,7 @@ Tab 使用与分组相同的原生 FilterChip、圆形外端与弹性接邻圆�
 
 扩展按钮的添加、撤销、名称/图标/样式切换由宿主统一提供出入及替换动效，退出快照不产生重复无障碍入口或菜单；点击按当前贡献 ID 路由，已撤销动作不执行。底部五个槽位保持稳定身份与宽度过渡，贡献变化不会重建正在拖动的快捷入口。聆听上面板压缩为单行时，宿主临时不显示其底部扩展按钮，空间恢复后还原。
 
-动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 2）。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
+动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 3）。API2 的二进制包必须重新构建，同发布者递增版本更新可保留模型和配置。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
 
 ## 手势贡献
 
@@ -52,6 +52,7 @@ execute(actionId, context) 可返回：
 - OpenPage、ReplaceEditorText：打开该插件页面或替换编辑文本。
 - RefreshUi：插件内部配置已变化，通知宿主重新读取贡献与页面。
 - HostAction：请求规范 HostCommand。目前包括 TOGGLE_LISTENING、CLOSE_LISTENING_PANEL、USE_STREAMING、USE_BATCH。
+- SelectTtsService：请求将已启用的合成服务插件选为应用的统一 TTS 入口。
 
 DrawerEntry 声明右侧抽屉条目和目标页面。page(pageId, context) 返回 PluginPage，由 PageBlock.Text、Notice、Actions、Group 构建。宿主按当前亮色/深色主题渲染页面，保留父页状态，统一提供完整滑入/退场、父页同步过渡、层级返回与预测性返回；预测提交从当前姿态继续，取消复原，退出页完全离屏后才移除；返回优先关闭抽屉。插件管理集中于“设置 → 插件管理”，管理页打开的插件页面返回管理页；抽屉直接打开的插件页面返回原页面。插件不持有 Activity、View 或 Compose 实例。
 
@@ -69,6 +70,22 @@ DrawerEntry 声明右侧抽屉条目和目标页面。page(pageId, context) 返�
 ## 引擎能力与调用
 
 TtsInfo 声明资源就绪状态、可选声音列表和单次文本长度；TtsRequest 支持语言、语速和声音 ID。SynthesisEvent.Audio 必须返回 PCM16，宿主负责播放。主程序没有系统 TTS、Piper、sherpa 或 ONNX 的引擎实现。
+
+## 合成服务与语音包管理
+
+`TtsInfo.role` 区分 `PROVIDER`（默认，独立推理引擎）和 `SERVICE`（统一路由服务）。服务启用时应用选择服务；提供者与声音由服务插件自行选用。ASR 选择不受影响。停用服务后可重新选用提供者。
+
+声明 `speech-service` 能力的独立插件在 `PluginEnvironment.speechBroker` 得到通用代理：
+
+- `providers()` 返回已启用的提供者 ID、名称与 `TtsInfo`，不暴露其它插件实现或服务，禁止循环嵌套。
+- `synthesize(pluginId, request)` 返回可取消、有背压的 PCM 流；实际推理始终在目标提供者进程。
+- `command(pluginId, VoiceCommand)` 转发规范管理操作。服务与引擎的资源格式、选用规则、UI 和保底策略由插件实现。
+
+提供者可实现 `KigPlugin.voiceManager` 并声明 `voice-packs`，同时设置 `TtsInfo.managesVoices = true`。`VoiceCommand` 支持 IMPORT、SELECT、DELETE、RENAME、REFRESH；`selectedVoiceId` 表示当前默认声音，`importsVoicePacks` 表示可导入，`VoiceInfo.deletable` 控制删除/重命名入口。没有 VoiceManager 的提供者仍可列出声音，服务直接将选定 ID 放入 TtsRequest；REFRESH 仅刷新通用代理快照。
+
+IMPORT 的 `resourcePath` 是服务自身数据目录下的相对路径。broker 将文件复制到目标引擎的 `tmp/broker-*.voicepack` 后传入目标相对路径，管理调用结束始终清理副本；目标引擎负责验证、安装到自己的模型目录。不能传任意绝对路径。导入原件由服务清理，模型和配置始终归对应插件。删除确认由服务声明式菜单发起，删除同包全部声音时应明确提示。
+
+现有语音合成服务内置系统 TTS，默认即可用；系统服务与语言数据由 Android 提供。外部提供者未配置、停用或在当前分段输出音频前失败时使用系统 TTS；已输出该段音频后出错则结束并报告失败，避免重复朗读。长文本按提供者上限分段并保持 Unicode 代理对完整。取消传播到当前引擎，不触发保底重播。
 
 AsrInfo 声明输入格式、完整录音能力、录音长度上限、资源就绪状态及 StreamingKind：NONE、SEGMENTED（离线分句）或 INCREMENTAL（增量解码）。recognize 接收完整 PCM；recognizeStream 接收有背压的 PCM 流，Partial 是可选的真实中间结果，Final 可以表示一句话结束，EOF 冲刷最后一段。不得伪造中间识别文本。引擎在空输入、取消、失败时释放自己的资源，不吞掉 CancellationException。
 

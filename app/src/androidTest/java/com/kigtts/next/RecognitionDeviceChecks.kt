@@ -42,7 +42,7 @@ internal suspend fun recognitionDeviceChecks(manager: PluginManager, archivePath
     assertTrue(storage.temporary.listFiles().orEmpty().none { it.name.startsWith("import-") })
 }
 
-private fun wavPcm(file: File): PcmAudio {
+internal fun wavPcm(file: File): PcmAudio {
     val bytes = file.readBytes()
     require(String(bytes, 0, 4) == "RIFF" && String(bytes, 8, 4) == "WAVE")
     val input = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)

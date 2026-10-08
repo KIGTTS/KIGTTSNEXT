@@ -9,7 +9,7 @@ import org.json.JSONObject
 
 class SenseVoicePlugin : KigPlugin {
     override val descriptor = PluginDescriptor("engine.sensevoice", "SenseVoice 语音识别",
-        "从 KIGTTS 移植的离线识别，支持完整录音及分段流式输入", license = "GPL-3.0-only")
+        "从 KIGTTS 移植的离线识别，支持完整录音及分段流式输入", version = "0.2.0", license = "GPL-3.0-only")
     private lateinit var environment: PluginEnvironment
     private lateinit var engine: SenseVoiceEngine
     private var language = "auto"

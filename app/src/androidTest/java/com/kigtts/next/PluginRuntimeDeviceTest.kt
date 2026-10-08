@@ -22,13 +22,14 @@ class PluginRuntimeDeviceTest {
         val keepPackages = InstrumentationRegistry.getArguments().getString("keepPackages") == "true"
         val added = mutableListOf<String>()
         try {
-            for (name in listOf("engine.system-tts-0.1.0.kigplugin", "engine.sensevoice-0.1.0.kigplugin")) {
+            for (name in listOf("engine.system-tts-0.2.0.kigplugin", "engine.sensevoice-0.2.0.kigplugin")) {
                 val input = File(manager.paths.packages, ".device-test-$name")
                 instrumentation.context.assets.open(name).use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
                     val preview = manager.packages.inspect(input)
-                    if (preview.manifest.id !in existing) {
-                        manager.install(input, preview.publisherSha256); added += preview.manifest.id
+                    if (manager.packages.installed().firstOrNull { it.manifest.id == preview.manifest.id }?.manifest?.versionCode != preview.manifest.versionCode) {
+                        manager.install(input, preview.publisherSha256)
+                        if (preview.manifest.id !in existing) added += preview.manifest.id
                     }
                 } finally { input.delete() }
             }

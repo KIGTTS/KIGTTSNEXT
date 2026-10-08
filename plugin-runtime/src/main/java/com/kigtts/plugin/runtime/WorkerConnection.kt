@@ -7,7 +7,7 @@ import kotlinx.coroutines.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal class WorkerConnection(private val context: Context, private val slot: Int) {
+internal class WorkerConnection(private val context: Context, private val slot: Int, private val broker: IHostSpeechBroker? = null) {
     private val died = CompletableDeferred<Unit>()
     lateinit var worker: IPluginWorker
         private set
@@ -32,7 +32,7 @@ internal class WorkerConnection(private val context: Context, private val slot: 
             }
             continuation.invokeOnCancellation { unbind() }
         }
-        try { withContext(Dispatchers.IO) { PluginJson.decodeFromString<PluginSnapshot>(worker.initialize(id)) } }
+        try { withContext(Dispatchers.IO) { PluginJson.decodeFromString<PluginSnapshot>(worker.initialize(id, broker)) } }
         catch (error: Exception) { stop(); throw error }
     }
     suspend fun stop() {
@@ -41,6 +41,7 @@ internal class WorkerConnection(private val context: Context, private val slot: 
             withTimeout(10_000) { died.await() }
         }
         unbind()
+        (broker as? HostSpeechBroker)?.close()
     }
     private fun unbind() {
         connection?.let { runCatching { context.unbindService(it) } }

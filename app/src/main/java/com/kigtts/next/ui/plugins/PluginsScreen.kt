@@ -50,7 +50,11 @@ fun PluginsScreen(model: AppViewModel) {
                     }
                     Text("v${info.manifest.version} · ${info.manifest.license}", style = MaterialTheme.typography.labelMedium)
                     status.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    plugin?.tts?.let { engine -> EngineChoice("语音合成", model.selectedTtsId == id, engine.info.availability) { model.selectEngine(id, true) } }
+                    plugin?.tts?.let { engine ->
+                        if (engine.info.role == TtsRole.SERVICE || model.registry.plugins.none { it.tts?.info?.role == TtsRole.SERVICE })
+                            EngineChoice("语音合成", model.selectedTtsId == id, engine.info.availability) { model.selectEngine(id, true) }
+                        else Text("由语音合成服务统一选用声音")
+                    }
                     plugin?.asr?.let { engine ->
                         Text(when (engine.info.streaming) { StreamingKind.SEGMENTED -> "完整录音 / 分段流式"; StreamingKind.INCREMENTAL -> "完整录音 / 增量流式"; StreamingKind.NONE -> "完整录音" })
                         EngineChoice("语音识别", model.selectedAsrId == id, engine.info.availability) { model.selectEngine(id, false) }

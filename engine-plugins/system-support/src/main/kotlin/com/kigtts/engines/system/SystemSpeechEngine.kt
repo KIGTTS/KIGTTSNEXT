@@ -16,9 +16,19 @@ import java.util.Locale
 import java.util.UUID
 
 /** Port of KIGTTS Engines.kt SystemTtsEngine, with cancellable waits and plugin-only temp storage. */
-internal class SystemSpeechEngine(private val environment: AndroidPluginEnvironment,
+class SystemSpeechEngine(private val environment: AndroidPluginEnvironment,
     private val settings: () -> Pair<String, Float>) : TtsEngine {
     private val session = Mutex()
+    private var availableVoices = emptyList<VoiceInfo>()
+    override val info get() = TtsInfo(voices = availableVoices)
+    suspend fun refreshVoices(): List<VoiceInfo> {
+        val engine = initialize()
+        try {
+            availableVoices = engine.voices.orEmpty().sortedBy { it.name }.take(500)
+                .map { VoiceInfo(it.name, it.name, it.locale.toLanguageTag(), if (it.isNetworkConnectionRequired) "需要网络" else "本地声音") }
+            return availableVoices
+        } finally { withContext(NonCancellable + Dispatchers.Main) { engine.shutdown() } }
+    }
     override fun synthesize(request: TtsRequest) = flow {
         session.withLock {
             emit(SynthesisEvent.Started)

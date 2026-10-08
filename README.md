@@ -30,7 +30,7 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 - 面板拖动高度在控件内跟手、松手后更新全局状态；复用字幕段落测量，按钮宽度动画在布局测量阶段读取，减少拖动过程的全局重组和重复计算。
 - 快捷文本条目拾起时同帧切换为不透明浮层，松手后以原生空间弹簧落回目标槽位，再交回列表；海拔与缩放随落位恢复，避免闪烁与瞬移。页面层不使用固定整页阴影，导航绘制限制在系统栏内的内容视口。右侧抽屉标题区使用横版 LOGO。
 
-系统 TTS 与 SenseVoice 已拆成独立 .kigplugin，通过插件管理安装、启停、选择和卸载。主 APK 不包含语音引擎或其依赖；未安装引擎时只显示提示。识别支持完整录音和分段流式，麦克风由宿主在用户授权后访问。模型、网络和外置文件资源统一保存在 appdata/Kigtts/plugin/plugindata/<pluginId>/。主应用与两个独立插件已通过 Android 16 真机测试：TTS 合成/播放、识别模型导入、完整录音/分段流式和取消后重用。现场麦克风表现与长期识别精度仍需使用验证。
+语音合成服务、Piper、SenseVoice 为独立 .kigplugin。服务插件内置系统 TTS 保底，统一管理其它合成引擎与语音包；Piper 可导入旧 .kigvpk 或 ONNX+JSON ZIP，选用、重命名与确认删除，首版支持 arm64。主 APK 不包含引擎或依赖，未安装服务时不会偷偷调用系统 TTS。识别支持完整录音和分段流式，麦克风由宿主在用户授权后访问。模型、网络和外置资源统一保存在 appdata/Kigtts/plugin/plugindata/<pluginId>/。API3 主应用、服务、Piper 与 SenseVoice 已在 Android 16 真机验证：服务内置系统 TTS 和独立 Piper 的实际合成/播放、语音包管理、取消后重用与停用后的保底；旧 SenseVoice 模型保留，完整/分段识别继续工作。设备默认恢复服务内置系统 TTS，Piper 开发测试声音保留可选。现场麦克风、语音质量与长期识别精度仍需实际使用验证。
 
 ## 模块
 
@@ -38,14 +38,16 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 - plugin-api：不依赖 Android/Compose 的引擎、UI 扩展与页面协议。
 - material-color：固定版本的官方 Material Color Utilities Java 源码，保留 Apache-2.0 LICENSE 与 NOTICE。
 - plugin-runtime / plugin-android-api：专用包校验、独立进程、PCM IPC 与插件数据环境。
-- engine-plugins/system-tts、engine-plugins/sensevoice-asr：独立构建、安装的语音插件。
+- engine-plugins/speech-service：统一合成、语音包管理与内置系统 TTS 保底。
+- engine-plugins/piper-tts、engine-plugins/sensevoice-asr：独立推理引擎及其依赖/资源。
+- engine-plugins/system-support、engine-plugins/system-tts：仅供插件的系统实现与旧独立包兼容选项，主 app 不链接。
 - plugins/placeholder-tts、plugins/placeholder-asr：仅用于测试，生产 APK 不包含。
 - plugins/listening-panel：通过宿主命令驱动聆听面板，与 ASR 引擎分离。
 - plugins/voice-input：可关闭的长按语音输入入口，与字幕插件分离。
 - plugins/debug-ui：各扩展区域的按钮数量、图标/文字样式与菜单/弹窗/页面调试。
 - ARTS：从原工程迁移的品牌素材。
 
-内置功能 UI 与外部引擎均遵循 [插件 API v2](docs/plugin-api.md)。专用包、安装使用、签名、资源目录和隔离限制见 [插件包说明](docs/plugin-packages.md)；外部代码目前只支持可信来源，独立进程并非权限沙箱。
+内置功能 UI 与外部引擎均遵循 [插件 API v3](docs/plugin-api.md)。API2 包需同发布者更新为 0.2.0，模型与配置保留。专用包、安装使用、签名、资源目录和隔离限制见 [插件包说明](docs/plugin-packages.md)；外部代码目前只支持可信来源，独立进程并非权限沙箱。
 
 ## 构建与验证
 
@@ -54,12 +56,12 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 ~~~powershell
 ./gradlew.bat :app:assembleDebug
 pwsh -File tools/Build-EnginePlugins.ps1
-./gradlew.bat :plugin-api:test :plugins:placeholder-tts:test :plugins:placeholder-asr:test :plugins:listening-panel:test :plugins:voice-input:test :plugins:debug-ui:test :plugin-runtime:testDebugUnitTest :engine-plugins:system-tts:testDebugUnitTest :engine-plugins:sensevoice-asr:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug
+./gradlew.bat :plugin-api:test :plugins:placeholder-tts:test :plugins:placeholder-asr:test :plugins:listening-panel:test :plugins:voice-input:test :plugins:debug-ui:test :plugin-runtime:testDebugUnitTest :engine-plugins:system-tts:testDebugUnitTest :engine-plugins:sensevoice-asr:testDebugUnitTest :engine-plugins:piper-tts:testDebugUnitTest :engine-plugins:speech-service:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug
 ~~~
 
 APK：app/build/outputs/apk/debug/app-debug.apk。原生渲染截图：app/build/previews。
 
-当前 151 项本地测试、Debug 构建、APK v2 签名与 Lint 验证通过；Lint 无错误，25 项警告、1 项提示。原生界面截图已生成，包含亮色与深色的主页、设置、插件、画板、名片、全屏快捷文本编辑和动效中间帧，以及左右入场单调/无越界与右侧入场无灰闪检查。
+当前 171 项本地测试、Debug 构建、APK v2 签名与 Lint 验证通过；Lint 无错误，25 项警告、1 项提示。原生界面截图已生成，包含亮色与深色的主页、设置、插件、画板、名片、全屏快捷文本编辑和动效中间帧，以及左右入场单调/无越界与右侧入场无灰闪检查。
 
 最新回归包含三处横条仅按下即变形/触感、轻触不改变内容与取消复原、光标 12 dp 精度/完整字素/边界无重复震动、条目拾起首帧不透明/落位中间帧/同帧交接后编辑、状态栏在进入/静止/预测/返回时无投影、实际字宽随窗口宽度及系统字体缩放还原比例/重启持久化/自动适应不覆盖偏好，以及最小聆听面板下字号栏不挤压与抽屉 LOGO。
 

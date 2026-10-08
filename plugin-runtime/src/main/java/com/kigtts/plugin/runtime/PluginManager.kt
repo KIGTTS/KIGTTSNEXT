@@ -43,7 +43,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                 else {
                     try {
                         require(builtins.none { it.descriptor.id == info.manifest.id }) { "插件 ID 与内置界面插件冲突" }
-                        val connection = WorkerConnection(context, slot)
+                        val connection = WorkerConnection(context, slot,
+                            if ("speech-service" in info.manifest.capabilities) HostSpeechBroker(info.manifest.id, registry, paths) else null)
                         val proxy = RemotePlugin(connection, connection.connect(info.manifest.id))
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }

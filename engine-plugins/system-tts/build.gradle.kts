@@ -8,7 +8,12 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 dependencies {
+    implementation(project(":engine-plugins:system-support"))
     compileOnly(project(":plugin-android-api"))
     testImplementation(project(":plugin-android-api"))
     testImplementation("junit:junit:4.13.2")
+}
+tasks.register<Copy>("collectPluginDependencies") {
+    dependsOn(":engine-plugins:system-support:assembleDebug")
+    from(project(":engine-plugins:system-support").layout.buildDirectory.file("outputs/aar/system-support-debug.aar")); into(layout.buildDirectory.dir("plugin-dependencies"))
 }

@@ -1,11 +1,12 @@
 #Requires -Version 7.0
-param([switch]$SkipBuild, [string]$SigningKey)
+param([switch]$SkipBuild, [string]$SigningKey,
+    [string]$WorkDirectory = (Join-Path $env:LOCALAPPDATA 'Temp/KIGTTSNEXT/plugin-package-work'))
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $projectRoot
 $env:JAVA_HOME = 'C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 if (-not $SkipBuild) {
-    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home --console=plain :engine-plugins:system-tts:assembleDebug :engine-plugins:sensevoice-asr:assembleDebug :engine-plugins:sensevoice-asr:collectPluginDependencies
+    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home --console=plain :engine-plugins:system-tts:assembleDebug :engine-plugins:system-tts:collectPluginDependencies :engine-plugins:sensevoice-asr:assembleDebug :engine-plugins:sensevoice-asr:collectPluginDependencies :engine-plugins:piper-tts:assembleDebug :engine-plugins:piper-tts:collectPluginDependencies :engine-plugins:speech-service:assembleDebug :engine-plugins:speech-service:collectPluginDependencies
     if ($LASTEXITCODE -ne 0) { throw 'Plugin compilation failed' }
 }
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -22,7 +23,7 @@ if (Test-Path -LiteralPath $SigningKey) {
 }
 $outputRoot = Join-Path $projectRoot 'build/plugin-packages'
 [IO.Directory]::CreateDirectory($outputRoot) | Out-Null
-function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [string]$Prefix) {
+function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [string]$Prefix, [string]$NativeAbi = '') {
     $archive = [IO.Compression.ZipFile]::OpenRead($Aar)
     try {
         $jars = @()
@@ -33,6 +34,7 @@ function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [str
                 $jars += $jar
             }
             if ($entry.FullName -match '^jni/([^/]+)/([^/]+\.so)$') {
+                if ($NativeAbi -and $Matches[1] -ne $NativeAbi) { continue }
                 $target = Join-Path $Payload "lib/$($Matches[1])/$($Matches[2])"
                 [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target)) | Out-Null
                 if (Test-Path -LiteralPath $target) {
@@ -44,18 +46,30 @@ function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [str
         return $jars
     } finally { $archive.Dispose() }
 }
-foreach ($module in @('system-tts', 'sensevoice-asr')) {
+foreach ($module in @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service')) {
     $moduleRoot = Join-Path $projectRoot "engine-plugins/$module"
     $spec = Get-Content -LiteralPath (Join-Path $moduleRoot 'plugin-spec.json') -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
-    $scratch = Join-Path $projectRoot ".tools/plugin-package-work/$module/$([Guid]::NewGuid())"
+    $scratch = [IO.Path]::GetFullPath((Join-Path $WorkDirectory "$module/$([Guid]::NewGuid())"))
+    $nativeAbi = if ($module -eq 'piper-tts') { 'arm64-v8a' } else { '' }
     $payload = Join-Path $scratch 'payload'
     [IO.Directory]::CreateDirectory((Join-Path $payload 'code')) | Out-Null
-    $jars = @(Expand-PluginAar (Join-Path $moduleRoot "build/outputs/aar/$module-debug.aar") $payload $scratch $module)
+    $jars = @(Expand-PluginAar (Join-Path $moduleRoot "build/outputs/aar/$module-debug.aar") $payload $scratch $module $nativeAbi)
     if ($module -eq 'sensevoice-asr') {
         $jars += @(Expand-PluginAar (Join-Path $moduleRoot 'libs/sherpa-onnx-1.12.38-noort.aar') $payload $scratch 'sherpa')
-        $ort = Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -Filter 'onnxruntime-android-1.24.3.aar' | Select-Object -First 1
-        if (-not $ort) { throw 'Missing ONNX Runtime; run collectPluginDependencies' }
-        $jars += @(Expand-PluginAar $ort.FullName $payload $scratch 'ort')
+    }
+    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|system-support)' })) {
+        if ($dependency.Extension -eq '.aar') { $jars += @(Expand-PluginAar $dependency.FullName $payload $scratch $dependency.BaseName $nativeAbi) }
+        elseif ($dependency.Extension -eq '.jar') { $jars += $dependency.FullName }
+    }
+    $assetsRoot = Join-Path $moduleRoot 'src/main/assets'
+    if (Test-Path -LiteralPath $assetsRoot) {
+        [IO.Directory]::CreateDirectory((Join-Path $payload 'assets')) | Out-Null
+        Copy-Item -Path (Join-Path $assetsRoot '*') -Destination (Join-Path $payload 'assets') -Recurse
+    }
+    if ($module -eq 'piper-tts') {
+        [IO.Directory]::CreateDirectory((Join-Path $payload 'lib/arm64-v8a')) | Out-Null
+        Copy-Item -Path (Join-Path $moduleRoot 'src/main/jniLibs/arm64-v8a/*.so') -Destination (Join-Path $payload 'lib/arm64-v8a')
+        # Keep only complete ABIs when extracting dependencies; the ported bridge is arm64.
     }
     & .tools/android-sdk/build-tools/36.0.0/d8.bat --min-api 26 --lib .tools/android-sdk/platforms/android-36/android.jar --output (Join-Path $payload 'code') @jars
     if ($LASTEXITCODE -ne 0) { throw "DEX compilation failed: $module" }
@@ -66,6 +80,9 @@ foreach ($module in @('system-tts', 'sensevoice-asr')) {
     if ($module -eq 'sensevoice-asr') {
         Copy-Item -LiteralPath (Join-Path $moduleRoot 'licenses/sherpa-onnx.txt') -Destination $licenses
         Copy-Item -LiteralPath (Join-Path $moduleRoot 'licenses/onnxruntime.txt') -Destination $licenses
+    }
+    if (Test-Path -LiteralPath (Join-Path $moduleRoot 'licenses')) {
+        Copy-Item -Path (Join-Path $moduleRoot 'licenses/*') -Destination $licenses -Recurse
     }
     $spec['abis'] = @(Get-ChildItem -LiteralPath (Join-Path $payload 'lib') -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
     $hashes = [ordered]@{}
