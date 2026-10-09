@@ -10,7 +10,7 @@ import androidx.compose.material.icons.filled.MotionPhotosOn
 fun ExperimentalSettingsScreen(appleLivePhotos: Boolean, change: (Boolean) -> Unit) {
     SettingsLayout {
         SettingsGroup("媒体") {
-            ToggleSetting("苹果实况照片", "配对导入照片与视频，并播放动态片段。Android 动态照片无需开启此选项。",
+            ToggleSetting("苹果实况照片", "导入照片和配套视频",
                 Icons.Default.MotionPhotosOn, appleLivePhotos, change, modifier = Modifier.testTag("apple-live-photos"))
         }
     }

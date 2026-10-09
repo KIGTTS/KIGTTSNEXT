@@ -17,7 +17,7 @@ fun SettingsScreen(open: (Destination) -> Unit) {
         }
         SettingsGroup("功能与扩展") {
             CategoryEntry(SettingsCategory.EXPERIMENTAL, Icons.Default.Science, SettingPosition.FIRST, open)
-            SettingItem("插件管理", "管理语音引擎和插件功能", Icons.Default.Extension, SettingPosition.LAST,
+            SettingItem("插件管理", "语音引擎与扩展", Icons.Default.Extension, SettingPosition.LAST,
                 onClick = { open(Destination.Plugins) }, trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
         }
     }

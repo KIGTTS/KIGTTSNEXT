@@ -15,7 +15,7 @@ import com.kigtts.next.ui.components.*
 @Composable
 internal fun AppearanceDisplaySettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
     SettingsGroup("显示与形状") {
-        SettingItem("对比度", "增强文字、按钮与背景的区分度。", Icons.Default.Contrast, SettingPosition.FIRST) {
+        SettingItem("对比度", "让文字更醒目", Icons.Default.Contrast, SettingPosition.FIRST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ContrastLevel.entries.forEachIndexed { index, level ->
                     SegmentedButton(selected = settings.contrast == level, onClick = feedbackClick { onChange(settings.copy(contrast = level)) },
@@ -24,9 +24,9 @@ internal fun AppearanceDisplaySettings(settings: ThemeSettings, onChange: (Theme
                 }
             }
         }
-        ToggleSetting("更暗的深色模式", "在深色主题下使用纯黑背景，让界面更暗。", Icons.Default.DarkMode,
+        ToggleSetting("更暗的深色模式", "深色模式下使用纯黑背景", Icons.Default.DarkMode,
             settings.deeperDark, { onChange(settings.copy(deeperDark = it)) }, position = SettingPosition.MIDDLE)
-        SettingItem("圆角大小", "让卡片和按钮的边角更方正或圆润。", Icons.Default.RoundedCorner, SettingPosition.LAST) {
+        SettingItem("圆角大小", "", Icons.Default.RoundedCorner, SettingPosition.LAST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 CornerLevel.entries.forEachIndexed { index, level ->
                     SegmentedButton(selected = settings.cornerLevel == level, onClick = feedbackClick { onChange(settings.copy(cornerLevel = level)) },
@@ -37,7 +37,7 @@ internal fun AppearanceDisplaySettings(settings: ThemeSettings, onChange: (Theme
         }
     }
     SettingsGroup("预览") {
-        SettingItem("外观预览", "查看当前颜色与圆角效果。", Icons.Default.Preview, SettingPosition.SINGLE) {
+        SettingItem("外观预览", "", Icons.Default.Preview, SettingPosition.SINGLE) {
             Text("这里是输入的文本", style = MaterialTheme.typography.headlineSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(shapes = expressivePillShapes(), onClick = feedbackClick {}) { Text("朗读") }

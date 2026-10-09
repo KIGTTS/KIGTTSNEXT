@@ -24,7 +24,7 @@ internal fun ThemeColorSettings(settings: ThemeSettings, onChange: (ThemeSetting
     val wallpaperAvailable = Build.VERSION.SDK_INT >= 31
     val customColorEnabled = !(settings.wallpaperEnabled && wallpaperAvailable)
     SettingsGroup("主题与配色") {
-        SettingItem("主题模式", "跟随系统，或固定使用亮色、深色主题。", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
+        SettingItem("主题模式", "", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ThemeMode.entries.forEachIndexed { index, mode ->
                     SegmentedButton(selected = settings.mode == mode, onClick = feedbackClick { onChange(settings.copy(mode = mode)) },
@@ -33,10 +33,10 @@ internal fun ThemeColorSettings(settings: ThemeSettings, onChange: (ThemeSetting
                 }
             }
         }
-        ToggleSetting("壁纸取色", if (wallpaperAvailable) "随壁纸自动搭配界面颜色。" else "需要 Android 12 或更高版本。",
+        ToggleSetting("壁纸取色", if (wallpaperAvailable) "使用壁纸颜色" else "需要 Android 12 及以上",
             Icons.Default.Wallpaper, settings.wallpaperEnabled && wallpaperAvailable, { onChange(settings.copy(wallpaperEnabled = it)) },
             position = SettingPosition.MIDDLE, enabled = wallpaperAvailable)
-        SettingItem("主题色", "关闭壁纸取色后，可自定义界面主色。", Icons.Default.Palette, SettingPosition.LAST) {
+        SettingItem("主题色", if (customColorEnabled) "" else "关闭壁纸取色后可修改", Icons.Default.Palette, SettingPosition.LAST) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(colorInput, { colorInput = it }, modifier = Modifier.weight(1f), singleLine = true,
                     label = { Text("颜色代码") }, isError = customColorEnabled && !validHex, enabled = customColorEnabled,
