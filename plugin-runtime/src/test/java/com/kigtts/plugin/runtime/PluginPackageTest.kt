@@ -114,11 +114,18 @@ class PluginPackageTest {
         org.junit.Assume.assumeTrue("Run tools/Build-EnginePlugins.ps1 first", directory.exists())
         val system = store.inspect(File(directory, "engine.system-tts-0.3.0.kigplugin"))
         val asr = store.inspect(File(directory, "engine.sensevoice-0.3.0.kigplugin"))
+        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.3.0.kigplugin"))
         assertEquals("engine.system-tts", system.manifest.id)
         assertEquals("engine.sensevoice", asr.manifest.id)
         assertTrue(asr.manifest.files.keys.any { it.endsWith("libsherpa-onnx-jni.so") })
         assertTrue(asr.manifest.files.keys.any { it.endsWith("libonnxruntime.so") })
         assertTrue(asr.manifest.files.keys.none { it.endsWith(".onnx") })
+        assertTrue("asr-incremental" in streaming.manifest.capabilities)
+        assertFalse("asr-segmented" in streaming.manifest.capabilities)
+        assertEquals("engine.streaming-asr", streaming.manifest.id)
+        assertTrue(streaming.manifest.files.keys.any { it.endsWith("libsherpa-onnx-jni.so") })
+        assertTrue(streaming.manifest.files.keys.none { it.endsWith(".onnx") })
+        assertEquals(system.publisherSha256, streaming.publisherSha256)
         val originalAbis = android.os.Build.SUPPORTED_ABIS
         val piper = try {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))

@@ -2,7 +2,7 @@
 
 ## 独立构建
 
-主程序 APK 不携带语音引擎。Piper、SenseVoice、语音合成服务都是独立插件；`system-support` 仅供插件构建时复用系统 TTS 实现，实际内置在服务包。旧 `system-tts` 独立包保留兼容选项，使用服务时无需启用它。依赖不进入 app 的生产依赖图。Android 专用 API 仅提供工作进程 Context 与统一数据目录，不包含引擎 SDK。
+主程序 APK 不携带语音引擎。Piper、SenseVoice、增量流式识别、语音合成服务都是独立插件；`system-support` 仅供插件构建时复用系统 TTS 实现，实际内置在服务包。旧 `system-tts` 独立包保留兼容选项，使用服务时无需启用它。依赖不进入 app 的生产依赖图。Android 专用 API 仅提供工作进程 Context 与统一数据目录，不包含引擎 SDK。
 
 使用 PowerShell 7、JDK 17 和 Android SDK 36：
 
@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.3.0.kigplugin`、`engine.piper-0.3.0.kigplugin`、`engine.sensevoice-0.3.0.kigplugin`、旧兼容 `engine.system-tts-0.3.0.kigplugin`。也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.3.0.kigplugin`、`engine.piper-0.3.0.kigplugin`、`engine.sensevoice-0.3.0.kigplugin`、`engine.streaming-asr-0.3.0.kigplugin`、旧兼容 `engine.system-tts-0.3.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -102,3 +102,7 @@ Piper 兼容旧 .kigvpk/ZIP 的 manifest.files.model/config/phonemizer、Windows
 详情可修改名称/多行备注、替换头像、更新包、导出与确认删除。更新保持包 ID、选择和用户资料，先验证后交换，失败恢复旧数据。导出保留模型、词典、预览与其它原文件，并写出旧版可接受的 manifest/config/phonemizer 三件组和 voicepack.json；标准 eSpeak 包补明确类型和空词典，旧版不会误判为 text。跨引擎排序的当前位置和置顶状态随导出保存。所有操作仍属于引擎/服务插件，宿主只渲染通用条目并转发规范命令。
 
 API4 功能的本地回归与新包产物单独验证；前文两项 Android 16 真机检查是 API3 的结果。本次设备暂未连接，不能把旧检查作为 API4 新管理功能的真机验收。手机原有 API3 仍保持可用，本轮没有单独覆盖主 APK 导致插件不兼容。
+
+## 增量流式识别插件
+
+engine.streaming-asr 的在线解码、多语言包管理、固定校验下载目录与 .kigasr 格式见 [流式识别使用说明](streaming-recognition.md)。继续 API4，不改变既有包格式；新插件 MIT，现有原版移植插件保留 GPLv3。复用宿主 ManagementList，不把模型/导入器/推理库放入主 APK。

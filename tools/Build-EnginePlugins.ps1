@@ -1,12 +1,15 @@
 #Requires -Version 7.0
 param([switch]$SkipBuild, [string]$SigningKey,
+    [ValidateSet('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr')]
+    [string[]]$Modules = @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr'),
     [string]$WorkDirectory = (Join-Path $env:LOCALAPPDATA 'Temp/KIGTTSNEXT/plugin-package-work'))
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $projectRoot
 $env:JAVA_HOME = 'C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 if (-not $SkipBuild) {
-    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home --console=plain :engine-plugins:system-tts:assembleDebug :engine-plugins:system-tts:collectPluginDependencies :engine-plugins:sensevoice-asr:assembleDebug :engine-plugins:sensevoice-asr:collectPluginDependencies :engine-plugins:piper-tts:assembleDebug :engine-plugins:piper-tts:collectPluginDependencies :engine-plugins:speech-service:assembleDebug :engine-plugins:speech-service:collectPluginDependencies
+    $buildTasks = $Modules | ForEach-Object { ":engine-plugins:${_}:assembleDebug"; ":engine-plugins:${_}:collectPluginDependencies" }
+    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home --console=plain @buildTasks
     if ($LASTEXITCODE -ne 0) { throw 'Plugin compilation failed' }
 }
 $utf8 = [Text.UTF8Encoding]::new($false)
@@ -46,7 +49,7 @@ function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [str
         return $jars
     } finally { $archive.Dispose() }
 }
-foreach ($module in @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service')) {
+foreach ($module in $Modules) {
     $moduleRoot = Join-Path $projectRoot "engine-plugins/$module"
     $spec = Get-Content -LiteralPath (Join-Path $moduleRoot 'plugin-spec.json') -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
     $scratch = [IO.Path]::GetFullPath((Join-Path $WorkDirectory "$module/$([Guid]::NewGuid())"))
@@ -57,7 +60,10 @@ foreach ($module in @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-servi
     if ($module -eq 'sensevoice-asr') {
         $jars += @(Expand-PluginAar (Join-Path $moduleRoot 'libs/sherpa-onnx-1.12.38-noort.aar') $payload $scratch 'sherpa')
     }
-    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|system-support)' })) {
+    if ($module -eq 'streaming-asr') {
+        $jars += @(Expand-PluginAar (Join-Path $projectRoot 'engine-plugins/sensevoice-asr/libs/sherpa-onnx-1.12.38-noort.aar') $payload $scratch 'sherpa')
+    }
+    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|system-support|commons-compress|commons-io|commons-codec|commons-lang3)' })) {
         if ($dependency.Extension -eq '.aar') { $jars += @(Expand-PluginAar $dependency.FullName $payload $scratch $dependency.BaseName $nativeAbi) }
         elseif ($dependency.Extension -eq '.jar') { $jars += $dependency.FullName }
     }
@@ -75,7 +81,8 @@ foreach ($module in @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-servi
     if ($LASTEXITCODE -ne 0) { throw "DEX compilation failed: $module" }
     $licenses = Join-Path $payload 'assets/licenses'
     [IO.Directory]::CreateDirectory($licenses) | Out-Null
-    Copy-Item -LiteralPath (Join-Path $moduleRoot 'LICENSE') -Destination (Join-Path $licenses 'KIGTTS-GPL-3.0.txt')
+    $licenseName = if ($spec['license'] -eq 'MIT') { 'KIGTTS-MIT.txt' } else { 'KIGTTS-GPL-3.0.txt' }
+    Copy-Item -LiteralPath (Join-Path $moduleRoot 'LICENSE') -Destination (Join-Path $licenses $licenseName)
     Copy-Item -LiteralPath (Join-Path $moduleRoot 'NOTICE.md') -Destination (Join-Path $licenses 'NOTICE.md')
     if ($module -eq 'sensevoice-asr') {
         Copy-Item -LiteralPath (Join-Path $moduleRoot 'licenses/sherpa-onnx.txt') -Destination $licenses
