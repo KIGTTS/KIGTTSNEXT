@@ -25,8 +25,7 @@ internal class WorkerConnection(private val context: Context, private val slot: 
                 override fun onNullBinding(name: ComponentName) { if (continuation.isActive) continuation.resumeWithException(IllegalStateException("插件工作进程不可用")) }
             }
             connection = service
-            val classes = listOf(PluginWorker0::class.java, PluginWorker1::class.java, PluginWorker2::class.java, PluginWorker3::class.java)
-            if (!context.bindService(Intent(context, classes[slot]), service, Context.BIND_AUTO_CREATE)) {
+            if (!context.bindService(Intent(context, workerServices[slot]), service, Context.BIND_AUTO_CREATE)) {
                 connection = null
                 continuation.resumeWithException(IllegalStateException("无法启动插件工作进程"))
             }

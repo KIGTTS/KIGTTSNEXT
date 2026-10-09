@@ -26,10 +26,10 @@ class SpeechCoordinator(private val scope: CoroutineScope, private val registry:
         if (audio.hasMicrophonePermission()) action() else { pending = action; requests.trySend(Unit) }
     }
     private fun asr(): AsrEngine? {
-        val engine = registry.plugin(selection(false).orEmpty())?.asr
-            ?: registry.plugins.firstNotNullOfOrNull { it.asr }
-        if (engine == null) message("请先安装并选择语音识别插件")
-        else if (engine.info.availability != EngineAvailability.READY) { message("识别插件尚未配置模型，请打开插件设置"); return null }
+        val engine = registry.plugin(selection(false).orEmpty())?.asr?.takeIf { it.info.role == AsrRole.SERVICE }
+            ?: registry.plugins.firstNotNullOfOrNull { it.asr?.takeIf { engine -> engine.info.role == AsrRole.SERVICE } }
+        if (engine == null) message("请先安装并启用语音识别服务插件")
+        else if (engine.info.availability != EngineAvailability.READY) { message("识别服务尚未选用就绪引擎，请配置对应模型"); return null }
         return engine
     }
     fun toggleListening() {

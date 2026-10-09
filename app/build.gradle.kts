@@ -57,7 +57,7 @@ tasks.withType<Test>().configureEach {
     systemProperty("roborazzi.test.record", "true")
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
-    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.3.0.kigplugin") }
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.4.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
 tasks.matching { it.name.contains("AndroidTest") }.configureEach { dependsOn(copyPluginTestAssets) }

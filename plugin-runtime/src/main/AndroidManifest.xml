@@ -4,5 +4,9 @@
         <service android:name=".PluginWorker1" android:exported="false" android:process=":plugin1" />
         <service android:name=".PluginWorker2" android:exported="false" android:process=":plugin2" />
         <service android:name=".PluginWorker3" android:exported="false" android:process=":plugin3" />
+        <service android:name=".PluginWorker4" android:exported="false" android:process=":plugin4" />
+        <service android:name=".PluginWorker5" android:exported="false" android:process=":plugin5" />
+        <service android:name=".PluginWorker6" android:exported="false" android:process=":plugin6" />
+        <service android:name=".PluginWorker7" android:exported="false" android:process=":plugin7" />
     </application>
 </manifest>

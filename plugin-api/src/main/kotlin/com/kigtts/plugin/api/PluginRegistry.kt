@@ -32,15 +32,22 @@ class PluginRegistry(plugins: List<KigPlugin>) {
         plugins = next.toList()
     }
 
-    fun actions(slot: UiSlot, context: PluginContext = PluginContext("", "")): List<RegisteredAction> = plugins.flatMap { plugin ->
+    fun missingRequirements(plugin: KigPlugin): List<PluginRequirement> = plugin.descriptor.requires.filter { requirement ->
+        when (requirement) {
+            PluginRequirement.RECOGNITION_SERVICE -> plugins.none { it.asr?.info?.role == AsrRole.SERVICE }
+        }
+    }
+    fun available(plugin: KigPlugin) = missingRequirements(plugin).isEmpty()
+
+    fun actions(slot: UiSlot, context: PluginContext = PluginContext("", "")): List<RegisteredAction> = plugins.filter(::available).flatMap { plugin ->
         plugin.contributions(context).actions.filter { it.slot == slot }.map { RegisteredAction(plugin, it) }
     }.sortedWith(compareBy({ it.action.order }, { it.key }))
 
-    fun drawerEntries(): List<RegisteredDrawerEntry> = plugins.flatMap { plugin ->
+    fun drawerEntries(): List<RegisteredDrawerEntry> = plugins.filter(::available).flatMap { plugin ->
         plugin.contributions.drawerEntries.map { RegisteredDrawerEntry(plugin, it) }
     }
     fun plugin(id: String): KigPlugin? = plugins.firstOrNull { it.descriptor.id == id }
-    fun gestureActions(gesture: PluginGesture, context: PluginContext): List<RegisteredGesture> = plugins.flatMap { plugin ->
+    fun gestureActions(gesture: PluginGesture, context: PluginContext): List<RegisteredGesture> = plugins.filter(::available).flatMap { plugin ->
         plugin.contributions(context).gestures.filter { it.gesture == gesture }.map { RegisteredGesture(plugin, it) }
     }
 }

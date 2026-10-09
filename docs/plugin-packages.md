@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.3.0.kigplugin`、`engine.piper-0.3.0.kigplugin`、`engine.sensevoice-0.3.0.kigplugin`、`engine.streaming-asr-0.3.0.kigplugin`、旧兼容 `engine.system-tts-0.3.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.4.0.kigplugin`、`service.speech-recognition-0.4.0.kigplugin`、`engine.piper-0.4.0.kigplugin`、`engine.sensevoice-0.4.0.kigplugin`、`engine.streaming-asr-0.4.0.kigplugin`、旧兼容 `engine.system-tts-0.4.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -26,7 +26,7 @@ signature/public.der        # RSA SubjectPublicKeyInfo
 signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 ```
 
-API v4 当前运行时为 `android-dex`。API2/API3 包与新主程序不兼容，需用同一发布者的 0.3.0/API4 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
+API v5 当前运行时为 `android-dex`。API2/API3/API4 包与新主程序不兼容，需用同一发布者的 0.4.0/API5 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
 
 ## 安装与生命周期
 
@@ -34,7 +34,7 @@ API v4 当前运行时为 `android-dex`。API2/API3 包与新主程序不兼容�
 
 安装完成后在独立工作进程加载入口，调用 attach，再建立 UI/引擎代理。PCM 通过二进制管道传输，具有有界背压，不把大录音放进 Binder 事务。主进程只保存接口数据、代理和规范音频传输。
 
-停用保留数据；卸载删除该插件包、下载、模型、配置、缓存和临时文件。更新、资源导入、停用和卸载前结束宿主音频会话并销毁对应工作进程，避免已加载类、本地库和模型映射继续使用。每个外部插件拥有单独进程，首版最多同时启用 4 个。应用退至后台停止录音/播放，插件管理器销毁时释放所有进程。进程崩溃后的管道中断会报告任务失败，停用后重新启用可恢复。
+停用保留数据；卸载删除该插件包、下载、模型、配置、缓存和临时文件。更新、资源导入、停用和卸载前结束宿主音频会话并销毁对应工作进程，避免已加载类、本地库和模型映射继续使用。每个外部插件拥有单独进程，当前最多同时启用 8 个。应用退至后台停止录音/播放，插件管理器销毁时释放所有进程。进程崩溃后的管道中断会报告任务失败，停用后重新启用可恢复。
 
 这些进程与宿主使用相同 Android UID，属于崩溃隔离，不是权限沙箱。能力声明约束公开接口；它不能阻止任意 DEX/JNI 直接调用 Android、网络或文件 API。当前仅安装可信插件；真正面向不可信代码的 isolated UID/能力代理需另行实现和验证，不能把文件路径约定当作安全隔离。
 
@@ -105,4 +105,8 @@ API4 功能的本地回归与新包产物单独验证；前文两项 Android 16 
 
 ## 增量流式识别插件
 
-engine.streaming-asr 的在线解码、多语言包管理、固定校验下载目录与 .kigasr 格式见 [流式识别使用说明](streaming-recognition.md)。继续 API4，不改变既有包格式；新插件 MIT，现有原版移植插件保留 GPLv3。复用宿主 ManagementList，不把模型/导入器/推理库放入主 APK。
+engine.streaming-asr 的在线解码、多语言包管理、固定校验下载目录与 .kigasr 格式见 [流式识别使用说明](streaming-recognition.md)。当前 API5，不改变模型包格式；新插件 MIT，现有原版移植插件保留 GPLv3。复用宿主 ManagementList，不把模型/导入器/推理库放入主 APK。
+
+## 独立识别服务（API5）
+
+[语音识别服务](recognition-service.md)管理独立的 SenseVoice / 增量流式及社区 ASR 提供者，字幕和语音输入依赖它。服务没有推理库/模型；全部原引擎同签名重建为 0.4.0，以兼容角色、依赖、broker 和明确的结束帧。当前六个外部包均需 API5 主程序配合，升级保留引擎数据目录。

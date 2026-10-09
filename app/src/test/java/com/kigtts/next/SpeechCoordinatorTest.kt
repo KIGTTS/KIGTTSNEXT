@@ -29,6 +29,7 @@ class SpeechCoordinatorTest {
         val messages = mutableListOf<String>()
         var received = 0; var released = false
         val asr = object : AsrEngine {
+            override val info = AsrInfo(role = AsrRole.SERVICE)
             override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = RecognitionResult("batch")
             override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
                 audio.collect { received += it.bytes.size; emit(RecognitionEvent.Partial("识别结果")) }
@@ -59,7 +60,7 @@ class SpeechCoordinatorTest {
         val plugin = object : KigPlugin {
             override val descriptor = PluginDescriptor("test.asr", "ASR", "test")
             override val asr = object : AsrEngine {
-                override val info = AsrInfo(availability = EngineAvailability.NEEDS_RESOURCES)
+                override val info = AsrInfo(availability = EngineAvailability.NEEDS_RESOURCES, role = AsrRole.SERVICE)
                 override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("not used")
                 override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = error("not used")
             }
@@ -73,5 +74,24 @@ class SpeechCoordinatorTest {
         val controller = SpeechCoordinator(this, PluginRegistry(listOf(plugin)), hardware, { state }, { state = it(state) }, messages::add, {}, { null })
         controller.toggleListening(); runCurrent()
         assertFalse(microphoneOpened); assertFalse(state.captionsVisible); assertTrue(messages.single().contains("模型"))
+    }
+    @Test fun configuredStandaloneEngineCannotBypassMissingRecognitionService() = runTest {
+        var state = AppState(); var captures = 0; val messages = mutableListOf<String>()
+        val provider = object : KigPlugin {
+            override val descriptor = PluginDescriptor("test.provider", "独立引擎", "test")
+            override val asr = object : AsrEngine {
+                override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("Provider must not be called directly")
+                override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = error("Provider must not be called directly")
+            }
+            override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
+        }
+        val audio = object : AudioPlatform {
+            override fun hasMicrophonePermission() = true
+            override fun capture(format: AudioFormat): Flow<PcmAudio> { captures++; return emptyFlow() }
+            override fun player(): PcmPlayer = error("not used")
+        }
+        val controller = SpeechCoordinator(this, PluginRegistry(listOf(provider)), audio, { state }, { state = it(state) }, messages::add, {}, { "test.provider" })
+        controller.toggleListening(); controller.voiceInput(); runCurrent()
+        assertEquals(0, captures); assertFalse(state.captionsVisible); assertTrue(messages.all { it.contains("语音识别服务") })
     }
 }

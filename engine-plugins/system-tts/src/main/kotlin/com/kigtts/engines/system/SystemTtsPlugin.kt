@@ -7,7 +7,7 @@ import org.json.JSONObject
 
 /** Adapted from KIGTTS's system TTS module; no host preferences or resources are referenced. */
 class SystemTtsPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("engine.system-tts", "系统语音合成", "使用设备已安装的 Android TTS 服务", version = "0.3.0", license = "GPL-3.0-only")
+    override val descriptor = PluginDescriptor("engine.system-tts", "系统语音合成", "使用设备已安装的 Android TTS 服务", version = "0.4.0", license = "GPL-3.0-only")
     private lateinit var environment: AndroidPluginEnvironment
     private var language = "zh-CN"
     private var rate = 1f

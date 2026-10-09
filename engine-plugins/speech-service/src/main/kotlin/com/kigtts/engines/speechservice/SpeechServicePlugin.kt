@@ -8,7 +8,7 @@ import java.util.Base64
 
 class SpeechServicePlugin : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "语音合成服务",
-        "统一管理 TTS 引擎与语音包，内置系统 TTS 保底", version = "0.3.0", license = "GPL-3.0-only")
+        "统一管理 TTS 引擎与语音包，内置系统 TTS 保底", version = "0.4.0", license = "GPL-3.0-only")
     private lateinit var environment: AndroidPluginEnvironment
     private lateinit var settings: ServiceSettings
     private lateinit var broker: SpeechBroker

@@ -32,40 +32,9 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
         override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult =
             recognizeEvents(flowOf(audio), config, false).filterIsInstance<RecognitionEvent.Final>().last().result
         override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = recognizeEvents(audio, config, true)
-        private fun recognizeEvents(audio: Flow<PcmAudio>, config: RecognitionConfig, streaming: Boolean) = channelFlow {
-            val token = UUID.randomUUID().toString()
-            // Ordinary pipe + explicit EOF avoids reliable-pipe status sockets being aliased
-            // when its reader endpoint is transferred as an AIDL argument.
-            val inputPipe = ParcelFileDescriptor.createPipe()
-            val output = try { connection.worker.recognize(inputPipe[0], streaming, PluginJson.encodeToString(config), token) }
-                catch (error: Exception) { inputPipe.forEach { it.close() }; throw error }
-            inputPipe[0].close()
-            val writer = launch(Dispatchers.IO) {
-                DataOutputStream(ParcelFileDescriptor.AutoCloseOutputStream(inputPipe[1])).use { data ->
-                    audio.collect { AudioWire.pcm(data, it) }
-                    data.writeInt(AudioWire.END_INPUT); data.flush()
-                }
-            }
-            // Closing descriptors on cancellation unblocks a blocking pipe read/write immediately.
-            val unblock = launch(start = CoroutineStart.UNDISPATCHED) {
-                try { awaitCancellation() } finally { output.close(); inputPipe[1].close(); runCatching { connection.worker.cancel(token) } }
-            }
-            try {
-                withContext(Dispatchers.IO) {
-                    DataInputStream(ParcelFileDescriptor.AutoCloseInputStream(output)).use { data ->
-                        while (true) when (AudioWire.tag(data)) {
-                            null -> break
-                            AudioWire.START -> send(RecognitionEvent.Started)
-                            AudioWire.PARTIAL -> send(RecognitionEvent.Partial(AudioWire.readText(data)))
-                            AudioWire.FINAL -> send(RecognitionEvent.Final(PluginJson.decodeFromString(AudioWire.readText(data))))
-                            AudioWire.ERROR -> AudioWire.failure(data)
-                            else -> error("非法 ASR 响应")
-                        }
-                    }
-                }
-                writer.join()
-            } finally { unblock.cancelAndJoin(); writer.cancelAndJoin() }
-        }.flowOn(Dispatchers.IO)
+        private fun recognizeEvents(audio: Flow<PcmAudio>, config: RecognitionConfig, streaming: Boolean) =
+            recognitionPipe(audio, config, streaming, { input, live, settings, token -> connection.worker.recognize(input, live, settings, token) },
+                { token -> connection.worker.cancel(token) })
     } }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome = withContext(Dispatchers.IO) {
         val outcome = PluginJson.decodeFromString<PluginOutcome>(connection.worker.execute(actionId, PluginJson.encodeToString(context)))

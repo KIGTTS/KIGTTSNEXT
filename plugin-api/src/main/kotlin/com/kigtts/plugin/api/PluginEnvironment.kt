@@ -5,6 +5,7 @@ import java.io.File
 /** Paths are scoped IO contracts, not a security sandbox for native code. */
 interface PluginEnvironment {
     val speechBroker: SpeechBroker? get() = null
+    val recognitionBroker: RecognitionBroker? get() = null
     val storage: PluginStorage
     /** Immutable resources shipped in the installed package. */
     val assets: File

@@ -1,10 +1,10 @@
 {
   "id": "service.speech-synthesis",
   "name": "语音合成服务",
-  "version": "0.3.0",
-  "versionCode": 3,
+  "version": "0.4.0",
+  "versionCode": 4,
   "entryClass": "com.kigtts.engines.speechservice.SpeechServicePlugin",
-  "apiVersion": 4,
+  "apiVersion": 5,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "GPL-3.0-only",

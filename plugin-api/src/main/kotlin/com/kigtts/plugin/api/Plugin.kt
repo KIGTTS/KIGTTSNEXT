@@ -2,7 +2,10 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 4
+const val PLUGIN_API_VERSION = 5
+
+@Serializable
+enum class PluginRequirement { RECOGNITION_SERVICE }
 
 @Serializable
 data class PluginDescriptor(
@@ -13,6 +16,7 @@ data class PluginDescriptor(
     val apiVersion: Int = PLUGIN_API_VERSION,
     val placeholder: Boolean = false,
     val license: String = "MIT",
+    val requires: List<PluginRequirement> = emptyList(),
 )
 
 /** UI-free contract: contributions are rendered by the host's Material 3 theme. */
@@ -42,6 +46,14 @@ enum class HostCommand { TOGGLE_LISTENING, CLOSE_LISTENING_PANEL, USE_STREAMING,
 sealed interface PluginOutcome {
     @Serializable
     data class SelectTtsService(val pluginId: String) : PluginOutcome
+    @Serializable
+    data class SelectRecognitionService(val pluginId: String) : PluginOutcome
+    @Serializable
+    data class OpenPluginPage(val pluginId: String, val pageId: String) : PluginOutcome
+    @Serializable
+    data class SetPluginEnabled(val pluginId: String, val enabled: Boolean) : PluginOutcome
+    @Serializable
+    data object RecognitionRoutingChanged : PluginOutcome
     @Serializable
     data object RefreshUi : PluginOutcome
     @Serializable

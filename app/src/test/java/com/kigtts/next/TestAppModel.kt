@@ -8,10 +8,11 @@ import com.kigtts.plugins.asr.PlaceholderAsrPlugin
 import com.kigtts.plugins.tts.PlaceholderTtsPlugin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.Flow
 
 /** Demo engines and synthetic PCM exist only on the test classpath. */
 fun testAppModel(application: Application) = AppViewModel(application,
-    listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin()), object : AudioPlatform {
+    listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService()), object : AudioPlatform {
         override fun hasMicrophonePermission() = true
         override fun capture(format: AudioFormat) = flow {
             repeat(4) { delay(650); emit(PcmAudio(ByteArray(3200), format.sampleRate, format.channels)) }
@@ -22,3 +23,15 @@ fun testAppModel(application: Application) = AppViewModel(application,
             override fun close() {}
         }
     })
+
+/** A test-only service facade keeps UI fixtures on the same service-first contract as production. */
+private fun testRecognitionService() = object : KigPlugin {
+    override val descriptor = PluginDescriptor("test.recognition-service", "测试识别服务", "仅用于界面回归", placeholder = true)
+    private val provider = requireNotNull(PlaceholderAsrPlugin().asr)
+    override val asr = object : AsrEngine {
+        override val info get() = provider.info.copy(role = AsrRole.SERVICE)
+        override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = provider.recognize(audio, config)
+        override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = provider.recognizeStream(audio, config)
+    }
+    override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
+}

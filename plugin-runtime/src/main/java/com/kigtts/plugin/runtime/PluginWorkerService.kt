@@ -39,12 +39,15 @@ open class PluginWorkerService : Service() {
             plugin = instance
             try {
                 instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities,
-                    if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null))
+                    if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null,
+                    if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null))
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
                 require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }
                 require(instance.voiceManager == null || "voice-packs" in manifest.capabilities) { "插件未声明语音包管理能力" }
                 require(instance.tts?.info?.managesVoices != true || instance.voiceManager != null) { "缺少已声明的语音管理接口" }
                 require(instance.asr == null || "asr-batch" in manifest.capabilities || "asr-segmented" in manifest.capabilities || "asr-incremental" in manifest.capabilities)
+                require(instance.asr?.info?.role != AsrRole.SERVICE || "asr-service" in manifest.capabilities) { "插件未声明语音识别服务能力" }
+                require("asr-service" !in manifest.capabilities || instance.asr?.info?.role == AsrRole.SERVICE) { "识别服务必须实现 SERVICE 角色" }
             }
             catch (error: Exception) { instance.close(); plugin = null; throw error }
             snapshot(PluginJson.encodeToString(PluginContext("", "")))
@@ -85,38 +88,7 @@ open class PluginWorkerService : Service() {
             launchSession(token, listOf(input)) { output ->
                 val engine = requireNotNull(plugin?.asr) { "插件没有 ASR 能力" }
                 val settings = PluginJson.decodeFromString<RecognitionConfig>(config)
-                DataInputStream(ParcelFileDescriptor.AutoCloseInputStream(input)).use { data ->
-                    val chunks = flow {
-                        while (true) {
-                            currentCoroutineContext().ensureActive()
-                            val tag = AudioWire.tag(data) ?: error("录音流意外中断")
-                            if (tag == AudioWire.END_INPUT) break
-                            require(tag == AudioWire.AUDIO); emit(AudioWire.readPcm(data))
-                        }
-                    }
-                    if (streaming) {
-                        require(engine.info.streaming != StreamingKind.NONE)
-                        engine.recognizeStream(chunks, settings).collect { event ->
-                            when (event) {
-                                RecognitionEvent.Started -> { output.writeInt(AudioWire.START); output.flush() }
-                                is RecognitionEvent.Partial -> AudioWire.text(output, AudioWire.PARTIAL, event.text)
-                                is RecognitionEvent.Final -> AudioWire.text(output, AudioWire.FINAL, PluginJson.encodeToString(event.result))
-                            }
-                        }
-                    } else {
-                        require(engine.info.batch)
-                        val bytes = java.io.ByteArrayOutputStream()
-                        var format: AudioFormat? = null
-                        chunks.collect { chunk ->
-                            val current = AudioFormat(chunk.sampleRate, chunk.channels)
-                            require(format == null || format == current); format = current
-                            require(bytes.size().toLong() + chunk.bytes.size <= current.sampleRate.toLong() * current.channels * 2 * engine.info.maxBatchSeconds)
-                            bytes.write(chunk.bytes)
-                        }
-                        val pcm = format ?: engine.info.inputFormat
-                        AudioWire.text(output, AudioWire.FINAL, PluginJson.encodeToString(engine.recognize(PcmAudio(bytes.toByteArray(), pcm.sampleRate, pcm.channels), settings)))
-                    }
-                }
+                transferRecognition(input, output, engine, streaming, settings)
             }
         override fun cancel(token: String) { sessions.remove(token)?.let { session -> session.descriptors.forEach { runCatching { it.close() } }; session.job.cancel() } }
         override fun shutdown() {
@@ -154,3 +126,7 @@ class PluginWorker0 : PluginWorkerService()
 class PluginWorker1 : PluginWorkerService()
 class PluginWorker2 : PluginWorkerService()
 class PluginWorker3 : PluginWorkerService()
+class PluginWorker4 : PluginWorkerService()
+class PluginWorker5 : PluginWorkerService()
+class PluginWorker6 : PluginWorkerService()
+class PluginWorker7 : PluginWorkerService()

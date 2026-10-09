@@ -26,11 +26,11 @@ class PluginPackageTest {
         store = PluginPackageStore(paths)
     }
     private fun pack(version: Int = 1, tamper: Boolean = false, badPath: Boolean = false,
-        otherPublisher: Boolean = false, api: Int = 4): File {
+        otherPublisher: Boolean = false, api: Int = 5, capabilities: List<String> = emptyList()): File {
         val files = linkedMapOf("code/classes.dex" to byteArrayOf(1, 2, 3), "assets/readme.txt" to "test".toByteArray())
         if (badPath) files["../outside"] = byteArrayOf(4)
         val manifest = PackageManifest("test.engine", "测试引擎", "0.$version", version, "test.Engine", apiVersion = api,
-            files = files.mapValues { it.value.sha256() })
+            files = files.mapValues { it.value.sha256() }, capabilities = capabilities)
         val raw = PluginJson.encodeToString(manifest).toByteArray()
         val signing = if (otherPublisher) KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair() else key
         val file = File(paths.packages, ".package-$version-${System.nanoTime()}")
@@ -58,7 +58,7 @@ class PluginPackageTest {
         assertEquals("other", paths.storage("other.engine").file("keep").readText())
     }
     @Test fun tamperingTraversalWrongApiAndPublisherReplacementAreRejected() {
-        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3))) {
+        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4))) {
             assertThrows(IllegalArgumentException::class.java) { store.inspect(file) }
         }
         val valid = pack(); val publisher = store.inspect(valid).publisherSha256; store.install(valid, publisher)
@@ -112,9 +112,13 @@ class PluginPackageTest {
     @Test fun independentlyBuiltEnginePackagesPassSignatureAndPayloadVerification() {
         val directory = File(requireNotNull(System.getProperty("kig.plugin.packages")))
         org.junit.Assume.assumeTrue("Run tools/Build-EnginePlugins.ps1 first", directory.exists())
-        val system = store.inspect(File(directory, "engine.system-tts-0.3.0.kigplugin"))
-        val asr = store.inspect(File(directory, "engine.sensevoice-0.3.0.kigplugin"))
-        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.3.0.kigplugin"))
+        val system = store.inspect(File(directory, "engine.system-tts-0.4.0.kigplugin"))
+        val asr = store.inspect(File(directory, "engine.sensevoice-0.4.0.kigplugin"))
+        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.4.0.kigplugin"))
+        val recognition = store.inspect(File(directory, "service.speech-recognition-0.4.0.kigplugin"))
+        assertTrue("asr-service" in recognition.manifest.capabilities)
+        assertTrue(recognition.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
+        assertEquals(system.publisherSha256, recognition.publisherSha256)
         assertEquals("engine.system-tts", system.manifest.id)
         assertEquals("engine.sensevoice", asr.manifest.id)
         assertTrue(asr.manifest.files.keys.any { it.endsWith("libsherpa-onnx-jni.so") })
@@ -129,14 +133,32 @@ class PluginPackageTest {
         val originalAbis = android.os.Build.SUPPORTED_ABIS
         val piper = try {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
-            store.inspect(File(directory, "engine.piper-0.3.0.kigplugin"))
+            store.inspect(File(directory, "engine.piper-0.4.0.kigplugin"))
         } finally { org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", originalAbis) }
-        val service = store.inspect(File(directory, "service.speech-synthesis-0.3.0.kigplugin"))
+        val service = store.inspect(File(directory, "service.speech-synthesis-0.4.0.kigplugin"))
         assertEquals(listOf("arm64-v8a"), piper.manifest.abis)
         assertTrue(piper.manifest.files.keys.any { it.endsWith("libespeak_jni.so") })
         assertTrue(piper.manifest.files.keys.contains("assets/espeak-ng-data.zip"))
         assertTrue(service.manifest.capabilities.contains("speech-service"))
         assertTrue(service.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
         assertEquals(system.publisherSha256, service.publisherSha256)
+    }
+    @Test fun disabledRecognitionProvidersRemainManageableBeforeFirstLoadAndAfterCaching() {
+        val input = pack(capabilities = listOf("asr-batch", "asr-incremental")); store.install(input, store.inspect(input).publisherSha256)
+        store.enabled("test.engine", false); val catalog = ProviderCatalog(paths)
+        assertEquals("test.engine", catalog.disabledAsr(emptySet()).single().pluginId)
+        val plugin = object : com.kigtts.plugin.api.KigPlugin {
+            override val descriptor = com.kigtts.plugin.api.PluginDescriptor("test.engine", "Recognizer", "test")
+            override val asr = object : com.kigtts.plugin.api.AsrEngine {
+                override suspend fun recognize(audio: com.kigtts.plugin.api.PcmAudio, config: com.kigtts.plugin.api.RecognitionConfig) = com.kigtts.plugin.api.RecognitionResult("")
+                override fun recognizeStream(audio: kotlinx.coroutines.flow.Flow<com.kigtts.plugin.api.PcmAudio>, config: com.kigtts.plugin.api.RecognitionConfig) = kotlinx.coroutines.flow.emptyFlow<com.kigtts.plugin.api.RecognitionEvent>()
+            }
+            override val contributions = com.kigtts.plugin.api.PluginContributions(drawerEntries = listOf(com.kigtts.plugin.api.DrawerEntry("packs", "识别包", "packs", com.kigtts.plugin.api.PluginIcon.MIC)))
+            override suspend fun execute(actionId: String, context: com.kigtts.plugin.api.PluginContext) = com.kigtts.plugin.api.PluginOutcome.RefreshUi
+        }
+        catalog.save(plugin); val cached = catalog.disabledAsr(emptySet()).single()
+        assertFalse(cached.enabled); assertEquals("packs", cached.settingsPages.single().id)
+        assertTrue(paths.storage("test.engine").file("config/host/asr-catalog.json").isFile)
+        store.uninstall("test.engine"); assertTrue(catalog.disabledAsr(emptySet()).isEmpty())
     }
 }

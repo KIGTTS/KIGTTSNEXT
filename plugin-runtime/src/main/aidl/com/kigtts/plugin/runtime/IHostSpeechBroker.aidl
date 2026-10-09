@@ -5,4 +5,6 @@ interface IHostSpeechBroker {
     String command(String pluginId, String command);
     ParcelFileDescriptor synthesize(String pluginId, String request, String token);
     void cancel(String token);
+    String asrProviders();
+    ParcelFileDescriptor recognizeProvider(String pluginId, in ParcelFileDescriptor input, boolean streaming, String config, String token);
 }

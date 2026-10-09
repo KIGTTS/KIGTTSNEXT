@@ -22,6 +22,8 @@ enum class EngineAvailability { READY, NEEDS_RESOURCES }
 @Serializable
 enum class StreamingKind { NONE, SEGMENTED, INCREMENTAL }
 @Serializable
+enum class AsrRole { PROVIDER, SERVICE }
+@Serializable
 data class VoiceInfo(val id: String, val name: String, val language: String,
     val description: String = "", val deletable: Boolean = false, val packName: String? = null, val packId: String? = null)
 @Serializable
@@ -37,7 +39,8 @@ data class TtsInfo(val availability: EngineAvailability = EngineAvailability.REA
 @Serializable
 data class AsrInfo(val inputFormat: AudioFormat = AudioFormat(), val batch: Boolean = true,
     val streaming: StreamingKind = StreamingKind.INCREMENTAL,
-    val availability: EngineAvailability = EngineAvailability.READY, val maxBatchSeconds: Int = 30) {
+    val availability: EngineAvailability = EngineAvailability.READY, val maxBatchSeconds: Int = 30,
+    val role: AsrRole = AsrRole.PROVIDER) {
     init { require(maxBatchSeconds in 1..120 && (batch || streaming != StreamingKind.NONE)) }
 }
 @Serializable

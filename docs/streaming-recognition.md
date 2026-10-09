@@ -1,10 +1,10 @@
 # 增量流式识别插件
 
-`engine.streaming-asr-0.3.0.kigplugin` 是独立的 Android DEX/JNI 插件，API4，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
+`engine.streaming-asr-0.4.0.kigplugin` 是独立的 Android DEX/JNI 插件，API5，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
 
 ## 使用
 
-在插件管理中安装、启用流式语音识别，并选择“设为识别引擎”。抽屉“流式识别包”可进入管理列表。
+安装、启用 [语音识别服务](recognition-service.md) 与流式识别引擎；在服务中选用该独立引擎，并进入其“流式识别包”页面管理模型。主界面通过服务调用引擎。
 
 - 下载识别包：目录提供中文轻量、英文轻量、中英双语三个固定官方模型包，下载按预先核验的 SHA-256 校验。可从自定义 HTTPS 地址下载其它在线包，需提供可信 SHA-256。
 - 导入识别包：支持 `.kigasr`、ZIP、官方 tar.bz2 和 tar.gz。可同时保留多个语言包，选用当前识别包，按语言筛选、置顶与拖动排序。
@@ -55,4 +55,4 @@ Windows CPU 使用同版本 sherpa-onnx 实际解码官方固定录音：中文�
 
 可复现实解码：先将三个官方目录包下载到对应 Windows 插件 Appdata/downloads，再用安装 `sherpa-onnx==1.12.38` / NumPy 的 Python 3.12 运行 `tools/Verify-StreamingModels.py --data-dir <对应插件 Appdata>`。解析、测试音频、规范包与 JSON 报告仍在该插件目录。
 
-`StreamingRecognitionDeviceTest` 验证实际 Android DEX/JNI、中文/英文包共存、EOF 前 Partial、取消后重用与完整录音。需要将主应用和所有现有插件更新为 API4；传入 `zhPack` / `zhWav` / `enPack` / `enWav`，四个路径都必须位于手机本插件数据目录。测试会保留安装的流式插件及导入包。当前 ADB 没有连接设备，本轮没有执行该真机检查，也没有覆盖手机仍可用的 API3。
+`StreamingRecognitionDeviceTest` 验证实际 Android DEX/JNI、中文/英文包共存、EOF 前 Partial、取消后重用与完整录音。需要将主应用和所有现有插件更新为 API5；传入 `zhPack` / `zhWav` / `enPack` / `enWav`，四个路径都必须位于手机本插件数据目录。测试会保留安装的流式插件及导入包。当前 ADB 没有连接设备，本轮没有执行该真机检查，也没有覆盖手机仍可用的 API3。

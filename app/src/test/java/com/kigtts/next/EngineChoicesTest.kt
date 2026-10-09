@@ -28,4 +28,19 @@ class EngineChoicesTest {
     @Test fun activeTtsOnlyPluginIsNotAnEligibleAsrSelection() {
         assertNull(chooseEngine(listOf(plugin("test.provider", TtsRole.PROVIDER)), "test.provider", false))
     }
+    @Test fun recognitionNeverSelectsAProviderWithoutAService() {
+        fun recognizer(id: String, role: AsrRole) = object : KigPlugin {
+            override val descriptor = PluginDescriptor(id, id, "test")
+            override val asr = object : AsrEngine {
+                override val info = AsrInfo(role = role)
+                override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = RecognitionResult("")
+                override fun recognizeStream(audio: kotlinx.coroutines.flow.Flow<PcmAudio>, config: RecognitionConfig) = kotlinx.coroutines.flow.emptyFlow<RecognitionEvent>()
+            }
+            override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
+        }
+        val provider = recognizer("test.provider", AsrRole.PROVIDER); val service = recognizer("test.service", AsrRole.SERVICE)
+        assertNull(chooseEngine(listOf(provider), "test.provider", false))
+        assertEquals("test.service", chooseEngine(listOf(provider, service), "test.provider", false))
+        assertNull(chooseEngine(listOf(provider), "test.service", false))
+    }
 }

@@ -2,9 +2,10 @@ package com.kigtts.plugins.listening
 
 import com.kigtts.plugin.api.*
 
-/** Panel controls operate through host commands, independently of the ASR engine. */
+/** Panel controls require a recognition service; no provider is called directly. */
 class ListeningPanelPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("panel.listening", "字幕插件", "注册开始聆听入口与聆听字幕面板操作，调用宿主所选识别引擎")
+    override val descriptor = PluginDescriptor("panel.listening", "字幕插件", "通过语音识别服务驱动聆听字幕面板",
+        requires = listOf(PluginRequirement.RECOGNITION_SERVICE))
     override val contributions get() = contributions(PluginContext("", ""))
     override fun contributions(context: PluginContext) = PluginContributions(actions = listOf(
         UiAction("toggle", if (context.listeningPanelVisible) "关闭聆听" else "开始聆听", UiSlot.EDITOR_TOP_START,

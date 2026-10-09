@@ -142,16 +142,19 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(busyPlugins = it.busyPlugins + pluginId) }
         viewModelScope.launch {
             try {
-                when (val outcome = plugin.execute(actionId, context().copy(inputs = inputs))) {
+                val outcome = plugin.execute(actionId, context().copy(inputs = inputs))
+                if (handleServiceOutcome(outcome, plugin, pluginManager, context(), { speech.closeListening(); speech.stopAll() },
+                        ::refreshPlugins, { selectEngine(it, false) }, ::navigate)) return@launch
+                when (outcome) {
                     is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
                     PluginOutcome.RefreshUi -> update { it.copy(pluginRevision = it.pluginRevision + 1) }
-                    is PluginOutcome.HostAction -> when (outcome.command) {
+                    is PluginOutcome.HostAction -> { check(registry.available(plugin)) { "此插件需要先启用语音识别服务" }; when (outcome.command) {
                         HostCommand.TOGGLE_LISTENING -> toggleListening()
                         HostCommand.CLOSE_LISTENING_PANEL -> closeListeningPanel()
                         HostCommand.USE_STREAMING -> streaming(true)
                         HostCommand.USE_BATCH -> streaming(false)
                         HostCommand.VOICE_INPUT -> speech.voiceInput()
-                    }
+                    } }
                     is PluginOutcome.OpenPage -> {
                         if (plugin.page(outcome.pageId, context()) != null) navigate(Destination.PluginPage(pluginId, outcome.pageId))
                         else message("插件页面不存在")
@@ -170,16 +173,21 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun speak() = speech.speak()
     suspend fun refreshPlugins() {
         pluginManager.reload()
+        pluginManager.refreshContext(context())
         for (key in listOf("tts", "asr")) {
             val current = engineSelection.getString(key, null)
             val next = chooseEngine(registry.plugins, current, key == "tts")
             if (next != current) engineSelection.edit { putString(key, next) }
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
+        if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
     }
     fun selectEngine(id: String, tts: Boolean) {
         val plugin = registry.plugin(id) ?: return
         require(if (tts) plugin.tts != null else plugin.asr != null)
+        if (!tts && plugin.asr?.info?.role != AsrRole.SERVICE) {
+            message("请在语音识别服务中选用识别引擎"); return
+        }
         if (tts && plugin.tts?.info?.role != TtsRole.SERVICE && registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE }) {
             message("请在语音合成服务中选择引擎和声音"); return
         }

@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 param([switch]$SkipBuild, [string]$SigningKey,
-    [ValidateSet('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr')]
-    [string[]]$Modules = @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr'),
+    [ValidateSet('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service')]
+    [string[]]$Modules = @('system-tts', 'sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service'),
     [string]$WorkDirectory = (Join-Path $env:LOCALAPPDATA 'Temp/KIGTTSNEXT/plugin-package-work'))
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))

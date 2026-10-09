@@ -9,19 +9,28 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Routes standard operations to provider processes. No engine-specific formats or settings here. */
 internal class HostSpeechBroker(private val owner: String, private val registry: PluginRegistry,
-    private val paths: PluginPaths) : IHostSpeechBroker.Stub() {
+    private val paths: PluginPaths, private val allowTts: Boolean = true, private val allowAsr: Boolean = false) : IHostSpeechBroker.Stub() {
+    private val recognition = HostRecognitionBroker(owner, registry, paths)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private data class Session(val job: Job, val output: ParcelFileDescriptor)
     private val sessions = ConcurrentHashMap<String, Session>()
     private fun provider(id: String): KigPlugin {
+        check(allowTts) { "插件未获授合成服务能力" }
         require(id != owner)
         return requireNotNull(registry.plugin(id)) { "引擎插件已停用或不存在" }.also {
             require(it.tts?.info?.role == TtsRole.PROVIDER) { "不能嵌套调用合成服务" }
         }
     }
-    override fun providers(): String = PluginJson.encodeToString(registry.plugins.mapNotNull { plugin ->
+    override fun providers(): String { check(allowTts); return PluginJson.encodeToString(registry.plugins.mapNotNull { plugin ->
         plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { TtsProvider(plugin.descriptor.id, plugin.descriptor.name, it) }
-    } + ProviderCatalog(paths).disabled(registry.plugins.map { it.descriptor.id }.toSet()))
+    } + ProviderCatalog(paths).disabled(registry.plugins.map { it.descriptor.id }.toSet())) }
+    override fun asrProviders(): String { check(allowAsr); return PluginJson.encodeToString(recognition.providers()) }
+    override fun recognizeProvider(pluginId: String, input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor {
+        try {
+            check(allowAsr) { "插件未获授识别服务能力" }
+            return recognition.recognize(pluginId, input, streaming, config, token)
+        } catch (error: Exception) { input.close(); throw error }
+    }
     override fun command(pluginId: String, command: String): String = runBlocking(Dispatchers.IO) {
         require(command.length <= 8192)
         val operation = PluginJson.decodeFromString<VoiceCommand>(command)
@@ -67,6 +76,6 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
         sessions[token] = Session(job, pipe[1]); job.start()
         return pipe[0]
     }
-    override fun cancel(token: String) { sessions.remove(token)?.let { it.output.close(); it.job.cancel() } }
-    fun close() { sessions.keys.toList().forEach(::cancel); scope.cancel() }
+    override fun cancel(token: String) { recognition.cancel(token); sessions.remove(token)?.let { it.output.close(); it.job.cancel() } }
+    fun close() { recognition.close(); sessions.keys.toList().forEach(::cancel); scope.cancel() }
 }

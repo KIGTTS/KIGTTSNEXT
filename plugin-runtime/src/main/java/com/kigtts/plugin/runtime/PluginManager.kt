@@ -38,13 +38,14 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val statuses = installed.map { info ->
             var error: String? = null
             if (info.enabled && info.manifest.id !in loaded) {
-                val slot = (0..3).firstOrNull { candidate -> loaded.values.none { it.first == candidate } }
-                if (slot == null) error = "当前最多同时启用 4 个外部插件"
+                val slot = workerServices.indices.firstOrNull { candidate -> loaded.values.none { it.first == candidate } }
+                if (slot == null) error = "当前最多同时启用 ${workerServices.size} 个外部插件"
                 else {
                     try {
                         require(builtins.none { it.descriptor.id == info.manifest.id }) { "插件 ID 与内置界面插件冲突" }
                         val connection = WorkerConnection(context, slot,
-                            if ("speech-service" in info.manifest.capabilities) HostSpeechBroker(info.manifest.id, registry, paths) else null)
+                            if (info.manifest.capabilities.any { it in setOf("speech-service", "asr-service") })
+                                HostSpeechBroker(info.manifest.id, registry, paths, "speech-service" in info.manifest.capabilities, "asr-service" in info.manifest.capabilities) else null)
                         val proxy = RemotePlugin(connection, connection.connect(info.manifest.id))
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }
