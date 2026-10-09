@@ -13,7 +13,7 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
     override fun synthesize(request: TtsRequest) = flow {
         require(request.text.length <= info.maxTextLength) { "单次朗读文本过长" }
         val selected = settings.provider
-        val provider = try { broker.providers().firstOrNull { it.pluginId == selected && it.info.availability == EngineAvailability.READY } }
+        val provider = try { broker.providers().firstOrNull { it.pluginId == selected && it.enabled && it.info.availability == EngineAvailability.READY } }
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { null }
         if (provider == null) {

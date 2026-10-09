@@ -1,4 +1,4 @@
-package com.kigtts.next.ui.home
+package com.kigtts.next.ui.components.reorder
 
 import androidx.compose.foundation.gestures.*
 import androidx.compose.runtime.*
@@ -15,7 +15,7 @@ data class ReorderTarget(val key: String, val bounds: Rect)
 
 @Stable
 class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val move: (String, String) -> Unit,
-    val horizontalOnly: Boolean = false, private val animateDrop: Boolean = false) {
+    val horizontalOnly: Boolean = false, private val animateDrop: Boolean = false, val verticalOnly: Boolean = false) {
     var targetProvider: (() -> List<ReorderTarget>)? = null
     var moveProvider: ((String, String) -> Unit)? = null
     var key by mutableStateOf<String?>(null); private set
@@ -35,7 +35,7 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
         settling = false
         key = item.key; initial = item.bounds.topLeft; touch = point; offset = Offset.Zero; pickedBounds = item.bounds
     }
-    fun drag(delta: Offset) { offset += if (horizontalOnly) Offset(delta.x, 0f) else delta; checkTarget() }
+    fun drag(delta: Offset) { offset += if (horizontalOnly) Offset(delta.x, 0f) else if (verticalOnly) Offset(0f, delta.y) else delta; checkTarget() }
     fun checkTarget() {
         val current = key ?: return
         hit(pointer)?.takeIf { it.key != current }?.let { (moveProvider ?: move)(current, it.key) }
@@ -51,11 +51,11 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
 }
 
 @Composable
-fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Boolean = false, animateDrop: Boolean = false,
+fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Boolean = false, animateDrop: Boolean = false, verticalOnly: Boolean = false,
     move: (String, String) -> Unit): ReorderDrag {
     val latestTargets by rememberUpdatedState(targets)
     val latestMove by rememberUpdatedState(move)
-    return remember(horizontalOnly, animateDrop) { ReorderDrag({ latestTargets() }, { from, to -> latestMove(from, to) }, horizontalOnly, animateDrop) }
+    return remember(horizontalOnly, animateDrop, verticalOnly) { ReorderDrag({ latestTargets() }, { from, to -> latestMove(from, to) }, horizontalOnly, animateDrop, verticalOnly) }
 }
 
 /** Detect on the stable list container so item placement never interrupts the pointer. */
@@ -74,7 +74,7 @@ fun Modifier.reorderGestures(drag: ReorderDrag) = onGloballyPositioned { drag.or
                     val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
                     if (!change.pressed || change.isConsumed) break
                     val delta = change.position - down.position
-                    val distance = if (drag.horizontalOnly) kotlin.math.abs(delta.x) else delta.getDistance()
+                    val distance = if (drag.horizontalOnly) kotlin.math.abs(delta.x) else if (drag.verticalOnly) kotlin.math.abs(delta.y) else delta.getDistance()
                     if (distance > viewConfiguration.touchSlop) {
                         initialDelta = delta; change.consume(); activated = down; break
                     }

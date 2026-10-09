@@ -207,6 +207,9 @@ class PageMotionTest {
         assertTrue(left("1/side/sketch") < -1f)
         capture("navigation-sketch-enter-mid")
         step(1500)
+        predict(.6f, BackEventCompat.EDGE_LEFT)
+        assertTrue("Sketch follows its left entry even for a left-edge back gesture", left("1/side/sketch") < -1f)
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }; step(1500)
         compose.onNodeWithContentDescription("返回大字幕").performClick(); step(96)
         assertNull(model.state.value.sidePage)
         assertTrue(left("1/side/sketch") < -1f)
@@ -222,7 +225,7 @@ class PageMotionTest {
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         assertTrue(abs(left("1/side/cards") - before) < 2f)
         step(96)
-        assertTrue(left("1/side/cards") < before - 20f)
+        assertTrue(left("1/side/cards") > before + 20f)
         capture("navigation-cards-predictive-return-mid")
         step(1500); compose.mainClock.autoAdvance = true
         layer("1/side/cards").assertDoesNotExist()

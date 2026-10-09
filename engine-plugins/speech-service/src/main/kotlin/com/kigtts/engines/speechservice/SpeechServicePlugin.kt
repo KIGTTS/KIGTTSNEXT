@@ -8,12 +8,14 @@ import java.util.Base64
 
 class SpeechServicePlugin : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "语音合成服务",
-        "统一管理 TTS 引擎与语音包，内置系统 TTS 保底", version = "0.2.0", license = "GPL-3.0-only")
+        "统一管理 TTS 引擎与语音包，内置系统 TTS 保底", version = "0.3.0", license = "GPL-3.0-only")
     private lateinit var environment: AndroidPluginEnvironment
     private lateinit var settings: ServiceSettings
     private lateinit var broker: SpeechBroker
     private lateinit var facade: TtsEngine
     private lateinit var system: SystemSpeechEngine
+    private lateinit var libraryPages: VoiceLibraryPages
+    private lateinit var libraryActions: VoiceLibraryActions
     override val tts: TtsEngine get() = facade
     override suspend fun attach(environment: PluginEnvironment) {
         this.environment = environment as AndroidPluginEnvironment
@@ -21,10 +23,15 @@ class SpeechServicePlugin : KigPlugin {
         settings = ServiceSettings(environment.storage)
         system = SystemSpeechEngine(this.environment) { settings.language to 1f }
         facade = ServiceSynthesis(settings, broker, system)
+        val library = VoiceLibrary(environment.storage)
+        libraryPages = VoiceLibraryPages(settings, library, ::providers)
+        libraryActions = VoiceLibraryActions(environment, settings, library, libraryPages, broker)
     }
     override val contributions = PluginContributions(drawerEntries = listOf(
-        DrawerEntry("manager", "语音合成服务", "manager", PluginIcon.SPEAKER)))
+        DrawerEntry("manager", "语音合成服务", "manager", PluginIcon.SPEAKER),
+        DrawerEntry("packs", "语音包管理", "packs", PluginIcon.SPEAKER)))
     override fun page(pageId: String, context: PluginContext): PluginPage? {
+        libraryPages.page(pageId)?.let { return it }
         if (pageId == "manager") {
             val providers = providers()
             val active = providers.firstOrNull { it.pluginId == settings.provider }
@@ -32,6 +39,7 @@ class SpeechServicePlugin : KigPlugin {
                 PageBlock.Text("语音合成服务", true),
                 PageBlock.Notice("当前引擎：${active?.name ?: "内置系统 TTS"} · 外部引擎不可用时自动使用系统 TTS"),
                 PageBlock.Actions(listOf(PageAction("activate", "设为应用合成服务", PluginIcon.SPEAKER),
+                    PageAction("library", "管理所有语音包", PluginIcon.SETTINGS),
                     PageAction("system", "使用内置系统 TTS", PluginIcon.SPEAKER), PageAction("rate", "语速：${settings.rate}", PluginIcon.SETTINGS),
                     PageAction("language", "系统 TTS 语言：${settings.language}", PluginIcon.SETTINGS))),
                 PageBlock.Group("引擎与声音", if (providers.isEmpty()) listOf(PageBlock.Text("安装 Piper 或其它 TTS 提供者插件后在此管理。"))
@@ -54,7 +62,7 @@ class SpeechServicePlugin : KigPlugin {
             if ((page + 1) * 20 < provider.info.voices.size) navigation += PageAction("engine/${encode(id)}/${page + 1}", "下一页")
             return PluginPage(pageId, provider.name, listOf(PageBlock.Text(provider.name, true), PageBlock.Actions(controls)) +
                 voices.map { voice ->
-                    val current = if (id == "system") settings.provider == null && settings.systemVoice == voice.id
+                    val current = if (id == SYSTEM_PROVIDER) settings.provider == null && settings.systemVoice == voice.id
                         else settings.provider == id && settings.voice == voice.id
                     val actions = mutableListOf(PageAction("voice/${encode(id)}/${encode(voice.id)}", if (current) "当前声音" else "使用声音", PluginIcon.SPEAKER))
                     if (voice.deletable) {
@@ -67,6 +75,7 @@ class SpeechServicePlugin : KigPlugin {
         return null
     }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome {
+        if (actionId == "library" || actionId.startsWith("pack")) return libraryActions.execute(actionId, context)
         val pieces = actionId.split('/')
         val id = pieces.getOrNull(1)?.let(::decode)
         val voice = pieces.getOrNull(2)?.takeIf { pieces[0] !in setOf("engine") }?.let(::decode)
@@ -76,12 +85,12 @@ class SpeechServicePlugin : KigPlugin {
             "engine" -> PluginOutcome.OpenPage("provider/${pieces[1]}/${pieces.getOrNull(2) ?: "0"}")
             "select" -> {
                 val provider = providers().first { it.pluginId == id }
-                if (id == "system") { settings.provider = null; settings.voice = null; settings.save(); return PluginOutcome.RefreshUi }
+                if (id == SYSTEM_PROVIDER) { settings.provider = null; settings.voice = null; settings.save(); return PluginOutcome.RefreshUi }
                 settings.provider = id; settings.voice = provider.info.selectedVoiceId ?: provider.info.voices.firstOrNull()?.id
                 settings.save(); PluginOutcome.RefreshUi
             }
             "voice" -> {
-                if (id == "system") {
+                if (id == SYSTEM_PROVIDER) {
                     val chosen = system.info.voices.first { it.id == voice }
                     settings.systemVoice = voice; settings.language = chosen.language; settings.provider = null; settings.voice = null; settings.save()
                     return PluginOutcome.RefreshUi
@@ -90,7 +99,7 @@ class SpeechServicePlugin : KigPlugin {
                     broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.SELECT, voiceId = voice))
                 settings.provider = id; settings.voice = voice; settings.save(); PluginOutcome.RefreshUi
             }
-            "refresh" -> { if (id == "system") system.refreshVoices() else broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.REFRESH)); PluginOutcome.RefreshUi }
+            "refresh" -> { if (id == SYSTEM_PROVIDER) system.refreshVoices() else broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.REFRESH)); PluginOutcome.RefreshUi }
             "import" -> PluginOutcome.ImportResource("导入语音包", "resources/inbox", "imported/${pieces[1]}")
             "imported" -> {
                 val path = requireNotNull(context.inputs["resourcePath"])
@@ -120,7 +129,7 @@ class SpeechServicePlugin : KigPlugin {
             else -> PluginOutcome.Message("未知语音合成服务操作")
         }
     }
-    private fun providers() = listOf(TtsProvider("system", "内置系统 TTS", system.info)) + broker.providers().filter { it.pluginId != "engine.system-tts" }
+    private fun providers() = listOf(TtsProvider(SYSTEM_PROVIDER, "内置系统 TTS", system.info)) + broker.providers().filter { it.pluginId != "engine.system-tts" }
     private fun encode(value: String) = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray())
     private fun decode(value: String) = String(Base64.getUrlDecoder().decode(value))
 }

@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.2.0.kigplugin`、`engine.piper-0.2.0.kigplugin`、`engine.sensevoice-0.2.0.kigplugin`、旧兼容 `engine.system-tts-0.2.0.kigplugin`。也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.3.0.kigplugin`、`engine.piper-0.3.0.kigplugin`、`engine.sensevoice-0.3.0.kigplugin`、旧兼容 `engine.system-tts-0.3.0.kigplugin`。也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -26,7 +26,7 @@ signature/public.der        # RSA SubjectPublicKeyInfo
 signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 ```
 
-API v3 当前运行时为 `android-dex`。API2 包与新主程序不兼容，需用同一发布者的 0.2.0/API3 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
+API v4 当前运行时为 `android-dex`。API2/API3 包与新主程序不兼容，需用同一发布者的 0.3.0/API4 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
 
 ## 安装与生命周期
 
@@ -92,3 +92,13 @@ PluginStorage 只接受相对路径并检查规范路径；下载接口要求 HT
 本次 API3 真机两项综合仪器检查全部通过：SpeechServiceDeviceTest 用时 20.535 秒，内置系统 TTS 93,312 字节 PCM、经服务/broker 的 Piper DEX/JNI/eSpeak/ORT 55,296 字节 PCM，均通过宿主实际播放；Piper 取消后重用 56,320 字节，停用提供者后系统保底 87,552 字节。语音包导入/选用/重命名/删除确认链路通过，Piper 使用旧工程的英文开发测试模型，仅作功能检查，不能作为中文或自然度验收。
 
 SpeechUpgradeDeviceTest 用时 6.689 秒，直接复用原已安装 SenseVoice 模型，完整录音结果“开放时间早上9点至下午5点。”；分段仍为“开饭时间早上9点至下午5点。”，同一处识别错字仍在。服务默认已恢复内置系统 TTS；Piper、SenseVoice、语音合成服务启用，旧独立系统插件 0.2.0 已更新并停用。Piper 测试声音保留在对应模型目录，测试辅助 APK 与识别录音暂存已清理，主应用冷启动通过。171 项本地测试与签名/载荷检查通过，主 APK 没有任何引擎实现/库/模型/插件包资产；本次只验证 arm64 真机，独立 NDK 构建入口未实编。
+
+## API4 统一管理与 Piper 兼容
+
+“语音包管理”由语音合成服务提供，所有引擎的包放在同一列表，可筛选、置顶、长按/手柄排序并保存跨引擎顺序。停用引擎已知的包仍可查看和排序，重新启用后才可使用/编辑/导出。语音包与声音分层，多声音只占一条包记录；系统 TTS 为虚拟包，可在详情直接刷新系统声音。插件管理采用同一紧凑列表，开关与拖动手柄同行，顺序重启后保留；它仅改变管理页排列，不改变加载或手势优先级。
+
+Piper 兼容旧 .kigvpk/ZIP 的 manifest.files.model/config/phonemizer、Windows 路径分隔符、标量/数组音素映射、词典与 eSpeak、多语言近似适配、采样率和多声音。旧语音包真正的元数据文件是 voicepack.json；完整保留名称、备注、头像、置顶、顺序与未知字段，支持 .bak 恢复，也合并迁移上一版 voice-meta.json。旧包未声明 phoneme_type 而带词典时按旧版走 text，标准 ONNX+JSON 则默认 eSpeak。
+
+详情可修改名称/多行备注、替换头像、更新包、导出与确认删除。更新保持包 ID、选择和用户资料，先验证后交换，失败恢复旧数据。导出保留模型、词典、预览与其它原文件，并写出旧版可接受的 manifest/config/phonemizer 三件组和 voicepack.json；标准 eSpeak 包补明确类型和空词典，旧版不会误判为 text。跨引擎排序的当前位置和置顶状态随导出保存。所有操作仍属于引擎/服务插件，宿主只渲染通用条目并转发规范命令。
+
+API4 功能的本地回归与新包产物单独验证；前文两项 Android 16 真机检查是 API3 的结果。本次设备暂未连接，不能把旧检查作为 API4 新管理功能的真机验收。手机原有 API3 仍保持可用，本轮没有单独覆盖主 APK 导致插件不兼容。

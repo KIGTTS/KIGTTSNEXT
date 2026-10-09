@@ -1,5 +1,5 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-package com.kigtts.next.ui.home
+package com.kigtts.next.ui.components.reorder
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 /** Keep the floating card until it reaches its final slot; reveal the list in the same frame. */
 @Composable
-fun rememberPhraseDrop(drag: ReorderDrag): State<Offset> {
+fun rememberReorderDrop(drag: ReorderDrag): State<Offset> {
     val settling = drag.settling
     val animation = remember(drag.key, settling) { Animatable(drag.floatingBounds.topLeft, Offset.VectorConverter) }
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Offset>()

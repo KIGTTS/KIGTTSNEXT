@@ -49,6 +49,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }
                         loaded[info.manifest.id] = slot to proxy
+                        ProviderCatalog(paths).save(proxy)
                     } catch (failure: Exception) { error = failure.message ?: "插件启动失败" }
                 }
             }
@@ -59,6 +60,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     }
     private suspend fun unload(id: String) {
         val item = loaded[id] ?: return
+        ProviderCatalog(paths).save(item.second)
         item.second.close()
         loaded.remove(id)
         registry.replace(builtins + loaded.values.map { it.second })

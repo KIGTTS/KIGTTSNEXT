@@ -15,7 +15,7 @@ enum class UiPresentation { BUTTON, MENU_ITEM }
 @Serializable
 enum class UiButtonStyle { ICON, ICON_TEXT }
 @Serializable
-enum class PluginIcon { INFO, MIC, SPEAKER, ADD, MENU, SETTINGS, TEXT, STAR, HEARING, CLOSE }
+enum class PluginIcon { INFO, MIC, SPEAKER, ADD, MENU, SETTINGS, TEXT, STAR, HEARING, CLOSE, PIN, EDIT, IMAGE, EXPORT }
 
 @Serializable
 data class UiAction(
@@ -43,7 +43,7 @@ data class PluginContributions(
 )
 
 @Serializable
-data class PluginPage(val id: String, val title: String, val blocks: List<PageBlock>)
+data class PluginPage(val id: String, val title: String, val blocks: List<PageBlock>, val management: ManagementList? = null)
 @Serializable
 data class PageAction(val id: String, val label: String, val icon: PluginIcon = PluginIcon.INFO)
 

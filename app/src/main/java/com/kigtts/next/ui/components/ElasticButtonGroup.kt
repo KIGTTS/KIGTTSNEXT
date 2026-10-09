@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.PopupProperties
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.constrainHeight
 import kotlin.math.floor
@@ -53,6 +55,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
         } }
     }
     var more by remember { mutableStateOf(false) }
+    BackHandler(more) { more = false }
     BoxWithConstraints(modifier.height(32.dp),
         contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart) {
         val capacity = floor((maxWidth.value + 4f) / 36f).toInt().coerceAtLeast(1)
@@ -94,7 +97,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 placeables.forEach { it.placeRelative(x, 0); x += it.width + gap }
             }
         }
-        DropdownMenu(more && overflow && LocalActionInteractivity.current, { more = false }) {
+        DropdownMenu(more && overflow && LocalActionInteractivity.current, { more = false }, properties = PopupProperties(focusable = false)) {
             hidden.forEach { action -> DropdownMenuItem(text = { Text(action.label) },
                 leadingIcon = { Icon(action.icon, null) }, modifier = Modifier.testTag(action.id + "-menu"),
                 onClick = feedbackClick { more = false; action.onClick() }) }

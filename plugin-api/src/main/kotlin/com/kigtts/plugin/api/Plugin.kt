@@ -2,7 +2,7 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 3
+const val PLUGIN_API_VERSION = 4
 
 @Serializable
 data class PluginDescriptor(
@@ -62,5 +62,8 @@ sealed interface PluginOutcome {
         val zip: Boolean = false, val mimeTypes: List<String> = listOf("*/*")) : PluginOutcome
     /** Host renders a native input dialog; callback receives inputs["value"]. */
     @Serializable
-    data class TextInput(val title: String, val actionId: String, val initialValue: String = "") : PluginOutcome
+    data class TextInput(val title: String, val actionId: String, val initialValue: String = "", val multiline: Boolean = false) : PluginOutcome
+    @Serializable
+    data class ExportResource(val title: String, val resource: PluginResource, val fileName: String,
+        val mimeType: String = "application/octet-stream", val temporary: Boolean = false) : PluginOutcome
 }

@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
+import com.kigtts.next.ui.management.ManagedItemList
 
 @Composable
 fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAction) -> Unit, modifier: Modifier = Modifier,
@@ -35,11 +36,15 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, invoke: (String) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, invoke: (String, Map<String, String>) -> Unit) {
     if (page == null) { Text("插件页面暂不可用", Modifier.padding(24.dp)); return }
+    page.management?.let { list ->
+        ManagedItemList(list, busy, resolve, invoke) { page.blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } } }
+        return
+    }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在处理插件任务…") }
-        page.blocks.forEach { RenderBlock(it, invoke) }
+        page.blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
     }
 }
 

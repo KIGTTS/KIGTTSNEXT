@@ -29,6 +29,10 @@ fun PluginIcon.vector(): ImageVector = when (this) {
     PluginIcon.STAR -> Icons.Default.Star
     PluginIcon.HEARING -> Icons.Default.Hearing
     PluginIcon.CLOSE -> Icons.Default.Close
+    PluginIcon.PIN -> Icons.Default.PushPin
+    PluginIcon.EDIT -> Icons.Default.Edit
+    PluginIcon.IMAGE -> Icons.Default.Image
+    PluginIcon.EXPORT -> Icons.Default.FileUpload
 }
 
 @Composable

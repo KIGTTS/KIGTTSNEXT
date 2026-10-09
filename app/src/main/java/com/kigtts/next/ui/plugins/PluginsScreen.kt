@@ -32,48 +32,23 @@ fun PluginsScreen(model: AppViewModel) {
             finally { busy = false }
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    val rows = pluginManagementItems(model)
+    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), busy,
+        invoke = { action, inputs ->
+            val pieces = action.split('/')
+            when (pieces[0]) {
+                "plugins-order" -> model.reorderPlugins(PluginJson.decodeFromString(requireNotNull(inputs["order"])))
+                "enable" -> model.changePlugin(pieces[1], inputs["checked"].toBoolean())
+                "tts" -> model.selectEngine(pieces[1], true)
+                "asr" -> model.selectEngine(pieces[1], false)
+                "remove" -> remove = pieces[1]
+                "page" -> model.navigate(Destination.PluginPage(pieces[1], pieces.drop(2).joinToString("/")))
+            }
+        }) {
         Text("插件", style = MaterialTheme.typography.headlineMedium)
-        Text("语音引擎通过独立插件安装。插件可注册按钮、菜单和页面，沿用应用主题。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("拖动手柄或长按排序。条目菜单提供页面、引擎选择和卸载操作。", color = MaterialTheme.colorScheme.onSurfaceVariant)
         FilledTonalButton(shapes = expressivePillShapes(), enabled = !busy, onClick = feedbackClick { importer.launch(arrayOf("*/*")) }) { Text("安装 .kigplugin") }
-        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         if (model.pluginManager.status.isEmpty()) Text("尚未安装语音引擎插件")
-        model.pluginManager.status.forEach { status ->
-            val info = status.installed
-            val id = info.manifest.id
-            val plugin = model.registry.plugin(id)
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                        Text(info.manifest.name, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                        Switch(info.enabled, onCheckedChange = feedbackChange { model.changePlugin(id, it) })
-                    }
-                    Text("v${info.manifest.version} · ${info.manifest.license}", style = MaterialTheme.typography.labelMedium)
-                    status.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    plugin?.tts?.let { engine ->
-                        if (engine.info.role == TtsRole.SERVICE || model.registry.plugins.none { it.tts?.info?.role == TtsRole.SERVICE })
-                            EngineChoice("语音合成", model.selectedTtsId == id, engine.info.availability) { model.selectEngine(id, true) }
-                        else Text("由语音合成服务统一选用声音")
-                    }
-                    plugin?.asr?.let { engine ->
-                        Text(when (engine.info.streaming) { StreamingKind.SEGMENTED -> "完整录音 / 分段流式"; StreamingKind.INCREMENTAL -> "完整录音 / 增量流式"; StreamingKind.NONE -> "完整录音" })
-                        EngineChoice("语音识别", model.selectedAsrId == id, engine.info.availability) { model.selectEngine(id, false) }
-                    }
-                    PluginPages(plugin, model)
-                    TextButton(onClick = feedbackClick { remove = id }) { Text("卸载并删除插件数据") }
-                }
-            }
-        }
-        model.registry.plugins.filter { plugin -> model.pluginManager.status.none { it.installed.manifest.id == plugin.descriptor.id } }.forEach { plugin ->
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(plugin.descriptor.name, style = MaterialTheme.typography.titleLarge)
-                    Text(plugin.descriptor.description)
-                    Text("v${plugin.descriptor.version}", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
-                    PluginPages(plugin, model)
-                }
-            }
-        }
     }
     pending?.let { candidate ->
         val manifest = candidate.preview.manifest
@@ -98,14 +73,4 @@ fun PluginsScreen(model: AppViewModel) {
         text = { Text("该插件的模型、下载、配置和临时文件也会删除。") },
         confirmButton = { TextButton(onClick = feedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
         dismissButton = { TextButton(onClick = feedbackClick { remove = null }) { Text("取消") } }) }
-}
-
-@Composable private fun EngineChoice(label: String, selected: Boolean, available: EngineAvailability, select: () -> Unit) {
-    if (available == EngineAvailability.NEEDS_RESOURCES) Text("需要先导入资源", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    FilledTonalButton(shapes = expressivePillShapes(), onClick = feedbackClick(select)) { Text(if (selected) "当前${label}引擎" else "用作${label}引擎") }
-}
-@Composable private fun PluginPages(plugin: KigPlugin?, model: AppViewModel) {
-    plugin?.contributions?.drawerEntries?.forEach { entry ->
-        FilledTonalButton(shapes = expressivePillShapes(), onClick = feedbackClick { model.navigate(Destination.PluginPage(plugin.descriptor.id, entry.pageId)) }) { Text("打开${entry.label}") }
-    }
 }

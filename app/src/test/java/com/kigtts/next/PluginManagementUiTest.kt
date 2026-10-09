@@ -59,4 +59,26 @@ class PluginManagementUiTest {
         compose.runOnIdle { assertEquals("默认值", received) }
         compose.onNodeWithText("第二项配置").assertDoesNotExist()
     }
+    @Test fun externalManagementPageSharesRendererAndRoutesAccessibleOrder() {
+        var order = listOf("piper", "other"); var received: List<String>? = null
+        val plugin = object : KigPlugin {
+            override val descriptor = PluginDescriptor("test.library", "语音包管理", "test")
+            override fun page(pageId: String, context: PluginContext) = PluginPage("packs", "语音包管理", emptyList(), ManagementList("cross-engine",
+                order.map { ManagementItem(it, if (it == "piper") "旧版 Piper 语音" else "其它引擎声音", "跨引擎列表", PluginIcon.SPEAKER) }, "save-order"))
+            override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome {
+                order = PluginJson.decodeFromString(context.inputs.getValue("order")); received = order; return PluginOutcome.RefreshUi
+            }
+        }
+        val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>(), listOf(plugin))
+        model.navigate(Destination.PluginPage("test.library", "packs"))
+        compose.setContent { KigttsApp(model) }
+        compose.onNodeWithTag("managed-more/piper").performClick()
+        compose.onNodeWithText("下移").performClick()
+        compose.waitForIdle()
+        assertEquals(listOf("other", "piper"), received)
+        val first = compose.onNodeWithTag("managed-item/other").getUnclippedBoundsInRoot()
+        val last = compose.onNodeWithTag("managed-item/piper").getUnclippedBoundsInRoot()
+        assertTrue(first.top < last.top)
+        compose.onRoot().captureRoboImage("build/previews/unified-voice-package-page.png")
+    }
 }

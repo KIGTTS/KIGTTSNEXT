@@ -11,8 +11,7 @@ internal data class PiperPack(val directory: File, val model: File, val config: 
     companion object {
         fun read(directory: File): PiperPack {
             fun local(path: String): File {
-                require(path.isNotBlank() && !path.contains('\\') && !File(path).isAbsolute && path.split('/').none { it == ".." })
-                return File(directory, path).canonicalFile.also { require(it.toPath().startsWith(directory.canonicalFile.toPath())) }
+                return File(directory, safePackPath(path)).canonicalFile.also { require(it.toPath().startsWith(directory.canonicalFile.toPath())) }
             }
             val manifest = File(directory, "manifest.json").takeIf { it.isFile }?.let { JSONObject(it.readText()) }
             val files = manifest?.optJSONObject("files")
@@ -22,9 +21,9 @@ internal data class PiperPack(val directory: File, val model: File, val config: 
                 ?: File(model.path + ".json")
             require(model.isFile && model.length() > 0 && config.isFile && config.length() <= 4 * 1024 * 1024)
             val json = JSONObject(config.readText())
-            val type = json.optString("phoneme_type", "espeak")
+            val type = json.optString("phoneme_type", if (files?.optString("phonemizer").isNullOrBlank()) "espeak" else "text").trim().lowercase(java.util.Locale.ROOT)
             val dictionary = files?.optString("phonemizer")?.takeIf { it.isNotBlank() }?.let(::local)
-            if (!type.contains("espeak")) require(dictionary == null || dictionary.isFile) { "缺少发音词典" }
+            require(dictionary == null || dictionary.isFile) { "缺少发音词典" }
             val rate = manifest?.optInt("sample_rate", 0)?.takeIf { it > 0 }
                 ?: json.optJSONObject("audio")?.optInt("sample_rate", 22050) ?: json.optInt("sample_rate", 22050)
             require(rate in 8000..192000)

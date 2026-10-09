@@ -1,4 +1,4 @@
-# 插件 API v3
+# 插件 API v4
 
 插件实现 KigPlugin，声明 PluginDescriptor、可选 TtsEngine / AsrEngine 与 PluginContributions，然后由宿主 PluginRegistry 注册。内置功能 UI 仍为源码模块；外部引擎通过 .kigplugin 安装，在独立工作进程中加载。宿主注册远程代理，具体引擎类与依赖不进入主程序。包、生命周期、目录与限制详见 [专用插件包](plugin-packages.md)。
 
@@ -34,7 +34,7 @@ Tab 使用与分组相同的原生 FilterChip、圆形外端与弹性接邻圆�
 
 扩展按钮的添加、撤销、名称/图标/样式切换由宿主统一提供出入及替换动效，退出快照不产生重复无障碍入口或菜单；点击按当前贡献 ID 路由，已撤销动作不执行。底部五个槽位保持稳定身份与宽度过渡，贡献变化不会重建正在拖动的快捷入口。聆听上面板压缩为单行时，宿主临时不显示其底部扩展按钮，空间恢复后还原。
 
-动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 3）。API2 的二进制包必须重新构建，同发布者递增版本更新可保留模型和配置。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
+动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 4）。API2/API3 的二进制包必须重新构建，同发布者递增版本更新可保留模型和配置。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
 
 ## 手势贡献
 
@@ -77,11 +77,11 @@ TtsInfo 声明资源就绪状态、可选声音列表和单次文本长度；Tts
 
 声明 `speech-service` 能力的独立插件在 `PluginEnvironment.speechBroker` 得到通用代理：
 
-- `providers()` 返回已启用的提供者 ID、名称与 `TtsInfo`，不暴露其它插件实现或服务，禁止循环嵌套。
+- `providers()` 返回已安装的提供者 ID、名称、`enabled` 与 `TtsInfo`；停用提供者使用规范目录缓存，只可查看与排序，实际合成/修改需先启用。不暴露其它插件实现或服务，禁止循环嵌套。
 - `synthesize(pluginId, request)` 返回可取消、有背压的 PCM 流；实际推理始终在目标提供者进程。
 - `command(pluginId, VoiceCommand)` 转发规范管理操作。服务与引擎的资源格式、选用规则、UI 和保底策略由插件实现。
 
-提供者可实现 `KigPlugin.voiceManager` 并声明 `voice-packs`，同时设置 `TtsInfo.managesVoices = true`。`VoiceCommand` 支持 IMPORT、SELECT、DELETE、RENAME、REFRESH；`selectedVoiceId` 表示当前默认声音，`importsVoicePacks` 表示可导入，`VoiceInfo.deletable` 控制删除/重命名入口。没有 VoiceManager 的提供者仍可列出声音，服务直接将选定 ID 放入 TtsRequest；REFRESH 仅刷新通用代理快照。
+提供者可实现 `KigPlugin.voiceManager` 并声明 `voice-packs`，同时设置 `TtsInfo.managesVoices = true`。`VoiceCommand` 支持 IMPORT、SELECT、DELETE、RENAME、REFRESH、UPDATE_METADATA、SET_AVATAR、EXPORT、REORDER；`selectedVoiceId` 表示当前默认声音，`importsVoicePacks` 表示可导入，`VoiceInfo.deletable` 控制删除/重命名入口。没有 VoiceManager 的提供者仍可列出声音，服务直接将选定 ID 放入 TtsRequest；REFRESH 仅刷新通用代理快照。
 
 IMPORT 的 `resourcePath` 是服务自身数据目录下的相对路径。broker 将文件复制到目标引擎的 `tmp/broker-*.voicepack` 后传入目标相对路径，管理调用结束始终清理副本；目标引擎负责验证、安装到自己的模型目录。不能传任意绝对路径。导入原件由服务清理，模型和配置始终归对应插件。删除确认由服务声明式菜单发起，删除同包全部声音时应明确提示。
 
@@ -96,3 +96,24 @@ PluginOutcome.ImportResource 请求宿主选择并复制文件或 ZIP 到该插�
 ## 当前边界
 
 外部包首版支持 Android DEX 与可选 JNI；Lua/Python 尚未集成。每插件独立普通工作进程，不构成权限沙箱，现阶段仅用于可信插件。声明式 UI 和运行上下文通过节流快照实时同步，按钮仍由宿主渲染。当前最多同时启用 4 个外部插件；复杂自定义控件、第三方手势争用选择和真正的权限隔离需后续协议升级。
+
+## 通用条目管理页（API4）
+
+PluginPage.management 可返回 ManagementList，宿主使用与“插件管理”同一原生列表组件渲染。ManagementItem 提供稳定 ID、标题、说明、图标/头像、选中/置顶状态、分区、主操作、菜单和可选启停开关。ManagementFilter 提供分类筛选；插件只提供数据，不传入 Compose、控件尺寸或自定义样式。
+
+reorderAction 接收 inputs["order"] 中完整的 JSON ID 列表，宿主支持长按或小手柄纵向拖动、海拔浮层、落位动画、边缘滚动和菜单上下移动。拖动过程中仅更新本地顺序，落位后提交一次；相异 group 不允许跨区移动。插件应使用 ItemOrder.validate 校验当前条目集合，持久化顺序后返回 RefreshUi。ItemOrder.reconcile/move 可供其它条目页复用。图片以 PluginResource 引用自身或服务所管理的提供者数据文件，路径始终为对应 Appdata 下的相对路径，读取不创建已卸载插件的数据目录。
+
+```kotlin
+PluginPage("records", "我的条目", emptyList(), management = ManagementList(
+    id = "records", items = records.map { ManagementItem(it.id, it.name, primaryAction = "open/${it.id}") },
+    reorderAction = "save-order"
+))
+// execute("save-order", context):
+val order = PluginJson.decodeFromString<List<String>>(context.inputs.getValue("order"))
+ItemOrder.validate(order, records.map { it.id })
+// 将 order 保存到本插件 configuration，再返回 PluginOutcome.RefreshUi。
+```
+
+TtsInfo.packs 区分语音包与 VoiceInfo 声音，VoiceInfo.packId 建立归属；多说话人模型在统一页只有一条包记录，进入详情选声音。VoicePackInfo 提供名称/备注/置顶/顺序、头像引用与可编辑/导出/删除能力。新增 UPDATE_METADATA、SET_AVATAR、EXPORT、REORDER；IMPORT 传入 packId 时更新已有包。头像导入副本仍由 broker 放到目标插件 tmp。停用提供者的规范目录从缓存读取，enabled=false；服务不得合成或修改停用引擎，启用后刷新目录。缓存是协议数据，不是引擎实现或模型解析。
+
+PluginOutcome.ExportResource 请求原生“另存为”，支持 MIME 类型、文件名、资源引用和临时标记；临时文件在完成/取消后清理，旋转时保留请求。TextInput.multiline 支持备注等多行输入。四角溢出菜单不抢输入焦点，插件模态菜单/输入期间暂停主字幕 IME 退出判定，关闭后恢复编辑键盘。次级页面返回与预测性返回固定采用入场侧，忽略手势边缘的方向。

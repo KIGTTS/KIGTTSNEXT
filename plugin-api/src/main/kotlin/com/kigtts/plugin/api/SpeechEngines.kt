@@ -23,14 +23,15 @@ enum class EngineAvailability { READY, NEEDS_RESOURCES }
 enum class StreamingKind { NONE, SEGMENTED, INCREMENTAL }
 @Serializable
 data class VoiceInfo(val id: String, val name: String, val language: String,
-    val description: String = "", val deletable: Boolean = false, val packName: String? = null)
+    val description: String = "", val deletable: Boolean = false, val packName: String? = null, val packId: String? = null)
 @Serializable
 enum class TtsRole { PROVIDER, SERVICE }
 @Serializable
 data class TtsInfo(val availability: EngineAvailability = EngineAvailability.READY,
     val voices: List<VoiceInfo> = emptyList(), val maxTextLength: Int = 4_000,
     val role: TtsRole = TtsRole.PROVIDER, val selectedVoiceId: String? = null,
-    val importsVoicePacks: Boolean = false, val managesVoices: Boolean = false) {
+    val importsVoicePacks: Boolean = false, val managesVoices: Boolean = false,
+    val packs: List<VoicePackInfo> = emptyList()) {
     init { require(maxTextLength in 2..100_000) }
 }
 @Serializable

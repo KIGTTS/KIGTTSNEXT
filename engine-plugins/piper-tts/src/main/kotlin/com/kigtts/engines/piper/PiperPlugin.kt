@@ -8,14 +8,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PiperPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("engine.piper", "Piper 语音引擎", "旧 KIGTTS Piper 的独立插件，可导入不同语音包", version = "0.2.0", license = "GPL-3.0-only")
+    override val descriptor = PluginDescriptor("engine.piper", "Piper 语音引擎", "旧 KIGTTS Piper 的独立插件，可导入不同语音包", version = "0.3.0", license = "GPL-3.0-only")
     private lateinit var environment: PluginEnvironment
     private lateinit var voices: PiperVoices
     private val access = Mutex()
     override suspend fun attach(environment: PluginEnvironment) { this.environment = environment; voices = PiperVoices(environment.storage) }
     override val tts = object : TtsEngine {
         override val info get() = TtsInfo(if (voices.list().isEmpty()) EngineAvailability.NEEDS_RESOURCES else EngineAvailability.READY,
-            voices.list(), maxTextLength = 500, selectedVoiceId = voices.selected, importsVoicePacks = true, managesVoices = true)
+            voices.list(), maxTextLength = 500, selectedVoiceId = voices.selected, importsVoicePacks = true, managesVoices = true, packs = voices.packs())
         override fun synthesize(request: TtsRequest) = flow {
             access.withLock {
                 emit(SynthesisEvent.Started)
@@ -36,11 +36,19 @@ class PiperPlugin : KigPlugin {
         override suspend fun command(command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {
             access.withLock {
                 when (command.operation) {
-                    VoiceOperation.IMPORT -> voices.import(environment.storage.file(requireNotNull(command.resourcePath)))
+                    VoiceOperation.IMPORT -> voices.import(environment.storage.file(requireNotNull(command.resourcePath)), command.packId)
                     VoiceOperation.SELECT -> voices.choose(requireNotNull(command.voiceId))
                     VoiceOperation.DELETE -> voices.delete(requireNotNull(command.voiceId))
                     VoiceOperation.RENAME -> voices.rename(requireNotNull(command.voiceId), requireNotNull(command.value))
                     VoiceOperation.REFRESH -> Unit
+                    VoiceOperation.UPDATE_METADATA -> voices.update(requireNotNull(command.packId), requireNotNull(command.metadata))
+                    VoiceOperation.REORDER -> voices.reorder(command.order)
+                    VoiceOperation.SET_AVATAR -> voices.avatar(requireNotNull(command.packId), environment.storage.file(requireNotNull(command.resourcePath)))
+                    VoiceOperation.EXPORT -> {
+                        val file = voices.export(requireNotNull(command.packId))
+                        return@withLock PluginOutcome.ExportResource("导出语音包", PluginResource(file.relativeTo(environment.storage.root).invariantSeparatorsPath, descriptor.id),
+                            voices.packs().first { it.id == command.packId }.metadata.name.replace(Regex("[\\\\/:*?\"<>|]"), "_").take(100) + ".kigvpk", "application/zip", temporary = true)
+                    }
                 }
                 PluginOutcome.RefreshUi
             }

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.components.reorder.*
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,7 +57,7 @@ fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, ca
         }
     }
     val picked = phrases.firstOrNull { it.id == drag.key }
-    val position = rememberPhraseDrop(drag)
+    val position = rememberReorderDrop(drag)
     val elevation by animateDpAsState(if (picked != null && !drag.settling) 8.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "phrase-drag-elevation")
     val scale by animateFloatAsState(if (picked != null && !drag.settling) 1.015f else 1f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "phrase-drag-scale")
     val density = LocalDensity.current

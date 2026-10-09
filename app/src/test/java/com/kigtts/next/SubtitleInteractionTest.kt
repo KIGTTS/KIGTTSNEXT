@@ -49,6 +49,20 @@ class SubtitleInteractionTest {
         }
         compose.waitForIdle()
     }
+    @Test fun textMenuKeepsEditorFocusedAndDoesNotExitInput() {
+        val model = show()
+        compose.onNodeWithTag("subtitle-content").performClick()
+        ime(300)
+        compose.onNodeWithTag("speech-editor").assertIsFocused().performTextInput("继续输入")
+        compose.onNodeWithTag("editor-menu").performClick()
+        compose.onNodeWithText("流式识别", substring = true).assertExists()
+        compose.onNodeWithTag("speech-editor").assertIsFocused()
+        assertTrue(model.state.value.editing)
+        back()
+        compose.onNodeWithTag("speech-editor").assertIsFocused()
+        assertTrue(model.state.value.editing)
+        compose.onRoot().captureRoboImage("build/previews/editor-menu-keeps-input.png")
+    }
 
     @Test fun blankCardEdgesOpenInputWhileButtonsRemainIndependent() {
         val model = show()

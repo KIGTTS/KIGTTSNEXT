@@ -22,7 +22,6 @@ enum class PageRole { FOREGROUND, BACKGROUND, EXITING }
 private class PageMotionMemory(initial: Float, var role: PageRole) {
     var animation = Animatable(initial)
     var gesture = 0f
-    var gestureEdge = 0
     var parentPreview = 0f
 }
 
@@ -34,9 +33,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
         if (role == PageRole.FOREGROUND) entry.direction else -.08f, role) }
     val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
     val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
-    val leavingDirection = remember(role) {
-        if (role == PageRole.EXITING && prediction > 0f) { if (memory.gestureEdge == 0) 1f else -1f } else entry.direction
-    }
+    val leavingDirection = entry.direction
     val animation = remember(role) {
         Animatable(memory.animation.value * (1f - memory.parentPreview)).also { memory.animation = it }
     }
@@ -51,18 +48,16 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     SideEffect {
         memory.role = role
         memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
-        memory.gestureEdge = edge
         memory.parentPreview = parentPreview
     }
     val currentRole by rememberUpdatedState(role)
     val currentProgress by rememberUpdatedState(progress)
     val currentPreview by rememberUpdatedState(parentPreview)
-    val currentEdge by rememberUpdatedState(edge)
     val layer = Modifier.fillMaxSize().graphicsLayer {
         val position = animation.value * (1f - currentPreview)
         val departed = if (currentRole == PageRole.EXITING) abs(position).coerceIn(0f, 1f) else 0f
         val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress else prediction * (1f - departed)
-        val gestureDirection = if (currentRole == PageRole.EXITING) leavingDirection else if (currentEdge == 0) 1f else -1f
+        val gestureDirection = entry.direction
         val underlay = if (currentRole != PageRole.EXITING) (-position / .08f).coerceIn(0f, 1f) else 0f
         translationX = size.width * position + 28.dp.toPx() * gesture * gestureDirection
         scaleX = 1f - .015f * underlay - .06f * gesture

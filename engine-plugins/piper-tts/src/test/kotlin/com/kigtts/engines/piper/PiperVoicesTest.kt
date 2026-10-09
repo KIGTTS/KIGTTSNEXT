@@ -54,7 +54,7 @@ class PiperVoicesTest {
         val voices = PiperVoices(storage)
         val good = voices.import(archive())
         for (bad in listOf(zip("../outside" to "bad"), zip("voice.onnx" to "bad", "voice.onnx.json" to "{}"),
-            zip("voice.onnx" to "model", "voice.onnx.json" to config, "meta.json" to "invalid"))) {
+            zip("./voice.onnx" to "model", "voice.onnx" to "duplicate", "voice.onnx.json" to config))) {
             assertTrue(runCatching { voices.import(bad) }.isFailure)
             assertEquals(2, voices.list().size)
             assertEquals(good.id, voices.selected)
@@ -65,5 +65,68 @@ class PiperVoicesTest {
         val root = files.newFolder()
         File(root, "manifest.json").writeText("""{"files":{"model":"../outside.onnx","config":"config.json"}}""")
         assertTrue(runCatching { PiperPack.read(root) }.isFailure)
+    }
+    @Test fun actualLegacyVoicepackJsonPreservesPinOrderRemarksAndAvatarAndExportsBack() {
+        val storage = PluginStorage(files.newFolder()); val voices = PiperVoices(storage)
+        val imported = voices.import(zip("manifest.json" to """{"files":{"model":"tts\\voice.onnx","config":"tts/config.json","phonemizer":"tts/phones.dict"},"sample_rate":22050}""",
+            "voicepack.json" to """{"name":"旧包","remark":"旧备注","avatar":"portrait.png","pinned":true,"order":42,"custom":"keep"}""",
+            "portrait.png" to "preserved image", "preview.wav" to "preview", "tts/voice.onnx" to "model", "tts/config.json" to config.replace("\"phoneme_type\":\"espeak\",", ""), "tts/phones.dict" to "你 a"))
+        val pack = voices.packs().single()
+        assertTrue(pack.metadata.pinned); assertEquals(42L, pack.metadata.order); assertNotNull(pack.avatarPath)
+        assertEquals("text", voices.resolve(imported.id).first.phonemeType)
+        voices.update(pack.id, pack.metadata.copy(name = "修改名称", remark = "多行\n备注"))
+        val exported = voices.export(pack.id)
+        val restored = PiperVoices(PluginStorage(files.newFolder())).also { it.import(exported) }
+        assertEquals("修改名称", restored.packs().single().metadata.name)
+        assertEquals("多行\n备注", restored.packs().single().metadata.remark)
+        java.util.zip.ZipFile(exported).use { zip ->
+            assertNotNull(zip.getEntry("voicepack.json")); assertNotNull(zip.getEntry("preview.wav")); assertNotNull(zip.getEntry("portrait.png"))
+            val json = org.json.JSONObject(zip.getInputStream(zip.getEntry("voicepack.json")).reader().readText())
+            assertEquals("keep", json.getString("custom"))
+        }
+    }
+    @Test fun standardExportCreatesLegacyRequiredManifestDictionaryAndExplicitPhonemeType() {
+        val voices = PiperVoices(PluginStorage(files.newFolder())); val imported = voices.import(archive())
+        val exported = voices.export(imported.packId!!)
+        java.util.zip.ZipFile(exported).use { zip ->
+            val manifest = org.json.JSONObject(zip.getInputStream(zip.getEntry("manifest.json")).reader().readText())
+            assertNotNull(zip.getEntry(manifest.getJSONObject("files").getString("phonemizer")))
+        }
+        val restored = PiperVoices(PluginStorage(files.newFolder())).also { it.import(exported) }
+        assertEquals("espeak", restored.resolve(null).first.phonemeType)
+    }
+    @Test fun avatarUpdateWritesARealImageInsidePackWithoutChangingModel() {
+        val storage = PluginStorage(files.newFolder()); val voices = PiperVoices(storage); val voice = voices.import(archive())
+        val model = voices.resolve(voice.id).first.model.readBytes()
+        val image = java.io.File(storage.temporary, "source.png")
+        val bitmap = android.graphics.Bitmap.createBitmap(4, 4, android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.RED)
+        image.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
+        voices.avatar(voice.packId!!, image)
+        val avatar = storage.file(voices.packs().single().avatarPath!!)
+        assertEquals(android.graphics.Color.RED, android.graphics.BitmapFactory.decodeFile(avatar.path).getPixel(0, 0))
+        assertArrayEquals(model, voices.resolve(voice.id).first.model.readBytes())
+    }
+    @Test fun updatingPackKeepsIdentityMetadataAndSelectionWhileInvalidUpdateRollsBack() {
+        val storage = PluginStorage(files.newFolder()); val voices = PiperVoices(storage); val original = voices.import(archive())
+        val pack = voices.packs().single(); voices.update(pack.id, pack.metadata.copy(name = "我的包", remark = "保留", pinned = true, order = 9))
+        val avatar = java.io.File(voices.directory(pack.id), "avatar.png").apply { writeText("my avatar") }
+        voices.import(zip("model.onnx" to "updated model", "model.onnx.json" to config), replacing = pack.id)
+        assertEquals(original.id, voices.selected); assertEquals(pack.id, voices.packs().single().id)
+        assertEquals("我的包", voices.packs().single().metadata.name); assertTrue(voices.packs().single().metadata.pinned)
+        assertEquals("my avatar", avatar.readText()); assertEquals("updated model", voices.resolve(original.id).first.model.readText())
+        assertTrue(runCatching { voices.import(zip("model.onnx" to "bad", "model.onnx.json" to "{}"), replacing = pack.id) }.isFailure)
+        assertEquals("updated model", voices.resolve(original.id).first.model.readText())
+    }
+    @Test fun api3NameMigrationAndLegacyMetadataBackupSurviveReorderingAndUpdates() {
+        val voices = PiperVoices(PluginStorage(files.newFolder())); val first = voices.import(archive()); val second = voices.import(archive())
+        val dir = voices.directory(first.packId!!)
+        java.io.File(dir, "voice-meta.json").writeText("""{"name":"API3 名称","remark":"API3 备注"}""")
+        java.io.File(dir, "voicepack.json").writeText("invalid")
+        java.io.File(dir, "voicepack.json.bak").writeText("""{"name":"旧名称","pinned":true,"order":99,"avatar":"avatar.png"}""")
+        assertEquals("API3 名称", voices.packs().first { it.id == first.packId }.metadata.name)
+        assertTrue(voices.packs().first { it.id == first.packId }.metadata.pinned)
+        voices.reorder(listOf(second.packId!!, first.packId!!))
+        assertEquals(0L, voices.packs().first { it.id == second.packId }.metadata.order)
     }
 }

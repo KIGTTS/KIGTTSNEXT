@@ -27,6 +27,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)
     val selectedAsrId get() = engineSelection.getString("asr", null)
+    private val managementOrder = ManagementOrderStore(application)
+    fun pluginOrder(ids: List<String>) = managementOrder.ordered("plugins", ids)
+    fun reorderPlugins(ids: List<String>) {
+        val current = (pluginManager.status.map { it.installed.manifest.id } + registry.plugins.map { it.descriptor.id }).distinct()
+        managementOrder.save("plugins", ids, current)
+        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+    }
     private val themeStore = ThemeSettingsStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
     private val phraseStore = QuickPhraseStore(application)

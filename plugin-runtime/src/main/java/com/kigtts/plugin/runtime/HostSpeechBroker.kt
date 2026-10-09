@@ -21,7 +21,7 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
     }
     override fun providers(): String = PluginJson.encodeToString(registry.plugins.mapNotNull { plugin ->
         plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { TtsProvider(plugin.descriptor.id, plugin.descriptor.name, it) }
-    })
+    } + ProviderCatalog(paths).disabled(registry.plugins.map { it.descriptor.id }.toSet()))
     override fun command(pluginId: String, command: String): String = runBlocking(Dispatchers.IO) {
         require(command.length <= 8192)
         val operation = PluginJson.decodeFromString<VoiceCommand>(command)
@@ -33,7 +33,7 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
         val manager = requireNotNull(target.voiceManager) { "该引擎不支持语音包管理" }
         var staged: java.io.File? = null
         try {
-            val forwarded = if (operation.operation == VoiceOperation.IMPORT) {
+            val forwarded = if (operation.operation in setOf(VoiceOperation.IMPORT, VoiceOperation.SET_AVATAR)) {
                 val input = paths.storage(owner).file(requireNotNull(operation.resourcePath))
                 require(input.isFile && input.length() in 1..MAX_RESOURCE_BYTES)
                 val relative = "tmp/broker-${UUID.randomUUID()}.voicepack"
@@ -41,7 +41,9 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
                 input.inputStream().use { source -> staged!!.outputStream().use { source.copyTo(it) } }
                 operation.copy(resourcePath = relative)
             } else operation
-            PluginJson.encodeToString(manager.command(forwarded))
+            val result = manager.command(forwarded)
+            ProviderCatalog(paths).save(target)
+            PluginJson.encodeToString(result)
         } finally { staged?.delete() }
     }
     override fun synthesize(pluginId: String, request: String, token: String): ParcelFileDescriptor {

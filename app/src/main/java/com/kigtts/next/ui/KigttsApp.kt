@@ -16,6 +16,7 @@ import com.kigtts.next.ui.navigation.*
 import com.kigtts.next.ui.sketch.SketchState
 import com.kigtts.plugin.api.PluginOutcome
 import com.kigtts.next.ui.plugins.PluginRequests
+import com.kigtts.next.ui.plugins.PluginExportRequest
 import kotlinx.coroutines.launch
 
 @Composable
@@ -28,12 +29,22 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     val sketch = remember { SketchState() }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    ObserveImeDismissal(state.editing) { model.editing(false) }
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
     var pluginInput by remember { mutableStateOf<Pair<String, PluginOutcome.TextInput>?>(null) }
     var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
+    var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
+    val inputOverlay = dialog != null || pluginMenu != null || pluginInput != null
+    var restoreInput by remember { mutableStateOf(false) }
+    ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
+    LaunchedEffect(inputOverlay, state.editing) {
+        if (inputOverlay && state.editing) restoreInput = true
+        else if (!inputOverlay && restoreInput) {
+            restoreInput = false
+            if (state.editing) keyboard?.show()
+        }
+    }
     LaunchedEffect(model) {
         model.events.collect { (plugin, outcome) ->
             when (outcome) {
@@ -42,6 +53,7 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
                 is PluginOutcome.TextInput -> pluginInput = plugin to outcome
                 is PluginOutcome.ImportResource -> pluginImport = plugin to outcome
+                is PluginOutcome.ExportResource -> pluginExport = plugin to outcome
                 else -> Unit
             }
         }
@@ -70,6 +82,7 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     KigttsTheme(state.theme) {
         ProvideButtonFeedback(state.hapticsEnabled) {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
+            PluginExportRequest(model, pluginExport) { pluginExport = null }
             RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
                 Scaffold(snackbarHost = { SnackbarHost(snackbar) },
                     contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),

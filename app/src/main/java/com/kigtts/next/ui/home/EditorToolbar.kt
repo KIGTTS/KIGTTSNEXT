@@ -30,7 +30,8 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
             ElasticButtonGroup(end, Modifier.weight(.3f), alignEnd = true,
                 overflowTag = "editor-top-end-more", overflowLabel = "字幕右上更多操作")
         }
-        DropdownMenu(menu, { menu = false }) {
+        androidx.activity.compose.BackHandler(menu) { menu = false }
+        DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
             DropdownMenuItem(text = { Text(if (state.streaming) "✓ 流式识别" else "流式识别") },
                 onClick = feedbackClick { model.streaming(true); menu = false })
             DropdownMenuItem(text = { Text(if (!state.streaming) "✓ 完整录音识别（最多 8 秒）" else "完整录音识别（最多 8 秒）") },
