@@ -24,13 +24,10 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
             MediaKind.IMAGE, MediaKind.MOTION_PHOTO -> {
                 var zoom by remember { mutableFloatStateOf(1f) }; var pan by remember { mutableStateOf(Offset.Zero) }
                 var bounds by remember { mutableStateOf(IntSize.Zero) }
-                var play by remember { mutableStateOf(false) }
                 LaunchedEffect(entry.scale) { zoom = 1f; pan = Offset.Zero }
                 val live = entry.video != null && (!entry.appleLive || state.appleLivePhotos)
-                LaunchedEffect(live) { if (!live) play = false }
                 Box(modifier.testTag("media-image").onSizeChanged { bounds = it }, contentAlignment = Alignment.Center) {
-                    if (play && live) MediaVideo(model.mediaRepository.file(entry, true), entry.name, true, { play = false }, Modifier.fillMaxSize(), entry.scale)
-                    else MediaImage(model.mediaRepository.file(entry), entry.name, Modifier.fillMaxSize()
+                    MediaImage(model.mediaRepository.file(entry), entry.name, Modifier.fillMaxSize()
                         .pointerInput(Unit) { detectTapGestures(onDoubleTap = { zoom = 1f; pan = Offset.Zero }, onLongPress = { model.enterSubtitleFullscreen() }) }
                         .transformable(rememberTransformableState { scale, offset, _ ->
                             zoom = (zoom * scale).coerceIn(1f, 5f)
@@ -38,7 +35,7 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                             pan = if (zoom == 1f) Offset.Zero else (pan + offset).let { Offset(it.x.coerceIn(-limitX, limitX), it.y.coerceIn(-limitY, limitY)) }
                         }), scale = entry.scale, backdrop = true,
                         contentModifier = Modifier.graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y })
-                    if (live && !play) FilledTonalButton(feedbackClick { play = true }, Modifier.align(Alignment.BottomCenter).padding(bottom = 52.dp).testTag("play-motion-photo")) { Text("播放实况") }
+                    if (live) LivePhotoPlayback(model.mediaRepository.file(entry,true),entry.name,entry.scale)
                 }
             }
             MediaKind.VIDEO -> MediaVideo(model.mediaRepository.file(entry), entry.name, false, {}, modifier, entry.scale)

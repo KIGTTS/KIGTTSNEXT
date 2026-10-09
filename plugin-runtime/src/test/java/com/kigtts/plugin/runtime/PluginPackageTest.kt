@@ -52,6 +52,7 @@ class PluginPackageTest {
         store.enabled("test.engine", false); assertFalse(store.installed().single().enabled)
         store.install(pack(2), publisher)
         assertEquals(2, store.verifyInstalled("test.engine").versionCode)
+        assertFalse("Updating a disabled plugin must keep it disabled",store.installed().single().enabled)
         assertEquals("model", paths.storage("test.engine").file("models/model.onnx").readText())
         store.uninstall("test.engine")
         assertFalse(File(paths.data, "test.engine").exists()); assertTrue(store.installed().isEmpty())

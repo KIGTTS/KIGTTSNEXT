@@ -6,6 +6,8 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 
 ## 当前功能
 
+- [独立插件管理器](docs/plugin-manager.md)：单独安装的 APK，安装/更新专用插件包、启停/重载、动作 JSON 调试、PCM 自检、实际工作进程与错误监控；可选持续监控通知。Debug 带稳定 ADB 作业入口，后续插件调试无需重复安装测试 APK。
+
 - [大字幕媒体与内容编辑](docs/media-content.md)：图片、Android 动态照片、视频、HTML 与插件网页，媒体库和内置文本/HTML 编辑器；快捷条目可关联媒体。图片/视频可选择适应或填充，适应留白以内容高斯模糊铺满。苹果实况照片默认关闭，在“设置 → 实验性功能”开启后支持照片＋视频配对导入与播放；关闭后保留静态照片。
 
 - 原始横版 Logo、胶囊按钮、原生 Expressive 按压形变；按钮组用固定 6 dp 弹簧伸展，相邻按钮与卡片联动圆角，长按钮不会按宽度比例过度挤压邻居。主界面字幕、聆听、快捷文本面板和短语卡片外圆角统一限制为 4–20 dp，圆角动效不会越过范围。
@@ -40,6 +42,7 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 - plugin-api：不依赖 Android/Compose 的引擎、UI 扩展与页面协议。
 - material-color：固定版本的官方 Material Color Utilities Java 源码，保留 Apache-2.0 LICENSE 与 NOTICE。
 - plugin-runtime / plugin-android-api：专用包校验、独立进程、PCM IPC 与插件数据环境。
+- manager-protocol / plugin-manager：独立版本的签名管理桥与常驻可复用管理器，不依赖引擎 SDK。
 - engine-plugins/recognition-service：独立识别服务、引擎选用/启停/排序与跨进程识别路由，供字幕和语音输入调用。
 - engine-plugins/speech-service：统一合成、语音包管理与内置系统 TTS 保底。
 - engine-plugins/piper-tts、engine-plugins/sensevoice-asr、engine-plugins/streaming-asr：独立推理引擎及其依赖/资源。
@@ -64,7 +67,7 @@ pwsh -File tools/Build-EnginePlugins.ps1
 
 APK：app/build/outputs/apk/debug/app-debug.apk。原生渲染截图：app/build/previews。
 
-当前 234 项本地测试及最后相关专项、Debug/AndroidTest 构建通过；Lint 为 0 错误、29 警告、1 提示。APK v2 签名与引擎/模型边界扫描通过。原生界面截图已生成，包含亮色与深色的主页、设置、插件、画板、名片、全屏快捷文本编辑和动效中间帧，以及媒体库、图片全屏和实验功能设置。媒体/网页原生真机用例已准备，主程序已安装到重新连接的手机；用户选择暂不安装测试包，旧插件同步升级与媒体真机检查待后续执行。
+当前 240 项本地测试均通过；主程序与独立管理器 Debug 构建、管理器 Release 构建与 Lint 通过。主程序 Lint 0 错误/29 警告/1 提示，管理器 0 错误/10 警告。APK 同签名与生产引擎/模型边界检查通过；Release 管理器不包含 ADB 控制入口。手机已安装最新两 APK，六包通过管理器更新到 API6/0.5.0，保留旧停用状态，完成系统 TTS PCM 自检和原生视频 GPU 首帧/整卡片背景核对。按用户选择未安装测试 APK；后台长期监控、不同设备媒体与性能仍需实际使用验证。
 
 最新回归包含三处横条仅按下即变形/触感、轻触不改变内容与取消复原、光标 12 dp 精度/完整字素/边界无重复震动、条目拾起首帧不透明/落位中间帧/同帧交接后编辑、状态栏在进入/静止/预测/返回时无投影、实际字宽随窗口宽度及系统字体缩放还原比例/重启持久化/自动适应不覆盖偏好，以及最小聆听面板下字号栏不挤压与抽屉 LOGO。
 

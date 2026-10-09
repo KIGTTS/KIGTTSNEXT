@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 data class PluginStatus(val installed: InstalledPlugin, val error: String? = null)
+data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
 class PluginManager(private val context: Context, private val builtins: List<KigPlugin>) {
@@ -21,6 +22,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     @Volatile var status: List<PluginStatus> = emptyList()
         private set
     suspend fun reload() = mutation.withLock { reloadLocked() }
+    suspend fun workers() = mutation.withLock { loaded.map { (id, entry) -> WorkerStatus(id, entry.first, entry.second.alive) } }
+    suspend fun restart(id: String) = mutation.withLock { paths.validateId(id);unload(id);reloadLocked() }
     suspend fun refreshContext(context: PluginContext): Boolean = mutation.withLock {
         var changed = false
         for ((_, proxy) in loaded.values) {

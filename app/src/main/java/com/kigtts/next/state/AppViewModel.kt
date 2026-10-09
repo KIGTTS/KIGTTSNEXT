@@ -20,10 +20,12 @@ import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
 import androidx.core.content.edit
 import com.kigtts.next.media.MediaRepository
+import com.kigtts.next.manager.HostPluginRuntime
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
-    val pluginManager = PluginManager(application, engineFixtures + builtinPlugins(application))
+    private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
+    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures + builtinPlugins(application))
     val registry = pluginManager.registry
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)
@@ -68,6 +70,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             }
     }
     init { if (engineFixtures.isEmpty()) observePluginContext() }
+    init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     private val navigationHistory = ArrayDeque<Destination>()
 
     private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
@@ -238,6 +241,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun onBackground() { viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
         super.onCleared()
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); pluginManager.close() }
+        hostRuntime?.detach(this)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); if (hostRuntime == null) pluginManager.close() }
     }
 }

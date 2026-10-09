@@ -21,6 +21,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     val context = LocalContext.current; val active = LocalPageActive.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
+    var ready by remember(entry.id) { mutableStateOf(false) }
     val web = remember(entry.id) {
         WebView(context).apply {
             CookieManager.getInstance().setAcceptCookie(false)
@@ -36,9 +37,9 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.load(request.url.toString(), request.method)
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     !(request.url.toString().startsWith(WebContentPolicy.ORIGIN + "/content/") || entry.network && WebContentPolicy.https(request.url.toString()))
-                override fun onPageFinished(view: WebView, url: String) { model.webHistory(view.canGoBack()) }
+                override fun onPageFinished(view: WebView, url: String) { ready=true;model.webHistory(view.canGoBack()) }
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                    if (request.isForMainFrame) model.message("网页加载失败：" + error.description)
+                    if (request.isForMainFrame) { ready=true;model.message("网页加载失败：" + error.description) }
                 }
             }
             if (entry.kind == MediaKind.HTML && entry.pluginId != null && entry.actions.isNotEmpty()) {
@@ -61,5 +62,5 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); web.stopLoading(); web.destroy(); model.webHistory(false); model.mediaEditing(false) }
     }
-    AndroidView(factory = { web }, modifier = modifier, update = {})
+    AndroidView(factory = { web }, modifier = modifier.mediaReveal(ready), update = {})
 }

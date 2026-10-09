@@ -14,3 +14,4 @@ include(":plugin-android-api", ":plugin-runtime", ":engine-plugins:system-tts", 
 include(":engine-plugins:system-support", ":engine-plugins:piper-tts", ":engine-plugins:speech-service")
 include(":engine-plugins:streaming-asr")
 include(":engine-plugins:recognition-service")
+include(":manager-protocol", ":plugin-manager")

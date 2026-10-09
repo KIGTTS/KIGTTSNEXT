@@ -55,10 +55,10 @@ class PluginPackageStore(val paths: PluginPaths) {
             FileOutputStream(pointer).use { it.write(version.toByteArray()); it.fd.sync() }
             java.nio.file.Files.move(pointer.toPath(), File(root, "current").toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
-            File(root, "disabled").delete()
+            if (previous?.enabled != false) File(root, "disabled").delete()
             root.listFiles().orEmpty().filter { it.isDirectory && it != destination }.forEach { it.deleteRecursively() }
         } catch (error: Exception) { destination.deleteRecursively(); throw error }
-        return InstalledPlugin(preview.manifest, preview.publisherSha256, true)
+        return InstalledPlugin(preview.manifest, preview.publisherSha256, previous?.enabled != false)
     }
     @Synchronized fun enabled(id: String, enabled: Boolean) {
         val marker = File(paths.packageDirectory(id), "disabled")

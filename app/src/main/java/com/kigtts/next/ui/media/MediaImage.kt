@@ -29,7 +29,7 @@ fun MediaImage(file: File?, description: String, modifier: Modifier = Modifier, 
         value = withContext(Dispatchers.IO) { file?.let { runCatching { decodeImage(it, maximum) }.getOrNull() } }
         loaded = true
     }
-    Box(modifier, contentAlignment = Alignment.Center) {
+    Box(modifier.mediaReveal(bitmap!=null||loaded||file==null), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             if (backdrop && scale == MediaScale.FIT) BlurredBackdrop(bitmap!!.asAndroidBitmap(), Modifier.fillMaxSize())
             Image(bitmap!!, description, Modifier.fillMaxSize().then(contentModifier), contentScale = if (scale == MediaScale.FIT) ContentScale.Fit else ContentScale.Crop)

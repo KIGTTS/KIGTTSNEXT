@@ -1,0 +1,4 @@
+interface:
+  display_name: "KIGTTS 插件调试"
+  short_description: "通过独立管理器安装、更新与检查 KIGTTS 插件和媒体"
+  default_prompt: "使用 $kigtts-plugin-debug 检查手机插件状态并调试本次修改。"

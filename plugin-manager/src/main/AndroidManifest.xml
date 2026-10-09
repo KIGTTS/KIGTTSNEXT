@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="com.kigtts.next.permission.MANAGE_PLUGINS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <queries><package android:name="com.kigtts.next" /></queries>
+    <application android:label="KIGTTS 插件管理器" android:icon="@android:drawable/ic_menu_manage"
+        android:allowBackup="false" android:supportsRtl="true" android:theme="@style/ManagerTheme">
+        <activity android:name=".ManagerActivity" android:exported="true"><intent-filter>
+            <action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter></activity>
+        <service android:name=".MonitorService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled monitoring of KIGTTS plugin workers and developer installation diagnostics" />
+        </service>
+    </application>
+</manifest>
