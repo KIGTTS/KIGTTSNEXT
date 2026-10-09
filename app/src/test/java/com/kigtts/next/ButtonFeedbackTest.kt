@@ -89,7 +89,7 @@ class ButtonFeedbackTest {
         compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         tick(HapticFeedbackType.ToggleOn) { compose.onNodeWithContentDescription("壁纸取色").performClick() }
         val before = feedback.size
-        compose.onNodeWithContentDescription("主题色 #6750A4").assertIsNotEnabled().performTouchInput { click() }
+        compose.onNodeWithContentDescription("选择主题色").assertIsNotEnabled().performTouchInput { click() }
         compose.runOnIdle { assertEquals(before, feedback.size) }
     }
 

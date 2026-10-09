@@ -32,16 +32,20 @@ internal fun groupedSettingShape(position: SettingPosition, outer: CornerBasedSh
 
 @Composable
 internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp), content = content)
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp), content = content)
 }
 
 @Composable
-internal fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, Modifier.padding(horizontal = 12.dp).semantics { heading() }, style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary)
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp), content = content)
+internal fun SettingsGroup(title: String, subtitle: String = "", content: @Composable ColumnScope.() -> Unit) {
+    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,color=MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                Text(title,Modifier.semantics { heading() },style=MaterialTheme.typography.titleMedium)
+                if(subtitle.isNotBlank())Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(2.dp),content=content)
+        }
     }
 }
 
@@ -49,11 +53,11 @@ internal fun SettingsGroup(title: String, content: @Composable ColumnScope.() ->
 internal fun SettingItem(title: String, summary: String, icon: ImageVector, position: SettingPosition,
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit = {}) {
-    val shape = groupedSettingShape(position, MaterialTheme.shapes.large)
+    val shape = groupedSettingShape(position, MaterialTheme.shapes.small)
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Icon(icon, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -63,8 +67,8 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector, posi
             content()
         }
     }
-    if (onClick == null) Surface(modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainer, content = body)
-    else Surface(onClick = feedbackClick(onClick), modifier = modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainer, content = body)
+    if (onClick == null) Surface(modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
+    else Surface(onClick = feedbackClick(onClick), modifier = modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
 }
 
 @Composable

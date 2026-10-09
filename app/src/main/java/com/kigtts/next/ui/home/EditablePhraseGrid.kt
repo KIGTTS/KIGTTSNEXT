@@ -33,7 +33,8 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
     var root by remember { mutableStateOf(Offset.Zero) }
     fun targets() = grid.layoutInfo.visibleItemsInfo.mapNotNull { item ->
         (item.key as? String)?.takeIf { it.startsWith("phrase/") }?.removePrefix("phrase/")?.takeIf { it in ids }?.let {
-            ReorderTarget(it, Rect(Offset(item.offset.x.toFloat(), item.offset.y.toFloat()), Size(item.size.width.toFloat(), item.size.height.toFloat())))
+            ReorderTarget(it, Rect(Offset(item.offset.x.toFloat(), (item.offset.y + grid.layoutInfo.beforeContentPadding).toFloat()),
+                Size(item.size.width.toFloat(), item.size.height.toFloat())))
         }
     }
     val move: (String, String) -> Unit = { from, to ->
@@ -64,7 +65,9 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
             EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) },
                 CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < phrases.lastIndex,
                     above = index >= 2, below = index + 2 < phrases.size),
-                Modifier.then(if (drag.key == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier.animateItem())
+                Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
+                    placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
+                    .then(if (drag.key == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
                     .then(actions).testTag("edit-phrase-" + phrase.id), grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier)
         }
         item(key = "add-phrase") {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.PopupProperties
 import com.kigtts.next.ui.components.*
@@ -20,13 +21,13 @@ import java.io.File
 @Composable
 internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier, dragGrip: Modifier, reorderable: Boolean, elevated: Boolean,
     enabled: Boolean, resolve: (PluginResource) -> File?, invoke: (String, Map<String, String>) -> Unit,
-    moveAccessible: (Int) -> Unit) {
+    moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp) {
     var menu by remember(item.id) { mutableStateOf(false) }
     val primary = item.primaryAction
     BackHandler(menu) { menu = false }
     Surface(modifier.testTag("managed-item/" + item.id), shape = MaterialTheme.shapes.medium,
         color = if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = if (elevated) 8.dp else 0.dp) {
+        shadowElevation = shadowElevation) {
         Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
             Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {

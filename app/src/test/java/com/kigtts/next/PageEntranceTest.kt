@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.*
@@ -67,4 +68,21 @@ class PageEntranceTest {
         enter(PageScene.Screen(Destination.Settings), 1f, "page-eased-entry-right")
     @Test fun leftHandSecondaryEntranceStaysMonotonicWithoutOvershoot() =
         enter(PageScene.Side(SidePage.SKETCH), -1f, "page-eased-entry-left")
+    @Test fun restoredForegroundDoesNotRepeatItsEntrance() {
+        val restoration = StateRestorationTester(compose)
+        val entry = PageEntry(PageScene.Screen(Destination.Settings), 1)
+        compose.mainClock.autoAdvance = false
+        restoration.setContent { KigttsTheme(ThemeSettings()) {
+            PageMotion(entry, PageRole.FOREGROUND, true, 0f, 0, 0f, {}) { Box(Modifier.fillMaxSize().background(plane)) }
+        } }
+        step(500)
+        val layer = compose.onNodeWithTag("page-layer/" + entry.identity)
+        assertEquals(0f, layer.getUnclippedBoundsInRoot().left.value, .1f)
+        restoration.emulateSavedInstanceStateRestore()
+        compose.waitForIdle()
+        assertEquals("Restoration begins at rest before any new animation frame", 0f, layer.getUnclippedBoundsInRoot().left.value, .1f)
+        step(32)
+        assertEquals(0f, layer.getUnclippedBoundsInRoot().left.value, .1f)
+        compose.mainClock.autoAdvance = true
+    }
 }

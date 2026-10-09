@@ -16,24 +16,12 @@ import com.kigtts.next.ui.components.*
 internal fun AppearanceDisplaySettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
     SettingsGroup("显示与形状") {
         SettingItem("对比度", "让文字更醒目", Icons.Default.Contrast, SettingPosition.FIRST) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                ContrastLevel.entries.forEachIndexed { index, level ->
-                    SegmentedButton(selected = settings.contrast == level, onClick = feedbackClick { onChange(settings.copy(contrast = level)) },
-                        shape = SegmentedButtonDefaults.itemShape(index, ContrastLevel.entries.size),
-                        modifier = Modifier.semantics { contentDescription = "对比度：${level.label}" }) { Text(level.label) }
-                }
-            }
+            SettingChoiceGroup("对比度",ContrastLevel.entries,settings.contrast,{ it.label },{ onChange(settings.copy(contrast=it)) })
         }
         ToggleSetting("更暗的深色模式", "深色模式下使用纯黑背景", Icons.Default.DarkMode,
             settings.deeperDark, { onChange(settings.copy(deeperDark = it)) }, position = SettingPosition.MIDDLE)
         SettingItem("圆角大小", "", Icons.Default.RoundedCorner, SettingPosition.LAST) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                CornerLevel.entries.forEachIndexed { index, level ->
-                    SegmentedButton(selected = settings.cornerLevel == level, onClick = feedbackClick { onChange(settings.copy(cornerLevel = level)) },
-                        shape = SegmentedButtonDefaults.itemShape(index, CornerLevel.entries.size),
-                        modifier = Modifier.semantics { contentDescription = "圆角：${level.label}" }) { Text(level.label) }
-                }
-            }
+            SettingChoiceGroup("圆角",CornerLevel.entries,settings.cornerLevel,{ it.label },{ onChange(settings.copy(cornerLevel=it)) })
         }
     }
     SettingsGroup("预览") {

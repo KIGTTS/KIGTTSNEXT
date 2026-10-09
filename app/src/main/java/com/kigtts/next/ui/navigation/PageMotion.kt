@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
@@ -29,7 +30,10 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
 @Composable
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
     parentPreview: Float, finished: () -> Unit, content: @Composable () -> Unit) {
-    val memory = remember(entry) { PageMotionMemory(if (entry.scene == PageScene.Home) 0f else
+    var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
+    val memory = remember(entry) { PageMotionMemory(if (mounted) {
+        if (role == PageRole.BACKGROUND) -.08f else 0f
+    } else if (entry.scene == PageScene.Home) 0f else
         if (role == PageRole.FOREGROUND) entry.direction else -.08f, role) }
     val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
     val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
@@ -46,6 +50,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
         if (role == PageRole.EXITING) latestFinished()
     }
     SideEffect {
+        mounted = true
         memory.role = role
         memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
         memory.parentPreview = parentPreview

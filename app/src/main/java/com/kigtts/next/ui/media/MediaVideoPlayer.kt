@@ -1,13 +1,12 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.kigtts.next.ui.media
 
-import android.view.LayoutInflater
+import android.view.TextureView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntSize
@@ -16,9 +15,7 @@ import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.*
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.*
 import com.kigtts.next.media.MediaScale
-import com.kigtts.next.R
 import com.kigtts.next.ui.navigation.LocalPageActive
 import java.io.File
 import kotlinx.coroutines.flow.collectLatest
@@ -37,8 +34,8 @@ fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifie
         volume=if(once)0f else 1f;setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),true)
         prepare();playWhenReady=once
     } }
-    var error by remember { mutableStateOf<String?>(null) }
-    var viewport by remember { mutableStateOf(IntSize.Zero) }
+    var error by remember(player) { mutableStateOf<String?>(null) }
+    var viewport by remember(player) { mutableStateOf(IntSize.Zero) }
     DisposableEffect(player,lifecycle) {
         playback.player=player;playback.muted=once;playback.rendered=false
         val listener=object:Player.Listener {
@@ -60,10 +57,19 @@ fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifie
         else if(!playback.scrubbing)playback.position=player.currentPosition.toFloat()
     } }
     LaunchedEffect(scale,viewport) { delay(80);if(playback.rendered&&!player.isPlaying)player.seekTo(player.currentPosition) }
-    Box(modifier.onSizeChanged { viewport=it;if(it.height>0)effect.aspect=it.width.toFloat()/it.height },contentAlignment=Alignment.Center) {
-        AndroidView(factory={ (LayoutInflater.from(it).inflate(R.layout.media_player,android.widget.FrameLayout(it),false) as PlayerView).apply {
-            setShutterBackgroundColor(android.graphics.Color.TRANSPARENT);resizeMode=AspectRatioFrameLayout.RESIZE_MODE_FILL
-        } },update={ it.player=player;it.contentDescription=description },modifier=Modifier.fillMaxSize(),onRelease={ it.player=null })
+    Box(modifier,contentAlignment=Alignment.Center) {
+        key(player) { AndroidView(factory={ context -> TextureView(context).apply {
+            isOpaque=false
+            // Observe the actual decoder surface, after its native layout, rather than the
+            // Compose parent's size before AndroidView has caught up with the window resize.
+            addOnLayoutChangeListener { _,left,top,right,bottom,_,_,_,_ ->
+                val width=right-left;val height=bottom-top
+                if(width>0&&height>0) { viewport=IntSize(width,height);effect.aspect=width.toFloat()/height }
+            }
+            player.setVideoTextureView(this)
+        } },update={ it.contentDescription=description },modifier=Modifier.fillMaxSize(),onRelease={
+            if(playback.player===player)player.clearVideoTextureView(it)
+        }) }
         error?.let { Text(it,color=MaterialTheme.colorScheme.error) }
         if(showControls)PlaybackControls(playback,true,once,{ player.play() },onEnded,
             Modifier.align(Alignment.BottomCenter).padding(bottom=52.dp))

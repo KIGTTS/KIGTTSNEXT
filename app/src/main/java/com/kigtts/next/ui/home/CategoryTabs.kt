@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
 import com.kigtts.next.ui.components.reorder.*
@@ -32,16 +33,17 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         viewportRestore?.let { (index, offset) -> list.requestScrollToItem(index, offset); viewportRestore = null }
     }
     val categoryIcons by model.quickTexts.categoryIcons.collectAsStateWithLifecycle()
-    val sources = remember(categories) { categories.map { MutableInteractionSource() } }
+    val sources = categories.map { category -> key(category) { remember { MutableInteractionSource() } } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
     val drag = rememberReorderDrag({ list.layoutInfo.visibleItemsInfo.mapNotNull { item ->
         (item.key as? String)?.takeIf { it.startsWith("category/") }?.removePrefix("category/")?.takeIf { it in categories }?.let {
             ReorderTarget(it, Rect(item.offset.toFloat(), 0f, (item.offset + item.size).toFloat(), list.layoutInfo.viewportSize.height.toFloat()))
         }
-    } }, horizontalOnly = true, move = { from, to ->
+    } }, horizontalOnly = true, animateDrop = true, move = { from, to ->
         if (viewportRestore == null) viewportRestore = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
         model.quickTexts.moveCategory(from, to)
     })
+    val drop = rememberReorderDrop(drag)
     Row(modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
@@ -59,7 +61,9 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
                     CornerNeighbors(start = index > 0, end = index < categories.lastIndex || editing),
                     pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     Modifier.testTag("category-" + category).then(semantics)
-                        .then(if (editing) Modifier.then(if (drag.key == category) Modifier else Modifier.animateItem()).reorderTranslation(category, drag) else Modifier),
+                        .then(if (editing) Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
+                            placementSpec = if (drag.key == category) null else MaterialTheme.motionScheme.defaultSpatialSpec())
+                            .reorderTranslation(category, drag, drop) else Modifier),
                     icon = {
                         Icon((categoryIcons[category] ?: CategoryIcon.defaultFor(category)).vector(),
                             "分组图标：" + (categoryIcons[category] ?: CategoryIcon.defaultFor(category)).label,

@@ -78,9 +78,18 @@ class PhraseDropMotionTest {
         assertTrue("Release moves through intermediate positions", distance(mid) < distance(seeded) - 5f)
         assertTrue(distance(mid) > 1f)
         capture("phrase-drop-return-mid")
-        step(1500); compose.mainClock.autoAdvance = true
+        var lastFloating = mid
+        repeat(90) {
+            if (compose.onAllNodesWithTag("dragged-phrase").fetchSemanticsNodes().isNotEmpty()) {
+                lastFloating = floating.getUnclippedBoundsInRoot(); step(16)
+            }
+        }
+        compose.mainClock.autoAdvance = true
         floating.assertDoesNotExist()
         original.assertIsDisplayed()
+        val handedBack = original.getUnclippedBoundsInRoot()
+        assertEquals("Drop and final list card share the same padded coordinate", handedBack.top.value, lastFloating.top.value, 1.5f)
+        assertEquals(handedBack.left.value, lastFloating.left.value, 1.5f)
         assertEquals(phrase.id, model.phrases.value.filter { it.category == phrase.category }[1].id)
         capture("phrase-drop-handoff-complete")
         original.performClick()

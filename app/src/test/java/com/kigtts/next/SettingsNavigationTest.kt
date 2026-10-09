@@ -46,7 +46,7 @@ class SettingsNavigationTest {
         compose.onNodeWithText("聆听插件").assertIsDisplayed()
         capture("right-drawer")
         compose.onNodeWithText("设置").performClick()
-        compose.onNodeWithText("偏好设置").assertIsDisplayed()
+        compose.onNodeWithText("外观与交互").assertIsDisplayed()
         capture("settings-categories")
         compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination); assertEquals(listOf(Destination.Home), model.state.value.navigationStack) }
         back()

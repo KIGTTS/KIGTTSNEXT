@@ -4,11 +4,13 @@ package com.kigtts.next.ui.management
 import com.kigtts.next.ui.components.reorder.*
 
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
@@ -51,6 +53,8 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     var wasBusy by remember { mutableStateOf(false) }
     LaunchedEffect(busy) { if (!busy && wasBusy && drag.key == null) order = external; wasBusy = busy }
     val offset by rememberReorderDrop(drag)
+    val elevation by animateDpAsState(if (drag.key != null && !drag.settling) 8.dp else 0.dp,
+        MaterialTheme.motionScheme.fastSpatialSpec(), label = "managed-drop-elevation")
     fun moveAccessible(id: String, delta: Int) {
         val position = order.indexOf(id); val target = order.getOrNull(position + delta) ?: return
         if (data[id]?.group != data[target]?.group) return
@@ -61,7 +65,6 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         LazyColumn(Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             item("management-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 header()
-                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if (list.filters.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(list.filters, key = { it.id }) { filter -> FilterChip(selected = filter.selected,
                         onClick = feedbackClick { invoke(filter.action, emptyMap()) }, label = { Text(filter.label) }) }
@@ -69,7 +72,8 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 if (list.items.isEmpty()) Text(list.emptyText, Modifier.padding(vertical = 16.dp))
             } }
             items(order.mapNotNull(data::get), key = { it.id }) { item ->
-                ManagedItemRow(item, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)
+                ManagedItemRow(item, Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
+                        placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
                     Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, !busy, resolve, invoke, { moveAccessible(item.id, it) })
             }
@@ -78,7 +82,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         if (active != null) ManagedItemRow(active,
             Modifier.offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }.width(with(density) { drag.floatingBounds.width.toDp() })
                 .height(with(density) { drag.floatingBounds.height.toDp() }).clearAndSetSemantics { testTag = "managed-drag/" + active.id },
-            Modifier, list.reorderAction != null, true, true, resolve, { _, _ -> }, {})
+            Modifier, list.reorderAction != null, true, true, resolve, { _, _ -> }, {}, shadowElevation = elevation)
+        // Work feedback must not change the list's measured header or any item position.
+        if (busy) LinearProgressIndicator(Modifier.fillMaxWidth().align(Alignment.TopCenter))
         ReorderAutoScroll(drag, { lazy.layoutInfo.viewportSize.height.toFloat() }, { lazy.scrollBy(it) })
     }
 }

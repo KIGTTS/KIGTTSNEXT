@@ -95,8 +95,12 @@ fun Modifier.reorderGestures(drag: ReorderDrag) = onGloballyPositioned { drag.or
         }
     }
 
-fun Modifier.reorderTranslation(id: String, drag: ReorderDrag) = zIndex(if (drag.key == id) 1f else 0f)
-    .graphicsLayer { val offset = drag.translation(id); translationX = offset.x; translationY = offset.y }
+fun Modifier.reorderTranslation(id: String, drag: ReorderDrag, drop: State<Offset>? = null) = zIndex(if (drag.key == id) 1f else 0f)
+    .graphicsLayer {
+        val offset = if (drag.key == id && drag.settling && drop != null)
+            drop.value - (drag.targetBounds(id)?.topLeft ?: drop.value) else drag.translation(id)
+        translationX = offset.x; translationY = offset.y
+    }
 
 @Composable
 fun Modifier.reorderGrip(id: String, drag: ReorderDrag): Modifier {

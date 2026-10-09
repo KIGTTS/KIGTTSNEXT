@@ -83,10 +83,12 @@ class PageMotionTest {
         clearStatus("navigation-status-return-unshaded")
         step(1500); compose.mainClock.autoAdvance = true
     }
-    @Test fun leavingFocusedPagesClearsInputAndParentDraftAndScrollSurvive() {
+    @Test fun leavingFocusedPagesClearsInputAndParentScrollSurvivesAfterPickerCancellation() {
         val model = show(compact = true)
         compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
-        compose.onNode(hasSetTextAction()).performClick().assertIsFocused().performTextReplacement("#123456")
+        compose.onNodeWithContentDescription("选择主题色").performClick()
+        compose.onNodeWithContentDescription("HEX 颜色").performTextReplacement("#123456")
+        compose.onNodeWithText("取消").performClick()
         compose.onNodeWithText("恢复默认外观").performScrollTo()
         val scrolling = SemanticsMatcher("vertical scroll") { it.config.contains(SemanticsProperties.VerticalScrollAxisRange) } and
             hasAnyAncestor(hasTestTag("navigation-secondary"))
@@ -99,8 +101,9 @@ class PageMotionTest {
         compose.waitForIdle()
         val restored = compose.onNode(scrolling).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         assertEquals(position, restored, .5f)
-        compose.onNode(hasSetTextAction()).performScrollTo().assertTextContains("#123456")
-        capture("navigation-parent-draft-restored")
+        compose.onNode(isDialog()).assertDoesNotExist()
+        compose.runOnIdle { assertEquals(0xFF00696E,model.state.value.theme.seed) }
+        capture("navigation-parent-scroll-restored")
     }
     @Test fun secondAndThirdLevelEnterAndToolbarReturnRetainMovingPagesUntilFinished() {
         val model = show()

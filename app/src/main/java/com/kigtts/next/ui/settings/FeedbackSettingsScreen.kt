@@ -8,10 +8,8 @@ import androidx.compose.material.icons.filled.Vibration
 @Composable
 fun FeedbackSettingsScreen(enabled: Boolean, onChange: (Boolean) -> Unit) {
     SettingsLayout {
-        SettingsGroup("操作反馈") {
+        SettingsGroup("操作反馈",subtitle="跟随系统振动设置") {
             ToggleSetting("按键震动反馈", "操作时轻微震动", Icons.Default.Vibration, enabled, onChange)
         }
-        Text("跟随系统振动设置",
-            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

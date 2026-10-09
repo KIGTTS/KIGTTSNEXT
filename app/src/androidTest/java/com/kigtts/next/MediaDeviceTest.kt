@@ -6,9 +6,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.core.app.ActivityScenario
-import androidx.media3.ui.PlayerView
 import com.kigtts.next.ui.media.videoFrameSnapshot
-import android.view.LayoutInflater
 import android.view.TextureView
 import android.widget.FrameLayout
 import kotlinx.coroutines.runBlocking
@@ -37,20 +35,20 @@ class MediaDeviceTest {
         val file = File(instrumentation.targetContext.cacheDir,"frame-device-" + java.util.UUID.randomUUID() + ".mp4")
         instrumentation.context.assets.open("media/video.mp4").use { input -> file.outputStream().use { input.copyTo(it) } }
         val scenario = ActivityScenario.launch(MainActivity::class.java)
-        var player: ExoPlayer? = null; var view: PlayerView? = null
+        var player: ExoPlayer? = null; var view: TextureView? = null
         val rendered = CountDownLatch(1)
         try {
             scenario.onActivity { activity ->
                 val root = FrameLayout(activity)
-                view = LayoutInflater.from(activity).inflate(R.layout.media_player,root,false) as PlayerView
+                view = TextureView(activity).apply { isOpaque = false }
                 root.addView(view); activity.setContentView(root)
                 player = ExoPlayer.Builder(activity).build().apply {
                     volume = 0f; addListener(object : Player.Listener { override fun onRenderedFirstFrame() { rendered.countDown() } })
-                    view!!.player = this; setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(file))); prepare(); play()
+                    setVideoTextureView(view!!); setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(file))); prepare(); play()
                 }
             }
             assertTrue("First video frame not rendered",rendered.await(15,TimeUnit.SECONDS))
-            val frame = withContext(Dispatchers.Main) { videoFrameSnapshot(requireNotNull(view!!.videoSurfaceView as? TextureView)) }
+            val frame = withContext(Dispatchers.Main) { videoFrameSnapshot(requireNotNull(view)) }
             assertNotNull("PixelCopy cannot read the actual video texture",frame)
             val blurred = GaussianBackdrop.blur(frame!!); assertTrue(blurred.width<=128);assertTrue(blurred.height<=128)
             assertEquals(255,android.graphics.Color.alpha(blurred.getPixel(blurred.width/2,blurred.height/2)))

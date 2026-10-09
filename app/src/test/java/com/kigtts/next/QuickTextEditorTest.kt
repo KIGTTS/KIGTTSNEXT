@@ -143,6 +143,27 @@ class QuickTextEditorTest {
         assertEquals("常用", model.state.value.selectedCategory)
         capture("quick-edit-reordered-groups")
     }
+    @Test fun groupReleaseReturnsThroughIntermediatePositionsInsteadOfTeleporting() {
+        show(); edit()
+        val tabs = compose.onNodeWithTag("category-tabs")
+        val picked = compose.onNodeWithTag("category-常用")
+        val from = point(compose.onNodeWithTag("category-grip-常用", useUnmergedTree = true), tabs)
+        val to = point(compose.onNodeWithTag("category-生活"), tabs)
+        compose.mainClock.autoAdvance = false
+        tabs.performTouchInput { down(from); moveTo(to + Offset(18f * compose.activity.resources.displayMetrics.density, 0f), delayMillis = 300) }
+        compose.mainClock.advanceTimeBy(160); compose.waitForIdle()
+        val before = picked.getUnclippedBoundsInRoot()
+        tabs.performTouchInput { up() }; compose.waitForIdle()
+        val released = picked.getUnclippedBoundsInRoot()
+        assertEquals("Release keeps the floating pose", before.left.value, released.left.value, 1f)
+        compose.mainClock.advanceTimeBy(96); compose.waitForIdle()
+        val middle = picked.getUnclippedBoundsInRoot()
+        compose.mainClock.advanceTimeBy(1600); compose.waitForIdle()
+        val final = picked.getUnclippedBoundsInRoot()
+        assertTrue("Drop has intermediate motion", kotlin.math.abs(middle.left.value - final.left.value) > .5f)
+        assertTrue(kotlin.math.abs(middle.left.value - final.left.value) < kotlin.math.abs(released.left.value - final.left.value))
+        compose.mainClock.autoAdvance = true
+    }
     @Test fun holdingAnItemAtTheEdgeScrollsToFurtherRowsAndKeepsReordering() {
         val model = show()
         compose.runOnIdle { repeat(24) { model.addPhrase("长列表条目 " + it, "常用") } }

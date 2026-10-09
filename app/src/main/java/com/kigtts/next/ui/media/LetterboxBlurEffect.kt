@@ -19,7 +19,8 @@ class LetterboxBlurEffect:GlEffect {
         private val composite=GlProgram(VERTEX,COMPOSITE)
         private val pool=GpuFramePool(hdr)
         private var inputAspect=1f;private var side=1;private var width=1;private var height=1
-        private var sourceWidth=0;private var sourceHeight=0;private var outputWidth=1;private var outputHeight=1
+        private var sourceWidth=0;private var sourceHeight=0
+        private var canvas=VideoFrameGeometry(1,1,MediaScale.FIT)
         private var xTexture=0;private var yTexture=0;private var xFbo=0;private var yFbo=0
         init { for(program in listOf(blur,composite))program.setBufferAttribute("aPosition",GlUtil.getNormalizedCoordinateBounds(),4) }
         override fun configure(inputWidth:Int,inputHeight:Int):Size {
@@ -35,11 +36,9 @@ class LetterboxBlurEffect:GlEffect {
                 if(sourceWidth!=input.width||sourceHeight!=input.height) {
                     configure(input.width,input.height);sourceWidth=input.width;sourceHeight=input.height
                 }
-                val ratio=effect.aspect.coerceIn(.05f,20f)
-                outputWidth=if(ratio>=1f)side else (side*ratio).toInt().coerceAtLeast(1)
-                outputHeight=if(ratio>=1f)(side/ratio).toInt().coerceAtLeast(1) else side
-                val output=pool.acquire(provider,outputWidth,outputHeight)
-                GlUtil.focusFramebufferUsingCurrentContext(output.fboId,outputWidth,outputHeight)
+                canvas=videoFrameGeometry(side,effect.aspect,effect.scale)
+                val output=pool.acquire(provider,canvas.width,canvas.height)
+                GlUtil.focusFramebufferUsingCurrentContext(output.fboId,canvas.width,canvas.height)
                 drawFrame(input.texId,timeUs)
                 getInputListener().onInputFrameProcessed(input)
                 getOutputListener().onOutputFrameAvailable(output,timeUs)
@@ -54,11 +53,11 @@ class LetterboxBlurEffect:GlEffect {
         }
         override fun drawFrame(inputTexId:Int,presentationTimeUs:Long) {
             val output=IntArray(1);GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING,output,0)
-            val fit=effect.scale==MediaScale.FIT
+            val fit=canvas.scale==MediaScale.FIT
             if(fit) { drawBlur(inputTexId,xFbo,floatArrayOf(1f/width,0f));drawBlur(xTexture,yFbo,floatArrayOf(0f,1f/height)) }
-            GlUtil.focusFramebufferUsingCurrentContext(output[0],outputWidth,outputHeight);composite.use()
+            GlUtil.focusFramebufferUsingCurrentContext(output[0],canvas.width,canvas.height);composite.use()
             composite.setSamplerTexIdUniform("uTexture",inputTexId,0);composite.setSamplerTexIdUniform("uBlur",if(fit)yTexture else inputTexId,1)
-            composite.setFloatUniform("uInputAspect",inputAspect);composite.setFloatUniform("uViewAspect",effect.aspect.coerceAtLeast(.01f))
+            composite.setFloatUniform("uInputAspect",inputAspect);composite.setFloatUniform("uViewAspect",canvas.aspect)
             composite.setFloatUniform("uFit",if(fit)1f else 0f);composite.bindAttributesAndUniforms()
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);GlUtil.checkGlError()
         }

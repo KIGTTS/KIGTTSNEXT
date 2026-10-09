@@ -15,6 +15,13 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }
+    buildTypes {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -41,7 +48,6 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
-    implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.media3:media3-effect:1.11.1")
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
@@ -61,6 +67,9 @@ dependencies {
 tasks.withType<Test>().configureEach {
     maxHeapSize = "2g"
     systemProperty("roborazzi.test.record", "true")
+    val nativeTemp = rootProject.layout.projectDirectory.dir(".tools/test-tmp").asFile
+    systemProperty("java.io.tmpdir", nativeTemp.absolutePath)
+    doFirst { nativeTemp.mkdirs() }
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
     from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.5.0.kigplugin") }

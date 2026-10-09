@@ -24,6 +24,19 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class ManagedItemListTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun confirmingAnItemDoesNotShiftTheListWhenBusyChanges() {
+        var busy by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) { ProvideButtonFeedback(true) {
+            ManagedItemList(ManagementList("busy", listOf(ManagementItem("a", "语音包", primaryAction = "select"))),
+                busy = busy, invoke = { _, _ -> busy = true })
+        } } }
+        val row = compose.onNodeWithTag("managed-item/a")
+        val before = row.getUnclippedBoundsInRoot()
+        row.performClick()
+        assertEquals("The progress indicator occupies no list space", before, row.getUnclippedBoundsInRoot())
+        compose.runOnIdle { busy = false }
+        assertEquals(before, row.getUnclippedBoundsInRoot())
+    }
     @Test fun dragKeepsCardDimensionsAndCommitsOneOrderAfterAnimatedDrop() {
         var values by mutableStateOf(listOf("a", "b", "c")); val commits = mutableListOf<List<String>>()
         compose.setContent { KigttsTheme(ThemeSettings()) { ProvideButtonFeedback(true) {
