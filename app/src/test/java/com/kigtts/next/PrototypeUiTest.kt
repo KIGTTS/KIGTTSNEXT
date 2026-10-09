@@ -216,13 +216,16 @@ class PrototypeUiTest {
         val model = show()
         compose.runOnIdle { model.navigate(Destination.Settings) }
         capture("settings")
-        compose.onNodeWithText("显示与形状").performClick()
+        compose.onNodeWithText("外观").performClick()
         compose.onNodeWithContentDescription("对比度：中").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(ContrastLevel.MEDIUM, model.state.value.theme.contrast) }
         compose.onNodeWithContentDescription("对比度：高").performClick()
         compose.onNodeWithContentDescription("更暗的深色模式").performScrollTo().performClick()
         compose.onNodeWithContentDescription("圆角：大").performScrollTo().assertIsSelected()
         compose.onNodeWithContentDescription("圆角：小").performClick().assertIsSelected()
+        compose.onNodeWithText("小").assertIsDisplayed()
+        compose.onNodeWithText("小 4").assertDoesNotExist()
+        compose.onNodeWithText("大 24").assertDoesNotExist()
         compose.runOnIdle { assertEquals(4f, model.state.value.theme.cornerRadius) }
         compose.onNodeWithContentDescription("圆角：中").performClick().assertIsSelected()
         compose.runOnIdle { assertEquals(14f, model.state.value.theme.cornerRadius) }

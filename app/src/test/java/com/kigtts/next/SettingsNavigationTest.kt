@@ -46,7 +46,7 @@ class SettingsNavigationTest {
         compose.onNodeWithText("聆听插件").assertIsDisplayed()
         capture("right-drawer")
         compose.onNodeWithText("设置").performClick()
-        compose.onNodeWithText("按分类调整界面与交互").assertIsDisplayed()
+        compose.onNodeWithText("偏好设置").assertIsDisplayed()
         capture("settings-categories")
         compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination); assertEquals(listOf(Destination.Home), model.state.value.navigationStack) }
         back()
@@ -91,26 +91,26 @@ class SettingsNavigationTest {
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination); assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
     }
 
-    @Test fun categoryResetOnlyResetsThatCategoryAndFeedbackPersists() {
+    @Test fun appearanceResetResetsAllVisualPreferencesAndKeepsFeedbackPreference() {
         val model = show()
         compose.runOnIdle {
             model.theme(ThemeSettings(seed = 0xFF984061, mode = ThemeMode.DARK, contrast = ContrastLevel.HIGH, deeperDark = true, cornerLevel = CornerLevel.SMALL))
             model.navigate(Destination.Settings)
         }
-        compose.onNodeWithText("主题与颜色").performClick()
-        compose.onNodeWithText("恢复默认主题").performScrollTo().performClick()
+        compose.onNodeWithText("外观").performClick()
+        compose.onNodeWithText("恢复默认外观").performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(ThemeMode.SYSTEM, model.state.value.theme.mode)
-            assertEquals(ContrastLevel.HIGH, model.state.value.theme.contrast)
-            assertEquals(CornerLevel.SMALL, model.state.value.theme.cornerLevel)
+            assertEquals(ThemeSettings(), model.state.value.theme)
         }
         back()
         compose.onNodeWithText("触感反馈").performClick()
         compose.onNodeWithContentDescription("按键震动反馈").performClick().assertIsOff()
         compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.hapticsEnabled) }
         back()
-        compose.onNodeWithText("显示与形状").performClick()
-        compose.onNodeWithText("恢复默认显示").performScrollTo().performClick()
+        compose.onNodeWithText("外观").performClick()
+        compose.onNodeWithContentDescription("圆角：小").performScrollTo().performClick()
+        compose.onNodeWithText("恢复默认外观").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(ThemeSettings(), model.state.value.theme); assertFalse(model.state.value.hapticsEnabled) }
     }
 }

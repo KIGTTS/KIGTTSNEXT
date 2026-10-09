@@ -86,7 +86,7 @@ class ButtonFeedbackTest {
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f) }
         compose.onNodeWithTag("phrases-vertical").performTouchInput { swipeUp() }
         compose.runOnIdle { assertTrue(feedback.isEmpty()) }
-        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         tick(HapticFeedbackType.ToggleOn) { compose.onNodeWithContentDescription("壁纸取色").performClick() }
         val before = feedback.size
         compose.onNodeWithContentDescription("主题色 #6750A4").assertIsNotEnabled().performTouchInput { click() }

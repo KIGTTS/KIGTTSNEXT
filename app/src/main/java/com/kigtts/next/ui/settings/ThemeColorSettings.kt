@@ -4,6 +4,8 @@ package com.kigtts.next.ui.settings
 import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -16,13 +18,13 @@ import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
 
 @Composable
-fun ColorSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
+internal fun ThemeColorSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
     var colorInput by rememberSaveable(settings.seed) { mutableStateOf(settings.hex) }
     val validHex = colorInput.removePrefix("#").matches(Regex("[0-9a-fA-F]{6}"))
-    SettingsLayout {
-        Text("颜色实时更新，设置自动保存。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        SettingsCard {
-            Text("主题模式", style = MaterialTheme.typography.titleMedium)
+    val wallpaperAvailable = Build.VERSION.SDK_INT >= 31
+    val customColorEnabled = !(settings.wallpaperEnabled && wallpaperAvailable)
+    SettingsGroup("主题与配色") {
+        SettingItem("主题模式", "跟随系统，或固定使用亮色、深色主题。", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ThemeMode.entries.forEachIndexed { index, mode ->
                     SegmentedButton(selected = settings.mode == mode, onClick = feedbackClick { onChange(settings.copy(mode = mode)) },
@@ -31,33 +33,27 @@ fun ColorSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Un
                 }
             }
         }
-        SettingsCard {
-            ToggleSetting("壁纸取色", if (Build.VERSION.SDK_INT >= 31) "使用 Android 系统动态配色" else "需要 Android 12 或更高版本",
-                settings.wallpaperEnabled, { onChange(settings.copy(wallpaperEnabled = it)) }, enabled = Build.VERSION.SDK_INT >= 31)
-            HorizontalDivider(Modifier.padding(vertical = 12.dp))
-            Text("主题色", style = MaterialTheme.typography.titleMedium)
-            Text("关闭壁纸取色后，使用此颜色生成 MD3 配色。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ToggleSetting("壁纸取色", if (wallpaperAvailable) "随壁纸自动搭配界面颜色。" else "需要 Android 12 或更高版本。",
+            Icons.Default.Wallpaper, settings.wallpaperEnabled && wallpaperAvailable, { onChange(settings.copy(wallpaperEnabled = it)) },
+            position = SettingPosition.MIDDLE, enabled = wallpaperAvailable)
+        SettingItem("主题色", "关闭壁纸取色后，可自定义界面主色。", Icons.Default.Palette, SettingPosition.LAST) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(colorInput, { colorInput = it }, modifier = Modifier.weight(1f), singleLine = true,
-                    label = { Text("HEX 色值") }, isError = !validHex, enabled = !settings.wallpaperEnabled,
-                    supportingText = { if (!validHex) Text("请输入 6 位十六进制颜色") })
+                    label = { Text("颜色代码") }, isError = customColorEnabled && !validHex, enabled = customColorEnabled,
+                    supportingText = { if (customColorEnabled && !validHex) Text("请输入 6 位颜色代码，如 #00696E") })
                 FilledTonalButton(shapes = expressivePillShapes(), onClick = feedbackClick {
                     onChange(settings.copy(seed = 0xFF000000 or colorInput.removePrefix("#").toLong(16)))
-                }, enabled = validHex && !settings.wallpaperEnabled) { Text("应用") }
+                }, enabled = validHex && customColorEnabled) { Text("应用") }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("00696E", "6750A4", "386A20", "984061").forEach { hex ->
                     FilledTonalButton(onClick = feedbackClick { onChange(settings.copy(seed = 0xFF000000 or hex.toLong(16))) },
-                        enabled = !settings.wallpaperEnabled, shapes = expressivePillShapes(),
+                        enabled = customColorEnabled, shapes = expressivePillShapes(),
                         modifier = Modifier.weight(1f).semantics { contentDescription = "主题色 #$hex" }, contentPadding = PaddingValues(0.dp)) {
                         Box(Modifier.size(22.dp).background(Color(0xFF000000 or hex.toLong(16)), MaterialTheme.shapes.small))
                     }
                 }
             }
         }
-        OutlinedButton(shapes = expressivePillShapes(), onClick = feedbackClick {
-            val defaults = ThemeSettings()
-            onChange(settings.copy(seed = defaults.seed, mode = defaults.mode, wallpaperEnabled = defaults.wallpaperEnabled))
-        }, modifier = Modifier.fillMaxWidth()) { Text("恢复默认主题") }
     }
 }

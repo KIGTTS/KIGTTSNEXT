@@ -85,9 +85,9 @@ class PageMotionTest {
     }
     @Test fun leavingFocusedPagesClearsInputAndParentDraftAndScrollSurvive() {
         val model = show(compact = true)
-        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         compose.onNode(hasSetTextAction()).performClick().assertIsFocused().performTextReplacement("#123456")
-        compose.onNodeWithText("恢复默认主题").performScrollTo()
+        compose.onNodeWithText("恢复默认外观").performScrollTo()
         val scrolling = SemanticsMatcher("vertical scroll") { it.config.contains(SemanticsProperties.VerticalScrollAxisRange) } and
             hasAnyAncestor(hasTestTag("navigation-secondary"))
         val position = compose.onNode(scrolling).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
@@ -112,20 +112,20 @@ class PageMotionTest {
         capture("navigation-second-enter-mid")
         step(1500)
         assertEquals(0f, left("1/settings"), .5f)
-        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         step(96)
-        assertTrue(left("2/settings/COLORS") > 1f)
+        assertTrue(left("2/settings/APPEARANCE") > 1f)
         assertTrue(left("1/settings") < 0f)
         capture("navigation-third-enter-mid")
         step(1500)
         compose.onNodeWithContentDescription("返回上一页").performClick()
         step(96)
         assertEquals(Destination.Settings, model.state.value.destination)
-        assertTrue(left("2/settings/COLORS") > 1f)
+        assertTrue(left("2/settings/APPEARANCE") > 1f)
         assertTrue(left("1/settings") < 0f)
         capture("navigation-third-return-mid")
         step(1500)
-        layer("2/settings/COLORS").assertDoesNotExist()
+        layer("2/settings/APPEARANCE").assertDoesNotExist()
         assertEquals(0f, left("1/settings"), .5f)
         compose.onNodeWithContentDescription("返回上一页").performClick()
         step(96)
@@ -137,22 +137,22 @@ class PageMotionTest {
     }
     @Test fun predictiveCommitContinuesFromPoseAndCancelRestoresTheWholeParent() {
         val model = show()
-        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+        compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
         predict(.72f)
-        val before = left("2/settings/COLORS")
+        val before = left("2/settings/APPEARANCE")
         val parentBefore = left("1/settings")
         capture("navigation-predictive-before-commit")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        val seeded = left("2/settings/COLORS")
+        val seeded = left("2/settings/APPEARANCE")
         assertTrue("No jump at commit: " + before + " -> " + seeded, abs(seeded - before) < 2f)
         assertTrue("Parent keeps its preview pose", abs(left("1/settings") - parentBefore) < 2f)
         step(96)
-        assertTrue(left("2/settings/COLORS") > seeded + 20f)
+        assertTrue(left("2/settings/APPEARANCE") > seeded + 20f)
         capture("navigation-predictive-commit-mid")
         step(1500)
-        layer("2/settings/COLORS").assertDoesNotExist()
+        layer("2/settings/APPEARANCE").assertDoesNotExist()
         assertEquals(Destination.Settings, model.state.value.destination)
         val normal = layer("1/settings").getUnclippedBoundsInRoot()
         predict(.6f, BackEventCompat.EDGE_RIGHT)

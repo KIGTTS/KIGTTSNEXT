@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.settings
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -11,10 +13,9 @@ import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
 
 @Composable
-fun DisplaySettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
-    SettingsLayout {
-        SettingsCard {
-            Text("对比度", style = MaterialTheme.typography.titleMedium)
+internal fun AppearanceDisplaySettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
+    SettingsGroup("显示与形状") {
+        SettingItem("对比度", "增强文字、按钮与背景的区分度。", Icons.Default.Contrast, SettingPosition.FIRST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ContrastLevel.entries.forEachIndexed { index, level ->
                     SegmentedButton(selected = settings.contrast == level, onClick = feedbackClick { onChange(settings.copy(contrast = level)) },
@@ -22,33 +23,26 @@ fun DisplaySettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> 
                         modifier = Modifier.semantics { contentDescription = "对比度：${level.label}" }) { Text(level.label) }
                 }
             }
-            Text("默认、中、高三档，使用 Material 原生配色算法。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        SettingsCard {
-            ToggleSetting("更暗的深色模式", "使用黑色背景与更深的表面色调", settings.deeperDark, { onChange(settings.copy(deeperDark = it)) })
-        }
-        SettingsCard {
-            Row { Text("圆角大小", style = MaterialTheme.typography.titleMedium); Spacer(Modifier.weight(1f)); Text("${settings.cornerRadius.toInt()} dp") }
+        ToggleSetting("更暗的深色模式", "在深色主题下使用纯黑背景，让界面更暗。", Icons.Default.DarkMode,
+            settings.deeperDark, { onChange(settings.copy(deeperDark = it)) }, position = SettingPosition.MIDDLE)
+        SettingItem("圆角大小", "让卡片和按钮的边角更方正或圆润。", Icons.Default.RoundedCorner, SettingPosition.LAST) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 CornerLevel.entries.forEachIndexed { index, level ->
                     SegmentedButton(selected = settings.cornerLevel == level, onClick = feedbackClick { onChange(settings.copy(cornerLevel = level)) },
                         shape = SegmentedButtonDefaults.itemShape(index, CornerLevel.entries.size),
-                        modifier = Modifier.semantics { contentDescription = "圆角：${level.label}" }) { Text("${level.label} ${level.radius.toInt()}") }
+                        modifier = Modifier.semantics { contentDescription = "圆角：${level.label}" }) { Text(level.label) }
                 }
             }
-            Text("小 4、中 14、大 24 dp，默认大；主界面卡片外圆角限制为 4–20 dp。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        SettingsCard {
-            Text("外观预览", style = MaterialTheme.typography.titleMedium)
+    }
+    SettingsGroup("预览") {
+        SettingItem("外观预览", "查看当前颜色与圆角效果。", Icons.Default.Preview, SettingPosition.SINGLE) {
             Text("这里是输入的文本", style = MaterialTheme.typography.headlineSmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(shapes = expressivePillShapes(), onClick = feedbackClick {}) { Text("朗读") }
                 FilledTonalButton(shapes = expressivePillShapes(), onClick = feedbackClick {}) { Text("聆听") }
             }
         }
-        OutlinedButton(shapes = expressivePillShapes(), onClick = feedbackClick {
-            val defaults = ThemeSettings()
-            onChange(settings.copy(contrast = defaults.contrast, deeperDark = defaults.deeperDark, cornerLevel = defaults.cornerLevel))
-        }, modifier = Modifier.fillMaxWidth()) { Text("恢复默认显示") }
     }
 }

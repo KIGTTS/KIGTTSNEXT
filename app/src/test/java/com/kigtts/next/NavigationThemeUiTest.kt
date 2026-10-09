@@ -54,7 +54,7 @@ class NavigationThemeUiTest {
         compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
         back()
         compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
-        compose.onNodeWithText("按分类调整界面与交互").assertIsDisplayed()
+        compose.onNodeWithText("偏好设置").assertIsDisplayed()
     }
 
     @Test fun secondaryPredictionRevealsParentAndReturnWalksStackBeforeHomePanels() {
@@ -87,7 +87,7 @@ class NavigationThemeUiTest {
     @Test fun appearanceModesPersistAndAllPageSurfacesUseBothPalettes() {
         val model = show()
         listOf(ThemeMode.LIGHT, ThemeMode.DARK).forEach { mode ->
-            compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+            compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
             compose.onNodeWithContentDescription("主题模式：" + mode.label).performScrollTo().performClick()
             val prefix = if (mode == ThemeMode.LIGHT) "light" else "dark"
             capture(prefix + "-settings")
@@ -111,7 +111,7 @@ class NavigationThemeUiTest {
             capture(prefix + "-voice-input")
             compose.runOnIdle { model.navigate(Destination.Home); model.closeListeningPanel() }
         }
-        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.COLORS)) }
+        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
         compose.onNodeWithContentDescription("主题模式：跟随系统").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(ThemeMode.SYSTEM, ThemeSettingsStore(ApplicationProvider.getApplicationContext()).load().mode) }
     }

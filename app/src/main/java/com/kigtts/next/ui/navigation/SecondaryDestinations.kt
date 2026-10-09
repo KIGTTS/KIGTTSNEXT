@@ -36,8 +36,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate)
                 is Destination.SettingsDetail -> when (destination.category) {
-                    SettingsCategory.COLORS -> ColorSettingsScreen(state.theme, model::theme)
-                    SettingsCategory.DISPLAY -> DisplaySettingsScreen(state.theme, model::theme)
+                    SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics)
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)
                 }
