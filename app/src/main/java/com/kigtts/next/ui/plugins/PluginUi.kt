@@ -13,6 +13,9 @@ import androidx.compose.ui.semantics.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import com.kigtts.next.ui.management.ManagedItemList
+import com.kigtts.next.ui.navigation.LocalPageToolbarActions
+import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.ToolbarAction
 
 @Composable
 fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAction) -> Unit, modifier: Modifier = Modifier,
@@ -38,13 +41,18 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 @Composable
 fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, invoke: (String, Map<String, String>) -> Unit) {
     if (page == null) { Text("插件页面暂不可用", Modifier.padding(24.dp)); return }
+    val toolbar=LocalPageToolbarActions.current!=null
+    if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
+        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy) { invoke(action.id,emptyMap()) }
+    })
+    val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
     page.management?.let { list ->
-        ManagedItemList(list, busy, resolve, invoke) { page.blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } } }
+        ManagedItemList(list, busy, resolve, invoke) { blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } } }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在处理插件任务…") }
-        page.blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+        blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
     }
 }
 

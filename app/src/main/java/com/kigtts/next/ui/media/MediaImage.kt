@@ -19,13 +19,16 @@ import androidx.compose.ui.layout.ContentScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import com.kigtts.next.ui.navigation.LocalPageActive
 
 /** Decode off the UI thread and cap the decoded dimension, including HEIF orientation. */
 @Composable
 fun MediaImage(file: File?, description: String, modifier: Modifier = Modifier, maximum: Int = 2048,
     scale: MediaScale = MediaScale.FIT, backdrop: Boolean = false, contentModifier: Modifier = Modifier) {
-    var loaded by remember(file?.path, file?.lastModified(), maximum) { mutableStateOf(false) }
-    val bitmap by produceState<ImageBitmap?>(null, file?.path, file?.lastModified(), maximum) {
+    var stamp by remember(file?.path) { mutableLongStateOf(file?.lastModified() ?: 0L) }
+    if(LocalPageActive.current)stamp=file?.lastModified() ?: 0L
+    var loaded by remember(file?.path, stamp, maximum) { mutableStateOf(false) }
+    val bitmap by produceState<ImageBitmap?>(null, file?.path, stamp, maximum) {
         value = withContext(Dispatchers.IO) { file?.let { runCatching { decodeImage(it, maximum) }.getOrNull() } }
         loaded = true
     }

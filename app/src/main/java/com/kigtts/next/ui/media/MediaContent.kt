@@ -16,10 +16,16 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.navigation.LocalPageActive
 
 @Composable
 fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     key(entry.id) {
+        var source by remember { mutableStateOf(model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)) }
+        if(LocalPageActive.current) {
+            val current=model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)
+            SideEffect { source=current }
+        }
         when (entry.kind) {
             MediaKind.IMAGE, MediaKind.MOTION_PHOTO -> {
                 var zoom by remember { mutableFloatStateOf(1f) }; var pan by remember { mutableStateOf(Offset.Zero) }
@@ -27,7 +33,7 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                 LaunchedEffect(entry.scale) { zoom = 1f; pan = Offset.Zero }
                 val live = entry.video != null && (!entry.appleLive || state.appleLivePhotos)
                 Box(modifier.testTag("media-image").onSizeChanged { bounds = it }, contentAlignment = Alignment.Center) {
-                    MediaImage(model.mediaRepository.file(entry), entry.name, Modifier.fillMaxSize()
+                    MediaImage(source.first, entry.name, Modifier.fillMaxSize()
                         .pointerInput(Unit) { detectTapGestures(onDoubleTap = { zoom = 1f; pan = Offset.Zero }, onLongPress = { model.enterSubtitleFullscreen() }) }
                         .transformable(rememberTransformableState { scale, offset, _ ->
                             zoom = (zoom * scale).coerceIn(1f, 5f)
@@ -35,10 +41,10 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                             pan = if (zoom == 1f) Offset.Zero else (pan + offset).let { Offset(it.x.coerceIn(-limitX, limitX), it.y.coerceIn(-limitY, limitY)) }
                         }), scale = entry.scale, backdrop = true,
                         contentModifier = Modifier.graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y })
-                    if (live) LivePhotoPlayback(model.mediaRepository.file(entry,true),entry.name,entry.scale)
+                    if (live) LivePhotoPlayback(source.second,entry.name,entry.scale)
                 }
             }
-            MediaKind.VIDEO -> MediaVideo(model.mediaRepository.file(entry), entry.name, false, {}, modifier, entry.scale)
+            MediaKind.VIDEO -> MediaVideo(source.first, entry.name, false, {}, modifier, entry.scale)
             MediaKind.HTML, MediaKind.WEB -> MediaWeb(entry, state, model, modifier)
         }
     }

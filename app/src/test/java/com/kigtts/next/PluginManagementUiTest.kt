@@ -26,7 +26,7 @@ class PluginManagementUiTest {
         val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
         model.navigate(Destination.Plugins)
         compose.setContent { KigttsApp(model) }
-        compose.onNodeWithText("安装 .kigplugin").assertIsDisplayed()
+        compose.onNodeWithContentDescription("安装插件").assertIsDisplayed()
         compose.onNodeWithText("尚未安装语音引擎插件").assertIsDisplayed()
         compose.onNodeWithText("聆听占位插件").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/plugin-manager-external-packages.png")

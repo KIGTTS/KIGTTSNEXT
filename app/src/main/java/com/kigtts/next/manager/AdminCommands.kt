@@ -11,6 +11,7 @@ import java.io.File
 class AdminCommands(private val context: Context, private val host: HostPluginRuntime, private val journal: AdminJournal) {
     private val manager get()=host.manager
     suspend fun run(command:String,args:JSONObject,file:File?):JSONObject = when(command) {
+        "navigate","back" -> adminNavigate(requireNotNull(host.ui()) { "请先打开主程序" },args,command=="back")
         "present" -> host.mutate {
             val model=requireNotNull(host.ui()) { "请先打开主程序" }
             val entry=model.mediaRepository.import(android.net.Uri.fromFile(requireNotNull(file)),args.getString("mime"))

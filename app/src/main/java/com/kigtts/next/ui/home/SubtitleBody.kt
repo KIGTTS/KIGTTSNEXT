@@ -22,18 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
-import com.kigtts.next.ui.media.MediaContent
+import com.kigtts.next.ui.media.MediaTransition
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     val media = model.mediaRepository.get(state.mediaId)
-    if (media != null) {
-        Box(modifier.testTag("subtitle-content").clipToBounds().subtitleUpdateMotion(state.subtitleRevision)) {
-            MediaContent(media, state, model, Modifier.fillMaxSize()
-                .graphicsLayer { rotationZ = if (state.subtitleFlipped && !state.mediaEditing) 180f else 0f })
-        }
-        return
+    MediaTransition(media,state,model,modifier.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
+        renderFullCardMedia=false) {
+        SubtitleText(state,model,Modifier.fillMaxSize())
     }
+}
+
+@Composable
+private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val flipped = state.subtitleFlipped && !state.editing

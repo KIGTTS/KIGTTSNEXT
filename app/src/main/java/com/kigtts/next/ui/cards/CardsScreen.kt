@@ -24,6 +24,8 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.ToolbarAction
 
 @Composable
 fun CardsScreen() {
@@ -38,6 +40,7 @@ fun CardsScreen() {
         imageUri = uri?.toString()
         if (uri != null) runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     }
+    RegisterPageActions(listOf(ToolbarAction("add-card","添加名片",Icons.Default.Add) { adding=true }))
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
             cards.forEachIndexed { index, card ->
@@ -68,7 +71,6 @@ fun CardsScreen() {
             }
             Spacer(Modifier.height(70.dp))
         }
-        FloatingActionButton(onClick = feedbackClick { adding = true }, Modifier.align(Alignment.BottomEnd).padding(20.dp)) { Icon(Icons.Default.Add, "添加名片") }
     }
     if (adding) AlertDialog(onDismissRequest = { adding = false }, title = { Text("新名片") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {

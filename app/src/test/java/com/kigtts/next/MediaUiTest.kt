@@ -39,6 +39,29 @@ class MediaUiTest {
         Bitmap.createBitmap(64,64,Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.CYAN); file.outputStream().use { compress(Bitmap.CompressFormat.PNG,100,it) }; recycle() }
         return model.mediaRepository.import(Uri.fromFile(file),"image/png")
     }
+    @Test fun deletingDisplayedImageKeepsItsPixelsForExitAndThenRetiresIt() {
+        show();compose.runOnIdle { model.text("恢复文字") };val entry=image()
+        compose.runOnIdle { model.content.show(entry) }
+        compose.waitUntil(5000) { compose.onAllNodesWithContentDescription(entry.name).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance=false
+        compose.runOnIdle { model.content.remove(entry.id) }
+        compose.mainClock.advanceTimeByFrame();compose.mainClock.advanceTimeBy(48);compose.waitForIdle()
+        compose.onNodeWithTag("media-exit/"+entry.id).assertExists().assertHasNoClickAction()
+        val path="build/previews/media-exit-mid.png"
+        compose.onRoot().captureRoboImage(path)
+        val bounds=compose.onNodeWithTag("editor-area").getUnclippedBoundsInRoot()
+        val density=compose.activity.resources.displayMetrics.density
+        val bitmap=BitmapFactory.decodeFile(path)
+        val color=bitmap.getPixel(((bounds.left.value+(bounds.right.value-bounds.left.value)*.3f)*density).toInt(),
+            ((bounds.top.value+(bounds.bottom.value-bounds.top.value)*.25f)*density).toInt())
+        bitmap.recycle();assertTrue(Color.red(color)<220&&Color.green(color)>230&&Color.blue(color)>230)
+        compose.mainClock.advanceTimeBy(500);compose.waitForIdle()
+        compose.onNodeWithTag("media-exit/"+entry.id).assertDoesNotExist()
+        compose.onNodeWithText("恢复文字").assertIsDisplayed()
+        assertNull(model.mediaRepository.get(entry.id))
+        compose.mainClock.autoAdvance=true
+    }
     @Test fun experimentalSettingsDefaultOffPersistsAndApplePlaybackDisappearsWhenDisabled() {
         show(); compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.EXPERIMENTAL)) }
         compose.onNodeWithTag("apple-live-photos").assertIsOff().performClick().assertIsOn()

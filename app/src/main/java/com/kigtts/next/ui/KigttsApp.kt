@@ -88,12 +88,12 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
-                Scaffold(snackbarHost = { SnackbarHost(snackbar) },
-                    contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
+                Scaffold(snackbarHost = { SnackbarHost(snackbar,Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom+WindowInsetsSides.Horizontal))) },
+                    contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
                     Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding()) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
-                            drawer::open, if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, drawerActive) { active ->
+                            if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, drawerActive) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, drawer::open,
                                 if (active) back.progress else 0f, back.edge)
                         }

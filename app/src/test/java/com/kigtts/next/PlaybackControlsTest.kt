@@ -38,6 +38,7 @@ class PlaybackControlsTest {
         } }
         compose.waitForIdle()
         val small=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("controls").captureRoboImage("build/previews/live-controls-compact.png")
         compose.onNodeWithTag("play-motion-photo").performClick()
         compose.waitForIdle()
         assertTrue(expanded.value)
@@ -46,16 +47,47 @@ class PlaybackControlsTest {
         val middle=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
         assertTrue(middle.right-middle.left>small.right-small.left)
         assertTrue(middle.right-middle.left<360.dp)
+        compose.mainClock.advanceTimeBy(160);compose.waitForIdle()
+        val rebound=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
         compose.mainClock.advanceTimeBy(1000);compose.waitForIdle()
         val large=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
-        assertTrue(large.right-large.left>middle.right-middle.left);assertEquals(small.bottom-small.top,large.bottom-large.top)
+        assertTrue(large.right-large.left>middle.right-middle.left)
+        assertTrue(rebound.right-rebound.left>large.right-large.left)
+        assertTrue(rebound.right-rebound.left<=360.dp)
+        assertEquals(40.dp,small.bottom-small.top);assertEquals(48.dp,large.bottom-large.top)
+        compose.onNodeWithTag("controls").captureRoboImage("build/previews/live-controls-expanded.png")
         compose.onNodeWithContentDescription("返回照片").performClick()
         compose.waitForIdle()
         assertFalse(expanded.value)
         compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(80);compose.waitForIdle()
+        val closing=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
+        assertTrue(closing.right-closing.left>small.right-small.left)
+        assertTrue(closing.right-closing.left<large.right-large.left)
         compose.mainClock.advanceTimeBy(1000);compose.waitForIdle()
         assertEquals(small,compose.onNodeWithTag("controls").getUnclippedBoundsInRoot())
         compose.onNodeWithTag("play-motion-photo").assertIsDisplayed()
+    }
+
+    @Test fun pressingCompactPlayMorphsItsShapeAndCancellingRestoresItWithoutPlayback() {
+        var starts=0;val state=PlaybackState()
+        compose.mainClock.autoAdvance=false
+        compose.setContent { MaterialTheme {
+            Box(Modifier.width(360.dp)) { PlaybackControls(state,false,true,{ starts++ },{},Modifier.testTag("controls")) }
+        } }
+        compose.waitForIdle()
+        val button=compose.onNodeWithTag("play-motion-photo")
+        val rest=button.fetchSemanticsNode().boundsInRoot
+        button.performTouchInput { down(center) }
+        repeat(10) { compose.mainClock.advanceTimeBy(32);compose.waitForIdle() }
+        val held=button.fetchSemanticsNode().boundsInRoot
+        compose.onNodeWithTag("controls").captureRoboImage("build/previews/live-controls-pressed.png")
+        assertTrue(held.right-held.left<rest.right-rest.left)
+        assertTrue(held.bottom-held.top<rest.bottom-rest.top)
+        button.performTouchInput { cancel() }
+        compose.waitForIdle();compose.mainClock.advanceTimeByFrame();compose.mainClock.advanceTimeBy(1000);compose.waitForIdle()
+        assertEquals(rest,button.fetchSemanticsNode().boundsInRoot);assertEquals(0,starts)
+        button.performClick();compose.runOnIdle { assertEquals(1,starts) }
     }
 
     @Test fun scrubPreviewsLocallyAndSeeksOnlyOnceWhenReleased() {

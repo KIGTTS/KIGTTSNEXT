@@ -15,21 +15,22 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.UiSlot
 import com.kigtts.next.media.MediaKind
+import com.kigtts.next.ui.media.MediaTransition
 
 @Composable
 fun TextEditor(
     state: AppState, model: AppViewModel, captionsAbove: Boolean, panelBelow: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val mediaCoversCard = model.mediaRepository.get(state.mediaId)?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)
+    val media=model.mediaRepository.get(state.mediaId)
+    val mediaCoversCard = media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)
     Surface(modifier, shape = homeCardShape(CornerNeighbors(above = captionsAbove, below = panelBelow)),
         color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box {
-            if (mediaCoversCard) SubtitleBody(state, model, Modifier.fillMaxSize())
+            MediaTransition(media?.takeIf { mediaCoversCard },state,model,Modifier.fillMaxSize())
             Column {
                 Box(Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
-                if (mediaCoversCard) Spacer(Modifier.weight(1f))
-                else SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
+                SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
                 EditorFooter(state, model)
             }
         }

@@ -83,7 +83,7 @@ class SettingsNavigationTest {
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
         compose.onNodeWithTag("managed-list/plugins").performScrollToNode(hasTestTag("managed-item/input.voice"))
         compose.onNodeWithTag("managed-item/input.voice").performClick()
-        compose.onNodeWithText("开启语音输入").assertIsDisplayed()
+        compose.onNodeWithContentDescription("开启语音输入").assertIsDisplayed()
         back()
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
         back()

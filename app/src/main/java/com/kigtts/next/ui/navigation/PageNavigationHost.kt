@@ -13,7 +13,7 @@ import com.kigtts.next.ui.sketch.SketchState
 @Composable
 fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppViewModel,
     sketch: SketchState, shareRequest: Int, shareConsumed: () -> Unit, shareSketch: () -> Unit,
-    openDrawer: () -> Unit, progress: Float, edge: Int, drawerActive: Boolean,
+    progress: Float, edge: Int, drawerActive: Boolean,
     home: @Composable (Boolean) -> Unit) {
     val holder = rememberSaveableStateHolder()
     val current = navigation.current
@@ -30,7 +30,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                         PageScene.Home -> home(active)
                         is PageScene.Screen -> Box(Modifier.fillMaxSize()
                             .then(if (foreground) Modifier.testTag("navigation-secondary") else Modifier)) {
-                            SecondaryDestination(scene.destination, state, model, openDrawer)
+                            SecondaryDestination(scene.destination, state, model)
                         }
                         is PageScene.Side -> Box(Modifier.fillMaxSize().testTag("secondary-" + scene.page.name.lowercase())) {
                             SecondarySidePage(scene.page, model::closeSidePage, sketch, shareRequest, shareConsumed, shareSketch, model::message)

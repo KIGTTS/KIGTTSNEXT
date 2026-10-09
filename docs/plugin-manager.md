@@ -27,6 +27,8 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 支持 `-Device` 选择设备。`resource` 传 `id/directory/name/zip` 并带 `-File`，文件由宿主原资源导入器限定到指定插件目录。`present` 传 `mime` 并带图片、动态照片、视频或 HTML 文件，打开主程序呈现，用于真实媒体检查；`select-media`/`remove-media` 传媒体 `id`，测试结束应仅移除此次导入项。
 
+桥 1 另提供可选 `navigate`（`page` 为 home/settings/appearance/feedback/experimental/plugins/media/sketch/cards，或 plugin 并传 id/pageId）与 `back`，用于在真实主程序查看页面和返回动画，不需要测试 APK，也不修改插件安装状态；旧管理器客户端仍可使用。
+
 命令先入队并返回作业 ID，再查询结果；JSON 使用 UTF-8 Base64，避免 shell 解释内容。操作完成后 CLI 清除自己的传输文件。超时表示结果未知，保留文件和作业 ID，须先检查结果/状态；不能直接再次提交安装或卸载。作业记录最多 50 条、仅在管理器进程中保留，进程退出后缺失也不能据此断言操作未完成。
 
 ## 管理协议 1

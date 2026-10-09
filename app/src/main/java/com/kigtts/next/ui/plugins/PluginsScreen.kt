@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -15,6 +18,8 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.launch
+import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.ToolbarAction
 
 @Composable
 fun PluginsScreen(model: AppViewModel) {
@@ -33,6 +38,10 @@ fun PluginsScreen(model: AppViewModel) {
         }
     }
     val rows = pluginManagementItems(model)
+    RegisterPageActions(listOf(
+        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!busy) { importer.launch(arrayOf("*/*")) },
+        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!busy) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
+    ))
     com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), busy,
         invoke = { action, inputs ->
             val pieces = action.split('/')
@@ -45,9 +54,7 @@ fun PluginsScreen(model: AppViewModel) {
                 "page" -> model.navigate(Destination.PluginPage(pieces[1], pieces.drop(2).joinToString("/")))
             }
         }) {
-        Text("插件", style = MaterialTheme.typography.headlineMedium)
         Text("拖动手柄或长按排序。条目菜单提供页面、引擎选择和卸载操作。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FilledTonalButton(shapes = expressivePillShapes(), enabled = !busy, onClick = feedbackClick { importer.launch(arrayOf("*/*")) }) { Text("安装 .kigplugin") }
         if (model.pluginManager.status.isEmpty()) Text("尚未安装语音引擎插件")
     }
     pending?.let { candidate ->

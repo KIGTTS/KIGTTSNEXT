@@ -19,6 +19,8 @@ import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.navigation.LocalPageActive
+import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.ToolbarAction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,15 +49,13 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
             catch (e: Exception) { error = e.message ?: "配对失败" } finally { importing = false }
         }
     }
+    RegisterPageActions(listOf(
+        ToolbarAction("import-media","导入图片或视频",Icons.Default.AddPhotoAlternate,!importing) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+        ToolbarAction("import-media-file","导入文件",Icons.Default.FileOpen,!importing) { document.launch(arrayOf("text/html","application/xhtml+xml","image/*","video/*")) },
+        ToolbarAction("create-html","新建 HTML",Icons.Default.Code) { model.content.editor(html=true,target=target) },
+        ToolbarAction("add-webpage","添加网页",Icons.Default.Language) { website=true }
+    ))
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(feedbackClick { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) }, enabled = !importing, modifier = Modifier.weight(1f).testTag("import-media")) { Text("导入图片 / 视频") }
-            FilledTonalButton(feedbackClick { document.launch(arrayOf("text/html", "application/xhtml+xml", "image/*", "video/*")) }, enabled = !importing) { Text("文件") }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(feedbackClick { model.content.editor(html = true, target = target) }, Modifier.testTag("create-html")) { Text("新建 HTML") }
-            TextButton(feedbackClick { website = true }) { Text("添加网页") }
-        }
         if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (entries.isEmpty()) Text("导入后点击媒体即可使用。Android 动态照片会自动识别。", color = MaterialTheme.colorScheme.onSurfaceVariant)

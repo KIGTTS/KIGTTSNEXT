@@ -51,10 +51,9 @@ class NavigationThemeUiTest {
         compose.onNodeWithTag("drawer-logo").assertIsNotDisplayed()
         compose.runOnIdle { assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
         compose.runOnIdle { model.navigate(Destination.Settings) }
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
+        compose.onNodeWithContentDescription("打开抽屉菜单").assertDoesNotExist()
         back()
-        compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
-        compose.onNodeWithText("偏好设置").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
     }
 
     @Test fun secondaryPredictionRevealsParentAndReturnWalksStackBeforeHomePanels() {

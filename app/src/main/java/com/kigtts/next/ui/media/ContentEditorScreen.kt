@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.navigation.LocalPageActive
+import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.ToolbarAction
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,16 +41,18 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
         model.content.editEditor(value, title)
     }
     LaunchedEffect(value, title) { model.content.editEditor(value, title) }
+    RegisterPageActions(listOf(
+        ToolbarAction("save-content","保存内容",Icons.Default.Save,!saving) {
+            scope.launch { saving=true;try { model.content.saveEditor(value,title) } catch(e:Exception) { error=e.message ?: "保存失败" } finally { saving=false } }
+        },
+        ToolbarAction("find-content","查找替换",Icons.Default.FindReplace) { search=true }
+    ))
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row {
             key(revision) {
                 IconButton(feedbackClick { if (undo.isNotEmpty()) { redo.addLast(value); value = undo.removeLast(); revision++ } }, enabled = undo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
                 IconButton(feedbackClick { if (redo.isNotEmpty()) { undo.addLast(value); value = redo.removeLast(); revision++ } }, enabled = redo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
             }
-            IconButton(feedbackClick { search = true }) { Icon(Icons.Default.FindReplace, "查找替换") }
-            Spacer(Modifier.weight(1f))
-            Button(feedbackClick { scope.launch { saving = true; try { model.content.saveEditor(value, title) } catch (e: Exception) { error = e.message ?: "保存失败" } finally { saving = false } } },
-                enabled = !saving, modifier = Modifier.testTag("save-content")) { Text("保存") }
         }
         if (entry.html) OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("内容名称") }, singleLine = true)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

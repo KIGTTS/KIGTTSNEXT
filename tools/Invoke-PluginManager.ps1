@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([ValidateSet('snapshot','inspect','install','enable','restart','uninstall','refresh','resource','execute','tts-test','present','select-media','remove-media')]
+param([ValidateSet('snapshot','inspect','install','enable','restart','uninstall','refresh','resource','execute','tts-test','present','select-media','remove-media','navigate','back')]
     [string]$Command='snapshot',[string]$Payload='{}',[string]$File,[string]$Device,[int]$TimeoutSeconds=120)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -19,7 +19,7 @@ function Read-Control([string]$Method,[string]$Argument) {
 }
 $managerPid=& $adb @targetArgs shell pidof com.kigtts.manager
 if(-not $managerPid){$null=Invoke-Adb -Arguments @('shell','am','start','-W','-n','com.kigtts.manager/.ManagerActivity')}
-if($Command -in @('present','select-media','remove-media')) {
+if($Command -in @('present','select-media','remove-media','navigate','back')) {
     $null=Invoke-Adb -Arguments @('shell','am','start','-W','-n','com.kigtts.next/.MainActivity')
 }
 $request=@{command=$Command;payload=($Payload | ConvertFrom-Json -AsHashtable)}
