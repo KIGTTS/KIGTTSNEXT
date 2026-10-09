@@ -46,6 +46,13 @@ class UiDebugPlugin(
                 PageAction("info", "显示对话框", PluginIcon.INFO), PageAction("config", "打开调试页面", PluginIcon.SETTINGS)))
         }
         return when (actionId) {
+            "web-demo" -> PluginOutcome.PresentContent(SubtitleContent.Html(html = """
+                <!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>body{font:20px system-ui;margin:24px;background:#e0f4f3;color:#00383b}button{border:0;border-radius:100px;padding:16px 24px;background:#00696e;color:white;font:inherit}</style>
+                <h2>插件网页</h2><p>这块内容由插件提供，可在大字幕区域交互。</p>
+                <button onclick='Kigtts.postMessage(JSON.stringify({action:"web-click",inputs:{source:"demo"}}))'>调用插件动作</button></html>
+            """.trimIndent(), description = "插件网页示例", allowedActions = listOf("web-click")))
+            "web-click" -> PluginOutcome.Message("网页按钮已通过声明的插件接口调用成功")
             "config" -> PluginOutcome.OpenPage("config")
             "info" -> PluginOutcome.Dialog("调试按钮", "此按钮由调试插件注册，外观和交互由所在区域统一提供。")
             else -> PluginOutcome.Message("未知调试操作")
@@ -56,6 +63,7 @@ class UiDebugPlugin(
         add(PageBlock.Text("扩展区域测试", heading = true))
         add(PageBlock.Text("每个区域可插入 0–20 个入口。默认全部关闭，设置自动保存；按钮继承所在区域的外观。"))
         add(PageBlock.Actions(listOf(PageAction("reset", "清空全部调试入口"))))
+        add(PageBlock.Actions(listOf(PageAction("web-demo", "显示插件网页示例", PluginIcon.TEXT))))
         UiSlot.entries.forEach { slot ->
             add(PageBlock.Group(label(slot), listOf(
                 PageBlock.Text("当前数量：" + counts.getValue(slot)),

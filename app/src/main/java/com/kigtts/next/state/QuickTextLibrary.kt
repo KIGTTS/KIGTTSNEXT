@@ -13,20 +13,21 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
     val categoryIcons = iconState.asStateFlow()
 
     private fun save() = store.save(itemState.value, groupState.value, iconState.value)
-    fun add(text: String, category: String, description: String = "") {
+    fun add(text: String, category: String, description: String = "", mediaId: String? = null) {
         if (text.isBlank() || category !in groupState.value) return
-        itemState.value += QuickPhrase(text.trim(), category, description = description.trim())
+        itemState.value += QuickPhrase(text.trim(), category, description = description.trim(), mediaId = mediaId)
         save()
     }
-    fun edit(id: String, text: String, description: String, category: String) {
+    fun edit(id: String, text: String, description: String, category: String, mediaId: String? = itemState.value.firstOrNull { it.id == id }?.mediaId) {
         if (text.isBlank() || category !in groupState.value) return
-        itemState.value = itemState.value.map { if (it.id == id) it.copy(text = text.trim(), description = description.trim(), category = category) else it }
+        itemState.value = itemState.value.map { if (it.id == id) it.copy(text = text.trim(), description = description.trim(), category = category, mediaId = mediaId) else it }
         save()
     }
     fun remove(id: String) {
         itemState.value = itemState.value.filterNot { it.id == id }
         save()
     }
+    fun detachMedia(id: String) { itemState.value=itemState.value.map { if(it.mediaId==id)it.copy(mediaId=null) else it };save() }
     fun addCategory(name: String, icon: CategoryIcon = CategoryIcon.LIST): Boolean {
         val value = name.trim()
         if (value.isBlank() || value in groupState.value) return false

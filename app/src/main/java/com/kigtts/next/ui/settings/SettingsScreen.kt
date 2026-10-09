@@ -22,6 +22,7 @@ fun SettingsScreen(open: (Destination) -> Unit) {
                 SettingsCategory.COLORS -> Icons.Default.Palette
                 SettingsCategory.DISPLAY -> Icons.Default.RoundedCorner
                 SettingsCategory.FEEDBACK -> Icons.Default.Vibration
+                SettingsCategory.EXPERIMENTAL -> Icons.Default.Science
             }
             CategoryEntry(category.title, category.summary, icon) { open(Destination.SettingsDetail(category)) }
         }

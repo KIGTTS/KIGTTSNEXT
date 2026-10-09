@@ -13,31 +13,42 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
-import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
+import com.kigtts.next.media.MediaKind
 
 @Composable
 fun TextEditor(
     state: AppState, model: AppViewModel, captionsAbove: Boolean, panelBelow: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val mediaCoversCard = model.mediaRepository.get(state.mediaId)?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)
     Surface(modifier, shape = homeCardShape(CornerNeighbors(above = captionsAbove, below = panelBelow)),
         color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        Column {
-            Box(Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
-            SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
-            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
-                ElasticButtonGroup(listOf(ElasticAction("editor-clear", "清空", Icons.Default.DeleteSweep,
-                    { model.text("") }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
-                if (state.editing) CursorTrack(model, Modifier.weight(.5f))
-                else Spacer(Modifier.weight(.2f).testTag("editor-bottom-reserved"))
-                Box(Modifier.weight(if (state.editing) .25f else .4f), contentAlignment = Alignment.CenterEnd) {
-                ElasticButtonGroup(listOf(ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
-                    if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)) +
-                    cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
-                    overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作")
-                }
+        Box {
+            if (mediaCoversCard) SubtitleBody(state, model, Modifier.fillMaxSize())
+            Column {
+                Box(Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
+                if (mediaCoversCard) Spacer(Modifier.weight(1f))
+                else SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
+                EditorFooter(state, model)
             }
+        }
+    }
+}
+
+@Composable
+private fun EditorFooter(state: AppState, model: AppViewModel) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
+        ElasticButtonGroup(listOf(ElasticAction("editor-clear", "清空", Icons.Default.DeleteSweep,
+            { model.text("") }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
+        if (state.editing) CursorTrack(model, Modifier.weight(.5f))
+        else Spacer(Modifier.weight(.2f).testTag("editor-bottom-reserved"))
+        Box(Modifier.weight(if (state.editing) .25f else .4f), contentAlignment = Alignment.CenterEnd) {
+            val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", "全屏", Icons.Default.Fullscreen, model::enterSubtitleFullscreen, iconOnly = false)
+                else ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
+                    if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)
+            ElasticButtonGroup(listOf(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
+                overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作")
         }
     }
 }

@@ -23,7 +23,7 @@ class StreamingRecognitionDeviceTest {
         try {
             for (packageId in listOf("engine.system-tts", "engine.sensevoice", "engine.piper", "service.speech-synthesis", id, serviceId)) {
                 val input = File(manager.paths.packages, ".recognition-test-$packageId.kigplugin")
-                instrumentation.context.assets.open("$packageId-0.4.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
+                instrumentation.context.assets.open("$packageId-0.5.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
                     val preview = manager.packages.inspect(input)
                     if (manager.packages.installed().none { it.manifest.id == packageId && it.manifest.versionCode == preview.manifest.versionCode }) manager.install(input, preview.publisherSha256)

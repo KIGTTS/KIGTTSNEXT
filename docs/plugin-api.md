@@ -1,4 +1,6 @@
-# 插件 API v5
+# 插件 API v6
+
+API6 新增大字幕 `PresentContent`、`SubtitleContent` 媒体协议和当前内容上下文。图片/动态照片、视频、插件 HTML、动作消息与资源归属详见 [媒体接口](media-content.md)。苹果实况照片默认关闭，由宿主实验功能设置统一控制。API5 及更早的 DEX 二进制须同签名重建，现有资源保留。
 
 插件实现 KigPlugin，声明 PluginDescriptor、可选 TtsEngine / AsrEngine 与 PluginContributions，然后由宿主 PluginRegistry 注册。内置功能 UI 仍为源码模块；外部引擎通过 .kigplugin 安装，在独立工作进程中加载。宿主注册远程代理，具体引擎类与依赖不进入主程序。包、生命周期、目录与限制详见 [专用插件包](plugin-packages.md)。
 
@@ -34,7 +36,7 @@ Tab 使用与分组相同的原生 FilterChip、圆形外端与弹性接邻圆�
 
 扩展按钮的添加、撤销、名称/图标/样式切换由宿主统一提供出入及替换动效，退出快照不产生重复无障碍入口或菜单；点击按当前贡献 ID 路由，已撤销动作不执行。底部五个槽位保持稳定身份与宽度过渡，贡献变化不会重建正在拖动的快捷入口。聆听上面板压缩为单行时，宿主临时不显示其底部扩展按钮，空间恢复后还原。
 
-动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 5）。API2/API3/API4 的二进制包必须重新构建，同发布者递增版本更新可保留模型和配置。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
+动作 ID 在同一插件内唯一，宿主按 pluginId/actionId 命名空间路由，以 order 和命名空间稳定排序。API 主版本必须匹配（当前 5）。API2/API3/API4/API5 的二进制包必须重新构建，同发布者递增版本更新可保留模型和配置。attach 提供插件专属存储与资源环境；close 在取消并结束会话后调用。
 
 ## 手势贡献
 
@@ -118,10 +120,10 @@ TtsInfo.packs 区分语音包与 VoiceInfo 声音，VoiceInfo.packId 建立归�
 
 PluginOutcome.ExportResource 请求原生“另存为”，支持 MIME 类型、文件名、资源引用和临时标记；临时文件在完成/取消后清理，旋转时保留请求。TextInput.multiline 支持备注等多行输入。四角溢出菜单不抢输入焦点，插件模态菜单/输入期间暂停主字幕 IME 退出判定，关闭后恢复编辑键盘。次级页面返回与预测性返回固定采用入场侧，忽略手势边缘的方向。
 
-## 识别服务与依赖（API5）
+## 识别服务与依赖（API6）
 
 AsrInfo.role 为 PROVIDER / SERVICE，主应用识别选择仅接受 SERVICE。语音识别服务通过声明 asr-service 得到环境 recognitionBroker：目录 providers() 返回 AsrProvider（含启用状态和规范设置页面引用），recognize / recognizeStream 按目标 ID 调用独立提供者。服务与引擎禁止嵌套、自调用；完整录音和流式都采用有背压管道，取消逐级传递，输入/输出都必须明确结束。推理与模型管理始终在引擎插件。
 
 PluginDescriptor.requires 可声明 RECOGNITION_SERVICE。依赖缺失时 Registry 不注册功能按钮/抽屉/手势入口，宿主也拦截过期 HostAction；低频配置仍可打开。当前字幕/语音输入使用此声明。服务存在但引擎未就绪时不打开麦克风，不直接回退提供者。
 
-新增 SelectRecognitionService、RecognitionRoutingChanged、OpenPluginPage 与 SetPluginEnabled。跨插件页面使用正常导航；识别服务请求引擎启停时，宿主验证目标为独立 ASR、先取消音频，再变更进程状态并刷新目录。服务页选用引擎和打开模型页的具体用法见 [识别服务说明](recognition-service.md)。API4 二进制需同发布者升级 0.4.0/API5，现有数据保留。
+新增 SelectRecognitionService、RecognitionRoutingChanged、OpenPluginPage 与 SetPluginEnabled。跨插件页面使用正常导航；识别服务请求引擎启停时，宿主验证目标为独立 ASR、先取消音频，再变更进程状态并刷新目录。服务页选用引擎和打开模型页的具体用法见 [识别服务说明](recognition-service.md)。API5 及更早二进制需同发布者升级 0.5.0/API6，现有数据保留。

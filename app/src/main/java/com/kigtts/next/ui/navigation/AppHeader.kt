@@ -27,6 +27,8 @@ fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
         is Destination.SettingsDetail -> destination.category.title
         Destination.Plugins -> "插件管理"
         is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
+        is Destination.MediaLibrary -> "媒体库"
+        is Destination.ContentEditor -> "内容编辑器"
     }
     Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {

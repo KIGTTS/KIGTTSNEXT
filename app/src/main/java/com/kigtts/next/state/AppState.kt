@@ -12,8 +12,10 @@ sealed interface Destination {
     data class SettingsDetail(val category: SettingsCategory) : Destination
     data object Plugins : Destination
     data class PluginPage(val pluginId: String, val pageId: String) : Destination
+    data class MediaLibrary(val target: String = "display") : Destination
+    data class ContentEditor(val token: String) : Destination
 }
-data class QuickPhrase(val text: String, val category: String, val id: String = java.util.UUID.randomUUID().toString(), val description: String = "")
+data class QuickPhrase(val text: String, val category: String, val id: String = java.util.UUID.randomUUID().toString(), val description: String = "", val mediaId: String? = null)
 data class AppState(
     val destination: Destination = Destination.Home,
     val navigationStack: List<Destination> = emptyList(),
@@ -40,7 +42,12 @@ data class AppState(
     val selectedCategory: String = "常用",
     val theme: ThemeSettings = ThemeSettings(),
     val hapticsEnabled: Boolean = true,
+    val mediaId: String? = null,
+    val mediaEditing: Boolean = false,
+    val webCanGoBack: Boolean = false,
+    val webBackRevision: Int = 0,
+    val appleLivePhotos: Boolean = false,
 ) {
     val editorText: String get() = editorValue.text
-    val subtitleExpanded: Boolean get() = editing || forcedFullscreen
+    val subtitleExpanded: Boolean get() = editing || forcedFullscreen || mediaEditing
 }

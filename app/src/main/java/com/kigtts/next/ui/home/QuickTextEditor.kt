@@ -17,12 +17,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.navigation.LocalPageActive
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
     modifier: Modifier = Modifier) {
-    var detail by remember { mutableStateOf<QuickPhrase?>(null) }
-    var adding by remember { mutableStateOf(false) }
+    val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
+    val active = LocalPageActive.current
     var addGroup by remember { mutableStateOf(false) }
     var editGroup by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf<QuickPhrase?>(null) }
@@ -43,7 +45,8 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 Column(Modifier.fillMaxSize()) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
                         EditablePhraseGrid(phrases.filter { it.category == category }, model,
-                            { detail = it }, { deleting = it }, { adding = true }, Modifier.fillMaxSize(), drag = drag, active = active)
+                            { model.content.beginPhrase(it, state.selectedCategory) }, { deleting = it },
+                            { model.content.beginPhrase(null, state.selectedCategory) }, Modifier.fillMaxSize(), drag = drag, active = active)
                     }
                     CategoryTabs(state, categories, model, editing = true, addGroup = { addGroup = true }, editGroup = { editGroup = it })
                 }
@@ -51,9 +54,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
             }
         }
     }
-    if (adding || detail != null) PhraseDetailsDialog(detail, state.selectedCategory, categories, model) {
-        adding = false; detail = null
-    }
+    if (active) draft?.let { key(it.key) { PhraseDetailsDialog(it, categories, model, model.content::cancelPhrase) } }
     if (addGroup) AddCategoryDialog(categories, model) { addGroup = false }
     editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
     deleting?.let { phrase ->

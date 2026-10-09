@@ -22,7 +22,7 @@ class PluginRuntimeDeviceTest {
         val keepPackages = InstrumentationRegistry.getArguments().getString("keepPackages") == "true"
         val added = mutableListOf<String>()
         try {
-            for (name in listOf("engine.system-tts-0.4.0.kigplugin", "engine.sensevoice-0.4.0.kigplugin")) {
+            for (name in listOf("engine.system-tts-0.5.0.kigplugin", "engine.sensevoice-0.5.0.kigplugin")) {
                 val input = File(manager.paths.packages, ".device-test-$name")
                 instrumentation.context.assets.open(name).use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {

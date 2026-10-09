@@ -52,7 +52,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
         val listModifier = Modifier.fillMaxSize().then(if (isRow == currentRow) Modifier else Modifier.clearAndSetSemantics {})
         if (isRow) LazyRow(listModifier.testTag("phrases-horizontal"), state = row, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
-                PhraseTile(phrase, { model.text(phrase.text) }, CornerNeighbors(start = index > 0, end = index < filtered.lastIndex),
+                PhraseTile(phrase, { model.content.send(phrase) }, CornerNeighbors(start = index > 0, end = index < filtered.lastIndex),
                     pressed[index], pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     sources[index], Modifier.width(164.dp).height(64.dp))
             }
@@ -60,7 +60,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
             verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
                 val neighbors = listOf(index - 2, index + 2, if (index % 2 == 0) index + 1 else index - 1)
-                PhraseTile(phrase, { model.text(phrase.text) },
+                PhraseTile(phrase, { model.content.send(phrase) },
                     CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < filtered.lastIndex,
                         above = index >= 2, below = index + 2 <= filtered.lastIndex),
                     pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index], Modifier.height(64.dp))
@@ -76,7 +76,7 @@ private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: Corne
         color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors, pressed, neighborPressed)) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text(phrase.text, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(phrase.description.ifBlank { "点击填入文本" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            Text(phrase.description.ifBlank { if (phrase.mediaId == null) "点击填入文本" else "点击显示媒体" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

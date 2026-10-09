@@ -39,6 +39,10 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-ui:1.11.1")
+    implementation("androidx.webkit:webkit:1.16.0")
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
@@ -57,7 +61,7 @@ tasks.withType<Test>().configureEach {
     systemProperty("roborazzi.test.record", "true")
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
-    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.4.0.kigplugin") }
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.5.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
 tasks.matching { it.name.contains("AndroidTest") }.configureEach { dependsOn(copyPluginTestAssets) }

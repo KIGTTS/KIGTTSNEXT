@@ -19,6 +19,8 @@ data class PageEntry(val scene: PageScene, val depth: Int) {
             is Destination.SettingsDetail -> "settings/" + destination.category.name
             Destination.Plugins -> "plugins"
             is Destination.PluginPage -> destination.pluginId + "/" + destination.pageId
+            is Destination.MediaLibrary -> "media/" + destination.target
+            is Destination.ContentEditor -> "content-editor/" + destination.token
         }
     }
     val direction: Float get() = if (scene == PageScene.Side(SidePage.SKETCH)) -1f else 1f

@@ -1,0 +1,54 @@
+package com.kigtts.next.media
+
+import android.webkit.WebResourceResponse
+import android.webkit.MimeTypeMap
+import java.io.*
+import java.net.HttpURLConnection
+import java.net.URL
+import java.security.MessageDigest
+import androidx.core.net.toUri
+
+/** WebView never fetches resources outside this loader. Network copies belong to the content owner. */
+class WebResourceLoader(private val directory: File, private val local: File?, private val network: Boolean) {
+    fun load(url: String, method: String): WebResourceResponse {
+        if (url.startsWith(WebContentPolicy.ORIGIN + "/content/")) {
+            val path = url.toUri().path.orEmpty().removePrefix("/content/")
+            val file = local?.let { WebContentPolicy.file(it, path) } ?: return denied()
+            val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
+            return WebResourceResponse(mime, if (mime.startsWith("text/")) "UTF-8" else null, file.inputStream())
+        }
+        if (!network || method != "GET" || !WebContentPolicy.https(url)) return denied()
+        return runCatching {
+            var address = url; var connection: HttpURLConnection? = null
+            for (attempt in 0..5) {
+                connection = URL(address).openConnection() as HttpURLConnection
+                connection.apply { instanceFollowRedirects = false; connectTimeout = 15_000; readTimeout = 20_000; useCaches = false }
+                if (connection.responseCode !in setOf(301, 302, 303, 307, 308)) break
+                val redirected = URL(URL(address), connection.getHeaderField("Location")).toString(); connection.disconnect()
+                require(WebContentPolicy.https(redirected)); require(attempt < 5); address = redirected
+            }
+            val request = requireNotNull(connection)
+            try {
+                val type = request.contentType.orEmpty(); val mime = type.substringBefore(';').ifBlank { "application/octet-stream" }
+                val encoding = type.substringAfter("charset=", "UTF-8").substringBefore(';').trim()
+                if (request.responseCode !in 200..299) return@runCatching denied()
+                directory.mkdirs()
+                val digest = MessageDigest.getInstance("SHA-256").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
+                val temporary = File.createTempFile("resource-", ".tmp", directory)
+                try {
+                    request.inputStream.use { input -> temporary.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024); var total = 0L
+                        while (true) { val count = input.read(buffer); if (count < 0) break; total += count; require(total <= 32L * 1024 * 1024); output.write(buffer, 0, count) }
+                    } }
+                    val destination = File(directory, digest)
+                    java.nio.file.Files.move(temporary.toPath(), destination.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+                    // Bound persistent cache; actual requests are freshly fetched, so stale resources cannot cross sessions.
+                    var bytes = directory.listFiles().orEmpty().sumOf { it.length() }
+                    directory.listFiles().orEmpty().sortedBy { it.lastModified() }.forEach { if (bytes > 128L * 1024 * 1024 && it != destination) { bytes -= it.length(); it.delete() } }
+                    WebResourceResponse(mime, encoding, destination.inputStream())
+                } finally { temporary.delete() }
+            } finally { request.disconnect() }
+        }.getOrElse { denied() }
+    }
+    private fun denied() = WebResourceResponse("text/plain", "UTF-8", 403, "Unavailable", emptyMap(), ByteArrayInputStream("资源不可用".toByteArray()))
+}

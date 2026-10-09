@@ -1,0 +1,102 @@
+package com.kigtts.next.media
+
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
+import com.kigtts.plugin.api.*
+import com.kigtts.plugin.runtime.PluginPaths
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONArray
+import java.io.File
+import java.util.UUID
+
+/** Host-owned imports are durable copies; plugin media stays referenced in its owner's Appdata. */
+class MediaRepository(private val context: Context, private val plugins: PluginPaths) {
+    val root=File(requireNotNull(context.getExternalFilesDir(null)),"appdata/Kigtts/media").apply { mkdirs() }
+    private val catalog=File(root,"catalog.json")
+    private val state=MutableStateFlow(runCatching { val array=JSONArray(catalog.readText()); (0 until array.length()).map { MediaEntry.read(array.getJSONObject(it)) } }.getOrDefault(emptyList()))
+    val entries=state.asStateFlow()
+    fun scale(id:String, mode:MediaScale) { get(id)?.let { save(it.copy(scale=mode)) } }
+    fun get(id:String?)=state.value.firstOrNull { it.id==id }
+    fun file(entry:MediaEntry, video:Boolean=false):File? {
+        val relative=if(video)entry.video ?: return null else entry.primary
+        if(entry.kind==MediaKind.WEB)return null
+        return runCatching { if(entry.pluginId!=null) plugins.existingResource(entry.pluginId,relative) else scoped(relative).takeIf { it.isFile } }.getOrNull()
+    }
+    private fun scoped(path:String):File { require(path.isNotBlank() && !path.contains(':') && !path.contains('\\') && !path.startsWith('/') && path.split('/').none { it in setOf("",".","..") })
+        return File(root,path).canonicalFile.also { require(it.toPath().startsWith(root.canonicalFile.toPath())) } }
+    @Synchronized private fun save(entry:MediaEntry):MediaEntry {
+        val entries=listOf(entry)+state.value.filterNot { it.id==entry.id }; persist(entries);state.value=entries;return entry
+    }
+    private fun persist(entries:List<MediaEntry>) { val stage=File(root,".catalog.tmp"); stage.writeText(JSONArray().also { array -> entries.forEach { array.put(it.json()) } }.toString(),Charsets.UTF_8)
+        java.nio.file.Files.move(stage.toPath(),catalog.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING) }
+    fun import(uri:Uri, forcedMime:String?=null):MediaEntry {
+        val name=runCatching { context.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use { if(it.moveToFirst())it.getString(0) else null } }.getOrNull() ?: "媒体"
+        val mime=forcedMime ?: context.contentResolver.getType(uri)?.takeUnless { it=="application/octet-stream" }
+            ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.').lowercase()) ?: "application/octet-stream"
+        val id=UUID.randomUUID().toString(); val directory=File(root,id).apply { mkdirs() }
+        val target=File(directory,"source."+when { mime.startsWith("video/")->"mp4"; mime in setOf("text/html","application/xhtml+xml")->"html"; mime.contains("heic")||mime.contains("heif")->"heic"; mime.contains("png")->"png"; mime.contains("webp")->"webp"; mime.contains("gif")->"gif"; else->"jpg" })
+        try {
+            require(mime.startsWith("image/")||mime.startsWith("video/")||mime in setOf("text/html","application/xhtml+xml")) { "请选择图片、视频或 HTML" }
+            requireNotNull(context.contentResolver.openInputStream(uri)).use { input -> target.outputStream().use { output ->
+                val buffer=ByteArray(64*1024); var bytes=0L
+                while(true) { val count=input.read(buffer);if(count<0)break;bytes+=count;require(bytes<=if(mime.contains("html"))2L*1024*1024 else 2L*1024*1024*1024) { "媒体文件过大" };output.write(buffer,0,count) };require(bytes>0) }
+            }
+            var kind=when { mime.startsWith("video/")->MediaKind.VIDEO;mime.contains("html")->MediaKind.HTML;else->MediaKind.IMAGE }
+            val clip=File(directory,"motion.mp4"); if(kind==MediaKind.IMAGE && MotionPhoto.extract(target,clip))kind=MediaKind.MOTION_PHOTO
+            return save(MediaEntry(id,name,kind,target.relativeTo(root).invariantSeparatorsPath,mime,
+                clip.takeIf(File::isFile)?.relativeTo(root)?.invariantSeparatorsPath,network=kind==MediaKind.HTML))
+        } catch(error:Exception) { directory.deleteRecursively();throw error }
+    }
+    fun pair(photoId:String, uri:Uri):MediaEntry {
+        require(context.getSharedPreferences("experiments",0).getBoolean("apple-live-photos",false)) { "请先在设置→实验性功能中开启苹果实况照片" }
+        val photo=requireNotNull(get(photoId));require(photo.kind in setOf(MediaKind.IMAGE,MediaKind.MOTION_PHOTO)&&photo.pluginId==null)
+        val clip=import(uri,"video/mp4")
+        return save(photo.copy(kind=MediaKind.MOTION_PHOTO,video=clip.primary,appleLive=true))
+    }
+    fun html(name:String, text:String, id:String?=null):MediaEntry {
+        require(text.toByteArray().size<=2*1024*1024)
+        val key=id ?: UUID.randomUUID().toString(); val existing=get(key);require(existing==null || existing.pluginId==null&&existing.kind==MediaKind.HTML)
+        val target=scoped("$key/index.html").apply { parentFile!!.mkdirs() }; val stage=File(target.parentFile,".index.tmp");stage.writeText(text,Charsets.UTF_8)
+        java.nio.file.Files.move(stage.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        return save(MediaEntry(key,name.ifBlank { "HTML" },MediaKind.HTML,target.relativeTo(root).invariantSeparatorsPath,"text/html",network=true))
+    }
+    fun web(name:String,url:String,owner:String?=null):MediaEntry {
+        val uri=java.net.URI(url); require(uri.scheme=="https"&&uri.host!=null&&uri.userInfo==null) { "网页地址需要 HTTPS" }
+        return save(MediaEntry(UUID.randomUUID().toString(),name.ifBlank { uri.host },MediaKind.WEB,url,pluginId=owner,network=true))
+    }
+    fun plugin(owner:String, content:SubtitleContent):MediaEntry {
+        fun resource(ref:PluginResource):String { require(ref.pluginId==null||ref.pluginId==owner);require(plugins.existingResource(owner,ref.path)!=null) { "插件媒体资源不存在" };return ref.path }
+        val id=UUID.randomUUID().toString()
+        return when(content) {
+            is SubtitleContent.Image -> {
+                val image=resource(content.source)
+                val motion=content.motionVideo?.let(::resource) ?: run {
+                    val path="resources/motion/$id.mp4";val destination=plugins.storage(owner).file(path)
+                    if(MotionPhoto.locate(requireNotNull(plugins.existingResource(owner,image)))!=null) {
+                        destination.parentFile!!.mkdirs();if(MotionPhoto.extract(requireNotNull(plugins.existingResource(owner,image)),destination))path else null
+                    } else null
+                }
+                save(MediaEntry(id,content.description.ifBlank { "插件图片" },if(motion!=null)MediaKind.MOTION_PHOTO else MediaKind.IMAGE,image,
+                    video=motion,pluginId=owner,appleLive=content.appleLive))
+            }
+            is SubtitleContent.Video -> save(MediaEntry(id,content.description.ifBlank { "插件视频" },MediaKind.VIDEO,resource(content.source),content.mimeType,pluginId=owner))
+            is SubtitleContent.Html -> {
+                require(content.allowedActions.size<=32&&content.allowedActions.all { it.length in 1..256 })
+                val path=content.source?.let { require(requireNotNull(plugins.existingResource(owner,resource(it))).length()<=2*1024*1024);resource(it) } ?: "resources/subtitle-web/$id/index.html".also { relative ->
+                    require(content.html.toByteArray().size<=128*1024) { "内联 HTML 超过 128 KiB，请使用插件资源文件" };plugins.storage(owner).file(relative).apply { parentFile!!.mkdirs();writeText(content.html,Charsets.UTF_8) }
+                }
+                save(MediaEntry(id,content.description,MediaKind.HTML,path,"text/html",pluginId=owner,actions=content.allowedActions,network=content.allowNetwork))
+            }
+            is SubtitleContent.Web -> web(content.description,content.url,owner)
+            is SubtitleContent.Text -> error("文本不存入媒体库")
+        }
+    }
+    @Synchronized fun remove(id:String) {
+        val entries=state.value.filterNot { it.id==id };persist(entries);state.value=entries
+        File(root,"web-cache/$id").takeIf { it.isDirectory&&it.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) }?.deleteRecursively()
+        val used=state.value.filter { it.pluginId==null&&it.kind!=MediaKind.WEB }.flatMap { listOfNotNull(it.primary,it.video) }.map { it.substringBefore('/') }.toSet()
+        root.listFiles().orEmpty().filter { it.isDirectory&&it.name.matches(Regex("[a-f0-9-]{36}"))&&it.name !in used }.forEach { it.deleteRecursively() }
+    }
+}

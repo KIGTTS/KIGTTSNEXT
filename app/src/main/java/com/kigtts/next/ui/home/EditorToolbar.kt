@@ -6,9 +6,11 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
+import com.kigtts.next.media.*
 
 @Composable
 fun EditorToolbar(state: AppState, model: AppViewModel) {
@@ -19,7 +21,8 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     val registeredEnd = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_END, model) }
     val start = listOf(ElasticAction("editor-menu", "文本菜单", Icons.Default.MoreVert, { menu = true }),
         ElasticAction("editor-flip", "上下翻转字幕", Icons.Default.SwapVert, model::flipSubtitle)) + registeredStart
-    val end = listOf(ElasticAction("editor-font-size", "调整字幕字号", Icons.Default.ZoomIn, { fontBar = !fontBar })) + registeredEnd
+    LaunchedEffect(state.mediaId) { if (state.mediaId != null) fontBar = false }
+    val end = (if (state.mediaId == null) listOf(ElasticAction("editor-font-size", "调整字幕字号", Icons.Default.ZoomIn, { fontBar = !fontBar })) else emptyList()) + registeredEnd
     Box {
         Row(Modifier.fillMaxWidth()) {
             if (fontBar) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
@@ -32,6 +35,14 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
         }
         androidx.activity.compose.BackHandler(menu) { menu = false }
         DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
+            val media = model.mediaRepository.get(state.mediaId)
+            if (media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)) MediaScale.entries.forEach { mode ->
+                DropdownMenuItem(text = { Text(mode.label) }, leadingIcon = { if (media?.scale == mode) Icon(Icons.Default.Check, null) },
+                    onClick = feedbackClick { model.mediaScale(mode); menu = false }, modifier = Modifier.testTag("media-scale-" + mode.name.lowercase()))
+            }
+            DropdownMenuItem(text = { Text("选择图片、视频或网页") }, onClick = feedbackClick { menu = false; model.content.picker() })
+            DropdownMenuItem(text = { Text("文本编辑器") }, onClick = feedbackClick { menu = false; model.content.editor() })
+            DropdownMenuItem(text = { Text("HTML 编辑器") }, onClick = feedbackClick { menu = false; model.content.editor(html = true) })
             DropdownMenuItem(text = { Text(if (state.streaming) "✓ 流式识别" else "流式识别") },
                 onClick = feedbackClick { model.streaming(true); menu = false })
             DropdownMenuItem(text = { Text(if (!state.streaming) "✓ 完整录音识别（最多 8 秒）" else "完整录音识别（最多 8 秒）") },

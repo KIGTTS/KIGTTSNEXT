@@ -36,8 +36,10 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
     val inputOverlay = dialog != null || pluginMenu != null || pluginInput != null
+    LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
+    ObserveImeDismissal(state.mediaEditing, inputOverlay) { model.mediaEditing(false) }
     LaunchedEffect(inputOverlay, state.editing) {
         if (inputOverlay && state.editing) restoreInput = true
         else if (!inputOverlay && restoreInput) {
@@ -65,7 +67,7 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
         keyboard?.hide()
     }
     val back = rememberPredictiveReturn(!drawerActive &&
-        (navigation.returningHome || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
+        (navigation.returningHome || state.webCanGoBack || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
         identity = navigation.current.identity) {
         when {
             // Back can arrive before recomposition updates callback enablement during opening.
@@ -74,6 +76,8 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
             navigation.returningHome -> Unit
             state.sidePage != null -> model.closeSidePage()
             state.quickTextEditing -> { focus.clearFocus(); keyboard?.hide(); model.finishQuickTextEditing() }
+            state.mediaEditing -> { focus.clearFocus(); keyboard?.hide(); model.mediaEditing(false) }
+            state.webCanGoBack -> model.webBack()
             state.subtitleExpanded -> { focus.clearFocus(); keyboard?.hide(); model.exitSubtitleFullscreen() }
             state.panel != null -> model.closePanel()
             else -> model.closeListeningPanel()

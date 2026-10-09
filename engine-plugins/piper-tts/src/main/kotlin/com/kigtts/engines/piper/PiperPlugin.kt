@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PiperPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("engine.piper", "Piper 语音引擎", "旧 KIGTTS Piper 的独立插件，可导入不同语音包", version = "0.4.0", license = "GPL-3.0-only")
+    override val descriptor = PluginDescriptor("engine.piper", "Piper 语音引擎", "旧 KIGTTS Piper 的独立插件，可导入不同语音包", version = "0.5.0", license = "GPL-3.0-only")
     private lateinit var environment: PluginEnvironment
     private lateinit var voices: PiperVoices
     private val access = Mutex()

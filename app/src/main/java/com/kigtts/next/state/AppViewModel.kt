@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
 import androidx.core.content.edit
+import com.kigtts.next.media.MediaRepository
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
@@ -39,10 +40,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
+    private val experiments = application.getSharedPreferences("experiments", 0)
+    val mediaRepository = MediaRepository(application, pluginManager.paths)
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),
-        lastExpandedPanelHeight = panelStore.loadHeight(), subtitleSizePercent = subtitleSizeStore.load()))
+        lastExpandedPanelHeight = panelStore.loadHeight(), subtitleSizePercent = subtitleSizeStore.load(),
+        appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
+        mediaId = mediaRepository.get(application.getSharedPreferences("media-presentation", 0).getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
     val quickTexts = QuickTextLibrary(phraseStore)
+    val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
@@ -56,7 +62,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun observePluginContext() = viewModelScope.launch {
-        state.map { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible) }
+        state.map { context() }
             .distinctUntilChanged().debounce(100).collect { context ->
                 if (pluginManager.refreshContext(context)) update { it.copy(pluginRevision = it.pluginRevision + 1) }
             }
@@ -65,13 +71,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val navigationHistory = ArrayDeque<Destination>()
 
     private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
-    fun context() = PluginContext(state.value.editorText, state.value.transcript, state.value.listening, state.value.captionsVisible)
+    fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
+        contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId) }
     fun navigate(destination: Destination) {
         if (destination == Destination.Home) navigationHistory.clear()
         else if (state.value.destination != destination) navigationHistory.addLast(state.value.destination)
         update { it.copy(destination = destination, navigationStack = navigationHistory.toList(), editing = false) }
     }
     fun navigateBack() {
+        if (state.value.destination is Destination.ContentEditor && content.requestDiscard()) return
         val previous = if (navigationHistory.isEmpty()) Destination.Home else navigationHistory.removeLast()
         update { it.copy(destination = previous, navigationStack = navigationHistory.toList(), editing = false) }
     }
@@ -79,6 +87,17 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         feedbackStore.save(enabled)
         update { it.copy(hapticsEnabled = enabled) }
     }
+    fun appleLivePhotos(enabled: Boolean) {
+        experiments.edit { putBoolean("apple-live-photos", enabled) }
+        update { it.copy(appleLivePhotos = enabled) }
+    }
+    fun mediaEditing(enabled: Boolean) { update { it.copy(mediaEditing = enabled) } }
+    fun mediaScale(mode: com.kigtts.next.media.MediaScale) { state.value.mediaId?.let { id ->
+        viewModelScope.launch { kotlinx.coroutines.withContext(Dispatchers.IO) { mediaRepository.scale(id, mode) }
+            update { it.copy(subtitleRevision = it.subtitleRevision + 1) } }
+    } }
+    fun webHistory(canGoBack: Boolean) { update { it.copy(webCanGoBack = canGoBack) } }
+    fun webBack() { update { it.copy(webBackRevision = it.webBackRevision + 1) } }
     fun openPanel(panel: HomePanel, dragHeight: Float? = null) {
         update { it.copy(destination = Destination.Home, panel = panel, panelHeight = dragHeight ?: it.lastExpandedPanelHeight) }
     }
@@ -97,8 +116,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
     fun editing(editing: Boolean) { update { it.copy(editing = editing) } }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
-    fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false) } }
-    fun text(text: String) { update { it.copy(editorValue = TextFieldValue(text, TextRange(text.length)), subtitleRevision = it.subtitleRevision + 1) } }
+    fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false, mediaEditing = false) } }
+    fun text(text: String) {
+        content.resetSelection()
+        update { it.copy(editorValue = TextFieldValue(text, TextRange(text.length)), mediaId = null,
+            mediaEditing = false, webCanGoBack = false, subtitleRevision = it.subtitleRevision + 1) }
+    }
     fun editText(value: TextFieldValue) { update { it.copy(editorValue = value) } }
     fun moveCursor(steps: Int) {
         if (steps == 0) return
@@ -160,6 +183,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         else message("插件页面不存在")
                     }
                     is PluginOutcome.ReplaceEditorText -> { text(outcome.text); navigate(Destination.Home) }
+                    is PluginOutcome.PresentContent -> {
+                        val network = when (val media = outcome.content) { is SubtitleContent.Web -> true; is SubtitleContent.Html -> media.allowNetwork; else -> false }
+                        check(!network || plugin.descriptor.id in pluginManager.status.filter { "network" in it.installed.manifest.capabilities }.map { it.installed.manifest.id }) { "插件需要声明 network 能力才能加载网络网页" }
+                        content.present(pluginId, outcome.content); navigate(Destination.Home)
+                    }
                     else -> outcomes.send(pluginId to outcome)
                 }
             } catch (cancel: CancellationException) { throw cancel }
@@ -170,7 +198,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
 
     fun toggleListening() = speech.toggleListening()
-    fun speak() = speech.speak()
+    fun speak() { if (state.value.mediaId == null) speech.speak() else message("请切换到文本后朗读") }
     suspend fun refreshPlugins() {
         pluginManager.reload()
         pluginManager.refreshContext(context())

@@ -26,7 +26,7 @@ class PluginPackageTest {
         store = PluginPackageStore(paths)
     }
     private fun pack(version: Int = 1, tamper: Boolean = false, badPath: Boolean = false,
-        otherPublisher: Boolean = false, api: Int = 5, capabilities: List<String> = emptyList()): File {
+        otherPublisher: Boolean = false, api: Int = 6, capabilities: List<String> = emptyList()): File {
         val files = linkedMapOf("code/classes.dex" to byteArrayOf(1, 2, 3), "assets/readme.txt" to "test".toByteArray())
         if (badPath) files["../outside"] = byteArrayOf(4)
         val manifest = PackageManifest("test.engine", "测试引擎", "0.$version", version, "test.Engine", apiVersion = api,
@@ -58,7 +58,7 @@ class PluginPackageTest {
         assertEquals("other", paths.storage("other.engine").file("keep").readText())
     }
     @Test fun tamperingTraversalWrongApiAndPublisherReplacementAreRejected() {
-        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4))) {
+        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4), pack(api = 5))) {
             assertThrows(IllegalArgumentException::class.java) { store.inspect(file) }
         }
         val valid = pack(); val publisher = store.inspect(valid).publisherSha256; store.install(valid, publisher)
@@ -112,10 +112,10 @@ class PluginPackageTest {
     @Test fun independentlyBuiltEnginePackagesPassSignatureAndPayloadVerification() {
         val directory = File(requireNotNull(System.getProperty("kig.plugin.packages")))
         org.junit.Assume.assumeTrue("Run tools/Build-EnginePlugins.ps1 first", directory.exists())
-        val system = store.inspect(File(directory, "engine.system-tts-0.4.0.kigplugin"))
-        val asr = store.inspect(File(directory, "engine.sensevoice-0.4.0.kigplugin"))
-        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.4.0.kigplugin"))
-        val recognition = store.inspect(File(directory, "service.speech-recognition-0.4.0.kigplugin"))
+        val system = store.inspect(File(directory, "engine.system-tts-0.5.0.kigplugin"))
+        val asr = store.inspect(File(directory, "engine.sensevoice-0.5.0.kigplugin"))
+        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.5.0.kigplugin"))
+        val recognition = store.inspect(File(directory, "service.speech-recognition-0.5.0.kigplugin"))
         assertTrue("asr-service" in recognition.manifest.capabilities)
         assertTrue(recognition.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
         assertEquals(system.publisherSha256, recognition.publisherSha256)
@@ -133,9 +133,9 @@ class PluginPackageTest {
         val originalAbis = android.os.Build.SUPPORTED_ABIS
         val piper = try {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
-            store.inspect(File(directory, "engine.piper-0.4.0.kigplugin"))
+            store.inspect(File(directory, "engine.piper-0.5.0.kigplugin"))
         } finally { org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", originalAbis) }
-        val service = store.inspect(File(directory, "service.speech-synthesis-0.4.0.kigplugin"))
+        val service = store.inspect(File(directory, "service.speech-synthesis-0.5.0.kigplugin"))
         assertEquals(listOf("arm64-v8a"), piper.manifest.abis)
         assertTrue(piper.manifest.files.keys.any { it.endsWith("libespeak_jni.so") })
         assertTrue(piper.manifest.files.keys.contains("assets/espeak-ng-data.zip"))
