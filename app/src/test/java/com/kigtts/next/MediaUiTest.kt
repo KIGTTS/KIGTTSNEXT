@@ -76,7 +76,7 @@ class MediaUiTest {
         compose.onNodeWithTag("play-motion-photo").assertDoesNotExist(); compose.onNodeWithTag("media-image").assertIsDisplayed()
         compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.appleLivePhotos) }
     }
-    @Test fun phraseMediaSelectionPreservesDraftAndReturnsToCompactEditor() {
+    @Test fun phraseMediaSelectionPreservesDraftAndReturnsToFullscreenEditor() {
         show(); val entry = image()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.editQuickTexts() }
         compose.onNodeWithTag("add-phrase").performClick(); compose.onNodeWithTag("phrase-detail-text").performTextInput("图片条目")
@@ -85,7 +85,9 @@ class MediaUiTest {
         compose.onRoot().captureRoboImage("build/previews/media-library.png")
         compose.onNodeWithTag("media-select-" + entry.id).performClick()
         compose.onNodeWithTag("phrase-detail-text").assertTextContains("图片条目")
+        assertEquals(compose.onNode(isDialog()).getUnclippedBoundsInRoot(), compose.onNodeWithTag("phrase-dialog-container").getUnclippedBoundsInRoot())
         compose.onNodeWithTag("save-phrase-details").performClick()
+        compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         compose.runOnIdle { val phrase = model.phrases.value.last(); assertEquals(entry.id, phrase.mediaId); model.finishQuickTextEditing(); model.content.send(phrase) }
         compose.waitUntil(5000) { compose.onAllNodesWithContentDescription(entry.name).fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage("build/previews/media-selected.png")

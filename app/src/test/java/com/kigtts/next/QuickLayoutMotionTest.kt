@@ -23,6 +23,21 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class QuickLayoutMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun singleRowCardsFillTheirViewportAndGridKeepsTheSameDefaultHeight() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        listOf("appearance", "home-panel", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
+        val model = testAppModel(app)
+        compose.setContent { KigttsApp(model) }
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
+        val item = compose.onNodeWithTag("quick-phrase-" + model.phrases.value.first().id)
+        val row = compose.onNodeWithTag("phrases-horizontal").getUnclippedBoundsInRoot()
+        val original = item.getUnclippedBoundsInRoot()
+        assertEquals("No unused strip below the card", row.bottom.value, original.bottom.value, .5f)
+        assertEquals(row.top.value, original.top.value, .5f)
+        compose.runOnIdle { model.panelHeight(340f) }
+        val grid = item.getUnclippedBoundsInRoot()
+        assertEquals((original.bottom - original.top).value, (grid.bottom - grid.top).value, .5f)
+    }
     @Test fun layoutSwitchesAnimateBothWaysAndRetainHorizontalScroll() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }

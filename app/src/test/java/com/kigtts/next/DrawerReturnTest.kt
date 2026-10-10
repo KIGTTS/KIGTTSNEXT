@@ -47,6 +47,27 @@ class DrawerReturnTest {
             assertFullyClosed()
         }
     }
+    @Test fun predictiveDrawerAlwaysMovesTowardItsRightHandExitFromEitherEdge() {
+        show(); compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
+        val sheet = compose.onNodeWithTag("app-drawer")
+        val original = sheet.getUnclippedBoundsInRoot()
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        compose.mainClock.autoAdvance = false
+        val previews = listOf(BackEventCompat.EDGE_LEFT, BackEventCompat.EDGE_RIGHT).map { edge ->
+            compose.runOnIdle {
+                dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 100f, 0f, edge))
+                dispatcher.dispatchOnBackProgressed(BackEventCompat(100f, 100f, .7f, edge))
+            }
+            compose.mainClock.advanceTimeBy(64); compose.waitForIdle()
+            val preview = sheet.getUnclippedBoundsInRoot()
+            assertTrue(preview.left.value > original.left.value)
+            compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
+            compose.mainClock.advanceTimeBy(1000); compose.waitForIdle()
+            preview
+        }
+        assertEquals(previews[0], previews[1])
+        compose.mainClock.autoAdvance = true
+    }
     @Test fun repeatedBackDuringClosingDoesNotDismissUnderlyingSheet() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }

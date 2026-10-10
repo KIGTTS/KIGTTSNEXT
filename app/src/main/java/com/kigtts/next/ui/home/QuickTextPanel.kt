@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,7 +55,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
             itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
                 PhraseTile(phrase, { model.content.send(phrase) }, CornerNeighbors(start = index > 0, end = index < filtered.lastIndex),
                     pressed[index], pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
-                    sources[index], Modifier.width(164.dp).height(64.dp))
+                    sources[index], Modifier.width(164.dp).fillParentMaxHeight())
             }
         } else LazyVerticalGrid(GridCells.Fixed(2), state = grid, modifier = listModifier.testTag("phrases-vertical"),
             verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -63,7 +64,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
                 PhraseTile(phrase, { model.content.send(phrase) },
                     CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < filtered.lastIndex,
                         above = index >= 2, below = index + 2 <= filtered.lastIndex),
-                    pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index], Modifier.height(64.dp))
+                    pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index], Modifier.height(QuickPhraseHeight))
             }
         }
     }
@@ -72,10 +73,11 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
 @Composable
 private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: CornerNeighbors,
     pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier) {
-    Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier,
+    Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier.testTag("quick-phrase-" + phrase.id),
         color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors, pressed, neighborPressed)) {
-        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(phrase.text, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)) {
+            Text(phrase.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(phrase.description.ifBlank { if (phrase.mediaId == null) "点击填入文本" else "点击显示媒体" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

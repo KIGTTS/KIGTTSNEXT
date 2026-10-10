@@ -34,11 +34,11 @@ $env:JAVA_HOME='C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 
 | 构建 | APK 文件大小 | SHA256 |
 | --- | ---: | --- |
-| Debug | 30,938,034 字节 / 29.505 MiB | `F6632A9D609F93AAD43FA6AD99A296A924BD8AE4A59921D6A2D5628A5E4E5A39` |
-| 本地签名 Release | 3,474,812 字节 / 3.314 MiB | `085453A172B979CE35A53D2A0CEAF4116D3528E202C798EDA9121ED0A4FDCCDC` |
+| Debug | 30,938,034 字节 / 29.505 MiB | `6798207CCECA3A2B6E841C4DC261CF77CDD874A751AFF6F33C61C58E1F8C2D9B` |
+| 本地签名 Release | 3,507,580 字节 / 3.345 MiB | `B21DC2900C140CA77A16E22A17B0C31AE96115720B079D7CEEDD8CC36184087E` |
 
-Release 文件大小减少 88.8%。压缩内容主要为一个 DEX（3,177,302 字节），资源 151,403 字节，四架构 Compose 图形路径库合计 37,392 字节，基线配置文件 7,370 字节；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、对齐、非 debuggable 检查通过；本地 260 项回归通过，其中主程序 168 项，随后播放器生命周期调整的媒体专项也通过。Release Lint 无错误。
+Release 文件大小减少 88.7%。压缩内容主要为一个 DEX（3,208,672 字节），资源 151,403 字节，四架构 Compose 图形路径库合计 37,392 字节，基线配置文件 7,475 字节；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、对齐、非 debuggable 检查通过；本地 266 项回归通过，其中主程序 174 项，随后新增入口的全屏容器/媒体专项也通过。Release Lint 无错误。
 
-按钮修复后的首版非 debuggable Release 已覆盖安装成功，旧插件启停状态保留且已启用插件加载无错误。后续视频/拖拽/旋转修复完成本地回归；手机随后断开 ADB，最终新版安装、同版 Debug/Release 性能比较与视频窗体变化的 GPU 检查等待重连。迁移前采样和未实际移动的滑动数据不用于最终性能结论。
+按钮修复后的首版非 debuggable Release 已覆盖安装成功，旧插件启停状态保留且已启用插件加载无错误。后续视频/拖拽/旋转修复，以及全屏条目容器变换、抽屉与条目尺寸调整完成本地回归；手机随后断开 ADB，最终新版安装、同版 Debug/Release 性能比较与视频窗体变化的 GPU 检查等待重连。迁移前采样和未实际移动的滑动数据不用于最终性能结论。
 
 依据：[Android 构建优化](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization)、[dumpsys 性能指标](https://developer.android.com/tools/dumpsys)。

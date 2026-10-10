@@ -86,10 +86,12 @@ class QuickTextEditorTest {
         compose.onNodeWithTag("phrase-detail-description").performTextInput("辅助文字")
         capture("quick-edit-details")
         compose.onNodeWithTag("save-phrase-details").performClick()
+        compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         assertEquals("修改条目", model.phrases.value.first { it.id == item.id }.text)
         compose.onNodeWithTag("add-phrase").performClick()
         compose.onNodeWithTag("phrase-detail-text").performTextInput("新条目")
         compose.onNodeWithTag("save-phrase-details").performClick()
+        compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         assertEquals("新条目", model.phrases.value.last().text)
         compose.onNodeWithTag("category-tabs").performScrollToNode(hasTestTag("add-category"))
         compose.onNodeWithTag("add-category").performClick()
@@ -100,6 +102,7 @@ class QuickTextEditorTest {
         compose.onNodeWithTag("add-phrase").performClick()
         compose.onNodeWithTag("phrase-detail-text").performTextInput("组内文本")
         compose.onNodeWithTag("save-phrase-details").performClick()
+        compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         val restored = testAppModel(ApplicationProvider.getApplicationContext())
         assertEquals(model.phrases.value, restored.phrases.value)
         assertEquals(model.categories.value, restored.categories.value)
@@ -192,7 +195,7 @@ class QuickTextEditorTest {
         val grip = compose.onNodeWithTag("phrase-grip-" + item.id, useUnmergedTree = true).getUnclippedBoundsInRoot()
         val deletion = compose.onNodeWithTag("delete-phrase-" + item.id).getUnclippedBoundsInRoot()
         val tileHeight = (tile.bottom - tile.top).value
-        assertEquals(64f, tileHeight, .5f)
+        assertEquals(88f, tileHeight, .5f)
         assertEquals((normal.bottom - normal.top).value, tileHeight, .5f)
         assertTrue("Grip shares the content row", kotlin.math.abs((grip.top.value + grip.bottom.value - tile.top.value - tile.bottom.value) / 2) < 1f)
         assertEquals(32f, (deletion.right - deletion.left).value, .5f)

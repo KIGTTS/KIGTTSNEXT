@@ -37,4 +37,20 @@ class PageRotationTest {
         }
         compose.mainClock.autoAdvance = true
     }
+
+    @Test fun fullScreenPhraseDraftSurvivesRecreationWithoutRepeatingTheContainerEntrance() {
+        val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        compose.runOnIdle { model.openPanel(com.kigtts.next.state.HomePanel.QUICK_TEXT); model.editQuickTexts() }
+        compose.onNodeWithTag("edit-phrase-" + model.phrases.value.first().id).performClick()
+        compose.onNodeWithTag("phrase-detail-text").performTextReplacement("旋转保留草稿")
+        compose.onNodeWithTag("phrase-detail-description").performTextInput("辅助说明草稿")
+        compose.mainClock.autoAdvance = false
+        compose.activityRule.scenario.recreate()
+        compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+        compose.onNodeWithTag("phrase-detail-text").assertTextContains("旋转保留草稿")
+        compose.onNodeWithTag("phrase-detail-description").assertTextContains("辅助说明草稿")
+        assertEquals(compose.onNode(isDialog()).getUnclippedBoundsInRoot(),
+            compose.onNodeWithTag("phrase-dialog-container").getUnclippedBoundsInRoot())
+        compose.mainClock.autoAdvance = true
+    }
 }

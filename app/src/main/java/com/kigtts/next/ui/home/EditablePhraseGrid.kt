@@ -23,7 +23,8 @@ import com.kigtts.next.ui.components.*
 @Composable
 fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (QuickPhrase) -> Unit,
     delete: (QuickPhrase) -> Unit, add: () -> Unit, modifier: Modifier,
-    drag: ReorderDrag, active: Boolean = true) {
+    drag: ReorderDrag, active: Boolean = true, hiddenPhraseId: String? = null,
+    onBounds: (String, PhraseDialogAnchor) -> Unit = { _, _ -> }, onAddBounds: (PhraseDialogAnchor) -> Unit = {}) {
     val grid = rememberLazyGridState()
     var viewportRestore by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     LaunchedEffect(phrases.map { it.id }) {
@@ -62,16 +63,20 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
                     previous?.let { CustomAccessibilityAction("向前移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } },
                     next?.let { CustomAccessibilityAction("向后移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } })
             }
-            EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) },
-                CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < phrases.lastIndex,
-                    above = index >= 2, below = index + 2 < phrases.size),
+            val neighbors = CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < phrases.lastIndex,
+                above = index >= 2, below = index + 2 < phrases.size)
+            EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) }, neighbors,
                 Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                    .then(if (drag.key == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
-                    .then(actions).testTag("edit-phrase-" + phrase.id), grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier)
+                    .then(if (drag.key == phrase.id || hiddenPhraseId == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
+                    .then(actions).testTag("edit-phrase-" + phrase.id).onGloballyPositioned {
+                        if (active) onBounds(phrase.id, PhraseDialogAnchor(it.boundsInWindow(), neighbors))
+                    }, grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier)
         }
         item(key = "add-phrase") {
-            TextButton(onClick = feedbackClick(add), modifier = Modifier.height(64.dp).testTag("add-phrase"),
+            TextButton(onClick = feedbackClick(add), modifier = Modifier.height(QuickPhraseHeight).testTag("add-phrase").onGloballyPositioned {
+                if (active) onAddBounds(PhraseDialogAnchor(it.boundsInWindow()))
+            },
                 shapes = expressivePillShapes(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
                 Icon(Icons.Default.Add, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp))
                 Text("添加快捷文本", style = MaterialTheme.typography.labelMedium)

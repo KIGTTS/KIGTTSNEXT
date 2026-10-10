@@ -25,6 +25,8 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     modifier: Modifier = Modifier) {
     val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
     val active = LocalPageActive.current
+    val anchors = remember { mutableStateMapOf<String, PhraseDialogAnchor>() }
+    var openingAnchor by remember { mutableStateOf<PhraseDialogAnchor?>(null) }
     var addGroup by remember { mutableStateOf(false) }
     var editGroup by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf<QuickPhrase?>(null) }
@@ -45,8 +47,10 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 Column(Modifier.fillMaxSize()) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
                         EditablePhraseGrid(phrases.filter { it.category == category }, model,
-                            { model.content.beginPhrase(it, state.selectedCategory) }, { deleting = it },
-                            { model.content.beginPhrase(null, state.selectedCategory) }, Modifier.fillMaxSize(), drag = drag, active = active)
+                            { openingAnchor = anchors[it.id]; model.content.beginPhrase(it, state.selectedCategory) }, { deleting = it },
+                            { openingAnchor = anchors["add"]; model.content.beginPhrase(null, state.selectedCategory) },
+                            Modifier.fillMaxSize(), drag = drag, active = active, hiddenPhraseId = draft?.phraseId,
+                            onBounds = { id, bounds -> anchors[id] = bounds }, onAddBounds = { anchors["add"] = it })
                     }
                     CategoryTabs(state, categories, model, editing = true, addGroup = { addGroup = true }, editGroup = { editGroup = it })
                 }
@@ -54,7 +58,8 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
             }
         }
     }
-    if (active) draft?.let { key(it.key) { PhraseDetailsDialog(it, categories, model, model.content::cancelPhrase) } }
+    draft?.let { key(it.key) { PhraseDetailsDialog(it, categories, model, model.content::cancelPhrase,
+        anchor = anchors[it.phraseId ?: "add"] ?: openingAnchor, visible = active) } }
     if (addGroup) AddCategoryDialog(categories, model) { addGroup = false }
     editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
     deleting?.let { phrase ->

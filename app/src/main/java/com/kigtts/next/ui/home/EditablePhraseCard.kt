@@ -16,17 +16,19 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.QuickPhrase
 import com.kigtts.next.ui.components.*
 
+internal val QuickPhraseHeight = 88.dp
+
 @Composable
 fun EditablePhraseCard(phrase: QuickPhrase, edit: () -> Unit, delete: () -> Unit,
     neighbors: CornerNeighbors, modifier: Modifier = Modifier, grip: Modifier = Modifier, elevation: Dp = 0.dp) {
-    Surface(onClick = feedbackClick(edit), modifier = modifier.heightIn(min = 64.dp),
+    Surface(onClick = feedbackClick(edit), modifier = modifier.heightIn(min = QuickPhraseHeight),
         color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors), shadowElevation = elevation) {
         Row(Modifier.fillMaxWidth().padding(8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Icons.Default.DragIndicator, "拖动条目 " + phrase.text,
                 Modifier.size(20.dp).testTag("phrase-grip-" + phrase.id).then(grip), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.weight(1f)) {
-                Text(phrase.text, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                Text(phrase.text, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
                 if (phrase.description.isNotBlank()) Text(phrase.description, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
