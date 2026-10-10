@@ -70,9 +70,9 @@ pwsh -File tools/Build-EnginePlugins.ps1
 
 APK：app/build/outputs/apk/debug/app-debug.apk。原生渲染截图：app/build/previews。
 
-压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。当前 Release 3.361 MiB，Debug 29.505 MiB，大小减少 88.6%；最终同版真机性能比较待手机重连。
+压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。当前 Release 3.361 MiB，Debug 29.505 MiB，大小减少 88.6%；最新 Release 已安装，最终同版真机性能比较尚未执行。
 
-本轮主程序 184 项本地测试通过，包含新增的 10 项横屏回归。主程序 Debug/Release 与测试 APK 编译检查、Release Lint 通过，主程序 Lint 0 错误/31 警告/1 提示；独立管理器既有 Debug/Release 构建和 Lint 已通过。APK 同签名与生产引擎/模型边界检查通过；Release 管理器不包含 ADB 控制入口。手机已有独立管理器，按钮修复首版 Release 已安装成功；六包 API6/0.5.0 与旧停用状态保留，既有系统 TTS PCM 及视频 GPU 首帧/整卡片背景检查通过。本轮最终 APK 的安装和视频缩放/性能真机回归待重连；按用户选择未安装测试 APK。
+本轮主程序 184 项本地测试通过，包含新增的 10 项横屏回归。主程序 Debug/Release 与测试 APK 编译检查、Release Lint 通过，主程序 Lint 0 错误/31 警告/1 提示；独立管理器既有 Debug/Release 构建和 Lint 已通过。APK 同签名与生产引擎/模型边界检查通过；Release 管理器不包含 ADB 控制入口。手机已有独立管理器，按钮修复首版 Release 已安装成功；六包 API6/0.5.0 与旧停用状态保留，既有系统 TTS PCM 及视频 GPU 首帧/整卡片背景检查通过。2026-10-10 最新横屏 Release 已覆盖安装并正常启动，回读设备 APK 的 SHA256 与校验包一致；视频缩放和同版性能真机回归尚未执行。按用户选择未安装测试 APK。
 
 最新回归包含三处横条仅按下即变形/触感、轻触不改变内容与取消复原、光标 12 dp 精度/完整字素/边界无重复震动、条目拾起首帧不透明/落位中间帧/同帧交接后编辑、状态栏在进入/静止/预测/返回时无投影、实际字宽随窗口宽度及系统字体缩放还原比例/重启持久化/自动适应不覆盖偏好，以及最小聆听面板下字号栏不挤压与抽屉 LOGO。
 
