@@ -1,0 +1,96 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+package com.kigtts.next.ui.home
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.state.*
+import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.plugins.SlotActions
+import com.kigtts.plugin.api.*
+
+@Composable
+fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
+    motion: LandscapePanelMotion, modifier: Modifier = Modifier) {
+    val background by animateFloatAsState(if (state.panel != null) 1f else 0f, MaterialTheme.motionScheme.fastEffectsSpec(), label = "side-sheet-background")
+    val showContent by remember(motion) { derivedStateOf { motion.visible && motion.width >= 136f } }
+    Box(modifier.fillMaxHeight().widthFrom { motion.width }.testTag("landscape-quick-panel").semantics {
+        stateDescription = if (motion.visible) "${motion.columns}列快捷文本" else "快捷文本已收起"
+    }) {
+        Box(Modifier.matchParentSize().graphicsLayer { alpha = background }
+            .clip(homeCardShape(CornerNeighbors(start = true))).background(MaterialTheme.colorScheme.surfaceContainer))
+        Row(Modifier.fillMaxSize()) {
+            LandscapeSheetChrome(state, model, motion)
+            AnimatedVisibility(showContent, Modifier.weight(1f).fillMaxHeight()) {
+                QuickTextContent(state, phrases, categories, model, false, motion.columns,
+                    Modifier.fillMaxSize().padding(vertical = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: LandscapePanelMotion) {
+    val open = state.panel != null
+    val progress = ((motion.width - LandscapePanelGeometry.COLLAPSED) / (motion.geometry.widthFor(1) - LandscapePanelGeometry.COLLAPSED)).coerceIn(0f, 1f)
+    val context = model.context()
+    val longPress = remember(context, state.pluginRevision) { model.registry.gestureActions(PluginGesture.QUICK_TEXT_LONG_PRESS, context).firstOrNull() }
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val action = { if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT) else model.closePanel() }
+    val click = feedbackClick(action)
+    val hold = { longPress?.let { model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val shape = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp))
+    Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        ToolButton(if (open) "编辑快捷文本" else "画板", if (open) Icons.Default.Edit else Icons.Default.Draw,
+            { if (open) model.editQuickTexts() else model.openSidePage(SidePage.SKETCH) },
+            Modifier.testTag("dock-start"), shapes = shape, size = 32.dp)
+        SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
+            revision = state.pluginRevision, visible = open)
+        // This owner never changes when the pill morphs or plugin buttons are inserted.
+        Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
+            val thickness by animateFloatAsState(if (motion.active && open) 7f else if (pressed && !open) 32f else 36f - 32f * progress,
+                MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-thickness")
+            val length by animateFloatAsState(if (motion.active) 88f else 76f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-length")
+            val radius by animateFloatAsState(if (pressed && !open) 8f else 18f - 16f * progress,
+                MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-radius")
+            Box(Modifier.width(thickness.dp).heightFrom { 128f * (1f - progress) + length * progress }
+                .testTag("dock-main").clip(RoundedCornerShape(radius.dp)).background(MaterialTheme.colorScheme.primary)
+                .clearAndSetSemantics {
+                    contentDescription = if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
+                    role = Role.Button
+                    onClick { click(); true }
+                    if (longPress != null) onLongClick(longPress.action.label) { hold(); true }
+                }.combinedClickable(interactionSource = source, indication = null, onClick = action,
+                    onLongClick = if (longPress != null) hold else null, hapticFeedbackEnabled = longPress != null),
+                contentAlignment = Alignment.Center) {
+                Column(Modifier.graphicsLayer { alpha = 1f - progress }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.AutoMirrored.Filled.TextSnippet, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                    Text("快\n捷\n文\n本", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+                }
+            }
+        }
+        SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(32.dp), context = context,
+            revision = state.pluginRevision, visible = open)
+        ToolButton(if (open) "收起快捷文本" else "名片", if (open) Icons.Default.ChevronRight else Icons.Default.Badge,
+            { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
+            Modifier.testTag("dock-end"), shapes = shape, size = 32.dp)
+    }
+}

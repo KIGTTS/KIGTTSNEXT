@@ -18,6 +18,7 @@ import com.kigtts.next.ui.components.*
 fun ResizableTopPanel(
     height: Float, maximum: Float, resize: (Float) -> Unit, modifier: Modifier = Modifier,
     singleLine: Boolean = false, availableHeight: () -> Float = { maximum },
+    horizontal: Boolean = false,
     controls: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -34,7 +35,7 @@ fun ResizableTopPanel(
             (if (dragging.value) localHeight.floatValue else latestHeight).coerceIn(112f, minOf(maximum, availableHeight().coerceAtLeast(112f)))
     } }
     val latestCurrent by rememberUpdatedState(current)
-    val gestures = remember(maximum, minimum, density) { Modifier.pointerInput(Unit) {
+    val gestures = remember(maximum, minimum, density, horizontal) { Modifier.pointerInput(Unit) {
         topHandleGestures(
             press = { pressed.value = true; latestFeedback.start(latestCurrent.value) },
             release = { pressed.value = false; latestFeedback.finish(cancelled = true) },
@@ -44,22 +45,27 @@ fun ResizableTopPanel(
             move = { delta ->
                 localHeight.floatValue = (localHeight.floatValue + delta / density).coerceIn(minimum, maximum)
                 latestFeedback.move(localHeight.floatValue)
-            })
+            }, horizontal = horizontal)
     } }
-    Column(modifier) {
-        Surface(Modifier.fillMaxWidth().heightFrom { current.value }.testTag("listening-card"), color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shape = homeCardShape(CornerNeighbors(below = true))) {
+    val card: @Composable () -> Unit = {
+        Surface((if (horizontal) Modifier.fillMaxHeight().widthFrom { current.value } else Modifier.fillMaxWidth().heightFrom { current.value })
+            .testTag("listening-card"), color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = homeCardShape(if (horizontal) CornerNeighbors(end = true) else CornerNeighbors(below = true))) {
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Column(Modifier.weight(1f).fillMaxWidth().clipToBounds(), content = content)
                 if (!singleLine) controls()
             }
         }
-        Box(Modifier.fillMaxWidth().height(LISTENING_HANDLE_GAP.dp).testTag("top-panel-resize").semantics {
-            contentDescription = "调整聆听面板高度"
+    }
+    val handle: @Composable () -> Unit = {
+        Box((if (horizontal) Modifier.fillMaxHeight().width(LISTENING_HANDLE_GAP.dp) else Modifier.fillMaxWidth().height(LISTENING_HANDLE_GAP.dp))
+            .testTag("top-panel-resize").semantics {
+            contentDescription = if (horizontal) "调整聆听面板宽度" else "调整聆听面板高度"
             progressBarRangeInfo = ProgressBarRangeInfo(current.value, minimum..maximum)
             setProgress { latestResize(it.coerceIn(minimum, maximum)); true }
         }.then(gestures), contentAlignment = Alignment.Center) {
-            PanelDragIndicator(pressed.value || dragging.value, "listening-drag-indicator")
+            PanelDragIndicator(pressed.value || dragging.value, "listening-drag-indicator", vertical = horizontal)
         }
     }
+    if (horizontal) Row(modifier) { card(); handle() } else Column(modifier) { card(); handle() }
 }

@@ -24,7 +24,7 @@ import com.kigtts.next.ui.components.*
 fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (QuickPhrase) -> Unit,
     delete: (QuickPhrase) -> Unit, add: () -> Unit, modifier: Modifier,
     drag: ReorderDrag, active: Boolean = true, hiddenPhraseId: String? = null,
-    onBounds: (String, PhraseDialogAnchor) -> Unit = { _, _ -> }, onAddBounds: (PhraseDialogAnchor) -> Unit = {}) {
+    onBounds: (String, PhraseDialogAnchor) -> Unit = { _, _ -> }, onAddBounds: (PhraseDialogAnchor) -> Unit = {}, columns: Int = 2) {
     val grid = rememberLazyGridState()
     var viewportRestore by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     LaunchedEffect(phrases.map { it.id }) {
@@ -52,7 +52,7 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
             if (drag.moveProvider === moveProvider) drag.moveProvider = null
         }
     }
-    LazyVerticalGrid(GridCells.Fixed(2), state = grid,
+    LazyVerticalGrid(GridCells.Fixed(columns), state = grid,
         modifier = modifier.fillMaxWidth().testTag("editable-phrases").onGloballyPositioned { root = it.positionInRoot() },
         contentPadding = PaddingValues(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -63,8 +63,8 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
                     previous?.let { CustomAccessibilityAction("向前移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } },
                     next?.let { CustomAccessibilityAction("向后移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } })
             }
-            val neighbors = CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < phrases.lastIndex,
-                above = index >= 2, below = index + 2 < phrases.size)
+            val neighbors = CornerNeighbors(start = index % columns > 0, end = index % columns < columns - 1 && index < phrases.lastIndex,
+                above = index >= columns, below = index + columns < phrases.size)
             EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) }, neighbors,
                 Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())

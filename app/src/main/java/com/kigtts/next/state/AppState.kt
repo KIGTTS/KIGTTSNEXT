@@ -25,6 +25,7 @@ data class AppState(
     val sidePage: SidePage? = null,
     val panelHeight: Float = 184f,
     val lastExpandedPanelHeight: Float = 184f,
+    val panelColumns: Int = 1,
     val editing: Boolean = false,
     val forcedFullscreen: Boolean = false,
     val quickTextEditing: Boolean = false,

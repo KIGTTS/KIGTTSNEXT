@@ -27,7 +27,7 @@ import kotlinx.coroutines.delay
 /** Edge dwell belongs to the stable pane, so switching the grid cannot cancel the live pointer. */
 @Composable
 fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, category: String, categories: List<String>,
-    width: Float, model: AppViewModel) {
+    width: Float, model: AppViewModel, columns: Int = 2) {
     val edge = with(LocalDensity.current) { 16.dp.toPx() }
     val direction by remember(drag, width, edge) { derivedStateOf {
         if (drag.key == null || drag.settling) 0 else if (drag.pointer.x < edge) -1 else if (drag.pointer.x > width - edge) 1 else 0
@@ -64,8 +64,8 @@ fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, ca
     picked?.let { phrase ->
             val group = phrases.filter { it.category == phrase.category }
             val index = group.indexOfFirst { it.id == phrase.id }
-            EditablePhraseCard(phrase, {}, {}, CornerNeighbors(start = index % 2 == 1,
-                end = index % 2 == 0 && index < group.lastIndex, above = index >= 2, below = index + 2 < group.size), Modifier
+            EditablePhraseCard(phrase, {}, {}, CornerNeighbors(start = index % columns > 0,
+                end = index % columns < columns - 1 && index < group.lastIndex, above = index >= columns, below = index + columns < group.size), Modifier
                 .width(with(density) { drag.floatingBounds.width.toDp() })
                 .graphicsLayer {
                     translationX = position.value.x; translationY = position.value.y

@@ -45,7 +45,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val experiments = application.getSharedPreferences("experiments", 0)
     val mediaRepository = MediaRepository(application, pluginManager.paths)
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),
-        lastExpandedPanelHeight = panelStore.loadHeight(), subtitleSizePercent = subtitleSizeStore.load(),
+        lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         mediaId = mediaRepository.get(application.getSharedPreferences("media-presentation", 0).getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
@@ -116,6 +116,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             lastExpandedPanelHeight = if (value > HomePanelSizes.COLLAPSED) value else it.lastExpandedPanelHeight) }
     }
     fun closeListeningPanel() = speech.closeListening()
+    fun panelColumns(columns: Int) {
+        val value = columns.coerceIn(1, 6)
+        panelStore.saveColumns(value)
+        update { it.copy(panelColumns = value) }
+    }
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
     fun editing(editing: Boolean) { update { it.copy(editing = editing) } }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }

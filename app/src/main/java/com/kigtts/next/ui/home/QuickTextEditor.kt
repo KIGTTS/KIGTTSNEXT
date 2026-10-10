@@ -15,6 +15,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.LocalPageActive
@@ -34,6 +36,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     val keyboard = LocalSoftwareKeyboardController.current
     val drag = rememberReorderDrag({ emptyList() }, animateDrop = true, move = model.quickTexts::movePhrase)
     val density = LocalDensity.current
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     Surface(modifier.fillMaxSize().testTag("quick-text-editor"), shape = homeCardShape(),
         color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -44,17 +47,18 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 Text("编辑快捷文本", Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.titleMedium)
             }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane").reorderGestures(drag)) {
+                val columns = if (landscape) ((maxWidth.value + 4f) / 168f).toInt().coerceIn(1, 6) else 2
                 Column(Modifier.fillMaxSize()) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
                         EditablePhraseGrid(phrases.filter { it.category == category }, model,
                             { openingAnchor = anchors[it.id]; model.content.beginPhrase(it, state.selectedCategory) }, { deleting = it },
                             { openingAnchor = anchors["add"]; model.content.beginPhrase(null, state.selectedCategory) },
                             Modifier.fillMaxSize(), drag = drag, active = active, hiddenPhraseId = draft?.phraseId,
-                            onBounds = { id, bounds -> anchors[id] = bounds }, onAddBounds = { anchors["add"] = it })
+                            onBounds = { id, bounds -> anchors[id] = bounds }, onAddBounds = { anchors["add"] = it }, columns = columns)
                     }
                     CategoryTabs(state, categories, model, editing = true, addGroup = { addGroup = true }, editGroup = { editGroup = it })
                 }
-                PhraseDragOverlay(drag, phrases, state.selectedCategory, categories, with(density) { maxWidth.toPx() }, model)
+                PhraseDragOverlay(drag, phrases, state.selectedCategory, categories, with(density) { maxWidth.toPx() }, model, columns)
             }
         }
     }

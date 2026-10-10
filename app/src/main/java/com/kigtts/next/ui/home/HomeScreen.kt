@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.saveable.SaveableStateHolder
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -26,6 +29,16 @@ fun HomeScreen(
     backProgress: Float = 0f, backEdge: Int = 0,
 ) {
     val sections = rememberSaveableStateHolder()
+    if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
+        LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
+    else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
+}
+
+@Composable
+private fun PortraitHomeScreen(
+    state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
+    openDrawer: () -> Unit, sections: SaveableStateHolder, backProgress: Float, backEdge: Int,
+) {
     var expandedViewport by remember { mutableFloatStateOf(852f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal))

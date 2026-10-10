@@ -22,16 +22,22 @@ import com.kigtts.next.ui.components.*
 @Composable
 fun QuickTextPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel, motion: HomeSheetMotion, modifier: Modifier = Modifier) {
     val singleRow by remember(motion) { derivedStateOf { motion.height <= 192f } }
+    QuickTextContent(state, phrases, categories, model, singleRow, 2, modifier)
+}
+
+@Composable
+fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
+    singleRow: Boolean, columns: Int, modifier: Modifier = Modifier) {
     Column(modifier.padding(horizontal = 8.dp)) {
         CategoryContentMotion(state.selectedCategory, categories, !singleRow, model::category, Modifier.weight(1f)) { category, _ ->
-            QuickPhraseLayout(phrases.filter { it.category == category }, singleRow, model)
+            QuickPhraseLayout(phrases.filter { it.category == category }, singleRow, columns, model)
         }
         CategoryTabs(state, categories, model)
     }
 }
 
 @Composable
-private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, model: AppViewModel) {
+private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, columns: Int, model: AppViewModel) {
     val sources = remember(filtered.map { it.id }) { filtered.map { MutableInteractionSource() } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
     val currentRow by rememberUpdatedState(singleRow)
@@ -57,14 +63,16 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, m
                     pressed[index], pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     sources[index], Modifier.width(164.dp).fillParentMaxHeight())
             }
-        } else LazyVerticalGrid(GridCells.Fixed(2), state = grid, modifier = listModifier.testTag("phrases-vertical"),
+        } else LazyVerticalGrid(GridCells.Fixed(columns), state = grid, modifier = listModifier.testTag("phrases-vertical"),
             verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
-                val neighbors = listOf(index - 2, index + 2, if (index % 2 == 0) index + 1 else index - 1)
+                val neighbors = listOf(index - columns, index + columns) +
+                    listOfNotNull((index - 1).takeIf { index % columns > 0 }, (index + 1).takeIf { index % columns < columns - 1 })
                 PhraseTile(phrase, { model.content.send(phrase) },
-                    CornerNeighbors(start = index % 2 == 1, end = index % 2 == 0 && index < filtered.lastIndex,
-                        above = index >= 2, below = index + 2 <= filtered.lastIndex),
-                    pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index], Modifier.height(QuickPhraseHeight))
+                    CornerNeighbors(start = index % columns > 0, end = index % columns < columns - 1 && index < filtered.lastIndex,
+                        above = index >= columns, below = index + columns <= filtered.lastIndex),
+                    pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index],
+                    Modifier.height(QuickPhraseHeight).animateItem(fadeInSpec = null, fadeOutSpec = null))
             }
         }
     }

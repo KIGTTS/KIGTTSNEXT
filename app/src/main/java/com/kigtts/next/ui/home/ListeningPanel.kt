@@ -19,21 +19,26 @@ import com.kigtts.plugin.api.UiSlot
 
 @Composable
 fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleLine: Boolean = false,
-    availableHeight: () -> Float = { maximum }) {
+    availableHeight: () -> Float = { maximum }, horizontal: Boolean = false,
+    extent: Float = state.captionHeight, resize: (Float) -> Unit = model::captionHeight) {
     var fontBar by remember { mutableStateOf(false) }
     val context = model.context()
     val left = remember(context, state.pluginRevision) { cornerActions(UiSlot.LISTENING_BOTTOM_START, model) }
     val right = remember(context, state.pluginRevision) { cornerActions(UiSlot.LISTENING_BOTTOM_END, model) }
-    ResizableTopPanel(state.captionHeight, maximum, model::captionHeight, Modifier.testTag("captions"), singleLine, availableHeight,
+    ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions"), singleLine, availableHeight,
+        horizontal = horizontal,
         controls = {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val rightWidth = (maxWidth.value - 36f).coerceIn(32f, 68f).dp
             Row(Modifier.fillMaxWidth().height(32.dp).testTag("listening-controls"), verticalAlignment = Alignment.CenterVertically) {
                 if (fontBar) InlineFontBar("聆听字号", state.captionTextSize, 10f..64f, model::setCaptionTextSize,
-                    { fontBar = false }, Modifier.weight(.65f))
-                else ElasticButtonGroup(left, Modifier.weight(.65f), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
-                Spacer(Modifier.weight(.05f))
+                    { fontBar = false }, Modifier.weight(if (horizontal) 1f else .65f))
+                else ElasticButtonGroup(left, Modifier.weight(if (horizontal) 1f else .65f), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
+                Spacer(if (horizontal) Modifier.width(4.dp) else Modifier.weight(.05f))
                 ElasticButtonGroup(listOf(ElasticAction("listening-font-size", "调整聆听字号", Icons.Default.ZoomIn,
-                    { fontBar = !fontBar })) + right, Modifier.weight(.3f), alignEnd = true,
+                    { fontBar = !fontBar })) + right, if (horizontal) Modifier.width(rightWidth) else Modifier.weight(.3f), alignEnd = true,
                     overflowTag = "listening-end-more", overflowLabel = "聆听右下更多操作")
+            }
             }
         }) {
         Text(state.transcript, modifier = Modifier.fillMaxWidth().weight(1f).testTag("listening-content")

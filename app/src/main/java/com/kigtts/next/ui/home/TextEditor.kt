@@ -21,10 +21,11 @@ import com.kigtts.next.ui.media.MediaTransition
 fun TextEditor(
     state: AppState, model: AppViewModel, captionsAbove: Boolean, panelBelow: Boolean,
     modifier: Modifier = Modifier,
+    neighbors: CornerNeighbors = CornerNeighbors(above = captionsAbove, below = panelBelow),
 ) {
     val media=model.mediaRepository.get(state.mediaId)
     val mediaCoversCard = media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)
-    Surface(modifier, shape = homeCardShape(CornerNeighbors(above = captionsAbove, below = panelBelow)),
+    Surface(modifier, shape = homeCardShape(neighbors),
         color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box {
             MediaTransition(media?.takeIf { mediaCoversCard },state,model,Modifier.fillMaxSize())

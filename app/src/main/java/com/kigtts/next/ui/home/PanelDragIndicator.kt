@@ -12,9 +12,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 
 @Composable
-fun PanelDragIndicator(active: Boolean, tag: String, modifier: Modifier = Modifier, baseWidth: Dp = 76.dp) {
+fun PanelDragIndicator(active: Boolean, tag: String, modifier: Modifier = Modifier, baseWidth: Dp = 76.dp, vertical: Boolean = false) {
     val width by animateDpAsState(if (active) baseWidth * 1.16f else baseWidth, MaterialTheme.motionScheme.fastSpatialSpec(), label = "handle-width")
     val height by animateDpAsState(if (active) 7.dp else 4.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "handle-thickness")
-    Box(modifier.width(width).height(height).testTag(tag)
+    Box(modifier.then(if (vertical) Modifier.width(height).height(width) else Modifier.width(width).height(height)).testTag(tag)
         .background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraLarge))
 }
