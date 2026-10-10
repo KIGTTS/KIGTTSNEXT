@@ -70,6 +70,6 @@ fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, ca
                 .graphicsLayer {
                     translationX = position.value.x; translationY = position.value.y
                     scaleX = scale; scaleY = scale
-                }.testTag("dragged-phrase").clearAndSetSemantics {}, elevation = elevation)
+                }.testTag("dragged-phrase").clearAndSetSemantics {}, elevation = elevation, repository = model.mediaRepository)
     }
 }

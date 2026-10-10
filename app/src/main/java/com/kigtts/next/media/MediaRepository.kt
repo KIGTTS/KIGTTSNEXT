@@ -17,6 +17,10 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     private val catalog=File(root,"catalog.json")
     private val state=MutableStateFlow(runCatching { val array=JSONArray(catalog.readText()); (0 until array.length()).map { MediaEntry.read(array.getJSONObject(it)) } }.getOrDefault(emptyList()))
     val entries=state.asStateFlow()
+    val thumbnails = com.kigtts.next.media.thumbnail.MediaThumbnails(this)
+    fun thumbnail(id: String, mode: ThumbnailMode, focusX: Double = .5, focusY: Double = .5) {
+        get(id)?.let { save(it.copy(thumbnailMode = mode, focusX = focusX.coerceIn(0.0, 1.0), focusY = focusY.coerceIn(0.0, 1.0))) }
+    }
     fun scale(id:String, mode:MediaScale) { get(id)?.let { save(it.copy(scale=mode)) } }
     fun get(id:String?)=state.value.firstOrNull { it.id==id }
     fun file(entry:MediaEntry, video:Boolean=false):File? {
@@ -60,7 +64,8 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
         val key=id ?: UUID.randomUUID().toString(); val existing=get(key);require(existing==null || existing.pluginId==null&&existing.kind==MediaKind.HTML)
         val target=scoped("$key/index.html").apply { parentFile!!.mkdirs() }; val stage=File(target.parentFile,".index.tmp");stage.writeText(text,Charsets.UTF_8)
         java.nio.file.Files.move(stage.toPath(),target.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING)
-        return save(MediaEntry(key,name.ifBlank { "HTML" },MediaKind.HTML,target.relativeTo(root).invariantSeparatorsPath,"text/html",network=true))
+        return save(MediaEntry(key,name.ifBlank { "HTML" },MediaKind.HTML,target.relativeTo(root).invariantSeparatorsPath,"text/html",network=true,
+            created = maxOf(System.currentTimeMillis(), (existing?.created ?: 0) + 1)))
     }
     fun web(name:String,url:String,owner:String?=null):MediaEntry {
         val uri=java.net.URI(url); require(uri.scheme=="https"&&uri.host!=null&&uri.userInfo==null) { "网页地址需要 HTTPS" }
@@ -95,6 +100,7 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     }
     @Synchronized fun remove(id:String) {
         val entries=state.value.filterNot { it.id==id };persist(entries);state.value=entries
+        thumbnails.remove(id)
         File(root,"web-cache/$id").takeIf { it.isDirectory&&it.canonicalFile.toPath().startsWith(root.canonicalFile.toPath()) }?.deleteRecursively()
         val used=state.value.filter { it.pluginId==null&&it.kind!=MediaKind.WEB }.flatMap { listOfNotNull(it.primary,it.video) }.map { it.substringBefore('/') }.toSet()
         root.listFiles().orEmpty().filter { it.isDirectory&&it.name.matches(Regex("[a-f0-9-]{36}"))&&it.name !in used }.forEach { it.deleteRecursively() }

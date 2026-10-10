@@ -37,7 +37,8 @@ data class PhraseDialogAnchor(val bounds: Rect, val neighbors: CornerNeighbors =
 /** Both bounds live in the dialog window; the small end is a snapshot of the tapped list card. */
 @Composable
 internal fun PhraseDialogTransform(anchor: PhraseDialogAnchor?, source: QuickPhrase?, restored: Boolean,
-    dismiss: () -> Unit, content: @Composable (close: (() -> Unit) -> Unit, enabled: Boolean) -> Unit) {
+    dismiss: () -> Unit, repository: com.kigtts.next.media.MediaRepository? = null,
+    content: @Composable (close: (() -> Unit) -> Unit, enabled: Boolean) -> Unit) {
     val state = remember { SeekableTransitionState(restored) }
     val transition = rememberTransition(state, label = "phrase-container-transform")
     val scope = rememberCoroutineScope()
@@ -97,7 +98,7 @@ internal fun PhraseDialogTransform(anchor: PhraseDialogAnchor?, source: QuickPhr
                     .then(shared).clearAndSetSemantics { testTag = "phrase-dialog-origin" }
                 Surface(small, shape = shape, color = background) {
                     Box(Modifier.skipToLookaheadSize().graphicsLayer { alpha = (1f - fraction / .2f).coerceIn(0f, 1f) }) {
-                        if (source != null) EditablePhraseCard(source, {}, {}, neighbors, Modifier.fillMaxSize())
+                        if (source != null) EditablePhraseCard(source, {}, {}, neighbors, Modifier.fillMaxSize(), repository = repository)
                         else Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Add, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(6.dp))

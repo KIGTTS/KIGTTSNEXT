@@ -71,7 +71,7 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
                     .then(if (drag.key == phrase.id || hiddenPhraseId == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
                     .then(actions).testTag("edit-phrase-" + phrase.id).onGloballyPositioned {
                         if (active) onBounds(phrase.id, PhraseDialogAnchor(it.boundsInWindow(), neighbors))
-                    }, grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier)
+                    }, grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier, repository = model.mediaRepository)
         }
         item(key = "add-phrase") {
             TextButton(onClick = feedbackClick(add), modifier = Modifier.height(QuickPhraseHeight).testTag("add-phrase").onGloballyPositioned {

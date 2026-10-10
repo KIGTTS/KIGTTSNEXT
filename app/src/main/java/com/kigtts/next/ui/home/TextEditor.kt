@@ -6,15 +6,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.UiSlot
-import com.kigtts.next.media.MediaKind
 import com.kigtts.next.ui.media.MediaTransition
 
 @Composable
@@ -24,23 +25,27 @@ fun TextEditor(
     neighbors: CornerNeighbors = CornerNeighbors(above = captionsAbove, below = panelBelow),
 ) {
     val media=model.mediaRepository.get(state.mediaId)
-    val mediaCoversCard = media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)
+    var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
+    val horizontal = with(LocalDensity.current) { 12.dp.roundToPx() }
     Surface(modifier, shape = homeCardShape(neighbors),
         color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box {
-            MediaTransition(media?.takeIf { mediaCoversCard },state,model,Modifier.fillMaxSize())
+            CompositionLocalProvider(com.kigtts.next.ui.media.LocalMediaSafeArea provides
+                com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal)) {
+                MediaTransition(media,state,model,Modifier.fillMaxSize())
+            }
             Column {
-                Box(Modifier.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
+                Box(Modifier.onSizeChanged { top = it.height }.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
                 SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
-                EditorFooter(state, model)
+                EditorFooter(state, model, Modifier.onSizeChanged { bottom = it.height })
             }
         }
     }
 }
 
 @Composable
-private fun EditorFooter(state: AppState, model: AppViewModel) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
+private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+    Row(modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
         ElasticButtonGroup(listOf(ElasticAction("editor-clear", "清空", Icons.Default.DeleteSweep,
             { model.text("") }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
         if (state.editing) CursorTrack(model, Modifier.weight(.5f))

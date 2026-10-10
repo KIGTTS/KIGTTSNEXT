@@ -1,10 +1,5 @@
 package com.kigtts.next.ui.media
 
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.graphics.ImageDecoder
-import android.os.Build
-import androidx.exifinterface.media.ExifInterface
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -41,15 +36,5 @@ fun MediaImage(file: File?, description: String, modifier: Modifier = Modifier, 
 }
 
 internal fun decodeImage(file: File, maximum: Int): ImageBitmap? {
-    if (Build.VERSION.SDK_INT >= 28) runCatching { ImageDecoder.decodeBitmap(ImageDecoder.createSource(file)) { decoder, info, _ ->
-        decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-        val size = info.size; val factor = maxOf(size.width, size.height).toFloat() / maximum
-        if (factor > 1) decoder.setTargetSize((size.width / factor).toInt().coerceAtLeast(1), (size.height / factor).toInt().coerceAtLeast(1))
-    }.asImageBitmap() }.getOrNull()?.let { return it }
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(file.path, bounds)
-    var sample = 1; while (maxOf(bounds.outWidth, bounds.outHeight) / sample > maximum) sample *= 2
-    val bitmap = BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
-    val exif = runCatching { ExifInterface(file) }.getOrNull()
-    val matrix = Matrix().apply { exif?.let { if (it.isFlipped) postScale(-1f, 1f); postRotate(it.rotationDegrees.toFloat()) } }
-    return android.graphics.Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).asImageBitmap()
+    return com.kigtts.next.media.MediaBitmapDecoder.decode(file, maximum)?.asImageBitmap()
 }

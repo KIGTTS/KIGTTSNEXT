@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavigation()) {
+    com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
     val categories by model.categories.collectAsStateWithLifecycle()

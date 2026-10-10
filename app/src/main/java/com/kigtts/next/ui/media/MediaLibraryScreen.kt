@@ -33,6 +33,7 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
     var importing by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf<MediaEntry?>(null) }; var deleting by remember { mutableStateOf<MediaEntry?>(null) }
     var pairing by remember { mutableStateOf<String?>(null) }; var website by remember { mutableStateOf(false) }
+    var framing by remember { mutableStateOf<MediaEntry?>(null) }
     fun import(uri: android.net.Uri?) { if (uri == null) return
         scope.launch { importing = true; error = null
             try { withContext(Dispatchers.IO) { model.mediaRepository.import(uri) } }
@@ -64,20 +65,22 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
             items(entries, key = { it.id }) { entry ->
                 Surface(onClick = feedbackClick { model.content.choose(entry, target) }, shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.testTag("media-select-" + entry.id)) {
-                    Column(Modifier.padding(10.dp)) {
-                        Box(Modifier.fillMaxWidth().height(112.dp), contentAlignment = Alignment.Center) {
-                            if (entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) MediaImage(model.mediaRepository.file(entry), entry.name, Modifier.fillMaxSize(), 512)
-                            else Icon(if (entry.kind == MediaKind.VIDEO) Icons.Default.Movie else Icons.Default.Language, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
-                            IconButton(feedbackClick { menu = entry }, Modifier.align(Alignment.TopEnd)) { Icon(Icons.Default.MoreVert, "管理 " + entry.name) }
-                        }
+                    Box(Modifier.fillMaxWidth().height(148.dp)) {
+                        MediaCardBackdrop(entry, model.mediaRepository, Modifier.matchParentSize(), MaterialTheme.colorScheme.surfaceContainer)
+                        Column(Modifier.fillMaxHeight().fillMaxWidth(.6f).padding(12.dp), verticalArrangement = Arrangement.Center) {
                         Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(if (entry.appleLive) "苹果实况照片" else entry.kind.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        FilledTonalIconButton(feedbackClick { menu = entry }, Modifier.align(Alignment.TopEnd).padding(4.dp).size(32.dp).testTag("manage-media-" + entry.id)) {
+                            Icon(Icons.Default.MoreVert, "管理 " + entry.name, Modifier.size(18.dp))
+                        }
                     }
                 }
             }
         }
     }
     if (active) menu?.let { entry -> AlertDialog(onDismissRequest = { menu = null }, title = { Text(entry.name) }, text = { Column {
+        TextButton(feedbackClick { menu = null; framing = entry }, Modifier.testTag("edit-thumbnail-framing")) { Text("缩略图取景") }
         if (state.appleLivePhotos && entry.pluginId == null && entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) TextButton(feedbackClick {
             menu = null; pairing = entry.id; pair.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
         }, Modifier.testTag("pair-live-photo")) { Text("配对苹果实况视频") }
@@ -89,6 +92,7 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
             scope.launch { try { withContext(Dispatchers.IO) { model.content.remove(entry.id) }; deleting = null } catch (e: Exception) { error = e.message } }
         }) { Text("删除") } }, dismissButton = { TextButton(feedbackClick { deleting = null }) { Text("取消") } }) }
     if (active && website) WebsiteDialog(model, close = { website = false })
+    if (active) framing?.let { ThumbnailFramingDialog(it, model.mediaRepository) { framing = null } }
 }
 
 @Composable

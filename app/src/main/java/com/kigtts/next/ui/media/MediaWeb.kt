@@ -6,6 +6,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -22,6 +24,18 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     val currentActive by rememberUpdatedState(active)
+    val safeArea by rememberUpdatedState(LocalMediaSafeArea.current)
+    var destroyed by remember(entry.id) { mutableStateOf(false) }
+    var viewportWidth by remember(entry.id) { mutableIntStateOf(0) }
+    val safeApplier = remember(entry.id) { WebSafeAreaApplier() }
+    fun applySafeArea(view: WebView, capture: Boolean = false, force: Boolean = false) {
+        if (destroyed || viewportWidth <= 0) return
+        safeApplier.apply(view, safeArea, viewportWidth, force || capture) {
+            if (capture && !destroyed) view.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
+                override fun onComplete(requestId: Long) { if (!destroyed) captureWebThumbnail(view, entry, model.mediaRepository) }
+            })
+        }
+    }
     fun ownsPage()=currentActive&&model.state.value.mediaId==entry.id
     var ready by remember(entry.id) { mutableStateOf(false) }
     val web = remember(entry.id) {
@@ -39,7 +53,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.load(request.url.toString(), request.method)
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     !(request.url.toString().startsWith(WebContentPolicy.ORIGIN + "/content/") || entry.network && WebContentPolicy.https(request.url.toString()))
-                override fun onPageFinished(view: WebView, url: String) { ready=true;if(ownsPage())model.webHistory(view.canGoBack()) }
+                override fun onPageFinished(view: WebView, url: String) { ready=true;applySafeArea(view, true);if(ownsPage())model.webHistory(view.canGoBack()) }
+                override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) { if (ready) applySafeArea(view, force = true) }
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                     if (request.isForMainFrame) { ready=true;if(ownsPage())model.message("网页加载失败：" + error.description) }
                 }
@@ -57,11 +72,17 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     var lastBack by remember { mutableIntStateOf(state.webBackRevision) }
     LaunchedEffect(state.webBackRevision) { if (ownsPage()&&lastBack != state.webBackRevision) { lastBack = state.webBackRevision; if (web.canGoBack()) web.goBack(); model.webHistory(web.canGoBack()) } }
     LaunchedEffect(ime, active) { if(ownsPage())model.mediaEditing(ime > 0 && web.hasFocus()) }
-    LaunchedEffect(active) { if (active) web.onResume() else web.onPause() }
+    LaunchedEffect(active) { if (active) web.onResume() else { if (ready) captureWebThumbnail(web, entry, model.mediaRepository); web.onPause() } }
+    LaunchedEffect(LocalMediaSafeArea.current, viewportWidth) { if (ready) applySafeArea(web) }
     DisposableEffect(web, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) web.onPause() else if (event == Lifecycle.Event.ON_START && currentActive) web.onResume() }
         lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer); web.stopLoading(); web.destroy(); if(ownsPage()) { model.webHistory(false); model.mediaEditing(false) } }
+        onDispose { lifecycle.removeObserver(observer); if (ready) captureWebThumbnail(web, entry, model.mediaRepository)
+            destroyed = true; web.stopLoading(); web.destroy(); if(ownsPage()) { model.webHistory(false); model.mediaEditing(false) } }
     }
-    AndroidView(factory = { web }, modifier = modifier.mediaReveal(ready), update = {})
+    AndroidView(factory = { web }, modifier = modifier.mediaReveal(ready).testTag("media-web").onSizeChanged { viewportWidth = it.width }, update = {})
+    DisposableEffect(web) {
+        val listener = android.view.View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> if (ready) applySafeArea(web) }
+        web.addOnLayoutChangeListener(listener); onDispose { web.removeOnLayoutChangeListener(listener) }
+    }
 }

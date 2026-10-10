@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.semantics.*
 import com.kigtts.next.media.MediaEntry
-import com.kigtts.next.media.MediaKind
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.navigation.LocalPageActive
 
@@ -22,7 +21,7 @@ fun MediaTransition(entry:MediaEntry?,state:AppState,model:AppViewModel,modifier
     AnimatedContent(entry,modifier,contentKey={ it?.id ?: "text" },label="subtitle-media-transition",
         transitionSpec={ (fadeIn(tween(220)) togetherWith (fadeOut(tween(180))+scaleOut(tween(180),targetScale=.98f))).using(null) }) { retained ->
         val active=pageActive&&retained?.id==entry?.id
-        val painted=if(retained==null)!renderFullCardMedia else renderFullCardMedia||retained.kind in setOf(MediaKind.WEB,MediaKind.HTML)
+        val painted=if(retained==null)!renderFullCardMedia else renderFullCardMedia
         val input=if(active)Modifier else Modifier.clearAndSetSemantics {
             if(painted)testTag="media-exit/"+(retained?.id ?: "text")
         }.pointerInput(Unit) { awaitEachGesture {

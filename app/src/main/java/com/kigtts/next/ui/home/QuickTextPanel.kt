@@ -61,7 +61,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, c
             itemsIndexed(filtered, key = { _, phrase -> phrase.id }) { index, phrase ->
                 PhraseTile(phrase, { model.content.send(phrase) }, CornerNeighbors(start = index > 0, end = index < filtered.lastIndex),
                     pressed[index], pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
-                    sources[index], Modifier.width(164.dp).fillParentMaxHeight())
+                    sources[index], Modifier.width(164.dp).fillParentMaxHeight(), model.mediaRepository)
             }
         } else LazyVerticalGrid(GridCells.Fixed(columns), state = grid, modifier = listModifier.testTag("phrases-vertical"),
             verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -72,7 +72,7 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, c
                     CornerNeighbors(start = index % columns > 0, end = index % columns < columns - 1 && index < filtered.lastIndex,
                         above = index >= columns, below = index + columns <= filtered.lastIndex),
                     pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index],
-                    Modifier.height(QuickPhraseHeight).animateItem(fadeInSpec = null, fadeOutSpec = null))
+                    Modifier.height(QuickPhraseHeight).animateItem(fadeInSpec = null, fadeOutSpec = null), model.mediaRepository)
             }
         }
     }
@@ -80,14 +80,18 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, c
 
 @Composable
 private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: CornerNeighbors,
-    pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier) {
+    pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier,
+    repository: com.kigtts.next.media.MediaRepository) {
     Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier.testTag("quick-phrase-" + phrase.id),
         color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors, pressed, neighborPressed)) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 12.dp),
+        Box(Modifier.fillMaxSize()) {
+        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase.mediaId, repository, Modifier.matchParentSize())
+        Column(Modifier.fillMaxHeight().fillMaxWidth(if (phrase.mediaId == null) 1f else .60f).padding(start = 12.dp, end = if (phrase.mediaId == null) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)) {
             Text(phrase.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(phrase.description.ifBlank { if (phrase.mediaId == null) "点击填入文本" else "点击显示媒体" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         }
     }
 }

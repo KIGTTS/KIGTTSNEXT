@@ -34,11 +34,11 @@ $env:JAVA_HOME='C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 
 | 构建 | APK 文件大小 | SHA256 |
 | --- | ---: | --- |
-| Debug | 30,938,034 字节 / 29.505 MiB | `EAAAE0B0FBFBBC8D436A838C95D8D6EEE9B0147A258E56B3C97FBA22860A3934` |
-| 本地签名 Release | 3,523,964 字节 / 3.361 MiB | `B783D1FC45F467C0A0B3CE89FF2DE28AFC982E18D6BF278FBC723C95C740AE82` |
+| Debug | 30,938,113 字节 / 29.505 MiB | `53EE3E7C2575BFC43106E383E88379FC2D89B0535BC10F0220065A2658A51B1E` |
+| 本地签名 Release | 3,544,523 字节 / 3.380 MiB | `6EDDD5A4256D123111AA286139427C84522A8F4C80E21C5F054A84F789492470` |
 
-Release 文件大小减少 88.6%。压缩内容主要为一个 DEX（3,223,569 字节），资源 151,403 字节，四架构 Compose 图形路径库合计 37,392 字节，基线配置文件 7,445 字节；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、对齐、非 debuggable 检查通过；本轮主程序 184 项回归通过，包含横屏布局/整列吸附/连续拖动/旋转/全屏输入的 10 项新增检查。最后的受限窗口列数恢复修正后，横屏 10 项再次通过。Release Lint 0 错误/31 警告/1 提示。
+Release 文件大小减少 88.5%。压缩内容主要为一个 DEX（3,249,511 字节），资源 151,403 字节，四架构 Compose 图形路径库合计 37,392 字节，基线配置文件 7,537 字节及 smartcrop MIT 许可639字节；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、16K对齐、非 debuggable 检查通过；本轮主程序196项完整回归通过，包含原横屏10项和新增算法/取景/缓存/网页安全区12项。Release Lint 0错误/36警告/1提示（新增五项为KTX写法建议）。
 
-按钮修复后的首版非 debuggable Release 已覆盖安装成功，旧插件启停状态保留且已启用插件加载无错误。后续视频/拖拽/旋转修复，以及全屏条目容器变换、抽屉与条目尺寸调整、横屏左栏/左右字幕/右侧整列快捷面板完成本地回归。2026-10-10 手机重新连接后，最终横屏 Release 已覆盖安装并正常冷启动；回读手机实际 APK 的 SHA256 与上表一致，包标志不含 DEBUGGABLE。同版 Debug/Release 性能比较与视频窗体变化的 GPU 检查尚未执行，单次安装启动不作为性能对比结果。迁移前采样和未实际移动的滑动数据不用于最终性能结论。
+此前横屏 Release（SHA256 `B783D1FC45F467C0A0B3CE89FF2DE28AFC982E18D6BF278FBC723C95C740AE82`）已覆盖安装并正常冷启动，回读手机APK确认一致且非debuggable。最新媒体封面/半透渐变模糊/网页整卡片安全区的上表构建尚未安装：手机在本轮真机检查前断开，ADB无设备，也未导入测试素材。原生Chromium安全区、设备视频封面、同版Debug/Release性能比较和视频窗体变化GPU检查仍待真机核验。测试APK继续按用户选择暂缓；单次安装启动不作为性能比较结果，迁移前和未实际移动的滑动数据不采纳。
 
 依据：[Android 构建优化](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization)、[dumpsys 性能指标](https://developer.android.com/tools/dumpsys)。

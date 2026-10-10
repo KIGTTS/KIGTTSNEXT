@@ -36,7 +36,7 @@ fun PhraseDetailsDialog(draft: PhraseDraft, categories: List<String>, model: App
                 }
                 onDispose { }
             }
-            PhraseDialogTransform(anchor, source, restored, dismiss) { close, enabled ->
+            PhraseDialogTransform(anchor, source, restored, dismiss, model.mediaRepository) { close, enabled ->
                 PhraseDetailsForm(draft, categories, model, enabled, close, dismiss)
             }
         }
