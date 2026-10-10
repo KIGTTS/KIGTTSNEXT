@@ -9,12 +9,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.media.MediaScale
 import java.io.File
+import com.kigtts.next.ui.navigation.LocalPageActive
 
 /** The photo stays mounted below the video, including decoder startup and the entire exit fade. */
 @Composable
-fun BoxScope.LivePhotoPlayback(file:File?,name:String,scale:MediaScale) {
+fun BoxScope.LivePhotoPlayback(file:File?,name:String,scale:MediaScale,autoPlay:Boolean=false) {
     var requested by remember { mutableStateOf(false) };var mounted by remember { mutableStateOf(false) }
     val playback=remember { PlaybackState() };val alpha=remember { Animatable(0f) }
+    val active=LocalPageActive.current
+    LaunchedEffect(autoPlay) {
+        if(autoPlay&&active) { playback.rendered=false; mounted=true;requested=true }
+        else if(!autoPlay)requested=false
+    }
     LaunchedEffect(requested,playback.rendered) {
         if(requested&&playback.rendered)alpha.animateTo(1f,tween(180,easing=FastOutSlowInEasing))
         else if(!requested) { playback.player?.pause();alpha.animateTo(0f,tween(160));mounted=false }

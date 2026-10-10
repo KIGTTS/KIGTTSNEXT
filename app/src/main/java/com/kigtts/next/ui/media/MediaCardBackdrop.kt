@@ -38,11 +38,11 @@ fun MediaCardBackdrop(entry: MediaEntry?, repository: MediaRepository, modifier:
     }
     val opacity by animateFloatAsState(if (bitmap != null) 1f else 0f, tween(180), label = "card-preview-reveal")
     val scrim = remember(surface) {
-        val maximum = if (surface.luminance() > .5f) .58f else .66f
+        val maximum = (if (surface.luminance() > .5f) .58f else .66f) * surface.alpha
         (0..24).map { i ->
             val position = i / 24f
             val t = ((position - .48f) / .52f).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
-            position to surface.copy(alpha = maximum * (1 - t) + .035f * t)
+            position to surface.copy(alpha = maximum * (1 - t) + .035f * surface.alpha * t)
         }.toTypedArray()
     }
     Box(modifier.onSizeChanged { size = MediaThumbnails.size(it.width, it.height) }) {
@@ -54,14 +54,15 @@ fun MediaCardBackdrop(entry: MediaEntry?, repository: MediaRepository, modifier:
             MediaKind.VIDEO -> Icons.Default.Movie
             MediaKind.MOTION_PHOTO -> Icons.Default.MotionPhotosOn
             MediaKind.HTML, MediaKind.WEB -> Icons.Default.Language
+            MediaKind.AUDIO -> Icons.Default.AudioFile
             else -> Icons.Default.Image
         }, null, Modifier.align(Alignment.CenterEnd).padding(end = 16.dp).size(28.dp), tint = MaterialTheme.colorScheme.primary.copy(alpha = .45f))
     }
 }
 
 @Composable
-internal fun PhraseMediaBackdrop(id: String?, repository: MediaRepository?, modifier: Modifier) {
+internal fun PhraseMediaBackdrop(id: String?, repository: MediaRepository?, modifier: Modifier, surface: Color = MaterialTheme.colorScheme.surfaceContainerLowest) {
     if (id == null || repository == null) return
     val entries by repository.entries.collectAsStateWithLifecycle()
-    MediaCardBackdrop(entries.firstOrNull { it.id == id }, repository, modifier)
+    MediaCardBackdrop(entries.firstOrNull { it.id == id }, repository, modifier, surface)
 }

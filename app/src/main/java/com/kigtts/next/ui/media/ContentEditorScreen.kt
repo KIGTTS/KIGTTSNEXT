@@ -7,6 +7,8 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.automirrored.filled.Redo
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -59,15 +61,15 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
         OutlinedTextField(value, ::change, Modifier.fillMaxWidth().weight(1f).testTag("content-editor-text"),
             label = { Text(if (entry.html) "HTML 源码" else "文本内容") }, textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = if (entry.html) FontFamily.Monospace else FontFamily.Default))
     }
-    if (active && pending) AlertDialog(onDismissRequest = model.content::keepEditor, title = { Text("放弃未保存的修改？") },
-        confirmButton = { TextButton(feedbackClick(model.content::discardEditor)) { Text("放弃") } },
-        dismissButton = { TextButton(feedbackClick(model.content::keepEditor)) { Text("继续编辑") } })
+    if (active && pending) MotionAlertDialog(onDismissRequest = model.content::keepEditor, title = { Text("放弃未保存的修改？") },
+        confirmButton = { TextButton(dialogFeedbackClick(model.content::discardEditor)) { Text("放弃") } },
+        dismissButton = { TextButton(dialogFeedbackClick(model.content::keepEditor)) { Text("继续编辑") } })
     if (active && search) {
         var find by remember { mutableStateOf("") }; var replacement by remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = { search = false }, title = { Text("查找替换") }, text = { Column {
+        MotionAlertDialog(onDismissRequest = { search = false }, title = { Text("查找替换") }, text = { Column {
             OutlinedTextField(find, { find = it }, label = { Text("查找") }); OutlinedTextField(replacement, { replacement = it }, label = { Text("替换为") })
             if (find.isNotEmpty()) Text("找到 " + Regex(Regex.escape(find)).findAll(value).count() + " 处")
-        } }, confirmButton = { TextButton(feedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text("全部替换") } },
-            dismissButton = { TextButton(feedbackClick { search = false }) { Text("取消") } })
+        } }, confirmButton = { TextButton(dialogFeedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text("全部替换") } },
+            dismissButton = { TextButton(dialogFeedbackClick { search = false }) { Text("取消") } })
     }
 }

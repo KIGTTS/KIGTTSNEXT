@@ -14,6 +14,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
@@ -72,12 +74,12 @@ fun CardsScreen() {
             Spacer(Modifier.height(70.dp))
         }
     }
-    if (adding) AlertDialog(onDismissRequest = { adding = false }, title = { Text("新名片") }, text = {
+    if (adding) MotionAlertDialog(onDismissRequest = { adding = false }, title = { Text("新名片") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(title, { title = it }, label = { Text("名称") })
             OutlinedTextField(description, { description = it }, label = { Text("说明") })
             FilledTonalButton(onClick = feedbackClick { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text(if (imageUri == null) "选择图片" else "已选择图片 · 更换") }
         }
-    }, confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = feedbackClick { cards = cards + ContactCard(title.trim(), description.trim(), imageUri); store.save(cards); adding = false; title = ""; description = ""; imageUri = null }) { Text("添加") } },
-        dismissButton = { TextButton(onClick = feedbackClick { adding = false }) { Text("取消") } })
+    }, confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = dialogFeedbackClick { cards = cards + ContactCard(title.trim(), description.trim(), imageUri); store.save(cards); adding = false; title = ""; description = ""; imageUri = null }) { Text("添加") } },
+        dismissButton = { TextButton(onClick = dialogFeedbackClick { adding = false }) { Text("取消") } })
 }

@@ -55,6 +55,7 @@ class CategoryInteractionTest {
         compose.onNodeWithTag("choose-category-icon-HOME").performClick()
         compose.onNode(isDialog()).captureRoboImage("build/previews/edit-category-properties.png")
         compose.onNodeWithTag("save-category").performClick()
+        compose.waitUntil(5000) { model.state.value.selectedCategory == "日常生活" }
         assertEquals("日常生活", model.state.value.selectedCategory)
         assertEquals(CategoryIcon.HOME, model.quickTexts.categoryIcons.value["日常生活"])
         compose.onNodeWithTag("category-日常生活").performClick()

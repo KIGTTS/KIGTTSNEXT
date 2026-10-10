@@ -7,6 +7,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.input.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
+import com.kigtts.next.ui.components.rememberDialogClose
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -31,7 +34,7 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
     var icon by rememberSaveable(original) { mutableStateOf(model.quickTexts.categoryIcons.value[original] ?: CategoryIcon.LIST) }
     val value = name.text.toString().trim()
     val duplicate = value in categories && value != original
-    AlertDialog(onDismissRequest = dismiss, title = { Text(if (original == null) "添加分组" else "编辑分组") },
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(if (original == null) "添加分组" else "编辑分组") },
         text = {
             Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(state = name, lineLimits = TextFieldLineLimits.SingleLine, label = { Text("分组名称") },
@@ -53,9 +56,9 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
                 }
             }
         },
-        confirmButton = { TextButton(onClick = feedbackClick {
+        confirmButton = { val closeDialog = rememberDialogClose(); TextButton(onClick = feedbackClick {
             val saved = if (original == null) model.quickTexts.addCategory(value, icon) else model.quickTexts.editCategory(original, value, icon)
-            if (saved) { model.category(value); dismiss() }
+            if (saved) closeDialog { model.category(value); dismiss() }
         }, enabled = value.isNotBlank() && !duplicate, modifier = Modifier.testTag("save-category")) { Text(if (original == null) "添加" else "保存") } },
-        dismissButton = { TextButton(onClick = feedbackClick(dismiss)) { Text("取消") } })
+        dismissButton = { TextButton(onClick = dialogFeedbackClick(dismiss)) { Text("取消") } })
 }

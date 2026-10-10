@@ -5,7 +5,7 @@ import androidx.core.content.edit
 
 object SubtitleSize {
     const val DEFAULT_PERCENT = 3800f / 393f
-    val range = 3f..25f
+    val range = 3f..50f
     fun normalize(percent: Float) = if (percent.isFinite()) percent.coerceIn(range) else DEFAULT_PERCENT
 }
 

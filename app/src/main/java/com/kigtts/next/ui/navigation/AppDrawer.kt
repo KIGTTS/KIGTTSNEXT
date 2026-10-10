@@ -14,6 +14,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
@@ -25,8 +27,9 @@ import com.kigtts.next.R
 fun AppDrawer(state: AppState, model: AppViewModel, navigation: DrawerNavigation, contentDirection: LayoutDirection) {
     val back = rememberPredictiveReturn(navigation.active, complete = navigation::close)
     val close = navigation::close
+    val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
     // The stateful alpha overload closes inside its back callback, which can cancel mid-motion.
-    ModalDrawerSheet(modifier = Modifier.widthIn(max = 320.dp).predictiveReturn(back.progress, edge = 0).testTag("app-drawer")
+    ModalDrawerSheet(modifier = Modifier.widthIn(max = 320.dp).predictiveReturn(back.progress, edge = if(landscape)1 else 0).testTag("app-drawer")
         .onGloballyPositioned {
             val left = it.positionInRoot().x
             navigation.placed(left, left + it.size.width, it.findRootCoordinates().size.width.toFloat())

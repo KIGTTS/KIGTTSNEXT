@@ -8,30 +8,30 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
-import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.components.rememberBalancedWidths
+import androidx.compose.animation.core.*
+import com.kigtts.next.ui.components.*
 
 /** Stable native ToggleButtons retain press ownership while theme/selection changes. */
 @Composable
 internal fun <T> SettingChoiceGroup(title:String,options:List<T>,value:T,label:(T)->String,onSelect:(T)->Unit,
     modifier:Modifier=Modifier) {
     val sources=remember(options) { options.map { MutableInteractionSource() } }
-    // alpha01's animateWidth waits for >75% expansion on release. Drive weight directly,
-    // without that threshold or adaptive content slots replacing a button mid-gesture.
-    val weights=rememberBalancedWidths(options.map { 100f },sources,minimum=60f,
+    val motions=options.map { option -> key(option) { rememberChoicePressMotion() } }
+    val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
         expansion=100f*ButtonGroupDefaults.ExpandedRatio)
     Row(modifier.fillMaxWidth().selectableGroup(),horizontalArrangement=Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
         options.forEachIndexed { index,option -> key(option) {
-            val select=feedbackClick { if(option!=value)onSelect(option) }
-            val shapes=when(index) {
+            val defaults=when(index) {
                 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
                 options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
-            ToggleButton(checked=value==option,onCheckedChange={ if(it)select() },
-                modifier=Modifier.weight(weights[index]).semantics {
+            val selectionProgress by animateFloatAsState(if (value==option) 1f else 0f,tween(160),label="choice-selection-shape")
+            val shape=ConnectedChoiceShape(defaults,selectionProgress,motions[index].progress.value)
+            ToggleButton(checked=value==option,onCheckedChange={ checked -> motions[index].commit { if(checked&&option!=value)onSelect(option) } },
+                modifier=Modifier.weight(weights[index]).choicePressFeedback(motions[index]).semantics {
                     contentDescription="$title：${label(option)}";selected=value==option
-                },shapes=shapes,interactionSource=sources[index]) { Text(label(option),maxLines=1) }
+                },shapes=ToggleButtonShapes(shape,shape,shape),interactionSource=sources[index]) { Text(label(option),maxLines=1) }
         } }
     }
 }

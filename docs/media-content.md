@@ -20,7 +20,9 @@ Android 动态照片默认可用。导入图片时读取 Google Motion Photo 的
 
 ## 快捷条目与内置编辑器
 
-编辑快捷条目使用全屏对话框，顶部关闭/保存，正文可滚动并避开输入法。原生 [sharedBounds 容器变换](https://developer.android.com/develop/ui/compose/animation/shared-elements#shared-bounds) 在对话框窗口中连接实际条目快照与全屏表单；容器位置、尺寸、相邻圆角与颜色一起过渡，内容保持稳定排版再淡入淡出。关闭/保存和预测返回收回到原条目，取消返回手势恢复全屏；保存待收回完成后提交，取消不修改原条目。名称、说明、分组和媒体关联保存到原条目，排序及稳定 ID 保持。进入选择器/编辑器时暂时隐藏详情对话框，返回后恢复全屏和草稿，旋转不重复展开。点击媒体条目会显示对应媒体；普通文本条目继续填入文字。删除媒体需确认，引用它的条目保留文字并移除关联；删除条目不删除媒体文件。
+快捷条目现在使用正文与可选缩略标题，并在全屏编辑器中通过四个 Tab 切换纯文本、音频、媒体和页面。纯文本可启用基础富文本，卡片支持独立自定义色或无颜色；媒体直接使用系统图片/视频选择器。具体数据兼容、资源规则及动效见[快捷卡片与弹窗](quick-cards.md)。
+
+编辑快捷条目使用全屏对话框，顶部关闭/保存，正文可滚动并避开输入法。原生 [sharedBounds 容器变换](https://developer.android.com/develop/ui/compose/animation/shared-elements#shared-bounds) 在对话框窗口中连接实际条目快照与全屏表单；360 ms 展开、260 ms 收回，位置、尺寸、相邻圆角与颜色一起过渡，顶栏和表单分别淡入。关闭/保存和预测返回收回到原条目，取消返回手势恢复全屏；保存待收回完成后提交，取消不修改原条目。正文、缩略标题、分组和媒体关联保存到原条目，排序及稳定 ID 保持。系统选择器保留全屏表单；进入内置编辑器/页面库时暂时隐藏详情对话框，返回后恢复全屏和草稿，旋转不重复展开。删除媒体需确认，引用它的条目保留文字并移除关联；删除条目不删除媒体文件。
 
 “文本编辑器”和“HTML 编辑器”为正常二级页面，支持保存、撤销/重做、查找替换；有修改时返回须确认放弃。文本最大 128 KiB，HTML 最大 2 MiB，撤销最多 20 项且限制总字符内存。文本编辑器保存后回到文本显示；HTML 保存到媒体库。媒体库内可编辑已有宿主 HTML；插件 HTML 的编辑会保存为新的宿主副本。HTML/网页内容交互时不会触发大字幕的文本输入手势，网页输入键盘出现时主页其它区域收起。
 
@@ -50,7 +52,7 @@ Kigtts.postMessage(JSON.stringify({action: "save", inputs: {value: "内容"}}));
 
 宿主只接受自身本地来源的主框架消息，动作必须出现在 `allowedActions`（最多 32 个），输入最多 32 个字符串字段，单个值 ≤4096 字符，总消息 ≤64 KiB。宿主按插件 ID 调用原有 `execute(actionId, context.inputs)`；不暴露 Activity 或任意 Android 接口。系统 WebView 必须支持 `WEB_MESSAGE_LISTENER`，否则显示更新提示。远程网页和用户导入 HTML 不拥有插件动作桥。调试插件配置页提供“显示插件网页示例”。
 
-本地页面通过 HTTPS 虚拟来源加载，仅可读取当前 HTML 所在目录及其子目录；禁用 `file://`、内容 URI、混合内容、持久 Cookie 和 DOM 存储。远程资源只允许 HTTPS GET，显式拒绝非 HTTPS 重定向及外部 Intent；POST、登录 Cookie 和持久站点存储当前不支持。插件使用 `Web` 或 `Html.allowNetwork=true` 时须声明 `network` 能力。网络响应写入所属插件 `cache/web/<contentId>/`，宿主网页写入 `appdata/Kigtts/media/web-cache/<id>/`；每个资源最多 32 MiB、每个内容缓存最多 128 MiB。此加载器针对可展示及可扩展的网页内容，不能替代完整浏览器的兼容能力。
+本地页面通过 HTTPS 虚拟来源加载，仅可读取当前 HTML 所在目录及其子目录；禁用 `file://`、内容 URI、混合内容和 DOM 存储。网页启用原生持久 Cookies，与 HTTPS GET 拦截器共享；主页面重定向逐域收发，第三方子资源 Cookies 关闭，可在设置中确认清除。远程资源只允许 HTTPS GET，显式拒绝非 HTTPS 重定向及外部 Intent；POST 和持久站点存储当前不支持。插件使用 `Web` 或 `Html.allowNetwork=true` 时须声明 `network` 能力。网络响应写入所属插件 `cache/web/<contentId>/`，宿主网页写入 `appdata/Kigtts/media/web-cache/<id>/`；每个资源最多 32 MiB、每个内容缓存最多 128 MiB。此加载器针对可展示及可扩展的网页内容，不能替代完整浏览器的兼容能力。
 
 API6 改变 `PluginContext` 二进制结构，API5 及更早的 DEX 包须同签名重建为 0.5.0/API6；升级保留模型、配置和外置资源。主程序仍不包含语音引擎或语音服务实现。
 

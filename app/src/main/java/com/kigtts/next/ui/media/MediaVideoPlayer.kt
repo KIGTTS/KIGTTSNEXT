@@ -23,7 +23,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifier:Modifier=Modifier,
-    scale:MediaScale=MediaScale.FIT,playback:PlaybackState=remember { PlaybackState() },showControls:Boolean=true) {
+    scale:MediaScale=MediaScale.FIT,playback:PlaybackState=remember { PlaybackState() },showControls:Boolean=true,autoPlay:Boolean=once) {
     if(file==null) { Box(modifier) { Text("视频资源不可用") };return }
     val context=LocalContext.current;val active=LocalPageActive.current;val lifecycle=LocalLifecycleOwner.current.lifecycle
     val onEnded by rememberUpdatedState(ended)
@@ -32,7 +32,7 @@ fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifie
     val player=remember(file.path) { ExoPlayer.Builder(context).build().apply {
         setVideoEffects(listOf(effect));setMediaItem(MediaItem.fromUri(android.net.Uri.fromFile(file)))
         volume=if(once)0f else 1f;setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),true)
-        prepare();playWhenReady=once
+        prepare()
     } }
     var error by remember(player) { mutableStateOf<String?>(null) }
     var viewport by remember(player) { mutableStateOf(IntSize.Zero) }
@@ -52,6 +52,7 @@ fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifie
         onDispose { lifecycle.removeObserver(observer);player.removeListener(listener);player.release();if(playback.player===player)playback.player=null }
     }
     LaunchedEffect(active) { if(!active) { player.pause();if(once)onEnded() } }
+    LaunchedEffect(player,autoPlay) { if(autoPlay&&active)player.play() else player.pause() }
     LaunchedEffect(player,active) { if(active)snapshotFlow { playback.playing }.collectLatest { playing ->
         if(playing)while(true)withFrameNanos { if(!playback.scrubbing)playback.position=player.currentPosition.toFloat() }
         else if(!playback.scrubbing)playback.position=player.currentPosition.toFloat()

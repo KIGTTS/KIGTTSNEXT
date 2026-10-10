@@ -7,6 +7,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -84,7 +86,7 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
         val colors = themeColors(settings, wallpaper, dark)
         colors to compactControlPalette(settings, wallpaper, dark, colors)
     }
-    val radius = settings.cornerRadius
+    val radius by animateFloatAsState(settings.cornerRadius,tween(220,easing=FastOutSlowInEasing),label="theme-corner-radius")
     val shapes = Shapes(
         extraSmall = RoundedCornerShape((radius * .3f).coerceAtLeast(4f).dp),
         small = RoundedCornerShape((radius * .6f).coerceAtLeast(4f).dp),

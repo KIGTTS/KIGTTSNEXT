@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.sp
@@ -13,7 +14,11 @@ const val SUBTITLE_READABLE_MINIMUM = 24f
 
 /** Paragraph height depends on width, not on viewport height; reuse it during sheet motion. */
 @Composable
-internal fun fittingSubtitleFontSize(text: String, style: TextStyle, width: Int, height: Int): Float {
+internal fun fittingSubtitleFontSize(text: String, style: TextStyle, width: Int, height: Int): Float =
+    fittingSubtitleFontSize(AnnotatedString(text), style, width, height)
+
+@Composable
+internal fun fittingSubtitleFontSize(text: AnnotatedString, style: TextStyle, width: Int, height: Int): Float {
     val density = LocalDensity.current.density
     val measurer = rememberTextMeasurer(cacheSize = 32)
     // A conservative width bucket limits line-break recalculation during horizontal transitions.

@@ -13,14 +13,21 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
     val categoryIcons = iconState.asStateFlow()
 
     private fun save() = store.save(itemState.value, groupState.value, iconState.value)
-    fun add(text: String, category: String, description: String = "", mediaId: String? = null) {
+    fun savePhrase(phrase: QuickPhrase): Boolean {
+        if (phrase.text.isBlank() || phrase.category !in groupState.value) return false
+        val value = phrase.copy(title = phrase.title.trim(), formats = com.kigtts.next.text.TextFormatting.normalize(phrase.formats, phrase.text.length))
+        itemState.value = if (itemState.value.any { it.id == phrase.id }) itemState.value.map { if (it.id == phrase.id) value else it } else itemState.value + value
+        save(); return true
+    }
+    fun add(text: String, category: String, title: String = "", mediaId: String? = null) {
         if (text.isBlank() || category !in groupState.value) return
-        itemState.value += QuickPhrase(text.trim(), category, description = description.trim(), mediaId = mediaId)
+        itemState.value += QuickPhrase(text.trim(), category, title = title.trim(), mediaId = mediaId)
         save()
     }
-    fun edit(id: String, text: String, description: String, category: String, mediaId: String? = itemState.value.firstOrNull { it.id == id }?.mediaId) {
+    fun edit(id: String, text: String, title: String, category: String, mediaId: String? = itemState.value.firstOrNull { it.id == id }?.mediaId) {
         if (text.isBlank() || category !in groupState.value) return
-        itemState.value = itemState.value.map { if (it.id == id) it.copy(text = text.trim(), description = description.trim(), category = category, mediaId = mediaId) else it }
+        itemState.value = itemState.value.map { if (it.id == id) it.copy(text = text.trim(), title = title.trim(), category = category, mediaId = mediaId,
+            formats = com.kigtts.next.text.TextFormatting.rebase(it.formats, it.text, text.trim())) else it }
         save()
     }
     fun remove(id: String) {

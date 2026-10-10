@@ -95,14 +95,17 @@ class SpeechCoordinator(private val scope: CoroutineScope, private val registry:
         }
         return PcmAudio(bytes.toByteArray(), format.sampleRate, format.channels)
     }
-    fun speak() {
-        if (state().speaking) { speech?.cancel(); return }
+    fun speak(replace: Boolean = false) {
+        if (state().speaking && !replace) { speech?.cancel(); return }
         val text = state().editorText
         if (text.isBlank()) { message("请先输入文本"); return }
         val engine = registry.plugin(selection(true).orEmpty())?.tts ?: registry.plugins.firstNotNullOfOrNull { it.tts }
         if (engine == null) { message("请先安装并选择语音合成插件"); return }
         if (engine.info.availability != EngineAvailability.READY) { message("语音合成插件尚未配置资源"); return }
+        val previous=speech
+        previous?.cancel()
         speech = scope.launch {
+            previous?.join()
             update { it.copy(speaking = true) }
             val player = audio.player()
             try {
@@ -128,4 +131,5 @@ class SpeechCoordinator(private val scope: CoroutineScope, private val registry:
         jobs.forEach { it.cancel() }; jobs.joinAll()
         update { it.copy(listening = false, speaking = false) }
     }
+    suspend fun stopSpeaking() { speech?.let { it.cancel();it.join() };update { it.copy(speaking=false) } }
 }

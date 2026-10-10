@@ -34,11 +34,19 @@ $env:JAVA_HOME='C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 
 | 构建 | APK 文件大小 | SHA256 |
 | --- | ---: | --- |
-| Debug | 30,938,113 字节 / 29.505 MiB | `53EE3E7C2575BFC43106E383E88379FC2D89B0535BC10F0220065A2658A51B1E` |
-| 本地签名 Release | 3,544,523 字节 / 3.380 MiB | `6EDDD5A4256D123111AA286139427C84522A8F4C80E21C5F054A84F789492470` |
+| Debug | 30,588,458 字节 / 29.171 MiB | `8104D6CF2589D01A00169B1C2384799E749D6FD2EFE5D97BECE4061F74D9E4F3` |
+| 本地签名 Release | 3,605,963 字节 / 3.439 MiB | `0FDAFEE9617FA55C18CD007B4E3155F7F63A512C59989C9C9F32E34D35C0AB16` |
 
-Release 文件大小减少 88.5%。压缩内容主要为一个 DEX（3,249,511 字节），资源 151,403 字节，四架构 Compose 图形路径库合计 37,392 字节，基线配置文件 7,537 字节及 smartcrop MIT 许可639字节；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、16K对齐、非 debuggable 检查通过；本轮主程序196项完整回归通过，包含原横屏10项和新增算法/取景/缓存/网页安全区12项。Release Lint 0错误/36警告/1提示（新增五项为KTX写法建议）。
+Release 文件大小减少 88.2%。压缩内容主要为一个 DEX（3,302,257 字节）、资源 148,075 字节、四架构 Compose 图形路径库合计 37,392 字节，以及基线配置文件和 smartcrop MIT 许可合计 8,218 字节（其中许可 639 字节）；不包含语音引擎、模型或 `.kigplugin` 包。Release 签名、16K 对齐、非 debuggable 检查通过；主程序 222 项完整回归通过，Debug/Release/R8 及两种 Lint 完成。两种 Lint 各 0 错误、37 警告、1 提示。
 
-此前横屏 Release（SHA256 `B783D1FC45F467C0A0B3CE89FF2DE28AFC982E18D6BF278FBC723C95C740AE82`）已覆盖安装并正常冷启动，回读手机APK确认一致且非debuggable。最新媒体封面/半透渐变模糊/网页整卡片安全区的上表构建尚未安装：手机在本轮真机检查前断开，ADB无设备，也未导入测试素材。原生Chromium安全区、设备视频封面、同版Debug/Release性能比较和视频窗体变化GPU检查仍待真机核验。测试APK继续按用户选择暂缓；单次安装启动不作为性能比较结果，迁移前和未实际移动的滑动数据不采纳。
+上表 Release 已覆盖安装到 Xiaomi 23113RKC6C（Android API 36），回读手机 APK 的 SHA256 确认一致，包标记不含 DEBUGGABLE。管理桥挂接成功；原有六个外置 API6/0.5.0 插件及三个内置插件的启停状态保留，启用项均正常加载。仅主程序更新，测试 APK 继续按用户选择暂缓。
+
+通过独立管理器导入自建的静音音频、测试视频、Android 动态照片及 HTML。真机确认音频保留已有字幕、播放胶囊居中，删除正在展示的音频不再触发播放器线程错误并保留字幕；视频实际解码和动态照片默认自动播放可见。Chromium 测试页正文高度和视口同为 353 CSS 像素，顶部及左右安全区随真实卡片换算，短期测试 Cookie 可读写。所有本次导入项和临时 Download 文件已清理；仅测试 Cookie 自动到期，未清除用户 Cookies。
+
+本地原生回归验证条目发送填写的字幕、关闭音频保留字幕/选区、编辑页共用字段位于 Tab 上方及两类弹窗的内容尺寸。设备坐标点击未证明实际触发，不能据此声称抽屉/预测返回手势、编辑预览按钮或系统选择器已做真机验收。全部视频窗口变化、长期 GPU 表现和同版 Debug/Release 性能比较仍未覆盖；单次安装启动不作为性能结果。
+
+同一已安装 Release 的五次有效进程冷启动为 305、300、286、251、293 ms，中位数 293 ms；预热不计入，系统“不保留活动”保持开启。四轮管理桥导航采样共 1,054 帧，现代截止时间口径 Janky 24 帧（2.28%），legacy 口径 32.45%；HWUI P50/P90/P95/P99 为 12/24/34/53 ms，GPU P95 为 6 ms。两种 Janky 口径不同，不能直接换算成整个软件的帧率。静止主页主进程 PSS 90.32 MiB，含五个已加载外置插件进程合计 170.72 MiB。未采纳 ADB 滚动，也未测媒体解码帧率或输入到显示延迟。
+
+原始数据保存在本机忽略目录 `.tools/performance/release-cards-final/20261010-171932/`，记录包摘要、系统环境、温度/电池和逐次采样。该结果是当前设备和状态下的基线，不代表与同版 Debug 的速度比较。
 
 依据：[Android 构建优化](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization)、[dumpsys 性能指标](https://developer.android.com/tools/dumpsys)。

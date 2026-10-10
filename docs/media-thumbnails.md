@@ -56,4 +56,4 @@ window.addEventListener('kigtts-safe-area-change', event => {
 
 本地原生渲染预览（合成测试素材）：[亮色](images/media-thumbnail-light.png)、[深色](images/media-thumbnail-dark.png)、[编辑](images/media-thumbnail-edit.png)、[取景](images/media-thumbnail-framing.png)。
 
-2026-10-10最终主程序196项完整回归通过，Debug/Release/R8及Release Lint完成；同证书非debuggable Release3.380MiB。真机检查前USB断开，未安装最新包、未导入临时素材，设备Chromium安全区与视频封面暂未验收。
+2026-10-10 主程序 222 项完整回归、Debug/Release/R8 及两种 Lint 通过。同证书非 debuggable Release 3.439 MiB 已安装，手机 APK 摘要一致。自建测试页在真实 Chromium 中验证整卡片视口高度与安全区，并显示视频实际解码和动态照片自动播放；本次临时素材已清理。完整网页兼容性、全部窗口变化及长期 GPU 性能仍需专项验收。

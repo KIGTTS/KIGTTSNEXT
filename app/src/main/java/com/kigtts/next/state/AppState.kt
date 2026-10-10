@@ -15,7 +15,6 @@ sealed interface Destination {
     data class MediaLibrary(val target: String = "display") : Destination
     data class ContentEditor(val token: String) : Destination
 }
-data class QuickPhrase(val text: String, val category: String, val id: String = java.util.UUID.randomUUID().toString(), val description: String = "", val mediaId: String? = null)
 data class AppState(
     val destination: Destination = Destination.Home,
     val navigationStack: List<Destination> = emptyList(),
@@ -48,6 +47,11 @@ data class AppState(
     val webCanGoBack: Boolean = false,
     val webBackRevision: Int = 0,
     val appleLivePhotos: Boolean = false,
+    val subtitleFormats: List<com.kigtts.next.text.TextFormatRun> = emptyList(),
+    val audioId: String? = null,
+    val autoPlayback: Boolean = true,
+    val contentAutoPlay: Boolean = true,
+    val contentRevision: Int = 0,
 ) {
     val editorText: String get() = editorValue.text
     val subtitleExpanded: Boolean get() = editing || forcedFullscreen || mediaEditing

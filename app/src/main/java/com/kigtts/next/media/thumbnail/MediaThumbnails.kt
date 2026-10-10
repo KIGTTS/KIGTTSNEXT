@@ -42,6 +42,7 @@ class MediaThumbnails(private val repository: MediaRepository) {
     private data class Source(val key: String, val bitmap: Bitmap)
     suspend fun source(entry: MediaEntry): Bitmap? = load(entry)?.bitmap
     private suspend fun load(entry: MediaEntry): Source? = withContext(Dispatchers.IO) {
+        if (entry.kind == MediaKind.AUDIO) return@withContext null
         sourceLock.withLock {
             val key = sourceKey(entry)
             knownSources[entry.id] = key

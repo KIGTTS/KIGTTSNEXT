@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
@@ -67,10 +69,10 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     if (addGroup) AddCategoryDialog(categories, model) { addGroup = false }
     editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
     deleting?.let { phrase ->
-        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除这条快捷文本？") },
+        MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除这条快捷文本？") },
             text = { Text(phrase.text) },
-            confirmButton = { TextButton(onClick = feedbackClick { model.quickTexts.remove(phrase.id); deleting = null },
+            confirmButton = { TextButton(onClick = dialogFeedbackClick { model.quickTexts.remove(phrase.id); deleting = null },
                 modifier = Modifier.testTag("confirm-delete-phrase")) { Text("删除") } },
-            dismissButton = { TextButton(onClick = feedbackClick { deleting = null }, modifier = Modifier.testTag("cancel-delete-phrase")) { Text("取消") } })
+            dismissButton = { TextButton(onClick = dialogFeedbackClick { deleting = null }, modifier = Modifier.testTag("cancel-delete-phrase")) { Text("取消") } })
     }
 }

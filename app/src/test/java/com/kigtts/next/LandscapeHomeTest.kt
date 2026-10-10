@@ -1,6 +1,7 @@
 package com.kigtts.next
 
 import android.app.Application
+import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -23,6 +24,53 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
 class LandscapeHomeTest {
+    @Test fun landscapeDocksUseCircularSideButtonsLargerPillAndTheRequestedVerticalOrder() {
+        val model=show()
+        fun bounds(tag:String)=compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+        val menu=compose.onNodeWithContentDescription("打开抽屉菜单").getUnclippedBoundsInRoot()
+        val speaker=bounds("auto-playback")
+        assertTrue(menu.bottom<speaker.top)
+        compose.onNodeWithTag("dock-start").assertContentDescriptionEquals("名片")
+        compose.onNodeWithTag("dock-end").assertContentDescriptionEquals("画板")
+        assertTrue(bounds("dock-start").bottom<bounds("dock-end").top)
+        for(tag in listOf("dock-start","dock-end")) {
+            val box=bounds(tag);assertEquals(48f,(box.right-box.left).value,.5f);assertEquals(48f,(box.bottom-box.top).value,.5f)
+        }
+        val main=bounds("dock-main");assertEquals(48f,(main.right-main.left).value,.5f);assertEquals(160f,(main.bottom-main.top).value,.5f)
+        compose.onRoot().captureRoboImage("build/previews/landscape-collapsed-circles.png")
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
+        for(tag in listOf("dock-start","dock-end")) {
+            val box=bounds(tag);assertEquals(32f,(box.right-box.left).value,.5f);assertEquals(32f,(box.bottom-box.top).value,.5f)
+        }
+        compose.onRoot().captureRoboImage("build/previews/landscape-expanded-circles.png")
+    }
+    @Test fun landscapeDrawerOpensLeftAndSketchEntersAndReturnsRightRegardlessOfBackGestureEdge() {
+        val model=show()
+        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
+        val drawer=compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot()
+        assertEquals(0f,drawer.left.value,.5f);assertTrue(drawer.right.value<=321f)
+        compose.mainClock.autoAdvance=false
+        fun step(ms:Long) { compose.mainClock.advanceTimeBy(ms);compose.waitForIdle() }
+        fun gesture(edge:Int) { compose.runOnIdle {
+            compose.activity.onBackPressedDispatcher.dispatchOnBackStarted(BackEventCompat(0f,100f,0f,edge))
+            compose.activity.onBackPressedDispatcher.dispatchOnBackProgressed(BackEventCompat(100f,100f,.6f,edge))
+        };step(64) }
+        gesture(BackEventCompat.EDGE_LEFT)
+        assertTrue(compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot().left.value<0f)
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() };step(600)
+        assertEquals(drawer,compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot())
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() };step(1200)
+        compose.runOnIdle { model.openSidePage(SidePage.SKETCH) };step(96)
+        val page=compose.onNodeWithTag("page-layer/1/side/sketch")
+        assertTrue(page.getUnclippedBoundsInRoot().left.value>0f);step(800)
+        for(edge in listOf(BackEventCompat.EDGE_LEFT,BackEventCompat.EDGE_RIGHT)) {
+            gesture(edge);assertTrue(page.getUnclippedBoundsInRoot().left.value>0f)
+            compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() };step(800)
+        }
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() };step(96)
+        assertTrue(page.getUnclippedBoundsInRoot().left.value>0f);step(1000)
+        page.assertDoesNotExist();compose.mainClock.autoAdvance=true
+    }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()

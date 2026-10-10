@@ -3,6 +3,8 @@ package com.kigtts.next.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -101,19 +103,19 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
                     }
                 }
             }
-            dialog?.let { content -> AlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
-                confirmButton = { TextButton(onClick = feedbackClick { dialog = null }) { Text("知道了") } }) }
+            dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
+                confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
             pluginMenu?.let { (plugin, content) ->
-                AlertDialog(
+                MotionAlertDialog(
                     onDismissRequest = { pluginMenu = null }, title = { Text(content.title) },
                     text = {
                         Column {
                             content.items.forEach { item ->
-                                TextButton(onClick = feedbackClick { pluginMenu = null; model.invoke(plugin, item.id) }) { Text(item.label) }
+                                TextButton(onClick = dialogFeedbackClick { pluginMenu = null; model.invoke(plugin, item.id) }) { Text(item.label) }
                             }
                         }
                     },
-                    confirmButton = { TextButton(onClick = feedbackClick { pluginMenu = null }) { Text("关闭") } },
+                    confirmButton = { TextButton(onClick = dialogFeedbackClick { pluginMenu = null }) { Text("关闭") } },
                 )
             }
         }

@@ -97,16 +97,23 @@ class MediaThumbnailUiTest {
         val card = compose.onNodeWithTag("editor-area").getUnclippedBoundsInRoot()
         val bounds = compose.onNodeWithTag("media-web").getUnclippedBoundsInRoot()
         assertEquals(card, bounds)
+        var initialHeight = 0
+        fun height(script: String) = Regex("\\((\\d+)\\*ratio\\)").find(script)!!.groupValues[1].toInt()
         compose.runOnIdle {
             val script = shadowOf(web).lastEvaluatedJavascript
             assertNotNull("Measured WebView ${web.width}x${web.height}, callback ${shadowOf(web).webViewClient}", script)
             assertTrue(script.contains("--kigtts-safe-area-top")); assertTrue(script.contains("kigtts-safe-area-change"))
+            assertTrue(script.contains("min-height:var(--kigtts-viewport-height)!important"))
             assertFalse(script.contains("top:0*ratio")); assertFalse(script.contains("bottom:0*ratio"))
+            initialHeight = height(script)
             File("build/previews/web-safe-area-script.js").apply { parentFile!!.mkdirs(); writeText(script) }
             model.enterSubtitleFullscreen()
         }
         compose.waitForIdle()
         assertEquals(compose.onNodeWithTag("editor-area").getUnclippedBoundsInRoot(), compose.onNodeWithTag("media-web").getUnclippedBoundsInRoot())
-        compose.runOnIdle { assertEquals(1, webViews(compose.activity.window.decorView).size) }
+        compose.runOnIdle {
+            assertEquals(1, webViews(compose.activity.window.decorView).size)
+            assertTrue("Height-only fullscreen growth refreshes CSS minimum height", height(shadowOf(web).lastEvaluatedJavascript) > initialHeight)
+        }
     }
 }

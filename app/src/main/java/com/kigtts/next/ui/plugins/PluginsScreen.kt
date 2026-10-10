@@ -11,6 +11,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
+import com.kigtts.next.ui.components.rememberDialogClose
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -59,25 +62,25 @@ fun PluginsScreen(model: AppViewModel) {
     }
     pending?.let { candidate ->
         val manifest = candidate.preview.manifest
-        AlertDialog(onDismissRequest = { candidate.file.delete(); pending = null }, title = { Text("安装 ${manifest.name}？") },
+        MotionAlertDialog(onDismissRequest = { candidate.file.delete(); pending = null }, dismissEnabled = !busy, title = { Text("安装 ${manifest.name}？") },
             text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("版本 ${manifest.version} · ${manifest.license}")
                 Text("能力：${manifest.capabilities.joinToString("、")}")
                 Text("发布者 SHA-256：${candidate.preview.publisherSha256}", style = MaterialTheme.typography.bodySmall)
                 Text("仅安装可信来源的插件。插件在独立进程中运行，具有本应用的权限。")
-            } }, confirmButton = { TextButton(enabled = !busy, onClick = feedbackClick {
+            } }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(enabled = !busy, onClick = feedbackClick {
                 scope.launch {
                     busy = true
                     try {
                         model.stopSpeech(); model.pluginManager.install(candidate.file, candidate.preview.publisherSha256); model.refreshPlugins()
                         model.message("插件已安装")
                     } catch (error: Exception) { model.message(error.message ?: "插件安装失败") }
-                    finally { candidate.file.delete(); pending = null; busy = false }
+                    finally { closeDialog { candidate.file.delete(); pending = null; busy = false } }
                 }
-            }) { Text("安装") } }, dismissButton = { TextButton(onClick = feedbackClick { candidate.file.delete(); pending = null }) { Text("取消") } })
+            }) { Text("安装") } }, dismissButton = { TextButton(enabled = !busy, onClick = dialogFeedbackClick { candidate.file.delete(); pending = null }) { Text("取消") } })
     }
-    remove?.let { id -> AlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
+    remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
         text = { Text("该插件的模型、下载、配置和临时文件也会删除。") },
-        confirmButton = { TextButton(onClick = feedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
-        dismissButton = { TextButton(onClick = feedbackClick { remove = null }) { Text("取消") } }) }
+        confirmButton = { TextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
+        dismissButton = { TextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
 }

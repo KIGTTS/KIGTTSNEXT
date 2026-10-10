@@ -21,6 +21,9 @@ fun MediaTransition(entry:MediaEntry?,state:AppState,model:AppViewModel,modifier
     AnimatedContent(entry,modifier,contentKey={ it?.id ?: "text" },label="subtitle-media-transition",
         transitionSpec={ (fadeIn(tween(220)) togetherWith (fadeOut(tween(180))+scaleOut(tween(180),targetScale=.98f))).using(null) }) { retained ->
         val active=pageActive&&retained?.id==entry?.id
+        var lastActiveState by remember(retained?.id) { mutableStateOf(state) }
+        if(active)SideEffect { lastActiveState=state }
+        val presentationState=if(active)state else lastActiveState
         val painted=if(retained==null)!renderFullCardMedia else renderFullCardMedia
         val input=if(active)Modifier else Modifier.clearAndSetSemantics {
             if(painted)testTag="media-exit/"+(retained?.id ?: "text")
@@ -29,8 +32,8 @@ fun MediaTransition(entry:MediaEntry?,state:AppState,model:AppViewModel,modifier
         } }
         Box(Modifier.fillMaxSize().then(input)) {
             CompositionLocalProvider(LocalPageActive provides active) {
-                if(retained==null)empty() else if(painted)MediaContent(retained,state.copy(mediaId=retained.id),model,Modifier.fillMaxSize()
-                    .graphicsLayer { rotationZ=if(state.subtitleFlipped&&!state.mediaEditing)180f else 0f })
+                if(retained==null)empty() else if(painted)MediaContent(retained,presentationState.copy(mediaId=retained.id),model,Modifier.fillMaxSize()
+                    .graphicsLayer { rotationZ=if(presentationState.subtitleFlipped&&!presentationState.mediaEditing)180f else 0f })
             }
         }
     }

@@ -37,6 +37,7 @@ fun TextEditor(
             Column {
                 Box(Modifier.onSizeChanged { top = it.height }.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
                 SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
+                if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
                 EditorFooter(state, model, Modifier.onSizeChanged { bottom = it.height })
             }
         }
@@ -46,8 +47,9 @@ fun TextEditor(
 @Composable
 private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     Row(modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
-        ElasticButtonGroup(listOf(ElasticAction("editor-clear", "清空", Icons.Default.DeleteSweep,
-            { model.text("") }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
+        val contentOpen = state.mediaId != null || state.audioId != null
+        ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)"关闭" else "清空", if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,
+            { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
         if (state.editing) CursorTrack(model, Modifier.weight(.5f))
         else Spacer(Modifier.weight(.2f).testTag("editor-bottom-reserved"))
         Box(Modifier.weight(if (state.editing) .25f else .4f), contentAlignment = Alignment.CenterEnd) {

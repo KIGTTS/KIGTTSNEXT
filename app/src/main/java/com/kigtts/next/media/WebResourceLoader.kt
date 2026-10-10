@@ -5,12 +5,18 @@ import android.webkit.MimeTypeMap
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URI
 import java.security.MessageDigest
 import androidx.core.net.toUri
 
 /** WebView never fetches resources outside this loader. Network copies belong to the content owner. */
-class WebResourceLoader(private val directory: File, private val local: File?, private val network: Boolean) {
-    fun load(url: String, method: String): WebResourceResponse {
+class WebResourceLoader(private val directory: File, private val local: File?, private val network: Boolean,
+    private val cookies: WebCookieJar = WebCookies,
+    private val connectionFactory: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
+    pageOrigin: String? = null) {
+    @Volatile private var siteHost: String? = pageOrigin?.let { URI(it).host }
+    fun load(url: String, method: String, mainFrame: Boolean = false): WebResourceResponse {
+        if (mainFrame) siteHost = runCatching { URI(url).host }.getOrNull()
         if (url.startsWith(WebContentPolicy.ORIGIN + "/content/")) {
             val path = url.toUri().path.orEmpty().removePrefix("/content/")
             val file = local?.let { WebContentPolicy.file(it, path) } ?: return denied()
@@ -21,9 +27,14 @@ class WebResourceLoader(private val directory: File, private val local: File?, p
         return runCatching {
             var address = url; var connection: HttpURLConnection? = null
             for (attempt in 0..5) {
-                connection = URL(address).openConnection() as HttpURLConnection
-                connection.apply { instanceFollowRedirects = false; connectTimeout = 15_000; readTimeout = 20_000; useCaches = false }
-                if (connection.responseCode !in setOf(301, 302, 303, 307, 308)) break
+                val response = connectionFactory(URL(address)); connection = response
+                response.apply { instanceFollowRedirects = false; connectTimeout = 15_000; readTimeout = 20_000; useCaches = false }
+                val acceptsCookies = mainFrame || siteHost == null || URI(address).host == siteHost
+                if (acceptsCookies) cookies.header(address)?.takeIf(String::isNotBlank)?.let { response.setRequestProperty("Cookie", it) }
+                val status = response.responseCode
+                if (mainFrame) siteHost = URI(address).host
+                if (acceptsCookies) cookies.receive(address, response.headerFields.entries.filter { it.key?.equals("Set-Cookie", true) == true }.flatMap { it.value.orEmpty() })
+                if (status !in setOf(301, 302, 303, 307, 308)) break
                 val redirected = URL(URL(address), connection.getHeaderField("Location")).toString(); connection.disconnect()
                 require(WebContentPolicy.https(redirected)); require(attempt < 5); address = redirected
             }

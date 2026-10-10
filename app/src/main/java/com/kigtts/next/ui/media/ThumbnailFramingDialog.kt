@@ -5,6 +5,9 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
+import com.kigtts.next.ui.components.rememberDialogClose
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
@@ -28,7 +31,7 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
     var saving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val preview = entry.copy(thumbnailMode = mode, focusX = x, focusY = y)
-    AlertDialog(onDismissRequest = close, title = { Text("缩略图取景") }, text = {
+    MotionAlertDialog(onDismissRequest = close, dismissEnabled = !saving, title = { Text("缩略图取景") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingChoiceGroup("缩略图取景", ThumbnailMode.entries, mode, { it.label }, { mode = it })
             Text(when (mode) { ThumbnailMode.FOCUS -> "点击图片选择重点位置"; ThumbnailMode.FIT -> "完整保留画面内容"; ThumbnailMode.AUTO -> "自动选取画面重点" }, style = MaterialTheme.typography.bodySmall)
@@ -66,11 +69,11 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-    }, confirmButton = { TextButton(enabled = !saving, onClick = feedbackClick { scope.launch {
+    }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(enabled = !saving, onClick = feedbackClick { scope.launch {
         saving = true
-        try { withContext(Dispatchers.IO) { repository.thumbnail(entry.id, mode, x, y) }; close() }
+        try { withContext(Dispatchers.IO) { repository.thumbnail(entry.id, mode, x, y) }; closeDialog(close) }
         catch (cancel: CancellationException) { throw cancel }
         catch (e: Exception) { error = e.message ?: "保存失败"; saving = false }
     } }, modifier = Modifier.testTag("save-thumbnail-framing")) { Text("保存") } },
-        dismissButton = { TextButton(feedbackClick(close)) { Text("取消") } })
+        dismissButton = { TextButton(dialogFeedbackClick(close), enabled = !saving) { Text("取消") } })
 }

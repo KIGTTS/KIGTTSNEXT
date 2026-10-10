@@ -8,9 +8,7 @@ class QuickPhraseStore(context: Context) {
     private val preferences = context.getSharedPreferences("quick-phrases", Context.MODE_PRIVATE)
     fun load(): List<QuickPhrase> = runCatching {
         val json = JSONArray(preferences.getString("items", null) ?: "[]")
-        if (!preferences.contains("items")) defaults else List(json.length()) { i -> json.getJSONObject(i).let {
-            QuickPhrase(it.getString("text"), it.getString("category"), it.optString("id").takeIf(String::isNotBlank) ?: java.util.UUID.randomUUID().toString(), it.optString("description"), it.optString("mediaId").takeIf(String::isNotBlank))
-        } }
+        if (!preferences.contains("items")) defaults else List(json.length()) { i -> QuickPhraseCodec.read(json.getJSONObject(i)) }
     }.getOrDefault(defaults).let { items ->
         val seen = mutableSetOf<String>()
         val stable = items.map { if (seen.add(it.id)) it else it.copy(id = java.util.UUID.randomUUID().toString().also(seen::add)) }
@@ -29,7 +27,7 @@ class QuickPhraseStore(context: Context) {
     }
     fun save(phrases: List<QuickPhrase>, categories: List<String>, icons: Map<String, CategoryIcon> = loadCategoryIcons(categories)) {
         val json = JSONArray()
-        phrases.forEach { json.put(JSONObject().put("id", it.id).put("text", it.text).put("category", it.category).put("description", it.description).put("mediaId",it.mediaId)) }
+        phrases.forEach { json.put(QuickPhraseCodec.write(it)) }
         val categoryIcons = JSONObject()
         categories.forEach { categoryIcons.put(it, (icons[it] ?: CategoryIcon.defaultFor(it)).name) }
         preferences.edit().putString("items", json.toString()).putString("categories", JSONArray(categories).toString())

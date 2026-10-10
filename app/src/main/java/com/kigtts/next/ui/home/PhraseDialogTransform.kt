@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.QuickPhrase
 import com.kigtts.next.ui.components.CornerNeighbors
 import com.kigtts.next.ui.components.LocalCornerRadius
+import com.kigtts.next.ui.components.DialogMotion
+import com.kigtts.next.ui.components.DialogFormMotion
+import com.kigtts.next.ui.components.LocalDialogFormMotion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -59,14 +62,17 @@ internal fun PhraseDialogTransform(anchor: PhraseDialogAnchor?, source: QuickPhr
             throw cancel
         }
     }
-    val fraction by transition.animateFloat(transitionSpec = { tween(320, easing = FastOutSlowInEasing) }, label = "container-shape") {
+    val fraction by transition.animateFloat(transitionSpec = { DialogMotion.container(targetState) }, label = "container-shape") {
         if (it) 1f else 0f
     }
     val expandedColor = MaterialTheme.colorScheme.background
-    val collapsedColor = if (source == null) MaterialTheme.colorScheme.surfaceContainer else MaterialTheme.colorScheme.surfaceContainerLowest
-    val background by transition.animateColor(transitionSpec = { tween(320, easing = FastOutSlowInEasing) }, label = "container-color") {
+    val collapsedColor = source?.let { quickPhraseColor(it) } ?: MaterialTheme.colorScheme.surfaceContainer
+    val background by transition.animateColor(transitionSpec = { DialogMotion.container(targetState) }, label = "container-color") {
         if (it) expandedColor else collapsedColor
     }
+    val body by transition.animateFloat({ DialogMotion.content(targetState) }, label = "form-body") { if (it) 1f else 0f }
+    val header by transition.animateFloat({ tween(if (targetState) 180 else 100, delayMillis = if (targetState) 30 else 0) }, label = "form-header") { if (it) 1f else 0f }
+    val sourceOpacity by transition.animateFloat({ DialogMotion.origin(targetState) }, label = "origin-content") { if (it) 0f else 1f }
     val neighbors = anchor?.neighbors ?: CornerNeighbors()
     val outer = LocalCornerRadius.current.coerceIn(4.dp, 20.dp)
     val inner = (LocalCornerRadius.current * .22f).coerceIn(4.dp, outer)
@@ -82,12 +88,14 @@ internal fun PhraseDialogTransform(anchor: PhraseDialogAnchor?, source: QuickPhr
         }) { expanded ->
             val shared = Modifier.sharedBounds(rememberSharedContentState("phrase-dialog-container"), this,
                 enter = EnterTransition.None, exit = ExitTransition.None,
-                boundsTransform = { _, _ -> tween(320, easing = FastOutSlowInEasing) },
+                boundsTransform = { _, _ -> DialogMotion.container(transition.targetState) },
                 resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
                 clipInOverlayDuringTransition = OverlayClip(shape))
             if (expanded) Surface(shared.fillMaxSize().testTag("phrase-dialog-container"), shape = shape, color = background) {
-                Box(Modifier.skipToLookaheadSize().graphicsLayer { alpha = ((fraction - .2f) / .45f).coerceIn(0f, 1f) }) {
-                    content({ action -> close(action) }, !closing && state.currentState && !isTransitionActive)
+                Box(Modifier.skipToLookaheadSize()) {
+                    CompositionLocalProvider(LocalDialogFormMotion provides DialogFormMotion(header, body)) {
+                        content({ action -> close(action) }, !closing && state.currentState && !isTransitionActive)
+                    }
                 }
             } else Box(Modifier.fillMaxSize()) {
                 val bounds = anchor?.bounds?.translate(-origin)
@@ -97,7 +105,7 @@ internal fun PhraseDialogTransform(anchor: PhraseDialogAnchor?, source: QuickPhr
                         else Modifier.width(180.dp).height(QuickPhraseHeight))
                     .then(shared).clearAndSetSemantics { testTag = "phrase-dialog-origin" }
                 Surface(small, shape = shape, color = background) {
-                    Box(Modifier.skipToLookaheadSize().graphicsLayer { alpha = (1f - fraction / .2f).coerceIn(0f, 1f) }) {
+                    Box(Modifier.skipToLookaheadSize().graphicsLayer { alpha = sourceOpacity }) {
                         if (source != null) EditablePhraseCard(source, {}, {}, neighbors, Modifier.fillMaxSize(), repository = repository)
                         else Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Add, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

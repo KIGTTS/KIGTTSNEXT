@@ -9,6 +9,8 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -37,11 +39,11 @@ fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextIn
     input?.let { (id, request) ->
         key(id, request.actionId) {
         val text = rememberTextFieldState(initialText = request.initialValue)
-        AlertDialog(onDismissRequest = dismissInput, title = { Text(request.title) },
+        MotionAlertDialog(onDismissRequest = dismissInput, title = { Text(request.title) },
             text = { Column(Modifier.fillMaxWidth()) { OutlinedTextField(state = text,
                 modifier = Modifier.fillMaxWidth().testTag("plugin-input-value"), lineLimits = if (request.multiline) TextFieldLineLimits.MultiLine(maxHeightInLines = 5) else TextFieldLineLimits.SingleLine) } },
-            confirmButton = { TextButton(onClick = feedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text("确定") } },
-            dismissButton = { TextButton(onClick = feedbackClick(dismissInput)) { Text("取消") } })
+            confirmButton = { TextButton(onClick = dialogFeedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text("确定") } },
+            dismissButton = { TextButton(onClick = dialogFeedbackClick(dismissInput)) { Text("取消") } })
         }
     }
 }

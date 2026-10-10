@@ -8,10 +8,44 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.json.JSONArray
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class QuickTextLibraryTest {
+    @Test fun titleMigrationPreservesContentIdsMediaAndExplicitEmptyTitles() {
+        val app = app(); val preferences = app.getSharedPreferences("quick-phrases", 0)
+        preferences.edit().putString("items", """[
+            {"id":"legacy","text":"原始正文","category":"常用","description":"旧的说明","mediaId":"media-ref"},
+            {"id":"plain","text":"只有正文","category":"常用"},
+            {"id":"cleared","text":"标题已经清空","category":"常用","title":"","description":"不得恢复"}
+        ]""").commit()
+        val library = QuickTextLibrary(QuickPhraseStore(app)); val items = library.phrases.value
+        assertEquals(listOf("legacy", "plain", "cleared"), items.map { it.id })
+        assertEquals("原始正文", items[0].text); assertEquals("旧的说明", items[0].title); assertEquals("media-ref", items[0].mediaId)
+        assertEquals("", items[1].title); assertEquals("", items[2].title)
+        library.edit("legacy", "新的正文\n保留第二行", "  问候  ", "常用")
+        assertEquals("问候", library.phrases.value.first().title)
+        library.edit("legacy", library.phrases.value.first().text, "   ", "常用")
+        val restored = QuickTextLibrary(QuickPhraseStore(app))
+        assertEquals(library.phrases.value, restored.phrases.value)
+        assertEquals("", restored.phrases.value.first().title); assertEquals("media-ref", restored.phrases.value.first().mediaId)
+        val stored = JSONArray(preferences.getString("items", "[]"))
+        assertTrue(stored.getJSONObject(0).has("title")); assertFalse(stored.getJSONObject(0).has("description"))
+    }
+    @Test fun sendingTitledPhrasesUsesTheCompleteContentAndNeverTheTitle() {
+        val app = app(); val model = testAppModel(app)
+        model.quickTexts.add("你好，能请你帮我指一下路吗？\n谢谢！", "常用", "问路")
+        val item = model.phrases.value.last()
+        model.content.send(item)
+        assertEquals(item.text, model.state.value.editorText)
+        assertNotEquals(item.title, model.state.value.editorText)
+        model.content.beginPhrase(item, "常用")
+        assertEquals("问路", model.content.phraseDraft.value!!.title)
+        model.content.editPhrase { it.copy(title = "", text = "新的正文") }; model.content.savePhrase()
+        assertEquals("", model.phrases.value.last().title)
+        assertEquals("新的正文", testAppModel(app).phrases.value.last().text)
+    }
     @Test fun categoryRenameAndIconChangesPreserveIdsOrderAndRejectDuplicates() {
         val app = app(); val library = QuickTextLibrary(QuickPhraseStore(app))
         val items = library.phrases.value
@@ -78,7 +112,7 @@ class QuickTextLibraryTest {
         val restored = QuickTextLibrary(QuickPhraseStore(app))
         val edited = restored.phrases.value.first { it.id == item.id }
         assertEquals("修改后的文字", edited.text)
-        assertEquals("辅助说明", edited.description)
+        assertEquals("辅助说明", edited.title)
         assertEquals("自定义", edited.category)
         assertTrue(restored.addCategory("空分组"))
         assertTrue("空分组" in QuickTextLibrary(QuickPhraseStore(app)).categories.value)

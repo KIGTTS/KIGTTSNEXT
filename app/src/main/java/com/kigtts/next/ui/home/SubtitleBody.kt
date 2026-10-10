@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.media.MediaTransition
+import com.kigtts.next.text.formattedText
+import androidx.compose.ui.text.input.*
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
@@ -50,15 +52,18 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
         val width = with(density) { maxWidth.roundToPx() }
         val height = with(density) { maxHeight.roundToPx() }
         if (state.editing) {
-            val fitted = style.copy(fontSize = fittingSubtitleFontSize(text, style, width, height).sp)
+            val fitted = style.copy(fontSize = fittingSubtitleFontSize(formattedText(text, state.subtitleFormats), style, width, height).sp)
+            CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
             BasicTextField(state.editorValue, model::editText,
             modifier = Modifier.fillMaxWidth().testTag("speech-editor").focusRequester(focus).subtitleUpdateMotion(state.subtitleRevision),
             textStyle = fitted, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            visualTransformation = VisualTransformation { TransformedText(formattedText(it.text, state.subtitleFormats), OffsetMapping.Identity) },
             decorationBox = { field ->
                 if (state.editorText.isEmpty()) Text("输入想说的话", Modifier.fillMaxWidth(), style = fitted,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 field()
             })
+            }
         } else SubtitleDisplay(state, model, text, style, width, height)
     }
 }

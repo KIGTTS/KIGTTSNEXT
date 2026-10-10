@@ -72,18 +72,20 @@ class QuickTextEditorTest {
         assertEquals(count, model.phrases.value.size)
         capture("quick-edit-delete-confirm")
         compose.onNodeWithTag("cancel-delete-phrase").performClick()
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("cancel-delete-phrase").fetchSemanticsNodes().isEmpty() }
         assertEquals(count, model.phrases.value.size)
         compose.onNodeWithTag("delete-phrase-" + item.id).performClick()
         compose.onNodeWithTag("confirm-delete-phrase").performClick()
+        compose.waitUntil(5000) { model.phrases.value.none { it.id == item.id } }
         assertFalse(model.phrases.value.any { it.id == item.id })
         assertEquals(count - 1, model.phrases.value.size)
     }
-    @Test fun tappingDetailsAndTailAdditionsPersistTextDescriptionAndGroups() {
+    @Test fun tappingDetailsAndTailAdditionsPersistContentTitleAndGroups() {
         val model = show(); edit()
         val item = model.phrases.value.first()
         compose.onNodeWithTag("edit-phrase-" + item.id).performClick()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("修改条目")
-        compose.onNodeWithTag("phrase-detail-description").performTextInput("辅助文字")
+        compose.onNodeWithTag("phrase-detail-title").performTextInput("缩略标题")
         capture("quick-edit-details")
         compose.onNodeWithTag("save-phrase-details").performClick()
         compose.waitUntil(5000) { model.content.phraseDraft.value == null }
@@ -97,6 +99,7 @@ class QuickTextEditorTest {
         compose.onNodeWithTag("add-category").performClick()
         compose.onNodeWithTag("new-category-name").performTextInput("新分组")
         compose.onNodeWithTag("save-category").performClick()
+        compose.waitUntil(5000) { model.state.value.selectedCategory == "新分组" }
         assertEquals("新分组", model.categories.value.last())
         assertEquals("新分组", model.state.value.selectedCategory)
         compose.onNodeWithTag("add-phrase").performClick()
@@ -106,7 +109,7 @@ class QuickTextEditorTest {
         val restored = testAppModel(ApplicationProvider.getApplicationContext())
         assertEquals(model.phrases.value, restored.phrases.value)
         assertEquals(model.categories.value, restored.categories.value)
-        assertEquals("辅助文字", restored.phrases.value.first { it.id == item.id }.description)
+        assertEquals("缩略标题", restored.phrases.value.first { it.id == item.id }.title)
         capture("quick-edit-custom-group")
     }
     @Test fun itemHandleAndLongPressDragReorderWithoutOpeningDetails() {

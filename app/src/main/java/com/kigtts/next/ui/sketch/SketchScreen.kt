@@ -11,6 +11,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Draw
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -62,8 +64,8 @@ fun SketchScreen(state: SketchState, shareRequest: Int, shareConsumed: () -> Uni
                 Modifier.align(Alignment.BottomCenter).padding(16.dp))
         }
     }
-    if (clear) AlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
+    if (clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
         text = { Text("当前笔画将被移除。已保存的图片不受影响。") },
-        confirmButton = { TextButton(onClick = feedbackClick { state.clear(); clear = false }) { Text("清空") } },
-        dismissButton = { TextButton(onClick = feedbackClick { clear = false }) { Text("取消") } })
+        confirmButton = { TextButton(onClick = dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },
+        dismissButton = { TextButton(onClick = dialogFeedbackClick { clear = false }) { Text("取消") } })
 }

@@ -3,7 +3,7 @@ package com.kigtts.next.media
 import org.json.JSONObject
 import org.json.JSONArray
 
-enum class MediaKind(val label: String) { IMAGE("图片"), MOTION_PHOTO("实况照片"), VIDEO("视频"), HTML("HTML"), WEB("网页") }
+enum class MediaKind(val label: String) { IMAGE("图片"), MOTION_PHOTO("实况照片"), VIDEO("视频"), HTML("HTML"), WEB("网页"), AUDIO("音频") }
 enum class MediaScale(val label: String) { FIT("适应"), FILL("填充") }
 enum class ThumbnailMode(val label: String) { AUTO("智能取景"), FIT("完整显示"), FOCUS("手动取景") }
 

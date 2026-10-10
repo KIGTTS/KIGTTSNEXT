@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import com.kigtts.next.ui.components.MotionAlertDialog
+import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
@@ -54,9 +56,9 @@ fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,tit
         }
     }
     val color=AndroidColor.HSVToColor(floatArrayOf(hue,saturation,brightness)).toLong() and 0xFFFFFFFF
-    AlertDialog(onDismissRequest=onDismiss,title={ Text(title) },text={
+    MotionAlertDialog(onDismissRequest=onDismiss,title={ Text(title) },text={
         Column(Modifier.heightIn(max=380.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Box(Modifier.fillMaxWidth().height(44.dp).background(Color(color),MaterialTheme.shapes.medium)
+            Box(Modifier.fillMaxWidth().height(44.dp).dialogElementMorph().background(Color(color),MaterialTheme.shapes.medium)
                 .testTag("color-preview").semantics { stateDescription="#%06X".format(Locale.ROOT,color and 0xFFFFFF) })
             Text("预设颜色",style=MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
@@ -78,8 +80,8 @@ fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,tit
             ColorSlider("饱和度",saturation) { saturation=it;updateHex() }
             ColorSlider("明度",brightness) { brightness=it;updateHex() }
         }
-    },confirmButton={ TextButton(feedbackClick { onConfirm(color) },enabled=validHex) { Text("应用颜色") } },
-        dismissButton={ TextButton(feedbackClick(onDismiss)) { Text("取消") } })
+    },confirmButton={ TextButton(dialogFeedbackClick { onConfirm(color) },enabled=validHex) { Text("应用颜色") } },
+        dismissButton={ TextButton(dialogFeedbackClick(onDismiss)) { Text("取消") } })
 }
 
 @Composable

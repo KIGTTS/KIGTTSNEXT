@@ -76,20 +76,26 @@ class MediaUiTest {
         compose.onNodeWithTag("play-motion-photo").assertDoesNotExist(); compose.onNodeWithTag("media-image").assertIsDisplayed()
         compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.appleLivePhotos) }
     }
-    @Test fun phraseMediaSelectionPreservesDraftAndReturnsToFullscreenEditor() {
+    @Test fun directMediaPickerPreservesFullscreenDraftAndSavesTheImportedCard() {
         show(); val entry = image()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.editQuickTexts() }
         compose.onNodeWithTag("add-phrase").performClick(); compose.onNodeWithTag("phrase-detail-text").performTextInput("图片条目")
+        compose.onNodeWithTag("phrase-type-MEDIA").performClick()
         compose.onNodeWithTag("phrase-choose-media").performClick()
-        compose.onNodeWithTag("phrase-detail-text").assertDoesNotExist()
-        compose.onRoot().captureRoboImage("build/previews/media-library.png")
-        compose.onNodeWithTag("media-select-" + entry.id).performClick()
+        compose.onNodeWithTag("phrase-detail-text").assertExists()
+        val request = org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivityForResult
+        assertNotNull("Launch the system photo/video picker directly", request)
+        compose.runOnIdle { compose.activity.activityResultRegistry.dispatchResult(request.requestCode, android.app.Activity.RESULT_OK,
+            android.content.Intent().setData(Uri.fromFile(model.mediaRepository.file(entry)))) }
+        compose.waitUntil(5000) { model.content.phraseDraft.value?.mediaId != null }
+        val imported = model.content.phraseDraft.value!!.mediaId!!
+        assertNotEquals(entry.id, imported)
         compose.onNodeWithTag("phrase-detail-text").assertTextContains("图片条目")
         assertEquals(compose.onNode(isDialog()).getUnclippedBoundsInRoot(), compose.onNodeWithTag("phrase-dialog-container").getUnclippedBoundsInRoot())
         compose.onNodeWithTag("save-phrase-details").performClick()
         compose.waitUntil(5000) { model.content.phraseDraft.value == null }
-        compose.runOnIdle { val phrase = model.phrases.value.last(); assertEquals(entry.id, phrase.mediaId); model.finishQuickTextEditing(); model.content.send(phrase) }
-        compose.waitUntil(5000) { compose.onAllNodesWithContentDescription(entry.name).fetchSemanticsNodes().isNotEmpty() }
+        compose.runOnIdle { val phrase = model.phrases.value.last(); assertEquals(imported, phrase.mediaId); assertEquals(QuickCardType.MEDIA, phrase.type); model.finishQuickTextEditing(); model.content.send(phrase) }
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("media-image").fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage("build/previews/media-selected.png")
         compose.onNodeWithTag("media-image").assertIsDisplayed(); compose.onNodeWithTag("speech-editor").assertDoesNotExist()
         compose.onNodeWithText("全屏").performClick(); compose.runOnIdle { assertTrue(model.state.value.forcedFullscreen) }

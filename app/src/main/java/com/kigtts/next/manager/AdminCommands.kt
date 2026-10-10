@@ -22,7 +22,7 @@ class AdminCommands(private val context: Context, private val host: HostPluginRu
             val model=requireNotNull(host.ui()) { "请先打开主程序" };val entry=requireNotNull(model.mediaRepository.get(args.getString("id")))
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { model.content.show(entry) };JSONObject()
         }
-        "remove-media" -> { val model=requireNotNull(host.ui());model.content.remove(args.getString("id"));JSONObject() }
+        "remove-media" -> { val model=requireNotNull(host.ui());model.content.removeAsync(args.getString("id"));JSONObject() }
         "snapshot" -> adminSnapshot(context,host,journal)
         "inspect" -> {
             val preview=manager.packages.inspect(requireNotNull(file));val previous=manager.packages.installed()

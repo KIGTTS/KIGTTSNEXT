@@ -1,8 +1,47 @@
+import com.android.build.api.instrumentation.*
+import org.objectweb.asm.*
+
 plugins {
     id("com.android.application")
     kotlin("android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+/** Foundation 1.9.4 has no public per-field magnifier option. Keep its selection/input
+ * implementation and wrap only its magnifier modifier with a scoped host policy. */
+abstract class SubtitleMagnifierFactory : AsmClassVisitorFactory<InstrumentationParameters.None> {
+    override fun isInstrumentable(classData: ClassData) =
+        classData.className == "androidx.compose.foundation.text.selection.TextFieldSelectionManager_androidKt"
+
+    override fun createClassVisitor(classContext: ClassContext, nextClassVisitor: ClassVisitor): ClassVisitor =
+        object : ClassVisitor(Opcodes.ASM9, nextClassVisitor) {
+            private var matched = false
+            override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor {
+                val visitor=super.visitMethod(access,name,descriptor,signature,exceptions)
+                if(name!="textFieldMagnifier" || descriptor!="(Landroidx/compose/ui/Modifier;Landroidx/compose/foundation/text/selection/TextFieldSelectionManager;)Landroidx/compose/ui/Modifier;")return visitor
+                matched=true
+                return object : MethodVisitor(Opcodes.ASM9,visitor) {
+                    override fun visitInsn(opcode: Int) {
+                        if(opcode==Opcodes.ARETURN) {
+                            super.visitVarInsn(Opcodes.ALOAD,0)
+                            super.visitMethodInsn(Opcodes.INVOKESTATIC,"com/kigtts/next/ui/home/SubtitleMagnifierPolicyKt",
+                                "withSubtitleMagnifierPolicy","(Landroidx/compose/ui/Modifier;Landroidx/compose/ui/Modifier;)Landroidx/compose/ui/Modifier;",false)
+                        }
+                        super.visitInsn(opcode)
+                    }
+                }
+            }
+            override fun visitEnd() {
+                check(matched) { "Foundation magnifier bridge changed; update the scoped policy before building." }
+                super.visitEnd()
+            }
+        }
+}
+
+androidComponents.onVariants {
+    it.instrumentation.transformClassesWith(SubtitleMagnifierFactory::class.java,InstrumentationScope.ALL) {}
+    it.instrumentation.setAsmFramesComputationMode(FramesComputationMode.COMPUTE_FRAMES_FOR_INSTRUMENTED_METHODS)
+}
+
 android {
     namespace = "com.kigtts.next"
     compileSdk = 36
@@ -41,6 +80,8 @@ dependencies {
     implementation(project(":plugins:listening-panel"))
     implementation(project(":plugins:voice-input"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
+    // The scoped magnifier build bridge is checked against this Foundation implementation.
+    implementation("androidx.compose.foundation:foundation:1.9.4") { version { strictly("1.9.4") } }
     implementation("androidx.compose.material3:material3:1.5.0-alpha01")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")

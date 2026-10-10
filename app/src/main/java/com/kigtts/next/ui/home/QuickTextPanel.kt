@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
@@ -83,15 +82,11 @@ private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: Corne
     pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier,
     repository: com.kigtts.next.media.MediaRepository) {
     Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier.testTag("quick-phrase-" + phrase.id),
-        color = MaterialTheme.colorScheme.surfaceContainerLowest, shape = homeCardShape(neighbors, pressed, neighborPressed)) {
+        color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = homeCardShape(neighbors, pressed, neighborPressed)) {
         Box(Modifier.fillMaxSize()) {
-        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase.mediaId, repository, Modifier.matchParentSize())
-        Column(Modifier.fillMaxHeight().fillMaxWidth(if (phrase.mediaId == null) 1f else .60f).padding(start = 12.dp, end = if (phrase.mediaId == null) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)) {
-            Text(phrase.text, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(phrase.description.ifBlank { if (phrase.mediaId == null) "点击填入文本" else "点击显示媒体" }, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
+        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase.mediaId, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
+        QuickPhraseText(phrase, Modifier.fillMaxHeight().fillMaxWidth(if (phrase.mediaId == null) 1f else .60f)
+            .padding(start = 12.dp, end = if (phrase.mediaId == null) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp))
         }
     }
 }

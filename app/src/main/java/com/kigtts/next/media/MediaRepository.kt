@@ -36,18 +36,19 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     private fun persist(entries:List<MediaEntry>) { val stage=File(root,".catalog.tmp"); stage.writeText(JSONArray().also { array -> entries.forEach { array.put(it.json()) } }.toString(),Charsets.UTF_8)
         java.nio.file.Files.move(stage.toPath(),catalog.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING) }
     fun import(uri:Uri, forcedMime:String?=null):MediaEntry {
-        val name=runCatching { context.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use { if(it.moveToFirst())it.getString(0) else null } }.getOrNull() ?: "媒体"
+        val name=runCatching { context.contentResolver.query(uri,arrayOf(OpenableColumns.DISPLAY_NAME),null,null,null)?.use { if(it.moveToFirst())it.getString(0) else null } }.getOrNull()
+            ?: uri.takeIf { it.scheme == "file" }?.lastPathSegment ?: "媒体"
         val mime=forcedMime ?: context.contentResolver.getType(uri)?.takeUnless { it=="application/octet-stream" }
             ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.').lowercase()) ?: "application/octet-stream"
         val id=UUID.randomUUID().toString(); val directory=File(root,id).apply { mkdirs() }
-        val target=File(directory,"source."+when { mime.startsWith("video/")->"mp4"; mime in setOf("text/html","application/xhtml+xml")->"html"; mime.contains("heic")||mime.contains("heif")->"heic"; mime.contains("png")->"png"; mime.contains("webp")->"webp"; mime.contains("gif")->"gif"; else->"jpg" })
+        val target=File(directory,"source."+when { mime.startsWith("video/")->"mp4"; mime.startsWith("audio/")-> android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "audio"; mime in setOf("text/html","application/xhtml+xml")->"html"; mime.contains("heic")||mime.contains("heif")->"heic"; mime.contains("png")->"png"; mime.contains("webp")->"webp"; mime.contains("gif")->"gif"; else->"jpg" })
         try {
-            require(mime.startsWith("image/")||mime.startsWith("video/")||mime in setOf("text/html","application/xhtml+xml")) { "请选择图片、视频或 HTML" }
+            require(mime.startsWith("image/")||mime.startsWith("video/")||mime.startsWith("audio/")||mime in setOf("text/html","application/xhtml+xml")) { "请选择图片、视频、音频或 HTML" }
             requireNotNull(context.contentResolver.openInputStream(uri)).use { input -> target.outputStream().use { output ->
                 val buffer=ByteArray(64*1024); var bytes=0L
                 while(true) { val count=input.read(buffer);if(count<0)break;bytes+=count;require(bytes<=if(mime.contains("html"))2L*1024*1024 else 2L*1024*1024*1024) { "媒体文件过大" };output.write(buffer,0,count) };require(bytes>0) }
             }
-            var kind=when { mime.startsWith("video/")->MediaKind.VIDEO;mime.contains("html")->MediaKind.HTML;else->MediaKind.IMAGE }
+            var kind=when { mime.startsWith("video/")->MediaKind.VIDEO;mime.startsWith("audio/")->MediaKind.AUDIO;mime.contains("html")->MediaKind.HTML;else->MediaKind.IMAGE }
             val clip=File(directory,"motion.mp4"); if(kind==MediaKind.IMAGE && MotionPhoto.extract(target,clip))kind=MediaKind.MOTION_PHOTO
             return save(MediaEntry(id,name,kind,target.relativeTo(root).invariantSeparatorsPath,mime,
                 clip.takeIf(File::isFile)?.relativeTo(root)?.invariantSeparatorsPath,network=kind==MediaKind.HTML))

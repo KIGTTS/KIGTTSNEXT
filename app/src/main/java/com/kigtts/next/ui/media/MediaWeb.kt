@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.*
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -17,6 +18,7 @@ import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.navigation.LocalPageActive
 import java.io.File
+import kotlinx.coroutines.launch
 
 @Composable
 fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
@@ -26,11 +28,11 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     val currentActive by rememberUpdatedState(active)
     val safeArea by rememberUpdatedState(LocalMediaSafeArea.current)
     var destroyed by remember(entry.id) { mutableStateOf(false) }
-    var viewportWidth by remember(entry.id) { mutableIntStateOf(0) }
+    var viewport by remember(entry.id) { mutableStateOf(IntSize.Zero) }
     val safeApplier = remember(entry.id) { WebSafeAreaApplier() }
     fun applySafeArea(view: WebView, capture: Boolean = false, force: Boolean = false) {
-        if (destroyed || viewportWidth <= 0) return
-        safeApplier.apply(view, safeArea, viewportWidth, force || capture) {
+        if (destroyed || viewport.width <= 0 || viewport.height <= 0) return
+        safeApplier.apply(view, safeArea, viewport, force || capture) {
             if (capture && !destroyed) view.postVisualStateCallback(0, object : WebView.VisualStateCallback() {
                 override fun onComplete(requestId: Long) { if (!destroyed) captureWebThumbnail(view, entry, model.mediaRepository) }
             })
@@ -40,7 +42,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     var ready by remember(entry.id) { mutableStateOf(false) }
     val web = remember(entry.id) {
         WebView(context).apply {
-            CookieManager.getInstance().setAcceptCookie(false)
+            WebCookies.enable()
+            CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
             settings.javaScriptEnabled = true; settings.allowFileAccess = false; settings.allowContentAccess = false
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.cacheMode = WebSettings.LOAD_NO_CACHE; settings.domStorageEnabled = false
@@ -48,9 +51,10 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val source = model.mediaRepository.file(entry)
             val cache = if (entry.pluginId == null) File(model.mediaRepository.root, "web-cache/" + entry.id)
                 else model.pluginManager.paths.storage(entry.pluginId).file("cache/web/" + entry.id)
-            val loader = WebResourceLoader(cache, source?.parentFile, entry.network)
+            val loader = WebResourceLoader(cache, source?.parentFile, entry.network,
+                pageOrigin = if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN)
             webViewClient = object : WebViewClient() {
-                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.load(request.url.toString(), request.method)
+                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.load(request.url.toString(), request.method, request.isForMainFrame)
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     !(request.url.toString().startsWith(WebContentPolicy.ORIGIN + "/content/") || entry.network && WebContentPolicy.https(request.url.toString()))
                 override fun onPageFinished(view: WebView, url: String) { ready=true;applySafeArea(view, true);if(ownsPage())model.webHistory(view.canGoBack()) }
@@ -73,14 +77,16 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     LaunchedEffect(state.webBackRevision) { if (ownsPage()&&lastBack != state.webBackRevision) { lastBack = state.webBackRevision; if (web.canGoBack()) web.goBack(); model.webHistory(web.canGoBack()) } }
     LaunchedEffect(ime, active) { if(ownsPage())model.mediaEditing(ime > 0 && web.hasFocus()) }
     LaunchedEffect(active) { if (active) web.onResume() else { if (ready) captureWebThumbnail(web, entry, model.mediaRepository); web.onPause() } }
-    LaunchedEffect(LocalMediaSafeArea.current, viewportWidth) { if (ready) applySafeArea(web) }
+    LaunchedEffect(LocalMediaSafeArea.current, viewport) { if (ready) applySafeArea(web) }
     DisposableEffect(web, lifecycle) {
-        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) web.onPause() else if (event == Lifecycle.Event.ON_START && currentActive) web.onResume() }
+        val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) { web.onPause();
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch { CookieManager.getInstance().flush() }
+        } else if (event == Lifecycle.Event.ON_START && currentActive) web.onResume() }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer); if (ready) captureWebThumbnail(web, entry, model.mediaRepository)
             destroyed = true; web.stopLoading(); web.destroy(); if(ownsPage()) { model.webHistory(false); model.mediaEditing(false) } }
     }
-    AndroidView(factory = { web }, modifier = modifier.mediaReveal(ready).testTag("media-web").onSizeChanged { viewportWidth = it.width }, update = {})
+    AndroidView(factory = { web }, modifier = modifier.mediaReveal(ready).testTag("media-web").onSizeChanged { viewport = it }, update = {})
     DisposableEffect(web) {
         val listener = android.view.View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> if (ready) applySafeArea(web) }
         web.addOnLayoutChangeListener(listener); onDispose { web.removeOnLayoutChangeListener(listener) }

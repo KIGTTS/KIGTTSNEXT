@@ -1,6 +1,9 @@
 package com.kigtts.next.ui.navigation
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import com.kigtts.next.state.*
 
 sealed interface PageScene {
@@ -9,7 +12,8 @@ sealed interface PageScene {
     data class Side(val page: SidePage) : PageScene
 }
 
-data class PageEntry(val scene: PageScene, val depth: Int) {
+data class PageEntry(val scene: PageScene, val depth: Int,
+    val direction: Float = if (scene == PageScene.Side(SidePage.SKETCH)) -1f else 1f) {
     val identity: String get() = "$depth/" + when (val page = scene) {
         PageScene.Home -> "home"
         is PageScene.Side -> "side/" + page.page.name.lowercase()
@@ -23,7 +27,6 @@ data class PageEntry(val scene: PageScene, val depth: Int) {
             is Destination.ContentEditor -> "content-editor/" + destination.token
         }
     }
-    val direction: Float get() = if (scene == PageScene.Side(SidePage.SKETCH)) -1f else 1f
 }
 
 private fun pageTrail(state: AppState): List<PageEntry> = buildList {
@@ -53,9 +56,15 @@ data class PageNavigation(val wanted: List<PageEntry>, val pages: List<PageEntry
 
 @Composable
 fun rememberPageNavigation(state: AppState): PageNavigation {
-    val wanted = remember(state.destination, state.sidePage, state.navigationStack) { pageTrail(state) }
+    val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
+    val directions=rememberSaveable { mutableMapOf<String,Float>() }
+    val wanted = remember(state.destination, state.sidePage, state.navigationStack) { pageTrail(state).map { entry ->
+        entry.copy(direction=directions.getOrPut(entry.identity) {
+            if(landscape&&entry.scene==PageScene.Side(SidePage.SKETCH))1f else entry.direction
+        })
+    } }
     val retention = remember { PageRetention(wanted) }
     val pages = (retention.pages + wanted).distinct().sortedBy { it.depth }
-    SideEffect { retention.reconcile(wanted) }
+    SideEffect { retention.reconcile(wanted);directions.keys.retainAll(pages.map { it.identity }.toSet()) }
     return PageNavigation(wanted, pages, retention)
 }

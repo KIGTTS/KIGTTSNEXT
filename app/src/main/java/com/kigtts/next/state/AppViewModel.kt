@@ -43,14 +43,19 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
     private val experiments = application.getSharedPreferences("experiments", 0)
+    private val playbackPreferences = application.getSharedPreferences("playback", 0)
     val mediaRepository = MediaRepository(application, pluginManager.paths)
+    private val audioSessionDelegate = lazy { AudioCardSession(application) }
+    val cardAudio get() = audioSessionDelegate.value
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
+        autoPlayback = playbackPreferences.getBoolean("automatic", true),
         mediaId = mediaRepository.get(application.getSharedPreferences("media-presentation", 0).getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
     val quickTexts = QuickTextLibrary(phraseStore)
-    val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text)
+    val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
+        ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
@@ -122,15 +127,35 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(panelColumns = value) }
     }
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
-    fun editing(editing: Boolean) { update { it.copy(editing = editing) } }
+    fun editing(editing: Boolean) {
+        val finished=state.value.editing&&!editing
+        update { it.copy(editing = editing) }
+        if(finished&&state.value.autoPlayback&&state.value.mediaId==null)autoRead()
+    }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
     fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false, mediaEditing = false) } }
     fun text(text: String) {
         content.resetSelection()
+        if (audioSessionDelegate.isInitialized()) cardAudio.clear()
         update { it.copy(editorValue = TextFieldValue(text, TextRange(text.length)), mediaId = null,
-            mediaEditing = false, webCanGoBack = false, subtitleRevision = it.subtitleRevision + 1) }
+            mediaEditing = false, webCanGoBack = false, audioId = null, subtitleFormats = emptyList(), subtitleRevision = it.subtitleRevision + 1) }
     }
-    fun editText(value: TextFieldValue) { update { it.copy(editorValue = value) } }
+    fun playAudioCard(entry: com.kigtts.next.media.MediaEntry, autoPlay: Boolean = state.value.autoPlayback) {
+        val file = mediaRepository.file(entry) ?: return message("音频文件已不可用")
+        update { it.copy(audioId = entry.id) }; cardAudio.start(entry.id, android.net.Uri.fromFile(file),autoPlay)
+    }
+    fun toggleAutoPlayback() {
+        val enabled=!state.value.autoPlayback
+        playbackPreferences.edit { putBoolean("automatic",enabled) }
+        update { it.copy(autoPlayback=enabled) }
+        if(!enabled) { if(audioSessionDelegate.isInitialized())cardAudio.pause();viewModelScope.launch { speech.stopSpeaking() } }
+    }
+    private fun autoRead() {
+        // A host preference; engines remain optional plugins and own all synthesis implementation.
+        if(registry.plugins.any { it.tts!=null && registry.available(it) }&&state.value.mediaId==null&&state.value.editorText.isNotBlank())speech.speak(replace=true)
+    }
+    fun editText(value: TextFieldValue) { update { it.copy(editorValue = value,
+        subtitleFormats = com.kigtts.next.text.TextFormatting.rebase(it.subtitleFormats, it.editorText, value.text)) } }
     fun moveCursor(steps: Int) {
         if (steps == 0) return
         update { state ->
@@ -246,6 +271,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun onBackground() { viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
         super.onCleared()
+        if (audioSessionDelegate.isInitialized()) cardAudio.release()
         hostRuntime?.detach(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); if (hostRuntime == null) pluginManager.close() }
     }
