@@ -44,6 +44,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val subtitleSizeStore = SubtitleSizeStore(application)
     private val experiments = application.getSharedPreferences("experiments", 0)
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
+    private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
     val mediaRepository = MediaRepository(application, pluginManager.paths)
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
@@ -51,7 +52,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         autoPlayback = playbackPreferences.getBoolean("automatic", true),
-        mediaId = mediaRepository.get(application.getSharedPreferences("media-presentation", 0).getString("selected", null))?.id))
+        contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
+        contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
+        mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
     val quickTexts = QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,

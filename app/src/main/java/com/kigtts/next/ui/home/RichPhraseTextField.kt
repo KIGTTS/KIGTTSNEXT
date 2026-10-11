@@ -3,6 +3,8 @@ package com.kigtts.next.ui.home
 import com.kigtts.next.ui.components.MotionIconButton
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material.icons.Icons
@@ -32,13 +34,14 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
     OutlinedTextField(field, { next ->
         oversized = next.text.toByteArray().size > 128 * 1024
         if (!oversized) { field = next; model.content.editPhrase { it.copy(text = next.text, formats = TextFormatting.rebase(it.formats, it.text, next.text)) } }
-    }, Modifier.fillMaxWidth().testTag("phrase-detail-text"), enabled = enabled, label = { Text("文本内容") },
+    }, Modifier.fillMaxWidth().testTag("phrase-detail-text"), enabled = enabled, label = { Text("字幕（必填）") },
         minLines = 3, maxLines = 12, isError = oversized,
         interactionSource = source, colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, focused, oversized),
         visualTransformation = if (rich) VisualTransformation { TransformedText(formattedText(it.text, draft.formats), OffsetMapping.Identity) } else VisualTransformation.None)
     if (oversized) Text("内容太长，请缩短后再保存", color = MaterialTheme.colorScheme.error)
-    if (rich) {
-        val selected = !field.selection.collapsed && enabled
+    AnimatedVisibility(rich,enter=fadeIn(tween(160))+expandVertically(tween(220)),exit=fadeOut(tween(100))+shrinkVertically(tween(200))) {
+        Column {
+        val selected = rich && !field.selection.collapsed && enabled
         Row(Modifier.testTag("phrase-format-toolbar")) {
             MotionIconButton(feedbackClick { format(TextFormat.BOLD) }, enabled = selected, modifier = Modifier.testTag("phrase-format-bold")) { Icon(Icons.Default.FormatBold, "粗体") }
             MotionIconButton(feedbackClick { format(TextFormat.ITALIC) }, enabled = selected, modifier = Modifier.testTag("phrase-format-italic")) { Icon(Icons.Default.FormatItalic, "斜体") }
@@ -52,6 +55,7 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
             }
         }
         if (!selected) Text("选中文字后设置格式", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
     if (color) ColorPickerDialog(0xFF00696E, { format(TextFormat.COLOR, it); color = false }, { color = false }, title = "文字颜色")
 }

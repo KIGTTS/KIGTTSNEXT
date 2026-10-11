@@ -41,10 +41,12 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                             pan = if (zoom == 1f) Offset.Zero else (pan + offset).let { Offset(it.x.coerceIn(-limitX, limitX), it.y.coerceIn(-limitY, limitY)) }
                         }), scale = entry.scale, backdrop = true,
                         contentModifier = Modifier.graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y })
-                    if (live) LivePhotoPlayback(source.second,entry.name,entry.scale,autoPlay=state.autoPlayback&&state.contentAutoPlay)
+                    if (live) LivePhotoPlayback(source.second,entry.name,entry.scale,autoPlay=state.contentAutoPlay,
+                        playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
                 }
             }
-            MediaKind.VIDEO -> MediaVideo(source.first, entry.name, false, {}, modifier, entry.scale,autoPlay=state.autoPlayback&&state.contentAutoPlay)
+            MediaKind.VIDEO -> MediaVideo(source.first, entry.name, false, {}, modifier, entry.scale,autoPlay=state.contentAutoPlay,
+                playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
             MediaKind.HTML, MediaKind.WEB -> MediaWeb(entry, state, model, modifier)
             MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text(entry.name) }
         }

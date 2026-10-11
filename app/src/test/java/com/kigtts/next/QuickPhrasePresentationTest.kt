@@ -61,7 +61,7 @@ class QuickPhrasePresentationTest {
         val model = show(); val item = model.phrases.value[1]
         compose.onNodeWithContentDescription("编辑快捷文本").performClick()
         compose.onNodeWithTag("edit-phrase-" + item.id).performClick()
-        compose.onNodeWithText("文本内容").assertIsDisplayed()
+        compose.onNodeWithText("字幕（必填）").assertIsDisplayed()
         compose.onNodeWithText("缩略标题（可选）").assertIsDisplayed()
         compose.onNodeWithTag("phrase-detail-title").performTextClearance()
         compose.onNodeWithTag("save-phrase-details").performClick()

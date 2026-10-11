@@ -18,11 +18,12 @@ internal object QuickPhraseCodec {
             json.optString("mediaId").takeIf(String::isNotBlank), QuickCardType.entries.firstOrNull { it.name == json.optString("type") },
             CardColorMode.entries.firstOrNull { it.name == json.optString("colorMode") } ?: CardColorMode.DEFAULT,
             0xFF000000L or (json.optLong("color", 0xFF00696E) and 0xFFFFFF), json.optBoolean("richText"),
-            TextFormatting.normalize(formats, text.length), json.optBoolean("autoPlay", true))
+            TextFormatting.normalize(formats, text.length), json.optBoolean("autoPlay", true),
+            com.kigtts.next.media.MediaAudioMode.read(json.optString("audioMode")))
     }
     fun write(item: QuickPhrase) = JSONObject().put("id", item.id).put("text", item.text).put("category", item.category)
         .put("title", item.title).put("mediaId", item.mediaId).put("type", item.type?.name).put("colorMode", item.colorMode.name)
-        .put("color", item.color).put("richText", item.richText).put("autoPlay", item.autoPlay).put("formats", JSONArray().also { array ->
+        .put("color", item.color).put("richText", item.richText).put("autoPlay", item.autoPlay).put("audioMode", item.audioMode?.name).put("formats", JSONArray().also { array ->
             TextFormatting.normalize(item.formats, item.text.length).forEach { array.put(JSONObject().put("start", it.start)
                 .put("end", it.end).put("kind", it.kind.name).put("value", it.value)) }
         })

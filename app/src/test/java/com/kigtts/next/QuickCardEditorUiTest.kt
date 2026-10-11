@@ -66,6 +66,7 @@ class QuickCardEditorUiTest {
     @Test fun customColorUsesSharedHsvDialogAndNoColorCanBeSavedWithoutChangingText() {
         val model = show()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("颜色正文")
+        compose.onNodeWithTag("phrase-appearance-toggle").performScrollTo().performClick()
         compose.onNodeWithTag("phrase-color-mode").performScrollTo()
         compose.onNodeWithContentDescription("卡片颜色：自定义").performClick()
         compose.onNodeWithContentDescription("预设颜色 #6750A4").performScrollTo().performClick()

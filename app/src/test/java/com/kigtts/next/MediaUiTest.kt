@@ -69,7 +69,7 @@ class MediaUiTest {
         compose.onRoot().captureRoboImage("build/previews/media-experimental.png")
         val entry = image(); val clip = File(ApplicationProvider.getApplicationContext<Application>().cacheDir,"live.mp4").apply { writeBytes(byteArrayOf(1,2,3)) }
         val pair = model.mediaRepository.pair(entry.id, Uri.fromFile(clip))
-        compose.runOnIdle { model.content.show(pair); model.navigate(Destination.Home) }
+        compose.runOnIdle { model.content.show(pair,autoPlay=false); model.navigate(Destination.Home) }
         compose.onNodeWithTag("play-motion-photo").assertIsDisplayed()
         compose.runOnIdle { model.appleLivePhotos(false) }
         compose.onRoot().captureRoboImage("build/previews/media-apple-disabled.png")

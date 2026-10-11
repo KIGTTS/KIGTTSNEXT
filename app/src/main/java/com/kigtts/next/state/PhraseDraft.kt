@@ -7,7 +7,8 @@ data class PhraseDraft(val key: String, val phraseId: String?, val text: String,
     val category: String, val mediaId: String?, val type: QuickCardType = QuickCardType.TEXT,
     val colorMode: CardColorMode = CardColorMode.DEFAULT, val color: Long = 0xFF00696E,
     val richText: Boolean = false, val formats: List<TextFormatRun> = emptyList(),
-    val resources: Map<QuickCardType, String?> = emptyMap(), val autoPlay: Boolean = true) {
+    val resources: Map<QuickCardType, String?> = emptyMap(), val autoPlay: Boolean = true,
+    val audioMode: MediaAudioMode? = null) {
     fun switchType(next: QuickCardType) = if (next == type) this else copy(type = next, mediaId = resources[next], resources = resources + (type to mediaId))
     fun attach(next: QuickCardType, id: String) = copy(mediaId = if (type == next) id else mediaId,
         resources = resources + (next to id))

@@ -27,21 +27,21 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun requestDiscard():Boolean { if(editorState.value?.dirty!=true)return false;discardState.value=true;return true }
     fun keepEditor() { discardState.value=false }
     fun discardEditor() { discardState.value=false;editorState.value=null;back() }
-    fun show(entry:MediaEntry,autoPlay:Boolean=true) {
+    fun show(entry:MediaEntry,autoPlay:Boolean=true,audioMode:MediaAudioMode?=null) {
         if(entry.kind!=MediaKind.AUDIO)history.push(state())
-        showCurrent(entry,autoPlay)
+        showCurrent(entry,autoPlay,audioMode)
     }
-    private fun showCurrent(entry:MediaEntry,autoPlay:Boolean) {
+    private fun showCurrent(entry:MediaEntry,autoPlay:Boolean,audioMode:MediaAudioMode?) {
         stopAudio()
         if (entry.kind == MediaKind.AUDIO) {
             history.clear();resetSelection()
             update { it.copy(mediaId=null,audioId=null,editing=false,mediaEditing=false,quickTextEditing=false,
-                webCanGoBack=false,contentAutoPlay=autoPlay,contentRevision=it.contentRevision+1) }
+                webCanGoBack=false,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1) }
             playAudio(entry,autoPlay&&state().autoPlayback);return
         }
-        preferences.edit { putString("selected",entry.id) }
+        saveSelection(entry.id,autoPlay,audioMode)
         update { it.copy(mediaId=entry.id,editing=false,mediaEditing=false,quickTextEditing=false,sidePage=null,
-            webCanGoBack=false,audioId=null,contentAutoPlay=autoPlay,contentRevision=it.contentRevision+1,subtitleFormats=emptyList(),subtitleRevision=it.subtitleRevision+1) }
+            webCanGoBack=false,audioId=null,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1,subtitleFormats=emptyList(),subtitleRevision=it.subtitleRevision+1) }
     }
     fun closeContent() {
         val current=state(); if(current.mediaId==null&&current.audioId==null)return
@@ -52,9 +52,9 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val previous=history.pop()
         resetSelection()
         val media=repository.get(previous?.media); val audio=repository.get(previous?.audio)
-        if(media!=null)preferences.edit { putString("selected",media.id) }
+        if(media!=null)saveSelection(media.id,previous?.autoPlay ?: true,previous?.audioMode)
         update { it.copy(editorValue=previous?.text ?: it.editorValue, subtitleFormats=previous?.formats.orEmpty(),
-            mediaId=media?.id,audioId=null,contentAutoPlay=previous?.autoPlay ?: true,
+            mediaId=media?.id,audioId=null,contentAutoPlay=previous?.autoPlay ?: true,contentAudioMode=previous?.audioMode,
             forcedFullscreen=previous?.fullscreen ?: false,editing=false,mediaEditing=false,webCanGoBack=false,
             subtitleRevision=it.subtitleRevision+1,contentRevision=it.contentRevision+1) }
         if(audio!=null)playAudio(audio,false)
@@ -63,7 +63,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun send(phrase:QuickPhrase) {
         val entry = repository.get(phrase.mediaId)
         when (phrase.cardType(entry?.kind)) {
-            QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay) } ?: setText(phrase.text)
+            QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode) } ?: setText(phrase.text)
             QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay) }
                 if (entry?.kind == MediaKind.AUDIO) playAudio(entry,phrase.autoPlay&&state().autoPlayback) }
             QuickCardType.TEXT -> { history.clear();setText(phrase.text); if (phrase.richText) update { it.copy(subtitleFormats = phrase.formats) };if(state().autoPlayback)autoRead() }
@@ -73,7 +73,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val type = phrase?.cardType(repository.get(phrase.mediaId)?.kind) ?: QuickCardType.TEXT
         phraseState.value=PhraseDraft(UUID.randomUUID().toString(),phrase?.id,phrase?.text.orEmpty(),phrase?.title.orEmpty(),phrase?.category ?: category,phrase?.mediaId,
             type,phrase?.colorMode ?: CardColorMode.DEFAULT,phrase?.color ?: 0xFF00696E,phrase?.richText ?: false,phrase?.formats.orEmpty(),
-            mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true)
+            mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true,phrase?.audioMode)
     }
     fun editPhrase(change:(PhraseDraft)->PhraseDraft) { phraseState.value=phraseState.value?.let(change) }
     fun cancelPhrase() { phraseState.value=null }
@@ -98,7 +98,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     }
     fun savePhrase() { phraseState.value?.let { draft ->
         if (draft.valid(repository)) library.savePhrase(QuickPhrase(draft.text,draft.category,draft.phraseId ?: UUID.randomUUID().toString(),draft.title,
-            if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay))
+            if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay,draft.audioMode))
     };phraseState.value=null }
     fun picker(target:String="display")=navigate(Destination.MediaLibrary(target))
     fun choose(entry:MediaEntry,target:String) {
@@ -124,7 +124,10 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         if(content is SubtitleContent.Text) { setText(content.text);return }
         show(withContext(Dispatchers.IO) { repository.plugin(owner,content) })
     }
-    fun resetSelection() { preferences.edit { remove("selected") } }
+    private fun saveSelection(id:String,autoPlay:Boolean,audioMode:MediaAudioMode?) { preferences.edit {
+        putString("selected",id);putBoolean("autoPlay",autoPlay);putString("audioMode",audioMode?.name)
+    } }
+    fun resetSelection() { preferences.edit { remove("selected");remove("autoPlay");remove("audioMode") } }
     private fun detach(id:String) {
         history.remove(id);library.detachMedia(id)
         if(state().mediaId==id || state().audioId==id)closeContent()

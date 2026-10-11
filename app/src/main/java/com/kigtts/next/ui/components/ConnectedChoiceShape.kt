@@ -1,5 +1,5 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
-package com.kigtts.next.ui.settings
+package com.kigtts.next.ui.components
 
 import androidx.compose.foundation.shape.*
 import androidx.compose.material3.ToggleButtonShapes

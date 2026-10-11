@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
-import com.kigtts.next.ui.settings.SettingChoiceGroup
 
 @Composable
 internal fun quickPhraseColor(phrase: QuickPhrase): Color = when (phrase.colorMode) {
@@ -29,10 +28,10 @@ internal fun quickPhraseContentColor(phrase: QuickPhrase): Color = if (phrase.co
 internal fun PhraseAppearanceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean) {
     var picker by remember { mutableStateOf(false) }
     Text("卡片颜色", style = MaterialTheme.typography.titleMedium)
-    SettingChoiceGroup("卡片颜色", CardColorMode.entries, draft.colorMode,
+    ConnectedChoiceGroup("卡片颜色", CardColorMode.entries, draft.colorMode,
         { when (it) { CardColorMode.DEFAULT -> "默认"; CardColorMode.CUSTOM -> "自定义"; CardColorMode.NONE -> "无颜色" } },
         { if (enabled) { if (it == CardColorMode.CUSTOM) picker = true else model.content.editPhrase { current -> current.copy(colorMode = it) } } },
-        Modifier.testTag("phrase-color-mode"))
+        Modifier.testTag("phrase-color-mode"),enabled=enabled)
     if (draft.colorMode == CardColorMode.CUSTOM) MotionTextButton(feedbackClick { picker = true }, enabled = enabled) {
         Box(Modifier.size(20.dp).background(Color(draft.color), MaterialTheme.shapes.small)); Spacer(Modifier.width(8.dp)); Text("选择颜色")
     }

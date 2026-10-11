@@ -90,20 +90,46 @@ class PlaybackControlsTest {
         button.performClick();compose.runOnIdle { assertEquals(1,starts) }
     }
 
-    @Test fun scrubPreviewsLocallyAndSeeksOnlyOnceWhenReleased() {
-        val seeks=mutableListOf<Long>()
+    @Test fun scrubPausesAndSeeksDuringEveryMoveThenRestoresPreviousPlayback() {
+        val fixture=AudioPlayerFixture()
         val state=PlaybackState().apply {
             duration=10_000f
-            player=Proxy.newProxyInstance(Player::class.java.classLoader,arrayOf(Player::class.java)) { _,method,args ->
-                if(method.name=="seekTo") { seeks+=args!!.last() as Long;null } else null
-            } as Player
+            player=fixture.player
         }
+        fixture.player.play()
         compose.setContent { MaterialTheme { Box(Modifier.width(360.dp)) { PlaybackControls(state,true,false,{}, {}) } } }
         val slider=compose.onNodeWithTag("media-wave-seek")
         slider.performTouchInput { down(centerLeft);moveTo(center) }
-        compose.runOnIdle { assertTrue(state.scrubbing);assertTrue(state.position>0);assertTrue(seeks.isEmpty()) }
+        compose.runOnIdle { assertTrue(state.scrubbing);assertTrue(state.position>0);assertFalse(fixture.playing);assertTrue(fixture.seeks.isNotEmpty()) }
+        val initial=fixture.seeks.size
         slider.performTouchInput { moveTo(centerRight);up() }
-        compose.runOnIdle { assertFalse(state.scrubbing);assertEquals(1,seeks.size);assertTrue(seeks.single()>8000) }
+        compose.runOnIdle { assertFalse(state.scrubbing);assertTrue(fixture.seeks.size>initial);assertTrue(fixture.seeks.last()>8000);assertTrue(fixture.playing) }
+        compose.runOnIdle { fixture.player.pause() }
+        slider.performTouchInput { down(centerRight);moveTo(center);up() }
+        compose.runOnIdle { assertFalse(state.scrubbing);assertFalse(fixture.playing) }
+    }
+
+    @Test fun idlePlaybackNarrowsAndPausingOrScrubbingRestoresControls() {
+        val fixture=AudioPlayerFixture();val state=PlaybackState().apply { player=fixture.player;duration=3000f;playing=true }
+        fixture.player.play()
+        compose.mainClock.autoAdvance=false
+        compose.setContent { MaterialTheme { Box(Modifier.width(360.dp)) { PlaybackControls(state,true,false,{}, {}) } } }
+        compose.waitForIdle()
+        fun buttonWidth()=compose.onNodeWithContentDescription("切换声音").getUnclippedBoundsInRoot().let { it.right-it.left }
+        val full=buttonWidth()
+        repeat(250) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
+        val small=buttonWidth()
+        assertTrue("Idle button slot must collapse",small<full/2)
+        compose.onNodeWithContentDescription("切换声音").assertIsNotEnabled()
+        val slider=compose.onNodeWithTag("media-wave-seek")
+        slider.performTouchInput { down(centerRight);moveTo(androidx.compose.ui.geometry.Offset(width*.85f,center.y)) }
+        repeat(20) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
+        assertFalse(fixture.playing);assertTrue(state.scrubbing)
+        assertTrue(buttonWidth()>small)
+        slider.performTouchInput { up() }
+        compose.runOnIdle { assertTrue(fixture.playing);state.playing=false;fixture.player.pause() }
+        repeat(30) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
+        assertEquals(full,buttonWidth())
     }
 
     @Test fun pauseMorphsWaveIntoStraightTrackAndResumeRestoresIt() {

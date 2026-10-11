@@ -52,6 +52,7 @@ data class AppState(
     val audioId: String? = null,
     val autoPlayback: Boolean = true,
     val contentAutoPlay: Boolean = true,
+    val contentAudioMode: com.kigtts.next.media.MediaAudioMode? = null,
     val contentRevision: Int = 0,
 ) {
     val editorText: String get() = editorValue.text

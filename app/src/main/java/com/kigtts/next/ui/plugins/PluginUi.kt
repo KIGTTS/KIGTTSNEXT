@@ -50,41 +50,45 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     })
     val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
     page.management?.let { list ->
-        ManagedItemList(list, busy, resolve, invoke) { PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            shown.forEach { RenderBlock(it, !busy) { action -> invoke(action, emptyMap()) } }
-        } } }
+        ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) } }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            shown.forEach { RenderBlock(it, !busy) { action -> invoke(action, emptyMap()) } }
-        } }
+        PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) }
     }
+}
+
+@Composable
+private fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String)->Unit) {
+    MotionColumn(blocks,{ block,index->when(block) {
+        is PageBlock.Group->"group/"+block.title
+        is PageBlock.Actions->"actions/$index"
+        is PageBlock.Text->"text/$index"
+        is PageBlock.Notice->"notice/$index"
+    } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current) { block,active->RenderBlock(block,active,invoke) }
 }
 
 @Composable
 private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String) -> Unit) {
     when (block) {
-        is PageBlock.Text -> Text(block.text, style = if (block.heading) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.bodyLarge)
+        is PageBlock.Text -> PageContentMotion(block.text) { text -> Text(text, style = if (block.heading) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.bodyLarge) }
         is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.medium) {
-            Text(block.text, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onTertiaryContainer)
+            PageContentMotion(block.text) { Text(it, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onTertiaryContainer) }
         }
-        is PageBlock.Actions -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            block.actions.forEach { action ->
+        is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=8.dp) { action,interactive ->
                 val source=remember(action.id) { MutableInteractionSource() }
                 val press=rememberImmediateButtonPress(source)
-                LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+                LaunchedEffect(interactive) { if (!interactive) press.cancel() }
                 FilledTonalButton(onClick = feedbackClick { press.click();invoke(action.id) },
-                    enabled=enabled, colors=ButtonDefaults.filledTonalButtonColors().animateEnabled(enabled),
-                    modifier=if(enabled)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = expressivePillShapes()) {
+                    enabled=interactive, colors=ButtonDefaults.filledTonalButtonColors().animateEnabled(interactive),
+                    modifier=if(interactive)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = expressivePillShapes()) {
                     Icon(action.icon.vector(), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(action.label)
                 }
-            }
         }
         is PageBlock.Group -> Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(block.title, style = MaterialTheme.typography.titleMedium)
-                block.children.forEach { RenderBlock(it, enabled, invoke) }
+                PluginBlocks(block.children,enabled,invoke)
             }
         }
     }

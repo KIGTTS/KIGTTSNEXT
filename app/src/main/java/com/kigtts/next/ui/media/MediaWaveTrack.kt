@@ -29,7 +29,7 @@ internal class MediaWaveClock {
 
 /** MD3E colors/strokes; amplitude and phase velocity ease together into a straight paused track. */
 @Composable
-internal fun MediaWaveTrack(progress:()->Float,playing:Boolean,modifier:Modifier=Modifier) {
+internal fun MediaWaveTrack(progress:()->Float,playing:Boolean,modifier:Modifier=Modifier,compact:Float=0f) {
     val clock=remember { MediaWaveClock() };val path=remember { Path() }
     val motion=remember { Animatable(if(playing)1f else 0f) }
     val color=WavyProgressIndicatorDefaults.indicatorColor
@@ -43,17 +43,18 @@ internal fun MediaWaveTrack(progress:()->Float,playing:Boolean,modifier:Modifier
     }
     Canvas(modifier.fillMaxWidth().height(WavyProgressIndicatorDefaults.LinearContainerHeight)) {
         val fraction=progress().coerceIn(0f,1f);val mid=size.height/2
-        val halfStroke=stroke.width/2;val head=size.width*fraction
+        val thickness=stroke.width*(1f-.5f*compact)
+        val halfStroke=thickness/2;val head=size.width*fraction
         val gap=6.dp.toPx();val end=(head-gap).coerceAtLeast(halfStroke)
-        val wave=wavelength.toPx();val amplitude=(mid-halfStroke).coerceAtLeast(0f)*motion.value
+        val wave=wavelength.toPx();val amplitude=(mid-halfStroke).coerceAtLeast(0f)*motion.value*(1f-compact)
         val startTrack=(head+gap).coerceAtMost(size.width-halfStroke)
-        if(startTrack<size.width-halfStroke)drawLine(track,Offset(startTrack,mid),Offset(size.width-halfStroke,mid),stroke.width,StrokeCap.Round)
+        if(startTrack<size.width-halfStroke)drawLine(track,Offset(startTrack,mid),Offset(size.width-halfStroke,mid),thickness,StrokeCap.Round)
         if(fraction>0f) {
             path.reset();var x=halfStroke
             fun y(at:Float)=mid+amplitude*sin((at/wave+clock.phase)*2f*Math.PI).toFloat()
             path.moveTo(x,y(x))
             while(x<end) { x=(x+wave/16f).coerceAtMost(end);path.lineTo(x,y(x)) }
-            drawPath(path,color,style=Stroke(stroke.width,cap=StrokeCap.Round))
+            drawPath(path,color,style=Stroke(thickness,cap=StrokeCap.Round))
         }
     }
 }

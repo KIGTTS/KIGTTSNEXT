@@ -9,7 +9,8 @@ enum class CardColorMode { DEFAULT, CUSTOM, NONE }
 data class QuickPhrase(val text: String, val category: String, val id: String = java.util.UUID.randomUUID().toString(),
     val title: String = "", val mediaId: String? = null, val type: QuickCardType? = null,
     val colorMode: CardColorMode = CardColorMode.DEFAULT, val color: Long = 0xFF00696E,
-    val richText: Boolean = false, val formats: List<TextFormatRun> = emptyList(), val autoPlay: Boolean = true) {
+    val richText: Boolean = false, val formats: List<TextFormatRun> = emptyList(), val autoPlay: Boolean = true,
+    val audioMode: com.kigtts.next.media.MediaAudioMode? = null) {
     fun cardType(mediaKind: MediaKind? = null): QuickCardType = type ?: when (mediaKind) {
         MediaKind.HTML, MediaKind.WEB -> QuickCardType.PAGE
         MediaKind.AUDIO -> QuickCardType.AUDIO

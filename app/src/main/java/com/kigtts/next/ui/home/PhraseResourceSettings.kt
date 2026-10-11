@@ -3,6 +3,8 @@ package com.kigtts.next.ui.home
 import com.kigtts.next.ui.components.animateEnabled
 
 import com.kigtts.next.ui.components.MotionTextButton
+import com.kigtts.next.ui.components.MotionOutlinedButton
+import com.kigtts.next.ui.components.MotionColumn
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -17,6 +19,7 @@ import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.feedbackChange
+import com.kigtts.next.ui.components.ConnectedChoiceGroup
 import com.kigtts.next.ui.media.ThumbnailFramingDialog
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,10 +42,10 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     when (draft.type) {
         QuickCardType.TEXT -> MotionTextButton(feedbackClick { leave(); model.content.editor(target = "phrase:" + draft.key) }, enabled = enabled) { Text("打开文本编辑器") }
-        QuickCardType.AUDIO -> MotionTextButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
-            modifier = Modifier.testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
-        QuickCardType.MEDIA -> MotionTextButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
-            enabled = enabled && !importing, modifier = Modifier.testTag("phrase-choose-media")) { Text(if (entry == null) "选择图片或视频" else "更换图片或视频") }
+        QuickCardType.AUDIO -> MotionOutlinedButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
+            modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
+        QuickCardType.MEDIA -> MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+            enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) { Text(if (entry == null) "选择图片或视频" else "更换图片或视频") }
         QuickCardType.PAGE -> Row {
             MotionTextButton(feedbackClick { leave(); model.content.editor(html = true, target = "phrase:" + draft.key) }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "编写 HTML" else "编辑 HTML") }
@@ -50,19 +53,20 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
                 modifier = Modifier.testTag("phrase-choose-page")) { Text("选择页面") }
         }
     }
-    if (entry != null && draft.type != QuickCardType.TEXT) {
-        Text(entry.name, style = MaterialTheme.typography.bodyMedium)
-        PhraseResourcePreview(entry,model.mediaRepository,enabled,state.appleLivePhotos)
-        if(entry.kind in setOf(MediaKind.AUDIO,MediaKind.VIDEO,MediaKind.MOTION_PHOTO))Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text("自动播放",Modifier.weight(1f))
-            Switch(draft.autoPlay,feedbackChange { value -> model.content.editPhrase { it.copy(autoPlay=value) } },enabled=enabled,
-                colors=SwitchDefaults.colors().animateEnabled(enabled),
+    MotionColumn(if(draft.type==QuickCardType.TEXT)emptyList() else listOfNotNull(entry),{ resource,_->resource.id },enabled=enabled) { resource,interactive->
+        PhraseResourceInfo(resource,interactive,draft.type in setOf(QuickCardType.MEDIA,QuickCardType.PAGE),{ framing=true },
+            { model.content.editPhrase { it.copy(mediaId=null,resources=it.resources-it.type) } })
+        PhraseResourcePreview(resource,model.mediaRepository,interactive,state.appleLivePhotos,draft.audioMode,state.autoPlayback)
+        if(resource.kind in setOf(MediaKind.AUDIO,MediaKind.VIDEO,MediaKind.MOTION_PHOTO))Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+            Text(when(resource.kind) { MediaKind.VIDEO->"自动播放视频";MediaKind.MOTION_PHOTO->"自动播放实况";else->"自动播放" },Modifier.weight(1f))
+            Switch(draft.autoPlay,feedbackChange { value -> model.content.editPhrase { it.copy(autoPlay=value) } },enabled=interactive,
+                colors=SwitchDefaults.colors().animateEnabled(interactive),
                 modifier=Modifier.testTag("phrase-auto-play"))
         }
-        Row {
-            MotionTextButton(feedbackClick { model.content.editPhrase { it.copy(mediaId = null, resources = it.resources - it.type) } }, enabled = enabled,
-                modifier = Modifier.testTag("detach-phrase-media")) { Text("移除关联") }
-            if (draft.type in setOf(QuickCardType.MEDIA, QuickCardType.PAGE)) MotionTextButton(feedbackClick { framing = true }, enabled = enabled) { Text("缩略图取景") }
+        if(resource.kind in setOf(MediaKind.VIDEO,MediaKind.MOTION_PHOTO)) {
+            Text("音频播放",style=MaterialTheme.typography.labelLarge)
+            ConnectedChoiceGroup("音频播放",MediaAudioMode.entries,draft.audioMode ?: MediaAudioMode.defaultFor(resource.kind),{ it.label },
+                { mode->model.content.editPhrase { it.copy(audioMode=mode) } },Modifier.testTag("phrase-audio-mode"),enabled=interactive,compactLabels=true)
         }
     }
     if (framing && entry != null) ThumbnailFramingDialog(entry, model.mediaRepository) { framing = false }
