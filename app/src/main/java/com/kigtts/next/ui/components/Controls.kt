@@ -44,9 +44,10 @@ fun ToolButton(
     colors: IconButtonColors = compactTonalIconColors(),
     size: Dp = 32.dp,
 ) {
-    FilledTonalIconButton(onClick = feedbackClick(onClick), modifier = modifier.height(size).widthIn(min = size)
+    val press=rememberImmediateButtonPress(interactionSource)
+    FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.immediateButtonPress(press).height(size).widthIn(min = size)
         .semantics { contentDescription = label },
-        shapes = shapes, interactionSource = interactionSource, colors = colors) {
+        shapes = shapes, interactionSource = press.native, colors = colors) {
         AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(size / 2)) }
     }
 }
@@ -58,8 +59,9 @@ fun PillButton(
     shapes: ButtonShapes = expressivePillShapes(),
     colors: ButtonColors = compactTonalButtonColors(),
 ) {
-    FilledTonalButton(onClick = feedbackClick(onClick), modifier = modifier.height(32.dp),
-        shapes = shapes, interactionSource = interactionSource, colors = colors,
+    val press=rememberImmediateButtonPress(interactionSource)
+    FilledTonalButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.immediateButtonPress(press).height(32.dp),
+        shapes = shapes, interactionSource = press.native, colors = colors,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
         AnimatedButtonContent(icon to label) { (image, text) ->
             Row {

@@ -14,6 +14,7 @@ sealed interface Destination {
     data class PluginPage(val pluginId: String, val pageId: String) : Destination
     data class MediaLibrary(val target: String = "display") : Destination
     data class ContentEditor(val token: String) : Destination
+    data class PhraseEditor(val token: String, val adding: Boolean = false) : Destination
 }
 data class AppState(
     val destination: Destination = Destination.Home,

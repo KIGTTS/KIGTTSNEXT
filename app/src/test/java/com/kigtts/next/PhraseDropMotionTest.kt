@@ -3,6 +3,9 @@ package com.kigtts.next
 import android.app.Application
 import android.graphics.BitmapFactory
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.*
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -38,7 +41,9 @@ class PhraseDropMotionTest {
             app.getSharedPreferences(it, 0).edit().clear().commit()
         }
         val model = testAppModel(app)
-        compose.setContent { KigttsApp(model) }
+        val ticks = mutableListOf<HapticFeedbackType>()
+        val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }
+        compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { KigttsApp(model) } }
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.editQuickTexts() }
         val phrase = model.phrases.value.first()
         val other = model.phrases.value.filter { it.category == phrase.category }[1]
@@ -60,11 +65,14 @@ class PhraseDropMotionTest {
         pane.performTouchInput { down(from); moveBy(Offset(0f, 26f * density)) }
         step(16)
         val floating = compose.onNodeWithTag("dragged-phrase")
+        assertEquals(1, ticks.count { it == HapticFeedbackType.GestureThresholdActivate })
         assertEquals("The picked card is opaque on its first frame", color, background(floating, "phrase-pickup-first-frame"))
         pane.performTouchInput { moveTo(to + Offset(10f * density, 10f * density), delayMillis = 100) }
         step(80)
+        assertTrue(ticks.contains(HapticFeedbackType.SegmentFrequentTick))
         val before = floating.getUnclippedBoundsInRoot()
         pane.performTouchInput { up() }
+        assertEquals(1, ticks.count { it == HapticFeedbackType.GestureEnd })
         compose.waitForIdle()
         val seeded = floating.getUnclippedBoundsInRoot()
         capture("phrase-drop-release-seeded")

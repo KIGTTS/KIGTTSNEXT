@@ -26,6 +26,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.expressivePillShapes
+import com.kigtts.next.ui.components.rememberImmediateButtonPress
+import com.kigtts.next.ui.components.immediateButtonPress
 
 /** The same pill expands into controls; only the seek bar reads per-frame progress. */
 @Composable
@@ -34,6 +36,7 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
     val phase by animateFloatAsState(if(expanded)1f else 0f,spring(dampingRatio=.68f,stiffness=380f),label="live-controls-morph")
     val visible=phase.coerceIn(0f,1f)
     val source=remember { MutableInteractionSource() };val pressed by source.collectIsPressedAsState()
+    val immediate=rememberImmediateButtonPress(source)
     val press by animateFloatAsState(if(pressed)1f else 0f,MaterialTheme.motionScheme.fastSpatialSpec(),label="live-controls-press")
     val labelWidth=with(LocalDensity.current) { rememberTextMeasurer().measure(collapsedLabel,MaterialTheme.typography.labelLarge).size.width.toDp() }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
@@ -46,12 +49,13 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
         Row(Modifier.height(height).padding(horizontal=4.dp*visible).clipToBounds(),verticalAlignment=Alignment.CenterVertically) {
             // One play button survives the entire morph; the label yields its width to the track.
             FilledTonalButton(onClick=feedbackClick {
+                immediate.click()
                 if(!expanded)start() else { val player=state.player ?: return@feedbackClick
                     if(player.playbackState==androidx.media3.common.Player.STATE_ENDED)player.seekTo(0)
                     if(player.isPlaying)player.pause() else player.play() }
-            },modifier=Modifier.width(small+(48.dp-small)*visible).semantics { contentDescription=if(!expanded)collapsedLabel else if(state.playing)"暂停" else "播放" }
+            },modifier=Modifier.immediateButtonPress(immediate).width(small+(48.dp-small)*visible).semantics { contentDescription=if(!expanded)collapsedLabel else if(state.playing)"暂停" else "播放" }
                 .then(if(!expanded)Modifier.testTag(collapsedTag) else Modifier),
-                contentPadding=PaddingValues(4.dp),interactionSource=source,shapes=expressivePillShapes(),
+                contentPadding=PaddingValues(4.dp),interactionSource=immediate.native,shapes=expressivePillShapes(),
                 colors=ButtonDefaults.filledTonalButtonColors(containerColor=Color.Transparent,
                     contentColor=lerp(MaterialTheme.colorScheme.onSecondaryContainer,MaterialTheme.colorScheme.onSurface,visible))) {
                 Icon(if(state.playing&&expanded)Icons.Default.Pause else Icons.Default.PlayArrow,null,

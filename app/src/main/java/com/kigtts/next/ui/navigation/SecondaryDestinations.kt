@@ -8,6 +8,7 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.*
 import com.kigtts.next.ui.settings.*
 import com.kigtts.next.ui.media.*
+import com.kigtts.next.ui.home.PhraseEditorScreen
 
 /** Page content is independent of its lifetime and transition in the navigation host. */
 @Composable
@@ -21,8 +22,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
             is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) "页面库" else "媒体库"
             is Destination.ContentEditor -> "内容编辑器"
+            is Destination.PhraseEditor -> if (destination.adding) "添加快捷文本" else "编辑快捷文本"
         }
-    PageScaffold(title,model::navigateBack) {
+    PageScaffold(title,model::navigateBack,backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
             when (destination) {
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate)
@@ -35,6 +37,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.Plugins -> PluginsScreen(model)
                 is Destination.MediaLibrary -> MediaLibraryScreen(model, destination.target)
                 is Destination.ContentEditor -> ContentEditorScreen(model, destination.token)
+                is Destination.PhraseEditor -> PhraseEditorScreen(model, destination.token)
                 is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context()), destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) }) { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)

@@ -18,7 +18,7 @@ import com.kigtts.next.ui.components.feedbackClick
 /** The page background covers the full window; only its controls consume safe drawing insets. */
 @Composable
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String="返回上一页",largeBar:Boolean=true,
-    actions:List<ToolbarAction> = emptyList(),content:@Composable ()->Unit) {
+    actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
@@ -36,11 +36,11 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
             contentWindowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ Text(title,maxLines=2,overflow=TextOverflow.Ellipsis) },Modifier.testTag("large-page-bar"),
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
-                navigationIcon={ IconButton(feedbackClick(back)) { Icon(Icons.AutoMirrored.Filled.ArrowBack,backLabel) } },
+                navigationIcon={ PageBackNavigation(back,backLabel,backTag,host.loading?.value==true) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) },scrollBehavior=behavior)
             else TopAppBar(title={ Text(title,maxLines=1,overflow=TextOverflow.Ellipsis) },modifier=Modifier.testTag("small-page-bar"),
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
-                navigationIcon={ IconButton(feedbackClick(back)) { Icon(Icons.AutoMirrored.Filled.ArrowBack,backLabel) } },
+                navigationIcon={ PageBackNavigation(back,backLabel,backTag,host.loading?.value==true) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) }) }) { insets ->
             Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)) { content() }
         }

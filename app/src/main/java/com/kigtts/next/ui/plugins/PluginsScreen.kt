@@ -23,6 +23,7 @@ import com.kigtts.plugin.api.*
 import kotlinx.coroutines.launch
 import com.kigtts.next.ui.navigation.RegisterPageActions
 import com.kigtts.next.ui.navigation.ToolbarAction
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
 fun PluginsScreen(model: AppViewModel) {
@@ -31,6 +32,8 @@ fun PluginsScreen(model: AppViewModel) {
     var pending by remember { mutableStateOf<PendingPackage?>(null) }
     var remove by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val state by model.state.collectAsStateWithLifecycle()
+    val working = busy || state.busyPlugins.isNotEmpty()
     DisposableEffect(Unit) { onDispose { pending?.file?.delete() } }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -42,10 +45,10 @@ fun PluginsScreen(model: AppViewModel) {
     }
     val rows = pluginManagementItems(model)
     RegisterPageActions(listOf(
-        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!busy) { importer.launch(arrayOf("*/*")) },
-        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!busy) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
+        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working) { importer.launch(arrayOf("*/*")) },
+        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
-    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), busy,
+    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), working,
         invoke = { action, inputs ->
             val pieces = action.split('/')
             when (pieces[0]) {

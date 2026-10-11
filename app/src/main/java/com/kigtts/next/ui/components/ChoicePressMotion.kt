@@ -51,7 +51,7 @@ internal fun Modifier.choicePressFeedback(motion: ChoicePressMotion) = pointerIn
             do {
                 val change = awaitPointerEvent(PointerEventPass.Final).changes.firstOrNull { it.id == down.id } ?: break
                 // Clickable consumes the initial down too. Only a consumed move indicates scroll takeover.
-                if (change.pressed && change.position != change.previousPosition && change.isConsumed && !cancelled) { cancelled = true; motion.release(true) }
+                if (change.pressed && change.previousPressed && change.position != change.previousPosition && change.isConsumed && !cancelled) { cancelled = true; motion.release(true) }
             } while (change.pressed)
         } finally { if (!cancelled) motion.release(false) }
     }

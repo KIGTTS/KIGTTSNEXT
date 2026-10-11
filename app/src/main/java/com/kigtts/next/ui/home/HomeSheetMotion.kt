@@ -12,6 +12,7 @@ import com.kigtts.next.state.*
 import com.kigtts.next.state.HomePanelSizes.COLLAPSED
 import kotlinx.coroutines.launch
 import com.kigtts.next.ui.components.rememberDragFeedback
+import com.kigtts.next.ui.components.AnchorFeedback
 import kotlin.math.abs
 
 @Stable
@@ -33,7 +34,10 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
     val scope = rememberCoroutineScope()
     val feedback = rememberDragFeedback()
     val latestFeedback by rememberUpdatedState(feedback)
-    val maximum = (availableHeight - 64f - 180f).coerceAtLeast(HomePanelSizes.PEEK)
+    val geometry = remember(availableHeight) { PortraitPanelGeometry(availableHeight) }
+    val maximum = geometry.maximum
+    val latestGeometry by rememberUpdatedState(geometry)
+    val snapFeedback = remember(feedback) { AnchorFeedback(feedback) }
     val animation = remember { Animatable(if (state.panel == null) COLLAPSED else state.panelHeight) }
     val dragging = remember { mutableStateOf(false) }
     val dragHeight = remember { mutableFloatStateOf(COLLAPSED) }
@@ -45,7 +49,7 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
         currentPanel.value ?: retainedPanel.value.takeIf { height.value > COLLAPSED + 1f }
     } }
     LaunchedEffect(state.panel) { if (state.panel != null) retainedPanel.value = state.panel }
-    val target = if (state.panel == null) COLLAPSED else state.panelHeight.coerceIn(COLLAPSED, maximum)
+    val target = if (state.panel == null) COLLAPSED else geometry.nearest(state.panelHeight.coerceIn(COLLAPSED, maximum))
     val spring = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     LaunchedEffect(target, dragging.value) {
         if (dragging.value) animation.stop() else animation.animateTo(target, spring)
@@ -56,6 +60,7 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
             dragHeight.floatValue = height.value.coerceIn(COLLAPSED, maximum)
             dragging.value = true
             latestFeedback.start(dragHeight.floatValue)
+            snapFeedback.start(dragHeight.floatValue, latestGeometry.anchors)
             if (startedClosed.value) model.openPanel(HomePanel.QUICK_TEXT, dragHeight = COLLAPSED)
         }
     } }
@@ -64,22 +69,18 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
         val before = dragHeight.floatValue
         val after = (before - delta / density).coerceIn(COLLAPSED, maximum)
         dragHeight.floatValue = after
-        latestFeedback.move(after)
+        snapFeedback.move(after, latestGeometry.anchors)
         (before - after) * density
     } }
     val settle = remember(model, maximum, scope) { { velocity: Float ->
         if (dragging.value) {
             latestFeedback.finish()
             val current = dragHeight.floatValue
-            val restored = model.state.value.lastExpandedPanelHeight.coerceIn(HomePanelSizes.PEEK, maximum)
-            val anchors = listOf(COLLAPSED, HomePanelSizes.PEEK, 340f, restored, maximum)
-                .map { it.coerceIn(COLLAPSED, maximum) }.distinct().sorted()
-            val nearest = anchors.minBy { abs(it - current) }
+            val restored = latestGeometry.nearest(model.state.value.lastExpandedPanelHeight.coerceIn(HomePanelSizes.PEEK, maximum))
+            val nearest = latestGeometry.settle(current, velocity)
             val anchor = when {
                 current <= COLLAPSED + 12f -> COLLAPSED
                 startedClosed.value -> maxOf(restored, nearest)
-                velocity < -600 -> anchors.firstOrNull { it > current + 12f } ?: anchors.last()
-                velocity > 600 -> anchors.lastOrNull { it < current - 12f } ?: anchors.first()
                 else -> nearest
             }
             scope.launch {
@@ -99,7 +100,7 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
             if (value <= COLLAPSED) model.closePanel()
             else {
                 if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT)
-                model.panelHeight(value.coerceIn(COLLAPSED, maximum))
+                model.panelHeight(latestGeometry.nearest(value.coerceIn(COLLAPSED, maximum)))
             }
             true
         }

@@ -24,6 +24,25 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
 class LandscapeHomeTest {
+    @Test fun draggingToCollapsedRestoresTheLargePillBeforeTheFingerIsReleasedEvenWithPluginSlots() {
+        val model=show();val density=compose.activity.resources.displayMetrics.density
+        compose.runOnIdle {
+            model.panelColumns(2);model.openPanel(HomePanel.QUICK_TEXT)
+            repeat(2) { model.invoke("debug.ui","QUICK_PANEL_START/add");model.invoke("debug.ui","QUICK_PANEL_END/add") }
+        }
+        compose.waitForIdle();compose.mainClock.autoAdvance=false
+        compose.onNodeWithTag("sheet-handle").performTouchInput { down(center);moveBy(Offset(280f*density,0f),delayMillis=500) }
+        repeat(40) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
+        assertEquals(HomePanel.QUICK_TEXT,model.state.value.panel)
+        assertEquals(64f,compose.onNodeWithTag("landscape-quick-panel").widthDp(),.5f)
+        val pill=compose.onNodeWithTag("dock-main").getUnclippedBoundsInRoot()
+        assertEquals(48f,(pill.right-pill.left).value,.5f);assertEquals(160f,(pill.bottom-pill.top).value,.5f)
+        for(tag in listOf("dock-start","dock-end"))assertEquals(48f,compose.onNodeWithTag(tag).widthDp(),.5f)
+        compose.onRoot().captureRoboImage("build/previews/landscape-dragged-closed-before-release.png")
+        compose.onNodeWithTag("sheet-handle").performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(1200);compose.mainClock.autoAdvance=true
+        assertNull(model.state.value.panel);assertEquals(2,model.state.value.panelColumns)
+    }
     @Test fun landscapeDocksUseCircularSideButtonsLargerPillAndTheRequestedVerticalOrder() {
         val model=show()
         fun bounds(tag:String)=compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()

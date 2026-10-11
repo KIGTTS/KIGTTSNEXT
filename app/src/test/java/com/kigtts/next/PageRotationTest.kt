@@ -38,7 +38,7 @@ class PageRotationTest {
         compose.mainClock.autoAdvance = true
     }
 
-    @Test fun fullScreenPhraseDraftSurvivesRecreationWithoutRepeatingTheContainerEntrance() {
+    @Test fun phraseEditorPageSurvivesRecreationWithoutRepeatingTheEntrance() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         compose.runOnIdle { model.openPanel(com.kigtts.next.state.HomePanel.QUICK_TEXT); model.editQuickTexts() }
         compose.onNodeWithTag("edit-phrase-" + model.phrases.value.first().id).performClick()
@@ -49,8 +49,10 @@ class PageRotationTest {
         compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
         compose.onNodeWithTag("phrase-detail-text").assertTextContains("旋转保留草稿")
         compose.onNodeWithTag("phrase-detail-title").assertTextContains("缩略标题草稿")
-        assertEquals(compose.onNode(isDialog()).getUnclippedBoundsInRoot(),
-            compose.onNodeWithTag("phrase-dialog-container").getUnclippedBoundsInRoot())
+        compose.onNode(isDialog()).assertDoesNotExist()
+        assertTrue(model.state.value.destination is Destination.PhraseEditor)
+        val token = model.content.phraseDraft.value!!.key
+        assertEquals(0f, compose.onNodeWithTag("page-layer/1/phrase-editor/" + token).getUnclippedBoundsInRoot().left.value, .1f)
         compose.mainClock.autoAdvance = true
     }
 }

@@ -76,12 +76,13 @@ class ListeningResponsiveTest {
     }
     @Test fun expandingQuickSheetAlsoCompactsAndHidesListeningWithoutTurningItOff() {
         val model = model()
-        compose.setContent { KigttsApp(model) }
-        compose.runOnIdle { model.toggleListening(); model.captionHeight(190f); model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(490f) }
+        var viewport by mutableFloatStateOf(810f)
+        compose.setContent { Box(Modifier.height(viewport.dp)) { KigttsApp(model) } }
+        compose.runOnIdle { model.toggleListening(); model.captionHeight(190f); model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(460f) }
         val compact = compose.onNodeWithTag("listening-card").getUnclippedBoundsInRoot()
         assertEquals(40f, (compact.bottom - compact.top).value, .5f)
         compose.onRoot().captureRoboImage("build/previews/listening-compact-with-quick-sheet.png")
-        compose.runOnIdle { model.panelHeight(600f) }
+        compose.runOnIdle { viewport=752f }
         compose.onNodeWithTag("captions").assertDoesNotExist()
         compose.runOnIdle { assertTrue(model.state.value.captionsVisible); model.closePanel() }
         val restored = compose.onNodeWithTag("listening-card").getUnclippedBoundsInRoot()

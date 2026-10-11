@@ -4,14 +4,10 @@ package com.kigtts.next.ui.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
@@ -19,30 +15,16 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.feedbackChange
-import com.kigtts.next.ui.components.LocalDialogFormMotion
 
 @Composable
-internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, model: AppViewModel,
-    enabled: Boolean, close: (() -> Unit) -> Unit, dismiss: () -> Unit) {
+internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, model: AppViewModel, enabled: Boolean) {
     var title by rememberSaveable(draft.key) { mutableStateOf(draft.title) }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    fun finish(action: () -> Unit) { focus.clearFocus(); keyboard?.hide(); close(action) }
     LaunchedEffect(draft.title) { if (title != draft.title) title = draft.title }
     var chooseGroup by remember { mutableStateOf(false) }
-    val motion = LocalDialogFormMotion.current
-    Scaffold(Modifier.fillMaxSize().testTag("phrase-fullscreen-form"), containerColor = Color.Transparent,
-        contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
-        topBar = { TopAppBar(title = { Text(if (draft.phraseId == null) "添加快捷文本" else "编辑快捷文本") },
-            modifier = Modifier.graphicsLayer { alpha = motion.header },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            navigationIcon = { IconButton(feedbackClick { finish(dismiss) }, enabled = enabled,
-                modifier = Modifier.testTag("cancel-phrase-details")) { Icon(Icons.Default.Close, "取消") } },
-            actions = { TextButton(feedbackClick {
-                finish { model.content.savePhrase(); model.category(draft.category); dismiss() }
-            }, enabled = enabled && draft.valid(model.mediaRepository), modifier = Modifier.testTag("save-phrase-details")) { Text("保存") } }) }) { insets ->
-        Column(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding()
-            .graphicsLayer { alpha = motion.body }
+    LaunchedEffect(enabled) { if(!enabled)chooseGroup=false }
+        Column(Modifier.fillMaxSize().testTag("phrase-details-form")
             .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             RichPhraseTextField(draft, model, enabled)
             OutlinedTextField(title, { value -> title = value.replace('\n', ' '); model.content.editPhrase { it.copy(title = title) } },
@@ -63,12 +45,11 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
                 OutlinedButton(feedbackClick { chooseGroup = true }, enabled = enabled, modifier = Modifier.testTag("phrase-detail-category")) {
                     Text("分组：" + draft.category)
                 }
-                DropdownMenu(chooseGroup, { chooseGroup = false }) {
+                DropdownMenu(chooseGroup && enabled, { chooseGroup = false }) {
                     categories.forEach { group -> DropdownMenuItem(text = { Text(group) }, onClick = feedbackClick {
                         model.content.editPhrase { it.copy(category = group) }; chooseGroup = false
                     }) }
                 }
             }
         }
-    }
 }

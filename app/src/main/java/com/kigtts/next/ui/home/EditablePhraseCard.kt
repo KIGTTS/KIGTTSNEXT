@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.QuickPhrase
 import com.kigtts.next.ui.components.*
 
-internal val QuickPhraseHeight = 88.dp
+internal val QuickPhraseHeight = com.kigtts.next.state.HomePanelSizes.ROW_HEIGHT.dp
 
 @Composable
 fun EditablePhraseCard(phrase: QuickPhrase, edit: () -> Unit, delete: () -> Unit,

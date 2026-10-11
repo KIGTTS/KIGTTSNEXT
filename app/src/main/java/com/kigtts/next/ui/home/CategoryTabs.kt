@@ -35,15 +35,28 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
     val categoryIcons by model.quickTexts.categoryIcons.collectAsStateWithLifecycle()
     val sources = categories.map { category -> key(category) { remember { MutableInteractionSource() } } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
+    val feedback = rememberDragFeedback()
+    val accessibleFeedback = feedbackClick {}
     val drag = rememberReorderDrag({ list.layoutInfo.visibleItemsInfo.mapNotNull { item ->
         (item.key as? String)?.takeIf { it.startsWith("category/") }?.removePrefix("category/")?.takeIf { it in categories }?.let {
             ReorderTarget(it, Rect(item.offset.toFloat(), 0f, (item.offset + item.size).toFloat(), list.layoutInfo.viewportSize.height.toFloat()))
         }
-    } }, horizontalOnly = true, animateDrop = true, move = { from, to ->
+    } }, horizontalOnly = true, animateDrop = true, feedback = feedback, move = { from, to ->
         if (viewportRestore == null) viewportRestore = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset
+        val before = model.categories.value
         model.quickTexts.moveCategory(from, to)
+        if (model.categories.value != before) feedback.step()
     })
     val drop = rememberReorderDrop(drag)
+    LaunchedEffect(state.selectedCategory,categories,drag.key) {
+        if(drag.key!=null)return@LaunchedEffect
+        val index=categories.indexOf(state.selectedCategory)
+        if(index<0)return@LaunchedEffect
+        val visible=list.layoutInfo.visibleItemsInfo.firstOrNull { it.key=="category/"+state.selectedCategory }
+        if(visible==null || visible.offset<0 || visible.offset+visible.size>list.layoutInfo.viewportSize.width) {
+            list.animateScrollToItem(index)
+        }
+    }
     Row(modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
@@ -53,8 +66,8 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
                 val previous = categories.getOrNull(index - 1); val next = categories.getOrNull(index + 1)
                 val semantics = Modifier.semantics {
                     if (editing) customActions = listOfNotNull(
-                        previous?.let { CustomAccessibilityAction("向前移动分组") { model.quickTexts.moveCategory(category, it); true } },
-                        next?.let { CustomAccessibilityAction("向后移动分组") { model.quickTexts.moveCategory(category, it); true } })
+                        previous?.let { CustomAccessibilityAction("向前移动分组") { model.quickTexts.moveCategory(category, it); accessibleFeedback(); true } },
+                        next?.let { CustomAccessibilityAction("向后移动分组") { model.quickTexts.moveCategory(category, it); accessibleFeedback(); true } })
                 }
                 val selected = state.selectedCategory == category
                 ElasticTab(selected, { if (editing && selected) editGroup(category) else model.category(category) }, sources[index],

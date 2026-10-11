@@ -17,6 +17,8 @@ import androidx.compose.ui.window.PopupProperties
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import java.io.File
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 
 @Composable
 internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier, dragGrip: Modifier, reorderable: Boolean, elevated: Boolean,
@@ -24,9 +26,11 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp) {
     var menu by remember(item.id) { mutableStateOf(false) }
     val primary = item.primaryAction
+    val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        tween(180), label = "managed-selection-color")
     BackHandler(menu) { menu = false }
     Surface(modifier.testTag("managed-item/" + item.id), shape = MaterialTheme.shapes.medium,
-        color = if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+        color = color,
         shadowElevation = shadowElevation) {
         Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
             Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
@@ -36,11 +40,17 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 2)
-                    if (item.pinned) Icon(Icons.Default.PushPin, "已置顶", Modifier.size(16.dp))
-                    if (item.selected) Icon(Icons.Default.CheckCircle, "当前选用", Modifier.size(16.dp))
+                    AnimatedVisibility(item.pinned, enter=fadeIn(tween(160))+expandHorizontally(tween(180)),exit=fadeOut(tween(120))+shrinkHorizontally(tween(180))) {
+                        Icon(Icons.Default.PushPin, "已置顶", Modifier.size(16.dp))
+                    }
+                    AnimatedVisibility(item.selected, enter=fadeIn(tween(160))+expandHorizontally(tween(180)),exit=fadeOut(tween(120))+shrinkHorizontally(tween(180))) {
+                        Icon(Icons.Default.CheckCircle, "当前选用", Modifier.size(16.dp))
+                    }
                 }
-                if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                PageContentMotion(item.subtitle) { subtitle ->
+                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+                }
             }
             item.toggle?.let { toggle ->
                 Switch(toggle.checked, enabled = enabled, onCheckedChange = if (elevated) null else feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },

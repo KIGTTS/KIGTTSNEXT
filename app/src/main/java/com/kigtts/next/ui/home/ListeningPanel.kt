@@ -31,9 +31,11 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val rightWidth = (maxWidth.value - 36f).coerceIn(32f, 68f).dp
             Row(Modifier.fillMaxWidth().height(32.dp).testTag("listening-controls"), verticalAlignment = Alignment.CenterVertically) {
-                if (fontBar) InlineFontBar("聆听字号", state.captionTextSize, 10f..64f, model::setCaptionTextSize,
-                    { fontBar = false }, Modifier.weight(if (horizontal) 1f else .65f))
-                else ElasticButtonGroup(left, Modifier.weight(if (horizontal) 1f else .65f), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
+                FontToolbarSwap(fontBar, "聆听字号", Modifier.weight(if (horizontal) 1f else .65f)) { expanded ->
+                if (expanded) InlineFontBar("聆听字号", state.captionTextSize, 10f..64f, model::setCaptionTextSize,
+                    { fontBar = false }, Modifier.fillMaxWidth())
+                else ElasticButtonGroup(left, Modifier.fillMaxWidth(), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
+                }
                 Spacer(if (horizontal) Modifier.width(4.dp) else Modifier.weight(.05f))
                 ElasticButtonGroup(listOf(ElasticAction("listening-font-size", "调整聆听字号", Icons.Default.ZoomIn,
                     { fontBar = !fontBar })) + right, if (horizontal) Modifier.width(rightWidth) else Modifier.weight(.3f), alignEnd = true,

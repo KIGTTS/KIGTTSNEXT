@@ -20,10 +20,11 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 @Composable
 fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<Float>,
     change: (Float) -> Unit, dismiss: () -> Unit, modifier: Modifier = Modifier, valueDescription: String? = null) {
-    BackHandler(LocalPageActive.current) { dismiss() }
+    val active = LocalPageActive.current
+    BackHandler(active) { dismiss() }
     val source = remember { MutableInteractionSource() }
     Row(modifier.height(32.dp).testTag("inline-" + label), verticalAlignment = Alignment.CenterVertically) {
-        Slider(value, change, valueRange = range,
+        Slider(value, change, valueRange = range, enabled = active,
             modifier = Modifier.weight(1f).height(32.dp).semantics {
                 contentDescription = label + "滑条"
                 if (valueDescription != null) stateDescription = valueDescription
@@ -31,6 +32,6 @@ fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<F
             thumb = { SliderDefaults.Thumb(source, modifier = Modifier.testTag("font-thumb-" + label), thumbSize = DpSize(4.dp, 24.dp)) },
             track = { SliderDefaults.Track(it, trackCornerSize = 4.dp, modifier = Modifier.height(8.dp)) })
         Spacer(Modifier.width(4.dp))
-        ToolButton("完成" + label + "调整", Icons.Default.Check, dismiss)
+        ToolButton("完成" + label + "调整", Icons.Default.Check, { if (active) dismiss() })
     }
 }

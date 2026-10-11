@@ -2,6 +2,9 @@ package com.kigtts.next
 
 import android.app.Application
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.hapticfeedback.*
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -22,13 +25,29 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class CategoryInteractionTest {
+    @Test fun swipingToAnOffscreenGroupScrollsItsSelectedTabIntoView() {
+        val model=show()
+        compose.runOnIdle {
+            repeat(12) { model.quickTexts.addCategory("扩展分组$it") }
+            model.category("扩展分组8")
+        }
+        compose.waitForIdle()
+        val tab=compose.onNodeWithTag("category-扩展分组8");tab.assertIsDisplayed()
+        compose.onNodeWithTag("category-content-transition").performTouchInput { swipeLeft() }
+        compose.waitForIdle();assertEquals("扩展分组9",model.state.value.selectedCategory)
+        val area=compose.onNodeWithTag("category-tabs").getUnclippedBoundsInRoot()
+        val selected=compose.onNodeWithTag("category-扩展分组9").getUnclippedBoundsInRoot()
+        assertTrue(selected.left>=area.left);assertTrue(selected.right<=area.right)
+    }
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val density get() = compose.activity.resources.displayMetrics.density
+    private val ticks = mutableListOf<HapticFeedbackType>()
     private fun show(editing: Boolean = false): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "interaction", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
         return testAppModel(app).also { model ->
-            compose.setContent { KigttsApp(model) }
+            val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }
+            compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { KigttsApp(model) } }
             compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); if (editing) model.editQuickTexts() }
             compose.waitForIdle()
         }
@@ -70,16 +89,20 @@ class CategoryInteractionTest {
         val from = point(compose.onNodeWithTag("category-grip-生活", useUnmergedTree = true), tabs)
         val target = point(compose.onNodeWithTag("category-常用"), tabs)
         val initial = compose.onNodeWithTag("category-生活").getUnclippedBoundsInRoot()
+        ticks.clear()
         compose.mainClock.autoAdvance = false
         tabs.performTouchInput { down(from); moveTo(Offset(target.x, from.y + 120f * density), delayMillis = 300) }
         compose.mainClock.advanceTimeBy(400); compose.waitForIdle()
         val moving = compose.onNodeWithTag("category-生活").getUnclippedBoundsInRoot()
+        assertEquals(1, ticks.count { it == HapticFeedbackType.GestureThresholdActivate })
+        assertTrue(ticks.contains(HapticFeedbackType.SegmentFrequentTick))
         assertEquals(initial.top.value, moving.top.value, .5f)
         compose.onNodeWithTag("category-生活").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "正在拖动分组"))
         capture("category-horizontal-drag-shadow")
         tabs.performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1200); compose.mainClock.autoAdvance = true
         assertEquals(listOf("生活", "常用", "收藏", "出行"), model.categories.value)
+        assertEquals(1, ticks.count { it == HapticFeedbackType.GestureEnd })
         compose.onNodeWithTag("edit-category-name").assertDoesNotExist()
     }
     @Test fun edgeDwellTransfersTwiceWithoutInterruptingThePointerOrLosingIdentity() {

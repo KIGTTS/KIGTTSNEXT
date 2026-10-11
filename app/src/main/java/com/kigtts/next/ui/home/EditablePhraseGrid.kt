@@ -23,9 +23,9 @@ import com.kigtts.next.ui.components.*
 @Composable
 fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (QuickPhrase) -> Unit,
     delete: (QuickPhrase) -> Unit, add: () -> Unit, modifier: Modifier,
-    drag: ReorderDrag, active: Boolean = true, hiddenPhraseId: String? = null,
-    onBounds: (String, PhraseDialogAnchor) -> Unit = { _, _ -> }, onAddBounds: (PhraseDialogAnchor) -> Unit = {}, columns: Int = 2) {
+    drag: ReorderDrag, active: Boolean = true, columns: Int = 2) {
     val grid = rememberLazyGridState()
+    val accessibleFeedback = feedbackClick {}
     var viewportRestore by remember { mutableStateOf<Pair<Int, Int>?>(null) }
     LaunchedEffect(phrases.map { it.id }) {
         viewportRestore?.let { (index, offset) -> grid.requestScrollToItem(index, offset); viewportRestore = null }
@@ -40,7 +40,9 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
     }
     val move: (String, String) -> Unit = { from, to ->
         if (viewportRestore == null) viewportRestore = grid.firstVisibleItemIndex to grid.firstVisibleItemScrollOffset
+        val before = model.phrases.value
         model.quickTexts.movePhrase(from, to)
+        if (model.phrases.value != before) drag.feedback?.step()
     }
     val latestMove by rememberUpdatedState(move)
     val provider = remember(grid, drag) { { targets().map { it.copy(bounds = it.bounds.translate(root - drag.origin)) } } }
@@ -60,23 +62,20 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
             val previous = phrases.getOrNull(index - 1); val next = phrases.getOrNull(index + 1)
             val actions = Modifier.semantics {
                 customActions = listOfNotNull(
-                    previous?.let { CustomAccessibilityAction("向前移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } },
-                    next?.let { CustomAccessibilityAction("向后移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); true } })
+                    previous?.let { CustomAccessibilityAction("向前移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); accessibleFeedback(); true } },
+                    next?.let { CustomAccessibilityAction("向后移动条目") { model.quickTexts.movePhrase(phrase.id, it.id); accessibleFeedback(); true } })
             }
             val neighbors = CornerNeighbors(start = index % columns > 0, end = index % columns < columns - 1 && index < phrases.lastIndex,
                 above = index >= columns, below = index + columns < phrases.size)
             EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) }, neighbors,
                 Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                    .then(if (drag.key == phrase.id || hiddenPhraseId == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
-                    .then(actions).testTag("edit-phrase-" + phrase.id).onGloballyPositioned {
-                        if (active) onBounds(phrase.id, PhraseDialogAnchor(it.boundsInWindow(), neighbors))
-                    }, grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier, repository = model.mediaRepository)
+                    .then(if (drag.key == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
+                    .then(actions).testTag("edit-phrase-" + phrase.id),
+                    grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier, repository = model.mediaRepository)
         }
         item(key = "add-phrase") {
-            TextButton(onClick = feedbackClick(add), modifier = Modifier.height(QuickPhraseHeight).testTag("add-phrase").onGloballyPositioned {
-                if (active) onAddBounds(PhraseDialogAnchor(it.boundsInWindow()))
-            },
+            TextButton(onClick = feedbackClick(add), modifier = Modifier.height(QuickPhraseHeight).testTag("add-phrase"),
                 shapes = expressivePillShapes(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
                 Icon(Icons.Default.Add, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp))
                 Text("添加快捷文本", style = MaterialTheme.typography.labelMedium)

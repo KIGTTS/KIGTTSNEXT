@@ -88,6 +88,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun navigateBack() {
         if (state.value.destination is Destination.ContentEditor && content.requestDiscard()) return
+        if (state.value.destination is Destination.PhraseEditor) content.cancelPhrase()
         val previous = if (navigationHistory.isEmpty()) Destination.Home else navigationHistory.removeLast()
         update { it.copy(destination = previous, navigationStack = navigationHistory.toList(), editing = false) }
     }
@@ -113,6 +114,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun closeSidePage() { update { it.copy(sidePage = null) } }
     fun closePanel() { update { it.copy(panel = null, quickTextEditing = false) } }
     fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false, forcedFullscreen = false) } }
+    fun editPhraseDetails(phrase: QuickPhrase?, category: String) {
+        content.beginPhrase(phrase, category)
+        navigate(Destination.PhraseEditor(requireNotNull(content.phraseDraft.value).key, phrase == null))
+    }
     fun finishQuickTextEditing() { update { it.copy(quickTextEditing = false) } }
     fun panelHeight(height: Float) {
         val value = height.coerceAtLeast(HomePanelSizes.COLLAPSED)
@@ -259,12 +264,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     fun changePlugin(id: String, enabled: Boolean? = null) {
+        if (id in state.value.busyPlugins) return
+        update { it.copy(busyPlugins = it.busyPlugins + id) }
         viewModelScope.launch {
             try {
                 speech.stopAll()
                 if (enabled == null) pluginManager.uninstall(id) else pluginManager.enable(id, enabled)
                 refreshPlugins()
             } catch (error: Exception) { message(error.message ?: "插件操作失败") }
+            finally { update { it.copy(busyPlugins = it.busyPlugins - id) } }
         }
     }
     suspend fun stopSpeech() = speech.stopAll()

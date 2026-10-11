@@ -91,7 +91,8 @@ class MediaUiTest {
         val imported = model.content.phraseDraft.value!!.mediaId!!
         assertNotEquals(entry.id, imported)
         compose.onNodeWithTag("phrase-detail-text").assertTextContains("图片条目")
-        assertEquals(compose.onNode(isDialog()).getUnclippedBoundsInRoot(), compose.onNodeWithTag("phrase-dialog-container").getUnclippedBoundsInRoot())
+        compose.onNode(isDialog()).assertDoesNotExist()
+        assertTrue(model.state.value.destination is Destination.PhraseEditor)
         compose.onNodeWithTag("save-phrase-details").performClick()
         compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         compose.runOnIdle { val phrase = model.phrases.value.last(); assertEquals(imported, phrase.mediaId); assertEquals(QuickCardType.MEDIA, phrase.type); model.finishQuickTextEditing(); model.content.send(phrase) }

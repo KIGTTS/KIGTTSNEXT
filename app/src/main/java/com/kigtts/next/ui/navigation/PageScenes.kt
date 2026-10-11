@@ -25,6 +25,7 @@ data class PageEntry(val scene: PageScene, val depth: Int,
             is Destination.PluginPage -> destination.pluginId + "/" + destination.pageId
             is Destination.MediaLibrary -> "media/" + destination.target
             is Destination.ContentEditor -> "content-editor/" + destination.token
+            is Destination.PhraseEditor -> "phrase-editor/" + destination.token
         }
     }
 }

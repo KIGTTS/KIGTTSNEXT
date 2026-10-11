@@ -16,6 +16,8 @@ import com.kigtts.next.ui.management.ManagedItemList
 import com.kigtts.next.ui.navigation.LocalPageToolbarActions
 import com.kigtts.next.ui.navigation.RegisterPageActions
 import com.kigtts.next.ui.navigation.ToolbarAction
+import com.kigtts.next.ui.navigation.RegisterPageLoading
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 @Composable
 fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAction) -> Unit, modifier: Modifier = Modifier,
@@ -40,19 +42,23 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 
 @Composable
 fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, invoke: (String, Map<String, String>) -> Unit) {
-    if (page == null) { Text("插件页面暂不可用", Modifier.padding(24.dp)); return }
+    RegisterPageLoading(busy)
+    if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
     if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
         ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy) { invoke(action.id,emptyMap()) }
     })
     val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
     page.management?.let { list ->
-        ManagedItemList(list, busy, resolve, invoke) { blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } } }
+        ManagedItemList(list, busy, resolve, invoke) { PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            shown.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+        } } }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        if (busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("正在处理插件任务…") }
-        blocks.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+        PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+            shown.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+        } }
     }
 }
 
@@ -65,7 +71,10 @@ private fun RenderBlock(block: PageBlock, invoke: (String) -> Unit) {
         }
         is PageBlock.Actions -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             block.actions.forEach { action ->
-                FilledTonalButton(onClick = feedbackClick { invoke(action.id) }, shapes = expressivePillShapes()) {
+                val source=remember(action.id) { MutableInteractionSource() }
+                val press=rememberImmediateButtonPress(source)
+                FilledTonalButton(onClick = feedbackClick { press.click();invoke(action.id) },
+                    modifier=Modifier.immediateButtonPress(press),interactionSource=press.native,shapes = expressivePillShapes()) {
                     Icon(action.icon.vector(), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(action.label)
                 }
             }

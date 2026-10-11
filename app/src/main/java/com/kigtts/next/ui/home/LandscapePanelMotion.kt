@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.rememberDragFeedback
+import com.kigtts.next.ui.components.AnchorFeedback
 import kotlinx.coroutines.launch
 
 @Stable
@@ -28,6 +29,7 @@ fun rememberLandscapePanel(state: AppState, model: AppViewModel, availableWidth:
     val density = LocalDensity.current.density
     val scope = rememberCoroutineScope()
     val feedback = rememberDragFeedback()
+    val snapFeedback = remember(feedback) { AnchorFeedback(feedback) }
     val latestFeedback by rememberUpdatedState(feedback)
     val latestGeometry by rememberUpdatedState(geometry)
     val target = if (state.panel == null) LandscapePanelGeometry.COLLAPSED
@@ -52,15 +54,15 @@ fun rememberLandscapePanel(state: AppState, model: AppViewModel, availableWidth:
             rawWidth.floatValue = width.value
             dragging.value = true
             latestFeedback.start(rawWidth.floatValue)
+            snapFeedback.start(rawWidth.floatValue, latestGeometry.anchors)
             if (startedClosed.value) model.openPanel(HomePanel.QUICK_TEXT)
         }
     } }
     val move = remember(start, density) { { delta: Float ->
         start()
-        val before = columns.value
         rawWidth.floatValue = (rawWidth.floatValue - delta / density)
             .coerceIn(LandscapePanelGeometry.COLLAPSED, latestGeometry.maximum)
-        if (columns.value != before) latestFeedback.step()
+        snapFeedback.move(rawWidth.floatValue, latestGeometry.anchors)
     } }
     val settle = remember(model, scope, density) { { velocity: Float ->
         if (dragging.value) {

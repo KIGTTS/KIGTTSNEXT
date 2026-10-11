@@ -22,14 +22,15 @@ fun ElasticTab(selected: Boolean, click: () -> Unit, source: MutableInteractionS
     icon: @Composable () -> Unit, label: @Composable () -> Unit,
     trailingIcon: (@Composable () -> Unit)? = null, dragging: Boolean = false) {
     val pressed by source.collectIsPressedAsState()
-    val shape = connectedShape(neighbors, pressed, neighborPressed, outer = 16.dp)
+    val press=rememberImmediateButtonPress(source)
+    val shape = connectedShape(if(selected)CornerNeighbors() else neighbors, pressed, neighborPressed && !selected, outer = 16.dp)
     val elevation by animateDpAsState(if (dragging) 8.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "tab-drag-elevation")
     val restingBorder = FilterChipDefaults.filterChipBorder(enabled = true, selected = selected)
     val borderColor by animateColorAsState(if (dragging) Color.Transparent else (restingBorder.brush as SolidColor).value,
         MaterialTheme.motionScheme.fastEffectsSpec(), label = "tab-drag-border")
-    FilterChip(selected, feedbackClick(click), label, modifier.height(32.dp)
+    FilterChip(selected, feedbackClick { press.click();click() }, label, modifier.immediateButtonPress(press).height(32.dp)
         .semantics { if (dragging) stateDescription = "正在拖动分组" },
-        interactionSource = source, leadingIcon = icon, trailingIcon = trailingIcon,
+        interactionSource = press.native, leadingIcon = icon, trailingIcon = trailingIcon,
         colors = compactTabColors(dragging),
         border = BorderStroke(restingBorder.width, borderColor),
         elevation = FilterChipDefaults.filterChipElevation(elevation = elevation, pressedElevation = elevation,

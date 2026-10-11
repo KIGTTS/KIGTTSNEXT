@@ -13,7 +13,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         savedInstanceState?.getString("quick-phrase-draft")?.let { draft ->
-            if(model.content.restorePhraseDraft(draft))model.editQuickTexts()
+            if(model.content.restorePhraseDraft(draft)) {
+                model.editQuickTexts()
+                val restored = requireNotNull(model.content.phraseDraft.value)
+                model.navigate(com.kigtts.next.state.Destination.PhraseEditor(restored.key, restored.phraseId == null))
+            }
         }
         enableEdgeToEdge()
         setContent { KigttsApp(model) }

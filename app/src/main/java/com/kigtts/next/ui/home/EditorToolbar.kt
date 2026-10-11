@@ -25,10 +25,12 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     val end = (if (state.mediaId == null) listOf(ElasticAction("editor-font-size", "调整字幕字号", Icons.Default.ZoomIn, { fontBar = !fontBar })) else emptyList()) + registeredEnd
     Box {
         Row(Modifier.fillMaxWidth()) {
-            if (fontBar) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
-                { fontBar = false }, Modifier.weight(.68f),
+            FontToolbarSwap(fontBar, "字幕字号", Modifier.weight(.68f)) { expanded ->
+            if (expanded) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
+                { fontBar = false }, Modifier.fillMaxWidth(),
                 valueDescription = "单字宽度占屏幕 %.1f%%".format(state.subtitleSizePercent))
-            else ElasticButtonGroup(start, Modifier.weight(.68f), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作")
+            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作")
+            }
             Spacer(Modifier.weight(.02f))
             ElasticButtonGroup(end, Modifier.weight(.3f), alignEnd = true,
                 overflowTag = "editor-top-end-more", overflowLabel = "字幕右上更多操作")

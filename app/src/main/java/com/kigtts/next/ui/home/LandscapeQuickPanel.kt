@@ -63,11 +63,13 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         ToolButton(if (open) "编辑快捷文本" else "名片", if (open) Icons.Default.Edit else Icons.Default.Badge,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
             Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize)
-        SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
-            revision = state.pluginRevision, visible = open)
+        Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
+            SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
+                revision = state.pluginRevision, visible = open && progress > .001f)
+        }
         // This owner never changes when the pill morphs or plugin buttons are inserted.
         Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
-            val thickness by animateFloatAsState(if (motion.active && open) 7f else if (pressed && !open) 44f else 48f - 44f * progress,
+            val thickness by animateFloatAsState(if (pressed && !open) 44f else 48f - 44f * progress + (if (motion.active) 3f * progress else 0f),
                 MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-thickness")
             val length by animateFloatAsState(if (motion.active) 88f else 76f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-length")
             val radius by animateFloatAsState(if (pressed && !open) 8f else 24f - 22f * progress,
@@ -88,8 +90,10 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
                 }
             }
         }
-        SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(32.dp), context = context,
-            revision = state.pluginRevision, visible = open)
+        Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
+            SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(32.dp), context = context,
+                revision = state.pluginRevision, visible = open && progress > .001f)
+        }
         ToolButton(if (open) "收起快捷文本" else "画板", if (open) Icons.Default.ChevronRight else Icons.Default.Draw,
             { if (open) model.closePanel() else model.openSidePage(SidePage.SKETCH) },
             Modifier.size(sideSize).testTag("dock-end"), shapes = shape, size = sideSize)
