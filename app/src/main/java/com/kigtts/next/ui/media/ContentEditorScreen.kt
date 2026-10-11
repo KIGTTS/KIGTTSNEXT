@@ -1,5 +1,8 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.ui.components.MotionIconButton
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -52,8 +55,8 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row {
             key(revision) {
-                IconButton(feedbackClick { if (undo.isNotEmpty()) { redo.addLast(value); value = undo.removeLast(); revision++ } }, enabled = undo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
-                IconButton(feedbackClick { if (redo.isNotEmpty()) { undo.addLast(value); value = redo.removeLast(); revision++ } }, enabled = redo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
+                MotionIconButton(feedbackClick { if (undo.isNotEmpty()) { redo.addLast(value); value = undo.removeLast(); revision++ } }, enabled = undo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
+                MotionIconButton(feedbackClick { if (redo.isNotEmpty()) { undo.addLast(value); value = redo.removeLast(); revision++ } }, enabled = redo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
             }
         }
         if (entry.html) OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("内容名称") }, singleLine = true)
@@ -62,14 +65,14 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
             label = { Text(if (entry.html) "HTML 源码" else "文本内容") }, textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = if (entry.html) FontFamily.Monospace else FontFamily.Default))
     }
     if (active && pending) MotionAlertDialog(onDismissRequest = model.content::keepEditor, title = { Text("放弃未保存的修改？") },
-        confirmButton = { TextButton(dialogFeedbackClick(model.content::discardEditor)) { Text("放弃") } },
-        dismissButton = { TextButton(dialogFeedbackClick(model.content::keepEditor)) { Text("继续编辑") } })
+        confirmButton = { MotionTextButton(dialogFeedbackClick(model.content::discardEditor)) { Text("放弃") } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick(model.content::keepEditor)) { Text("继续编辑") } })
     if (active && search) {
         var find by remember { mutableStateOf("") }; var replacement by remember { mutableStateOf("") }
         MotionAlertDialog(onDismissRequest = { search = false }, title = { Text("查找替换") }, text = { Column {
             OutlinedTextField(find, { find = it }, label = { Text("查找") }); OutlinedTextField(replacement, { replacement = it }, label = { Text("替换为") })
             if (find.isNotEmpty()) Text("找到 " + Regex(Regex.escape(find)).findAll(value).count() + " 处")
-        } }, confirmButton = { TextButton(dialogFeedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text("全部替换") } },
-            dismissButton = { TextButton(dialogFeedbackClick { search = false }) { Text("取消") } })
+        } }, confirmButton = { MotionTextButton(dialogFeedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text("全部替换") } },
+            dismissButton = { MotionTextButton(dialogFeedbackClick { search = false }) { Text("取消") } })
     }
 }

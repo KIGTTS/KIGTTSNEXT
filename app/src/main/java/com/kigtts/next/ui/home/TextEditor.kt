@@ -3,6 +3,9 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -46,13 +49,16 @@ fun TextEditor(
 
 @Composable
 private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+    val reveal by animateFloatAsState(if (state.editing) 1f else 0f,
+        tween(220, easing = FastOutSlowInEasing), label = "cursor-slot-reveal")
+    val progress = reveal.coerceIn(0f, 1f)
+    val middle = .2f + .3f * progress
     Row(modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer"), verticalAlignment = Alignment.CenterVertically) {
         val contentOpen = state.mediaId != null || state.audioId != null
         ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)"关闭" else "清空", if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,
-            { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight(if (state.editing) .25f else .4f))
-        if (state.editing) CursorTrack(model, Modifier.weight(.5f))
-        else Spacer(Modifier.weight(.2f).testTag("editor-bottom-reserved"))
-        Box(Modifier.weight(if (state.editing) .25f else .4f), contentAlignment = Alignment.CenterEnd) {
+            { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight((1f - middle) / 2))
+        CursorTrackSlot(state.editing, model, progress, Modifier.weight(middle))
+        Box(Modifier.weight((1f - middle) / 2), contentAlignment = Alignment.CenterEnd) {
             val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", "全屏", Icons.Default.Fullscreen, model::enterSubtitleFullscreen, iconOnly = false)
                 else ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
                     if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)

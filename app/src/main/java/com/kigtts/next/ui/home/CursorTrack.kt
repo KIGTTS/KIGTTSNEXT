@@ -20,20 +20,20 @@ import com.kigtts.next.ui.components.rememberDragFeedback
 
 /** A relative cursor touch strip, without a Slider value or thumb. */
 @Composable
-fun CursorTrack(model: AppViewModel, modifier: Modifier = Modifier) {
+fun CursorTrack(model: AppViewModel, modifier: Modifier = Modifier, enabled: Boolean = true) {
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var dragging by remember { mutableStateOf(false) }
     val feedback = rememberDragFeedback()
     val latestFeedback by rememberUpdatedState(feedback)
     val press = rememberDragHandlePress(feedback, { 0f }, { dragging })
     val offset by animateFloatAsState(dragOffset, MaterialTheme.motionScheme.fastSpatialSpec(), label = "cursor-strip")
-    Surface(modifier.padding(horizontal = 8.dp).height(32.dp).testTag("cursor-track")
-        .semantics {
+    LaunchedEffect(enabled) { if (!enabled) { dragOffset = 0f; dragging = false } }
+    val input = if (enabled) Modifier.semantics {
             contentDescription = "移动光标"
             customActions = listOf(
                 CustomAccessibilityAction("光标左移") { model.moveCursor(-1); true },
                 CustomAccessibilityAction("光标右移") { model.moveCursor(1); true })
-        }.then(press.modifier).pointerInput(model) {
+        }.then(press.modifier).pointerInput(model, enabled) {
             var remainder = 0f
             val stepWidth = 12.dp.toPx()
             detectHorizontalDragGestures(
@@ -52,7 +52,9 @@ fun CursorTrack(model: AppViewModel, modifier: Modifier = Modifier) {
                 }
                 dragOffset = (dragOffset + amount).coerceIn(-size.width * .3f, size.width * .3f)
             }
-        }, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+        } else Modifier.clearAndSetSemantics { }
+    Surface(modifier.padding(horizontal = 8.dp).height(32.dp).testTag("cursor-track").then(input),
+        shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
         Box(contentAlignment = Alignment.Center) {
             PanelDragIndicator(press.pressed || dragging, "cursor-drag-indicator", Modifier.graphicsLayer { translationX = offset }, baseWidth = 40.dp)
         }

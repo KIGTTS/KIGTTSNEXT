@@ -63,7 +63,7 @@ class PanelInteractionTest {
     }
     @Test fun upwardDragSurvivesBothPluginSlotsAndLiveChangesUntilRelease() {
         val model = show(3)
-        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); model.closePanel() }
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(276f); model.closePanel() }
         compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("dock-main").performTouchInput { down(center); moveBy(Offset(0f, -22f * density)) }
         repeat(12) { step ->
@@ -77,7 +77,7 @@ class PanelInteractionTest {
         capture("dock-plugin-drag-mid")
         compose.onNodeWithTag("dock-main").performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1500); compose.mainClock.autoAdvance = true
-        assertEquals(340f, model.state.value.panelHeight, .1f)
+        assertEquals(276f, model.state.value.panelHeight, .1f)
         compose.onNodeWithTag("QUICK_PANEL_START-more").assertIsDisplayed()
         compose.onNodeWithTag("QUICK_PANEL_END-more").assertIsDisplayed()
         assertTrue(ticks.contains(HapticFeedbackType.GestureThresholdActivate))
@@ -85,10 +85,10 @@ class PanelInteractionTest {
     }
     @Test fun handlesGrowWhileDraggingAndFeedbackCanBeDisabled() {
         val model = show()
-        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f) }
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(276f) }
         val initial = compose.onNodeWithTag("dock-main").getUnclippedBoundsInRoot()
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithTag("sheet-handle").performTouchInput { down(center); moveBy(Offset(0f, -58f * density)) }
+        compose.onNodeWithTag("sheet-handle").performTouchInput { down(center); moveBy(Offset(0f, -102f * density)) }
         compose.mainClock.advanceTimeBy(400); compose.waitForIdle()
         val active = compose.onNodeWithTag("dock-main").getUnclippedBoundsInRoot()
         assertTrue((active.right - active.left).value > (initial.right - initial.left).value + 5f)

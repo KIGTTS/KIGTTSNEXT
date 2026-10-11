@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -71,7 +73,7 @@ fun PluginsScreen(model: AppViewModel) {
                 Text("能力：${manifest.capabilities.joinToString("、")}")
                 Text("发布者 SHA-256：${candidate.preview.publisherSha256}", style = MaterialTheme.typography.bodySmall)
                 Text("仅安装可信来源的插件。插件在独立进程中运行，具有本应用的权限。")
-            } }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(enabled = !busy, onClick = feedbackClick {
+            } }, confirmButton = { val closeDialog = rememberDialogClose(); MotionTextButton(enabled = !busy, onClick = feedbackClick {
                 scope.launch {
                     busy = true
                     try {
@@ -80,10 +82,10 @@ fun PluginsScreen(model: AppViewModel) {
                     } catch (error: Exception) { model.message(error.message ?: "插件安装失败") }
                     finally { closeDialog { candidate.file.delete(); pending = null; busy = false } }
                 }
-            }) { Text("安装") } }, dismissButton = { TextButton(enabled = !busy, onClick = dialogFeedbackClick { candidate.file.delete(); pending = null }) { Text("取消") } })
+            }) { Text("安装") } }, dismissButton = { MotionTextButton(enabled = !busy, onClick = dialogFeedbackClick { candidate.file.delete(); pending = null }) { Text("取消") } })
     }
     remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
         text = { Text("该插件的模型、下载、配置和临时文件也会删除。") },
-        confirmButton = { TextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
-        dismissButton = { TextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
+        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
+        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
 }

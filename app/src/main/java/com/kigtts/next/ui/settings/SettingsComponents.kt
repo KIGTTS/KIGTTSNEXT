@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.ui.components.animateEnabled
+
 import com.kigtts.next.ui.components.feedbackChange
 
 import androidx.compose.foundation.layout.*
@@ -76,6 +78,7 @@ internal fun ToggleSetting(title: String, summary: String, icon: ImageVector, ch
     modifier: Modifier = Modifier, position: SettingPosition = SettingPosition.SINGLE, enabled: Boolean = true) {
     SettingItem(title, summary, icon, position, trailing = {
         Switch(checked, onCheckedChange = feedbackChange(onChange), enabled = enabled,
+            colors = SwitchDefaults.colors().animateEnabled(enabled),
             modifier = modifier.semantics { contentDescription = title })
     })
 }

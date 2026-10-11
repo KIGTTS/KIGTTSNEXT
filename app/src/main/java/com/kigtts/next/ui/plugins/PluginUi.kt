@@ -51,19 +51,19 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
     page.management?.let { list ->
         ManagedItemList(list, busy, resolve, invoke) { PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            shown.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+            shown.forEach { RenderBlock(it, !busy) { action -> invoke(action, emptyMap()) } }
         } } }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         PageContentMotion(blocks) { shown -> Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
-            shown.forEach { RenderBlock(it) { action -> invoke(action, emptyMap()) } }
+            shown.forEach { RenderBlock(it, !busy) { action -> invoke(action, emptyMap()) } }
         } }
     }
 }
 
 @Composable
-private fun RenderBlock(block: PageBlock, invoke: (String) -> Unit) {
+private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String) -> Unit) {
     when (block) {
         is PageBlock.Text -> Text(block.text, style = if (block.heading) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.bodyLarge)
         is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.medium) {
@@ -73,8 +73,10 @@ private fun RenderBlock(block: PageBlock, invoke: (String) -> Unit) {
             block.actions.forEach { action ->
                 val source=remember(action.id) { MutableInteractionSource() }
                 val press=rememberImmediateButtonPress(source)
+                LaunchedEffect(enabled) { if (!enabled) press.cancel() }
                 FilledTonalButton(onClick = feedbackClick { press.click();invoke(action.id) },
-                    modifier=Modifier.immediateButtonPress(press),interactionSource=press.native,shapes = expressivePillShapes()) {
+                    enabled=enabled, colors=ButtonDefaults.filledTonalButtonColors().animateEnabled(enabled),
+                    modifier=if(enabled)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = expressivePillShapes()) {
                     Icon(action.icon.vector(), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(action.label)
                 }
             }
@@ -82,7 +84,7 @@ private fun RenderBlock(block: PageBlock, invoke: (String) -> Unit) {
         is PageBlock.Group -> Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(block.title, style = MaterialTheme.typography.titleMedium)
-                block.children.forEach { RenderBlock(it, invoke) }
+                block.children.forEach { RenderBlock(it, enabled, invoke) }
             }
         }
     }

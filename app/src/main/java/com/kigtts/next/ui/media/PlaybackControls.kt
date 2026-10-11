@@ -1,6 +1,11 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.ui.components.animateEnabled
+import com.kigtts.next.ui.components.enabledContentMotion
+
+import com.kigtts.next.ui.components.MotionIconButton
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -66,10 +71,10 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
                 alpha=visible;scaleX=.82f+.18f*phase;scaleY=scaleX;transformOrigin=TransformOrigin(0f,.5f)
             },verticalAlignment=Alignment.CenterVertically) {
                 WaveSeekBar(state,Modifier.weight(1f),expanded)
-                IconButton(feedbackClick { state.muted=!state.muted;state.player?.volume=if(state.muted)0f else 1f },
+                MotionIconButton(feedbackClick { state.muted=!state.muted;state.player?.volume=if(state.muted)0f else 1f },
                     Modifier.width(48.dp*visible),enabled=expanded) {
                     Icon(if(state.muted)Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,"切换声音") }
-                if(once)IconButton(feedbackClick(close),Modifier.width(48.dp*visible),enabled=expanded) { Icon(Icons.Default.Close,closeLabel) }
+                if(once)MotionIconButton(feedbackClick(close),Modifier.width(48.dp*visible),enabled=expanded) { Icon(Icons.Default.Close,closeLabel) }
             }
         }
     }
@@ -79,8 +84,9 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
 @Composable
 private fun WaveSeekBar(state:PlaybackState,modifier:Modifier,expanded:Boolean) {
     val duration=state.duration.coerceAtLeast(1f)
+    val enabled=expanded&&state.player!=null&&state.duration>1f
     Slider(state.position.coerceIn(0f,duration),{ state.scrubbing=true;state.position=it },modifier.testTag("media-wave-seek"),
-        valueRange=0f..duration,enabled=expanded&&state.player!=null&&state.duration>1f,
+        valueRange=0f..duration,enabled=enabled,colors=SliderDefaults.colors().animateEnabled(enabled),
         onValueChangeFinished={ state.player?.seekTo(state.position.toLong());state.scrubbing=false },
-        track={ slider -> MediaWaveTrack(progress={ (slider.value/duration).coerceIn(0f,1f) },playing=state.playing) })
+        track={ slider -> MediaWaveTrack(progress={ (slider.value/duration).coerceIn(0f,1f) },playing=state.playing,modifier=Modifier.enabledContentMotion(enabled)) })
 }

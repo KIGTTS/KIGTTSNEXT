@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -56,9 +58,9 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
                 }
             }
         },
-        confirmButton = { val closeDialog = rememberDialogClose(); TextButton(onClick = feedbackClick {
+        confirmButton = { val closeDialog = rememberDialogClose(); MotionTextButton(onClick = feedbackClick {
             val saved = if (original == null) model.quickTexts.addCategory(value, icon) else model.quickTexts.editCategory(original, value, icon)
             if (saved) closeDialog { model.category(value); dismiss() }
         }, enabled = value.isNotBlank() && !duplicate, modifier = Modifier.testTag("save-category")) { Text(if (original == null) "添加" else "保存") } },
-        dismissButton = { TextButton(onClick = dialogFeedbackClick(dismiss)) { Text("取消") } })
+        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text("取消") } })
 }

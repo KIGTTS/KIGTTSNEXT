@@ -1,5 +1,9 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.ui.components.animateEnabled
+
+import com.kigtts.next.ui.components.MotionIconButton
+
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -70,15 +74,16 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
         val reveal by animateFloatAsState(if(shown)1f else 0f,tween(180),label="page-action-reveal")
         Box(Modifier.width((48f*reveal).dp).height(48.dp).clipToBounds().graphicsLayer { alpha=reveal }
             .testTag("page-action/" + stored.id)) {
-            IconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled) { Icon(action.icon,action.label) }
+            MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled) { Icon(action.icon,action.label) }
         }
     } }
     AnimatedVisibility(actions.size>2, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180))) {
     Box {
-        IconButton(feedbackClick { more=true },enabled=active) { Icon(Icons.Default.MoreVert,"更多页面操作") }
+        MotionIconButton(feedbackClick { more=true },enabled=active) { Icon(Icons.Default.MoreVert,"更多页面操作") }
         DropdownMenu(more&&active,{ more=false }) {
             actions.drop(2).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ Icon(action.icon,null) },
+                colors=MenuDefaults.itemColors().animateEnabled(action.enabled),
                 enabled=action.enabled,onClick=feedbackClick { more=false;action.click() },modifier=Modifier.testTag(action.id)) }
         }
     }

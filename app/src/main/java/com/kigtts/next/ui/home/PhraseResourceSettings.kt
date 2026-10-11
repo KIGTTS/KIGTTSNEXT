@@ -1,5 +1,9 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.components.animateEnabled
+
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,15 +38,15 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     when (draft.type) {
-        QuickCardType.TEXT -> TextButton(feedbackClick { leave(); model.content.editor(target = "phrase:" + draft.key) }, enabled = enabled) { Text("打开文本编辑器") }
-        QuickCardType.AUDIO -> TextButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
+        QuickCardType.TEXT -> MotionTextButton(feedbackClick { leave(); model.content.editor(target = "phrase:" + draft.key) }, enabled = enabled) { Text("打开文本编辑器") }
+        QuickCardType.AUDIO -> MotionTextButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
             modifier = Modifier.testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
-        QuickCardType.MEDIA -> TextButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+        QuickCardType.MEDIA -> MotionTextButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
             enabled = enabled && !importing, modifier = Modifier.testTag("phrase-choose-media")) { Text(if (entry == null) "选择图片或视频" else "更换图片或视频") }
         QuickCardType.PAGE -> Row {
-            TextButton(feedbackClick { leave(); model.content.editor(html = true, target = "phrase:" + draft.key) }, enabled = enabled,
+            MotionTextButton(feedbackClick { leave(); model.content.editor(html = true, target = "phrase:" + draft.key) }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "编写 HTML" else "编辑 HTML") }
-            TextButton(feedbackClick { leave(); model.content.picker("phrase:" + draft.key) }, enabled = enabled,
+            MotionTextButton(feedbackClick { leave(); model.content.picker("phrase:" + draft.key) }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-choose-page")) { Text("选择页面") }
         }
     }
@@ -52,12 +56,13 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         if(entry.kind in setOf(MediaKind.AUDIO,MediaKind.VIDEO,MediaKind.MOTION_PHOTO))Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
             Text("自动播放",Modifier.weight(1f))
             Switch(draft.autoPlay,feedbackChange { value -> model.content.editPhrase { it.copy(autoPlay=value) } },enabled=enabled,
+                colors=SwitchDefaults.colors().animateEnabled(enabled),
                 modifier=Modifier.testTag("phrase-auto-play"))
         }
         Row {
-            TextButton(feedbackClick { model.content.editPhrase { it.copy(mediaId = null, resources = it.resources - it.type) } }, enabled = enabled,
+            MotionTextButton(feedbackClick { model.content.editPhrase { it.copy(mediaId = null, resources = it.resources - it.type) } }, enabled = enabled,
                 modifier = Modifier.testTag("detach-phrase-media")) { Text("移除关联") }
-            if (draft.type in setOf(QuickCardType.MEDIA, QuickCardType.PAGE)) TextButton(feedbackClick { framing = true }, enabled = enabled) { Text("缩略图取景") }
+            if (draft.type in setOf(QuickCardType.MEDIA, QuickCardType.PAGE)) MotionTextButton(feedbackClick { framing = true }, enabled = enabled) { Text("缩略图取景") }
         }
     }
     if (framing && entry != null) ThumbnailFramingDialog(entry, model.mediaRepository) { framing = false }

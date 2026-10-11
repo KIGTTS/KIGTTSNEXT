@@ -3,16 +3,15 @@ package com.kigtts.next.ui.home
 import com.kigtts.next.state.HomePanelSizes
 import kotlin.math.abs
 
-/** Preserve the compact stops; beyond three rows every stop contains whole phrase rows. */
+/** Keep the single-row peek; expanded stops start at two complete phrase rows. */
 class PortraitPanelGeometry(availableHeight: Float) {
     private val limit = (availableHeight - 64f - 180f).coerceAtLeast(HomePanelSizes.PEEK)
     fun heightFor(rows: Int) = HomePanelSizes.EXPANDED_CHROME + rows * HomePanelSizes.ROW_HEIGHT + (rows - 1) * HomePanelSizes.ROW_GAP
     val anchors = buildList {
         add(HomePanelSizes.COLLAPSED); add(HomePanelSizes.PEEK)
-        if (limit >= 340f) add(340f)
         // Fully visible rows include both 48dp chrome bars and the gaps between tiles.
-        if (limit < heightFor(3)) add(limit)
-        else { add(heightFor(3)); var rows = 4; while (heightFor(rows) <= limit) add(heightFor(rows++)) }
+        if (limit < heightFor(2)) add(limit)
+        else { var rows = 2; while (heightFor(rows) <= limit) add(heightFor(rows++)) }
     }.distinct().sorted()
     val maximum get() = anchors.last()
     fun nearest(height: Float) = anchors.minBy { abs(it - height) }

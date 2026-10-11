@@ -15,6 +15,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpSize
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.components.animateEnabled
 import com.kigtts.next.ui.navigation.LocalPageActive
 
 @Composable
@@ -23,14 +24,16 @@ fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<F
     val active = LocalPageActive.current
     BackHandler(active) { dismiss() }
     val source = remember { MutableInteractionSource() }
+    val colors = SliderDefaults.colors().animateEnabled(active)
     Row(modifier.height(32.dp).testTag("inline-" + label), verticalAlignment = Alignment.CenterVertically) {
         Slider(value, change, valueRange = range, enabled = active,
+            colors = colors,
             modifier = Modifier.weight(1f).height(32.dp).semantics {
                 contentDescription = label + "滑条"
                 if (valueDescription != null) stateDescription = valueDescription
             }, interactionSource = source,
-            thumb = { SliderDefaults.Thumb(source, modifier = Modifier.testTag("font-thumb-" + label), thumbSize = DpSize(4.dp, 24.dp)) },
-            track = { SliderDefaults.Track(it, trackCornerSize = 4.dp, modifier = Modifier.height(8.dp)) })
+            thumb = { SliderDefaults.Thumb(source, colors = colors, enabled = active, modifier = Modifier.testTag("font-thumb-" + label), thumbSize = DpSize(4.dp, 24.dp)) },
+            track = { SliderDefaults.Track(it, colors = colors, enabled = active, trackCornerSize = 4.dp, modifier = Modifier.height(8.dp)) })
         Spacer(Modifier.width(4.dp))
         ToolButton("完成" + label + "调整", Icons.Default.Check, { if (active) dismiss() })
     }

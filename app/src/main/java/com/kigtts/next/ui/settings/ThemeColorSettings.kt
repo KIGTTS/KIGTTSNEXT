@@ -32,8 +32,9 @@ internal fun ThemeColorSettings(settings:ThemeSettings,onChange:(ThemeSettings)-
         SettingItem("主题色",if(customColorEnabled)settings.hex else "由壁纸决定",Icons.Default.Palette,SettingPosition.LAST,
             onClick=if(customColorEnabled)({ picker=true }) else null,trailing={
                 FilledTonalIconButton(feedbackClick { picker=true },enabled=customColorEnabled,
+                    colors=IconButtonDefaults.filledTonalIconButtonColors().animateEnabled(customColorEnabled),
                     modifier=Modifier.semantics { contentDescription="选择主题色" }) {
-                    Box(Modifier.size(24.dp).background(Color(settings.seed),CircleShape))
+                    Box(Modifier.size(24.dp).enabledContentMotion(customColorEnabled).background(Color(settings.seed),CircleShape))
                 }
             })
     }

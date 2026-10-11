@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
@@ -69,11 +71,11 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-    }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(enabled = !saving, onClick = feedbackClick { scope.launch {
+    }, confirmButton = { val closeDialog = rememberDialogClose(); MotionTextButton(enabled = !saving, onClick = feedbackClick { scope.launch {
         saving = true
         try { withContext(Dispatchers.IO) { repository.thumbnail(entry.id, mode, x, y) }; closeDialog(close) }
         catch (cancel: CancellationException) { throw cancel }
         catch (e: Exception) { error = e.message ?: "保存失败"; saving = false }
     } }, modifier = Modifier.testTag("save-thumbnail-framing")) { Text("保存") } },
-        dismissButton = { TextButton(dialogFeedbackClick(close), enabled = !saving) { Text("取消") } })
+        dismissButton = { MotionTextButton(dialogFeedbackClick(close), enabled = !saving) { Text("取消") } })
 }

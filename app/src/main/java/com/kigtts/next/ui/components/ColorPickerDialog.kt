@@ -63,7 +63,7 @@ fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,tit
             Text("预设颜色",style=MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                 presets.distinct().forEach { preset ->
-                    IconButton(feedbackClick { choosePreset(preset) },Modifier.size(40.dp).semantics {
+                    MotionIconButton(feedbackClick { choosePreset(preset) },Modifier.size(40.dp).semantics {
                         contentDescription="预设颜色 #%06X".format(Locale.ROOT,preset and 0xFFFFFF);selected=color==preset
                     }) {
                         Box(Modifier.size(28.dp).background(Color(preset),CircleShape)
@@ -80,8 +80,8 @@ fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,tit
             ColorSlider("饱和度",saturation) { saturation=it;updateHex() }
             ColorSlider("明度",brightness) { brightness=it;updateHex() }
         }
-    },confirmButton={ TextButton(dialogFeedbackClick { onConfirm(color) },enabled=validHex) { Text("应用颜色") } },
-        dismissButton={ TextButton(dialogFeedbackClick(onDismiss)) { Text("取消") } })
+    },confirmButton={ MotionTextButton(dialogFeedbackClick { onConfirm(color) },enabled=validHex) { Text("应用颜色") } },
+        dismissButton={ MotionTextButton(dialogFeedbackClick(onDismiss)) { Text("取消") } })
 }
 
 @Composable

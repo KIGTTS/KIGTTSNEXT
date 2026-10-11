@@ -72,9 +72,9 @@ pwsh -File tools/Build-EnginePlugins.ps1
 
 APK：app/build/outputs/apk/debug/app-debug.apk。原生渲染截图：app/build/previews。
 
-压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。2026-10-11 Release 3.423 MiB，Debug 29.171 MiB，大小减少 88.3%；最新版本已覆盖安装，手机 APK 的 SHA256 与本地包一致。
+压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。2026-10-12 Release 3.423 MiB，Debug 29.171 MiB，大小减少 88.3%；最新版本已覆盖安装，手机 APK 的 SHA256 与本地包一致。
 
-本轮主程序 234 项完整本地测试通过，新增普通二级条目编辑与旋转恢复、排序与行列吸附触感、加载环和动态操作按钮、字号栏出入、按下即时形变与取消复原、横屏未松手收起、活动 Tab 胶囊与滑动跟随、缩略图首次淡入及更新交接。四类卡片、共用字幕/标题、音频字幕与主线程删除、Cookies 和普通弹窗仍在完整回归中。Debug/Release/R8 构建及两种 Lint 通过（各 0 错误、37 警告、1 提示）；同签名、16K 对齐、非 debuggable 检查通过，MIT 许可随 APK 分发。新版安装后原有九个插件启停状态保留，八个启用项均正常加载。媒体与 Chromium 真机验证记录保留在 2026-10-10 基线；本次触控时延、硬件震动和系统选择器仍需设备验收，测试 APK 继续暂缓安装。
+本轮主程序 237 项完整本地测试通过，新增两行停靠与受限窗口、控件可用/禁用颜色中间帧及即时拦截、按住时禁用与连续反转复原，以及光标移动条出入/左右让位/高度稳定/退场不可操作。普通二级编辑、排序和吸附触感、加载环、动态按钮、字号栏、横屏收起、Tab 胶囊跟随、缩略图交接、四类卡片、音频、Cookies 和普通弹窗仍在完整回归中。Debug/Release/R8 构建及两种 Lint 通过（各 0 错误、37 警告、1 提示）；同签名、16K 对齐、非 debuggable 检查通过，MIT 许可随 APK 分发。新版安装后原有九个插件启停状态保留，八个启用项均正常加载。媒体与 Chromium 真机验证记录保留在 2026-10-10 基线；本次触控时延、硬件震动和系统选择器仍需设备验收，测试 APK 继续暂缓安装。
 
 最新回归包含三处横条仅按下即变形/触感、轻触不改变内容与取消复原、光标 12 dp 精度/完整字素/边界无重复震动、条目拾起首帧不透明/落位中间帧/同帧交接后编辑、状态栏在进入/静止/预测/返回时无投影、实际字宽随窗口宽度及系统字体缩放还原比例/重启持久化/自动适应不覆盖偏好，以及最小聆听面板下字号栏不挤压与抽屉 LOGO。
 

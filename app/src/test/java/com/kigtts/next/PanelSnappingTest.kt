@@ -9,11 +9,15 @@ import org.junit.Assert.*
 class PanelSnappingTest {
     @Test fun tallPortraitStopsContainWholeRowsAndIgnoreArbitraryRestoredHeights() {
         val geometry = PortraitPanelGeometry(900f)
-        assertEquals(listOf(72f,184f,340f,368f,460f,552f,644f),geometry.anchors)
+        assertEquals(listOf(72f,184f,276f,368f,460f,552f,644f),geometry.anchors)
+        assertEquals(276f,geometry.settle(300f,0f))
+        assertEquals(368f,geometry.settle(300f,-700f))
+        assertEquals(276f,geometry.settle(300f,700f))
         assertEquals(552f,geometry.settle(510f,0f))
         assertEquals(460f,geometry.settle(375f,-700f))
         assertEquals(368f,geometry.settle(450f,700f))
         assertEquals(552f,PortraitPanelGeometry(852f).maximum)
+        assertEquals(276f,PortraitPanelGeometry(584f).maximum)
         assertEquals(184f,PortraitPanelGeometry(400f).maximum)
     }
     @Test fun ticksFollowRowAndColumnStopsWithNoDistanceTicksOrJitterDuplicates() {

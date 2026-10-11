@@ -59,13 +59,22 @@ class ThumbnailMotionTest {
         }
         try {
             val placeholder=sample("placeholder")
-            submit(Color.BLUE);awaitNew(null);step(64)
-            val entering=sample("first-enter-mid");step(500)
+            submit(Color.BLUE);awaitNew(null)
+            var entering=placeholder
+            compose.waitUntil(10_000) {
+                org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle();step(16)
+                entering=sample("first-enter-mid");entering!=placeholder
+            }
+            step(500)
             val blue=sample("first-ready")
             assertNotEquals(placeholder,entering);assertNotEquals(blue,entering);assertEquals(255,Color.blue(blue))
             val old=model.mediaRepository.thumbnails.latest(entry)
-            submit(Color.RED);awaitNew(old);step(64)
-            val mixed=sample("update-mid")
+            submit(Color.RED);awaitNew(old)
+            var mixed=blue
+            compose.waitUntil(10_000) {
+                org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle();step(16)
+                mixed=sample("update-mid");Color.red(mixed)>0
+            }
             assertTrue(Color.red(mixed)>0);assertTrue(Color.blue(mixed)>0);assertEquals(255,Color.alpha(mixed))
             step(500);val red=sample("updated-ready");assertEquals(255,Color.red(red));assertEquals(0,Color.blue(red))
             compose.runOnIdle { model.mediaRepository.thumbnails.remove(entry.id) };step(500)

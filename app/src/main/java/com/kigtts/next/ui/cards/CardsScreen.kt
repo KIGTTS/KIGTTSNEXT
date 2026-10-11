@@ -1,5 +1,8 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.ui.components.MotionIconButton
+import com.kigtts.next.ui.components.MotionTextButton
+
 import com.kigtts.next.ui.components.feedbackClick
 
 import android.content.Intent
@@ -63,10 +66,10 @@ fun CardsScreen() {
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) { Text(card.title, style = MaterialTheme.typography.titleMedium); Text(card.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                            IconButton(onClick = feedbackClick {
+                            MotionIconButton(onClick = feedbackClick {
                                 context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, "${card.title}\n${card.description}") }, "分享名片"))
                             }) { Icon(Icons.Default.Share, "分享 ${card.title}") }
-                            IconButton(onClick = feedbackClick { cards = cards.filterIndexed { i, _ -> i != index }; store.save(cards) }) { Icon(Icons.Default.DeleteOutline, "删除 ${card.title}") }
+                            MotionIconButton(onClick = feedbackClick { cards = cards.filterIndexed { i, _ -> i != index }; store.save(cards) }) { Icon(Icons.Default.DeleteOutline, "删除 ${card.title}") }
                         }
                     }
                 }
@@ -80,6 +83,6 @@ fun CardsScreen() {
             OutlinedTextField(description, { description = it }, label = { Text("说明") })
             FilledTonalButton(onClick = feedbackClick { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) { Text(if (imageUri == null) "选择图片" else "已选择图片 · 更换") }
         }
-    }, confirmButton = { TextButton(enabled = title.isNotBlank(), onClick = dialogFeedbackClick { cards = cards + ContactCard(title.trim(), description.trim(), imageUri); store.save(cards); adding = false; title = ""; description = ""; imageUri = null }) { Text("添加") } },
-        dismissButton = { TextButton(onClick = dialogFeedbackClick { adding = false }) { Text("取消") } })
+    }, confirmButton = { MotionTextButton(enabled = title.isNotBlank(), onClick = dialogFeedbackClick { cards = cards + ContactCard(title.trim(), description.trim(), imageUri); store.save(cards); adding = false; title = ""; description = ""; imageUri = null }) { Text("添加") } },
+        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { adding = false }) { Text("取消") } })
 }

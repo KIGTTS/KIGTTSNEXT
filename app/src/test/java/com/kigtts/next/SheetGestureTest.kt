@@ -30,22 +30,22 @@ class SheetGestureTest {
     }
     @Test fun buttonAndDragCollapseRestoreLastExpandedHeight() {
         val model = show()
-        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f) }
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(276f) }
         compose.onNodeWithContentDescription("收起快捷文本").performClick()
         compose.onNodeWithTag("dock-main").performClick()
-        compose.runOnIdle { assertEquals(340f, model.state.value.panelHeight) }
+        compose.runOnIdle { assertEquals(276f, model.state.value.panelHeight) }
         val density = compose.activity.resources.displayMetrics.density
         compose.onNodeWithTag("sheet-handle").performTouchInput { swipeDown(startY = centerY, endY = centerY + 300f * density, durationMillis = 800) }
-        compose.runOnIdle { assertNull(model.state.value.panel); assertEquals(340f, model.state.value.lastExpandedPanelHeight) }
+        compose.runOnIdle { assertNull(model.state.value.panel); assertEquals(276f, model.state.value.lastExpandedPanelHeight) }
         compose.onNodeWithTag("dock-main").performClick()
         compose.runOnIdle {
-            assertEquals(340f, model.state.value.panelHeight)
-            assertEquals(340f, testAppModel(ApplicationProvider.getApplicationContext()).state.value.lastExpandedPanelHeight)
+            assertEquals(276f, model.state.value.panelHeight)
+            assertEquals(276f, testAppModel(ApplicationProvider.getApplicationContext()).state.value.lastExpandedPanelHeight)
         }
     }
     @Test fun upwardDockDragSurvivesMorphAndPublishesOnlyOnRelease() {
         val model = show()
-        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); model.closePanel() }
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(276f); model.closePanel() }
         compose.onNodeWithTag("dock-main").assertIsDisplayed()
         val density = compose.activity.resources.displayMetrics.density
         compose.mainClock.autoAdvance = false
@@ -61,7 +61,7 @@ class SheetGestureTest {
         compose.onRoot().captureRoboImage("build/previews/dock-swipe-mid.png")
         compose.onNodeWithTag("dock-main").performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1500); compose.mainClock.autoAdvance = true
-        compose.runOnIdle { assertEquals(340f, model.state.value.panelHeight); assertFalse(model.state.value.captionsVisible) }
+        compose.runOnIdle { assertEquals(276f, model.state.value.panelHeight); assertFalse(model.state.value.captionsVisible) }
         compose.onNodeWithTag("phrases-vertical").assertIsDisplayed()
     }
     @Test fun listeningResizeAlsoStaysLocalUntilRelease() {

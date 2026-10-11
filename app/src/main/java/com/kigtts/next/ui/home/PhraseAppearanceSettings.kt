@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.components.MotionTextButton
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,7 +33,7 @@ internal fun PhraseAppearanceSettings(draft: PhraseDraft, model: AppViewModel, e
         { when (it) { CardColorMode.DEFAULT -> "默认"; CardColorMode.CUSTOM -> "自定义"; CardColorMode.NONE -> "无颜色" } },
         { if (enabled) { if (it == CardColorMode.CUSTOM) picker = true else model.content.editPhrase { current -> current.copy(colorMode = it) } } },
         Modifier.testTag("phrase-color-mode"))
-    if (draft.colorMode == CardColorMode.CUSTOM) TextButton(feedbackClick { picker = true }, enabled = enabled) {
+    if (draft.colorMode == CardColorMode.CUSTOM) MotionTextButton(feedbackClick { picker = true }, enabled = enabled) {
         Box(Modifier.size(20.dp).background(Color(draft.color), MaterialTheme.shapes.small)); Spacer(Modifier.width(8.dp)); Text("选择颜色")
     }
     if (picker) ColorPickerDialog(draft.color, { value -> model.content.editPhrase { it.copy(colorMode = CardColorMode.CUSTOM, color = value) }; picker = false },

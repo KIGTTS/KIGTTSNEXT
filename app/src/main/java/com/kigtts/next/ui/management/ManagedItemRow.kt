@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.management
 
+import com.kigtts.next.ui.components.MotionIconButton
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -54,13 +56,14 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
             }
             item.toggle?.let { toggle ->
                 Switch(toggle.checked, enabled = enabled, onCheckedChange = if (elevated) null else feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },
+                    colors = SwitchDefaults.colors().animateEnabled(enabled),
                     modifier = Modifier.testTag("managed-toggle/" + item.id))
             }
             if (reorderable) Box(dragGrip.size(32.dp).testTag("managed-grip/" + item.id), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(20.dp))
             }
             Box {
-                IconButton(onClick = feedbackClick { menu = true }, enabled = enabled, modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
+                MotionIconButton(onClick = feedbackClick { menu = true }, enabled = enabled, modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
                     Icon(Icons.Default.MoreVert, "条目操作", Modifier.size(20.dp))
                 }
                 DropdownMenu(menu, { menu = false }, properties = PopupProperties(focusable = false)) {

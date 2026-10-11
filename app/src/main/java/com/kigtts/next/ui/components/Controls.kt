@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -43,11 +44,13 @@ fun ToolButton(
         shape = RoundedCornerShape(16.dp), pressedShape = RoundedCornerShape(8.dp)),
     colors: IconButtonColors = compactTonalIconColors(),
     size: Dp = 32.dp,
+    enabled: Boolean = true,
 ) {
     val press=rememberImmediateButtonPress(interactionSource)
-    FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.immediateButtonPress(press).height(size).widthIn(min = size)
+    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(size).widthIn(min = size)
         .semantics { contentDescription = label },
-        shapes = shapes, interactionSource = press.native, colors = colors) {
+        shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
         AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(size / 2)) }
     }
 }
@@ -58,10 +61,12 @@ fun PillButton(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     shapes: ButtonShapes = expressivePillShapes(),
     colors: ButtonColors = compactTonalButtonColors(),
+    enabled: Boolean = true,
 ) {
     val press=rememberImmediateButtonPress(interactionSource)
-    FilledTonalButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.immediateButtonPress(press).height(32.dp),
-        shapes = shapes, interactionSource = press.native, colors = colors,
+    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    FilledTonalButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(32.dp),
+        shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
         AnimatedButtonContent(icon to label) { (image, text) ->
             Row {
