@@ -54,6 +54,7 @@ internal fun SettingsGroup(title: String, subtitle: String = "", content: @Compo
 @Composable
 internal fun SettingItem(title: String, summary: String, icon: ImageVector, position: SettingPosition,
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit = {},
+    enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit = {}) {
     val shape = groupedSettingShape(position, MaterialTheme.shapes.small)
     val body: @Composable () -> Unit = {
@@ -70,7 +71,7 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector, posi
         }
     }
     if (onClick == null) Surface(modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
-    else Surface(onClick = feedbackClick(onClick), modifier = modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
+    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
 }
 
 @Composable

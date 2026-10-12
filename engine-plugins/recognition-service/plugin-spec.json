@@ -1,8 +1,8 @@
 {
   "id": "service.speech-recognition",
   "name": "语音识别服务",
-  "version": "0.7.0",
-  "versionCode": 7,
+  "version": "0.7.1",
+  "versionCode": 8,
   "entryClass": "com.kigtts.engines.recognitionservice.RecognitionServicePlugin",
   "apiVersion": 8,
   "minSdk": 26,

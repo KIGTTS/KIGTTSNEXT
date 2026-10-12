@@ -1,6 +1,6 @@
 # 语音识别服务
 
-`service.speech-recognition-0.7.0.kigplugin` 为独立 MIT 服务插件，API8。它管理识别引擎并转发标准识别请求。SenseVoice、增量流式以及后续社区引擎都是独立 `PROVIDER` 插件，自己的代码、模型、下载与配置始终属于各自数据目录。
+`service.speech-recognition-0.7.1.kigplugin` 为独立 MIT 服务插件，API8。它管理识别引擎并转发标准识别请求。SenseVoice、增量流式以及后续社区引擎都是独立 `PROVIDER` 插件，自己的代码、模型、下载与配置始终属于各自数据目录。
 
 ```mermaid
 flowchart LR

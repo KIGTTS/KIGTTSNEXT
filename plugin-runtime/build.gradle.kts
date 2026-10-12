@@ -17,6 +17,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 tasks.withType<Test>().configureEach {
-    inputs.files(fileTree(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.7.0.kigplugin") })
+    inputs.files(fileTree(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.7.0.kigplugin", "service.speech-recognition-0.7.1.kigplugin", "service.speech-synthesis-0.7.3.kigplugin") })
     systemProperty("kig.plugin.packages", rootProject.layout.buildDirectory.dir("plugin-packages").get().asFile.absolutePath)
 }

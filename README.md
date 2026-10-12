@@ -60,7 +60,7 @@ Expressive 组件与动效固定使用官方 material3:1.5.0-alpha01；此依赖
 - plugins/debug-ui：各扩展区域的按钮数量、图标/文字样式与菜单/弹窗/页面调试。
 - ARTS：从原工程迁移的品牌素材。
 
-内置功能 UI 与外部引擎均遵循 [插件 API v8](docs/plugin-api.md)。API7 及更早的包需同发布者更新为 0.7.0/API8，模型与配置保留。专用包、安装使用、签名、资源目录和隔离限制见 [插件包说明](docs/plugin-packages.md)；外部代码目前只支持可信来源，独立进程并非权限沙箱。
+内置功能 UI 与外部引擎均遵循 [插件 API v8](docs/plugin-api.md)。API7 及更早的包需同发布者更新为 API8（引擎 0.7.0、合成服务 0.7.3、识别服务 0.7.1），模型与配置保留。专用包、安装使用、签名、资源目录和隔离限制见 [插件包说明](docs/plugin-packages.md)；外部代码目前只支持可信来源，独立进程并非权限沙箱。
 
 ## 构建与验证
 
@@ -74,9 +74,9 @@ pwsh -File tools/Build-EnginePlugins.ps1
 
 APK：app/build/outputs/apk/debug/app-debug.apk。原生渲染截图：app/build/previews。
 
-压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。2026-10-12 最新 Release 3.580 MiB，Debug 29.171 MiB，大小减少 87.7%；API8 安装前手机断开，等待重新连接，之前已安装版本及性能基线保留在记录中。
+压缩 Release 与采样流程见 [Release 构建与性能采样](docs/release-testing.md)：启用 R8/资源收缩，保留外置插件调用的 ABI；本地签名测试包 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk` 为非 debuggable。2026-10-12 最新 Release 3.580 MiB，Debug 29.171 MiB，大小减少 87.7%；API8 Release 和已有六包已安装；设备采样及历史基线保留在记录中。
 
-本轮主程序 275 项完整回归通过，其它模块 116 项，总计 391 项 / 114 套件，0 失败/错误/跳过。Debug/Release/R8 与 Debug/Release Lint 通过（0 错误、39 警告、1 提示），同签名、16K 对齐检查通过。API8 新版待手机重新连接安装，历史 API7 安装记录见验证文档。
+当前回归结果共 398 项 / 116 套件，0 失败/错误/跳过。本次完整主程序 276 项及两个服务 28 项通过，最终实物包另经 24 项运行时回归复验。Debug/Release/R8 与 Debug/Release Lint 通过（0 错误、39 警告、1 提示），同签名、16K 对齐检查通过。新版 Release 和两个服务已安装，手机 APK 摘要与本地一致，原插件启停状态保留；历史安装记录见验证文档。
 
 最新回归包含三处横条仅按下即变形/触感、轻触不改变内容与取消复原、光标 12 dp 精度/完整字素/边界无重复震动、条目拾起首帧不透明/落位中间帧/同帧交接后编辑、状态栏在进入/静止/预测/返回时无投影、实际字宽随窗口宽度及系统字体缩放还原比例/重启持久化/自动适应不覆盖偏好，以及最小聆听面板下字号栏不挤压与抽屉 LOGO。
 
@@ -92,6 +92,8 @@ API4 新增统一管理列表、完整 Piper 包兼容，以及输入菜单保�
 
 HTML 卡片加入 [项目文件管理与代码编辑器](docs/html-editor.md)：目录、批量导入、文件操作和主页面选择；独立源码页的行号、键盘快捷栏、横向滚动/多行展开。类型 Tab 使用原生上下图文布局并继承卡片背景。插件短暂加载及页面转场保留按钮配色，原生 animated shapes 接入即时按压；顶栏展开时加载环在返回键旁，收成单行时移到标题之后。
 
-新增 [API8 快捷文本与 Agent 接口](docs/quick-text-plugin-api.md)：稳定分组/条目 ID、版本和批量预览提交、确认删除、重试回执、原生编辑入口、媒体/HTML项目、文件批次和 .kigcards 导入导出。已有人工编辑保持 metadata，变更可订阅；UI 与后台共用数据所有者。独立 quick-text-tools 包示范计算器页面卡片，当前点击后在大字幕中交互，未实现列表内嵌 WebView。引擎/服务包升级 0.7.0/API8，保持原签名和资源；安装等待手机重新连接。
+新增 [API8 快捷文本与 Agent 接口](docs/quick-text-plugin-api.md)：稳定分组/条目 ID、版本和批量预览提交、确认删除、重试回执、原生编辑入口、媒体/HTML项目、文件批次和 .kigcards 导入导出。已有人工编辑保持 metadata，变更可订阅；UI 与后台共用数据所有者。独立 quick-text-tools 包示范计算器页面卡片，当前点击后在大字幕中交互，未实现列表内嵌 WebView。引擎包为 0.7.0/API8，合成服务为 0.7.3/API8、识别服务为 0.7.1/API8，保持原签名和资源；API8 主程序及已有六包已安装。
 
-[API8 合成生命周期](docs/tts-lifecycle.md) 支持通用预热、释放、常驻策略与实际播放活动；Piper 在插件内复用当前模型/发音转换器、按短句尽早输出 PCM，系统 TTS 保底复用连接并支持音频回调。默认空闲两分钟释放，保持加载统一在合成服务设置；切换引擎仍释放旧资源。tts-support 仅进入独立插件包，主程序没有引擎实现。391 项 / 114 套件回归通过，Debug/Release/R8 和 Lint 通过（0 错误、39 警告、1 提示）；手机连接在安装前断开，本次 API8 新版尚未安装，API7 的历史设备结果不代表此版。
+[API8 合成生命周期](docs/tts-lifecycle.md) 支持通用预热、释放、常驻策略与实际播放活动；Piper 在插件内复用当前模型/发音转换器、按短句尽早输出 PCM，系统 TTS 保底复用连接并支持音频回调。默认空闲两分钟释放，保持加载统一在合成服务设置；切换引擎仍释放旧资源。tts-support 仅进入独立插件包，主程序没有引擎实现。398 项 / 116 套件回归结果通过，Debug/Release/R8 和 Lint 通过（0 错误、39 警告、1 提示）；API8 Release 和已有六包已安装；Piper 两次复用首 PCM 为 765/627 ms，系统保底为 445/389 ms，默认空闲与保持加载策略均已实测。测量不含最终扬声器/蓝牙延迟。
+
+[插件页面风格](docs/plugin-page-style.md) 与设置页共用分组卡片、图标条目、相邻圆角和字号。合成服务直接提供声音、语速、语音包与保持加载；识别子页保留启用、选用及资源入口。去除重复标题、引擎状态、数量和协议说明，保持原操作与资源逻辑。

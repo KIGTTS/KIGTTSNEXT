@@ -1,6 +1,6 @@
 # 插件 API v8
 
-API8 新增 [合成生命周期](tts-lifecycle.md)：通用预热、释放、常驻策略及实际播放活动信号，提供者实例 generation。模型与平台连接缓存、两分钟空闲释放和短段 PCM 完全由插件实现；保持加载统一在语音合成服务设置。当前专用包为 0.7.0/API8，旧 API7 及更早的包需同发布者重建，升级保留数据。
+API8 新增 [合成生命周期](tts-lifecycle.md)：通用预热、释放、常驻策略及实际播放活动信号，提供者实例 generation。模型与平台连接缓存、两分钟空闲释放和短段 PCM 完全由插件实现；保持加载统一在语音合成服务设置。当前引擎包为 0.7.0/API8，合成服务为 0.7.3/API8、识别服务为 0.7.1/API8，旧 API7 及更早的包需同发布者重建，升级保留数据。
 
 API7 引入的 [快捷文本/Agent 接口](quick-text-plugin-api.md) 继续使用协议 1：读写分组和卡片、批量预览提交、HTML 工具/媒体及文件管理、导入导出、变更通知和原生编辑入口。
 
@@ -109,7 +109,7 @@ PluginOutcome.ImportResource 请求宿主选择并复制文件或 ZIP 到该插�
 
 ## 通用条目管理页（API4）
 
-PluginPage.management 可返回 ManagementList，宿主使用与“插件管理”同一原生列表组件渲染。ManagementItem 提供稳定 ID、标题、说明、图标/头像、选中/置顶状态、分区、主操作、菜单和可选启停开关。ManagementFilter 提供分类筛选；插件只提供数据，不传入 Compose、控件尺寸或自定义样式。
+PluginPage.management 可返回 ManagementList，宿主使用原生列表组件渲染。ManagementItem 提供稳定 ID、标题、说明、图标/头像、选中/置顶状态、分区、主操作、菜单和可选启停开关。ManagementFilter 提供分类筛选；插件只提供数据，不传入 Compose、控件尺寸或自定义样式。设置类页面的分组与条目规范见 [插件页面风格](plugin-page-style.md)。
 
 reorderAction 接收 inputs["order"] 中完整的 JSON ID 列表，宿主支持长按或小手柄纵向拖动、海拔浮层、落位动画、边缘滚动和菜单上下移动。拖动过程中仅更新本地顺序，落位后提交一次；相异 group 不允许跨区移动。插件应使用 ItemOrder.validate 校验当前条目集合，持久化顺序后返回 RefreshUi。ItemOrder.reconcile/move 可供其它条目页复用。图片以 PluginResource 引用自身或服务所管理的提供者数据文件，路径始终为对应 Appdata 下的相对路径，读取不创建已卸载插件的数据目录。
 

@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.7.0.kigplugin`、`service.speech-recognition-0.7.0.kigplugin`、`engine.piper-0.7.0.kigplugin`、`engine.sensevoice-0.7.0.kigplugin`、`engine.streaming-asr-0.7.0.kigplugin`、旧兼容 `engine.system-tts-0.7.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.7.3.kigplugin`、`service.speech-recognition-0.7.1.kigplugin`、`engine.piper-0.7.0.kigplugin`、`engine.sensevoice-0.7.0.kigplugin`、`engine.streaming-asr-0.7.0.kigplugin`、旧兼容 `engine.system-tts-0.7.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -111,4 +111,4 @@ engine.streaming-asr 的在线解码、多语言包管理、固定校验下载�
 
 [语音识别服务](recognition-service.md)管理独立的 SenseVoice / 增量流式及社区 ASR 提供者，字幕和语音输入依赖它。服务没有推理库/模型；全部原引擎同签名重建为 0.7.0，以兼容角色、依赖、broker 和明确的结束帧。当前六个外部包均需 API8 主程序配合，升级保留引擎数据目录。
 
-API8 加入 [快捷文本与 Agent 接口](quick-text-plugin-api.md)。引擎和服务包已同步重建 0.7.0，数据目录/发布者保持；可选工具示例包通过 -Modules quick-text-tools 构建，属于正式 API 调用示例，主 APK 不携带它。本次用户已取走手机，SDK8 主程序及插件包暂未安装。
+API8 加入 [快捷文本与 Agent 接口](quick-text-plugin-api.md)。引擎包为 0.7.0，合成服务页面整理版为 0.7.3、识别服务为 0.7.1，数据目录/发布者保持；可选工具示例包通过 -Modules quick-text-tools 构建，属于正式 API 调用示例，主 APK 不携带它。2026-10-12 已安装 SDK8 Release 和已有六个 API8 包，可选工具示例未额外安装。

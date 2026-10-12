@@ -62,7 +62,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
             if (reorderable) Box(dragGrip.size(32.dp).testTag("managed-grip/" + item.id), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(20.dp))
             }
-            Box {
+            if (item.actions.isNotEmpty() || reorderable) Box {
                 MotionIconButton(onClick = feedbackClick { menu = true }, enabled = enabled, colors = IconButtonDefaults.iconButtonColors().keepColorsWhenLocked(), modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
                     Icon(Icons.Default.MoreVert, "条目操作", Modifier.size(20.dp))
                 }

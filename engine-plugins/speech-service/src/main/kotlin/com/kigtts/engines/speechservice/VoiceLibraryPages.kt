@@ -18,7 +18,7 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
                 ManagementFilter(it.pluginId, it.name, "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
             }
             val importers = sources.filter { it.info.importsVoicePacks }.map { PageAction("import/${encodeId(it.pluginId)}", "导入${it.name}语音包", PluginIcon.ADD) }
-            return PluginPage(id, "语音包管理", listOf(PageBlock.Notice("所有引擎共用此列表。拖动手柄或长按排序；置顶条目在上方。"), PageBlock.Actions(importers)),
+            return PluginPage(id, "语音包管理", listOf(PageBlock.Actions(importers)),
                 ManagementList("voice-packs", visible().map { entry ->
                     val pack = entry.pack; val pinned = library.pinned(entry.key, pack.metadata.pinned)
                     val actions = mutableListOf(PageAction(packAction("pack", entry), "详细信息", PluginIcon.INFO),
@@ -46,12 +46,12 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
         if (entry.provider.info.importsVoicePacks) actions += PageAction(packAction("pack-update", entry), "更新语音包", PluginIcon.ADD)
         if (pack.exportable) actions += PageAction(packAction("pack-export", entry), "导出语音包", PluginIcon.EXPORT)
         if (pack.deletable) actions += PageAction(packAction("pack-delete", entry), "删除语音包", PluginIcon.CLOSE)
-        val voices = entry.provider.info.voices.filter { it.id in pack.voiceIds }.map { voice ->
+        val voices = entry.provider.info.voices.filter { it.id in pack.voiceIds }.distinctBy { it.id }.map { voice ->
             ManagementItem(voice.id, voice.name, voice.language, PluginIcon.SPEAKER,
                 selected = if (owner == SYSTEM_PROVIDER) settings.provider == null && settings.systemVoice == voice.id else settings.provider == owner && settings.voice == voice.id,
                 primaryAction = "voice/${encodeId(owner)}/${encodeId(voice.id)}")
         }
-        return PluginPage(id, pack.metadata.name, listOf(PageBlock.Text("${entry.provider.name} · ${pack.voiceIds.size} 个声音"),
-            PageBlock.Text(pack.metadata.remark.ifBlank { "暂无备注" }), PageBlock.Actions(actions)), ManagementList("pack-voices", voices, emptyText = "点击刷新系统声音列表后选择声音"))
+        return PluginPage(id, pack.metadata.name, (if (pack.metadata.remark.isBlank()) emptyList() else listOf(PageBlock.Text(pack.metadata.remark))) +
+            PageBlock.Actions(actions), ManagementList("pack-voices", voices, emptyText = "刷新后选择系统声音"))
     }
 }

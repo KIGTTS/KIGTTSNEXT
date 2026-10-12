@@ -64,4 +64,13 @@ class SpeechServicePluginTest {
         assertFalse(environment.storage.file(path).exists())
     }
     private fun encoded(value: String) = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray())
+    @Test fun pickerPageNavigationDoesNotDecodePageNumberAsProviderAndSystemDefaultClearsVoice() = runBlocking {
+        val broker = Broker(); val environment = environment(broker)
+        ServiceSettings(environment.storage).apply { provider = "test.provider"; voice = "voice"; systemVoice = "old.system.voice"; save() }
+        val service = SpeechServicePlugin().apply { attach(environment) }
+        assertEquals(PluginOutcome.OpenPage("voices/1"), service.execute("sounds/1", PluginContext("", "")))
+        service.execute("system-default", PluginContext("", ""))
+        ServiceSettings(environment.storage).let { assertNull(it.provider); assertNull(it.voice); assertNull(it.systemVoice) }
+        service.tts.close()
+    }
 }

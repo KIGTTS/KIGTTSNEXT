@@ -42,6 +42,19 @@ class RecognitionServiceTest {
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("Service never downloads models")
         })
     }
+    @Test fun settingsPageKeepsEnableSelectionAndProviderPagesWithoutDuplicatingEngineStatus() = runBlocking {
+        val broker = Broker(); val plugin = plugin(broker)
+        val page = plugin.page("engine/test.online", PluginContext("", ""))!!
+        assertTrue(page.blocks.isEmpty())
+        val items = page.management!!.items
+        assertEquals(ManagementToggle(true, "toggle/test.online"), items.first().toggle)
+        assertTrue(items[1].selected)
+        assertEquals("settings/test.online/packs", items.last().primaryAction)
+        assertTrue(plugin.page("manager", PluginContext("", ""))!!.blocks.all { it is PageBlock.Actions })
+        broker.catalog = broker.catalog.map { if (it.pluginId == "test.online") it.copy(enabled = false) else it }
+        val disabled = plugin.page("engine/test.online", PluginContext("", ""))!!.management!!.items
+        assertEquals(2, disabled.size); assertFalse(disabled.first().toggle!!.checked)
+    }
     @Test fun serviceForwardsIncrementalEventsAndBatchToSeparateProvider() = runBlocking {
         val broker = Broker(); val plugin = plugin(broker)
         assertEquals(AsrRole.SERVICE, plugin.asr.info.role); assertEquals(StreamingKind.INCREMENTAL, plugin.asr.info.streaming)

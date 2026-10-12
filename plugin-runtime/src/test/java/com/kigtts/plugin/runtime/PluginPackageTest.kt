@@ -116,7 +116,7 @@ class PluginPackageTest {
         val system = store.inspect(File(directory, "engine.system-tts-0.7.0.kigplugin"))
         val asr = store.inspect(File(directory, "engine.sensevoice-0.7.0.kigplugin"))
         val streaming = store.inspect(File(directory, "engine.streaming-asr-0.7.0.kigplugin"))
-        val recognition = store.inspect(File(directory, "service.speech-recognition-0.7.0.kigplugin"))
+        val recognition = store.inspect(File(directory, "service.speech-recognition-0.7.1.kigplugin"))
         assertTrue("asr-service" in recognition.manifest.capabilities)
         assertTrue(recognition.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
         assertEquals(system.publisherSha256, recognition.publisherSha256)
@@ -136,7 +136,7 @@ class PluginPackageTest {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
             store.inspect(File(directory, "engine.piper-0.7.0.kigplugin"))
         } finally { org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", originalAbis) }
-        val service = store.inspect(File(directory, "service.speech-synthesis-0.7.0.kigplugin"))
+        val service = store.inspect(File(directory, "service.speech-synthesis-0.7.3.kigplugin"))
         assertEquals(listOf("arm64-v8a"), piper.manifest.abis)
         assertTrue(piper.manifest.files.keys.any { it.endsWith("libespeak_jni.so") })
         assertTrue(piper.manifest.files.keys.contains("assets/espeak-ng-data.zip"))

@@ -17,7 +17,9 @@ import com.kigtts.next.ui.navigation.LocalPageToolbarActions
 import com.kigtts.next.ui.navigation.RegisterPageActions
 import com.kigtts.next.ui.navigation.ToolbarAction
 import com.kigtts.next.ui.navigation.RegisterPageLoading
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import com.kigtts.next.ui.settings.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 
 @Composable
 fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAction) -> Unit, modifier: Modifier = Modifier,
@@ -48,12 +50,16 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
         ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
     })
-    val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
+    val blocks=page.blocks.filterNot { block ->
+        (toolbar && block is PageBlock.Actions) ||
+            (block is PageBlock.Text && block.heading && block.text.trim() == page.title.trim())
+    }
     page.management?.let { list ->
-        ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) } }
+        if (list.usesSettingsLayout()) PluginSettingsList(list, busy, invoke, blocks.isNotEmpty()) { PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) } }
+        else ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) } }
         return
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         PluginBlocks(blocks,!busy) { invoke(it,emptyMap()) }
     }
 }
@@ -71,24 +77,18 @@ private fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String)-
 @Composable
 private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String) -> Unit) {
     when (block) {
-        is PageBlock.Text -> PageContentMotion(block.text) { text -> Text(text, style = if (block.heading) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.bodyLarge) }
-        is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.tertiaryContainer, shape = MaterialTheme.shapes.medium) {
-            PageContentMotion(block.text) { Text(it, Modifier.padding(18.dp), color = MaterialTheme.colorScheme.onTertiaryContainer) }
+        is PageBlock.Text -> PageContentMotion(block.text) { text -> Text(text, style = if (block.heading) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall) }
+        is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = MaterialTheme.shapes.large) {
+            PageContentMotion(block.text) { Text(it, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=8.dp) { action,interactive ->
-                val source=remember(action.id) { MutableInteractionSource() }
-                val press=rememberImmediateButtonPress(source)
-                FilledTonalButton(onClick = feedbackClick { press.click();invoke(action.id) },
-                    enabled=interactive, colors=ButtonDefaults.filledTonalButtonColors().keepColorsWhenLocked(),
-                    modifier=if(interactive)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = ButtonDefaults.shapes()) {
-                    Icon(action.icon.vector(), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(action.label)
-                }
+        is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=2.dp) { action,interactive ->
+            SettingItem(action.label, "", action.icon.vector(), settingPosition(block.actions.indexOf(action), block.actions.size),
+                onClick = { invoke(action.id) }, enabled = interactive, trailing = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
+                })
         }
-        is PageBlock.Group -> Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.medium) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(block.title, style = MaterialTheme.typography.titleMedium)
-                PluginBlocks(block.children,enabled,invoke)
-            }
+        is PageBlock.Group -> SettingsGroup(block.title) {
+            PluginBlocks(block.children,enabled,invoke)
         }
     }
 }
