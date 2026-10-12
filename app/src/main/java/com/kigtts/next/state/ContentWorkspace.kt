@@ -9,9 +9,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 import androidx.core.content.edit
+import com.kigtts.next.text.*
 
 data class ContentDraft(val token:String,val html:Boolean,val title:String,val initial:String,val target:String,val mediaId:String?=null,
-    val value:String=initial,val currentTitle:String=title,val filePath:String?=null,val selection:Int=0) { val dirty get() = initial!=value || title!=currentTitle }
+    val value:String=initial,val currentTitle:String=title,val filePath:String?=null,val selection:Int=0,
+    val formats:List<TextFormatRun> = emptyList(), val initialFormats:List<TextFormatRun> = formats) {
+    val dirty get() = initial!=value || title!=currentTitle || formats!=initialFormats
+}
 
 /** Editing/import handoffs keep drafts alive while normal secondary pages enter and return. */
 class ContentWorkspace(context:Context,val repository:MediaRepository,private val library:QuickTextLibrary,
@@ -25,7 +29,10 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     private val phraseState=MutableStateFlow<PhraseDraft?>(null);val phraseDraft=phraseState.asStateFlow()
     private val editorState=MutableStateFlow<ContentDraft?>(null);val editorDraft=editorState.asStateFlow()
     private val discardState=MutableStateFlow(false);val discardRequested=discardState.asStateFlow()
-    fun editEditor(value:String,title:String) { editorState.value=editorState.value?.copy(value=value,currentTitle=title) }
+    fun editEditor(value:String,title:String,formats:List<TextFormatRun>?=null,selection:Int?=null) {
+        editorState.value=editorState.value?.let { it.copy(value=value,currentTitle=title,
+            formats = formats ?: TextFormatting.rebase(it.formats,it.value,value), selection=selection ?: it.selection) }
+    }
     fun editorSelection(selection:Int) { editorState.value=editorState.value?.copy(selection=selection) }
     fun savedEditorDraft():String? = editorState.value?.let(editorSnapshot::write)
     fun restoreEditorDraft(token:String):Boolean {
@@ -81,7 +88,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun beginPhrase(phrase:QuickPhrase?,category:String) {
         val type = phrase?.cardType(repository.get(phrase.mediaId)?.kind) ?: QuickCardType.TEXT
         phraseState.value=PhraseDraft(UUID.randomUUID().toString(),phrase?.id,phrase?.text.orEmpty(),phrase?.title.orEmpty(),phrase?.category ?: category,phrase?.mediaId,
-            type,phrase?.colorMode ?: CardColorMode.DEFAULT,phrase?.color ?: 0xFF00696E,phrase?.richText ?: false,phrase?.formats.orEmpty(),
+            type,phrase?.colorMode ?: CardColorMode.DEFAULT,phrase?.color ?: 0xFF00696E,true,phrase?.formats.orEmpty(),
             mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true,phrase?.audioMode,phrase?.metadata.orEmpty())
     }
     fun editPhrase(change:(PhraseDraft)->PhraseDraft) { phraseState.value=phraseState.value?.let(change) }
@@ -131,7 +138,8 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val initial=if(html) { if(media?.kind==MediaKind.HTML) repository.file(media)?.takeIf { it.length()<=2*1024*1024 }?.readText().orEmpty()
             else "<!doctype html>\n<html lang=\"zh\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><body><h1>你好</h1></body></html>" }
             else if(target.startsWith("phrase:"))draft?.text.orEmpty() else state().editorText
-        val key=UUID.randomUUID().toString();editorState.value=ContentDraft(key,html,media?.name ?: if(html)"HTML" else "文本",initial,target,media?.id)
+        val formats=if(html)emptyList() else if(target.startsWith("phrase:"))draft?.formats.orEmpty() else state().subtitleFormats
+        val key=UUID.randomUUID().toString();editorState.value=ContentDraft(key,html,media?.name ?: if(html)"HTML" else "文本",initial,target,media?.id,formats=formats)
         navigate(Destination.ContentEditor(key))
     }
     suspend fun saveEditor(value:String,title:String) {
@@ -143,7 +151,11 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
             if(draft.filePath!=null) withContext(Dispatchers.IO) { repository.htmlFiles.write(requireNotNull(draft.mediaId),draft.filePath,value) }
             else { val entry=withContext(Dispatchers.IO) { repository.html(title,value,draft.mediaId?.takeIf { repository.get(it)?.kind==MediaKind.HTML&&repository.get(it)?.pluginId==null }) }
                 if(draft.target.startsWith("phrase:"))editPhrase { it.attach(QuickCardType.PAGE,entry.id) } else show(entry) }
-        } else if(draft.target.startsWith("phrase:"))editPhrase { it.copy(text=value,formats=com.kigtts.next.text.TextFormatting.rebase(it.formats,it.text,value)) } else setText(value)
+        } else {
+            val formats=TextFormatting.rebase(draft.formats,draft.value,value)
+            if(draft.target.startsWith("phrase:"))editPhrase { it.copy(text=value,richText=true,formats=formats) }
+            else { setText(value);update { it.copy(subtitleFormats=formats) } }
+        }
         editorState.value=null;savingEditor=false;back()
         } finally { savingEditor=false }
     }

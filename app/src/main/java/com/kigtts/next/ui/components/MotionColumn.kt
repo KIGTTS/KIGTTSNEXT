@@ -8,19 +8,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-private class MotionEntry<T>(val id:String,initial:T) {
+private class MotionEntry<T>(val id:String,initial:T,initiallyVisible:Boolean=false) {
     var value by mutableStateOf(initial)
-    val visible=MutableTransitionState(false)
+    val visible=MutableTransitionState(initiallyVisible)
 }
 
 /** Keep removed content only for its exit, with actions disabled immediately. Updates keep owners. */
 @Composable
 internal fun <T> MotionColumn(items:List<T>,identity:(T,Int)->String,modifier:Modifier=Modifier,enabled:Boolean=true,
-    spacing:androidx.compose.ui.unit.Dp=12.dp,content:@Composable (T,Boolean)->Unit) {
-    val retained=remember { mutableStateListOf<MotionEntry<T>>() }
+    spacing:androidx.compose.ui.unit.Dp=12.dp,animateInitial:Boolean=true,content:@Composable (T,Boolean)->Unit) {
     val occurrences=mutableMapOf<String,Int>()
     val desired=items.mapIndexed { index,value->val base=identity(value,index);val occurrence=occurrences.getOrDefault(base,0)
         occurrences[base]=occurrence+1;"$base/$occurrence" to value }
+    // Preloaded pages enter as a complete container. Only subsequent changes animate their rows.
+    val retained=remember { mutableStateListOf<MotionEntry<T>>().apply {
+        if(!animateInitial)desired.forEach { (id,value)->add(MotionEntry(id,value,true)) }
+    } }
     val current=desired.toMap()
     SideEffect {
         desired.forEachIndexed { index,(id,value) ->

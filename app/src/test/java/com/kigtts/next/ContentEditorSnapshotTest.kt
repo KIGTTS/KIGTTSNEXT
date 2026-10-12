@@ -16,6 +16,15 @@ import kotlinx.coroutines.*
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[35])
 class ContentEditorSnapshotTest {
+    @Test fun richFormattingSurvivesDraftRestorationAndCountsAsAnUnsavedChange() {
+        val app=ApplicationProvider.getApplicationContext<Application>();val snapshot=ContentEditorSnapshot(app)
+        val initial=listOf(com.kigtts.next.text.TextFormatRun(0,2,com.kigtts.next.text.TextFormat.BOLD))
+        val draft=ContentDraft(UUID.randomUUID().toString(),false,"文本","你好","subtitle",formats=initial)
+        assertFalse(draft.dirty)
+        val edited=draft.copy(formats=initial+com.kigtts.next.text.TextFormatRun(0,2,com.kigtts.next.text.TextFormat.UNDERLINE))
+        assertTrue(edited.dirty)
+        assertEquals(edited,snapshot.read(snapshot.write(edited)))
+    }
     @Test fun rapidDuplicateSaveAndBackDuringSaveCommitAndReturnExactlyOnce() = runBlocking {
         val app=ApplicationProvider.getApplicationContext<Application>();val repository=MediaRepository(app,PluginPaths(app))
         val entry=repository.html("项目","旧内容");var state=AppState();var returned=0

@@ -93,7 +93,7 @@ class PlaybackControlsTest {
     }
 
     @Test fun scrubPausesAndSeeksDuringEveryMoveThenRestoresPreviousPlayback() {
-        val fixture=AudioPlayerFixture()
+        val fixture=AudioPlayerFixture(arrayOf(androidx.media3.exoplayer.ExoPlayer::class.java))
         val state=PlaybackState().apply {
             duration=10_000f
             player=fixture.player
@@ -102,10 +102,10 @@ class PlaybackControlsTest {
         compose.setContent { MaterialTheme { Box(Modifier.width(360.dp)) { PlaybackControls(state,true,false,{}, {}) } } }
         val slider=compose.onNodeWithTag("media-wave-seek")
         slider.performTouchInput { down(centerLeft);moveTo(center) }
-        compose.runOnIdle { assertTrue(state.scrubbing);assertTrue(state.position>0);assertFalse(fixture.playing);assertTrue(fixture.seeks.isNotEmpty()) }
+        compose.runOnIdle { assertTrue(state.scrubbing);assertTrue(fixture.scrubMode);assertTrue(state.position>0);assertFalse(fixture.playing);assertTrue(fixture.seeks.isNotEmpty()) }
         val initial=fixture.seeks.size
         slider.performTouchInput { moveTo(centerRight);up() }
-        compose.runOnIdle { assertFalse(state.scrubbing);assertTrue(fixture.seeks.size>initial);assertTrue(fixture.seeks.last()>8000);assertTrue(fixture.playing) }
+        compose.runOnIdle { assertFalse(state.scrubbing);assertFalse(fixture.scrubMode);assertTrue(fixture.seeks.size>initial);assertTrue(fixture.seeks.last()>8000);assertTrue(fixture.playing) }
         compose.runOnIdle { fixture.player.pause() }
         slider.performTouchInput { down(centerRight);moveTo(center);up() }
         compose.runOnIdle { assertFalse(state.scrubbing);assertFalse(fixture.playing) }
@@ -119,9 +119,19 @@ class PlaybackControlsTest {
         compose.waitForIdle()
         fun buttonWidth()=compose.onNodeWithContentDescription("切换声音").getUnclippedBoundsInRoot().let { it.right-it.left }
         val full=buttonWidth()
+        fun trackTop()=compose.onNodeWithTag("media-seek-track",useUnmergedTree=true).getUnclippedBoundsInRoot().top.value
+        val fullTrack=trackTop()
+        fun checkCenter() {
+            val thumb=compose.onNodeWithTag("media-seek-thumb",useUnmergedTree=true).getUnclippedBoundsInRoot()
+            val track=compose.onNodeWithTag("media-seek-track",useUnmergedTree=true).getUnclippedBoundsInRoot()
+            assertEquals((track.top.value+track.bottom.value)/2,(thumb.top.value+thumb.bottom.value)/2,.5f)
+        }
+        checkCenter()
         repeat(250) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
         val small=buttonWidth()
         assertTrue("Idle button slot must collapse",small<full/2)
+        assertEquals(fullTrack+20f,trackTop(),.5f)
+        checkCenter()
         compose.onNodeWithContentDescription("切换声音").assertIsNotEnabled()
         val slider=compose.onNodeWithTag("media-wave-seek")
         slider.performTouchInput { down(centerRight);moveTo(androidx.compose.ui.geometry.Offset(width*.85f,center.y)) }
@@ -132,6 +142,8 @@ class PlaybackControlsTest {
         compose.runOnIdle { assertTrue(fixture.playing);state.playing=false;fixture.player.pause() }
         repeat(30) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() }
         assertEquals(full,buttonWidth())
+        assertEquals(fullTrack,trackTop(),.5f)
+        checkCenter()
     }
 
     @Test fun pauseMorphsWaveIntoStraightTrackAndResumeRestoresIt() {

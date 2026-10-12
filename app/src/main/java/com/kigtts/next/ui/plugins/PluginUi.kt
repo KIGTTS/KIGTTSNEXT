@@ -71,7 +71,7 @@ private fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String)-
         is PageBlock.Actions->"actions/$index"
         is PageBlock.Text->"text/$index"
         is PageBlock.Notice->"notice/$index"
-    } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current) { block,active->RenderBlock(block,active,invoke) }
+    } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current,animateInitial=false) { block,active->RenderBlock(block,active,invoke) }
 }
 
 @Composable
@@ -81,7 +81,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String) -> 
         is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = MaterialTheme.shapes.large) {
             PageContentMotion(block.text) { Text(it, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=2.dp) { action,interactive ->
+        is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=2.dp,animateInitial=false) { action,interactive ->
             SettingItem(action.label, "", action.icon.vector(), settingPosition(block.actions.indexOf(action), block.actions.size),
                 onClick = { invoke(action.id) }, enabled = interactive, trailing = {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))

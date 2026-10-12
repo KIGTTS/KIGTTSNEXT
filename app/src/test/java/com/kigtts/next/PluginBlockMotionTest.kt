@@ -28,6 +28,36 @@ import org.robolectric.annotation.*
 class PluginBlockMotionTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
     private fun step(frames:Int) { repeat(frames) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() } }
+    @Test fun preloadedRowsAreVisibleImmediatelyButLaterInsertionsStillAnimate() {
+        val values=mutableStateOf(listOf("one","two"))
+        compose.mainClock.autoAdvance=false
+        compose.setContent { MaterialTheme { MotionColumn(values.value,{ item,_->item },animateInitial=false,
+            modifier=Modifier.width(300.dp).testTag("preloaded-items")) { item,active ->
+            Button({},enabled=active,modifier=Modifier.fillMaxWidth().height(48.dp).testTag(item)) { Text(item) }
+        } } }
+        compose.waitForIdle()
+        compose.onNodeWithTag("one").assertIsDisplayed();compose.onNodeWithTag("two").assertIsDisplayed()
+        fun height()=compose.onNodeWithTag("preloaded-items").getUnclippedBoundsInRoot().let { it.bottom-it.top }
+        val first=height();step(20);assertEquals(first,height())
+        compose.runOnIdle { values.value+= "three" };step(5)
+        val middle=height();step(20)
+        assertTrue(middle>first);assertTrue(middle<height())
+        compose.onNodeWithTag("three").assertIsDisplayed()
+    }
+    @Test fun pluginNestedRowsRemainAtFullSizeOnFirstFrameAndAfterReentering() {
+        val revision=mutableStateOf(0)
+        val page=PluginPage("page","页面",listOf(PageBlock.Group("配置",listOf(PageBlock.Actions(
+            listOf(PageAction("one","第一项"),PageAction("two","第二项")))))))
+        compose.mainClock.autoAdvance=false
+        compose.setContent { MaterialTheme { key(revision.value) { PluginPageScreen(page) {_,_->} } } }
+        repeat(2) { index ->
+            if(index>0)compose.runOnIdle { revision.value++ }
+            compose.waitForIdle();compose.onNodeWithText("第二项").assertIsDisplayed()
+            val first=compose.onNodeWithText("第二项").getUnclippedBoundsInRoot()
+            step(20)
+            assertEquals(first,compose.onNodeWithText("第二项").getUnclippedBoundsInRoot())
+        }
+    }
     @Test fun temporaryBusyAndPageLocksKeepButtonColourWhileBlockingClicks() {
         var busy by mutableStateOf(false);var active by mutableStateOf(true);var calls=0
         val page=PluginPage("p","插件",listOf(PageBlock.Actions(listOf(PageAction("go","执行")))))

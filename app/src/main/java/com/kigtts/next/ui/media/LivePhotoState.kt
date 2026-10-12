@@ -15,7 +15,7 @@ class LivePhotoState {
     fun start() {
         started = true; playback.wake()
         if (mounted) { playback.player?.seekTo(0); playback.player?.play() }
-        else { playback.rendered = false; mounted = true }
+        else { playback.rendered = false; playback.position=0f;playback.autoPlayConsumed=false;playback.resumeWhenVisible=false;mounted = true }
         requested = true
     }
     fun close() { playback.cancelScrub(); playback.player?.pause(); requested = false; playback.wake() }

@@ -66,7 +66,9 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
         val normalWidth=if(once)(small+(maxWidth*.96f-small)*phase).coerceIn(small*.94f,maxWidth) else maxWidth*.96f
         val width=normalWidth*(1f-.18f*compact)
         val height=if(once)(40.dp+8.dp*phase).coerceIn(38.dp,50.dp) else 48.dp
-        Surface(Modifier.width(width).testTag("media-playback-surface").graphicsLayer { scaleX=1f-.025f*press;scaleY=1f-.025f*press },
+        Surface(Modifier.width(width).testTag("media-playback-surface").graphicsLayer {
+            scaleX=1f-.025f*press;scaleY=1f-.025f*press;translationY=20.dp.toPx()*compact
+        },
             shape=RoundedCornerShape(height/2*(1f-.45f*press.coerceIn(0f,1f))),
             color=lerp(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.colorScheme.surfaceContainerHigh,visible).copy(alpha=.94f*(1f-compact))) {
         Row(Modifier.height(height).padding(horizontal=4.dp*visible).clipToBounds(),verticalAlignment=Alignment.CenterVertically) {
@@ -112,7 +114,11 @@ private fun WaveSeekBar(state:PlaybackState,modifier:Modifier,expanded:Boolean,c
         } } else Modifier),
         valueRange=0f..duration,enabled=enabled,colors=SliderDefaults.colors().animateEnabled(enabled),
         interactionSource=source,onValueChangeFinished=state::finishScrub,
-        thumb={ SliderDefaults.Thumb(source,enabled=enabled,thumbSize=DpSize(4.dp,24.dp*(1f-compact)+4.dp*compact)) },
+        // Keep a stable touch/measurement slot. The compact line has no visible handle.
+        thumb={ Box(Modifier.size(4.dp,24.dp),contentAlignment=Alignment.Center) {
+            SliderDefaults.Thumb(source,enabled=enabled,modifier=Modifier.testTag("media-seek-thumb").graphicsLayer { alpha=1f-compact },
+                thumbSize=DpSize(4.dp,24.dp))
+        } },
         track={ slider -> MediaWaveTrack(progress={ (slider.value/duration).coerceIn(0f,1f) },playing=state.playing,
-            modifier=Modifier.enabledContentMotion(enabled),compact=compact) })
+            modifier=Modifier.testTag("media-seek-track").enabledContentMotion(enabled),compact=compact) })
 }

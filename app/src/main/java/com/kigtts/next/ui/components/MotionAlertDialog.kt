@@ -66,6 +66,7 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
             try { events.collect { state.seekTo(it.progress, false) }; close { dismiss() } }
             catch (cancel: CancellationException) { if (!closing) scope.launch { state.animateTo(true) }; throw cancel }
         }
+        ProvideIconTextContextMenu {
         CompositionLocalProvider(LocalDialogActions provides DialogActions({ closing }, ::close),
             LocalDialogReveal provides reveal) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -105,6 +106,7 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
                     }
                 }
             }
+        }
         }
     }
 }

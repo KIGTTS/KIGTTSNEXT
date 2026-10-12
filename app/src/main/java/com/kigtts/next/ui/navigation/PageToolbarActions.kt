@@ -31,6 +31,7 @@ data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
     var loading:State<Boolean>? by mutableStateOf(null)
+    internal val input = PageInputState()
 }
 val LocalPageToolbarActions=compositionLocalOf<PageToolbarActions?> { null }
 

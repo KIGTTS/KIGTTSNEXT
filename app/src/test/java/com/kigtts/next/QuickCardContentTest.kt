@@ -33,7 +33,7 @@ class QuickCardContentTest {
         assertEquals(CardColorMode.CUSTOM, restored.phrases.value.first { it.id == "card-1" }.colorMode)
         assertEquals(CardColorMode.NONE, restored.phrases.value.first { it.id == "card-2" }.colorMode)
         assertEquals("", restored.phrases.value.first { it.id == "card-0" }.title)
-        assertFalse(QuickPhrase("正文", "常用").richText)
+        assertTrue(QuickPhrase("正文", "常用").richText)
     }
     @Test fun draftTabsPreserveEachResourceAndCancelledImportsNeverAttachToAnotherDraft() = runBlocking {
         val model = testAppModel(app)

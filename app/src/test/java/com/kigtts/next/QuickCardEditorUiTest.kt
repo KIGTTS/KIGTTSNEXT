@@ -30,7 +30,7 @@ class QuickCardEditorUiTest {
             compose.onNodeWithTag("add-phrase").performClick()
         }
     }
-    @Test fun fourTabsShareTheirTextAndRichFormattingIsOptInAndPersistsOnSave() {
+    @Test fun fourTabsShareTheirTextAndRichFormattingIsAlwaysAvailableAndPersistsOnSave() {
         val model = show()
         val tabs=compose.onNodeWithTag("phrase-type-tabs").getUnclippedBoundsInRoot()
         assertTrue(compose.onNodeWithTag("phrase-detail-text").getUnclippedBoundsInRoot().bottom < tabs.top)
@@ -38,38 +38,29 @@ class QuickCardEditorUiTest {
         QuickCardType.entries.forEach { compose.onNodeWithTag("phrase-type-" + it.name).assertExists()
             compose.onNodeWithTag("phrase-type-icon-"+it.name,useUnmergedTree=true).assertExists() }
         compose.onNodeWithTag("phrase-type-TEXT").assertTextContains("无")
-        assertTrue(compose.onNodeWithTag("phrase-rich-text").getUnclippedBoundsInRoot().bottom<tabs.top)
-        compose.onNodeWithTag("phrase-rich-text").assertIsOff()
+        compose.onNodeWithTag("phrase-rich-text").assertDoesNotExist()
         compose.onNodeWithTag("phrase-format-toolbar").assertDoesNotExist()
+        compose.onNodeWithText("选中文字后设置格式").assertDoesNotExist()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("你好，朋友")
-        compose.onNodeWithTag("phrase-rich-text").performClick()
-        compose.onNodeWithTag("phrase-detail-text").performTextInputSelection(TextRange(0, 2))
-        compose.onNodeWithTag("phrase-format-bold").performClick()
-        compose.onNodeWithTag("phrase-format-italic").performClick()
-        compose.onNodeWithTag("phrase-format-underline").performClick()
-        compose.onNodeWithContentDescription("字号").performClick()
-        listOf("小","正常","大").forEach { compose.onNodeWithText(it,useUnmergedTree=true).assertExists() }
-        listOf("默认","特大","两倍","三倍","四倍").forEach { compose.onNodeWithText(it,useUnmergedTree=true).assertDoesNotExist() }
-        compose.onNodeWithText("大", useUnmergedTree = true).performClick()
-        assertEquals(setOf(TextFormat.BOLD, TextFormat.ITALIC, TextFormat.UNDERLINE, TextFormat.SIZE), model.content.phraseDraft.value!!.formats.map { it.kind }.toSet())
+        compose.runOnIdle { model.content.editPhrase { it.copy(formats=listOf(
+            com.kigtts.next.text.TextFormatRun(0,2,TextFormat.BOLD),
+            com.kigtts.next.text.TextFormatRun(0,2,TextFormat.UNDERLINE))) } }
         compose.onNodeWithTag("phrase-type-AUDIO").performClick()
         compose.onNodeWithTag("phrase-choose-audio").performScrollTo().assertExists()
         compose.onNodeWithTag("save-phrase-details").assertIsNotEnabled()
-        compose.onNodeWithTag("phrase-format-toolbar").assertExists()
-        compose.onNodeWithTag("phrase-rich-text").assertIsOn()
+        assertTrue(model.content.phraseDraft.value!!.richText)
         compose.onNodeWithTag("phrase-type-MEDIA").performClick()
         compose.onNodeWithTag("phrase-choose-media").performScrollTo().assertExists()
         compose.onNodeWithTag("phrase-type-PAGE").performClick()
         compose.onNodeWithTag("phrase-edit-html").performScrollTo().assertExists()
-        compose.onNodeWithTag("phrase-rich-text").assertIsOn()
-        compose.onNodeWithTag("phrase-format-toolbar").assertExists()
+        compose.onNodeWithTag("phrase-format-toolbar").assertDoesNotExist()
         compose.onNodeWithTag("phrase-type-TEXT").performClick()
         compose.onNodeWithTag("phrase-detail-text").performScrollTo().assertTextContains("你好，朋友")
-        compose.onNodeWithTag("phrase-rich-text").assertIsOn()
+        assertTrue(model.content.phraseDraft.value!!.richText)
         compose.onNodeWithTag("save-phrase-details").performClick()
         compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         val saved = model.phrases.value.last()
-        assertTrue(saved.richText); assertEquals(4, saved.formats.size); assertEquals(QuickCardType.TEXT, saved.type)
+        assertTrue(saved.richText); assertEquals(2, saved.formats.size); assertEquals(QuickCardType.TEXT, saved.type)
         compose.runOnIdle { model.content.send(saved) }
         assertEquals("你好，朋友", model.state.value.editorText); assertEquals(saved.formats, model.state.value.subtitleFormats)
     }

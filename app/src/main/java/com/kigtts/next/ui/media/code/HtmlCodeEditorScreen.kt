@@ -21,7 +21,7 @@ fun HtmlCodeEditorScreen(model:AppViewModel,entry:ContentDraft,pending:Boolean) 
     val editor=remember(entry.token) { CodeEditorState(entry.value,entry.selection) };val focus=remember { FocusRequester() }
     val scope=rememberCoroutineScope();val active=LocalPageActive.current
     var saving by remember { mutableStateOf(false) };var error by remember { mutableStateOf<String?>(null) };var search by remember { mutableStateOf(false) }
-    LaunchedEffect(editor.value) { model.content.editEditor(editor.value.text,entry.currentTitle);model.content.editorSelection(editor.value.selection.end) }
+    LaunchedEffect(editor.value) { model.content.editEditor(editor.value.text,entry.currentTitle,selection=editor.value.selection.end) }
     RegisterPageLoading(saving)
     RegisterPageActions(listOf(
         ToolbarAction("save-content","保存文件",Icons.Default.Save,!saving) { scope.launch { saving=true

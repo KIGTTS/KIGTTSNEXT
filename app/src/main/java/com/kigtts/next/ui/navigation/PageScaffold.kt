@@ -22,13 +22,17 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
+    val ime = WindowInsets.ime
+    val density = LocalDensity.current
+    val keyboard by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    val input = rememberUpdatedState(host.input.focused || keyboard)
     val behavior=TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState,snapAnimationSpec=tween(220),
-        canScroll={ active.value })
-    val keyboard=WindowInsets.ime.getBottom(LocalDensity.current)>0
+        canScroll={ active.value && !input.value })
     // Match Material's switch between the expanded and single-line title semantics.
-    val compact = !largeBar || barState.collapsedFraction >= .5f
-    LaunchedEffect(keyboard,barState.heightOffsetLimit) {
-        if(largeBar&&keyboard&&barState.heightOffsetLimit>-Float.MAX_VALUE) {
+    // Do not recompose the entire editor for each pixel of the app bar or IME animation.
+    val compact by remember(largeBar, barState) { derivedStateOf { !largeBar || barState.collapsedFraction >= .5f } }
+    LaunchedEffect(input.value,barState.heightOffsetLimit) {
+        if(largeBar&&input.value&&barState.heightOffsetLimit>-Float.MAX_VALUE) {
             Animatable(barState.heightOffset).animateTo(barState.heightOffsetLimit,tween(180)) { barState.heightOffset=value }
         }
     }

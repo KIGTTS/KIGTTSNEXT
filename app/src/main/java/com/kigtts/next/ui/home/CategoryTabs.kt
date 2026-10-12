@@ -57,7 +57,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
             list.animateScrollToItem(index)
         }
     }
-    Row(modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically,
+    Row(modifier.fillMaxWidth().height(48.dp).snackbarAnchor(!state.subtitleExpanded || editing).testTag("category-tab-bar"), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
         LazyRow(Modifier.weight(1f).testTag("category-tabs").then(if (editing) Modifier.reorderGestures(drag) else Modifier),

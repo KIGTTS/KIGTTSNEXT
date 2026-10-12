@@ -21,6 +21,7 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 @Composable
 fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     key(entry.id,state.contentRevision,if(entry.kind==MediaKind.HTML)entry.created else 0L) {
+        val playback = remember(entry.id,state.contentRevision) { model.mediaPlayback.get(entry.id,state.contentRevision) }
         var source by remember { mutableStateOf(model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)) }
         if(LocalPageActive.current) {
             val current=model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)
@@ -41,11 +42,11 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                             pan = if (zoom == 1f) Offset.Zero else (pan + offset).let { Offset(it.x.coerceIn(-limitX, limitX), it.y.coerceIn(-limitY, limitY)) }
                         }), scale = entry.scale, backdrop = true,
                         contentModifier = Modifier.graphicsLayer { scaleX = zoom; scaleY = zoom; translationX = pan.x; translationY = pan.y })
-                    if (live) LivePhotoPlayback(source.second,entry.name,entry.scale,autoPlay=state.contentAutoPlay,
+                    if (live) LivePhotoPlayback(source.second,entry.name,entry.scale,autoPlay=state.contentAutoPlay,state=playback,
                         playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
                 }
             }
-            MediaKind.VIDEO -> MediaVideo(source.first, "视频", false, {}, modifier, entry.scale,autoPlay=state.contentAutoPlay,
+            MediaKind.VIDEO -> MediaVideo(source.first, "视频", false, {}, modifier, entry.scale,playback=playback.playback,autoPlay=state.contentAutoPlay,
                 playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
             MediaKind.HTML, MediaKind.WEB -> MediaWeb(entry, state, model, modifier)
             MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text("音频") }

@@ -36,6 +36,7 @@ internal fun MediaWaveTrack(progress:()->Float,playing:Boolean,modifier:Modifier
     val track=WavyProgressIndicatorDefaults.trackColor
     val stroke=WavyProgressIndicatorDefaults.linearIndicatorStroke
     val wavelength=WavyProgressIndicatorDefaults.LinearDeterminateWavelength
+    val compactAlpha=1f-.4f*compact
     LaunchedEffect(playing) { motion.animateTo(if(playing)1f else 0f,tween(240,easing=FastOutSlowInEasing)) }
     LaunchedEffect(playing) {
         try { while(isActive&&(playing||motion.value>0f))withFrameNanos { clock.frame(it,motion.value) } }
@@ -43,18 +44,18 @@ internal fun MediaWaveTrack(progress:()->Float,playing:Boolean,modifier:Modifier
     }
     Canvas(modifier.fillMaxWidth().height(WavyProgressIndicatorDefaults.LinearContainerHeight)) {
         val fraction=progress().coerceIn(0f,1f);val mid=size.height/2
-        val thickness=stroke.width*(1f-.5f*compact)
+        val thickness=stroke.width
         val halfStroke=thickness/2;val head=size.width*fraction
-        val gap=6.dp.toPx();val end=(head-gap).coerceAtLeast(halfStroke)
+        val gap=6.dp.toPx()*(1f-compact);val end=(head-gap).coerceAtLeast(halfStroke)
         val wave=wavelength.toPx();val amplitude=(mid-halfStroke).coerceAtLeast(0f)*motion.value*(1f-compact)
         val startTrack=(head+gap).coerceAtMost(size.width-halfStroke)
-        if(startTrack<size.width-halfStroke)drawLine(track,Offset(startTrack,mid),Offset(size.width-halfStroke,mid),thickness,StrokeCap.Round)
+        if(startTrack<size.width-halfStroke)drawLine(track.copy(alpha=track.alpha*compactAlpha),Offset(startTrack,mid),Offset(size.width-halfStroke,mid),thickness,StrokeCap.Round)
         if(fraction>0f) {
             path.reset();var x=halfStroke
             fun y(at:Float)=mid+amplitude*sin((at/wave+clock.phase)*2f*Math.PI).toFloat()
             path.moveTo(x,y(x))
             while(x<end) { x=(x+wave/16f).coerceAtMost(end);path.lineTo(x,y(x)) }
-            drawPath(path,color,style=Stroke(thickness,cap=StrokeCap.Round))
+            drawPath(path,color.copy(alpha=color.alpha*compactAlpha),style=Stroke(thickness,cap=StrokeCap.Round))
         }
     }
 }

@@ -15,7 +15,6 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
@@ -24,6 +23,12 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.RegisterPageActions
 import com.kigtts.next.ui.navigation.ToolbarAction
 import kotlinx.coroutines.launch
+import com.kigtts.next.text.*
+import com.kigtts.next.ui.components.richTextMenu
+import com.kigtts.next.ui.components.textMenuAnchor
+import com.kigtts.next.ui.navigation.pageInputFocus
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 
 @Composable
 fun ContentEditorScreen(model: AppViewModel, token: String) {
@@ -32,38 +37,39 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     val active = LocalPageActive.current
     val entry = draft?.takeIf { it.token == token } ?: return
     if(entry.html) { com.kigtts.next.ui.media.code.HtmlCodeEditorScreen(model,entry,pending);return }
-    var value by rememberSaveable(token) { mutableStateOf(entry.value) }
+    val editor = remember(token) { RichEditorState(entry.value, entry.formats, entry.selection) }
+    val value = editor.value.text
     var title by rememberSaveable(token) { mutableStateOf(entry.currentTitle) }
-    val undo = remember(token) { ArrayDeque<String>() }; val redo = remember(token) { ArrayDeque<String>() }
-    var revision by remember { mutableIntStateOf(0) }; var search by remember { mutableStateOf(false) }
+    var search by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     fun change(text: String) {
         if (text == value) return
-        val maximum = if (entry.html) 2 * 1024 * 1024 else 128 * 1024
-        if (text.toByteArray().size > maximum) { error = if (entry.html) "HTML 不能超过 2 MiB" else "文本不能超过 128 KiB"; return }
-        undo.addLast(value); while (undo.size > 20 || undo.sumOf { it.length.toLong() } > 4L * 1024 * 1024) undo.removeFirst()
-        redo.clear(); value = text; revision++
-        model.content.editEditor(value, title)
+        try { editor.change(TextFieldValue(text,TextRange(text.length))); error = null }
+        catch (e:IllegalArgumentException) { error=e.message }
     }
-    LaunchedEffect(value, title) { model.content.editEditor(value, title) }
+    LaunchedEffect(editor.value, editor.formats, title) { model.content.editEditor(value, title, editor.formats, editor.value.selection.end) }
+    val transform = remember(editor.formats) { RichTextVisualTransformation(editor.formats) }
+    val menu = Modifier.richTextMenu(active&&!saving, { editor.value.selection }, editor.formats, editor::format)
     RegisterPageActions(listOf(
         ToolbarAction("save-content","保存内容",Icons.Default.Save,!saving) {
-            scope.launch { saving=true;try { model.content.saveEditor(value,title) } catch(e:Exception) { error=e.message ?: "保存失败" } finally { saving=false } }
+            scope.launch { saving=true;try {
+                model.content.editEditor(editor.value.text,title,editor.formats,editor.value.selection.end)
+                model.content.saveEditor(editor.value.text,title)
+            } catch(e:Exception) { error=e.message ?: "保存失败" } finally { saving=false } }
         },
         ToolbarAction("find-content","查找替换",Icons.Default.FindReplace) { search=true }
     ))
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row {
-            key(revision) {
-                MotionIconButton(feedbackClick { if (undo.isNotEmpty()) { redo.addLast(value); value = undo.removeLast(); revision++ } }, enabled = undo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
-                MotionIconButton(feedbackClick { if (redo.isNotEmpty()) { undo.addLast(value); value = redo.removeLast(); revision++ } }, enabled = redo.isNotEmpty()) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
-            }
+            MotionIconButton(feedbackClick(editor::undo), enabled = active&&!saving&&editor.canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
+            MotionIconButton(feedbackClick(editor::redo), enabled = active&&!saving&&editor.canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
         }
-        if (entry.html) OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text("内容名称") }, singleLine = true)
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        OutlinedTextField(value, ::change, Modifier.fillMaxWidth().weight(1f).testTag("content-editor-text"),
-            label = { Text(if (entry.html) "HTML 源码" else "文本内容") }, textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = if (entry.html) FontFamily.Monospace else FontFamily.Default))
+        OutlinedTextField(editor.value, { next -> try { editor.change(next);error=null } catch(e:IllegalArgumentException) { error=e.message } },
+            Modifier.fillMaxWidth().weight(1f).testTag("content-editor-text").then(menu).pageInputFocus()
+                .textMenuAnchor { editor.change(editor.value.copy(selection=TextRange(editor.value.selection.end))) },
+            enabled=active&&!saving, label = { Text("文本内容") }, textStyle = MaterialTheme.typography.bodyLarge, visualTransformation=transform)
     }
     if (active && pending) MotionAlertDialog(onDismissRequest = model.content::keepEditor, title = { Text("放弃未保存的修改？") },
         confirmButton = { MotionTextButton(dialogFeedbackClick(model.content::discardEditor)) { Text("放弃") } },

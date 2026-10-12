@@ -46,6 +46,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
     private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
     val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
+    val mediaPlayback = com.kigtts.next.ui.media.MediaPlaybackSessions()
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),

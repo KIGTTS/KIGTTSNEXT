@@ -1,7 +1,9 @@
+@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.kigtts.next.ui.media
 
 import androidx.compose.runtime.*
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 
 @Stable
 class PlaybackState {
@@ -15,11 +17,14 @@ class PlaybackState {
     var allowed by mutableStateOf(true)
     var interaction by mutableIntStateOf(0); private set
     private var resumeAfterScrub = false
+    internal var autoPlayConsumed = false
+    internal var resumeWhenVisible = false
     fun wake() { interaction++ }
     fun toggle() {
         if (!allowed || scrubbing) return
         val current = player ?: return
         wake()
+        autoPlayConsumed = true
         if (current.playbackState == Player.STATE_ENDED) { current.seekTo(0); current.play() }
         else if (current.playWhenReady) current.pause() else current.play()
     }
@@ -30,6 +35,7 @@ class PlaybackState {
             resumeAfterScrub = current.playWhenReady && current.playbackState != Player.STATE_ENDED
             scrubbing = true
             current.pause()
+            (current as? ExoPlayer)?.setScrubbingModeEnabled(true)
         }
         wake()
         // Avoid a one-shot completion event while the thumb is held at the right edge.
@@ -39,8 +45,12 @@ class PlaybackState {
     fun finishScrub() {
         if (!scrubbing) return
         scrubbing = false; wake()
+        (player as? ExoPlayer)?.setScrubbingModeEnabled(false)
         if (allowed && resumeAfterScrub) player?.play()
         resumeAfterScrub = false
     }
-    fun cancelScrub() { scrubbing = false; resumeAfterScrub = false }
+    fun cancelScrub() {
+        if(scrubbing)(player as? ExoPlayer)?.setScrubbingModeEnabled(false)
+        scrubbing = false; resumeAfterScrub = false
+    }
 }

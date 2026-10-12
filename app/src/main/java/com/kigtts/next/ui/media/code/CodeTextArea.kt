@@ -15,6 +15,9 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextRange
+import com.kigtts.next.ui.components.textMenuAnchor
+import com.kigtts.next.ui.navigation.pageInputFocus
 
 @Composable
 internal fun CodeTextArea(state:CodeEditorState,enabled:Boolean,focus:FocusRequester,modifier:Modifier,error:(String)->Unit) {
@@ -38,7 +41,8 @@ internal fun CodeTextArea(state:CodeEditorState,enabled:Boolean,focus:FocusReque
             }
             Box(Modifier.weight(1f).horizontalScroll(horizontal)) {
                 BasicTextField(state.value,{ next->try { state.change(next) } catch(e:IllegalArgumentException) { error(e.message ?: "内容过长") } },
-                    Modifier.widthIn(min=width).padding(8.dp).focusRequester(focus).testTag("content-editor-text"),enabled=enabled,
+                    Modifier.widthIn(min=width).padding(8.dp).focusRequester(focus).pageInputFocus()
+                        .textMenuAnchor { state.change(state.value.copy(selection=TextRange(state.value.selection.end))) }.testTag("content-editor-text"),enabled=enabled,
                     textStyle=MaterialTheme.typography.bodyMedium.copy(fontFamily=FontFamily.Monospace,lineHeight=22.sp,color=MaterialTheme.colorScheme.onSurface),
                     cursorBrush=SolidColor(MaterialTheme.colorScheme.primary),onTextLayout={layout=it})
             }

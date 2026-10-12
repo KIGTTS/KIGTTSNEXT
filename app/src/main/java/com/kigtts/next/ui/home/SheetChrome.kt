@@ -44,7 +44,8 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
     val endSlot = open && remember(context, state.pluginRevision) { model.registry.actions(UiSlot.QUICK_PANEL_END, context).isNotEmpty() }
     val startAmount by animateFloatAsState(if (startSlot) 1f else 0f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-start-slot")
     val endAmount by animateFloatAsState(if (endSlot) 1f else 0f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-end-slot")
-    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(chromeHeight)) {
+    BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(chromeHeight)
+        .snackbarAnchor(!state.subtitleExpanded && motion.height <= 80f).testTag("portrait-bottom-bar")) {
         val a = startAmount.coerceIn(0f, 1f); val b = endAmount.coerceIn(0f, 1f)
         val gaps = (2f + a + b) * 6f
         val slotWidth = ((maxWidth.value - 2 * sideSize.value - gaps - 88f) / (a + b).coerceAtLeast(1f)).coerceIn(0f, 64f)

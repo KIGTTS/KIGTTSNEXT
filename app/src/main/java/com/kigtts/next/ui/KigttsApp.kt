@@ -29,6 +29,7 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     val categories by model.categories.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
+    val snackbarAvoidance = remember { SnackbarAvoidance() }
     val sketch = remember { SketchState() }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -88,10 +89,12 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     }
     KigttsTheme(state.theme) {
         ProvideButtonFeedback(state.hapticsEnabled) {
+            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance) {
+            ProvideIconTextContextMenu {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
-                Scaffold(snackbarHost = { SnackbarHost(snackbar,Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom+WindowInsetsSides.Horizontal))) },
+                Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
                     Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding()) {
@@ -117,6 +120,8 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
                     },
                     confirmButton = { TextButton(onClick = dialogFeedbackClick { pluginMenu = null }) { Text("关闭") } },
                 )
+            }
+            }
             }
         }
     }

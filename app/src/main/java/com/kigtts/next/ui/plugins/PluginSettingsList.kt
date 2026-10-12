@@ -34,10 +34,10 @@ internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
     val groups = list.items.groupBy { it.group.ifBlank { "设置" } }.entries.toList()
     SettingsLayout {
         if (hasHeader) header()
-        MotionColumn(groups, { group, _ -> group.key }, enabled = enabled, spacing = 20.dp,
+        MotionColumn(groups, { group, _ -> group.key }, enabled = enabled, spacing = 20.dp,animateInitial=false,
             modifier = Modifier.testTag("managed-list/" + list.id)) { group, active ->
             SettingsGroup(group.key) {
-                MotionColumn(group.value, { item, _ -> item.id }, enabled = active, spacing = 2.dp) { item, interactive ->
+                MotionColumn(group.value, { item, _ -> item.id }, enabled = active, spacing = 2.dp,animateInitial=false) { item, interactive ->
                     val toggle = item.toggle
                     SettingItem(item.title, item.subtitle, item.icon.vector(),
                         settingPosition(group.value.indexOfFirst { it.id == item.id }, group.value.size),
