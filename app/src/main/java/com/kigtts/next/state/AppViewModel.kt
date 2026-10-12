@@ -45,7 +45,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val experiments = application.getSharedPreferences("experiments", 0)
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
     private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
-    val mediaRepository = MediaRepository(application, pluginManager.paths)
+    val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),
@@ -56,11 +56,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
         mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
-    val quickTexts = QuickTextLibrary(phraseStore)
+    val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
+    val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
+    init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
     private val outcomes = Channel<Pair<String, PluginOutcome>>(Channel.BUFFERED)
     val events = outcomes.receiveAsFlow()
@@ -90,6 +92,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(destination = destination, navigationStack = navigationHistory.toList(), editing = false) }
     }
     fun navigateBack() {
+        (state.value.destination as? Destination.QuickTextReview)?.let {quickTextPlugins.reject(it.token)}
         if (state.value.destination is Destination.ContentEditor && content.requestDiscard()) return
         if (state.value.destination is Destination.PhraseEditor) content.cancelPhrase()
         val previous = if (navigationHistory.isEmpty()) Destination.Home else navigationHistory.removeLast()

@@ -27,7 +27,7 @@ class SpeechServiceDeviceTest {
         try {
             if ("engine.system-tts" in before) manager.packages.enabled("engine.system-tts", false)
             for (name in listOf("engine.system-tts", "engine.sensevoice", "engine.piper", serviceId)) {
-                val filename = "$name-0.5.0.kigplugin"
+                val filename = "$name-0.6.0.kigplugin"
                 val input = File(manager.paths.packages, ".speech-test-$filename")
                 instrumentation.context.assets.open(filename).use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {

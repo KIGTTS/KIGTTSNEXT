@@ -51,7 +51,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val source = model.mediaRepository.file(entry)
             val cache = if (entry.pluginId == null) File(model.mediaRepository.root, "web-cache/" + entry.id)
                 else model.pluginManager.paths.storage(entry.pluginId).file("cache/web/" + entry.id)
-            val localRoot = if(entry.kind==MediaKind.HTML && entry.pluginId==null) model.mediaRepository.htmlFiles.root(entry.id) else source?.parentFile
+            val localRoot = if(entry.kind==MediaKind.HTML && entry.pluginId==null) model.mediaRepository.htmlFiles.root(entry.id)
+                else if(entry.pluginId!=null&&entry.projectRoot!=null)model.pluginManager.paths.storage(entry.pluginId).file(entry.projectRoot) else source?.parentFile
             val loader = WebResourceLoader(cache, localRoot, entry.network,
                 pageOrigin = if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN)
             webViewClient = object : WebViewClient() {

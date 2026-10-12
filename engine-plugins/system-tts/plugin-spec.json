@@ -1,10 +1,10 @@
 {
   "id": "engine.system-tts",
   "name": "系统语音合成",
-  "version": "0.5.0",
-  "versionCode": 5,
+  "version": "0.6.0",
+  "versionCode": 6,
   "entryClass": "com.kigtts.engines.system.SystemTtsPlugin",
-  "apiVersion": 6,
+  "apiVersion": 7,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "GPL-3.0-only",

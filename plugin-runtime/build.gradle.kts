@@ -17,6 +17,6 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 tasks.withType<Test>().configureEach {
-    inputs.files(fileTree(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.5.0.kigplugin") })
+    inputs.files(fileTree(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.6.0.kigplugin") })
     systemProperty("kig.plugin.packages", rootProject.layout.buildDirectory.dir("plugin-packages").get().asFile.absolutePath)
 }

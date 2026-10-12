@@ -16,10 +16,12 @@ import java.util.concurrent.ConcurrentHashMap
 open class PluginWorkerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var plugin: KigPlugin? = null
+    private var quickText:IHostQuickTextBroker?=null
     private val pages = mutableSetOf<String>()
     private data class Session(val job: Job, val descriptors: List<ParcelFileDescriptor>)
     private val sessions = ConcurrentHashMap<String, Session>()
     private val binder = object : IPluginWorker.Stub() {
+        override fun attachQuickTextBroker(broker:IHostQuickTextBroker?) {check(plugin==null);quickText=broker}
         override fun initialize(pluginId: String, broker: IHostSpeechBroker?): String = runBlocking(Dispatchers.IO) {
             check(plugin == null) { "工作进程已分配" }
             val paths = PluginPaths(this@PluginWorkerService)
@@ -40,7 +42,8 @@ open class PluginWorkerService : Service() {
             try {
                 instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities,
                     if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null,
-                    if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null))
+                    if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null,
+                    if(manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})quickText?.let(::WorkerQuickTextBroker) else null))
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
                 require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }
                 require(instance.voiceManager == null || "voice-packs" in manifest.capabilities) { "插件未声明语音包管理能力" }

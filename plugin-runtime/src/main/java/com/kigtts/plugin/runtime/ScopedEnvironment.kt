@@ -6,6 +6,7 @@ import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.PluginStorage
 import com.kigtts.plugin.api.SpeechBroker
 import com.kigtts.plugin.api.RecognitionBroker
+import com.kigtts.plugin.api.QuickTextBroker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -18,7 +19,7 @@ import kotlin.coroutines.coroutineContext
 internal class ScopedEnvironment(base: Context, override val storage: PluginStorage,
     override val assets: File, private val networkAllowed: Boolean,
     override val speechBroker: SpeechBroker? = null,
-    override val recognitionBroker: RecognitionBroker? = null) : AndroidPluginEnvironment {
+    override val recognitionBroker: RecognitionBroker? = null,override val quickTextBroker:QuickTextBroker?=null) : AndroidPluginEnvironment {
     override val context = object : ContextWrapper(base) {
         override fun getApplicationContext(): Context = this
         override fun getFilesDir(): File = storage.directory("files")

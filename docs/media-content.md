@@ -63,3 +63,5 @@ API6 改变 `PluginContext` 二进制结构，API5 及更早的 DEX 包须同签
 `MediaDeviceTest` 的三个仪器用例仍按用户选择暂缓测试 APK 安装，未宣称运行通过。独立管理器现已完成六个插件的 API6/0.5.0 更新，及 Android 动态照片导入/静态显示、原生 H.264 GPU 首帧/正确比例/整卡片高斯背景检查。新增本地截图覆盖胶囊紧凑尺寸/按压取消/弹性展开收回、删除媒体后的退场像素保留和文字渐入、波浪暂停中间帧到直线及继续恢复；相位与实时拖动、松手恢复原状态、初次激活自动播放、完成后手动重播、声音策略保存和画面外编辑预览也有回归。本轮手机由用户取走，2026-10-12的新版本暂不安装。完整实况首尾切换的逐帧黑闪统计、不同品牌动态照片、真实 HEIC/MOV、网页输入法/插件消息/网络页面与长期设备性能仍待进一步硬件验收。
 
 格式依据：[Android Motion Photo 格式](https://developer.android.com/media/platform/motion-photo-format)、[Apple 配对视频资源](https://developer.apple.com/documentation/photos/phassetresourcetype/pairedvideo)。组件依据：[Media3](https://developer.android.com/jetpack/androidx/releases/media3)、[WebView 消息监听器](https://developer.android.com/reference/androidx/webkit/WebViewCompat)。
+
+当前 SDK7 增加 [快捷文本/Agent broker](quick-text-plugin-api.md)，可发布有项目根的 HTML 工具及编辑/导出资源；API6 及更早的外部包须同发布者重建 0.6.0，媒体/模型数据保留，本轮未安装。

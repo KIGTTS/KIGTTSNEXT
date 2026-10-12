@@ -18,8 +18,8 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 ```powershell
 ./tools/Invoke-PluginManager.ps1 -Command snapshot
-./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.5.0.kigplugin
-./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.5.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
+./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.6.0.kigplugin
+./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.6.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
 ./tools/Invoke-PluginManager.ps1 -Command restart -Payload '{"id":"engine.piper"}'
 ./tools/Invoke-PluginManager.ps1 -Command tts-test -Payload '{"id":"engine.system-tts"}'
 ./tools/Invoke-PluginManager.ps1 -Command execute -Payload '{"id":"debug.ui","action":"动作ID","inputs":{}}'
@@ -33,8 +33,10 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 ## 管理协议 1
 
-`:manager-protocol` 是独立于插件 API6 的稳定 AIDL 接口，只传版本化 JSON 和可选 FD。主程序服务同时验证 `signature` 权限、调用者签名以及指定包名；同签名的其它应用也不被接受。请求 JSON ≤64 KiB，普通传入文件 ≤768 MiB，插件资源 ≤2 GiB。动作调试和合成自检限时 30 秒，异常作为结果返回，临时宿主文件最终回收。
+`:manager-protocol` 是独立于引擎/工具插件 API 的稳定 AIDL 接口，只传版本化 JSON 和可选 FD。主程序服务同时验证 `signature` 权限、调用者签名以及指定包名；同签名的其它应用也不被接受。请求 JSON ≤64 KiB，普通传入文件 ≤768 MiB，插件资源 ≤2 GiB。动作调试和合成自检限时 30 秒，异常作为结果返回，临时宿主文件最终回收。
 
 `execute` 返回原始插件动作结果供检查，不自动执行其网页/导航等宿主命令。`tts-test` 检查有效 PCM 及完成事件，不播放音频。状态包含媒体 ID/语音状态等必要信息，操作日志最多 200 条、仅驻内存；不是完整 logcat 或性能采样器。
 
 当前手机验证：同签名管理器绑定、状态读取、签名检查、六包 API6 安装/更新、旧停用状态保留、系统 TTS PCM 自检及 FD 媒体呈现已完成。未依赖测试 APK。持续后台监控和厂商长时间保活仍需实际使用验证。
+
+当前引擎/服务包为 API7/0.6.0，另有可选快捷工具示例。上述 API6 手机结果是历史记录，本轮 SDK7 尚未安装。

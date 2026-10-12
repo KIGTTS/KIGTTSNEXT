@@ -82,7 +82,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val type = phrase?.cardType(repository.get(phrase.mediaId)?.kind) ?: QuickCardType.TEXT
         phraseState.value=PhraseDraft(UUID.randomUUID().toString(),phrase?.id,phrase?.text.orEmpty(),phrase?.title.orEmpty(),phrase?.category ?: category,phrase?.mediaId,
             type,phrase?.colorMode ?: CardColorMode.DEFAULT,phrase?.color ?: 0xFF00696E,phrase?.richText ?: false,phrase?.formats.orEmpty(),
-            mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true,phrase?.audioMode)
+            mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true,phrase?.audioMode,phrase?.metadata.orEmpty())
     }
     fun editPhrase(change:(PhraseDraft)->PhraseDraft) { phraseState.value=phraseState.value?.let(change) }
     fun cancelPhrase() { phraseState.value=null }
@@ -107,7 +107,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     }
     fun savePhrase() { phraseState.value?.let { draft ->
         if (draft.valid(repository)) library.savePhrase(QuickPhrase(draft.text,draft.category,draft.phraseId ?: UUID.randomUUID().toString(),draft.title,
-            if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay,draft.audioMode))
+            if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay,draft.audioMode,draft.metadata))
     };phraseState.value=null }
     fun picker(target:String="display")=navigate(Destination.MediaLibrary(target))
     suspend fun htmlFiles(target:String="display",selectedMedia:String?=null) {

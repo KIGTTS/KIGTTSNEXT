@@ -53,8 +53,15 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     private fun scoped(path:String):File { require(path.isNotBlank() && !path.contains(':') && !path.contains('\\') && !path.startsWith('/') && path.split('/').none { it in setOf("",".","..") })
         return File(root,path).canonicalFile.also { require(it.toPath().startsWith(root.canonicalFile.toPath())) } }
     @Synchronized private fun save(entry:MediaEntry):MediaEntry {
-        val entries=listOf(entry)+state.value.filterNot { it.id==entry.id }; persist(entries);state.value=entries;return entry
+        val updated=entry.copy(created=maxOf(entry.created,(get(entry.id)?.created ?: -1)+1))
+        val entries=listOf(updated)+state.value.filterNot { it.id==entry.id }; persist(entries);state.value=entries;return updated
     }
+    internal fun registerPluginMedia(entry:MediaEntry):MediaEntry {
+        require(entry.pluginId!=null&&get(entry.id).let {it==null||it.pluginId==entry.pluginId})
+        require(file(entry)!=null);return save(entry)
+    }
+    internal fun touchMedia(id:String):MediaEntry=save(requireNotNull(get(id)))
+    internal fun presentation(entry:MediaEntry):MediaEntry {require(get(entry.id)!=null);return save(entry)}
     private fun persist(entries:List<MediaEntry>) { val stage=File(root,".catalog.tmp"); stage.writeText(JSONArray().also { array -> entries.forEach { array.put(it.json()) } }.toString(),Charsets.UTF_8)
         java.nio.file.Files.move(stage.toPath(),catalog.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING) }
     fun import(uri:Uri, forcedMime:String?=null):MediaEntry {

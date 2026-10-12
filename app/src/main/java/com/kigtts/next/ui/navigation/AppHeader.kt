@@ -32,6 +32,7 @@ fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
         is Destination.MediaLibrary -> "媒体库"
         is Destination.HtmlFiles -> "页面文件"
         is Destination.HtmlPreview -> "页面预览"
+        is Destination.QuickTextReview -> "修改预览"
         is Destination.ContentEditor -> "内容编辑器"
         is Destination.PhraseEditor -> "编辑快捷文本"
     }

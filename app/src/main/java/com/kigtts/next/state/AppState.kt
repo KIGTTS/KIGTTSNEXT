@@ -15,6 +15,7 @@ sealed interface Destination {
     data class MediaLibrary(val target: String = "display") : Destination
     data class HtmlFiles(val mediaId: String, val target: String = "display") : Destination
     data class HtmlPreview(val mediaId: String) : Destination
+    data class QuickTextReview(val token:String):Destination
     data class ContentEditor(val token: String) : Destination
     data class PhraseEditor(val token: String, val adding: Boolean = false) : Destination
 }

@@ -76,6 +76,7 @@ dependencies {
     implementation(project(":manager-protocol"))
     testImplementation(project(":plugins:placeholder-tts"))
     testImplementation(project(":plugins:placeholder-asr"))
+    testImplementation(project(":engine-plugins:quick-text-tools"))
     implementation(project(":plugins:debug-ui"))
     implementation(project(":plugins:listening-panel"))
     implementation(project(":plugins:voice-input"))
@@ -113,7 +114,8 @@ tasks.withType<Test>().configureEach {
     doFirst { nativeTemp.mkdirs() }
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
-    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.5.0.kigplugin") }
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.6.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
+tasks.withType<Test>().configureEach {systemProperty("kig.quick.example.assets",rootProject.file("engine-plugins/quick-text-tools/src/main/assets").absolutePath)}
 tasks.matching { it.name.contains("AndroidTest") }.configureEach { dependsOn(copyPluginTestAssets) }

@@ -2,7 +2,7 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 6
+const val PLUGIN_API_VERSION = 7
 
 @Serializable
 enum class PluginRequirement { RECOGNITION_SERVICE }

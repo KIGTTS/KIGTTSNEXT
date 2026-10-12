@@ -8,11 +8,26 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
     private val itemState = MutableStateFlow(store.load())
     private val groupState = MutableStateFlow(store.loadCategories(itemState.value))
     private val iconState = MutableStateFlow(store.loadCategoryIcons(groupState.value))
+    private val idState=MutableStateFlow(store.groupIds(groupState.value))
+    private val revisionState=MutableStateFlow(store.revision())
     val phrases = itemState.asStateFlow()
     val categories = groupState.asStateFlow()
     val categoryIcons = iconState.asStateFlow()
+    val categoryIds=idState.asStateFlow()
+    val revision=revisionState.asStateFlow()
+    fun receipt(key:String)=store.receipt(key)
+    fun receipt(key:String,value:String)=store.receipt(key,value)
 
-    private fun save() = store.save(itemState.value, groupState.value, iconState.value)
+    private fun save() {
+        idState.value=groupState.value.associateWith { idState.value[it] ?: java.util.UUID.randomUUID().toString() }
+        val next=revisionState.value+1;store.save(itemState.value,groupState.value,iconState.value,idState.value,next);revisionState.value=next
+    }
+    /** Validation happens before this one durable commit; UI state publishes only after persistence. */
+    fun commit(items:List<QuickPhrase>,groups:List<String>,icons:Map<String,CategoryIcon>,ids:Map<String,String>,expected:Long,receipt:Pair<String,String>) {
+        check(revisionState.value==expected) { "快捷文本已更新，请重新预览" }
+        val next=expected+1;store.save(items,groups,icons,ids,next,receipt)
+        itemState.value=items;groupState.value=groups;iconState.value=icons;idState.value=ids;revisionState.value=next
+    }
     fun savePhrase(phrase: QuickPhrase): Boolean {
         if (phrase.text.isBlank() || phrase.category !in groupState.value) return false
         val value = phrase.copy(title = phrase.title.trim(), formats = com.kigtts.next.text.TextFormatting.normalize(phrase.formats, phrase.text.length))
@@ -62,6 +77,7 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
         itemState.value = itemState.value.map { if (it.category == original) it.copy(category = value) else it }
         groupState.value = groupState.value.map { if (it == original) value else it }
         iconState.value = (iconState.value - original) + (value to icon)
+        idState.value=(idState.value-original)+(value to requireNotNull(idState.value[original]))
         save()
         return true
     }

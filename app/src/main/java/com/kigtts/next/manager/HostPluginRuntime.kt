@@ -13,6 +13,10 @@ import java.lang.ref.WeakReference
 /** The UI and external manager must share exactly one worker owner in the main process. */
 class HostPluginRuntime private constructor(private val application: Application) {
     val manager = PluginManager(application, builtinPlugins(application))
+    val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
+    val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)
+    val quickTextPlugins=com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,manager.paths,::ui)
+    init {manager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()
     private val operations = Mutex()
     @Volatile private var owner = WeakReference<AppViewModel>(null)
