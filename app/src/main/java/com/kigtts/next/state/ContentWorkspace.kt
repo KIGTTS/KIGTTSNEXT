@@ -64,7 +64,8 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val entry = repository.get(phrase.mediaId)
         when (phrase.cardType(entry?.kind)) {
             QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode) } ?: setText(phrase.text)
-            QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay) }
+            QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay,
+                subtitleFormats=if(phrase.richText)phrase.formats else emptyList()) }
                 if (entry?.kind == MediaKind.AUDIO) playAudio(entry,phrase.autoPlay&&state().autoPlayback) }
             QuickCardType.TEXT -> { history.clear();setText(phrase.text); if (phrase.richText) update { it.copy(subtitleFormats = phrase.formats) };if(state().autoPlayback)autoRead() }
         }

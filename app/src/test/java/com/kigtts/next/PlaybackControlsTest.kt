@@ -37,6 +37,8 @@ class PlaybackControlsTest {
             Box(Modifier.width(360.dp)) { PlaybackControls(state,expanded.value,true,{ expanded.value=true },{ expanded.value=false },Modifier.testTag("controls")) }
         } }
         compose.waitForIdle()
+        val icon=compose.onNodeWithTag("media-playback-icon",useUnmergedTree=true).getUnclippedBoundsInRoot()
+        assertEquals(24.dp,icon.right-icon.left)
         val small=compose.onNodeWithTag("controls").getUnclippedBoundsInRoot()
         compose.onNodeWithTag("controls").captureRoboImage("build/previews/live-controls-compact.png")
         compose.onNodeWithTag("play-motion-photo").performClick()

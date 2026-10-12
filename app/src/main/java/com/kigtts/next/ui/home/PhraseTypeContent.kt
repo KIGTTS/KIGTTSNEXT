@@ -9,8 +9,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
-import com.kigtts.next.ui.components.animateEnabled
-import com.kigtts.next.ui.components.feedbackChange
 import com.kigtts.next.ui.navigation.LocalPageActive
 
 /** Retain the outgoing type's values for the transition, and gate its controls immediately. */
@@ -26,11 +24,6 @@ internal fun PhraseTypeContent(draft:PhraseDraft,model:AppViewModel,enabled:Bool
         val interactive=enabled&&shownType==draft.type
         CompositionLocalProvider(LocalPageActive provides interactive) {
             Column(Modifier.testTag("phrase-type-content/"+shownType.name),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                if(shownType==QuickCardType.TEXT)Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
-                    Text("富文本",Modifier.weight(1f))
-                    Switch(shown.richText,feedbackChange { value->model.content.editPhrase { it.copy(richText=value) } },
-                        colors=SwitchDefaults.colors().animateEnabled(interactive),enabled=interactive,modifier=Modifier.testTag("phrase-rich-text"))
-                }
                 PhraseResourceSettings(shown,model,interactive,leave)
             }
         }

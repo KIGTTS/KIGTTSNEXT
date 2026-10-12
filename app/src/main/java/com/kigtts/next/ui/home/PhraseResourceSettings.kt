@@ -41,7 +41,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     when (draft.type) {
-        QuickCardType.TEXT -> MotionTextButton(feedbackClick { leave(); model.content.editor(target = "phrase:" + draft.key) }, enabled = enabled) { Text("打开文本编辑器") }
+        QuickCardType.TEXT -> Unit
         QuickCardType.AUDIO -> MotionOutlinedButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
             modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
         QuickCardType.MEDIA -> MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },

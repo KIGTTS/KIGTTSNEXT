@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.animateEnabled
-import com.kigtts.next.ui.components.enabledContentMotion
 
 @Composable
 internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, model: AppViewModel, enabled: Boolean) {
@@ -49,11 +48,9 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
                 }
             }
         }
-        PhraseEditorSection("卡片内容") {
-            PrimaryTabRow(draft.type.ordinal, Modifier.testTag("phrase-type-tabs")) {
-                QuickCardType.entries.forEach { type -> Tab(draft.type == type,
-                    feedbackClick { focus.clearFocus();keyboard?.hide();model.content.editPhrase { it.switchType(type) } }, enabled = enabled,
-                    modifier = Modifier.testTag("phrase-type-" + type.name).enabledContentMotion(enabled), text = { Text(type.label) }) }
+        PhraseEditorSection("附加内容") {
+            PhraseTypeTabs(draft.type,enabled) { type->
+                if(type!=draft.type) { focus.clearFocus();keyboard?.hide();model.content.editPhrase { it.switchType(type) } }
             }
             PhraseTypeContent(draft,model,enabled) { focus.clearFocus();keyboard?.hide() }
         }

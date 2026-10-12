@@ -39,6 +39,8 @@ class PhraseMediaPreviewTest {
                 draft?.let { PhraseDetailsForm(it,listOf("常用"),model,true) }
             } } }
             compose.onNodeWithTag("phrase-media-preview").performScrollTo()
+            compose.onNodeWithText(entry.name).assertDoesNotExist()
+            compose.onNodeWithContentDescription(entry.name).assertDoesNotExist()
             val picture=compose.onNodeWithTag("phrase-media-preview").getUnclippedBoundsInRoot()
             val controls=compose.onNodeWithTag("phrase-preview-controls").getUnclippedBoundsInRoot()
             assertTrue(controls.top>=picture.bottom);assertFalse(fixture.playing)

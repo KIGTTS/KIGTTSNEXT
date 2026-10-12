@@ -37,7 +37,7 @@ internal fun PhraseResourcePreview(entry: MediaEntry, repository: MediaRepositor
                     val audible=(audioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(automaticReading)
                     Column(Modifier.fillMaxWidth()) {
                     Box(Modifier.fillMaxWidth().height(220.dp).clip(MaterialTheme.shapes.large).testTag("phrase-media-preview")) {
-                        if(entry.kind==MediaKind.VIDEO)MediaVideo(file,entry.name,false,{},Modifier.fillMaxSize(),entry.scale,
+                        if(entry.kind==MediaKind.VIDEO)MediaVideo(file,"视频预览",false,{},Modifier.fillMaxSize(),entry.scale,
                             playback,showControls=false,autoPlay=false,playAudio=audible)
                         else {
                             MediaImage(file,entry.name,Modifier.fillMaxSize(),scale=entry.scale,backdrop=true)

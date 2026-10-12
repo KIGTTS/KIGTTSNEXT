@@ -86,4 +86,15 @@ Debug/Release/R8 与两种 Lint 通过（各 0 错误、37 警告、1 提示）�
 
 Debug/Release/R8 和两种 Lint 通过（各 0 错误、37 警告、1 提示）。签名与 Debug 同证书，16K 对齐及非 debuggable 检查通过，Release 比同版 Debug 小 88.2%，比上一个安装包增加 16 KiB。APK 已准备在本地；用户取走手机并要求明天再装，因此此次没有安装主程序或测试 APK，也没有设备性能、真实媒体精确 seek 时延或插件运行状态的新测量。前面的安装与性能记录属于各自明确的 APK，不能视为本版真机结果。
 
+## 共有格式与媒体标识（2026-10-12，待安装）
+
+| 构建 | APK 文件大小 | SHA256 |
+| --- | ---: | --- |
+| Debug | 30,588,458 字节 / 29.171 MiB | `277456B526E8CD97843A2B420F15FB78A9BE26E0FDAE5BA944781143A84C9FEE` |
+| 本地签名 Release | 3,605,963 字节 / 3.439 MiB | `A8E347B81FA2EB6FF1486DAF913505E7F033860DB81AD8A668CAC5DB13DC67FD` |
+
+250 项完整回归通过（71 套件，0 失败、错误或跳过）。富文本和文本编辑器在共有区常驻，四个同排图标 Tab 为无/音频/媒体/页面；新增下划线与小/正常/大字号，保存和重启兼容旧格式与旧大字号。音视频展示使用类型或用户填写的正文/标题，预览、播放、管理不显示原文件路径和文件名。实况/音频播放胶囊显示 Motion Photos On/Audio File 图标，展开播放/暂停图标交叉淡变；尺寸、按压与控制条过渡保持。
+
+Debug/Release/R8 与双 Lint 通过（各 0 错误、37 警告、1 提示）。同证书签名、16K 对齐及非 debuggable 核验通过；文件体积相同但摘要已更新。本版本仍未安装，手机验收按用户安排延后。
+
 依据：[Android 构建优化](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization)、[dumpsys 性能指标](https://developer.android.com/tools/dumpsys)。

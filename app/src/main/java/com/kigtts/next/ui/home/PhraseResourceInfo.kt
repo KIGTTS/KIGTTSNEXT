@@ -17,7 +17,8 @@ import com.kigtts.next.ui.components.feedbackClick
 internal fun PhraseResourceInfo(entry:MediaEntry,enabled:Boolean,canFrame:Boolean,frame:()->Unit,detach:()->Unit) {
     var menu by remember(entry.id) { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(),verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
-        Text(entry.name,Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
+        Text(if(entry.kind in setOf(com.kigtts.next.media.MediaKind.VIDEO,com.kigtts.next.media.MediaKind.AUDIO))entry.kind.label else entry.name,
+            Modifier.weight(1f),style=MaterialTheme.typography.bodySmall,maxLines=1,overflow=TextOverflow.Ellipsis)
         Box {
             MotionIconButton(feedbackClick { menu=true },enabled=enabled,modifier=Modifier.testTag("phrase-resource-more")) { Icon(Icons.Default.MoreVert,"资源选项") }
             DropdownMenu(menu&&enabled,{ menu=false }) {

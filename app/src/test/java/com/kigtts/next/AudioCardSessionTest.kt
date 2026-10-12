@@ -45,8 +45,10 @@ class AudioCardSessionTest {
         assertEquals("Replay pill is centered like live photo playback",((area.left+area.right)/2).value,((collapsed.left+collapsed.right)/2).value,.5f)
         try {
             compose.runOnIdle {
-                workspace.send(QuickPhrase("音频条目的真实字幕","常用",mediaId=entry.id,type=QuickCardType.AUDIO))
+                val formats=listOf(com.kigtts.next.text.TextFormatRun(0,2,com.kigtts.next.text.TextFormat.UNDERLINE))
+                workspace.send(QuickPhrase("音频条目的真实字幕","常用",mediaId=entry.id,type=QuickCardType.AUDIO,richText=true,formats=formats))
                 assertEquals("音频条目的真实字幕",state.editorValue.text)
+                assertEquals(formats,state.subtitleFormats)
                 workspace.closeContent();assertNull(state.audioId);assertEquals("音频条目的真实字幕",state.editorValue.text)
                 workspace.show(entry);stoppedOnMain=false
             }

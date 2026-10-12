@@ -31,6 +31,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun MediaLibraryScreen(model: AppViewModel, target: String) {
     val entries by model.mediaRepository.entries.collectAsStateWithLifecycle()
+    val phrases by model.phrases.collectAsStateWithLifecycle()
     val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
     val pagesOnly = target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE
     val shown = if (pagesOnly) entries.filter { it.kind in setOf(MediaKind.HTML, MediaKind.WEB) } else entries
@@ -74,18 +75,18 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
                     Box(Modifier.fillMaxWidth().height(148.dp)) {
                         MediaCardBackdrop(entry, model.mediaRepository, Modifier.matchParentSize(), MaterialTheme.colorScheme.surfaceContainer)
                         Column(Modifier.fillMaxHeight().fillMaxWidth(.6f).padding(12.dp), verticalArrangement = Arrangement.Center) {
-                        Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(mediaDisplayTitle(entry,phrases), maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(if (entry.appleLive) "苹果实况照片" else entry.kind.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         FilledTonalIconButton(feedbackClick { menu = entry }, Modifier.align(Alignment.TopEnd).padding(4.dp).size(32.dp).testTag("manage-media-" + entry.id)) {
-                            Icon(Icons.Default.MoreVert, "管理 " + entry.name, Modifier.size(18.dp))
+                            Icon(Icons.Default.MoreVert, "管理 " + mediaDisplayTitle(entry,phrases), Modifier.size(18.dp))
                         }
                     }
                 }
             }
         }
     }
-    if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(entry.name) }, text = { Column {
+    if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(mediaDisplayTitle(entry,phrases)) }, text = { Column {
         TextButton(dialogFeedbackClick { menu = null; framing = entry }, Modifier.testTag("edit-thumbnail-framing")) { Text("缩略图取景") }
         if (state.appleLivePhotos && entry.pluginId == null && entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) TextButton(dialogFeedbackClick {
             menu = null; pairing = entry.id; pair.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))

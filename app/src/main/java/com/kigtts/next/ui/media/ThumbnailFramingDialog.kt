@@ -66,7 +66,8 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
                 Box(Modifier.fillMaxWidth().height(88.dp)) {
                     MediaCardBackdrop(preview, repository, Modifier.matchParentSize())
-                    Text(entry.name, Modifier.fillMaxWidth(.6f).padding(12.dp), maxLines = 2, style = MaterialTheme.typography.bodyLarge)
+                    Text(if(entry.kind in setOf(MediaKind.VIDEO,MediaKind.AUDIO))"字幕预览"else entry.name,
+                        Modifier.fillMaxWidth(.6f).padding(12.dp), maxLines = 2, style = MaterialTheme.typography.bodyLarge)
                 }
             }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

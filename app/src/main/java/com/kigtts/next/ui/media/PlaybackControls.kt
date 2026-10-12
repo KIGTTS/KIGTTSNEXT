@@ -7,6 +7,7 @@ import com.kigtts.next.ui.components.enabledContentMotion
 import com.kigtts.next.ui.components.MotionIconButton
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -41,7 +43,8 @@ import com.kigtts.next.ui.components.immediateButtonPress
 /** The same pill expands into controls; only the seek bar reads per-frame progress. */
 @Composable
 fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()->Unit,close:()->Unit,modifier:Modifier=Modifier,
-    collapsedLabel:String="播放实况",collapsedTag:String="play-motion-photo",closeLabel:String="返回照片",idleCollapse:Boolean=true) {
+    collapsedLabel:String="播放实况",collapsedTag:String="play-motion-photo",closeLabel:String="返回照片",idleCollapse:Boolean=true,
+    collapsedIcon:ImageVector=Icons.Default.MotionPhotosOn) {
     var idle by remember { mutableStateOf(false) }
     val compact by animateFloatAsState(if(idle&&state.playing&&!state.scrubbing)1f else 0f,
         tween(240,easing=FastOutSlowInEasing),label="playback-idle-morph")
@@ -76,8 +79,9 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
                 contentPadding=PaddingValues(4.dp),interactionSource=immediate.native,shapes=expressivePillShapes(),
                 colors=ButtonDefaults.filledTonalButtonColors(containerColor=Color.Transparent,
                     contentColor=lerp(MaterialTheme.colorScheme.onSecondaryContainer,MaterialTheme.colorScheme.onSurface,visible)).animateEnabled(enabled)) {
-                Icon(if(state.playing&&expanded)Icons.Default.Pause else Icons.Default.PlayArrow,null,
-                    Modifier.width(24.dp*visible).clipToBounds().graphicsLayer { alpha=visible })
+                Crossfade(if(!expanded)collapsedIcon else if(state.playing)Icons.Default.Pause else Icons.Default.PlayArrow,
+                    Modifier.size(24.dp).testTag("media-playback-icon"),animationSpec=tween(120),label="playback-icon") { icon->Icon(icon,null,Modifier.size(24.dp)) }
+                Spacer(Modifier.width(8.dp*(1f-visible)))
                 Box(Modifier.width(labelWidth*(1f-visible)).clipToBounds().graphicsLayer { alpha=1f-visible }) { Text(collapsedLabel,maxLines=1,softWrap=false) }
             }
             if(visible>0f)Row(Modifier.weight(1f).clipToBounds().graphicsLayer {

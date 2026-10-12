@@ -1,6 +1,6 @@
 package com.kigtts.next.text
 
-enum class TextFormat { BOLD, ITALIC, COLOR, SIZE }
+enum class TextFormat { BOLD, ITALIC, COLOR, SIZE, UNDERLINE }
 data class TextFormatRun(val start: Int, val end: Int, val kind: TextFormat, val value: Long = 0)
 
 object TextFormatting {
@@ -16,7 +16,7 @@ object TextFormatting {
         val from = minOf(start, end).coerceIn(0, length); val to = maxOf(start, end).coerceIn(from, length)
         if (from == to) return runs
         val normalized = normalize(runs, length)
-        val toggleOff = kind in setOf(TextFormat.BOLD, TextFormat.ITALIC) &&
+        val toggleOff = kind in setOf(TextFormat.BOLD, TextFormat.ITALIC, TextFormat.UNDERLINE) &&
             normalized.any { it.kind == kind && it.start <= from && it.end >= to }
         val remaining = normalized.flatMap { run ->
             if (run.kind != kind || run.end <= from || run.start >= to) listOf(run) else listOfNotNull(

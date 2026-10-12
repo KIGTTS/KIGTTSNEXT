@@ -75,6 +75,31 @@ class QuickCardContentTest {
         model.text("清空格式"); assertTrue(model.state.value.subtitleFormats.isEmpty())
         model.content.remove(html.id)
     }
+    @Test fun underlineTogglesKeepsOtherStylesAndSurvivesDraftAndLibrarySerialization() {
+        val text="你好朋友"
+        val bold=TextFormatting.apply(emptyList(),4,0,4,TextFormat.BOLD)
+        val underlined=TextFormatting.apply(bold,4,0,4,TextFormat.UNDERLINE)
+        assertTrue(formattedText(text,underlined).spanStyles.any { it.item.textDecoration==androidx.compose.ui.text.style.TextDecoration.Underline })
+        val cleared=TextFormatting.apply(underlined,4,1,3,TextFormat.UNDERLINE)
+        assertEquals(listOf(0 to 1,3 to 4),cleared.filter { it.kind==TextFormat.UNDERLINE }.map { it.start to it.end })
+        assertTrue(cleared.any { it.kind==TextFormat.BOLD&&it.start==0&&it.end==4 })
+        val legacy=listOf(TextFormatRun(0,4,TextFormat.SIZE,400))
+        assertEquals(legacy,TextFormatting.normalize(legacy,4))
+        assertTrue(TextFormatting.apply(legacy,4,0,4,TextFormat.SIZE,100).isEmpty())
+        val phrase=QuickPhrase(text,"常用",type=QuickCardType.AUDIO,richText=true,formats=underlined)
+        assertEquals(underlined,QuickPhraseCodec.read(QuickPhraseCodec.write(phrase)).formats)
+        val draft=PhraseDraft("draft",phrase.id,text,"","常用",null,type=QuickCardType.AUDIO,richText=true,formats=underlined)
+        assertEquals(underlined,PhraseDraftState.read(PhraseDraftState.write(draft))!!.formats)
+    }
+    @Test fun audioAndVideoDisplayUserContentInsteadOfFilenameOrPath() {
+        com.kigtts.next.media.MediaKind.entries.filter { it in setOf(MediaKind.AUDIO,MediaKind.VIDEO) }.forEach { kind->
+            val entry=MediaEntry("asset","/private/resources/secret-file.mp4",kind,"file.mp4")
+            assertEquals(kind.label,com.kigtts.next.ui.media.mediaDisplayTitle(entry,emptyList()))
+            val caption=QuickPhrase("用户的字幕\n第二行","常用",mediaId=entry.id,type=QuickCardType.MEDIA)
+            assertEquals("用户的字幕",com.kigtts.next.ui.media.mediaDisplayTitle(entry,listOf(caption)))
+            assertEquals("用户的标题",com.kigtts.next.ui.media.mediaDisplayTitle(entry,listOf(caption.copy(title="用户的标题"))))
+        }
+    }
     @Test fun formattingTracksInsertionDeletionAndIndependentSelectionStyles() {
         val original = "你好朋友"; val bold = TextFormatting.apply(emptyList(), 4, 0, 2, TextFormat.BOLD)
         val inserted = TextFormatting.rebase(bold, original, "你呀好朋友")

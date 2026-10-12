@@ -45,10 +45,10 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
                         playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
                 }
             }
-            MediaKind.VIDEO -> MediaVideo(source.first, entry.name, false, {}, modifier, entry.scale,autoPlay=state.contentAutoPlay,
+            MediaKind.VIDEO -> MediaVideo(source.first, "视频", false, {}, modifier, entry.scale,autoPlay=state.contentAutoPlay,
                 playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
             MediaKind.HTML, MediaKind.WEB -> MediaWeb(entry, state, model, modifier)
-            MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text(entry.name) }
+            MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text("音频") }
         }
     }
 }

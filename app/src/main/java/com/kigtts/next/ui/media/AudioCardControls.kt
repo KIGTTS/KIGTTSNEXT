@@ -2,6 +2,8 @@ package com.kigtts.next.ui.media
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +38,6 @@ fun AudioCardControls(session: AudioCardSession, modifier: Modifier = Modifier, 
     Column(modifier.testTag("audio-card-controls"), horizontalAlignment = Alignment.CenterHorizontally) {
         session.error?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }
         PlaybackControls(playback, session.expanded, true, session::restart, session::collapse,
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp), label, playTag, "收起音频控件")
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp), label, playTag, "收起音频控件",collapsedIcon=Icons.Default.AudioFile)
     }
 }

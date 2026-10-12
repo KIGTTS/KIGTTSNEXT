@@ -15,7 +15,7 @@ import com.kigtts.next.text.formattedText
 @Composable
 internal fun QuickPhraseText(phrase: QuickPhrase, modifier: Modifier = Modifier) {
     val hasTitle = phrase.title.isNotBlank()
-    val rich = phrase.richText && phrase.cardType() == com.kigtts.next.state.QuickCardType.TEXT
+    val rich = phrase.richText
     Column(modifier, verticalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterVertically)) {
         Text(formattedText(if (hasTitle) phrase.title else phrase.text, if (!hasTitle && rich) phrase.formats else emptyList()), Modifier.testTag("phrase-main-" + phrase.id),
             style = MaterialTheme.typography.bodyLarge, maxLines = if (hasTitle) 1 else 2,
