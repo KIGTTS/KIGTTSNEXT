@@ -114,7 +114,7 @@ tasks.withType<Test>().configureEach {
     doFirst { nativeTemp.mkdirs() }
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
-    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.6.0.kigplugin") }
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.7.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
 tasks.withType<Test>().configureEach {systemProperty("kig.quick.example.assets",rootProject.file("engine-plugins/quick-text-tools/src/main/assets").absolutePath)}

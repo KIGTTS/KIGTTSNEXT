@@ -14,6 +14,8 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
 }
 tasks.register<Copy>("collectPluginDependencies") {
+    dependsOn(":engine-plugins:tts-support:assembleDebug")
+    from(project(":engine-plugins:tts-support").layout.buildDirectory.file("outputs/aar/tts-support-debug.aar"))
     dependsOn(":engine-plugins:system-support:assembleDebug")
     from(project(":engine-plugins:system-support").layout.buildDirectory.file("outputs/aar/system-support-debug.aar")); into(layout.buildDirectory.dir("plugin-dependencies"))
 }

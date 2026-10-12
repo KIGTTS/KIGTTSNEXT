@@ -1,4 +1,4 @@
-# 快捷文本与 Agent 插件接口（API7 / 协议 1）
+# 快捷文本与 Agent 插件接口（API8 / 协议 1）
 
 插件清单声明 `quick-text-read` 或 `quick-text-write` 后，可从 `PluginEnvironment.quickTextBroker` 获取绑定到自己的接口；write 同时允许读取。宿主和 UI 共用一个快捷库及媒体仓库，后台可读写，打开原生页面需要宿主 UI 存在。该接口不引入 Agent、LLM 或语音引擎依赖。
 
@@ -100,7 +100,7 @@ JSON 使用稳定短标签，方便未来 Agent、Lua 或 Python 适配器构造
 
 ## 示例与验证
 
-可选独立包 `tools.quick-text-example-0.6.0.kigplugin` 创建计算器、提交结果字幕、导入导出条目，主 APK 不包含示例实现：
+可选独立包 `tools.quick-text-example-0.7.0.kigplugin` 创建计算器、提交结果字幕、导入导出条目，主 APK 不包含示例实现：
 
 ```powershell
 pwsh -File tools/Build-EnginePlugins.ps1 -Modules quick-text-tools

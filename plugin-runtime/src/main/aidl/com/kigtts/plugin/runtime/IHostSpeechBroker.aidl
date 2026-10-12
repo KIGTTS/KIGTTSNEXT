@@ -7,4 +7,5 @@ interface IHostSpeechBroker {
     void cancel(String token);
     String asrProviders();
     ParcelFileDescriptor recognizeProvider(String pluginId, in ParcelFileDescriptor input, boolean streaming, String config, String token);
+    void ttsControl(String pluginId, String command);
 }

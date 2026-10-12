@@ -1,6 +1,6 @@
 # 增量流式识别插件
 
-`engine.streaming-asr-0.6.0.kigplugin` 是独立的 Android DEX/JNI 插件，API7，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
+`engine.streaming-asr-0.7.0.kigplugin` 是独立的 Android DEX/JNI 插件，API8，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
 
 ## 使用
 
@@ -55,4 +55,4 @@ Windows CPU 使用同版本 sherpa-onnx 实际解码官方固定录音：中文�
 
 可复现实解码：先将三个官方目录包下载到对应 Windows 插件 Appdata/downloads，再用安装 `sherpa-onnx==1.12.38` / NumPy 的 Python 3.12 运行 `tools/Verify-StreamingModels.py --data-dir <对应插件 Appdata>`。解析、测试音频、规范包与 JSON 报告仍在该插件目录。
 
-`StreamingRecognitionDeviceTest` 验证实际 Android DEX/JNI、中文/英文包共存、EOF 前 Partial、取消后重用与完整录音。需要将主应用和所有现有插件更新为 API7；传入 `zhPack` / `zhWav` / `enPack` / `enWav`，四个路径都必须位于手机本插件数据目录。测试会保留安装的流式插件及导入包。当前 ADB 没有连接设备，本轮没有执行该真机检查，也没有覆盖手机仍可用的 API3。
+`StreamingRecognitionDeviceTest` 验证实际 Android DEX/JNI、中文/英文包共存、EOF 前 Partial、取消后重用与完整录音。需要将主应用和所有现有插件更新为 API8；传入 `zhPack` / `zhWav` / `enPack` / `enWav`，四个路径都必须位于手机本插件数据目录。测试会保留安装的流式插件及导入包。当前 ADB 没有连接设备，本轮没有执行该真机检查，也没有覆盖手机仍可用的 API3。

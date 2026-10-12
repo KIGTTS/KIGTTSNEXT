@@ -10,6 +10,7 @@ import java.util.UUID
 
 /** Only wire DTOs and file descriptors live in the app process. */
 internal class RemotePlugin(private val connection: WorkerConnection, initial: PluginSnapshot) : KigPlugin {
+    val generation: String = UUID.randomUUID().toString()
     val alive get() = connection.alive
     @Volatile private var snapshot = initial
     override val descriptor get() = snapshot.descriptor
@@ -23,6 +24,9 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
     override fun page(pageId: String, context: PluginContext) = snapshot.pages.firstOrNull { it.id == pageId }
     override val tts: TtsEngine? = initial.tts?.let { object : TtsEngine {
         override val info get() = requireNotNull(snapshot.tts)
+        override suspend fun control(command: TtsControl) = withContext(Dispatchers.IO) {
+            if (info.supportsControl) connection.worker.ttsControl(PluginJson.encodeToString(command))
+        }
         override fun synthesize(request: TtsRequest) =
             synthesisPipe({ token -> connection.worker.synthesize(PluginJson.encodeToString(request), token) },
                 { token -> connection.worker.cancel(token) })

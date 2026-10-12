@@ -10,7 +10,7 @@
 pwsh -File tools/Build-EnginePlugins.ps1
 ```
 
-本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.6.0.kigplugin`、`service.speech-recognition-0.6.0.kigplugin`、`engine.piper-0.6.0.kigplugin`、`engine.sensevoice-0.6.0.kigplugin`、`engine.streaming-asr-0.6.0.kigplugin`、旧兼容 `engine.system-tts-0.6.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
+本机脚本使用 `.tools/gradle-8.13` 和 `.tools/android-sdk`。输出在 `build/plugin-packages/`：`service.speech-synthesis-0.7.0.kigplugin`、`service.speech-recognition-0.7.0.kigplugin`、`engine.piper-0.7.0.kigplugin`、`engine.sensevoice-0.7.0.kigplugin`、`engine.streaming-asr-0.7.0.kigplugin`、旧兼容 `engine.system-tts-0.7.0.kigplugin`。可用 `-Modules streaming-asr` 只构建指定模块；也可先单独构建 Android library，再加 `-SkipBuild` 打包。默认在当前用户 LocalAppData/Temp/KIGTTSNEXT 中保留解包中间文件，可用 `-WorkDirectory` 指定构建临时目录。脚本只把插件自己的 classes.jar、所需引擎依赖和本地库交给 D8，API/Kotlin/协程由工作进程的父加载器提供。
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 发布者私钥，私钥不入 Git。保留该文件用于后续更新；正式发布可通过 `-SigningKey` 指定自己的 PKCS#8 DER 私钥。更新包必须由同一发布者签名，并递增 `plugin-spec.json` 的 versionCode；descriptor.version 与清单版本必须一致。
 
@@ -26,7 +26,7 @@ signature/public.der        # RSA SubjectPublicKeyInfo
 signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 ```
 
-API v7 当前运行时为 `android-dex`。API6 及更早的包与新主程序不兼容，需用同一发布者的 0.6.0/API7 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
+API v8 当前运行时为 `android-dex`。API6 及更早的包与新主程序不兼容，需用同一发布者的 0.7.0/API8 包更新；更新保留对应数据，勿通过卸载升级已导入模型的引擎。Lua/Python 仍是后续可增加的运行时，当前不支持脚本安装。插件不能在安装时添加 Activity、Service 或 Android 资源 ID；界面使用公共声明式协议，由宿主的 MD3e 组件渲染。
 
 ## 安装与生命周期
 
@@ -105,10 +105,10 @@ API4 功能的本地回归与新包产物单独验证；前文两项 Android 16 
 
 ## 增量流式识别插件
 
-engine.streaming-asr 的在线解码、多语言包管理、固定校验下载目录与 .kigasr 格式见 [流式识别使用说明](streaming-recognition.md)。当前 API7，不改变模型包格式；新插件 MIT，现有原版移植插件保留 GPLv3。复用宿主 ManagementList，不把模型/导入器/推理库放入主 APK。
+engine.streaming-asr 的在线解码、多语言包管理、固定校验下载目录与 .kigasr 格式见 [流式识别使用说明](streaming-recognition.md)。当前 API8，不改变模型包格式；新插件 MIT，现有原版移植插件保留 GPLv3。复用宿主 ManagementList，不把模型/导入器/推理库放入主 APK。
 
 ## 独立识别服务（API6）
 
-[语音识别服务](recognition-service.md)管理独立的 SenseVoice / 增量流式及社区 ASR 提供者，字幕和语音输入依赖它。服务没有推理库/模型；全部原引擎同签名重建为 0.6.0，以兼容角色、依赖、broker 和明确的结束帧。当前六个外部包均需 API7 主程序配合，升级保留引擎数据目录。
+[语音识别服务](recognition-service.md)管理独立的 SenseVoice / 增量流式及社区 ASR 提供者，字幕和语音输入依赖它。服务没有推理库/模型；全部原引擎同签名重建为 0.7.0，以兼容角色、依赖、broker 和明确的结束帧。当前六个外部包均需 API8 主程序配合，升级保留引擎数据目录。
 
-API7 加入 [快捷文本与 Agent 接口](quick-text-plugin-api.md)。引擎和服务包已同步重建 0.6.0，数据目录/发布者保持；可选工具示例包通过 -Modules quick-text-tools 构建，属于正式 API 调用示例，主 APK 不携带它。本次用户已取走手机，SDK7 主程序及插件包暂未安装。
+API8 加入 [快捷文本与 Agent 接口](quick-text-plugin-api.md)。引擎和服务包已同步重建 0.7.0，数据目录/发布者保持；可选工具示例包通过 -Modules quick-text-tools 构建，属于正式 API 调用示例，主 APK 不携带它。本次用户已取走手机，SDK8 主程序及插件包暂未安装。

@@ -1,10 +1,10 @@
 {
   "id": "engine.sensevoice",
   "name": "SenseVoice 语音识别",
-  "version": "0.6.0",
-  "versionCode": 6,
+  "version": "0.7.0",
+  "versionCode": 7,
   "entryClass": "com.kigtts.engines.sensevoice.SenseVoicePlugin",
-  "apiVersion": 7,
+  "apiVersion": 8,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "GPL-3.0-only",

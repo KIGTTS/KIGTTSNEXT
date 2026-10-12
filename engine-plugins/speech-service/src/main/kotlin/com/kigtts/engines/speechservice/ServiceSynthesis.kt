@@ -9,14 +9,16 @@ import kotlinx.coroutines.flow.*
 /** Uniform facade owns routing and fallback, while providers own inference and voice files. */
 internal class ServiceSynthesis(private val settings: ServiceSettings, private val broker: SpeechBroker,
     private val system: TtsEngine) : TtsEngine {
-    override val info get() = TtsInfo(role = TtsRole.SERVICE, selectedVoiceId = settings.voice)
+    private val routing = ServiceRouting(settings, broker, system)
+    override val info get() = TtsInfo(role = TtsRole.SERVICE, selectedVoiceId = settings.voice, supportsControl = true)
+    fun settingsChanged(automaticRead: Boolean? = null) = routing.changed(automaticRead)
+    override suspend fun control(command: TtsControl) { routing.control(command) }
+    override suspend fun close() = routing.close()
     override fun synthesize(request: TtsRequest) = flow {
         require(request.text.length <= info.maxTextLength) { "单次朗读文本过长" }
-        val selected = settings.provider
-        val provider = try { broker.providers().firstOrNull { it.pluginId == selected && it.enabled && it.info.availability == EngineAvailability.READY } }
-            catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { null }
+        val provider = routing.begin()
         if (provider == null) {
+            routing.fallback()
             system.synthesize(request.copy(voiceId = settings.systemVoice, rate = (request.rate * settings.rate).coerceIn(.25f, 4f))).collect { emit(it) }
             return@flow
         }
@@ -37,6 +39,7 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
                 if (audioSent) throw error
+                routing.fallback()
                 system.synthesize(request.copy(text = request.text.substring(offset),
                     voiceId = settings.systemVoice,
                     rate = (request.rate * settings.rate).coerceIn(.25f, 4f))).collect { if (it != SynthesisEvent.Started) emit(it) }

@@ -13,4 +13,5 @@ interface IPluginWorker {
     void cancel(String token);
     oneway void shutdown();
     void attachQuickTextBroker(IHostQuickTextBroker broker);
+    void ttsControl(String command);
 }

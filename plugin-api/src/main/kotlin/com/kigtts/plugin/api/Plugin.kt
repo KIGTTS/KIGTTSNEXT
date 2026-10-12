@@ -2,7 +2,7 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 7
+const val PLUGIN_API_VERSION = 8
 
 @Serializable
 enum class PluginRequirement { RECOGNITION_SERVICE }
@@ -38,7 +38,8 @@ interface KigPlugin {
 @Serializable
 data class PluginContext(val editorText: String, val transcript: String, val listening: Boolean = false,
     val listeningPanelVisible: Boolean = listening, val inputs: Map<String, String> = emptyMap(),
-    val contentKind: String = "TEXT", val contentId: String? = null)
+    val contentKind: String = "TEXT", val contentId: String? = null,
+    val automaticRead: Boolean = false, val ttsPluginId: String? = null, val speechActive: Boolean = false)
 
 @Serializable
 enum class HostCommand { TOGGLE_LISTENING, CLOSE_LISTENING_PANEL, USE_STREAMING, USE_BATCH, VOICE_INPUT }

@@ -22,6 +22,11 @@ open class PluginWorkerService : Service() {
     private val sessions = ConcurrentHashMap<String, Session>()
     private val binder = object : IPluginWorker.Stub() {
         override fun attachQuickTextBroker(broker:IHostQuickTextBroker?) {check(plugin==null);quickText=broker}
+        override fun ttsControl(command: String) = runBlocking(Dispatchers.IO) {
+            require(command.length <= 8192)
+            val engine = requireNotNull(plugin?.tts)
+            if (engine.info.supportsControl) engine.control(PluginJson.decodeFromString(command))
+        }
         override fun initialize(pluginId: String, broker: IHostSpeechBroker?): String = runBlocking(Dispatchers.IO) {
             check(plugin == null) { "工作进程已分配" }
             val paths = PluginPaths(this@PluginWorkerService)

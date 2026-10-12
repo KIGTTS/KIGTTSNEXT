@@ -4,7 +4,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class TtsProvider(val pluginId: String, val name: String, val info: TtsInfo, val enabled: Boolean = true)
+data class TtsProvider(val pluginId: String, val name: String, val info: TtsInfo, val enabled: Boolean = true,
+    val generation: String = "")
 
 @Serializable
 enum class VoiceOperation { IMPORT, SELECT, DELETE, RENAME, REFRESH, UPDATE_METADATA, SET_AVATAR, EXPORT, REORDER }
@@ -29,4 +30,5 @@ interface SpeechBroker {
     fun providers(): List<TtsProvider>
     suspend fun command(pluginId: String, command: VoiceCommand): PluginOutcome
     fun synthesize(pluginId: String, request: TtsRequest): Flow<SynthesisEvent>
+    suspend fun control(pluginId: String, command: TtsControl) {}
 }

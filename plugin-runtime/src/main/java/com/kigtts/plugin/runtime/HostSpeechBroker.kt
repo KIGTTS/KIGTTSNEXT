@@ -22,7 +22,8 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
         }
     }
     override fun providers(): String { check(allowTts); return PluginJson.encodeToString(registry.plugins.mapNotNull { plugin ->
-        plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { TtsProvider(plugin.descriptor.id, plugin.descriptor.name, it) }
+        plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { TtsProvider(plugin.descriptor.id, plugin.descriptor.name, it,
+            generation = (plugin as? RemotePlugin)?.generation.orEmpty()) }
     } + ProviderCatalog(paths).disabled(registry.plugins.map { it.descriptor.id }.toSet())) }
     override fun asrProviders(): String { check(allowAsr); return PluginJson.encodeToString(recognition.providers()) }
     override fun recognizeProvider(pluginId: String, input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor {
@@ -54,6 +55,11 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
             ProviderCatalog(paths).save(target)
             PluginJson.encodeToString(result)
         } finally { staged?.delete() }
+    }
+    override fun ttsControl(pluginId: String, command: String) = runBlocking(Dispatchers.IO) {
+        require(command.length <= 8192)
+        val engine = requireNotNull(provider(pluginId).tts)
+        if (engine.info.supportsControl) engine.control(PluginJson.decodeFromString(command))
     }
     override fun synthesize(pluginId: String, request: String, token: String): ParcelFileDescriptor {
         require(token.length in 1..80 && !sessions.containsKey(token))

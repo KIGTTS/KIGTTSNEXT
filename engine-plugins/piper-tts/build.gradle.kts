@@ -8,6 +8,7 @@ android {
     testOptions { unitTests.isIncludeAndroidResources = true }
 }
 dependencies {
+    implementation(project(":engine-plugins:tts-support"))
     compileOnly(project(":plugin-android-api"))
     implementation("com.microsoft.onnxruntime:onnxruntime-android:1.24.3")
     implementation("org.tukaani:xz:1.9")
@@ -18,5 +19,10 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
 tasks.register<Copy>("collectPluginDependencies") {
-    from(configurations.getByName("debugRuntimeClasspath")); into(layout.buildDirectory.dir("plugin-dependencies"))
+    dependsOn(":engine-plugins:tts-support:assembleDebug")
+    from(project(":engine-plugins:tts-support").layout.buildDirectory.file("outputs/aar/tts-support-debug.aar"))
+    from(configurations.getByName("debugRuntimeClasspath").incoming.artifactView {
+        componentFilter { it !is org.gradle.api.artifacts.component.ProjectComponentIdentifier }
+    }.files)
+    into(layout.buildDirectory.dir("plugin-dependencies"))
 }

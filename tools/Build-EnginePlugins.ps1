@@ -63,7 +63,7 @@ foreach ($module in $Modules) {
     if ($module -eq 'streaming-asr') {
         $jars += @(Expand-PluginAar (Join-Path $projectRoot 'engine-plugins/sensevoice-asr/libs/sherpa-onnx-1.12.38-noort.aar') $payload $scratch 'sherpa')
     }
-    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|system-support|commons-compress|commons-io|commons-codec|commons-lang3)' })) {
+    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|system-support|tts-support|commons-compress|commons-io|commons-codec|commons-lang3)' })) {
         if ($dependency.Extension -eq '.aar') { $jars += @(Expand-PluginAar $dependency.FullName $payload $scratch $dependency.BaseName $nativeAbi) }
         elseif ($dependency.Extension -eq '.jar') { $jars += $dependency.FullName }
     }

@@ -85,7 +85,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
 
     private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
-        contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId) }
+        contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
+        automaticRead = it.autoPlayback, speechActive = it.speaking,
+        ttsPluginId = registry.plugin(selectedTtsId.orEmpty())?.takeIf { plugin -> plugin.tts != null }?.descriptor?.id
+            ?: registry.plugins.firstOrNull { plugin -> plugin.tts != null }?.descriptor?.id) }
     fun navigate(destination: Destination) {
         if (destination == Destination.Home) navigationHistory.clear()
         else if (state.value.destination != destination) navigationHistory.addLast(state.value.destination)

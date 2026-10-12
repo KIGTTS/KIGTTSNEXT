@@ -33,7 +33,7 @@ data class TtsInfo(val availability: EngineAvailability = EngineAvailability.REA
     val voices: List<VoiceInfo> = emptyList(), val maxTextLength: Int = 4_000,
     val role: TtsRole = TtsRole.PROVIDER, val selectedVoiceId: String? = null,
     val importsVoicePacks: Boolean = false, val managesVoices: Boolean = false,
-    val packs: List<VoicePackInfo> = emptyList()) {
+    val packs: List<VoicePackInfo> = emptyList(), val supportsControl: Boolean = false) {
     init { require(maxTextLength in 2..100_000) }
 }
 @Serializable
@@ -63,10 +63,15 @@ sealed interface SynthesisEvent {
 
 interface TtsEngine {
     val info: TtsInfo get() = TtsInfo()
-    /** Cold flow; cancelling its collection must release engine resources. */
+    /** Cancellation releases request state; reusable models may remain until idle or RELEASE. */
     fun synthesize(request: TtsRequest): Flow<SynthesisEvent>
+    suspend fun control(command: TtsControl) {}
     suspend fun close() {}
 }
+
+@Serializable enum class TtsControlOperation { PREPARE, RELEASE, SET_RESIDENT, ACTIVITY }
+@Serializable data class TtsControl(val operation: TtsControlOperation, val voiceId: String? = null,
+    val resident: Boolean = false, val active: Boolean = false)
 
 @Serializable
 data class RecognitionConfig(val language: String = "zh-CN")

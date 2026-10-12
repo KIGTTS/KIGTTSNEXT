@@ -19,7 +19,7 @@ class PluginUpgradeDeviceTest {
         try {
             for (id in listOf("engine.system-tts", "engine.sensevoice", "engine.piper", "service.speech-synthesis", "engine.streaming-asr", "service.speech-recognition")) {
                 val input = File(manager.paths.packages,".api6-upgrade-$id.kigplugin")
-                instrumentation.context.assets.open("$id-0.6.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
+                instrumentation.context.assets.open("$id-0.7.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
                     val preview = manager.packages.inspect(input)
                     if (manager.packages.installed().none { it.manifest.id==id && it.manifest.versionCode==preview.manifest.versionCode }) manager.install(input, preview.publisherSha256)
@@ -27,7 +27,7 @@ class PluginUpgradeDeviceTest {
                 } finally { input.delete() }
             }
             manager.reload();assertTrue(manager.status.toString(),manager.status.all { it.error==null })
-            assertEquals(6,manager.packages.installed().count { it.manifest.apiVersion==7 && it.manifest.version=="0.6.0" })
+            assertEquals(6,manager.packages.installed().count { it.manifest.apiVersion==7 && it.manifest.version=="0.7.0" })
             previous.forEach { (id,enabled) -> assertEquals(enabled,manager.packages.installed().first { it.manifest.id==id }.enabled) }
         } finally { manager.close() }
     }

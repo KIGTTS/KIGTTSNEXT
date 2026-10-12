@@ -1,10 +1,10 @@
 {
   "id": "engine.piper",
   "name": "Piper 语音引擎",
-  "version": "0.6.0",
-  "versionCode": 6,
+  "version": "0.7.0",
+  "versionCode": 7,
   "entryClass": "com.kigtts.engines.piper.PiperPlugin",
-  "apiVersion": 7,
+  "apiVersion": 8,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "GPL-3.0-only",

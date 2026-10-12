@@ -5,6 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal class WorkerSpeechBroker(private val remote: IHostSpeechBroker) : SpeechBroker {
+    override suspend fun control(pluginId: String, command: TtsControl) = withContext(Dispatchers.IO) {
+        remote.ttsControl(pluginId, PluginJson.encodeToString(command))
+    }
     override fun providers(): List<TtsProvider> = PluginJson.decodeFromString(remote.providers())
     override suspend fun command(pluginId: String, command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {
         PluginJson.decodeFromString(remote.command(pluginId, PluginJson.encodeToString(command)))

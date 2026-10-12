@@ -17,6 +17,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     val paths = PluginPaths(context)
     val packages = PluginPackageStore(paths)
     val registry = PluginRegistry(builtins)
+    private val readiness = TtsReadiness(registry)
     @Volatile var quickTextBrokerFactory:((String,Set<String>)->QuickTextBroker)?=null
     private val mutation = Mutex()
     private val loaded = linkedMapOf<String, Pair<Int, RemotePlugin>>()
@@ -26,6 +27,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     suspend fun workers() = mutation.withLock { loaded.map { (id, entry) -> WorkerStatus(id, entry.first, entry.second.alive) } }
     suspend fun restart(id: String) = mutation.withLock { paths.validateId(id);unload(id);reloadLocked() }
     suspend fun refreshContext(context: PluginContext): Boolean = mutation.withLock {
+        readiness.observe(context)
         var changed = false
         for ((_, proxy) in loaded.values) {
             if (proxy.alive) try { if (proxy.refresh(context)) changed = true }
@@ -94,5 +96,5 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         try { withContext(Dispatchers.IO) { ResourceImporter.import(paths.storage(id), open(), directory, name, zip) } }
         finally { reloadLocked() }
     }
-    suspend fun close() = mutation.withLock { loaded.keys.toList().forEach { unload(it) } }
+    suspend fun close() = mutation.withLock { readiness.close(); loaded.keys.toList().forEach { unload(it) } }
 }

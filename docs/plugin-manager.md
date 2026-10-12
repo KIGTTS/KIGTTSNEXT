@@ -18,8 +18,8 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 ```powershell
 ./tools/Invoke-PluginManager.ps1 -Command snapshot
-./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.6.0.kigplugin
-./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.6.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
+./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.7.0.kigplugin
+./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.7.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
 ./tools/Invoke-PluginManager.ps1 -Command restart -Payload '{"id":"engine.piper"}'
 ./tools/Invoke-PluginManager.ps1 -Command tts-test -Payload '{"id":"engine.system-tts"}'
 ./tools/Invoke-PluginManager.ps1 -Command execute -Payload '{"id":"debug.ui","action":"动作ID","inputs":{}}'
@@ -40,3 +40,5 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 当前手机验证：同签名管理器绑定、状态读取、签名检查、六包 API6 安装/更新、旧停用状态保留、系统 TTS PCM 自检及 FD 媒体呈现已完成。未依赖测试 APK。持续后台监控和厂商长时间保活仍需实际使用验证。
 
 当前引擎/服务包为 API7/0.6.0，另有可选快捷工具示例。2026-10-12 已通过管理器升级手机上的六个引擎/服务包，核验原发布者签名，启停状态保留；已启用插件均加载成功。语音合成服务 PCM 自检完成（182,272 字节，不播放声音）。上述 API6 手机结果仍是历史记录；可选快捷工具示例本次未额外安装。
+
+当前构建为API8/0.7.0，统一合成生命周期见 [接口说明](tts-lifecycle.md)。上面的 API7 六包升级结果是历史记录；API8 安装前手机已断开，尚未升级设备。管理器桥仍为1，无需重装管理器或测试 APK。
