@@ -47,8 +47,8 @@ fun PluginsScreen(model: AppViewModel) {
     }
     val rows = pluginManagementItems(model)
     RegisterPageActions(listOf(
-        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working) { importer.launch(arrayOf("*/*")) },
-        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
+        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working,preserveColorWhenLocked=true) { importer.launch(arrayOf("*/*")) },
+        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
     com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), working,
         invoke = { action, inputs ->

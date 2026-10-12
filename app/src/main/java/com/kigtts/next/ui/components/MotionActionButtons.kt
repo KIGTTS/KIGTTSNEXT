@@ -6,6 +6,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
@@ -13,14 +15,23 @@ import androidx.compose.ui.graphics.lerp
 @Composable
 fun MotionIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: IconButtonColors = IconButtonDefaults.iconButtonColors(), interactionSource: MutableInteractionSource? = null,
+    transientLock: Boolean = false,
     content: @Composable () -> Unit) {
-    IconButton(onClick = onClick, modifier = modifier, enabled = enabled, colors = colors.animateEnabled(enabled), interactionSource = interactionSource, content = content)
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val press = rememberImmediateButtonPress(source)
+    LaunchedEffect(enabled) { if (!enabled && !transientLock) press.cancel() }
+    IconButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier),
+        enabled = enabled, colors = colors.animateEnabled(enabled), interactionSource = press.native,
+        shapes = IconButtonDefaults.shapes(), content = content)
 }
 
 @Composable
 fun MotionTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(), content: @Composable RowScope.() -> Unit) {
-    TextButton(onClick, modifier, enabled, colors = colors.animateEnabled(enabled), content = content)
+    val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
+    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    TextButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
+        colors = colors.animateEnabled(enabled), interactionSource = press.native, shapes = ButtonDefaults.shapes(), content = content)
 }
 
 @Composable
@@ -30,6 +41,9 @@ fun MotionOutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, ena
     val disabled = ButtonDefaults.outlinedButtonBorder(false)
     val border = BorderStroke(active.width, lerp((disabled.brush as SolidColor).value,
         (active.brush as SolidColor).value, enabledProgress(enabled)))
-    OutlinedButton(onClick, modifier, enabled, colors = ButtonDefaults.outlinedButtonColors().animateEnabled(enabled),
+    val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
+    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    OutlinedButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
+        colors = ButtonDefaults.outlinedButtonColors().animateEnabled(enabled), interactionSource = press.native, shapes = ButtonDefaults.shapes(),
         border = border, content = content)
 }

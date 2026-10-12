@@ -46,7 +46,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
     if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
-        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy) { invoke(action.id,emptyMap()) }
+        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
     })
     val blocks=if(toolbar)page.blocks.filterNot { it is PageBlock.Actions } else page.blocks
     page.management?.let { list ->
@@ -78,10 +78,9 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String) -> 
         is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=8.dp) { action,interactive ->
                 val source=remember(action.id) { MutableInteractionSource() }
                 val press=rememberImmediateButtonPress(source)
-                LaunchedEffect(interactive) { if (!interactive) press.cancel() }
                 FilledTonalButton(onClick = feedbackClick { press.click();invoke(action.id) },
-                    enabled=interactive, colors=ButtonDefaults.filledTonalButtonColors().animateEnabled(interactive),
-                    modifier=if(interactive)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = expressivePillShapes()) {
+                    enabled=interactive, colors=ButtonDefaults.filledTonalButtonColors().keepColorsWhenLocked(),
+                    modifier=if(interactive)Modifier.immediateButtonPress(press) else Modifier,interactionSource=press.native,shapes = ButtonDefaults.shapes()) {
                     Icon(action.icon.vector(), null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text(action.label)
                 }
         }

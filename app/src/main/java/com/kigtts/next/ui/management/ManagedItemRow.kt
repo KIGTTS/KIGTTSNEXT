@@ -56,17 +56,17 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
             }
             item.toggle?.let { toggle ->
                 Switch(toggle.checked, enabled = enabled, onCheckedChange = if (elevated) null else feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },
-                    colors = SwitchDefaults.colors().animateEnabled(enabled),
+                    colors = SwitchDefaults.colors().keepColorsWhenLocked(),
                     modifier = Modifier.testTag("managed-toggle/" + item.id))
             }
             if (reorderable) Box(dragGrip.size(32.dp).testTag("managed-grip/" + item.id), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(20.dp))
             }
             Box {
-                MotionIconButton(onClick = feedbackClick { menu = true }, enabled = enabled, modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
+                MotionIconButton(onClick = feedbackClick { menu = true }, enabled = enabled, colors = IconButtonDefaults.iconButtonColors().keepColorsWhenLocked(), modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
                     Icon(Icons.Default.MoreVert, "条目操作", Modifier.size(20.dp))
                 }
-                DropdownMenu(menu, { menu = false }, properties = PopupProperties(focusable = false)) {
+                DropdownMenu(menu && enabled, { menu = false }, properties = PopupProperties(focusable = false)) {
                     item.actions.forEach { action -> DropdownMenuItem(text = { Text(action.label) }, leadingIcon = { Icon(action.icon.vector(), null) },
                         onClick = feedbackClick { menu = false; invoke(action.id, emptyMap()) }) }
                     if (reorderable) {

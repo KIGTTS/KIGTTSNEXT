@@ -31,6 +31,7 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     val pending by model.content.discardRequested.collectAsStateWithLifecycle()
     val active = LocalPageActive.current
     val entry = draft?.takeIf { it.token == token } ?: return
+    if(entry.html) { com.kigtts.next.ui.media.code.HtmlCodeEditorScreen(model,entry,pending);return }
     var value by rememberSaveable(token) { mutableStateOf(entry.value) }
     var title by rememberSaveable(token) { mutableStateOf(entry.currentTitle) }
     val undo = remember(token) { ArrayDeque<String>() }; val redo = remember(token) { ArrayDeque<String>() }

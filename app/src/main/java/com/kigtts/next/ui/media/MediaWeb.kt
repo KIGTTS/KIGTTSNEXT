@@ -51,7 +51,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val source = model.mediaRepository.file(entry)
             val cache = if (entry.pluginId == null) File(model.mediaRepository.root, "web-cache/" + entry.id)
                 else model.pluginManager.paths.storage(entry.pluginId).file("cache/web/" + entry.id)
-            val loader = WebResourceLoader(cache, source?.parentFile, entry.network,
+            val localRoot = if(entry.kind==MediaKind.HTML && entry.pluginId==null) model.mediaRepository.htmlFiles.root(entry.id) else source?.parentFile
+            val loader = WebResourceLoader(cache, localRoot, entry.network,
                 pageOrigin = if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN)
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.load(request.url.toString(), request.method, request.isForMainFrame)
@@ -70,7 +71,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                     }
                 } else model.message("当前系统 WebView 不支持插件网页按钮，请更新 Android System WebView")
             }
-            loadUrl(if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN + "/content/" + android.net.Uri.encode(source?.name.orEmpty()))
+            val relative = if(source!=null && localRoot!=null)source.relativeTo(localRoot).invariantSeparatorsPath else ""
+            loadUrl(if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN + "/content/" + android.net.Uri.encode(relative,"/"))
         }
     }
     var lastBack by remember { mutableIntStateOf(state.webBackRevision) }

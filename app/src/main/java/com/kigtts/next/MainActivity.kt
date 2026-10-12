@@ -19,11 +19,23 @@ class MainActivity : ComponentActivity() {
                 model.navigate(com.kigtts.next.state.Destination.PhraseEditor(restored.key, restored.phraseId == null))
             }
         }
+        if(model.state.value.destination == com.kigtts.next.state.Destination.Home || model.state.value.destination is com.kigtts.next.state.Destination.PhraseEditor) {
+            savedInstanceState?.getString("html-project-id")?.takeIf { model.mediaRepository.get(it)!=null }?.let { id ->
+                model.navigate(com.kigtts.next.state.Destination.HtmlFiles(id,savedInstanceState.getString("html-project-target") ?: "display"))
+            }
+            savedInstanceState?.getString("content-editor-draft")?.let { token ->
+                if(model.content.restoreEditorDraft(token))model.navigate(com.kigtts.next.state.Destination.ContentEditor(token))
+            }
+        }
         enableEdgeToEdge()
         setContent { KigttsApp(model) }
     }
     override fun onSaveInstanceState(outState: Bundle) {
         model.content.savedPhraseDraft()?.let { outState.putString("quick-phrase-draft",it) }
+        model.content.savedEditorDraft()?.let { outState.putString("content-editor-draft",it) }
+        (model.state.value.navigationStack+model.state.value.destination).filterIsInstance<com.kigtts.next.state.Destination.HtmlFiles>().lastOrNull()?.let {
+            outState.putString("html-project-id",it.mediaId);outState.putString("html-project-target",it.target)
+        }
         super.onSaveInstanceState(outState)
     }
     override fun onStop() { if (!isChangingConfigurations) model.onBackground(); super.onStop() }

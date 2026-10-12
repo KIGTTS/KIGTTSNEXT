@@ -71,6 +71,12 @@ class PageChromeTest {
         compose.onNodeWithContentDescription("打开抽屉菜单").assertDoesNotExist()
         compose.onNodeWithContentDescription("更多页面操作").performClick()
         compose.onNodeWithTag("create-html").performClick()
+        compose.waitUntil(5000) { model.state.value.destination is Destination.HtmlFiles }
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("html-file/index.html").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("html-import").assertIsDisplayed()
+        compose.onNodeWithTag("html-file/index.html").performClick()
+        compose.waitUntil(5000) { model.state.value.destination is Destination.ContentEditor }
+        compose.waitForIdle()
         compose.onNodeWithTag("save-content").assertIsDisplayed()
         compose.onNodeWithTag("import-media").assertDoesNotExist()
         compose.onNodeWithContentDescription("查找替换").assertIsDisplayed()

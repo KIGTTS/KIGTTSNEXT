@@ -24,6 +24,8 @@ data class PageEntry(val scene: PageScene, val depth: Int,
             Destination.Plugins -> "plugins"
             is Destination.PluginPage -> destination.pluginId + "/" + destination.pageId
             is Destination.MediaLibrary -> "media/" + destination.target
+            is Destination.HtmlFiles -> "html-files/" + destination.mediaId
+            is Destination.HtmlPreview -> "html-preview/" + destination.mediaId
             is Destination.ContentEditor -> "content-editor/" + destination.token
             is Destination.PhraseEditor -> "phrase-editor/" + destination.token
         }

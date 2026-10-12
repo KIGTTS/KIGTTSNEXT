@@ -11,9 +11,11 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import com.kigtts.next.media.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditorToolbar(state: AppState, model: AppViewModel) {
+    val scope=rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
     var fontBar by remember { mutableStateOf(false) }
     val context = model.context()
@@ -44,7 +46,7 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
             }
             DropdownMenuItem(text = { Text("选择图片、视频或网页") }, onClick = feedbackClick { menu = false; model.content.picker() })
             DropdownMenuItem(text = { Text("文本编辑器") }, onClick = feedbackClick { menu = false; model.content.editor() })
-            DropdownMenuItem(text = { Text("HTML 编辑器") }, onClick = feedbackClick { menu = false; model.content.editor(html = true) })
+            DropdownMenuItem(text = { Text("页面文件") }, onClick = feedbackClick { menu = false; scope.launch { runCatching { model.content.htmlFiles() }.onFailure { model.message(it.message ?: "打开失败") } } })
             DropdownMenuItem(text = { Text(if (state.streaming) "✓ 流式识别" else "流式识别") },
                 onClick = feedbackClick { model.streaming(true); menu = false })
             DropdownMenuItem(text = { Text(if (!state.streaming) "✓ 完整录音识别（最多 8 秒）" else "完整录音识别（最多 8 秒）") },

@@ -11,6 +11,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.MotionColumn
 import com.kigtts.next.ui.plugins.PluginPageScreen
+import com.kigtts.next.ui.navigation.LocalPageActive
+import com.github.takahirom.roborazzi.captureRoboImage
+import android.graphics.BitmapFactory
 import com.kigtts.plugin.api.*
 import org.junit.*
 import org.junit.Assert.*
@@ -25,6 +28,22 @@ import org.robolectric.annotation.*
 class PluginBlockMotionTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
     private fun step(frames:Int) { repeat(frames) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() } }
+    @Test fun temporaryBusyAndPageLocksKeepButtonColourWhileBlockingClicks() {
+        var busy by mutableStateOf(false);var active by mutableStateOf(true);var calls=0
+        val page=PluginPage("p","插件",listOf(PageBlock.Actions(listOf(PageAction("go","执行")))))
+        compose.mainClock.autoAdvance=false
+        compose.setContent { MaterialTheme { CompositionLocalProvider(LocalPageActive provides active) { PluginPageScreen(page,busy) {_,_->calls++} } } }
+        step(30)
+        fun color(name:String):Int {
+            val path="build/previews/plugin-lock-$name.png";compose.onNodeWithText("执行").captureRoboImage(path)
+            return BitmapFactory.decodeFile(path).let { image -> image.getPixel(image.width/2,image.height/4).also {image.recycle()} }
+        }
+        val before=color("before")
+        compose.runOnIdle { busy=true };step(20);compose.onNodeWithText("执行").assertIsNotEnabled();assertEquals(before,color("busy"))
+        compose.runOnIdle { busy=false;active=false };step(20);compose.onNodeWithText("执行").assertIsNotEnabled();assertEquals(before,color("background"))
+        compose.runOnIdle { active=true };step(20);compose.onNodeWithText("执行").performTouchInput { down(center);advanceEventTime(8);up() };step(40)
+        assertEquals(1,calls);assertEquals(before,color("restored"))
+    }
     @Test fun removalRetainsContainerForExitButImmediatelyDisablesActionsAndRapidReversalSettles() {
         val values=mutableStateOf(listOf("one","two"));var calls=0
         compose.mainClock.autoAdvance=false

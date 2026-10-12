@@ -14,17 +14,11 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 
-/** Task feedback belongs beside Back and never changes the page content's measured position. */
+/** Expanded bars show feedback beside Back; compact bars own it in their title. */
 @Composable
 internal fun PageBackNavigation(back: () -> Unit, label: String, tag: String, loading: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(feedbackClick(back), Modifier.testTag(tag)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, label) }
-        AnimatedVisibility(loading, enter = fadeIn(tween(140)) + expandHorizontally(tween(180),expandFrom=Alignment.Start),
-            exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180),shrinkTowards=Alignment.Start)) {
-            Box(Modifier.padding(end = 8.dp).size(32.dp), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(Modifier.size(20.dp).testTag("page-loading")
-                    .semantics { contentDescription = "正在加载" }, strokeWidth = 2.dp)
-            }
-        }
+        PageLoadingIndicator(loading, Modifier.padding(end = 8.dp))
     }
 }

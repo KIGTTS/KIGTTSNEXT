@@ -60,7 +60,7 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
     RegisterPageActions(listOfNotNull(
         if (pagesOnly) null else ToolbarAction("import-media","导入图片或视频",Icons.Default.AddPhotoAlternate,!importing) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
         ToolbarAction("import-media-file","导入文件",Icons.Default.FileOpen,!importing) { document.launch(if (pagesOnly) arrayOf("text/html","application/xhtml+xml") else arrayOf("text/html","application/xhtml+xml","image/*","video/*")) },
-        ToolbarAction("create-html","新建 HTML",Icons.Default.Code) { model.content.editor(html=true,target=target) },
+        ToolbarAction("create-html","新建 HTML",Icons.Default.Code) { scope.launch { runCatching { model.content.htmlFiles(target) }.onFailure { error=it.message } } },
         ToolbarAction("add-webpage","添加网页",Icons.Default.Language) { website=true }
     ))
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -91,7 +91,7 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
         if (state.appleLivePhotos && entry.pluginId == null && entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) TextButton(dialogFeedbackClick {
             menu = null; pairing = entry.id; pair.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
         }, Modifier.testTag("pair-live-photo")) { Text("配对苹果实况视频") }
-        if (entry.kind == MediaKind.HTML && entry.pluginId == null) TextButton(dialogFeedbackClick { menu = null; model.content.editor(html = true, target = target, selectedMedia = entry.id) }) { Text("编辑 HTML") }
+        if (entry.kind == MediaKind.HTML && entry.pluginId == null) TextButton(dialogFeedbackClick { menu = null; scope.launch { runCatching { model.content.htmlFiles(target,entry.id) }.onFailure { error=it.message } } }) { Text("管理页面文件") }
         TextButton(dialogFeedbackClick { menu = null; deleting = entry }) { Text("删除", color = MaterialTheme.colorScheme.error) }
     } }, confirmButton = { TextButton(dialogFeedbackClick { menu = null }) { Text("关闭") } }) }
     if (active) deleting?.let { entry -> MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除媒体？") },

@@ -30,6 +30,8 @@ fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
         Destination.Plugins -> "插件管理"
         is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
         is Destination.MediaLibrary -> "媒体库"
+        is Destination.HtmlFiles -> "页面文件"
+        is Destination.HtmlPreview -> "页面预览"
         is Destination.ContentEditor -> "内容编辑器"
         is Destination.PhraseEditor -> "编辑快捷文本"
     }

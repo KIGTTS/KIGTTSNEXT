@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.kigtts.next.state.QuickCardType
 import com.kigtts.next.ui.components.enabledContentMotion
 import com.kigtts.next.ui.components.feedbackClick
@@ -17,19 +18,18 @@ import com.kigtts.next.ui.components.feedbackClick
 /** None means no extra attachment; the shared subtitle can still carry rich formatting. */
 @Composable
 internal fun PhraseTypeTabs(type:QuickCardType,enabled:Boolean,select:(QuickCardType)->Unit) {
-    PrimaryTabRow(type.ordinal,Modifier.testTag("phrase-type-tabs")) {
+    PrimaryTabRow(type.ordinal,Modifier.testTag("phrase-type-tabs"),containerColor=Color.Transparent,divider={}) {
         QuickCardType.entries.forEach { option->Tab(option==type,feedbackClick { select(option) },enabled=enabled,
-            modifier=Modifier.testTag("phrase-type-"+option.name).enabledContentMotion(enabled)) {
-            Row(Modifier.height(48.dp).padding(horizontal=8.dp),verticalAlignment=Alignment.CenterVertically,
-                horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+            selectedContentColor=MaterialTheme.colorScheme.primary,unselectedContentColor=MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier=Modifier.testTag("phrase-type-"+option.name).enabledContentMotion(enabled),
+            text={ Text(option.label,maxLines=1) },icon={
                 Icon(when(option) {
                     QuickCardType.TEXT->Icons.Default.Block
                     QuickCardType.AUDIO->Icons.Default.AudioFile
                     QuickCardType.MEDIA->Icons.Default.PermMedia
                     QuickCardType.PAGE->Icons.Default.Language
-                },null,Modifier.size(18.dp).testTag("phrase-type-icon-"+option.name))
-                Text(option.label,maxLines=1)
-            }
-        } }
+                },null,Modifier.size(24.dp).testTag("phrase-type-icon-"+option.name))
+            })
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.kigtts.next.ui.navigation
 import com.kigtts.next.ui.components.animateEnabled
 
 import com.kigtts.next.ui.components.MotionIconButton
+import com.kigtts.next.ui.components.keepColorsWhenLocked
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -26,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.delay
 
-data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val click:()->Unit)
+data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val preserveColorWhenLocked:Boolean=false,val click:()->Unit)
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
     var loading:State<Boolean>? by mutableStateOf(null)
@@ -74,7 +75,8 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
         val reveal by animateFloatAsState(if(shown)1f else 0f,tween(180),label="page-action-reveal")
         Box(Modifier.width((48f*reveal).dp).height(48.dp).clipToBounds().graphicsLayer { alpha=reveal }
             .testTag("page-action/" + stored.id)) {
-            MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled) { Icon(action.icon,action.label) }
+            val colors = IconButtonDefaults.iconButtonColors().let { if(action.preserveColorWhenLocked)it.keepColorsWhenLocked() else it }
+            MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=action.preserveColorWhenLocked) { Icon(action.icon,action.label) }
         }
     } }
     AnimatedVisibility(actions.size>2, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),

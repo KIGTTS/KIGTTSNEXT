@@ -18,6 +18,28 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     private val state=MutableStateFlow(runCatching { val array=JSONArray(catalog.readText()); (0 until array.length()).map { MediaEntry.read(array.getJSONObject(it)) } }.getOrDefault(emptyList()))
     val entries=state.asStateFlow()
     val thumbnails = com.kigtts.next.media.thumbnail.MediaThumbnails(this)
+    val htmlFiles = HtmlProjectFiles(this)
+    val htmlImports = HtmlProjectImports(context, this)
+    internal fun updateHtml(id: String, primary: String): MediaEntry {
+        val entry = requireNotNull(get(id));require(entry.kind == MediaKind.HTML && entry.pluginId == null)
+        require(scoped(primary).isFile)
+        return save(entry.copy(primary=primary,created=maxOf(System.currentTimeMillis(),entry.created+1)))
+    }
+    fun editableHtml(id: String?): MediaEntry {
+        val entry = get(id)
+        if(entry?.kind == MediaKind.HTML && entry.pluginId == null)return entry
+        val created = html("新页面",HtmlProjectFiles.TEMPLATE)
+        if(entry?.kind == MediaKind.HTML) {
+            val source = file(entry) ?: return created
+            val target = htmlFiles.root(created.id)
+            val copy = File(root,".kigtts-copy-${created.id}")
+            try { HtmlProjectFiles.copyDirectory(requireNotNull(source.parentFile),copy)
+                copy.listFiles().orEmpty().forEach { f -> f.copyRecursively(File(target,f.name),overwrite=true) }
+                htmlFiles.selectMain(created.id,source.name)
+            } catch(e:Exception) { remove(created.id);throw e } finally { copy.deleteRecursively() }
+        }
+        return requireNotNull(get(created.id))
+    }
     fun thumbnail(id: String, mode: ThumbnailMode, focusX: Double = .5, focusY: Double = .5) {
         get(id)?.let { save(it.copy(thumbnailMode = mode, focusX = focusX.coerceIn(0.0, 1.0), focusY = focusY.coerceIn(0.0, 1.0))) }
     }

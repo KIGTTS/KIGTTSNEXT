@@ -2,6 +2,12 @@ package com.kigtts.next
 
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.*
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.kigtts.next.theme.*
@@ -25,6 +31,23 @@ import org.robolectric.annotation.*
 class PageLoadingMotionTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
     private fun step(ms:Long) { repeat(((ms+15)/16).toInt()) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() } }
+    @Test fun collapsedAndSmallBarsKeepLoadingAfterTheTitle() {
+        var large by mutableStateOf(true)
+        compose.mainClock.autoAdvance=false
+        compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("插件页面",{},largeBar=large) {
+            com.kigtts.next.ui.navigation.RegisterPageLoading(true)
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).testTag("scroll-page")) { repeat(40) { Text("条目 $it",Modifier.height(64.dp)) } }
+        } } }
+        step(600)
+        compose.onNodeWithTag("scroll-page").performTouchInput { swipeUp() };step(800)
+        fun check() {
+            val ring=compose.onNodeWithTag("page-loading").getUnclippedBoundsInRoot()
+            val title=compose.onNodeWithTag("page-title").getUnclippedBoundsInRoot()
+            assertTrue("ring=$ring title=$title",ring.left>=title.right)
+            assertTrue("ring=$ring title=$title",kotlin.math.abs((ring.top+ring.bottom).value-(title.top+title.bottom).value)<6f)
+        }
+        check();compose.runOnIdle { large=false };step(600);check()
+    }
     @Test fun changingToolbarActionsAnimatesWidthAndRemovedActionsCannotExecute() {
         var extra by mutableStateOf(false);var clicked=0
         compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("插件页面",{}) {

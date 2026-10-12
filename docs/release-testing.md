@@ -98,3 +98,14 @@ Debug/Release/R8 和两种 Lint 通过（各 0 错误、37 警告、1 提示）�
 Debug/Release/R8 与双 Lint 通过（各 0 错误、37 警告、1 提示）。同证书签名、16K 对齐及非 debuggable 核验通过；文件体积相同但摘要已更新。本版本仍未安装，手机验收按用户安排延后。
 
 依据：[Android 构建优化](https://developer.android.com/topic/performance/app-optimization/enable-app-optimization)、[dumpsys 性能指标](https://developer.android.com/tools/dumpsys)。
+
+## 2026-10-12：HTML 项目与原生页面控件（未安装）
+
+| 包 | 大小 | SHA-256 |
+| --- | --- | --- |
+| Debug | 30,588,458 字节 / 29.171 MiB | `48BCEF0E8E6087EE378B68C4AAAB5FE13376F27E1DECB6A8B43A14DF8296DE89` |
+| 本地签名 Release | 3,655,115 字节 / 3.486 MiB | `85796EE61BBD85E0DC7C15EA73644B07983E69AF377BC11EAF5F561AF76181D0` |
+
+263 项主程序完整回归通过（75 套件，0 失败、错误或跳过）。HTML 文件管理支持目录、批量文件/目录导入、复制/移动/重命名/确认删除与主页面选择；独立源码页面支持行号、键盘上方可滚动/展开的快捷栏、选区命令、缓存草稿恢复与异步保存防重入。类型 Tab 改为原生图标在上、文字在下，背景继承卡片；插件瞬态锁定保留配色且阻止操作，原生 animated shapes 使用即时按压。加载环在展开顶栏位于返回键旁，单行顶栏位于标题后。
+
+Debug、Release、R8 与 Debug/Release Lint 均通过（各 0 错误、37 警告、1 提示）；本地签名和已有包一致、16K 对齐、非 debuggable 检查通过。用户已取走手机，本次不安装；该构建没有新增设备性能采样。之前的启动/帧率/内存数据仍仅代表各历史已安装版本。

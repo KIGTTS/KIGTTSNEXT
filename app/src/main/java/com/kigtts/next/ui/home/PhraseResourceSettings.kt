@@ -47,8 +47,8 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         QuickCardType.MEDIA -> MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
             enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) { Text(if (entry == null) "选择图片或视频" else "更换图片或视频") }
         QuickCardType.PAGE -> Row {
-            MotionTextButton(feedbackClick { leave(); model.content.editor(html = true, target = "phrase:" + draft.key) }, enabled = enabled,
-                modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "编写 HTML" else "编辑 HTML") }
+            MotionTextButton(feedbackClick { leave(); scope.launch { runCatching { model.content.htmlFiles("phrase:" + draft.key) }.onFailure { error=it.message } } }, enabled = enabled,
+                modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "创建页面文件" else "管理页面文件") }
             MotionTextButton(feedbackClick { leave(); model.content.picker("phrase:" + draft.key) }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-choose-page")) { Text("选择页面") }
         }

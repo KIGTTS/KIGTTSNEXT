@@ -20,7 +20,7 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 
 @Composable
 fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
-    key(entry.id,state.contentRevision) {
+    key(entry.id,state.contentRevision,if(entry.kind==MediaKind.HTML)entry.created else 0L) {
         var source by remember { mutableStateOf(model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)) }
         if(LocalPageActive.current) {
             val current=model.mediaRepository.file(entry) to model.mediaRepository.file(entry,true)

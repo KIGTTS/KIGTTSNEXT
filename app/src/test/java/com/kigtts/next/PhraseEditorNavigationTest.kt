@@ -83,8 +83,16 @@ class PhraseEditorNavigationTest {
         val key = model.content.phraseDraft.value!!.key
         compose.onNodeWithTag("phrase-type-PAGE").performClick()
         compose.onNodeWithTag("phrase-edit-html").performScrollTo().performClick()
+        compose.waitUntil(5000) { model.state.value.destination is Destination.HtmlFiles }
+        compose.waitForIdle()
+        assertTrue(model.state.value.destination is Destination.HtmlFiles)
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("html-file/index.html").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("html-file/index.html").performClick()
+        compose.waitUntil(5000) { model.state.value.destination is Destination.ContentEditor };compose.waitForIdle()
         assertTrue(model.state.value.destination is Destination.ContentEditor)
-        assertTrue(model.state.value.navigationStack.last() is Destination.PhraseEditor)
+        assertTrue(model.state.value.navigationStack.last() is Destination.HtmlFiles)
+        compose.runOnIdle { model.navigateBack() }; compose.waitForIdle()
+        assertTrue(model.state.value.destination is Destination.HtmlFiles)
         compose.runOnIdle { model.navigateBack() }; compose.waitForIdle()
         assertEquals(key, (model.state.value.destination as Destination.PhraseEditor).token)
         compose.onNodeWithTag("phrase-detail-text").assertTextContains("共有字幕")

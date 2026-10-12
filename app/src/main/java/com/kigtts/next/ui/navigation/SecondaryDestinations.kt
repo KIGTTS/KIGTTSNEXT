@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.navigation
 
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,7 +22,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Plugins -> "插件管理"
             is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
             is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) "页面库" else "媒体库"
-            is Destination.ContentEditor -> "内容编辑器"
+            is Destination.HtmlFiles -> "页面文件"
+            is Destination.HtmlPreview -> "页面预览"
+            is Destination.ContentEditor -> model.content.editorDraft.value?.let { if(it.html)it.currentTitle else "文本编辑器" } ?: "内容编辑器"
             is Destination.PhraseEditor -> if (destination.adding) "添加快捷文本" else "编辑快捷文本"
         }
     PageScaffold(title,model::navigateBack,backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
@@ -36,6 +39,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 }
                 Destination.Plugins -> PluginsScreen(model)
                 is Destination.MediaLibrary -> MediaLibraryScreen(model, destination.target)
+                is Destination.HtmlFiles -> HtmlFilesScreen(model, destination.mediaId, destination.target)
+                is Destination.HtmlPreview -> model.mediaRepository.get(destination.mediaId)?.let { MediaWeb(it,state,model,androidx.compose.ui.Modifier.fillMaxSize()) }
                 is Destination.ContentEditor -> ContentEditorScreen(model, destination.token)
                 is Destination.PhraseEditor -> PhraseEditorScreen(model, destination.token)
                 is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context()), destination.pluginId in state.busyPlugins,

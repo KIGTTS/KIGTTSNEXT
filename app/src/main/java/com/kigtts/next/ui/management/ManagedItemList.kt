@@ -38,6 +38,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     var order by remember(list.id) { mutableStateOf(external) }
     val data = list.items.associateBy { it.id }
     val feedback = rememberDragFeedback()
+    val interactive = !busy && com.kigtts.next.ui.navigation.LocalPageActive.current
     val drag = rememberReorderDrag({ lazy.layoutInfo.visibleItemsInfo.mapNotNull { info ->
         (info.key as? String)?.takeIf { it in data }?.let { ReorderTarget(it,
             Rect(padding, (info.offset + lazy.layoutInfo.beforeContentPadding).toFloat(), lazy.layoutInfo.viewportSize.width.toFloat() - padding,
@@ -65,13 +66,13 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         order = ItemOrder.move(order, id, target)
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
-    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && !busy) Modifier.reorderGestures(drag) else Modifier)) {
+    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag) else Modifier)) {
         LazyColumn(Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             item("management-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 header()
                 if (list.filters.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(list.filters, key = { it.id }) { filter -> FilterChip(selected = filter.selected,
-                        onClick = feedbackClick { invoke(filter.action, emptyMap()) }, label = { Text(filter.label) }) }
+                    onClick = feedbackClick { if(interactive)invoke(filter.action, emptyMap()) }, label = { Text(filter.label) }) }
                 }
                 AnimatedVisibility(list.items.isEmpty(), enter = fadeIn(tween(180)) + expandVertically(tween(220)),
                     exit = fadeOut(tween(120)) + shrinkVertically(tween(220))) {
@@ -82,7 +83,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 ManagedItemRow(item, Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(120),
                         placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
-                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, !busy, resolve, invoke, { moveAccessible(item.id, it) })
+                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) })
             }
         }
         val active = drag.key?.let(data::get)
