@@ -64,7 +64,7 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
-                    4 -> ToolButton(if (open) "收起快捷文本" else "名片", if (open) Icons.Default.ExpandMore else Icons.Default.Badge,
+                    4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.Badge,
                         { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
                         Modifier.width(width).testTag("dock-end"), sources[4], shapes, size = sideSize)
                 }
@@ -84,7 +84,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
     }
     val action = { if (open) model.closePanel() else model.openPanel(HomePanel.QUICK_TEXT) }
     val click = feedbackClick(action)
-    val hold = { longPress?.let { model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val hold = { longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
     val label = if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
     val pressed by source.collectIsPressedAsState()
     val height by animateDpAsState(if (pressed && !open) 44.dp else (48f - 43f * progress + if (motion.active) 2f * progress else 0f).dp,

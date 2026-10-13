@@ -22,7 +22,7 @@ class PluginRuntimeDeviceTest {
         val keepPackages = InstrumentationRegistry.getArguments().getString("keepPackages") == "true"
         val added = mutableListOf<String>()
         try {
-            for (name in listOf("engine.system-tts-0.7.0.kigplugin", "engine.sensevoice-0.7.0.kigplugin")) {
+            for (name in listOf("service.speech-synthesis-0.8.0.kigplugin", "engine.sensevoice-0.8.0.kigplugin")) {
                 val input = File(manager.paths.packages, ".device-test-$name")
                 instrumentation.context.assets.open(name).use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
@@ -33,7 +33,7 @@ class PluginRuntimeDeviceTest {
                     }
                 } finally { input.delete() }
             }
-            for (id in listOf("engine.system-tts", "engine.sensevoice")) manager.enable(id, true)
+            for (id in listOf("service.speech-synthesis", "engine.sensevoice")) manager.enable(id, true)
             manager.reload()
             assertTrue(manager.status.toString(), manager.status.all { it.error == null })
             val asr = requireNotNull(manager.registry.plugin("engine.sensevoice"))
@@ -42,7 +42,8 @@ class PluginRuntimeDeviceTest {
             val probe = asr.execute("verify-runtime", PluginContext("", "")) as PluginOutcome.Message
             assertEquals("推理运行库已加载", probe.text)
             android.util.Log.i("KigPluginDeviceTest", "DEX + sherpa JNI + ONNX Runtime loaded through external package")
-            val tts = requireNotNull(manager.registry.plugin("engine.system-tts"))
+            val tts = requireNotNull(manager.registry.plugin("service.speech-synthesis"))
+            tts.execute("system", PluginContext("", ""))
             val empty = tts.tts!!.synthesize(TtsRequest("")).toList()
             assertTrue(empty.last() is SynthesisEvent.Finished)
             val audio = tts.tts!!.synthesize(TtsRequest("你好，这是插件语音测试。")).toList()
@@ -57,11 +58,11 @@ class PluginRuntimeDeviceTest {
                 } finally { player.close() }
                 android.util.Log.i("KigPluginDeviceTest", "PCM playback completed through host AudioTrack")
             }
-            manager.enable("engine.system-tts", false)
-            assertNull(manager.registry.plugin("engine.system-tts"))
-            manager.enable("engine.system-tts", true)
+            manager.enable("service.speech-synthesis", false)
+            assertNull(manager.registry.plugin("service.speech-synthesis"))
+            manager.enable("service.speech-synthesis", true)
             assertTrue(manager.status.toString(), manager.status.all { it.error == null })
-            assertNotNull(manager.registry.plugin("engine.system-tts"))
+            assertNotNull(manager.registry.plugin("service.speech-synthesis"))
             val arguments = InstrumentationRegistry.getArguments()
             arguments.getString("resourceZip")?.let { archive ->
                 recognitionDeviceChecks(manager, archive, requireNotNull(arguments.getString("sampleWav")))

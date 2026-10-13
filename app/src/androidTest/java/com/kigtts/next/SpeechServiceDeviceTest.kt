@@ -26,8 +26,8 @@ class SpeechServiceDeviceTest {
         val serviceId = "service.speech-synthesis"
         try {
             if ("engine.system-tts" in before) manager.packages.enabled("engine.system-tts", false)
-            for (name in listOf("engine.system-tts", "engine.sensevoice", "engine.piper", serviceId)) {
-                val filename = "$name-0.7.0.kigplugin"
+            for (name in listOf("engine.sensevoice", "engine.piper", serviceId)) {
+                val filename = "$name-0.8.0.kigplugin"
                 val input = File(manager.paths.packages, ".speech-test-$filename")
                 instrumentation.context.assets.open(filename).use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
@@ -39,7 +39,7 @@ class SpeechServiceDeviceTest {
                 } finally { input.delete() }
             }
             for (id in listOf("engine.sensevoice", "engine.piper", serviceId)) manager.enable(id, true)
-            manager.enable("engine.system-tts", false)
+            if ("engine.system-tts" in before) manager.packages.enabled("engine.system-tts", false)
             manager.reload()
             assertTrue(manager.status.toString(), manager.status.all { it.error == null })
             assertNull(manager.registry.plugin("engine.system-tts"))

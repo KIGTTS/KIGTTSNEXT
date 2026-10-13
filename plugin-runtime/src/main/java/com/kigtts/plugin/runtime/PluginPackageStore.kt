@@ -26,13 +26,14 @@ class PluginPackageStore(val paths: PluginPaths) {
         return File(root, version).also { require(it.isDirectory) }
     }
 
-    @Synchronized fun install(file: File, trustedPublisher: String): InstalledPlugin {
+    @Synchronized fun install(file: File, trustedPublisher: String, allowVersionChange: Boolean = false): InstalledPlugin {
         val preview = inspect(file)
         require(preview.publisherSha256 == trustedPublisher) { "发布者与确认内容不符" }
         val previous = installed().firstOrNull { it.manifest.id == preview.manifest.id }
         if (previous != null) {
             require(previous.publisherSha256 == preview.publisherSha256) { "更新包发布者签名不匹配" }
-            require(preview.manifest.versionCode > previous.manifest.versionCode) { "请使用版本号更高的更新包" }
+            require(preview.manifest.versionCode > previous.manifest.versionCode ||
+                allowVersionChange && preview.manifest.versionCode != previous.manifest.versionCode) { "请使用版本号更高的更新包，或明确确认切换版本" }
         }
         val root = paths.packageDirectory(preview.manifest.id).apply { mkdirs() }
         val version = "v${preview.manifest.versionCode}-${UUID.randomUUID()}"

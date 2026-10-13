@@ -14,6 +14,7 @@ import com.kigtts.next.theme.KigttsTheme
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.home.HomeScreen
 import com.kigtts.next.ui.home.ObserveImeDismissal
+import com.kigtts.next.ui.home.trackVoiceInputGesture
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.next.ui.sketch.SketchState
 import com.kigtts.plugin.api.PluginOutcome
@@ -22,7 +23,7 @@ import com.kigtts.next.ui.plugins.PluginExportRequest
 import kotlinx.coroutines.launch
 
 @Composable
-fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavigation()) {
+fun KigttsApp(model: AppViewModel) {
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
@@ -39,7 +40,8 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
     var pluginInput by remember { mutableStateOf<Pair<String, PluginOutcome.TextInput>?>(null) }
     var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
-    val inputOverlay = dialog != null || pluginMenu != null || pluginInput != null
+    var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
+    val inputOverlay = dialog != null || pluginMenu != null || pluginInput != null || packageInstall != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -60,22 +62,21 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
                 is PluginOutcome.TextInput -> pluginInput = plugin to outcome
                 is PluginOutcome.ImportResource -> pluginImport = plugin to outcome
                 is PluginOutcome.ExportResource -> pluginExport = plugin to outcome
+                is PluginOutcome.InstallPackage -> packageInstall = plugin to outcome
                 else -> Unit
             }
         }
     }
-    val drawerActive = drawer.active
     val navigation = rememberPageNavigation(state)
     LaunchedEffect(navigation.current.identity) {
         focus.clearFocus()
         keyboard?.hide()
     }
-    val back = rememberPredictiveReturn(!drawerActive &&
-        (navigation.returningHome || state.webCanGoBack || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
+    val back = rememberPredictiveReturn(
+        (navigation.returningHome || state.voiceInputActive || state.webCanGoBack || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
         identity = navigation.current.identity) {
         when {
-            // Back can arrive before recomposition updates callback enablement during opening.
-            drawer.active -> drawer.close()
+            state.voiceInputActive -> model.endVoiceInput(false)
             state.destination != Destination.Home -> model.navigateBack()
             navigation.returningHome -> Unit
             state.sidePage != null -> model.closeSidePage()
@@ -93,19 +94,19 @@ fun KigttsApp(model: AppViewModel, drawer: DrawerNavigation = rememberDrawerNavi
             ProvideIconTextContextMenu {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
             PluginExportRequest(model, pluginExport) { pluginExport = null }
-            RightNavigationDrawer(drawer, drawerContent = { direction -> AppDrawer(state, model, drawer, direction) }) {
+            com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
-                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding()) {
+                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding().trackVoiceInputGesture(model.voiceInputGesture)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
-                            if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, drawerActive) { active ->
-                            HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, drawer::open,
+                            if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, false) { active ->
+                            HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },
                                 if (active) back.progress else 0f, back.edge)
                         }
+                        com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }
                 }
-            }
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
                 confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
             pluginMenu?.let { (plugin, content) ->

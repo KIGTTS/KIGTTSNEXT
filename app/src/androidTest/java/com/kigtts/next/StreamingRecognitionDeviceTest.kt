@@ -21,9 +21,9 @@ class StreamingRecognitionDeviceTest {
         val serviceId = "service.speech-recognition"
         val manager = PluginManager(instrumentation.targetContext, emptyList())
         try {
-            for (packageId in listOf("engine.system-tts", "engine.sensevoice", "engine.piper", "service.speech-synthesis", id, serviceId)) {
+            for (packageId in listOf("engine.sensevoice", "engine.piper", "service.speech-synthesis", id, serviceId)) {
                 val input = File(manager.paths.packages, ".recognition-test-$packageId.kigplugin")
-                instrumentation.context.assets.open("$packageId-0.7.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
+                instrumentation.context.assets.open("$packageId-0.8.0.kigplugin").use { source -> input.outputStream().use { source.copyTo(it) } }
                 try {
                     val preview = manager.packages.inspect(input)
                     if (manager.packages.installed().none { it.manifest.id == packageId && it.manifest.versionCode == preview.manifest.versionCode }) manager.install(input, preview.publisherSha256)
@@ -59,14 +59,16 @@ class StreamingRecognitionDeviceTest {
                         for (offset in pcm.bytes.indices step 3200) { emit(PcmAudio(pcm.bytes.copyOfRange(offset, minOf(offset + 3200, pcm.bytes.size)))); delay(25) }
                         delay(100); eof.set(true)
                     }).collect { event ->
-                        if (event is RecognitionEvent.Partial) { assertTrue(event.text.isNotBlank()); partials++; if (!eof.get()) preEofPartials++ }
-                        if (event is RecognitionEvent.Final) finals += event.result.text
+                        if (event is RecognitionEvent.Transcript) {
+                            if (event.partial.isNotBlank()) { partials++; if (!eof.get()) preEofPartials++ }
+                            event.finalized?.let { assertTrue(it.isNotBlank()); finals += it }
+                        }
                     }
                 }
                 assertTrue("No real incremental result before EOF for $language", preEofPartials > 0); assertTrue(finals.any { it.isNotBlank() })
                 withTimeout(30_000) {
                     engine.recognizeStream(flow { for (offset in pcm.bytes.indices step 3200) emit(PcmAudio(pcm.bytes.copyOfRange(offset, minOf(offset + 3200, pcm.bytes.size)))); awaitCancellation() })
-                        .first { it is RecognitionEvent.Partial }
+                        .first { it is RecognitionEvent.Transcript && it.partial.isNotBlank() }
                 }
                 assertTrue(engine.recognize(pcm).text.isNotBlank())
                 Log.i("KigStreamingDeviceTest", "$language service->$id partials=$partials finals=${finals.joinToString()}; cancellation/reuse OK")

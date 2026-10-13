@@ -1,0 +1,73 @@
+package com.kigtts.next.cards
+
+import android.graphics.*
+import android.text.Layout
+import android.text.StaticLayout
+import android.text.TextPaint
+import androidx.exifinterface.media.ExifInterface
+import com.kigtts.plugin.api.*
+import java.io.File
+import kotlin.math.roundToInt
+
+/** Shared export geometry: overlays are positioned against the complete paper canvas. */
+internal object PolaroidRenderer {
+    fun export(repository:StickerRepository,card:PolaroidCard):File=try {render(repository,card)}
+        catch(_:OutOfMemoryError) {throw StickerFault(StickerError.TOO_LARGE,"设备内存不足，请稍后重试导出")}
+    private fun render(repository:StickerRepository,card:PolaroidCard):File {
+        val frame=repository.frameStyle(card);val geometry=frame.format.geometry
+        val height=1500;val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
+        val result=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
+        try {
+        val paperColor=(frame.color ?: card.frameColor).toInt()
+        val canvas=Canvas(result);canvas.drawColor(paperColor);val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val imageArea=RectF((geometry.photoLeft*unit).toFloat(),(geometry.photoTop*unit).toFloat(),
+            (geometry.photoRight*unit).toFloat(),(geometry.photoBottom*unit).toFloat())
+        val radius=(frame.photoCornerRadius*width).toFloat()
+        val photoPath=Path().apply {addRoundRect(imageArea,radius,radius,Path.Direction.CW)}
+        canvas.save();canvas.clipPath(photoPath)
+        canvas.drawColor(0xFFB0B0B0.toInt())
+        card.imageId?.let {id->decode(repository,id)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}};canvas.restore()
+        if(frame.borderWidth>0&&frame.borderColor!=null) {
+            val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
+            canvas.drawPath(photoPath,line)
+        }
+        frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
+        val dark=Color.luminance(paperColor)<.45f
+        drawText(canvas,card.title,(geometry.titleX*unit).toFloat(),(geometry.titleY*unit).toFloat(),
+            (geometry.titleWidth*unit).roundToInt(),(geometry.titleSize*unit).toFloat(),if(dark)Color.WHITE else 0xFF202020.toInt(),true)
+        drawText(canvas,card.description,(geometry.titleX*unit).toFloat(),(geometry.descriptionY*unit).toFloat(),
+            (geometry.titleWidth*unit).roundToInt(),(geometry.descriptionSize*unit).toFloat(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt(),false)
+        card.layers.forEach {layer->
+            val x=(layer.x*width).toFloat();val y=(layer.y*height).toFloat();val span=(layer.width*width).toFloat()
+            canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)
+            canvas.scale(if(layer.flipX)-1f else 1f,if(layer.flipY)-1f else 1f,x,y)
+            when(layer.kind) {
+                CardLayerKind.IMAGE->layer.imageId?.let {id->decode(repository,id)?.let {bitmap->try {
+                    val tall=span*bitmap.height/bitmap.width;canvas.drawBitmap(bitmap,null,RectF(x-span/2,y-tall/2,x+span/2,y+tall/2),paint)
+                } finally {bitmap.recycle()}}}
+                CardLayerKind.TEXT->{val text=TextPaint(Paint.ANTI_ALIAS_FLAG).apply {color=layer.color.toInt();textSize=span}
+                    val layout=StaticLayout.Builder.obtain(layer.text,0,layer.text.length,text,width).setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).setLineSpacing(0f,1.2f).build()
+                    canvas.translate(x-width/2f,y-layout.height/2f);layout.draw(canvas)}
+            };canvas.restore()
+        }
+        val output=File(repository.root,"exports/${card.id}.png").apply {parentFile!!.mkdirs()}
+        val stage=File(output.parentFile,".${card.id}.tmp")
+        try {stage.outputStream().use {stickerRequire(result.compress(Bitmap.CompressFormat.PNG,100,it),message="拍立得导出失败")}
+            java.nio.file.Files.move(stage.toPath(),output.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);return output
+        } finally {stage.delete()}
+        } finally {result.recycle()}
+    }
+    private fun decode(repository:StickerRepository,id:String):Bitmap?=repository.imageFile(id)?.let {file->
+        val image=repository.images.value.firstOrNull {it.id==id} ?: return@let null
+        var sample=1;while(maxOf(image.width,image.height)/sample>2048)sample*=2
+        val bitmap=file.inputStream().use {stream->BitmapFactory.decodeStream(stream,null,BitmapFactory.Options().apply {inSampleSize=sample})} ?: return@let null
+        val exif=runCatching {file.inputStream().use {ExifInterface(it)}}.getOrNull()
+        val matrix=Matrix().apply {exif?.let {if(it.isFlipped)postScale(-1f,1f);postRotate(it.rotationDegrees.toFloat())}}
+        try {Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,matrix,true).also {if(it!==bitmap)bitmap.recycle()}}
+        catch(error:Throwable) {bitmap.recycle();throw error}}
+    private fun drawText(canvas:Canvas,value:String,x:Float,y:Float,width:Int,size:Float,color:Int,bold:Boolean) {
+        val paint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply {textSize=size;this.color=color;typeface=if(bold)Typeface.DEFAULT_BOLD else Typeface.DEFAULT}
+        val layout=StaticLayout.Builder.obtain(value,0,value.length,paint,width).setIncludePad(false).setLineSpacing(0f,1.2f).setMaxLines(if(bold)1 else 3).setEllipsize(android.text.TextUtils.TruncateAt.END).build()
+        canvas.save();canvas.translate(x,y);layout.draw(canvas);canvas.restore()
+    }
+}

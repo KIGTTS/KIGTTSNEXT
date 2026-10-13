@@ -43,7 +43,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
     val style = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = preferredSubtitleFontSize(state.subtitleSizePercent),
         lineHeight = 1.25.em, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     val density = LocalDensity.current
-    val text = state.editorText.ifEmpty { "输入想说的话" }
+    val text = state.editorText
     LaunchedEffect(state.editing) { if (state.editing) { focus.requestFocus(); keyboard?.show() } }
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
         .semantics { stateDescription = if (flipped) "倒置字幕" else "正向字幕" }
@@ -52,14 +52,18 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
         val width = with(density) { maxWidth.roundToPx() }
         val height = with(density) { maxHeight.roundToPx() }
         if (state.editing) {
-            val fitted = style.copy(fontSize = fittingSubtitleFontSize(formattedText(text, state.subtitleFormats), style, width, height).sp)
+            val fittedSize = if (text.isEmpty()) fittingSubtitleFontSize(state.subtitlePlaceholder, style, width, height)
+                else fittingSubtitleFontSize(formattedText(text, state.subtitleFormats), style, width, height)
+            val fitted = style.copy(fontSize = fittedSize.sp)
             CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
             BasicTextField(state.editorValue, model::editText,
             modifier = Modifier.fillMaxWidth().testTag("speech-editor").focusRequester(focus).subtitleUpdateMotion(state.subtitleRevision),
             textStyle = fitted, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             visualTransformation = VisualTransformation { TransformedText(formattedText(it.text, state.subtitleFormats), OffsetMapping.Identity) },
             decorationBox = { field ->
-                if (state.editorText.isEmpty()) Text("输入想说的话", Modifier.fillMaxWidth(), style = fitted,
+                if (state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty()) Text(state.subtitlePlaceholder,
+                    Modifier.fillMaxWidth().testTag("subtitle-placeholder"),
+                    style = fitted,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 field()
             })

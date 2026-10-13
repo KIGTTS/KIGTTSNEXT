@@ -51,7 +51,7 @@ class PageChromeTest {
         assertEquals(0f,layer.top.value,.5f);assertEquals(layer.top.value,expanded.top.value,.5f)
         val back=compose.onNodeWithContentDescription("返回上一页").getUnclippedBoundsInRoot()
         assertTrue(back.top.value>=24f)
-        compose.onNodeWithContentDescription("打开抽屉菜单").assertDoesNotExist()
+        compose.onNodeWithContentDescription("打开设置").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/immersive-large-bar-expanded.png")
         compose.onNode(SemanticsMatcher("vertical-scroll") { it.config.contains(SemanticsProperties.VerticalScrollAxisRange) } and
             hasAnyAncestor(hasTestTag("navigation-secondary"))).performTouchInput { swipeUp() }
@@ -68,7 +68,7 @@ class PageChromeTest {
         val model=show()
         compose.runOnIdle { model.content.picker() }
         compose.onNodeWithTag("import-media").assertIsDisplayed()
-        compose.onNodeWithContentDescription("打开抽屉菜单").assertDoesNotExist()
+        compose.onNodeWithContentDescription("打开设置").assertDoesNotExist()
         compose.onNodeWithContentDescription("更多页面操作").performClick()
         compose.onNodeWithTag("create-html").performClick()
         compose.waitUntil(5000) { model.state.value.destination is Destination.HtmlFiles }

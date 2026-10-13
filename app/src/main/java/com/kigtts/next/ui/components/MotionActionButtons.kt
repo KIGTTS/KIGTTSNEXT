@@ -26,6 +26,17 @@ fun MotionIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled
 }
 
 @Composable
+fun MotionIconToggleButton(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier,
+    enabled: Boolean = true, content: @Composable () -> Unit) {
+    val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
+    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    IconToggleButton(checked, feedbackChange { value -> press.click(); onCheckedChange(value) },
+        shapes = IconButtonDefaults.toggleableShapes(),
+        modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier),
+        enabled = enabled, interactionSource = press.native, content = content)
+}
+
+@Composable
 fun MotionTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
     colors: ButtonColors = ButtonDefaults.textButtonColors(), content: @Composable RowScope.() -> Unit) {
     val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })

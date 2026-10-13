@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,9 +20,10 @@ import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
 
 @Composable
-fun LandscapeAppRail(state: AppState, model: AppViewModel, drawer: () -> Unit) {
+fun LandscapeAppRail(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     Column(Modifier.width(64.dp).fillMaxHeight().testTag("landscape-app-rail"), horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(feedbackClick(drawer), colors = compactPlainIconColors()) { Icon(Icons.Default.Menu, "打开抽屉菜单") }
+        IconButton(feedbackClick(openSettings), modifier = Modifier.testTag("open-settings"),
+            colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
         SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS 横版 Logo",

@@ -3,6 +3,7 @@ package com.kigtts.next.ui.navigation
 import com.kigtts.next.ui.components.animateEnabled
 
 import com.kigtts.next.ui.components.MotionIconButton
+import com.kigtts.next.ui.components.MotionIconToggleButton
 import com.kigtts.next.ui.components.keepColorsWhenLocked
 
 import androidx.compose.foundation.layout.RowScope
@@ -27,10 +28,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.delay
 
-data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val preserveColorWhenLocked:Boolean=false,val click:()->Unit)
+data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val preserveColorWhenLocked:Boolean=false,
+    val checked:Boolean?=null,val click:()->Unit)
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
     var loading:State<Boolean>? by mutableStateOf(null)
+    internal var backGuard: State<() -> Boolean>? by mutableStateOf(null)
     internal val input = PageInputState()
 }
 val LocalPageToolbarActions=compositionLocalOf<PageToolbarActions?> { null }
@@ -65,7 +68,7 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     val retained = remember { mutableStateListOf<ToolbarAction>() }
     SideEffect { wanted.forEach { action ->
         val index = retained.indexOfFirst { it.id == action.id }
-        if (index < 0) retained.add(action) else if (retained[index].label != action.label || retained[index].icon != action.icon || retained[index].enabled != action.enabled) retained[index] = action
+        if (index < 0) retained.add(action) else if (retained[index].label != action.label || retained[index].icon != action.icon || retained[index].enabled != action.enabled || retained[index].checked != action.checked) retained[index] = action
     } }
     retained.toList().forEach { stored -> key(stored.id) {
         val current = wanted.firstOrNull { it.id == stored.id }
@@ -77,7 +80,9 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
         Box(Modifier.width((48f*reveal).dp).height(48.dp).clipToBounds().graphicsLayer { alpha=reveal }
             .testTag("page-action/" + stored.id)) {
             val colors = IconButtonDefaults.iconButtonColors().let { if(action.preserveColorWhenLocked)it.keepColorsWhenLocked() else it }
-            MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=action.preserveColorWhenLocked) { Icon(action.icon,action.label) }
+            if (action.checked != null) MotionIconToggleButton(action.checked, { action.click() },
+                Modifier.requiredSize(48.dp).testTag(action.id), enabled = active && current != null && action.enabled) { Icon(action.icon, action.label) }
+            else MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=action.preserveColorWhenLocked) { Icon(action.icon,action.label) }
         }
     } }
     AnimatedVisibility(actions.size>2, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),

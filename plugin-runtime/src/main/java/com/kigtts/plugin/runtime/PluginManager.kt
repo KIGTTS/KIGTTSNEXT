@@ -19,6 +19,11 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     val registry = PluginRegistry(builtins)
     private val readiness = TtsReadiness(registry)
     @Volatile var quickTextBrokerFactory:((String,Set<String>)->QuickTextBroker)?=null
+    @Volatile var appBrokerFactory: ((String, Set<String>) -> AppBroker)? = null
+    @Volatile var stickerBrokerFactory: ((String, Set<String>) -> StickerBroker)? = null
+    private val uiInvalidations = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 64,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
+    val uiChanges: kotlinx.coroutines.flow.SharedFlow<String> = uiInvalidations
     private val mutation = Mutex()
     private val loaded = linkedMapOf<String, Pair<Int, RemotePlugin>>()
     @Volatile var status: List<PluginStatus> = emptyList()
@@ -34,6 +39,13 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                 catch (cancel: CancellationException) { throw cancel }
                 catch (_: Exception) { }
         }
+        if (changed) registry.replace(builtins + loaded.values.map { it.second })
+        changed
+    }
+    suspend fun refreshUi(id: String, context: PluginContext): Boolean = mutation.withLock {
+        val proxy = loaded[id]?.second ?: return@withLock false
+        if (!proxy.alive) return@withLock false
+        val changed = proxy.refresh(context)
         if (changed) registry.replace(builtins + loaded.values.map { it.second })
         changed
     }
@@ -53,7 +65,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                             if (info.manifest.capabilities.any { it in setOf("speech-service", "asr-service") })
                                 HostSpeechBroker(info.manifest.id, registry, paths, "speech-service" in info.manifest.capabilities, "asr-service" in info.manifest.capabilities) else null,
                             if(info.manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})
-                                quickTextBrokerFactory?.invoke(info.manifest.id,info.manifest.capabilities.toSet())?.let(::HostQuickTextBroker) else null)
+                                quickTextBrokerFactory?.invoke(info.manifest.id,info.manifest.capabilities.toSet())?.let(::HostQuickTextBroker) else null,
+                            if ("app-control" in info.manifest.capabilities) appBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let(::HostAppBroker) else null,
+                            if (info.manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickerBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let(::HostStickerBroker) else null,
+                            { uiInvalidations.tryEmit(info.manifest.id) })
                         val proxy = RemotePlugin(connection, connection.connect(info.manifest.id))
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }
@@ -74,10 +89,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         loaded.remove(id)
         registry.replace(builtins + loaded.values.map { it.second })
     }
-    suspend fun install(file: File, publisher: String) = mutation.withLock {
+    suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false) = mutation.withLock {
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
         unload(id)
-        try { withContext(Dispatchers.IO) { packages.install(file, publisher) } }
+        try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
         finally { reloadLocked() }
     }
     suspend fun enable(id: String, enabled: Boolean) = mutation.withLock {

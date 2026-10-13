@@ -24,6 +24,9 @@ internal class SherpaOnlineSession(pack: RecognitionPack, threads: Int, endpoint
     }
     private val recognizer = OnlineRecognizer(null, OnlineRecognizerConfig(
         featConfig = FeatureConfig(sampleRate = pack.sampleRate, featureDim = 80, dither = 0f), modelConfig = model,
+        endpointConfig = EndpointConfig(
+            rule1 = EndpointRule(false, 2.4f, 0f), rule2 = EndpointRule(true, 1.4f, 0f),
+            rule3 = EndpointRule(false, 0f, 20f)),
         enableEndpoint = endpoints, decodingMethod = "greedy_search"))
     private val stream = try { recognizer.createStream() } catch (error: Throwable) { recognizer.release(); throw error }
     private val rate = pack.sampleRate

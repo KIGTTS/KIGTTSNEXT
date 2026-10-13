@@ -1,6 +1,6 @@
 # 增量流式识别插件
 
-`engine.streaming-asr-0.7.0.kigplugin` 是独立的 Android DEX/JNI 插件，API8，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
+`engine.streaming-asr-0.8.0.kigplugin` 是独立的 Android DEX/JNI 插件，API9，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
 
 ## 使用
 
@@ -47,12 +47,14 @@
 
 ## 流式行为与验证
 
-每次输入持续送入同一个在线流，解码所有已就绪块，从模型当前假设产生变化的 Partial；端点输出非空 Final 并重置当前句，继续接收后续语音。输入结束补右上下文并调用 inputFinished，冲刷尾句。Paraformer 端点/EOF 补 0.8 秒，其它 EOF 补 0.3 秒静音。取消、格式错误或失败均释放流与识别器。完整录音也使用相同在线后端，但不启用端点，返回一个完整结果。没有伪造中间结果或等待整句再离线识别。
+每次录音持续使用同一个在线模型/解码器，以不超过 100 ms 的 PCM 切片转换样本并解码已就绪块，不保存无限录音历史。模型当前假设形成变化的 Partial（允许空值清除旧假设）；端点输出非空 Final，reset 当前句后继续。显式端点为 2.4 秒空白、1.4 秒句尾静默、20 秒长句；后端不报告端点时，累计 30 秒也固化/reset。规则依据固定 [官方 EndpointConfig](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.38/sherpa-onnx/kotlin-api/OnlineRecognizer.kt)，按停顿与长度分句，不保证语义标点。正常 EOF 补右上下文并 inputFinished，只冲刷尚有输入的尾句，刚 reset 不重复灌静默。Paraformer 补 0.8 秒，其它补 0.3 秒。取消/错误释放会话，不把临时假设强制固化。完整录音也使用同一后端但不启用端点，返回一次完整结果；它不等于在线 UI。
 
-本地专项覆盖中间事件早于 EOF、端点重置、不重复尾句、取消后再次识别、空输入/静音、格式错误、模型并存/选择/排序/置顶、更新回滚、导出回导、路径拒绝及下载校验/范围。主 APK 扫描确认没有引擎实现、模型或 `.kigplugin` 资产。
+本地专项覆盖中间事件早于 EOF、端点重置、不重复尾句、2,000 端点复用同一解码器、无端点长音频兜底、大块输入有界转换、取消后再次识别、空输入/静音、格式错误、模型并存/选择/排序/置顶、更新回滚、导出回导、路径拒绝及下载校验/范围。主 APK 扫描确认没有引擎实现、模型或 `.kigplugin` 资产。
 
 Windows CPU 使用同版本 sherpa-onnx 实际解码官方固定录音：中文轻量与英文轻量分别产生 24 / 30 次 EOF 前中间结果，并各输出两句最终文本；同一中英双语包也在中文与英文录音上产生中间和最终结果。小双语模型的中文录音有明显漏词，英文也有错词；功能链路通过不代表精度验收。首次出现中间结果的音频位置约 0.8–2.4 秒，不是 Android 延迟测量。
 
 可复现实解码：先将三个官方目录包下载到对应 Windows 插件 Appdata/downloads，再用安装 `sherpa-onnx==1.12.38` / NumPy 的 Python 3.12 运行 `tools/Verify-StreamingModels.py --data-dir <对应插件 Appdata>`。解析、测试音频、规范包与 JSON 报告仍在该插件目录。
 
-`StreamingRecognitionDeviceTest` 验证实际 Android DEX/JNI、中文/英文包共存、EOF 前 Partial、取消后重用与完整录音。需要将主应用和所有现有插件更新为 API8；传入 `zhPack` / `zhWav` / `enPack` / `enWav`，四个路径都必须位于手机本插件数据目录。测试会保留安装的流式插件及导入包。当前 ADB 没有连接设备，本轮没有执行该真机检查，也没有覆盖手机仍可用的 API3。
+`StreamingRecognitionDeviceTest` 使用主机 → 识别服务 → broker → 独立在线引擎链路，验证实际 Android DEX/JNI、中/英文包共存、EOF 前实时结果、取消后重用与完整录音。执行前同签名更新主程序及既有插件为 API9。zhPack/zhWav/enPack/enWav 都必须位于手机 engine.streaming-asr 数据目录；测试保留流式插件与导入包。
+
+引擎输出 Partial/Final，服务统一转换为有界 `Transcript(committed, partial, sequence, finalized)`，临时修订不覆盖已固化前文，重复句保留独立序号。界面、浮窗及连续输入归识别服务，详见 [服务说明](recognition-service.md)。手机安装、跨进程、实际麦克风和长时间连续字幕的当次结果集中记录在 [Release 验证记录](release-testing.md)，此前 Windows 后端结果不能代替 Android 延迟/精度验收。

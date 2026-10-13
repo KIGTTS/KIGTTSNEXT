@@ -55,9 +55,8 @@ class ButtonFeedbackTest {
         tick { compose.onNodeWithTag("debug.ui/EDITOR_TOP_END/19-menu").performScrollTo().performClick() }
         tick { compose.onNodeWithText("显示对话框").performClick() }
         tick { compose.onNodeWithText("知道了").performClick() }
-        tick { compose.onNodeWithContentDescription("打开抽屉菜单").performClick() }
-        tick { compose.onNodeWithText("设置").performClick() }
-        tick { compose.onNodeWithText("插件管理").performClick() }
+        tick { compose.onNodeWithContentDescription("打开设置").performClick() }
+        tick { compose.onNodeWithText("插件管理").performScrollTo().performClick() }
         tick { compose.onNodeWithContentDescription("返回上一页").performClick() }
     }
 

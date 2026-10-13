@@ -8,9 +8,10 @@ import org.json.JSONArray
 internal class VoiceLibrary(storage: PluginStorage) {
     private val file = storage.file("config/voice-library.json").also { storage.configuration }
     private val json = runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
-    var filter = json.optString("filter", "all")
+    var filter = json.optString("filter", "all").let { if (it == LEGACY_SYSTEM_PROVIDER) SYSTEM_PROVIDER else it }
     private var order = json.optJSONArray("order")?.let { list -> (0 until list.length()).map { list.getString(it) } } ?: emptyList()
     private val pins = json.optJSONObject("pins") ?: JSONObject()
+    init { if (json.optString("filter", "all") == LEGACY_SYSTEM_PROVIDER) save() }
     fun pinned(key: String, initial: Boolean) = if (pins.has(key)) pins.getBoolean(key) else initial
     fun pin(key: String, value: Boolean) { pins.put(key, value); save() }
     fun ordered(entries: List<PackEntry>): List<PackEntry> {
@@ -33,7 +34,7 @@ internal data class PackEntry(val provider: TtsProvider, val pack: VoicePackInfo
 }
 internal const val SYSTEM_PROVIDER = "@system"
 internal fun voicePacks(providers: List<TtsProvider>): List<PackEntry> = providers.flatMap { provider ->
-    val packs = if (provider.pluginId == SYSTEM_PROVIDER) listOf(VoicePackInfo("system", VoicePackMetadata("系统 TTS", "设备已安装的系统声音"), provider.info.voices.map { it.id }))
+    val packs = if (provider.pluginId == SYSTEM_PROVIDER) listOf(VoicePackInfo("system", VoicePackMetadata("系统声音", "使用设备已有的声音"), provider.info.voices.map { it.id }))
         else provider.info.packs.ifEmpty { provider.info.voices.groupBy { it.packId ?: it.id }.map { (id, voices) ->
             VoicePackInfo(id, VoicePackMetadata(voices.first().packName ?: voices.first().name, voices.first().description), voices.map { it.id })
         } }

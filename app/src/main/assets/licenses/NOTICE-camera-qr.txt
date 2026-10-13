@@ -1,0 +1,9 @@
+Bundled AndroidX CameraX and ZXing core components are licensed under Apache License 2.0.
+
+AndroidX CameraX — The Android Open Source Project
+https://developer.android.com/jetpack/androidx/releases/camera
+
+ZXing core — ZXing authors
+https://github.com/zxing/zxing
+
+The complete license is included in Apache-2.0.txt.

@@ -21,7 +21,7 @@ import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
 
 @Composable
-fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
+fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     val home = state.destination == Destination.Home
     val title = when (val destination = state.destination) {
         Destination.Home -> "KIGTTS"
@@ -35,6 +35,12 @@ fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
         is Destination.QuickTextReview -> "修改预览"
         is Destination.ContentEditor -> "内容编辑器"
         is Destination.PhraseEditor -> "编辑快捷文本"
+        is Destination.CardEditor -> "编辑拍立得"
+        is Destination.CardPreview -> "拍立得预览"
+        Destination.Cards -> "拍立得"
+        is Destination.CardCamera -> "拍摄"
+        is Destination.StickerReview -> "修改预览"
+        is Destination.StickerLibrary -> "贴纸库"
     }
     Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
@@ -52,7 +58,8 @@ fun AppHeader(state: AppState, model: AppViewModel, drawer: () -> Unit) {
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             if (home) SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
-            IconButton(onClick = feedbackClick(drawer), colors = compactPlainIconColors()) { Icon(Icons.Default.Menu, "打开抽屉菜单") }
+            if (home) IconButton(onClick = feedbackClick(openSettings), modifier = Modifier.testTag("open-settings"),
+                colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
         }
     }
 }

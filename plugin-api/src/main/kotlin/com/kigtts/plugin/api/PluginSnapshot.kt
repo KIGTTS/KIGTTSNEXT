@@ -5,7 +5,8 @@ import kotlinx.serialization.json.Json
 
 @Serializable
 data class PluginSnapshot(val descriptor: PluginDescriptor, val contributions: PluginContributions,
-    val pages: List<PluginPage>, val tts: TtsInfo? = null, val asr: AsrInfo? = null) {
+    val pages: List<PluginPage>, val tts: TtsInfo? = null, val asr: AsrInfo? = null,
+    val localization: PluginLocalization = PluginLocalization()) {
     init { validateSnapshot(this) }
 }
 

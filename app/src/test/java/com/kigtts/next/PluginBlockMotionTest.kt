@@ -28,6 +28,35 @@ import org.robolectric.annotation.*
 class PluginBlockMotionTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
     private fun step(frames:Int) { repeat(frames) { compose.mainClock.advanceTimeByFrame();compose.waitForIdle() } }
+    @Test fun pluginChoicesAndSwitchesDoNotFlashDisabledColoursDuringRequests() {
+        var busy by mutableStateOf(false)
+        var calls = 0
+        val page = PluginPage("p", "设置", listOf(
+            PageBlock.Toggle("保持加载", true, "resident"),
+            PageBlock.Choice("方式", listOf(PageAction("on", "开启"), PageAction("off", "关闭")), "on")))
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MaterialTheme { PluginPageScreen(page, busy) { _, _ -> calls++ } } }
+        step(30)
+        fun colour(description: String, name: String): Int {
+            val path = "build/previews/plugin-request-$name.png"
+            compose.onNodeWithContentDescription(description).captureRoboImage(path)
+            return BitmapFactory.decodeFile(path).let { bitmap ->
+                bitmap.getPixel(bitmap.width / 2, bitmap.height / 4).also { bitmap.recycle() }
+            }
+        }
+        val descriptions = listOf("保持加载", "方式：开启", "方式：关闭")
+        val before = descriptions.mapIndexed { i, label -> colour(label, "before-$i") }
+        compose.runOnIdle { busy = true }; step(20)
+        descriptions.forEachIndexed { i, label ->
+            compose.onNodeWithContentDescription(label).assertIsNotEnabled().performTouchInput { click() }
+            assertEquals(before[i], colour(label, "busy-$i"))
+        }
+        assertEquals(0, calls)
+        compose.runOnIdle { busy = false }; step(20)
+        descriptions.forEach { compose.onNodeWithContentDescription(it).assertIsEnabled() }
+        compose.onNodeWithContentDescription("方式：关闭").performClick()
+        assertEquals(1, calls)
+    }
     @Test fun preloadedRowsAreVisibleImmediatelyButLaterInsertionsStillAnimate() {
         val values=mutableStateOf(listOf("one","two"))
         compose.mainClock.autoAdvance=false

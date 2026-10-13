@@ -29,6 +29,12 @@ data class PageEntry(val scene: PageScene, val depth: Int,
             is Destination.QuickTextReview -> "quick-review/" + destination.token
             is Destination.ContentEditor -> "content-editor/" + destination.token
             is Destination.PhraseEditor -> "phrase-editor/" + destination.token
+            is Destination.CardEditor -> "card-editor/" + destination.cardId
+            is Destination.CardPreview -> "card-preview/" + destination.cardId
+            Destination.Cards -> "cards"
+            is Destination.CardCamera -> "card-camera/" + destination.requestId
+            is Destination.StickerReview -> "sticker-review/" + destination.token
+            is Destination.StickerLibrary -> "sticker-library/" + destination.libraryId.orEmpty()
         }
     }
 }

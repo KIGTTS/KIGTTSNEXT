@@ -39,7 +39,7 @@ internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
             SettingsGroup(group.key) {
                 MotionColumn(group.value, { item, _ -> item.id }, enabled = active, spacing = 2.dp,animateInitial=false) { item, interactive ->
                     val toggle = item.toggle
-                    SettingItem(item.title, item.subtitle, item.icon.vector(),
+                    SettingItem(item.title, item.subtitle, if (item.icon == PluginIcon.NONE) null else item.icon.vector(),
                         settingPosition(group.value.indexOfFirst { it.id == item.id }, group.value.size),
                         modifier = Modifier.testTag("managed-item/" + item.id), enabled = interactive,
                         onClick = item.primaryAction?.let { action -> { invoke(action, emptyMap()) } }, trailing = {

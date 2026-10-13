@@ -19,7 +19,10 @@ import kotlin.coroutines.coroutineContext
 internal class ScopedEnvironment(base: Context, override val storage: PluginStorage,
     override val assets: File, private val networkAllowed: Boolean,
     override val speechBroker: SpeechBroker? = null,
-    override val recognitionBroker: RecognitionBroker? = null,override val quickTextBroker:QuickTextBroker?=null) : AndroidPluginEnvironment {
+    override val recognitionBroker: RecognitionBroker? = null,override val quickTextBroker:QuickTextBroker?=null,
+    override val appBroker: com.kigtts.plugin.api.AppBroker? = null,
+    override val stickerBroker: com.kigtts.plugin.api.StickerBroker? = null) : AndroidPluginEnvironment {
+    override val locale: String get() = context.resources.configuration.locales[0].toLanguageTag()
     override val context = object : ContextWrapper(base) {
         override fun getApplicationContext(): Context = this
         override fun getFilesDir(): File = storage.directory("files")

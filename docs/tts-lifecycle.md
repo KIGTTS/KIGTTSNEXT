@@ -1,4 +1,4 @@
-# 合成引擎生命周期与低延迟输出（API8）
+# 合成引擎生命周期与低延迟输出（API9）
 
 模型、发音转换器、平台 TTS 连接和空闲回收都由插件拥有；主 APK 只传输标准状态、控制与 PCM，不包含引擎、模型或发音字典。未来的合成提供者遵循相同约定。
 
@@ -35,12 +35,15 @@ Piper 复用 `OrtSession` 与绑定的发音转换器。模型、配置、词典
 
 长文本首段最多 32 个 UTF-16 单元，后续段最多 96 个，优先句末标点、其次词或逗号边界，不拆代理对，不丢失文本。每段一完成即输出 PCM；一次调用只发送一个 Started/Finished。Piper 单次上限仍为 500 字符，合成服务按提供者上限继续拆分更长文本；服务在已输出音频后遇到错误不会回退重读此前文字。
 
-系统 TTS 复用 `TextToSpeech` 连接，按请求设置语言、声音和语速。通过 [UtteranceProgressListener](https://developer.android.com/reference/android/speech/tts/UtteranceProgressListener#onAudioAvailable(java.lang.String,%20byte[])) 的音频回调即时传 PCM，支持 8/16 位和 float 转换及帧对齐。不提供回调或格式无法转换的系统引擎，回退读取当前短段的 WAV；不会等待整篇文本生成 WAV。监听按 utterance token 隔离，取消停止本次请求并删除插件临时文件。
+系统 TTS 是合成服务内置保底，不独立分发；它复用 `TextToSpeech` 连接，按请求设置语言、声音和语速。通过 [UtteranceProgressListener](https://developer.android.com/reference/android/speech/tts/UtteranceProgressListener#onAudioAvailable(java.lang.String,%20byte[])) 的音频回调即时传 PCM，支持 8/16 位和 float 转换及帧对齐。不提供回调或格式无法转换的系统引擎，回退读取当前短段的 WAV；不会等待整篇文本生成 WAV。监听按 utterance token 隔离，取消停止本次请求并删除插件临时文件。
 
 ## 升级与验证边界
 
-生命周期新增跨进程控制方法，SDK 升到 API8，引擎及可选工具包为 0.7.0/versionCode7，合成服务的页面整理版为 0.7.3/versionCode10、识别服务为 0.7.1/versionCode8。必须先更新宿主，再同发布者升级专用包；已有模型、资源、配置和启停状态保留。旧 API7 包不与 API8 混用，管理器协议仍为 1，无需因此重装管理器或测试 APK。
+当前 SDK 为 API9，外置包统一 0.8.0。必须先更新宿主，再同发布者升级专用包；已有模型、资源、配置和启停状态保留。API8 及更早的二进制不与 API9 混用。管理器协议仍为 1，无需因此重装管理器或测试 APK。生命周期协议最初在 API8 加入，下面保留该版历史测量。
 
 单元回归验证复用、换包/进程失效、取消和失败清理、120秒/活动播放/常驻、路由释放、首段先输出、Unicode 分段和 Binder 授权。2026-10-12 在 23113RKC6C 上安装 API8：同一 Piper 工作进程和模型连续复用，默认约 120 秒释放，保持加载超过 173 秒未释放，切换系统声音仍立即释放 Piper。短文本首 PCM 冷启动 2350 ms（模型加载 1912 ms），两次复用为 765/627 ms；132 字符长文本首 PCM 267 ms、合成完成 3870 ms。系统保底两次首 PCM 445/389 ms，平台连接只建立一次，返回 Piper 时释放。
 
 上述为单设备少量真实合成样本，来源于插件耗时日志；管理器自检不播放声音，不包含最终 AudioTrack 或蓝牙延迟。不能与此前包含 ADB 的完整自检时长直接比较。临时声音和保持加载设置已恢复。插件日志只记录资源加载/释放、长度和耗时，不记录文本、文件路径或声音内容。
+
+
+API9 当前构建与设备结果统一见 [Release 验证记录](release-testing.md)。上述 2026-10-12 测量仅代表当时版本和设备，不能据此声称新 Agent/Lua/商店/构建功能已经完成手机验收。

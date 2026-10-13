@@ -8,6 +8,9 @@ internal class RecognitionServiceSettings(storage: PluginStorage) {
     private val file = storage.file("config/recognition-service.json").also { storage.configuration }
     private val json = runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
     var provider: String? = json.optString("provider").takeIf { it.isNotBlank() }
+    var voiceInput = json.optBoolean("voiceInput", true)
+    var continuousInput = json.optBoolean("continuousInput", false)
+    var captionOutput = runCatching { CaptionOutput.valueOf(json.optString("captionOutput", "PANEL")) }.getOrDefault(CaptionOutput.PANEL)
     private var order = json.optJSONArray("order")?.let { array -> (0 until array.length()).map { array.getString(it) } } ?: emptyList()
     fun ordered(providers: List<AsrProvider>): List<AsrProvider> {
         val data = providers.associateBy { it.pluginId }
@@ -20,5 +23,7 @@ internal class RecognitionServiceSettings(storage: PluginStorage) {
                 .thenBy { it.pluginId }).firstOrNull()
     }
     fun reorder(proposed: List<String>, providers: List<AsrProvider>) { ItemOrder.validate(proposed, providers.map { it.pluginId }); order = proposed; save() }
-    fun save() { file.writeText(JSONObject().put("provider", provider).put("order", JSONArray(order)).toString(), Charsets.UTF_8) }
+    fun save() { file.writeText(JSONObject().put("provider", provider).put("order", JSONArray(order))
+        .put("voiceInput", voiceInput).put("continuousInput", continuousInput)
+        .put("captionOutput", captionOutput.name).toString(), Charsets.UTF_8) }
 }

@@ -31,41 +31,26 @@ class SettingsNavigationTest {
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
 
-    @Test fun rightDrawerKeepsContentDirectionAndRemovesQuickTextAndManagementEntries() {
+    @Test fun headerOpensSettingsDirectlyAndAllPluginEntrancesShareSettingsCards() {
         val model = show()
-        val menu = compose.onNodeWithContentDescription("打开抽屉菜单").getUnclippedBoundsInRoot()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
-        val drawer = compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot()
-        val root = compose.onRoot().getUnclippedBoundsInRoot()
-        assertTrue(drawer.left.value > root.left.value + 20f)
-        assertEquals(root.right.value, drawer.right.value, 1f)
-        assertEquals(320f, (drawer.right - drawer.left).value, 1f)
-        compose.onNode(hasText("大字幕与聆听") and hasAnyAncestor(hasTestTag("app-drawer"))).assertDoesNotExist()
-        compose.onNodeWithText("插件页面").assertDoesNotExist()
-        val settings = compose.onNodeWithTag("drawer-settings").getUnclippedBoundsInRoot()
-        assertTrue("Settings stays at the foot of the drawer", settings.top.value > root.bottom.value - 110f)
-        compose.onNode(hasText("快捷文本") and hasAnyAncestor(hasTestTag("app-drawer"))).assertDoesNotExist()
-        compose.onNode(hasText("插件管理") and hasAnyAncestor(hasTestTag("app-drawer"))).assertDoesNotExist()
-        compose.onNodeWithText("语音输入").assertDoesNotExist()
-        compose.onNodeWithText("界面调试").assertDoesNotExist()
-        compose.onNodeWithText("聆听插件").assertIsDisplayed()
-        capture("right-drawer")
-        compose.onNodeWithText("设置").performClick()
+        val menu = compose.onNodeWithContentDescription("打开设置").getUnclippedBoundsInRoot()
+        compose.onNodeWithContentDescription("打开设置").performClick()
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
         compose.onNodeWithText("外观与交互").assertIsDisplayed()
         capture("settings-categories")
         compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination); assertEquals(listOf(Destination.Home), model.state.value.navigationStack) }
         back()
-        assertEquals(menu, compose.onNodeWithContentDescription("打开抽屉菜单").getUnclippedBoundsInRoot())
-        // Side swipes still cannot open the low-frequency drawer.
+        assertEquals(menu, compose.onNodeWithContentDescription("打开设置").getUnclippedBoundsInRoot())
+        // Side swipes cannot open a settings page.
         compose.onRoot().performTouchInput { swipeRight(startX = 1f, endX = width / 2f) }
-        compose.onNodeWithText("KIGTTS NEXT").assertIsNotDisplayed()
+        compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
     }
 
     @Test fun categoriesOpenThirdLevelAndPredictiveReturnCancelsAndCommitsToParent() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.navigate(Destination.Settings) }
         SettingsCategory.entries.forEach { category ->
-            compose.onNodeWithText(category.title).performClick()
+            compose.onNodeWithText(category.title).performScrollTo().performClick()
             compose.runOnIdle {
                 assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
                 assertEquals(listOf(Destination.Home, Destination.Settings), model.state.value.navigationStack)
@@ -84,7 +69,7 @@ class SettingsNavigationTest {
             } else compose.onNodeWithContentDescription("返回上一页").performClick()
             compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
         }
-        compose.onNodeWithText("插件管理").performClick()
+        compose.onNodeWithText("插件管理").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
         compose.onNodeWithTag("managed-list/plugins").performScrollToNode(hasTestTag("managed-item/input.voice"))
         compose.onNodeWithTag("managed-item/input.voice").performClick()

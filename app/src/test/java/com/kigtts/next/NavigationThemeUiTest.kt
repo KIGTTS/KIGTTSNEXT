@@ -38,20 +38,21 @@ class NavigationThemeUiTest {
         compose.waitForIdle()
     }
 
-    @Test fun drawerBackClosesOnlyDrawerAndCancelledPredictionKeepsItOpen() {
+    @Test fun settingsBackRestoresHomePanelAndCancelledPredictionKeepsPageOpen() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
-        compose.onNodeWithTag("drawer-logo").assertIsDisplayed()
+        compose.onNodeWithContentDescription("打开设置").performClick()
+        compose.onNodeWithText("外观与交互").assertIsDisplayed()
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
         predict(.6f)
-        capture("drawer-predictive-return")
+        capture("settings-direct-predictive-return")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() }
-        compose.onNodeWithTag("drawer-logo").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
         back()
-        compose.onNodeWithTag("drawer-logo").assertIsNotDisplayed()
+        compose.onNodeWithContentDescription("打开设置").assertIsDisplayed()
         compose.runOnIdle { assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
         compose.runOnIdle { model.navigate(Destination.Settings) }
-        compose.onNodeWithContentDescription("打开抽屉菜单").assertDoesNotExist()
+        compose.onNodeWithContentDescription("打开设置").assertDoesNotExist()
         back()
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
     }

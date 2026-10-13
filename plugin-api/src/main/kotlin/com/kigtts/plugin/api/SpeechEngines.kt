@@ -74,7 +74,9 @@ interface TtsEngine {
     val resident: Boolean = false, val active: Boolean = false)
 
 @Serializable
-data class RecognitionConfig(val language: String = "zh-CN")
+data class RecognitionConfig(val language: String = "zh-CN", val maxDisplayCharacters: Int = 12_000) {
+    init { require(maxDisplayCharacters in 256..32_000) }
+}
 @Serializable
 data class RecognitionResult(val text: String, val placeholder: Boolean = false)
 @Serializable
@@ -85,6 +87,10 @@ sealed interface RecognitionEvent {
     data class Partial(val text: String) : RecognitionEvent
     @Serializable
     data class Final(val result: RecognitionResult) : RecognitionEvent
+    /** Service-owned immutable prefix + replaceable hypothesis, bounded for UI/IPC. Finals have monotonic sequence numbers. */
+    @Serializable
+    data class Transcript(val committed: String, val partial: String, val sequence: Long,
+        val finalized: String? = null) : RecognitionEvent
 }
 
 interface AsrEngine {

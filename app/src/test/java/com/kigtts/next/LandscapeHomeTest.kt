@@ -46,10 +46,10 @@ class LandscapeHomeTest {
     @Test fun landscapeDocksUseCircularSideButtonsLargerPillAndTheRequestedVerticalOrder() {
         val model=show()
         fun bounds(tag:String)=compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
-        val menu=compose.onNodeWithContentDescription("打开抽屉菜单").getUnclippedBoundsInRoot()
+        val menu=compose.onNodeWithContentDescription("打开设置").getUnclippedBoundsInRoot()
         val speaker=bounds("auto-playback")
         assertTrue(menu.bottom<speaker.top)
-        compose.onNodeWithTag("dock-start").assertContentDescriptionEquals("名片")
+        compose.onNodeWithTag("dock-start").assertContentDescriptionEquals("拍立得")
         compose.onNodeWithTag("dock-end").assertContentDescriptionEquals("画板")
         assertTrue(bounds("dock-start").bottom<bounds("dock-end").top)
         for(tag in listOf("dock-start","dock-end")) {
@@ -63,11 +63,12 @@ class LandscapeHomeTest {
         }
         compose.onRoot().captureRoboImage("build/previews/landscape-expanded-circles.png")
     }
-    @Test fun landscapeDrawerOpensLeftAndSketchEntersAndReturnsRightRegardlessOfBackGestureEdge() {
+    @Test fun landscapeSettingsOpenDirectlyAndSketchEntersAndReturnsRightRegardlessOfBackGestureEdge() {
         val model=show()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
-        val drawer=compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot()
-        assertEquals(0f,drawer.left.value,.5f);assertTrue(drawer.right.value<=321f)
+        compose.onNodeWithContentDescription("打开设置").performClick()
+        compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
+        val settings=compose.onNodeWithTag("navigation-secondary").getUnclippedBoundsInRoot()
         compose.mainClock.autoAdvance=false
         fun step(ms:Long) { compose.mainClock.advanceTimeBy(ms);compose.waitForIdle() }
         fun gesture(edge:Int) { compose.runOnIdle {
@@ -75,9 +76,9 @@ class LandscapeHomeTest {
             compose.activity.onBackPressedDispatcher.dispatchOnBackProgressed(BackEventCompat(100f,100f,.6f,edge))
         };step(64) }
         gesture(BackEventCompat.EDGE_LEFT)
-        assertTrue(compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot().left.value<0f)
+        assertTrue(compose.onNodeWithTag("navigation-secondary").getUnclippedBoundsInRoot().left.value>0f)
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.dispatchOnBackCancelled() };step(600)
-        assertEquals(drawer,compose.onNodeWithTag("app-drawer").getUnclippedBoundsInRoot())
+        assertEquals(settings,compose.onNodeWithTag("navigation-secondary").getUnclippedBoundsInRoot())
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() };step(1200)
         compose.runOnIdle { model.openSidePage(SidePage.SKETCH) };step(96)
         val page=compose.onNodeWithTag("page-layer/1/side/sketch")

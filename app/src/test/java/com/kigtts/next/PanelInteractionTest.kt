@@ -31,7 +31,6 @@ import org.robolectric.annotation.*
 class PanelInteractionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val ticks = mutableListOf<HapticFeedbackType>()
-    private lateinit var drawer: DrawerNavigation
     private val density get() = compose.activity.resources.displayMetrics.density
     private fun show(plugins: Int = 0): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
@@ -39,7 +38,7 @@ class PanelInteractionTest {
         app.getSharedPreferences("ui-debug", 0).edit().putInt(UiSlot.QUICK_PANEL_START.name, plugins).putInt(UiSlot.QUICK_PANEL_END.name, plugins).commit()
         val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }
         return testAppModel(app).also { model ->
-            compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { drawer = rememberDrawerNavigation(); KigttsApp(model, drawer) } }
+            compose.setContent { CompositionLocalProvider(LocalHapticFeedback provides native) { KigttsApp(model) } }
         }
     }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
@@ -144,29 +143,30 @@ class PanelInteractionTest {
         compose.mainClock.advanceTimeBy(1400); compose.mainClock.autoAdvance = true
         assertEquals(before, pixel("sheet-background-closed-restored"))
     }
-    @Test fun rightSwipeAndBlankTapCloseDrawerAndClosedDrawerCannotSwipeOpen() {
+    @Test fun sideSwipeDoesNotOpenSettingsAndBlankTapDoesNotDismissASecondaryPage() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
-        fun closed() { compose.waitForIdle(); assertFalse(drawer.active); assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
-        compose.onRoot().performTouchInput { swipeLeft() }; closed()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
-        compose.onNodeWithTag("app-drawer").performTouchInput { swipeRight(startX = width * .15f, endX = width * .95f, durationMillis = 350) }
-        closed()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
+        compose.onRoot().performTouchInput { swipeLeft() }
+        compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
+        compose.onNodeWithContentDescription("打开设置").performClick()
         compose.onRoot().performTouchInput { click(Offset(6f * density, height * .65f)) }
-        closed()
-        capture("drawer-blank-dismissed")
+        compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.runOnIdle { assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
+        capture("settings-page-returned")
     }
-    @Test fun swipeDuringOpeningDoesNotLeaveTheDrawerActiveOrDismissThePanel() {
+    @Test fun returningDuringSettingsEntryDoesNotDismissTheHomePanel() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
         compose.waitForIdle()
         compose.mainClock.autoAdvance = false
-        compose.runOnIdle { drawer.open() }
+        compose.runOnIdle { model.navigate(Destination.Settings) }
         compose.mainClock.advanceTimeBy(96); compose.waitForIdle()
-        compose.onNodeWithTag("app-drawer").performTouchInput { swipeRight(startX = 6f * density, endX = 170f * density, durationMillis = 250) }
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.mainClock.advanceTimeBy(1600); compose.mainClock.autoAdvance = true
-        assertFalse(drawer.active)
+        assertEquals(Destination.Home, model.state.value.destination)
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
         assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
     }
 }

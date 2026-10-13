@@ -8,6 +8,18 @@ import java.nio.file.Files
 import java.util.zip.*
 
 class ResourceAndWireTest {
+    @Test fun editorInboxIsScopedButHostConfigurationCannotBeImportedOver() {
+        val root = Files.createTempDirectory("editor-inbox").toFile()
+        try {
+            val storage = PluginStorage(root)
+            val path = ResourceImporter.import(storage, "return {}".byteInputStream(), "imports/projects", "main.lua", false)
+            assertEquals("imports/projects/main.lua", path)
+            assertEquals("return {}", storage.file(path).readText())
+            listOf("config/host", "../imports", "modelsevil").forEach { bad ->
+                assertThrows(IllegalArgumentException::class.java) { ResourceImporter.import(storage, "secret".byteInputStream(), bad, "x.txt", false) }
+            }
+        } finally { root.deleteRecursively() }
+    }
     private fun archive(path: String): ByteArray = ByteArrayOutputStream().also { result ->
         ZipOutputStream(result).use { it.putNextEntry(ZipEntry(path)); it.write("model".toByteArray()); it.closeEntry() }
     }.toByteArray()

@@ -58,8 +58,21 @@ class PluginPackageTest {
         assertFalse(File(paths.data, "test.engine").exists()); assertTrue(store.installed().isEmpty())
         assertEquals("other", paths.storage("other.engine").file("keep").readText())
     }
+    @Test fun explicitlyReviewedVersionSwitchRetainsDataAndStillRejectsAnotherPublisher() {
+        val first = pack(1); val latest = pack(3); val publisher = store.inspect(first).publisherSha256
+        store.install(latest, publisher)
+        paths.storage("test.engine").file("config/keep.txt").apply { parentFile!!.mkdirs(); writeText("user-data") }
+        store.enabled("test.engine", false)
+        assertThrows(IllegalArgumentException::class.java) { store.install(first, publisher) }
+        store.install(first, publisher, allowVersionChange = true)
+        assertEquals(1, store.verifyInstalled("test.engine").versionCode)
+        assertFalse(store.installed().single().enabled)
+        assertEquals("user-data", paths.storage("test.engine").file("config/keep.txt").readText())
+        val foreign = pack(2, otherPublisher = true)
+        assertThrows(IllegalArgumentException::class.java) { store.install(foreign, store.inspect(foreign).publisherSha256, true) }
+    }
     @Test fun tamperingTraversalWrongApiAndPublisherReplacementAreRejected() {
-        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4), pack(api = 5),pack(api=6),pack(api=7))) {
+        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4), pack(api = 5),pack(api=6),pack(api=7),pack(api=8))) {
             assertThrows(IllegalArgumentException::class.java) { store.inspect(file) }
         }
         val valid = pack(); val publisher = store.inspect(valid).publisherSha256; store.install(valid, publisher)
@@ -113,14 +126,14 @@ class PluginPackageTest {
     @Test fun independentlyBuiltEnginePackagesPassSignatureAndPayloadVerification() {
         val directory = File(requireNotNull(System.getProperty("kig.plugin.packages")))
         org.junit.Assume.assumeTrue("Run tools/Build-EnginePlugins.ps1 first", directory.exists())
-        val system = store.inspect(File(directory, "engine.system-tts-0.7.0.kigplugin"))
-        val asr = store.inspect(File(directory, "engine.sensevoice-0.7.0.kigplugin"))
-        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.7.0.kigplugin"))
-        val recognition = store.inspect(File(directory, "service.speech-recognition-0.7.1.kigplugin"))
+        val base = store.inspect(File(directory, "service.speech-synthesis-0.8.0.kigplugin"))
+        val asr = store.inspect(File(directory, "engine.sensevoice-0.8.0.kigplugin"))
+        val streaming = store.inspect(File(directory, "engine.streaming-asr-0.8.0.kigplugin"))
+        val recognition = store.inspect(File(directory, "service.speech-recognition-0.8.0.kigplugin"))
         assertTrue("asr-service" in recognition.manifest.capabilities)
         assertTrue(recognition.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
-        assertEquals(system.publisherSha256, recognition.publisherSha256)
-        assertEquals("engine.system-tts", system.manifest.id)
+        assertEquals(base.publisherSha256, recognition.publisherSha256)
+        assertEquals("service.speech-synthesis", base.manifest.id)
         assertEquals("engine.sensevoice", asr.manifest.id)
         assertTrue(asr.manifest.files.keys.any { it.endsWith("libsherpa-onnx-jni.so") })
         assertTrue(asr.manifest.files.keys.any { it.endsWith("libonnxruntime.so") })
@@ -130,24 +143,32 @@ class PluginPackageTest {
         assertEquals("engine.streaming-asr", streaming.manifest.id)
         assertTrue(streaming.manifest.files.keys.any { it.endsWith("libsherpa-onnx-jni.so") })
         assertTrue(streaming.manifest.files.keys.none { it.endsWith(".onnx") })
-        assertEquals(system.publisherSha256, streaming.publisherSha256)
+        assertEquals(base.publisherSha256, streaming.publisherSha256)
         val originalAbis = android.os.Build.SUPPORTED_ABIS
         val piper = try {
             org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
-            store.inspect(File(directory, "engine.piper-0.7.0.kigplugin"))
+            store.inspect(File(directory, "engine.piper-0.8.0.kigplugin"))
         } finally { org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", originalAbis) }
-        val service = store.inspect(File(directory, "service.speech-synthesis-0.7.3.kigplugin"))
+        val service = store.inspect(File(directory, "service.speech-synthesis-0.8.0.kigplugin"))
         assertEquals(listOf("arm64-v8a"), piper.manifest.abis)
         assertTrue(piper.manifest.files.keys.any { it.endsWith("libespeak_jni.so") })
         assertTrue(piper.manifest.files.keys.contains("assets/espeak-ng-data.zip"))
         assertTrue(service.manifest.capabilities.contains("speech-service"))
         assertTrue(service.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
-        assertEquals(system.publisherSha256, service.publisherSha256)
-        val example=File(directory,"tools.quick-text-example-0.7.0.kigplugin")
-        if(example.isFile) {val tools=store.inspect(example);assertEquals(system.publisherSha256,tools.publisherSha256)
+        assertEquals(base.publisherSha256, service.publisherSha256)
+        val example=File(directory,"tools.quick-text-example-0.8.0.kigplugin")
+        if(example.isFile) {val tools=store.inspect(example);assertEquals(base.publisherSha256,tools.publisherSha256)
             assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION,tools.manifest.apiVersion)
             assertTrue("quick-text-write" in tools.manifest.capabilities);assertFalse("network" in tools.manifest.capabilities)
             assertTrue(tools.manifest.files.keys.contains("assets/calculator.html"))}
+        for (id in listOf("tools.cloud-agent", "runtime.lua", "tools.package-store", "tools.native-builder")) {
+            val extension = store.inspect(File(directory, "$id-0.8.0.kigplugin"))
+            assertEquals(id, extension.manifest.id)
+            assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION, extension.manifest.apiVersion)
+            assertEquals(base.publisherSha256, extension.publisherSha256)
+            assertTrue(extension.manifest.files.keys.any { it.startsWith("code/") && it.endsWith(".dex") })
+            assertTrue(extension.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
+        }
     }
     @Test fun disabledRecognitionProvidersRemainManageableBeforeFirstLoadAndAfterCaching() {
         val input = pack(capabilities = listOf("asr-batch", "asr-incremental")); store.install(input, store.inspect(input).publisherSha256)

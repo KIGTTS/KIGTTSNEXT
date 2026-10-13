@@ -10,7 +10,7 @@ import java.util.zip.ZipFile
 object ResourceImporter {
     fun import(storage: PluginStorage, input: InputStream, directory: String, name: String, zip: Boolean): String {
         val target = storage.file(directory)
-        require(directory.startsWith("models") || directory.startsWith("resources"))
+        require(directory.substringBefore('/') in setOf("models", "resources", "imports")) { "请导入到 models、resources 或 imports 目录" }
         val scratch = File(storage.temporary, "import-${UUID.randomUUID()}").apply { mkdirs() }
         val source = File(scratch, "source")
         try {

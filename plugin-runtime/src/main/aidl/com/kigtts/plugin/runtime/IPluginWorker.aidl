@@ -2,6 +2,9 @@ package com.kigtts.plugin.runtime;
 import android.os.ParcelFileDescriptor;
 import com.kigtts.plugin.runtime.IHostSpeechBroker;
 import com.kigtts.plugin.runtime.IHostQuickTextBroker;
+import com.kigtts.plugin.runtime.IHostAppBroker;
+import com.kigtts.plugin.runtime.IHostStickerBroker;
+import com.kigtts.plugin.runtime.IPluginUiObserver;
 
 interface IPluginWorker {
     String initialize(String pluginId, IHostSpeechBroker broker);
@@ -13,5 +16,8 @@ interface IPluginWorker {
     void cancel(String token);
     oneway void shutdown();
     void attachQuickTextBroker(IHostQuickTextBroker broker);
+    void attachAppBroker(IHostAppBroker broker);
+    void observeUi(IPluginUiObserver observer);
     void ttsControl(String command);
+    void attachStickerBroker(IHostStickerBroker broker);
 }

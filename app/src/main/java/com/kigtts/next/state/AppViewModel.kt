@@ -38,6 +38,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
     }
     private val themeStore = ThemeSettingsStore(application)
+    private val placeholderStore = SubtitlePlaceholderStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
@@ -46,10 +47,16 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
     private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
     val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
+    val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
+    val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
+    val cardUi = CardWorkspace(::navigate) { openSidePage(SidePage.CARDS) }
+    val stickerPlugins = hostRuntime?.stickerPlugins ?: com.kigtts.next.plugins.stickers.StickerHost(stickers, pluginManager.paths,
+        { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() })
+    init { if (hostRuntime == null) pluginManager.stickerBrokerFactory = stickerPlugins::forPlugin }
     val mediaPlayback = com.kigtts.next.ui.media.MediaPlaybackSessions()
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
-    private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), hapticsEnabled = feedbackStore.load(),
+    private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), subtitlePlaceholder = placeholderStore.load(), hapticsEnabled = feedbackStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         autoPlayback = playbackPreferences.getBoolean("automatic", true),
@@ -57,6 +64,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
         mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
+    val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message)
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
@@ -64,12 +72,19 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val categories = quickTexts.categories
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
+    private val appPlugins = hostRuntime?.appPlugins ?: com.kigtts.next.plugins.control.AppControlHost(pluginManager) { this }
+    init { if (hostRuntime == null) pluginManager.appBrokerFactory = appPlugins::forPlugin }
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
     private val outcomes = Channel<Pair<String, PluginOutcome>>(Channel.BUFFERED)
     val events = outcomes.receiveAsFlow()
-    private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text) {
-        if (it) selectedTtsId else selectedAsrId
-    }
+    private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
+        selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback)
+    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message)
+    val overlayRequests = captionOutput.permissionRequests
+    fun overlayResult() = captionOutput.permissionResult()
+    val voiceInputGesture = VoiceInputGestureState()
+    fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
+    fun continueVoiceInput() = speech.continueInput()
     val microphoneRequests = speech.permissionRequests
     fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
@@ -81,21 +96,34 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             }
     }
     init { if (engineFixtures.isEmpty()) observePluginContext() }
+    init { viewModelScope.launch {
+        pluginManager.uiChanges.collect { id ->
+            try { if (pluginManager.refreshUi(id, context())) update { it.copy(pluginRevision = it.pluginRevision + 1) } }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) { /* Failed workers remain handled by plugin management. */ }
+        }
+    } }
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     private val navigationHistory = ArrayDeque<Destination>()
+    private val sourceLinks by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
+        ::invokeWithResult, ::message) { it !in state.value.busyPlugins } }
+    fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
 
     private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
         automaticRead = it.autoPlayback, speechActive = it.speaking,
         ttsPluginId = registry.plugin(selectedTtsId.orEmpty())?.takeIf { plugin -> plugin.tts != null }?.descriptor?.id
-            ?: registry.plugins.firstOrNull { plugin -> plugin.tts != null }?.descriptor?.id) }
+            ?: registry.plugins.firstOrNull { plugin -> plugin.tts != null }?.descriptor?.id,
+        voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
+        recognitionServiceId = selectedAsrId, locale = getApplication<Application>().resources.configuration.locales[0].toLanguageTag()) }
     fun navigate(destination: Destination) {
         if (destination == Destination.Home) navigationHistory.clear()
         else if (state.value.destination != destination) navigationHistory.addLast(state.value.destination)
         update { it.copy(destination = destination, navigationStack = navigationHistory.toList(), editing = false) }
     }
     fun navigateBack() {
+        (state.value.destination as? Destination.StickerReview)?.let { review -> viewModelScope.launch { stickerPlugins.reject(review.token) } }
         (state.value.destination as? Destination.QuickTextReview)?.let {quickTextPlugins.reject(it.token)}
         if (state.value.destination is Destination.ContentEditor && content.requestDiscard()) return
         if (state.value.destination is Destination.PhraseEditor) content.cancelPhrase()
@@ -120,7 +148,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun openPanel(panel: HomePanel, dragHeight: Float? = null) {
         update { it.copy(destination = Destination.Home, panel = panel, panelHeight = dragHeight ?: it.lastExpandedPanelHeight) }
     }
-    fun openSidePage(page: SidePage) { update { it.copy(destination = Destination.Home, sidePage = page, editing = false) } }
+    fun openSidePage(page: SidePage) {
+        if (page == SidePage.CARDS && state.value.destination != Destination.Home) { navigate(Destination.Cards); return }
+        navigationHistory.clear()
+        update { it.copy(destination = Destination.Home, navigationStack = emptyList(), sidePage = page, editing = false) }
+    }
+    fun quickImageCard(mediaId: String, title: String) {
+        editPhraseDetails(null, state.value.selectedCategory)
+        content.editPhrase { it.attach(QuickCardType.MEDIA, mediaId).copy(text = title) }
+    }
     fun closeSidePage() { update { it.copy(sidePage = null) } }
     fun closePanel() { update { it.copy(panel = null, quickTextEditing = false) } }
     fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false, forcedFullscreen = false) } }
@@ -160,11 +196,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(audioId = entry.id) }; cardAudio.start(entry.id, android.net.Uri.fromFile(file),autoPlay)
     }
     fun toggleAutoPlayback() {
-        val enabled=!state.value.autoPlayback
+        setAutoPlayback(!state.value.autoPlayback)
+    }
+    fun setAutoPlayback(enabled: Boolean) {
         playbackPreferences.edit { putBoolean("automatic",enabled) }
         update { it.copy(autoPlayback=enabled) }
         if(!enabled) { if(audioSessionDelegate.isInitialized())cardAudio.pause();viewModelScope.launch { speech.stopSpeaking() } }
     }
+    fun stopSpeechFromUi() { viewModelScope.launch { speech.stopSpeaking() } }
     private fun autoRead() {
         // A host preference; engines remain optional plugins and own all synthesis implementation.
         if(registry.plugins.any { it.tts!=null && registry.available(it) }&&state.value.mediaId==null&&state.value.editorText.isNotBlank())speech.speak(replace=true)
@@ -200,6 +239,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         themeStore.save(settings)
         update { it.copy(theme = settings) }
     }
+    fun setSubtitlePlaceholder(value: String) {
+        val normalized = SubtitlePlaceholder.normalize(value)
+        placeholderStore.save(normalized); update { it.copy(subtitlePlaceholder = normalized) }
+    }
     fun addPhrase(text: String, category: String) {
         quickTexts.add(text, category)
     }
@@ -208,15 +251,25 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun invoke(action: RegisteredAction) = invoke(action.plugin.descriptor.id, action.action.id)
     fun invoke(pluginId: String, actionId: String, inputs: Map<String, String> = emptyMap()) {
-        val plugin = registry.plugin(pluginId) ?: return
-        if (pluginId in state.value.busyPlugins) return
+        invokeWithResult(pluginId, actionId, inputs, null)
+    }
+    private fun invokeWithResult(pluginId: String, actionId: String, inputs: Map<String, String>, complete: ((Boolean) -> Unit)?) {
+        val plugin = registry.plugin(pluginId)
+        if (plugin == null) { complete?.invoke(false); return }
+        if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }
         update { it.copy(busyPlugins = it.busyPlugins + pluginId) }
         viewModelScope.launch {
+            var accepted = false
             try {
                 val outcome = plugin.execute(actionId, context().copy(inputs = inputs))
                 if (handleServiceOutcome(outcome, plugin, pluginManager, context(), { speech.closeListening(); speech.stopAll() },
                         ::refreshPlugins, { selectEngine(it, false) }, ::navigate)) return@launch
                 when (outcome) {
+                    is PluginOutcome.StartRecognition -> {
+                        check(plugin.asr?.info?.role == AsrRole.SERVICE && outcome.session.serviceId == pluginId) { "只有识别服务可以创建识别会话" }
+                        captionOutput.start(outcome.session)
+                    }
+                    is PluginOutcome.EndRecognition -> { check(plugin.asr?.info?.role == AsrRole.SERVICE); speech.end(outcome.submit) }
                     is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
                     PluginOutcome.RefreshUi -> update { it.copy(pluginRevision = it.pluginRevision + 1) }
                     is PluginOutcome.HostAction -> { check(registry.available(plugin)) { "此插件需要先启用语音识别服务" }; when (outcome.command) {
@@ -227,7 +280,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         HostCommand.VOICE_INPUT -> speech.voiceInput()
                     } }
                     is PluginOutcome.OpenPage -> {
-                        if (plugin.page(outcome.pageId, context()) != null) navigate(Destination.PluginPage(pluginId, outcome.pageId))
+                        if (plugin.page(outcome.pageId, context()) != null) { navigate(Destination.PluginPage(pluginId, outcome.pageId)); accepted = true }
                         else message("插件页面不存在")
                     }
                     is PluginOutcome.ReplaceEditorText -> { text(outcome.text); navigate(Destination.Home) }
@@ -240,7 +293,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { message(error.message ?: "插件操作失败，请重试") }
-            finally { update { it.copy(busyPlugins = it.busyPlugins - pluginId) } }
+            finally {
+                update { it.copy(busyPlugins = it.busyPlugins - pluginId) }
+                complete?.invoke(accepted)
+                sourceLinks.deliver()
+            }
         }
     }
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
@@ -257,6 +314,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
+        sourceLinks.deliver()
     }
     fun selectEngine(id: String, tts: Boolean) {
         val plugin = registry.plugin(id) ?: return
@@ -286,10 +344,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     suspend fun stopSpeech() = speech.stopAll()
-    fun onBackground() { viewModelScope.launch { speech.stopAll() } }
+    fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || state.value.recognitionOutput == CaptionOutput.PANEL) viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
         super.onCleared()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
+        captionOutput.close()
         hostRuntime?.detach(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); if (hostRuntime == null) pluginManager.close() }
     }

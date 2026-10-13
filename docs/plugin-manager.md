@@ -18,10 +18,10 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 ```powershell
 ./tools/Invoke-PluginManager.ps1 -Command snapshot
-./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.7.0.kigplugin
-./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.7.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
+./tools/Invoke-PluginManager.ps1 -Command inspect -File build/plugin-packages/engine.piper-0.8.0.kigplugin
+./tools/Invoke-PluginManager.ps1 -Command install -File build/plugin-packages/engine.piper-0.8.0.kigplugin -Payload '{"publisher":"检查结果中的签名摘要"}'
 ./tools/Invoke-PluginManager.ps1 -Command restart -Payload '{"id":"engine.piper"}'
-./tools/Invoke-PluginManager.ps1 -Command tts-test -Payload '{"id":"engine.system-tts"}'
+./tools/Invoke-PluginManager.ps1 -Command tts-test -Payload '{"id":"service.speech-synthesis"}'
 ./tools/Invoke-PluginManager.ps1 -Command execute -Payload '{"id":"debug.ui","action":"动作ID","inputs":{}}'
 ```
 
@@ -37,8 +37,16 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 `execute` 返回原始插件动作结果供检查，不自动执行其网页/导航等宿主命令。`tts-test` 检查有效 PCM 及完成事件，不播放音频。状态包含媒体 ID/语音状态等必要信息，操作日志最多 200 条、仅驻内存；不是完整 logcat 或性能采样器。
 
-当前手机验证：同签名管理器绑定、状态读取、签名检查、六包 API6 安装/更新、旧停用状态保留、系统 TTS PCM 自检及 FD 媒体呈现已完成。未依赖测试 APK。持续后台监控和厂商长时间保活仍需实际使用验证。
+历史 API6 手机验证：同签名管理器绑定、状态读取、签名检查、六包 API6 安装/更新、旧停用状态保留、系统 TTS PCM 自检及 FD 媒体呈现已完成。未依赖测试 APK。持续后台监控和厂商长时间保活仍需实际使用验证。
 
-当前引擎/服务包为 API7/0.6.0，另有可选快捷工具示例。2026-10-12 已通过管理器升级手机上的六个引擎/服务包，核验原发布者签名，启停状态保留；已启用插件均加载成功。语音合成服务 PCM 自检完成（182,272 字节，不播放声音）。上述 API6 手机结果仍是历史记录；可选快捷工具示例本次未额外安装。
+以下为历史 API7/0.6.0 阶段的更新记录，非当前包版本。2026-10-12 已通过管理器升级手机上的六个引擎/服务包，核验原发布者签名，启停状态保留；已启用插件均加载成功。语音合成服务 PCM 自检完成（182,272 字节，不播放声音）。上述 API6 手机结果仍是历史记录；可选快捷工具示例本次未额外安装。
 
 2026-10-12 手机已更新 API8 Release 和六个 0.7.0/API8 引擎/服务包，发布者、原启停状态和模型保留；已启用插件均加载成功，Piper 与系统保底 PCM 自检、复用及空闲策略通过。统一合成生命周期见 [接口说明](tts-lifecycle.md)。合成服务 0.7.3、识别服务 0.7.1 为页面整理版，API8 不变；管理器桥仍为1，无需重装管理器或测试 APK。
+
+## 当前 API9 插件
+
+外置引擎、服务和工具包统一为 0.8.0/API9，管理桥仍为 1。主程序有 12 个外置工作进程槽；Lua、云端助手、商店与原生构建均为独立可选包。系统 TTS 已并入语音合成服务作为内置保底，不再分发独立系统包；自检应调用 service.speech-synthesis。
+
+主页直接进入设置，插件按 SettingsEntry 归入音频、内容、扩展或自定义分类；管理器的 navigate 仍通过正常页面栈打开对应页面。商店下载后的原生包继续走宿主验签与审核，Lua/源码交付也不能绕过对应编辑器确认。原生与 Lua 模板、源目录 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
+
+API9 当前构建、升级安装、设备状态及功能验收见 [Release 验证记录](release-testing.md)。前面的 API6/7/8 手机结果保留为历史，不替代本轮验证；本页不复制不断变化的测试总数。

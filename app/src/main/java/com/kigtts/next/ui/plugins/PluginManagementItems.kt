@@ -11,7 +11,10 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val name = installed?.installed?.manifest?.name ?: plugin!!.descriptor.name
         val version = installed?.installed?.manifest?.version ?: plugin!!.descriptor.version
         val actions = mutableListOf<PageAction>()
-        plugin?.contributions?.drawerEntries?.forEach { entry -> actions += PageAction("page/$id/${entry.pageId}", "打开${entry.label}", entry.icon) }
+        val contribution = plugin?.contributions(model.context())
+        contribution?.settingsEntries?.forEach { entry -> actions += PageAction("page/$id/${entry.pageId}", "打开${entry.label}", entry.icon) }
+        contribution?.drawerEntries?.filterNot { entry -> contribution.settingsEntries.any { it.pageId == entry.pageId } }
+            ?.forEach { entry -> actions += PageAction("page/$id/${entry.pageId}", "打开${entry.label}", entry.icon) }
         plugin?.tts?.let { engine ->
             if (engine.info.role == TtsRole.SERVICE || model.registry.plugins.none { it.tts?.info?.role == TtsRole.SERVICE })
                 actions += PageAction("tts/$id", if (model.selectedTtsId == id) "当前语音合成引擎" else "用作语音合成引擎", PluginIcon.SPEAKER)

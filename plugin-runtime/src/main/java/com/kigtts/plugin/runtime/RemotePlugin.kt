@@ -14,6 +14,7 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
     val alive get() = connection.alive
     @Volatile private var snapshot = initial
     override val descriptor get() = snapshot.descriptor
+    override val localization get() = snapshot.localization
     override val contributions get() = snapshot.contributions
     override val voiceManager: VoiceManager? = initial.tts?.takeIf { it.managesVoices }?.let { object : VoiceManager {
         override suspend fun command(command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {

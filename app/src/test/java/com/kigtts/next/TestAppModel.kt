@@ -6,13 +6,18 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.plugin.api.*
 import com.kigtts.plugins.asr.PlaceholderAsrPlugin
 import com.kigtts.plugins.tts.PlaceholderTtsPlugin
+import com.kigtts.plugins.listening.ListeningPanelPlugin
+import com.kigtts.plugins.voice.VoiceInputPlugin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.Flow
 
 /** Demo engines and synthetic PCM exist only on the test classpath. */
 fun testAppModel(application: Application) = AppViewModel(application,
-    listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService()), object : AudioPlatform {
+    listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService(),
+        ListeningPanelPlugin(), VoiceInputPlugin(application.getSharedPreferences("voice-input", 0).getBoolean("enabled", false)) {
+            application.getSharedPreferences("voice-input", 0).edit().putBoolean("enabled", it).apply()
+        }), object : AudioPlatform {
         override fun hasMicrophonePermission() = true
         override fun capture(format: AudioFormat) = flow {
             repeat(4) { delay(650); emit(PcmAudio(ByteArray(3200), format.sampleRate, format.channels)) }

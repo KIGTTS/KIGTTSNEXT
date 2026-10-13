@@ -5,7 +5,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 
 enum class HomePanel(val label: String) { QUICK_TEXT("快捷文本") }
-enum class SidePage(val label: String) { SKETCH("画板"), CARDS("名片") }
+enum class SidePage(val label: String) { SKETCH("画板"), CARDS("拍立得") }
 sealed interface Destination {
     data object Home : Destination
     data object Settings : Destination
@@ -18,6 +18,12 @@ sealed interface Destination {
     data class QuickTextReview(val token:String):Destination
     data class ContentEditor(val token: String) : Destination
     data class PhraseEditor(val token: String, val adding: Boolean = false) : Destination
+    data class CardEditor(val cardId: String) : Destination
+    data class CardPreview(val cardId: String) : Destination
+    data object Cards : Destination
+    data class CardCamera(val requestId: String, val cardId: String? = null) : Destination
+    data class StickerReview(val token: String) : Destination
+    data class StickerLibrary(val libraryId: String? = null) : Destination
 }
 data class AppState(
     val destination: Destination = Destination.Home,
@@ -35,9 +41,14 @@ data class AppState(
     val subtitleRevision: Int = 0,
     val pluginRevision: Int = 0,
     val busyPlugins: Set<String> = emptySet(),
-    val editorValue: TextFieldValue = TextFieldValue("这里是输入的\n文本", TextRange(9)),
+    val editorValue: TextFieldValue = TextFieldValue("", TextRange.Zero),
+    val subtitlePlaceholder: String = "点击输入文字",
     val transcript: String = "",
     val listening: Boolean = false,
+    val voiceInputActive: Boolean = false,
+    val continuousRecognition: Boolean = false,
+    val voiceInputText: String = "",
+    val recognitionOutput: com.kigtts.plugin.api.CaptionOutput = com.kigtts.plugin.api.CaptionOutput.PANEL,
     val speaking: Boolean = false,
     val streaming: Boolean = true,
     val subtitleSizePercent: Float = SubtitleSize.DEFAULT_PERCENT,

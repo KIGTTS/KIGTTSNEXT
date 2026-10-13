@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.OutputTransformation
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.kigtts.next.ui.components.MotionAlertDialog
@@ -27,6 +28,11 @@ fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextIn
     val scope = rememberCoroutineScope()
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), model::microphoneResult)
     LaunchedEffect(model) { model.microphoneRequests.collect { permission.launch(Manifest.permission.RECORD_AUDIO) } }
+    val overlay = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { model.overlayResult() }
+    LaunchedEffect(model) { model.overlayRequests.collect {
+        overlay.launch(android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            android.net.Uri.parse("package:" + context.packageName)))
+    } }
     var importing by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val request = importing; importing = null
@@ -35,13 +41,25 @@ fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextIn
             catch (error: Exception) { model.message(error.message ?: "资源导入失败") }
         }
     }
-    LaunchedEffect(import) { import?.let { importing = it; picker.launch(it.second.mimeTypes.toTypedArray()); dismissImport() } }
+    val multiplePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        val request = importing; importing = null
+        if (uris.isNotEmpty() && request != null) scope.launch {
+            try { importPluginResources(context, model, request.first, request.second, uris) }
+            catch (error: Exception) { model.message(error.message ?: "资源导入失败") }
+        }
+    }
+    LaunchedEffect(import) { import?.let { importing = it
+        if (it.second.multiple) multiplePicker.launch(it.second.mimeTypes.toTypedArray()) else picker.launch(it.second.mimeTypes.toTypedArray())
+        dismissImport()
+    } }
     input?.let { (id, request) ->
         key(id, request.actionId) {
         val text = rememberTextFieldState(initialText = request.initialValue)
         MotionAlertDialog(onDismissRequest = dismissInput, title = { Text(request.title) },
             text = { Column(Modifier.fillMaxWidth()) { OutlinedTextField(state = text,
-                modifier = Modifier.fillMaxWidth().testTag("plugin-input-value"), lineLimits = if (request.multiline) TextFieldLineLimits.MultiLine(maxHeightInLines = 5) else TextFieldLineLimits.SingleLine) } },
+                modifier = Modifier.fillMaxWidth().testTag("plugin-input-value"),
+                outputTransformation = if (request.secret) OutputTransformation { replace(0,length,"•".repeat(length)) } else null,
+                lineLimits = if (request.multiline) TextFieldLineLimits.MultiLine(maxHeightInLines = 8) else TextFieldLineLimits.SingleLine) } },
             confirmButton = { TextButton(onClick = dialogFeedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text("确定") } },
             dismissButton = { TextButton(onClick = dialogFeedbackClick(dismissInput)) { Text("取消") } })
         }

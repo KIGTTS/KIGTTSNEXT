@@ -1,10 +1,10 @@
 {
   "id": "service.speech-recognition",
   "name": "语音识别服务",
-  "version": "0.7.1",
-  "versionCode": 8,
+  "version": "0.8.0",
+  "versionCode": 9,
   "entryClass": "com.kigtts.engines.recognitionservice.RecognitionServicePlugin",
-  "apiVersion": 8,
+  "apiVersion": 9,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "MIT",

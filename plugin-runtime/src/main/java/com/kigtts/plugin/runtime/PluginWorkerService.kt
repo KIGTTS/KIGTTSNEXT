@@ -17,11 +17,24 @@ open class PluginWorkerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var plugin: KigPlugin? = null
     private var quickText:IHostQuickTextBroker?=null
+    private var app: IHostAppBroker? = null
+    private var stickers: IHostStickerBroker? = null
+    private var observingUi: Job? = null
     private val pages = mutableSetOf<String>()
     private data class Session(val job: Job, val descriptors: List<ParcelFileDescriptor>)
     private val sessions = ConcurrentHashMap<String, Session>()
     private val binder = object : IPluginWorker.Stub() {
         override fun attachQuickTextBroker(broker:IHostQuickTextBroker?) {check(plugin==null);quickText=broker}
+        override fun attachAppBroker(broker: IHostAppBroker?) { check(plugin == null); app = broker }
+        override fun attachStickerBroker(broker: IHostStickerBroker?) { check(plugin == null); stickers = broker }
+        override fun observeUi(observer: IPluginUiObserver?) {
+            observingUi?.cancel()
+            if (observer != null) observingUi = scope.launch {
+                try { requireNotNull(plugin).uiChanges.collect { observer.changed(it) } }
+                catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { /* The UI observer may detach without ending the plugin. */ }
+            }
+        }
         override fun ttsControl(command: String) = runBlocking(Dispatchers.IO) {
             require(command.length <= 8192)
             val engine = requireNotNull(plugin?.tts)
@@ -48,7 +61,9 @@ open class PluginWorkerService : Service() {
                 instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities,
                     if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null,
                     if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null,
-                    if(manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})quickText?.let(::WorkerQuickTextBroker) else null))
+                    if(manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})quickText?.let(::WorkerQuickTextBroker) else null,
+                    if ("app-control" in manifest.capabilities) app?.let(::WorkerAppBroker) else null,
+                    if (manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickers?.let(::WorkerStickerBroker) else null))
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
                 require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }
                 require(instance.voiceManager == null || "voice-packs" in manifest.capabilities) { "插件未声明语音包管理能力" }
@@ -65,9 +80,9 @@ open class PluginWorkerService : Service() {
             val instance = requireNotNull(plugin)
             val decoded = PluginJson.decodeFromString<PluginContext>(context)
             val contributions = instance.contributions(decoded)
-            synchronized(pages) { pages.addAll(contributions.drawerEntries.map { it.pageId }) }
+            synchronized(pages) { pages.addAll(contributions.drawerEntries.map { it.pageId }); pages.addAll(contributions.settingsEntries.map { it.pageId }) }
             val snapshot = PluginSnapshot(instance.descriptor, contributions,
-                synchronized(pages) { pages.mapNotNull { instance.page(it, decoded) } }, instance.tts?.info, instance.asr?.info)
+                synchronized(pages) { pages.mapNotNull { instance.page(it, decoded) } }, instance.tts?.info, instance.asr?.info, instance.localization)
             PluginRegistry(listOf(instance))
             return PluginJson.encodeToString(snapshot).also { require(it.toByteArray().size <= 512 * 1024) }
         }
@@ -138,3 +153,7 @@ class PluginWorker4 : PluginWorkerService()
 class PluginWorker5 : PluginWorkerService()
 class PluginWorker6 : PluginWorkerService()
 class PluginWorker7 : PluginWorkerService()
+class PluginWorker8 : PluginWorkerService()
+class PluginWorker9 : PluginWorkerService()
+class PluginWorker10 : PluginWorkerService()
+class PluginWorker11 : PluginWorkerService()

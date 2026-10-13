@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.*
 internal class ServiceSynthesis(private val settings: ServiceSettings, private val broker: SpeechBroker,
     private val system: TtsEngine) : TtsEngine {
     private val routing = ServiceRouting(settings, broker, system)
-    override val info get() = TtsInfo(role = TtsRole.SERVICE, selectedVoiceId = settings.voice, supportsControl = true)
+    override val info get() = TtsInfo(role = TtsRole.SERVICE, selectedVoiceId = if (settings.provider == null) settings.systemVoice else settings.voice, supportsControl = true)
     fun settingsChanged(automaticRead: Boolean? = null) = routing.changed(automaticRead)
     override suspend fun control(command: TtsControl) { routing.control(command) }
     override suspend fun close() = routing.close()

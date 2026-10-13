@@ -8,7 +8,9 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal class WorkerConnection(private val context: Context, private val slot: Int, private val broker: IHostSpeechBroker? = null,
-    private val quickText:IHostQuickTextBroker?=null) {
+    private val quickText:IHostQuickTextBroker?=null, private val app: IHostAppBroker? = null,
+    private val stickers: IHostStickerBroker? = null,
+    private val uiChanged: () -> Unit = {}) {
     private val died = CompletableDeferred<Unit>()
     lateinit var worker: IPluginWorker
         private set
@@ -32,11 +34,18 @@ internal class WorkerConnection(private val context: Context, private val slot: 
             }
             continuation.invokeOnCancellation { unbind() }
         }
-        try { withContext(Dispatchers.IO) {worker.attachQuickTextBroker(quickText);PluginJson.decodeFromString<PluginSnapshot>(worker.initialize(id, broker)) } }
+        try { withContext(Dispatchers.IO) {
+            worker.attachQuickTextBroker(quickText); worker.attachAppBroker(app); worker.attachStickerBroker(stickers)
+            val snapshot = PluginJson.decodeFromString<PluginSnapshot>(worker.initialize(id, broker))
+            worker.observeUi(object : IPluginUiObserver.Stub() { override fun changed(revision: Long) { uiChanged() } })
+            snapshot
+        } }
         catch (error: Exception) { stop(); throw error }
     }
     suspend fun stop() {
         (quickText as? HostQuickTextBroker)?.close()
+        (app as? HostAppBroker)?.close()
+        (stickers as? HostStickerBroker)?.close()
         if (::worker.isInitialized && !died.isCompleted) {
             runCatching { withContext(Dispatchers.IO) { worker.shutdown() } }
             withTimeout(10_000) { died.await() }

@@ -83,10 +83,11 @@ class SubtitleSizeUiTest {
         compose.onRoot().captureRoboImage("build/previews/listening-large-font-inline-uncompressed.png")
         compose.onNodeWithContentDescription("完成聆听字号调整").performClick()
         compose.onNodeWithTag("panel.listening/mode").assertIsDisplayed()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
-        compose.onNodeWithTag("drawer-logo").assertIsDisplayed()
+        compose.onNodeWithContentDescription("打开设置").performClick()
+        compose.onNodeWithText("外观与交互").assertIsDisplayed()
+        compose.onNodeWithTag("app-drawer").assertDoesNotExist()
         compose.onNodeWithText("KIGTTS NEXT").assertDoesNotExist()
         compose.onNodeWithText("自由表达，由你掌握").assertDoesNotExist()
-        compose.onRoot().captureRoboImage("build/previews/drawer-logo-header.png")
+        compose.onRoot().captureRoboImage("build/previews/settings-direct-header.png")
     }
 }

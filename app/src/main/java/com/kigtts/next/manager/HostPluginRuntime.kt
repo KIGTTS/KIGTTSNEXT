@@ -3,6 +3,7 @@ package com.kigtts.next.manager
 import android.app.Application
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.builtinPlugins
+import com.kigtts.next.state.editingCardId
 import com.kigtts.plugin.runtime.PluginManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,8 +16,15 @@ class HostPluginRuntime private constructor(private val application: Application
     val manager = PluginManager(application, builtinPlugins(application))
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
     val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)
+    val stickers = com.kigtts.next.cards.StickerRepository(application, manager.paths, mediaRepository)
+    val cards = com.kigtts.next.cards.CardRepository(application, stickers)
+    val stickerPlugins = com.kigtts.next.plugins.stickers.StickerHost(stickers, manager.paths,
+        { target, id -> ui()?.cardUi?.open(target, id) ?: false },
+        { state()?.editingCardId() })
     val quickTextPlugins=com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,manager.paths,::ui)
-    init {manager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
+    val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, ::ui)
+    init {manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin
+        manager.stickerBrokerFactory = stickerPlugins::forPlugin }
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()
     private val operations = Mutex()
     @Volatile private var owner = WeakReference<AppViewModel>(null)

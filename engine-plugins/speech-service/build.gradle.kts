@@ -9,16 +9,15 @@ android {
 }
 dependencies {
     compileOnly(project(":plugin-android-api"))
-    implementation(project(":engine-plugins:system-support"))
+    implementation(project(":engine-plugins:tts-support"))
     testImplementation(project(":plugin-android-api"))
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16")
     testImplementation("androidx.test:core:1.7.0")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
 }
-tasks.register<Copy>("collectPluginDependencies") {
+tasks.register<Sync>("collectPluginDependencies") {
     dependsOn(":engine-plugins:tts-support:assembleDebug")
     from(project(":engine-plugins:tts-support").layout.buildDirectory.file("outputs/aar/tts-support-debug.aar"))
-    dependsOn(":engine-plugins:system-support:assembleDebug")
-    from(project(":engine-plugins:system-support").layout.buildDirectory.file("outputs/aar/system-support-debug.aar")); into(layout.buildDirectory.dir("plugin-dependencies"))
+    into(layout.buildDirectory.dir("plugin-dependencies"))
 }

@@ -12,10 +12,12 @@ import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.components.*
 
 @Composable
-fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
+fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit,
+    placeholder: String = "点击输入文字", onPlaceholderChange: (String) -> Unit = {}) {
     SettingsLayout {
         ThemeColorSettings(settings, onChange)
         AppearanceDisplaySettings(settings, onChange)
+        SubtitlePlaceholderSetting(placeholder, onPlaceholderChange)
         OutlinedButton(shapes = expressivePillShapes(), onClick = feedbackClick { onChange(ThemeSettings()) },
             modifier = Modifier.fillMaxWidth()) {
             Icon(Icons.Default.Restore, null, Modifier.size(20.dp))

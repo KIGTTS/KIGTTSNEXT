@@ -15,22 +15,27 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
             val pack = selected()
             val decoder = initialize(pack, true)
             try {
-                emit(RecognitionEvent.Started); var previous = ""; var received = false
+                emit(RecognitionEvent.Started); var previous = ""; var received = false; var utteranceSamples = 0L
                 suspend fun drain() { while (decoder.ready()) { currentCoroutineContext().ensureActive(); decoder.decode() } }
                 audio.collect { chunk ->
                     validate(chunk, pack); currentCoroutineContext().ensureActive()
-                    val input = samples(chunk)
-                    for (offset in input.indices step (pack.sampleRate / 10)) {
+                    val sampleCount = chunk.bytes.size / 2
+                    for (offset in 0 until sampleCount step (pack.sampleRate / 10)) {
                         received = true
-                        decoder.accept(input.copyOfRange(offset, minOf(offset + pack.sampleRate / 10, input.size))); drain()
-                        if (decoder.endpoint()) {
-                            if (pack.architecture == OnlineArchitecture.PARAFORMER) { decoder.accept(FloatArray(pack.sampleRate * 8 / 10)); drain() }
+                        val count = minOf(pack.sampleRate / 10, sampleCount - offset)
+                        decoder.accept(samples(chunk, offset, count)); drain(); utteranceSamples += count
+                        val forced = utteranceSamples >= pack.sampleRate * MAX_UTTERANCE_SECONDS.toLong()
+                        if (decoder.endpoint() || forced) {
+                            if (pack.architecture == OnlineArchitecture.PARAFORMER || forced) {
+                                decoder.accept(FloatArray(pack.sampleRate * (if (pack.architecture == OnlineArchitecture.PARAFORMER) 8 else 3) / 10)); drain()
+                            }
                             val text = decoder.text()
                             if (text.isNotBlank()) emit(RecognitionEvent.Final(RecognitionResult(text)))
-                            decoder.reset(); previous = ""
+                            else if (previous.isNotEmpty()) emit(RecognitionEvent.Partial(""))
+                            decoder.reset(); previous = ""; received = false; utteranceSamples = 0
                         } else {
                             val text = decoder.text()
-                            if (text.isNotBlank() && text != previous) { emit(RecognitionEvent.Partial(text)); previous = text }
+                            if (text != previous) { emit(RecognitionEvent.Partial(text)); previous = text }
                         }
                     }
                 }
@@ -38,6 +43,7 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
                     decoder.accept(FloatArray(pack.sampleRate * (if (pack.architecture == OnlineArchitecture.PARAFORMER) 8 else 3) / 10))
                     decoder.finishInput(); drain()
                     val text = decoder.text(); if (text.isNotBlank()) emit(RecognitionEvent.Final(RecognitionResult(text)))
+                    else if (previous.isNotEmpty()) emit(RecognitionEvent.Partial(""))
                 }
             } finally { decoder.close() }
         }
@@ -49,9 +55,9 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
             if (audio.bytes.isEmpty()) return@withLock RecognitionResult("")
             val decoder = initialize(pack, false)
             try {
-                val input = samples(audio)
-                for (offset in input.indices step (pack.sampleRate / 10)) {
-                    currentCoroutineContext().ensureActive(); decoder.accept(input.copyOfRange(offset, minOf(offset + pack.sampleRate / 10, input.size)))
+                val sampleCount = audio.bytes.size / 2
+                for (offset in 0 until sampleCount step (pack.sampleRate / 10)) {
+                    currentCoroutineContext().ensureActive(); decoder.accept(samples(audio, offset, minOf(pack.sampleRate / 10, sampleCount - offset)))
                     while (decoder.ready()) { currentCoroutineContext().ensureActive(); decoder.decode() }
                 }
                 decoder.accept(FloatArray(pack.sampleRate * (if (pack.architecture == OnlineArchitecture.PARAFORMER) 8 else 3) / 10))
@@ -69,7 +75,9 @@ internal class IncrementalAsrEngine(private val packs: RecognitionPackStore,
     private fun validate(audio: PcmAudio, pack: RecognitionPack) {
         if (audio.sampleRate != pack.sampleRate || audio.channels != 1) throw EngineException(EngineError.UNSUPPORTED_FORMAT, "需要 ${pack.sampleRate} Hz 单声道 PCM16")
     }
-    private fun samples(audio: PcmAudio) = FloatArray(audio.bytes.size / 2) { index ->
-        (((audio.bytes[index * 2].toInt() and 255) or (audio.bytes[index * 2 + 1].toInt() shl 8)).toShort().toFloat()) / 32768f
+    private fun samples(audio: PcmAudio, offset: Int, count: Int) = FloatArray(count) { index ->
+        val position = (offset + index) * 2
+        (((audio.bytes[position].toInt() and 255) or (audio.bytes[position + 1].toInt() shl 8)).toShort().toFloat()) / 32768f
     }
+    companion object { internal const val MAX_UTTERANCE_SECONDS = 30 }
 }

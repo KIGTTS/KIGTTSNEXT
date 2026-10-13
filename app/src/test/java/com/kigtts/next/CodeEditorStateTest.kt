@@ -7,6 +7,17 @@ import org.junit.Test
 import org.junit.Assert.*
 
 class CodeEditorStateTest {
+    @Test fun pluginLimitsRejectChangesBeforeLosingTextOrUndoHistory() {
+        val state = CodeEditorState("abc", maxCharacters = 4, maxBytes = 6)
+        state.change(TextFieldValue("abcd", TextRange(4)))
+        assertThrows(IllegalArgumentException::class.java) { state.invoke(CodeKey.TAB) }
+        assertEquals("abcd", state.value.text)
+        assertThrows(IllegalArgumentException::class.java) { state.change(TextFieldValue("一二三")) }
+        assertEquals("abcd", state.value.text)
+        state.invoke(CodeKey.UNDO)
+        assertEquals("abc", state.value.text)
+        assertEquals("a".repeat(65_000), CodeEditorState("a".repeat(65_000)).value.text)
+    }
     @Test fun unicodeCursorCommandsAndLogicalLinesNeverSplitSurrogates() {
         val state=CodeEditorState("a😀b\n12\n一二三四",3)
         state.invoke(CodeKey.LEFT);assertEquals(1,state.value.selection.end)

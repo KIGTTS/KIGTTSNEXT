@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.settings
 
 import com.kigtts.next.ui.components.animateEnabled
+import com.kigtts.next.ui.components.keepColorsWhenLocked
 
 import com.kigtts.next.ui.components.feedbackChange
 
@@ -52,7 +53,7 @@ internal fun SettingsGroup(title: String, subtitle: String = "", content: @Compo
 }
 
 @Composable
-internal fun SettingItem(title: String, summary: String, icon: ImageVector, position: SettingPosition,
+internal fun SettingItem(title: String, summary: String, icon: ImageVector?, position: SettingPosition,
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit = {},
     enabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit = {}) {
@@ -60,7 +61,7 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector, posi
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                if (icon != null) Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -75,11 +76,13 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector, posi
 }
 
 @Composable
-internal fun ToggleSetting(title: String, summary: String, icon: ImageVector, checked: Boolean, onChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier, position: SettingPosition = SettingPosition.SINGLE, enabled: Boolean = true) {
+internal fun ToggleSetting(title: String, summary: String, icon: ImageVector?, checked: Boolean, onChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier, position: SettingPosition = SettingPosition.SINGLE, enabled: Boolean = true,
+    preserveColorWhenLocked: Boolean = false) {
     SettingItem(title, summary, icon, position, trailing = {
         Switch(checked, onCheckedChange = feedbackChange(onChange), enabled = enabled,
-            colors = SwitchDefaults.colors().animateEnabled(enabled),
+            colors = if (preserveColorWhenLocked) SwitchDefaults.colors().keepColorsWhenLocked()
+                else SwitchDefaults.colors().animateEnabled(enabled),
             modifier = modifier.semantics { contentDescription = title })
     })
 }

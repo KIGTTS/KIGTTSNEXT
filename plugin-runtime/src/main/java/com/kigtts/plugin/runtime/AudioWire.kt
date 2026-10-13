@@ -7,10 +7,12 @@ import java.io.EOFException
 
 /** Pipes provide bounded backpressure without Binder's transaction-size limit. PCM stays binary. */
 internal object AudioWire {
+    const val TRANSCRIPT = 8
     const val START = 1; const val AUDIO = 2; const val FINISH = 3
     const val PARTIAL = 4; const val FINAL = 5; const val ERROR = 6
     const val END_INPUT = 7
     const val MAX_FRAME = 128 * 1024
+    const val MAX_TEXT = 256 * 1024
     fun pcm(out: DataOutputStream, audio: PcmAudio) {
         val stride = 2 * audio.channels
         val chunk = MAX_FRAME / stride * stride
@@ -26,11 +28,11 @@ internal object AudioWire {
         return PcmAudio(ByteArray(size).also(input::readFully), rate, channels)
     }
     fun text(out: DataOutputStream, tag: Int, text: String) {
-        val bytes = text.toByteArray(Charsets.UTF_8); require(bytes.size <= MAX_FRAME)
+        val bytes = text.toByteArray(Charsets.UTF_8); require(bytes.size <= MAX_TEXT)
         out.writeInt(tag); out.writeInt(bytes.size); out.write(bytes); out.flush()
     }
     fun readText(input: DataInputStream): String {
-        val length = input.readInt(); require(length in 0..MAX_FRAME)
+        val length = input.readInt(); require(length in 0..MAX_TEXT)
         return ByteArray(length).also(input::readFully).toString(Charsets.UTF_8)
     }
     fun tag(input: DataInputStream): Int? = try { input.readInt() } catch (_: EOFException) { null }

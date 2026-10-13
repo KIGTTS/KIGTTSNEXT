@@ -45,6 +45,7 @@ internal suspend fun readRecognitionResponses(input: DataInputStream, emit: susp
         AudioWire.START -> emit(RecognitionEvent.Started)
         AudioWire.PARTIAL -> emit(RecognitionEvent.Partial(AudioWire.readText(input)))
         AudioWire.FINAL -> emit(RecognitionEvent.Final(PluginJson.decodeFromString(AudioWire.readText(input))))
+        AudioWire.TRANSCRIPT -> emit(PluginJson.decodeFromString<RecognitionEvent.Transcript>(AudioWire.readText(input)))
         AudioWire.FINISH -> return
         AudioWire.ERROR -> AudioWire.failure(input)
         else -> error("非法识别响应")
@@ -68,6 +69,7 @@ internal suspend fun transferRecognition(input: ParcelFileDescriptor, output: Da
                 RecognitionEvent.Started -> { output.writeInt(AudioWire.START); output.flush() }
                 is RecognitionEvent.Partial -> AudioWire.text(output, AudioWire.PARTIAL, event.text)
                 is RecognitionEvent.Final -> AudioWire.text(output, AudioWire.FINAL, PluginJson.encodeToString(event.result))
+                is RecognitionEvent.Transcript -> AudioWire.text(output, AudioWire.TRANSCRIPT, PluginJson.encodeToString(event))
             } }
         } else {
             require(engine.info.batch)

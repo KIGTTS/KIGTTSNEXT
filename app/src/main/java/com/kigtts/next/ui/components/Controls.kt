@@ -34,6 +34,7 @@ fun PluginIcon.vector(): ImageVector = when (this) {
     PluginIcon.EDIT -> Icons.Default.Edit
     PluginIcon.IMAGE -> Icons.Default.Image
     PluginIcon.EXPORT -> Icons.Default.FileUpload
+    PluginIcon.NONE -> Icons.Default.Info // Settings/list rows omit this sentinel before rendering.
 }
 
 @Composable

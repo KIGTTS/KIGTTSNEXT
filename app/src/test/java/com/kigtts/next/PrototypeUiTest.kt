@@ -55,9 +55,9 @@ class PrototypeUiTest {
         capture("editor-menu")
     }
 
-    @Test fun drawerOpensPluginOwnedPageAndDebugSettings() {
+    @Test fun settingsOpensPluginOwnedPageAndDebugSettings() {
         val model = show()
-        compose.onNodeWithContentDescription("打开抽屉菜单").performClick()
+        compose.onNodeWithContentDescription("打开设置").performClick()
         compose.onNodeWithText("聆听插件").performScrollTo().performClick()
         compose.onNodeWithText("把声音变成文字").assertExists()
         capture("plugin-page")
@@ -100,8 +100,8 @@ class PrototypeUiTest {
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
         capture("sketch-page")
         compose.onNodeWithContentDescription("返回大字幕").performClick()
-        compose.onNodeWithContentDescription("名片").performClick()
-        compose.onNodeWithContentDescription("添加名片").assertIsDisplayed()
+        compose.onNodeWithContentDescription("拍立得").performClick()
+        compose.onNodeWithContentDescription("新建拍立得").assertIsDisplayed()
         capture("cards-page")
     }
 
@@ -246,7 +246,7 @@ class PrototypeUiTest {
         compose.onNodeWithTag("speech-editor").performClick()
         compose.onNodeWithTag("home-sheet").assertDoesNotExist()
         compose.onNodeWithText("清空").assertIsDisplayed().performClick()
-        compose.onNodeWithText("输入想说的话").assertIsDisplayed()
+        compose.onNodeWithText(model.state.value.subtitlePlaceholder).assertIsDisplayed()
         capture("keyboard-viewport")
     }
 }

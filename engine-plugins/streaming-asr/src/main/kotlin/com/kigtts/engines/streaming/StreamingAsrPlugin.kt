@@ -8,7 +8,7 @@ import org.json.JSONObject
 
 class StreamingAsrPlugin : KigPlugin {
     override val descriptor = PluginDescriptor("engine.streaming-asr", "流式语音识别",
-        "在线增量解码、多语言识别包管理", version = "0.7.0")
+        "在线增量解码、多语言识别包管理", version = "0.8.0")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: RecognitionPackStore
     private lateinit var pages: RecognitionPackPages

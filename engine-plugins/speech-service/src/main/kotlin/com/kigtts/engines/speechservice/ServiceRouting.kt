@@ -43,7 +43,8 @@ internal class ServiceRouting(private val settings: ServiceSettings, private val
     }
     private suspend fun reconcile(warm: Boolean): TtsProvider? {
         val provider = try { broker.providers().firstOrNull {
-            it.pluginId == settings.provider && it.enabled && it.info.availability == EngineAvailability.READY
+            it.pluginId == settings.provider && it.pluginId != LEGACY_SYSTEM_PROVIDER && it.pluginId != SYSTEM_PROVIDER &&
+                it.enabled && it.info.availability == EngineAvailability.READY
         } } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
         val next = Route(provider?.pluginId, if (provider == null) settings.systemVoice else settings.voice, provider?.generation.orEmpty())
         val previous = route

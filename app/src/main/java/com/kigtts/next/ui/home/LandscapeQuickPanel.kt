@@ -55,12 +55,12 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val pressed by source.collectIsPressedAsState()
     val action = { if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT) else model.closePanel() }
     val click = feedbackClick(action)
-    val hold = { longPress?.let { model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val hold = { longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
     val sideSize=(48f-16f*progress).dp
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        ToolButton(if (open) "编辑快捷文本" else "名片", if (open) Icons.Default.Edit else Icons.Default.Badge,
+        ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.Badge,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
             Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize)
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {

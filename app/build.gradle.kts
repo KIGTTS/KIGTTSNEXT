@@ -78,8 +78,8 @@ dependencies {
     testImplementation(project(":plugins:placeholder-asr"))
     testImplementation(project(":engine-plugins:quick-text-tools"))
     implementation(project(":plugins:debug-ui"))
-    implementation(project(":plugins:listening-panel"))
-    implementation(project(":plugins:voice-input"))
+    testImplementation(project(":plugins:listening-panel"))
+    testImplementation(project(":plugins:voice-input"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     // The scoped magnifier build bridge is checked against this Foundation implementation.
     implementation("androidx.compose.foundation:foundation:1.9.4") { version { strictly("1.9.4") } }
@@ -93,6 +93,13 @@ dependencies {
     implementation("androidx.media3:media3-effect:1.11.1")
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
+    val cameraX = "1.6.2"
+    implementation("androidx.camera:camera-core:$cameraX")
+    implementation("androidx.camera:camera-camera2:$cameraX")
+    implementation("androidx.camera:camera-lifecycle:$cameraX")
+    implementation("androidx.camera:camera-view:$cameraX")
+    implementation("androidx.camera:camera-extensions:$cameraX")
+    implementation("com.google.zxing:core:3.5.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
@@ -114,7 +121,7 @@ tasks.withType<Test>().configureEach {
     doFirst { nativeTemp.mkdirs() }
 }
 val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
-    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.7.0.kigplugin") }
+    from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.8.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
 tasks.withType<Test>().configureEach {systemProperty("kig.quick.example.assets",rootProject.file("engine-plugins/quick-text-tools/src/main/assets").absolutePath)}

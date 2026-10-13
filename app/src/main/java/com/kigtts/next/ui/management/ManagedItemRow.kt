@@ -37,8 +37,10 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
         Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
             Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            ResourceAvatar(item, resolve)
-            Spacer(Modifier.width(12.dp))
+            if (item.image != null || item.icon != PluginIcon.NONE) {
+                ResourceAvatar(item, resolve)
+                Spacer(Modifier.width(12.dp))
+            }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 2)
@@ -67,7 +69,8 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                     Icon(Icons.Default.MoreVert, "条目操作", Modifier.size(20.dp))
                 }
                 DropdownMenu(menu && enabled, { menu = false }, properties = PopupProperties(focusable = false)) {
-                    item.actions.forEach { action -> DropdownMenuItem(text = { Text(action.label) }, leadingIcon = { Icon(action.icon.vector(), null) },
+                    item.actions.forEach { action -> DropdownMenuItem(text = { Text(action.label) },
+                        leadingIcon = if (action.icon == PluginIcon.NONE) null else ({ Icon(action.icon.vector(), null) }),
                         onClick = feedbackClick { menu = false; invoke(action.id, emptyMap()) }) }
                     if (reorderable) {
                         DropdownMenuItem(text = { Text("上移") }, onClick = feedbackClick { menu = false; moveAccessible(-1) })

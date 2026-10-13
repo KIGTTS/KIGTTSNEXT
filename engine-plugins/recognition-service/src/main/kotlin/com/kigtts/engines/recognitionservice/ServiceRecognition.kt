@@ -3,7 +3,6 @@ package com.kigtts.engines.recognitionservice
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.emitAll
 
 /** Cold routing to one provider, pinned for the entire recording; never substitutes an offline result. */
 internal class ServiceRecognition(private val settings: RecognitionServiceSettings, private val broker: RecognitionBroker) : AsrEngine {
@@ -20,6 +19,14 @@ internal class ServiceRecognition(private val settings: RecognitionServiceSettin
     override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult = broker.recognize(provider(false).pluginId, audio, config)
     override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = flow {
         val selected = provider(true)
-        emitAll(broker.recognizeStream(selected.pluginId, audio, config))
+        val transcript = TranscriptAssembler(config.maxDisplayCharacters)
+        broker.recognizeStream(selected.pluginId, audio, config).collect { event ->
+            when (event) {
+                RecognitionEvent.Started -> emit(event)
+                is RecognitionEvent.Partial -> emit(transcript.partial(event.text))
+                is RecognitionEvent.Final -> transcript.finalize(event.result.text)?.let { emit(it) }
+                is RecognitionEvent.Transcript -> error("识别引擎不能代替服务拼接字幕")
+            }
+        }
     }
 }

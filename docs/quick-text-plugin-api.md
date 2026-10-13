@@ -1,4 +1,4 @@
-# 快捷文本与 Agent 插件接口（API8 / 协议 1）
+# 快捷文本与 Agent 插件接口（API9 / 协议 1）
 
 插件清单声明 `quick-text-read` 或 `quick-text-write` 后，可从 `PluginEnvironment.quickTextBroker` 获取绑定到自己的接口；write 同时允许读取。宿主和 UI 共用一个快捷库及媒体仓库，后台可读写，打开原生页面需要宿主 UI 存在。该接口不引入 Agent、LLM 或语音引擎依赖。
 
@@ -86,7 +86,7 @@ val imported = broker.request(QuickTextCommand.Import(
 
 RPC 请求 UTF-8 ≤256 KiB、回复 ≤512 KiB。大文件通过资源引用传递；TOO_LARGE 时减小批次或分页、采用 includeContent=false / 导出文件。错误包含 PERMISSION_DENIED、NOT_FOUND、INVALID、CONFLICT、BUSY、CONFIRMATION_REQUIRED、HOST_UNAVAILABLE、TOO_LARGE。未来操作通过 Describe 协商，新增字段可忽略。
 
-JSON 使用稳定短标签，方便未来 Agent、Lua 或 Python 适配器构造：
+JSON 使用稳定短标签，原生 Agent 与独立 Lua 运行时均通过相同 DTO 请求；Python 适配器可后续接入：
 
 ```json
 {"type":"query","limit":10,"includeContent":false}
@@ -96,21 +96,27 @@ JSON 使用稳定短标签，方便未来 Agent、Lua 或 Python 适配器构造
 {"type":"prepare","transactionId":"request-01","revision":12,"edits":[{"type":"entry.put","entry":{"id":"b09ca554-64fb-4d37-92ac-724514fda144","groupId":"dd54d0e5-7710-4b92-a844-206e042cbccb","text":"计算器","kind":"PAGE","mediaId":"page-id"}}]}
 ```
 
-该 JSON 协议不等于已内置 Lua/Python 运行时。专用包仍是 Android DEX；原生插件有本应用 UID 的权限，能力控制约束正式宿主接口，不是恶意代码的安全沙箱。
+原生专用包使用 Android DEX；Lua 由可选 runtime.lua 外置插件审核与执行，主程序不携带 Lua/Python 解释器。Python 运行时尚未实现。原生插件使用本应用 UID，能力控制约束正式宿主接口，不构成权限沙箱。
 
 ## 示例与验证
 
-可选独立包 `tools.quick-text-example-0.7.0.kigplugin` 创建计算器、提交结果字幕、导入导出条目，主 APK 不包含示例实现：
+可选独立包 `tools.quick-text-example-0.8.0.kigplugin` 创建计算器、提交结果字幕、导入导出条目，主 APK 不包含示例实现：
 
 ```powershell
 pwsh -File tools/Build-EnginePlugins.ps1 -Modules quick-text-tools
 node tools/Test-Calculator.mjs
 ```
 
-本地回归覆盖正式 DTO、Binder、通知/取消、限额、归属、版本、幂等、整批回滚、人工编辑保留扩展字段、原生删除预览和示例计算器。实际独立进程、系统选择器和硬件交互留待手机验证；本次按用户安排不安装。
+本地回归覆盖正式 DTO、Binder、通知/取消、限额、归属、版本、幂等、整批回滚、人工编辑保留扩展字段、原生删除预览和示例计算器。实际独立进程、系统选择器和硬件交互的当次结果见 [Release 验证记录](release-testing.md)，不能将本地回归等同真机验收。
 
-## 计划中的云端 Agent 插件（待开发）
+## 宿主操作与外置 Agent
 
-后续提供独立云端 Agent 插件，接入 DeepSeek、GLM、Kimi 等服务商，支持多会话管理、聊天气泡和流式回复。服务商提供的推理内容可选流式显示，默认关闭；接入兼容性以各服务商实际公开 API 为准。
+API9 的 `PluginEnvironment.appBroker` 需声明 app-control，提供能力发现、字幕、朗读/自动朗读、原生导航、已开放设置及明确导出的跨插件动作。先请求 Describe 获取真实目标和操作，不把页面中任何按钮都当成自动化接口。只有目标 `automationActions` 允许 PluginAction；DeliverResource 将本插件资源送到目标 inbox 并打开检查，审核按钮仍由用户操作。
 
-Agent 通过宿主正式接口执行快捷文本、媒体、页面以及主程序的其它操作，继续复用版本、批次、导入导出和事务能力；并预留编写、编辑和交付 Lua 插件的工作流。具体工具范围、会话 UI、脚本运行与安装能力在后续一轮实现。本轮没有云端请求、模型连接或新的 Lua 运行时。
+`tools.cloud-agent-0.8.0.kigplugin` 为独立云端助手，支持 DeepSeek、GLM、Kimi 和自定义兼容服务、多会话管理、聊天气泡、流式回复、取消与工具调用。服务商公开的 reasoning 可选展示，默认关闭；不是请求模型隐藏内部过程。密钥、会话和工作文件均在助手自身目录，主 APK 不包含网络请求/Agent 实现。
+
+Agent 可查询、准备和提交快捷库变更，创建 HTML 工具页、批量管理及导入导出。需要确认的批次暂停工具执行，由用户审核后再继续；不绕过版本冲突、资源归属和删除确认。Agent 还可编写 Lua 源草稿，投递独立 runtime.lua 审核；送交成功不等于已安装。实际权限/工具流程见 [云端助手](cloud-agent.md)、[Lua 编辑器](lua-plugins.md) 与 [插件 API9](plugin-api.md)。
+
+`uiChanges` 与快捷库 changes 都是可合并的失效信号，重连后重新查询，不作为完整事件日志。插件界面采用 SettingsEntry 分类入口及宿主 Group/Input/Choice/Toggle/Chat/Files/SourceEditor，按钮和过渡继承设置样式；NONE 可省略图标。
+
+可直接导入的 HTML 计算器、Lua 多文件与原生模板，以及包源 Schema/签名脚本，位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。模板的本地协议/编译验证与手机验收范围分开记录。

@@ -13,13 +13,15 @@ enum class CodeKey(val label:String, val insertion:String?=null) {
 
 /** Selection-aware commands use code points and logical lines, independent of the software keyboard. */
 @Stable
-class CodeEditorState(initial:String, selection:Int=0) {
+class CodeEditorState(initial:String, selection:Int=0, private val maxCharacters:Int=Int.MAX_VALUE,
+    private val maxBytes:Int=HtmlProjectFiles.TEXT_LIMIT) {
+    init { require(initial.length <= maxCharacters && initial.toByteArray(Charsets.UTF_8).size <= maxBytes) { "文件内容过长" } }
     var value by mutableStateOf(TextFieldValue(initial,TextRange(selection.coerceIn(0,initial.length))));private set
     private val undo=ArrayDeque<TextFieldValue>();private val redo=ArrayDeque<TextFieldValue>()
     private var historyRevision by mutableIntStateOf(0)
     fun available(key:CodeKey):Boolean { historyRevision;return when(key) { CodeKey.UNDO->undo.isNotEmpty();CodeKey.REDO->redo.isNotEmpty();else->true } }
     fun change(next:TextFieldValue) {
-        require(next.text.toByteArray(Charsets.UTF_8).size <= HtmlProjectFiles.TEXT_LIMIT) { "文件内容过长" }
+        require(next.text.length <= maxCharacters && next.text.toByteArray(Charsets.UTF_8).size <= maxBytes) { "文件内容过长" }
         if(next.text!=value.text) {
             undo.addLast(value);while(undo.size>20 || undo.sumOf { it.text.length.toLong() }>4L*1024*1024)undo.removeFirst()
             redo.clear();historyRevision++

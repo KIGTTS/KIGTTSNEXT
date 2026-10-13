@@ -30,15 +30,26 @@ internal suspend fun inspectPackage(context: Context, model: AppViewModel, uri: 
 
 internal suspend fun importPluginResource(context: Context, model: AppViewModel, id: String,
     request: PluginOutcome.ImportResource, uri: Uri) {
+    importPluginResources(context, model, id, request, listOf(uri))
+}
+
+internal suspend fun importPluginResources(context: Context, model: AppViewModel, id: String,
+    request: PluginOutcome.ImportResource, uris: List<Uri>) {
+    require(uris.size in 1..128)
+    model.stopSpeech()
+    val paths = mutableListOf<String>()
+    val batch = if (request.multiple) "${request.directory}/batch-${UUID.randomUUID()}" else request.directory
+    for ((index, uri) in uris.withIndex()) {
     val name = withContext(Dispatchers.IO) {
         context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) cursor.getString(0) else null
         } ?: "resource"
     }
-    model.stopSpeech()
-    val path = model.pluginManager.importResource(id, request.directory, name, request.zip) {
+    val path = model.pluginManager.importResource(id, if (request.multiple) "$batch/$index" else batch, name, request.zip) {
         requireNotNull(context.contentResolver.openInputStream(uri))
     }
+    paths += path
+    }
     model.refreshPlugins()
-    model.invoke(id, request.actionId, mapOf("resourcePath" to path))
+    model.invoke(id, request.actionId, mapOf("resourcePath" to paths.first(), "resourcePaths" to PluginJson.encodeToString(paths)))
 }

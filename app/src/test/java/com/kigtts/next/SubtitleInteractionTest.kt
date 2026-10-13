@@ -133,7 +133,7 @@ class SubtitleInteractionTest {
         compose.runOnIdle { assertEquals(phrase, model.state.value.editorText); assertFalse(model.state.value.editing) }
         verifyFrame("subtitle-update") { compose.runOnIdle { model.text("更新后的字幕") } }
         verifyFrame("subtitle-clear") { compose.onNodeWithTag("editor-clear").performClick() }
-        compose.onNodeWithText("输入想说的话").assertIsDisplayed()
+        compose.onNodeWithText(model.state.value.subtitlePlaceholder).assertIsDisplayed()
         compose.runOnIdle { assertEquals("", model.state.value.editorText) }
     }
 

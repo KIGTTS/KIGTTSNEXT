@@ -18,11 +18,11 @@ import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.text.*
 
-private data class SubtitleFrame(val text: String, val revision: Int, val formats: List<TextFormatRun>)
+private data class SubtitleFrame(val text: String, val revision: Int, val formats: List<TextFormatRun>, val placeholder: String = "")
 
 @Composable
 fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: TextStyle, width: Int, height: Int) {
-    val target = SubtitleFrame(text, state.subtitleRevision, state.subtitleFormats)
+    val target = SubtitleFrame(text, state.subtitleRevision, state.subtitleFormats, state.subtitlePlaceholder.takeIf { text.isEmpty() }.orEmpty())
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     val spatial = MaterialTheme.motionScheme.fastSpatialSpec<androidx.compose.ui.unit.IntOffset>()
     AnimatedContent(targetState = target, modifier = Modifier.fillMaxWidth().testTag("subtitle-text-transition"),
@@ -32,10 +32,21 @@ fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: T
                 .togetherWith(fadeOut(effects) + slideOutVertically(spatial) { -it.coerceAtMost(24) / 2 }).using(null)
         }) { frame ->
         Box(Modifier.then(if (frame == target) Modifier else Modifier.clearAndSetSemantics {})) {
-            val formatted = remember(frame.text, frame.formats) { formattedText(frame.text, frame.formats) }
-            val fitted = style.copy(fontSize = fittingSubtitleFontSize(formatted, style, width, height).sp)
-            Text(formatted, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
-                .subtitleInputGestures(model, frame == target), style = fitted)
+            if (frame.text.isEmpty()) {
+                // Fit only the displayed hint; the editable document remains empty.
+                val fitted = style.copy(fontSize = fittingSubtitleFontSize(frame.placeholder, style, width, height).sp)
+                Box(if (frame.placeholder.isNotEmpty()) Modifier.testTag("subtitle-placeholder") else Modifier) {
+                    Text(frame.placeholder, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
+                        .subtitleInputGestures(model, frame == target),
+                        style = fitted,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            } else {
+                val formatted = remember(frame.text, frame.formats) { formattedText(frame.text, frame.formats) }
+                val fitted = style.copy(fontSize = fittingSubtitleFontSize(formatted, style, width, height).sp)
+                Text(formatted, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
+                    .subtitleInputGestures(model, frame == target), style = fitted)
+            }
         }
     }
 }

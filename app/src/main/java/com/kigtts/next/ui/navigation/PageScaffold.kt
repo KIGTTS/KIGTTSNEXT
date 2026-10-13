@@ -36,17 +36,18 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
             Animatable(barState.heightOffset).animateTo(barState.heightOffsetLimit,tween(180)) { barState.heightOffset=value }
         }
     }
-    CompositionLocalProvider(LocalPageToolbarActions provides host) {
+    val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
+    CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back) {
         Scaffold(modifier.fillMaxSize().then(if(largeBar)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
             containerColor=MaterialTheme.colorScheme.background,
             contentWindowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading?.value==true) },Modifier.testTag("large-page-bar"),
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
-                navigationIcon={ PageBackNavigation(back,backLabel,backTag,host.loading?.value==true&&!compact) },
+                navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,host.loading?.value==true&&!compact) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) },scrollBehavior=behavior)
             else TopAppBar(title={ PageBarTitle(title,true,host.loading?.value==true) },modifier=Modifier.testTag("small-page-bar"),
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
-                navigationIcon={ PageBackNavigation(back,backLabel,backTag,false) },
+                navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,false) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) }) }) { insets ->
             Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)) { content() }
         }

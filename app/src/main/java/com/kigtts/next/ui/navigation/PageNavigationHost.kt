@@ -33,7 +33,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                             SecondaryDestination(scene.destination, state, model)
                         }
                         is PageScene.Side -> Box(Modifier.fillMaxSize().testTag("secondary-" + scene.page.name.lowercase())) {
-                            SecondarySidePage(scene.page, model::closeSidePage, sketch, shareRequest, shareConsumed, shareSketch, model::message)
+                            SecondarySidePage(scene.page, model::closeSidePage, sketch, shareRequest, shareConsumed, shareSketch, model::message, model)
                         }
                     }
                 }

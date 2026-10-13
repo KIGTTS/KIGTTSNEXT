@@ -8,7 +8,7 @@ import java.util.Base64
 
 class SpeechServicePlugin : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "语音合成服务",
-        "选择朗读声音，管理语音包", version = "0.7.3", license = "GPL-3.0-only")
+        "选择朗读声音，管理语音包", version = "0.8.0", license = "GPL-3.0-only")
     private lateinit var environment: AndroidPluginEnvironment
     private lateinit var settings: ServiceSettings
     private lateinit var broker: SpeechBroker
@@ -29,9 +29,9 @@ class SpeechServicePlugin : KigPlugin {
         libraryActions = VoiceLibraryActions(environment, settings, library, libraryPages, broker)
         settingsPages = SpeechServicePages(settings, ::providers)
     }
-    override val contributions = PluginContributions(drawerEntries = listOf(
-        DrawerEntry("manager", "语音合成服务", "manager", PluginIcon.SPEAKER),
-        DrawerEntry("packs", "语音包管理", "packs", PluginIcon.SPEAKER)))
+    override val contributions = PluginContributions(settingsEntries = listOf(
+        SettingsEntry("manager", "语音合成", "manager", PluginIcon.SPEAKER, "audio", "音频", "选择朗读声音", 10),
+        SettingsEntry("packs", "语音包", "packs", PluginIcon.SPEAKER, "audio", "音频", "管理已添加的声音", 20)))
     override fun contributions(context: PluginContext): PluginContributions {
         facade.settingsChanged(context.ttsPluginId?.let { it == descriptor.id && context.automaticRead })
         return contributions
@@ -43,7 +43,7 @@ class SpeechServicePlugin : KigPlugin {
             val parts = pageId.split('/')
             val id = decode(parts[1]); val page = parts.getOrNull(2)?.toIntOrNull() ?: 0
             val provider = providers().firstOrNull { it.pluginId == id }
-                ?: return PluginPage(pageId, "引擎不可用", listOf(PageBlock.Notice("该插件已停用或卸载，系统 TTS 仍可使用。")))
+                ?: return PluginPage(pageId, "引擎不可用", listOf(PageBlock.Notice("该插件已停用或卸载，系统声音仍可用于朗读。")))
             val controls = mutableListOf(PageAction("select/${encode(id)}", "使用此引擎", PluginIcon.SPEAKER), PageAction("refresh/${encode(id)}", "刷新声音列表", PluginIcon.INFO))
             if (provider.info.importsVoicePacks) controls += PageAction("import/${encode(id)}", "导入语音包", PluginIcon.ADD)
             val voices = provider.info.voices.drop(page * 20).take(20)
@@ -114,7 +114,7 @@ class SpeechServicePlugin : KigPlugin {
                 val value = context.inputs["value"]?.toFloatOrNull(); require(value != null && value.isFinite() && value in .25f..4f)
                 settings.rate = value; settings.save(); PluginOutcome.RefreshUi
             }
-            "language" -> PluginOutcome.TextInput("系统 TTS 语言代码", "save-language", settings.language)
+            "language" -> PluginOutcome.TextInput("系统声音语言", "save-language", settings.language)
             "save-language" -> {
                 val value = context.inputs["value"].orEmpty().trim(); require(value.matches(Regex("[a-zA-Z]{2,3}(-[a-zA-Z0-9]{2,8})*")))
                 settings.language = value; settings.systemVoice = null; settings.save(); PluginOutcome.RefreshUi
@@ -122,7 +122,7 @@ class SpeechServicePlugin : KigPlugin {
             else -> PluginOutcome.Message("未知语音合成服务操作")
         }
     }
-    private fun providers() = listOf(TtsProvider(SYSTEM_PROVIDER, "系统声音", system.info)) + broker.providers().filter { it.pluginId != "engine.system-tts" }
+    private fun providers() = listOf(TtsProvider(SYSTEM_PROVIDER, "系统声音", system.info)) + broker.providers().filter { it.pluginId != LEGACY_SYSTEM_PROVIDER && it.pluginId != SYSTEM_PROVIDER }
     private fun encode(value: String) = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray())
     private fun decode(value: String) = String(Base64.getUrlDecoder().decode(value))
 }

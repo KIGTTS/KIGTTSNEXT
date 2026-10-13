@@ -29,7 +29,9 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         setContent { KigttsApp(model) }
+        if (savedInstanceState == null) model.sourceLink(intent?.data)
     }
+    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data) }
     override fun onSaveInstanceState(outState: Bundle) {
         model.content.savedPhraseDraft()?.let { outState.putString("quick-phrase-draft",it) }
         model.content.savedEditorDraft()?.let { outState.putString("content-editor-draft",it) }

@@ -15,34 +15,7 @@ internal sealed interface HtmlFileCommand {
     data class Rename(val item:HtmlProjectItem):HtmlFileCommand
     data class Delete(val paths:List<String>):HtmlFileCommand
 }
-
-@Composable
-internal fun HtmlFileMenu(item:HtmlProjectItem,enabled:Boolean,command:(HtmlFileCommand)->Unit,main:()->Unit) {
-    var menu by remember { mutableStateOf(false) }
-    Box {
-        MotionIconButton(feedbackClick { menu=true },enabled=enabled) { Icon(Icons.Default.MoreVert,"文件操作") }
-        DropdownMenu(menu&&enabled,{menu=false}) {
-            if(!item.directory&&item.name.substringAfterLast('.').lowercase() in setOf("html","htm"))DropdownMenuItem({Text("设为主页面")},feedbackClick { menu=false;main() })
-            DropdownMenuItem({Text("重命名")},feedbackClick { menu=false;command(HtmlFileCommand.Rename(item)) })
-            DropdownMenuItem({Text("删除")},feedbackClick { menu=false;command(HtmlFileCommand.Delete(listOf(item.path))) })
-        }
-    }
-}
-
-@Composable
-internal fun AnimatedFileSelection(selected:List<String>,clipboard:Boolean,busy:Boolean,copy:()->Unit,cut:()->Unit,delete:()->Unit,paste:()->Unit,cancel:()->Unit) {
-    AnimatedVisibility(selected.isNotEmpty()||clipboard,enter=fadeIn()+expandVertically(),exit=fadeOut()+shrinkVertically()) {
-        Row {
-            if(selected.isNotEmpty()) {
-                MotionIconButton(feedbackClick(copy),enabled=!busy) { Icon(Icons.Default.ContentCopy,"复制所选") }
-                MotionIconButton(feedbackClick(cut),enabled=!busy) { Icon(Icons.Default.ContentCut,"移动所选") }
-                MotionIconButton(feedbackClick(delete),enabled=!busy) { Icon(Icons.Default.Delete,"删除所选") }
-            }
-            if(clipboard)MotionTextButton(feedbackClick(paste),enabled=!busy) { Text("粘贴到此处") }
-            MotionIconButton(feedbackClick(cancel),enabled=!busy) { Icon(Icons.Default.Close,"取消选择") }
-        }
-    }
-}
+internal data class HtmlFileTransfer(val paths: List<String>, val copy: Boolean)
 
 @Composable
 internal fun HtmlFileDialog(action:HtmlFileCommand,busy:Boolean,error:String?,close:()->Unit,confirm:(String,()->Unit)->Unit) {
