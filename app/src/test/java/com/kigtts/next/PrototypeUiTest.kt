@@ -101,7 +101,16 @@ class PrototypeUiTest {
         capture("sketch-page")
         compose.onNodeWithContentDescription("返回大字幕").performClick()
         compose.onNodeWithContentDescription("拍立得").performClick()
-        compose.onNodeWithContentDescription("新建拍立得").assertIsDisplayed()
+        compose.onNodeWithContentDescription("新建拍立得").assertDoesNotExist()
+        compose.onNodeWithTag("card-add-fab").assertDoesNotExist()
+        compose.onNodeWithTag("polaroid-home").assertIsDisplayed()
+        compose.onNodeWithTag("card-album-dock").assertIsDisplayed()
+        compose.onNodeWithContentDescription("展开相册").assertIsDisplayed()
+        compose.onNodeWithTag("page-subtitle").assertTextEquals("下滑进行拍照")
+        compose.runOnIdle {
+            assertEquals(Destination.Home, model.state.value.destination)
+            assertEquals(SidePage.CARDS, model.state.value.sidePage)
+        }
         capture("cards-page")
     }
 

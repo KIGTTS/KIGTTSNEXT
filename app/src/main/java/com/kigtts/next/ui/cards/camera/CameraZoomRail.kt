@@ -1,17 +1,15 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.ui.components.MotionTextButton
-import com.kigtts.next.ui.components.feedbackClick
 import java.util.Locale
 
 internal fun cameraZoomRange(minimum: Float, maximum: Float): ClosedFloatingPointRange<Float>? =
@@ -30,26 +28,32 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
     Surface(modifier.testTag("camera-zoom-rail"), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {
         val label: @Composable () -> Unit = {
-            Text(zoomLabel(value), Modifier.testTag("camera-zoom-value"), style = MaterialTheme.typography.labelLarge)
+            CameraZoomButton(zoomLabel(value), "当前变焦 ${zoomLabel(value)}，点按重置", enabled && range != null,
+                { range?.let { zoom(if (1f in it) 1f else it.start) } }, Modifier.testTag("camera-zoom-current"), "camera-zoom-value")
         }
         val stop: @Composable (Float) -> Unit = { factor ->
-            MotionTextButton(feedbackClick { zoom(factor) }, Modifier.testTag("camera-zoom-stop/" + factor.toInt()), enabled && range != null) {
-                Text(factor.toInt().toString() + "×")
-            }
+            CameraZoomButton(factor.toInt().toString() + "×", "变焦 ${factor.toInt()} 倍", enabled && range != null,
+                { zoom(factor) }, Modifier.testTag("camera-zoom-stop/" + factor.toInt()))
         }
-        if (vertical) Column(Modifier.padding(4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        if (vertical) BoxWithConstraints {
+            val showStops = maxHeight >= (48 * (2 + stops.size)).dp
+            Column(Modifier.padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             label()
-            if (range != null) BoxWithConstraints(Modifier.width(40.dp).weight(1f), contentAlignment = Alignment.Center) {
-                Slider(value, zoom, Modifier.requiredWidth(maxHeight).height(40.dp).rotate(-90f)
-                    .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" },
-                    enabled = enabled, valueRange = range)
+            if (range != null) {
+                val state = rememberSliderState(value, valueRange = range)
+                state.value = value
+                state.onValueChange = { selected -> state.value = selected; zoom(selected) }
+                VerticalSlider(state, Modifier.width(48.dp).weight(1f).cameraSliderPressFeedback()
+                    .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" }, enabled = enabled,
+                    reverseDirection = true)
             }
-            stops.forEach { stop(it) }
+            if (showStops) stops.forEach { stop(it) }
+            }
         } else BoxWithConstraints {
             val showStops = maxWidth >= 300.dp
-            Row(Modifier.padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             label()
-            if (range != null) Slider(value, zoom, Modifier.weight(1f).height(40.dp)
+            if (range != null) Slider(value, zoom, Modifier.weight(1f).height(48.dp).cameraSliderPressFeedback()
                 .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" }, enabled = enabled, valueRange = range)
             // The slider stays usable even in a narrow rectangular viewfinder.
             if (range == null) Spacer(Modifier.width(8.dp))

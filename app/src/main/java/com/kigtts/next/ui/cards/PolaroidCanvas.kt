@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
@@ -47,7 +49,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     selectedLayer: String? = null, editable: Boolean = false, selectLayer: (String?) -> Unit = {},
     updateLayer: (CardLayer) -> Unit = {}, photoEditable: Boolean = false,
     onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null,
-    decodeMaximum: Int = 1200) {
+    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
@@ -84,6 +86,9 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     change.value(requireNotNull(gesture.layer))
                 }
             }
+        } else Modifier).then(if (editable) Modifier.pointerInput(card.id) {
+            // A child sticker consumes its tap; the remaining paper, caption and margins cancel selection.
+            detectTapGestures(onTap = { select.value(null) })
         } else Modifier)) {
             val width = maxWidth
             fun paperLength(units: Double) = width * (units / geometry.paperWidth).toFloat()
@@ -94,7 +99,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * (frame?.photoCornerRadius ?: 0.0).toFloat()))
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
-                val image = card.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum))) }
+                val image = card.imageId?.let {
+                    val loaded = rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))
+                    photoOverride ?: loaded
+                }
                 CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize())
             }
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier
@@ -143,7 +151,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                         val aspect = if (image != null) image.width.toFloat() / image.height.coerceAtLeast(1) else 1f
                         if (image != null) Image(image, null, Modifier.requiredWidth(layerWidth).aspectRatio(aspect).then(mirrored), contentScale = ContentScale.Fit)
                         else Icon(Icons.Default.Image, null, Modifier.size(layerWidth), tint = ink)
-                    } else Text(layer.text, Modifier.width(width).then(mirrored), color = Color(layer.color),
+                    } else Text(layer.text, Modifier.cardLayerTextBounds(width, textControlWidth).then(mirrored), color = Color(layer.color),
                         style = LocalTextStyle.current.copy(platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)),
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center, fontSize = with(density) { layerWidth.toSp() }, lineHeight = with(density) { (layerWidth * 1.2f).toSp() },
                         onTextLayout = { layout ->

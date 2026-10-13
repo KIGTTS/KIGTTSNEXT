@@ -98,7 +98,7 @@ class CameraInteractionStateUiTest {
         assertEquals(2f, ratio, .001f)
         compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(10f) }
         assertEquals(4f, ratio, .001f)
-        compose.onNodeWithTag("camera-zoom-value").assertTextEquals("4.0×")
+        compose.onNodeWithTag("camera-zoom-value", useUnmergedTree = true).assertTextEquals("4.0×")
         compose.onNodeWithTag("camera-zoom-stop/1").performClick()
         assertEquals(1f, ratio, .001f)
         compose.runOnIdle { enabled = false }

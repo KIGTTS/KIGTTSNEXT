@@ -37,7 +37,7 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
             formats = TextFormatting.rebase(it.formats, it.text, next.text)) } }
     }, Modifier.fillMaxWidth().testTag("phrase-detail-text").then(menu).textMenuAnchor {
         field=field.copy(selection=androidx.compose.ui.text.TextRange(field.selection.end))
-    }, enabled = enabled, label = { Text("字幕（必填）") },
+    }, enabled = enabled, label = { Text(if (draft.type == com.kigtts.next.state.QuickCardType.TEXT) "字幕（必填）" else "字幕（可选）") },
         minLines = 3, maxLines = 12, isError = oversized, interactionSource = source,
         colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, focused, oversized), visualTransformation = transform,
         trailingIcon = {

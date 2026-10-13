@@ -19,12 +19,9 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
     camera: () -> Unit, gallery: () -> Unit, addText: () -> Unit, addSticker: () -> Unit, addImage: () -> Unit, addQrCode: () -> Unit,
     frameColor: () -> Unit, selected: CardLayer?, editText: () -> Unit, layerColor: () -> Unit,
     deleteLayer: () -> Unit, forwardLayer: () -> Unit, mode: CardEditorMode, selectMode: (CardEditorMode) -> Unit,
-    frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit) {
+    frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit, textEditing: Boolean = false,
+    updateTextLayer: (CardLayer) -> Unit = {}, finishText: () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(card.title, { if (it.length <= 128) change(card.copy(title = it)) },
-            Modifier.fillMaxWidth().testTag("card-title"), label = { Text("标题") }, enabled = enabled, singleLine = true)
-        OutlinedTextField(card.description, { if (it.length <= 8192) change(card.copy(description = it)) },
-            Modifier.fillMaxWidth().testTag("card-description"), label = { Text("写点介绍（可选）") }, enabled = enabled, minLines = 2, maxLines = 4)
         CardEditorTabs(mode, selectMode)
         if (mode == CardEditorMode.CROP) CardCropTools(card, enabled, change, camera, gallery, frameColor, frames)
         else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -47,8 +44,18 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
                     }
                 }
             }
+            if (selected?.kind == CardLayerKind.TEXT) CardEditorSection("贴纸文字", Icons.Default.TextFields,
+                "card-sticker-text-section", forceExpanded = textEditing) {
+                CardTextLayerEditor(selected, enabled, updateTextLayer, finishText)
+            }
             Text("点选后拖动圆形手柄，或用双指移动、缩放和旋转", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        CardEditorSection("照片文字", Icons.Default.TextFields, "card-photo-text-section") {
+            OutlinedTextField(card.title, { if (it.length <= 128) change(card.copy(title = it)) },
+                Modifier.fillMaxWidth().testTag("card-title"), label = { Text("照片名称（可选）") }, enabled = enabled, singleLine = true)
+            OutlinedTextField(card.description, { if (it.length <= 8192) change(card.copy(description = it)) },
+                Modifier.fillMaxWidth().testTag("card-description"), label = { Text("照片说明（可选）") }, enabled = enabled, minLines = 2, maxLines = 4)
         }
         Spacer(Modifier.height(20.dp))
     }

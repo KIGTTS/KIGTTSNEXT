@@ -24,12 +24,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 
 private data class CameraBoundRequest(val format: PolaroidFormat, val front: Boolean, val rotation: Int, val retry: Int,
-    val processing: CameraProcessing)
+    val processing: CameraProcessing, val motion: Boolean)
 
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
-    initialFormat: PolaroidFormat? = null, suspended: Boolean = false) {
+    initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {}) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -52,15 +52,17 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         scaleType = PreviewView.ScaleType.FILL_CENTER
     } }
+    val streamTransition = remember(view) { CameraStreamTransition(view) }
+    DisposableEffect(streamTransition) { onDispose { streamTransition.close() } }
     val (granted, request) = cameraPermission(pageActive)
     val rotation = rememberCameraDisplayRotation(view)
     // Intermediate animated sizes are not read by the rest of the page on every frame.
     val viewport by remember(format, rotation) { derivedStateOf { cameraViewportKey(viewSize, format.geometry.photoAspectRatio, rotation) } }
-    val desired = CameraBoundRequest(format, front, rotation, retry, options.processing)
+    val desired = CameraBoundRequest(format, front, rotation, retry, options.processing, options.motion)
     val locked = session.busy || session.countingDown
     val displayReady by remember(session, rotation) { derivedStateOf {
         session.ready && !session.loading && !morphing && bound?.let {
-            it.format == format && it.front == front && it.rotation == rotation && it.retry == retry && it.processing == options.processing
+            it.format == format && it.front == front && it.rotation == rotation && it.retry == retry && it.processing == options.processing && it.motion == options.motion
         } == true
     } }
     LaunchedEffect(options.flash, session.ready, locked) { if (!locked) session.setFlash(options.flash) }
@@ -72,11 +74,16 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         else if (!locked && !morphing && viewport.layoutReady && viewport.matchesPhotoRatio &&
             (bound != desired || !session.ready)) {
             // Keep the previous live session while the rectangle is moving; bind once at its final crop.
+            streamTransition.cover()
+            coroutineContext.ensureActive()
             bound = null
-            session.bind(view, front, rotation, options.processing)
+            session.bind(view, front, rotation, options.processing, options.motion)
             coroutineContext.ensureActive()
             bound = desired
         }
+    }
+    LaunchedEffect(active, displayReady, bound) {
+        if (active && displayReady) streamTransition.reveal()
     }
     DisposableEffect(session) { onDispose { session.unbind() } }
     LaunchedEffect(session.countingDown) { if (session.countingDown) filtersExpanded = false }
@@ -95,25 +102,39 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         else if (!locked && displayReady && viewport.matchesPhotoRatio)
             session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength)
     }
-    if (!granted) { CameraPermissionPanel(request, pageActive); return }
+    val leave = {
+        if (session.busy) message("照片正在保存，请稍候")
+        else if (filtersExpanded && !session.countingDown) filtersExpanded = false
+        else { session.unbind(); onCancel() }
+    }
+    val header: @Composable () -> Unit = {
+        CameraCornerToolbar(active, session.busy, granted && !locked, session.loading || session.busy || morphing,
+            leave, options::showSettings) {
+            CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
+                options.motion && (session.loading || session.motionAvailable && !session.motionReady),
+                active && granted && !locked, options::setMotion)
+        }
+    }
+    if (!granted) { Box(Modifier.fillMaxSize()) { CameraPermissionPanel(request, pageActive); header() }; return }
     // Configuration is available during startup/morphing; only capture/focus require a fresh streamed frame.
     val interactive = active && !locked
     val preview = rememberCameraPreviewContent(view, session) { modifier, vertical ->
         CameraPaperPreview(view, format, filter, session, { viewSize = it }, modifier,
             displayReady = displayReady, morphChanged = { morphing = it },
-            options = options, rotation = rotation, active = active, filterStrength = options.filterStrength) {
+            options = options, rotation = rotation, active = active, filterStrength = options.filterStrength,
+            verticalChrome = vertical, headerOverlay = true, streamTransition = streamTransition, chrome = { layout ->
             CameraOverlayControls(format, formats, filter, interactive, vertical, filtersExpanded,
                 { morphing = true; format = nextCameraFormat(formats, format) },
                 options::showSettings, { filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
-                }, options.filterStrength, options::setFilterStrength)
-            AnimatedVisibility(!filtersExpanded, Modifier.align(if (vertical) Alignment.CenterEnd else Alignment.BottomCenter)
-                .then(if (vertical) Modifier.width(56.dp).fillMaxHeight(.9f) else Modifier.fillMaxWidth().height(48.dp))
-                .padding(4.dp), enter = fadeIn(), exit = fadeOut()) {
+                }, options.filterStrength, options::setFilterStrength, layout, showSettings = false)
+            AnimatedVisibility(!filtersExpanded, Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom),
+                enter = fadeIn(), exit = fadeOut()) {
                 CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
                     displayReady && interactive, session::zoomTo, vertical, Modifier.fillMaxSize().excludeCameraPull())
             }
+            }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))
         }
@@ -121,20 +142,21 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
     val controls: @Composable (Boolean) -> Unit = { vertical ->
         CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
-            { session.unbind(); onCancel() },
+            leave,
             { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength) },
             { front = !front }, vertical, locked,
-            countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() })
+            countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
+            gallery = { onGallery(format) })
     }
-    CameraPageLayout(preview, controls, error)
+    Box(Modifier.fillMaxSize()) { CameraPageLayout(preview, controls, error); header() }
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable, enabled = interactive,
-        availableProcessing = session.availableProcessing, manual = session.manual)
+        availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing, manual = session.manual)
 }
 
 @Composable
 internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
     controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {}) {
-    BoxWithConstraints(Modifier.fillMaxSize().navigationBarsPadding().padding(horizontal = 12.dp).testTag("polaroid-camera")) {
+    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp).testTag("polaroid-camera")) {
         if (cameraSideControls(maxWidth.value, maxHeight.value)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.weight(1f).fillMaxHeight()) {

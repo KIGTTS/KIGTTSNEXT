@@ -9,11 +9,13 @@ import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal suspend fun ImageCapture.captureJpeg(context: Context, file: File, front: Boolean): File = suspendCancellableCoroutine { continuation ->
+internal suspend fun ImageCapture.captureJpeg(context: Context, file: File, front: Boolean,
+    exposureStarted: () -> Unit = {}): File = suspendCancellableCoroutine { continuation ->
     val metadata = ImageCapture.Metadata().apply { isReversedHorizontal = front }
     val options = ImageCapture.OutputFileOptions.Builder(file).setMetadata(metadata).build()
     try {
         takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
+            override fun onCaptureStarted() { if (continuation.isActive) exposureStarted() }
             override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                 if (continuation.isActive) continuation.resume(file) else file.delete()
             }

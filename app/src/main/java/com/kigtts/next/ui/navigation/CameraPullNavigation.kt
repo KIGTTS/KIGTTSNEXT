@@ -49,8 +49,9 @@ internal class CameraPullState(private val scope: CoroutineScope, private val op
         val child = region.coordinates?.takeIf { it.isAttached } ?: return false
         return region.active.value && runCatching { root.localBoundingBoxOf(child).contains(point) }.getOrDefault(false)
     }
-    fun excludedStart(point: Offset) = regions.any { it.control && contains(it, point) }
-    fun nativeViewfinderStart(point: Offset) = !excludedStart(point) && regions.any { !it.control && contains(it, point) }
+    fun excludedStart(point: Offset) = regions.any { it.kind == CameraPullRegionKind.CONTROL && contains(it, point) }
+    fun nativeViewfinderStart(point: Offset) = !excludedStart(point) && regions.any { it.kind == CameraPullRegionKind.VIEWFINDER && contains(it, point) }
+    fun entryStart(point: Offset) = !excludedStart(point) && regions.any { it.kind == CameraPullRegionKind.ENTRY && contains(it, point) }
     /** Freeze a settling page on Down; its old animation must not run away before touch slop. */
     fun pauseSettlement(): Boolean {
         if (!active || !settling || currentCamera() != cameraRequestId) return false

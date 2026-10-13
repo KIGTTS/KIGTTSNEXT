@@ -62,9 +62,19 @@ class PolaroidBrowserUiTest {
         val next = cards.create(PolaroidCard(title = "红色照片", imageId = image(stickers, android.graphics.Color.RED)), nextAlbum)
         return Fixture(cards, stickers, first, next, nextAlbum)
     }
-    private fun show(f: Fixture) = compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("拍立得", {}) {
+    private fun show(f: Fixture) {
+        // These geometry/focus fixtures intentionally paint creation order; production inserts new cards at the front.
+        f.cards.albums.value.forEach { album -> f.cards.orderCards(album.id, f.cards.cards.value.asReversed().filter { it.id in album.cardIds }.map { it.id }) }
+        compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("拍立得", {}) {
         CardsScreen(f.cards, f.stickers, {}, {}, {})
     } } }
+        expandFixtureDock()
+    }
+    private fun expandFixtureDock() {
+        // Keep these established geometry/rail fixtures explicit about their expanded endpoint.
+        compose.onNodeWithTag("toggle-card-albums").performClick()
+        compose.waitForIdle()
+    }
     private fun capture(name: String): File {
         var project = File(requireNotNull(System.getProperty("user.dir"))).absoluteFile
         while (!File(project, "settings.gradle.kts").isFile) project = project.parentFile ?: error("Project root not found")
@@ -263,6 +273,7 @@ class PolaroidBrowserUiTest {
     fun rapidlyReversingTheRealLandscapePagerDockKeepsMiniPaperUnclipped() {
         val f = fixture(); f.cards.update(f.first.copy(frameStyleId = "instax.mini.classic"))
         compose.setContent { KigttsTheme(ThemeSettings()) { CardPageScaffold("拍立得", {}) { CardsScreen(f.cards, f.stickers, {}, {}, {}) } } }
+        expandFixtureDock()
         rapidlyReverseDock(f, "landscape-real-resize")
     }
 
@@ -273,6 +284,7 @@ class PolaroidBrowserUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.size(600.dp, 550.dp)) { CardsScreen(f.cards, f.stickers, {}, {}, {}) }
         } }
+        expandFixtureDock()
         val browser = compose.onNodeWithTag("polaroid-browser").fetchSemanticsNode().boundsInRoot
         val dock = compose.onNodeWithTag("card-album-dock").fetchSemanticsNode().boundsInRoot
         assertTrue(dock.left >= browser.right)
@@ -404,7 +416,7 @@ class PolaroidBrowserUiTest {
         lateinit var inserted: PolaroidCard
         compose.runOnIdle { inserted = f.cards.create(PolaroidCard(title = "新照片")) }
         compose.waitForIdle()
-        compose.onNodeWithTag("cards-position").assertTextEquals("1 / 5")
+        compose.onNodeWithTag("cards-position").assertTextEquals("2 / 5")
         compose.runOnIdle { f.cards.orderCards(CardRepository.DEFAULT_ALBUM, listOf(inserted.id, third.id, second.id, f.first.id)) }
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("4 / 5")
@@ -503,5 +515,71 @@ class PolaroidBrowserUiTest {
         assertTrue(collapsed.width < dock.width)
         compose.onNodeWithTag("polaroid/" + f.first.id).assertIsDisplayed()
         capture("landscape-collapsed")
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "zh-rCN-w1280dp-h600dp-land-xxhdpi")
+    fun aWideWindowFansThreeOpaquePapersAcrossBothSidesAndKeepsItsVerticalRailsCompact() {
+        val f = fixture()
+        val middle = f.cards.create(PolaroidCard(title = "绿色照片", imageId = image(f.stickers, android.graphics.Color.GREEN)))
+        f.cards.orderCards(CardRepository.DEFAULT_ALBUM, listOf(f.first.id, middle.id))
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CardPageScaffold("拍立得", {}) { CardsScreen(f.cards, f.stickers, {}, {}, {}) }
+        } }
+        expandFixtureDock()
+        compose.onNodeWithTag("card-album-photo/" + middle.id).performClick()
+        compose.onNodeWithTag("cards-position").assertTextEquals("2 / 3")
+        fun coordinates(id: String) = compose.onNodeWithTag("polaroid/" + id).fetchSemanticsNode().layoutInfo.coordinates
+        fun center(id: String): Offset {
+            val paper = coordinates(id)
+            return paper.localToRoot(Offset(paper.size.width / 2f, paper.size.height / 2f))
+        }
+        fun angle(id: String): Double {
+            val paper = coordinates(id)
+            val edge = paper.localToRoot(Offset(paper.size.width.toFloat(), 0f)) - paper.localToRoot(Offset.Zero)
+            return Math.toDegrees(kotlin.math.atan2(edge.y.toDouble(), edge.x.toDouble()))
+        }
+        assertTrue(center(f.first.id).x < center(middle.id).x && center(middle.id).x < center(f.next.id).x)
+        assertEquals(-4.0, angle(f.first.id), .1); assertEquals(0.0, angle(middle.id), .1); assertEquals(4.0, angle(f.next.id), .1)
+        val albums = compose.onNodeWithTag("card-albums").fetchSemanticsNode().boundsInRoot
+        val photos = compose.onNodeWithTag("card-album-photos").fetchSemanticsNode().boundsInRoot
+        assertTrue(albums.right <= photos.left && kotlin.math.abs(albums.top - photos.top) <= 1f)
+        compose.onNodeWithTag("card-albums").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "竖向滚动"))
+        compose.onNodeWithTag("card-album-photos").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "竖向滚动"))
+        val album = compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).getUnclippedBoundsInRoot()
+        assertTrue("Landscape albums remain compact rows", album.bottom - album.top <= 48.dp)
+        val thumbnail = compose.onNodeWithTag("card-album-photo/" + middle.id).getUnclippedBoundsInRoot()
+        assertTrue(thumbnail.right - thumbnail.left <= 64.dp)
+        assertEquals(PolaroidFormat.SQUARE.geometry.aspectRatio,
+            ((thumbnail.right - thumbnail.left) / (thumbnail.bottom - thumbnail.top)).toDouble(), .01)
+        compose.waitUntil(8_000) {
+            val output = capture("wide-planar-fan")
+            val blue = paperPixel(output, f.first.id, .5f, .4f)
+            val green = paperPixel(output, middle.id, .5f, .4f)
+            val red = paperPixel(output, f.next.id, .5f, .4f)
+            android.graphics.Color.blue(blue) >= 220 && android.graphics.Color.red(blue) <= 8 &&
+                android.graphics.Color.green(green) >= 220 && android.graphics.Color.blue(green) <= 8 &&
+                android.graphics.Color.red(red) >= 220 && android.graphics.Color.green(red) <= 8
+        }
+        compose.onNodeWithTag("cards-stack").performTouchInput {
+            down(center); moveTo(center - Offset(width * .1f, 0f)); moveTo(center - Offset(width * .48f, 0f))
+        }
+        fun opaqueFront(stage: String) {
+            val white = paperPixel(capture(stage), middle.id, .97f, .43f)
+            assertTrue("The wide fan keeps the outgoing paper above its neighbor on both sides of half-page", android.graphics.Color.red(white) >= 248 &&
+                android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
+        }
+        opaqueFront("wide-planar-before-half")
+        compose.onNodeWithTag("cards-stack").performTouchInput { moveTo(center - Offset(width * .56f, 0f)) }
+        opaqueFront("wide-planar-after-half")
+        compose.onNodeWithTag("cards-stack").performTouchInput { up() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("cards-position").assertTextEquals("3 / 3")
+        compose.onNodeWithTag("card-album/" + f.nextAlbum).assertIsSelected()
+        compose.onNodeWithTag("cards-stack").performTouchInput { swipeRight() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("cards-position").assertTextEquals("2 / 3")
+        compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).assertIsSelected()
+        capture("wide-planar-return")
     }
 }

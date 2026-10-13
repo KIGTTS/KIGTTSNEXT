@@ -13,6 +13,9 @@ class SketchInput(private val state: SketchState) {
     private var lastPoint = Offset.Zero
     private var lastPressure = 1f
     private var lastErase = false
+    private var navigating = false
+    private var gestureCenter = Offset.Zero
+    private var gestureDistance = 0f
     var keyboardEraser = false
         private set
 
@@ -20,8 +23,28 @@ class SketchInput(private val state: SketchState) {
 
     fun process(event: MotionEvent, canvas: IntSize, density: Float): Boolean {
         if (canvas.width <= 0 || canvas.height <= 0) return false
+        state.initializeCanvas(canvas)
+        val fingers = (0 until event.pointerCount).filter { event.getToolType(it) == MotionEvent.TOOL_TYPE_FINGER }
+        if (navigating || (fingers.size >= 2 && (pointerId == null || activeTool == MotionEvent.TOOL_TYPE_FINGER))) {
+            if (!navigating) { cancel(); navigating = true; gestureDistance = 0f }
+            if (fingers.size >= 2 && event.actionMasked != MotionEvent.ACTION_POINTER_UP) {
+                val first = Offset(event.getX(fingers[0]), event.getY(fingers[0]))
+                val second = Offset(event.getX(fingers[1]), event.getY(fingers[1]))
+                val center = (first + second) / 2f; val distance = (first - second).getDistance()
+                if (event.actionMasked == MotionEvent.ACTION_MOVE && gestureDistance > 0f && distance > 0f)
+                    state.navigate(canvas, gestureCenter, center, distance / gestureDistance)
+                gestureCenter = center; gestureDistance = distance
+            }
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                navigating = false; gestureDistance = 0f
+            }
+            return true
+        }
         when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> begin(event, event.actionIndex)
+            MotionEvent.ACTION_DOWN -> {
+                if (!state.viewport(canvas).contains(Offset(event.x, event.y))) return true
+                begin(event, event.actionIndex)
+            }
             MotionEvent.ACTION_POINTER_DOWN -> {
                 val tool = event.getToolType(event.actionIndex)
                 if (activeTool == MotionEvent.TOOL_TYPE_FINGER &&
@@ -49,15 +72,15 @@ class SketchInput(private val state: SketchState) {
         if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN ||
             event.actionMasked == MotionEvent.ACTION_MOVE || isUp) {
             for (history in 0 until event.historySize) {
-                state.sample(Offset(event.getHistoricalX(index, history), event.getHistoricalY(index, history)),
+                state.sample(state.viewport(canvas).toDocument(Offset(event.getHistoricalX(index, history), event.getHistoricalY(index, history))),
                     event.getHistoricalPressure(index, history), stylus, erase, density,
-                    canvas.width.toFloat(), canvas.height.toFloat())
+                    state.documentSize.width.toFloat(), state.documentSize.height.toFloat())
             }
             val point = Offset(event.getX(index), event.getY(index))
             // Up commonly reports zero pressure; keep the previous width and tool for a final moved point.
-            if (!isUp || (point - lastPoint).getDistance() > .5f) state.sample(point,
+            if (!isUp || (point - lastPoint).getDistance() > .5f) state.sample(state.viewport(canvas).toDocument(point),
                 if (isUp) lastPressure else event.getPressure(index), stylus, if (isUp) lastErase else erase,
-                density, canvas.width.toFloat(), canvas.height.toFloat())
+                density, state.documentSize.width.toFloat(), state.documentSize.height.toFloat())
             lastPoint = point; lastPressure = event.getPressure(index); lastErase = erase
         }
         if (isUp) { state.endStroke(); pointerId = null; snapshot = emptyList(); state.temporaryErasing = keyboardEraser }
@@ -72,7 +95,7 @@ class SketchInput(private val state: SketchState) {
         lastPoint = Offset(event.getX(index), event.getY(index))
     }
 
-    fun release() { cancel(); keyboardEraser(false) }
+    fun release() { cancel(); navigating = false; gestureDistance = 0f; keyboardEraser(false) }
 
     private fun cancel() {
         if (pointerId != null) { state.strokes.clear(); state.strokes.addAll(snapshot) }

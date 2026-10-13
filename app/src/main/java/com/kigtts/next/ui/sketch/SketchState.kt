@@ -2,6 +2,7 @@ package com.kigtts.next.ui.sketch
 
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntSize
 import kotlin.math.pow
 
 enum class SketchTool { PEN, ERASER }
@@ -22,6 +23,16 @@ class SketchState {
     var eraserSize by mutableFloatStateOf(24f)
     var temporaryErasing by mutableStateOf(false)
         internal set
+    var documentSize by mutableStateOf(IntSize.Zero)
+        private set
+    var background by mutableStateOf(0xFFFFFFFFL)
+        private set
+    var viewportZoom by mutableFloatStateOf(1f)
+        internal set
+    var viewportPan by mutableStateOf(Offset.Zero)
+        internal set
+    var revision by mutableLongStateOf(0L)
+        private set
     private var activeStroke: Stroke? = null
     private var previousErasePoint: Offset? = null
 
@@ -62,6 +73,35 @@ class SketchState {
         }
     }
 
-    fun endStroke() { activeStroke = null; previousErasePoint = null }
-    fun clear() { endStroke(); strokes.clear() }
+    fun initializeCanvas(size: IntSize, color: Long = background) {
+        if (documentSize.width > 0 || size.width <= 0 || size.height <= 0) return
+        documentSize = size; background = color; revision++
+    }
+
+    fun document(): SketchDocument = SketchDocument(documentSize.width.coerceAtLeast(1),
+        documentSize.height.coerceAtLeast(1), background, strokes.toList())
+
+    fun restore(document: SketchDocument) {
+        endStroke(); strokes.clear(); strokes.addAll(document.strokes)
+        documentSize = IntSize(document.width, document.height); background = document.background
+        resetViewport(); revision++
+    }
+
+    fun resetViewport() { viewportZoom = 1f; viewportPan = Offset.Zero }
+    internal fun viewport(window: IntSize) = SketchViewport(documentSize, window, viewportZoom, viewportPan)
+
+    internal fun navigate(window: IntSize, previousCenter: Offset, center: Offset, factor: Float) {
+        val old = viewport(window)
+        val anchor = old.toDocument(previousCenter)
+        viewportZoom = (viewportZoom * factor).coerceIn(.5f, 8f)
+        val next = viewport(window)
+        viewportPan = (center - Offset(window.width / 2f, window.height / 2f)) / next.scale -
+            (anchor - Offset(documentSize.width / 2f, documentSize.height / 2f))
+    }
+
+    fun endStroke() {
+        if (activeStroke != null || previousErasePoint != null) revision++
+        activeStroke = null; previousErasePoint = null
+    }
+    fun clear() { endStroke(); strokes.clear(); revision++ }
 }

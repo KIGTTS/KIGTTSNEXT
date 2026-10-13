@@ -108,7 +108,7 @@ class MediaUiTest {
         show(); compose.runOnIdle { model.content.editor() }
         compose.onNodeWithTag("content-editor-text").performTextReplacement("内置编辑器文本")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        compose.onNodeWithText("放弃未保存的修改？").assertIsDisplayed(); compose.onNodeWithText("继续编辑").performClick()
+        compose.onNodeWithText("保存修改？").assertIsDisplayed(); compose.onNodeWithText("继续编辑").performClick()
         compose.onNodeWithTag("content-editor-text").assertTextContains("内置编辑器文本")
         compose.onNodeWithTag("save-content").performClick()
         compose.waitUntil(5000) { model.state.value.destination == Destination.Home }

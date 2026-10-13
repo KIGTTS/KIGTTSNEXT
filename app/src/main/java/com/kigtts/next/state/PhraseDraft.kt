@@ -12,7 +12,7 @@ data class PhraseDraft(val key: String, val phraseId: String?, val text: String,
     fun switchType(next: QuickCardType) = if (next == type) this else copy(type = next, mediaId = resources[next], resources = resources + (type to mediaId))
     fun attach(next: QuickCardType, id: String) = copy(mediaId = if (type == next) id else mediaId,
         resources = resources + (next to id))
-    fun valid(repository: MediaRepository): Boolean = text.isNotBlank() && when (type) {
+    fun valid(repository: MediaRepository): Boolean = (type != QuickCardType.TEXT || text.isNotBlank()) && when (type) {
         QuickCardType.TEXT -> true
         QuickCardType.AUDIO -> repository.get(mediaId)?.kind == MediaKind.AUDIO
         QuickCardType.MEDIA -> repository.get(mediaId)?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)

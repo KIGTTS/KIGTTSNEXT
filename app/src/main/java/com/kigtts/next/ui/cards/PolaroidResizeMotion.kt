@@ -25,8 +25,11 @@ internal class PolaroidResizeMotion(width: Float, viewportWidth: Float, viewport
 
 /** Measure only at the new endpoint; interpolate the rendered paper without laying out its content every frame. */
 @Composable
-internal fun rememberPolaroidResize(id: String, width: Dp, viewportWidth: Dp, viewportHeight: Dp): PolaroidResizeMotion {
-    val motion = remember(id) { PolaroidResizeMotion(width.value, viewportWidth.value, viewportHeight.value) }
+internal fun rememberPolaroidResize(id: String, width: Dp, viewportWidth: Dp, viewportHeight: Dp,
+    coordinateSpace: Boolean? = null): PolaroidResizeMotion {
+    // Rotation defines a new coordinate system. Old absolute centers can be outside the new
+    // short viewport; ordinary same-axis dock resizing still retains its continuous trajectory.
+    val motion = remember(id, coordinateSpace) { PolaroidResizeMotion(width.value, viewportWidth.value, viewportHeight.value) }
     // BoxWithConstraints subcomposes during measurement: the new paper is measured before
     // LaunchedEffect starts. Its first layer must already compensate for that new endpoint.
     // Animate absolute painted geometry; an interrupted transition never resets its pixels.

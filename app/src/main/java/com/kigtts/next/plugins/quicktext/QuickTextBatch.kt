@@ -25,7 +25,7 @@ internal fun planBatch(owner:String,command:QuickTextCommand.Prepare,originalGro
         }
         is QuickTextEdit.PutEntry->{val item=edit.entry
             requireQuick(item.id.matches(Regex("[a-f0-9-]{36}"))&&groups.any {it.id==item.groupId},message="条目标识或分组不合法")
-            requireQuick(item.text.isNotBlank()&&item.text.toByteArray(Charsets.UTF_8).size<=128*1024&&item.title.length<=256,message="请填写字幕，或缩短过长内容")
+            requireQuick((item.kind!=QuickCardKind.TEXT||item.text.isNotBlank())&&item.text.toByteArray(Charsets.UTF_8).size<=128*1024&&item.title.length<=256,message="请填写字幕，或缩短过长内容")
             requireQuick(item.color in 0..0xFFFFFFFFL&&item.formats.size<=256&&item.formats.all {it.start>=0&&it.end>it.start&&it.end<=item.text.length&&
                 (it.kind!=QuickFormatKind.SIZE||it.value in 75..400)},message="颜色或富文本范围不合法")
             requireQuick(item.metadata.size<=32&&item.metadata.all {it.key.length in 1..128&&it.value.toByteArray().size<=4096}&&

@@ -81,14 +81,18 @@ class PageChromeTest {
         compose.onNodeWithTag("import-media").assertDoesNotExist()
         compose.onNodeWithContentDescription("查找替换").assertIsDisplayed()
     }
-    @Test fun sketchUsesCompactPinnedBarAndKeepsItsShareAction() {
+    @Test fun sketchDrawsUnderTransparentChromeAndKeepsItsShareAction() {
         val model=show();systemInsets()
         compose.runOnIdle { model.openSidePage(SidePage.SKETCH) }
         compose.onNodeWithTag("large-page-bar").assertDoesNotExist()
-        val bar=compose.onNodeWithTag("small-page-bar").getUnclippedBoundsInRoot()
-        assertEquals(88f,bar.bottom.value-bar.top.value,.5f)
-        compose.onNodeWithContentDescription("分享画板").assertIsDisplayed()
+        compose.onNodeWithTag("small-page-bar").assertDoesNotExist()
+        val page=compose.onNodeWithTag("sketch-fullscreen-page").getUnclippedBoundsInRoot()
+        val canvas=compose.onNodeWithTag("sketch-canvas").getUnclippedBoundsInRoot()
+        assertEquals(0f,page.top.value,.5f)
+        assertEquals(page,canvas)
         compose.onNodeWithTag("sketch-canvas").assertIsDisplayed()
-        compose.onRoot().captureRoboImage("build/previews/immersive-sketch-small-bar.png")
+        compose.onRoot().captureRoboImage("build/previews/immersive-sketch-transparent-chrome.png")
+        compose.onNodeWithContentDescription("更多页面操作").performClick()
+        compose.onNodeWithTag("share-sketch").assertIsDisplayed()
     }
 }

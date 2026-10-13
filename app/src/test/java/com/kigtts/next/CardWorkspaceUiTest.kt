@@ -43,7 +43,7 @@ class CardWorkspaceUiTest {
         val paths = PluginPaths(app); val stickers = StickerRepository(app, paths, MediaRepository(app, paths))
         return CardRepository(app, stickers) to stickers
     }
-    @Test fun cardHomeUsesFabOnlyAndClickPreviewLongPressEditWithDiscoveryPreference() {
+    @Test fun cardHomeKeepsPreviewAndLongPressManagementWithoutFabOrNativeBlankCreation() {
         val (cards, stickers) = repositories(); val messages = mutableListOf<String>()
         val card = cards.create(PolaroidCard(title = "拍立得")); val previews = mutableListOf<String>(); val edits = mutableListOf<String>(); var cameras = 0
         compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("拍立得", {}) {
@@ -56,15 +56,18 @@ class CardWorkspaceUiTest {
         compose.onNodeWithTag("close-card-preview").performClick()
         compose.onNodeWithTag("card-preview-content").assertDoesNotExist()
         compose.onNodeWithTag("polaroid/" + card.id).performTouchInput { longClick() }
+        compose.onNodeWithTag("card-management").assertIsDisplayed();assertTrue(edits.isEmpty())
+        compose.onNodeWithTag("cards-manage-done").performClick()
+        compose.onNodeWithTag("card-management").assertDoesNotExist()
+        compose.onNodeWithTag("polaroid/" + card.id).performClick()
+        compose.onNodeWithTag("edit-card-preview").performClick()
+        compose.waitForIdle()
         assertEquals(listOf(card.id), edits)
-        compose.onNodeWithTag("card-add-fab").performClick()
-        compose.onNodeWithText("拍照").assertIsDisplayed(); compose.onNodeWithText("选图").assertIsDisplayed()
-        compose.onNodeWithText("拍照").performClick()
-        assertEquals(1, cameras)
-        compose.onNodeWithTag("card-add-fab").performClick()
-        compose.onNodeWithText("新建空白拍立得").performClick()
-        compose.waitUntil(8_000) { edits.size == 2 }
-        assertEquals(2, cards.cards.value.size)
+        compose.onNodeWithTag("card-add-fab").assertDoesNotExist()
+        compose.onNodeWithText("新建空白拍立得").assertDoesNotExist()
+        compose.onNodeWithText("选图").assertDoesNotExist()
+        assertEquals(0, cameras)
+        assertEquals(listOf(card), cards.cards.value)
         compose.onNodeWithTag("face-discovery").assertIsOff().performClick().assertIsOn()
         val app = ApplicationProvider.getApplicationContext<Application>()
         assertTrue(app.getSharedPreferences("cards-view", 0).getBoolean("face-discovery", false))
@@ -76,6 +79,7 @@ class CardWorkspaceUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("编辑拍立得", { backs++ }) {
             CardEditorScreen(cards, stickers, original.id, {}, openLibrary = { library++ })
         } } }
+        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("新标题")
         assertEquals("旧标题", cards.cards.value.single().title)
         compose.onNodeWithTag("card-editor-tab/STICKERS").performScrollTo().performClick()
@@ -83,7 +87,7 @@ class CardWorkspaceUiTest {
         assertEquals(1, library)
         compose.onNodeWithTag("card-title").assertTextContains("新标题")
         compose.onNodeWithTag("page-back").performClick()
-        compose.onNodeWithText("放弃未保存的修改？").assertIsDisplayed()
+        compose.onNodeWithText("保存修改？").assertIsDisplayed()
         compose.onNodeWithText("继续编辑").performClick()
         compose.onNodeWithTag("save-card").performClick()
         compose.waitUntil(8_000) { backs == 1 }
@@ -153,6 +157,7 @@ class CardWorkspaceUiTest {
             CardEditorScreen(cards, stickers, original.id, {}, cameraImageId = image.id,
                 cameraOriginalImageId = image.id, cameraFrameStyleId = "instax.mini.classic", cameraRequestVersion = version)
         } } }
+        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("未保存标题")
         compose.runOnIdle { version = 1L }
         compose.onNodeWithTag("card-title").assertTextContains("未保存标题")
@@ -172,7 +177,7 @@ class CardWorkspaceUiTest {
         } } }
         compose.onNodeWithContentDescription("相纸规格：Wide").performScrollTo().performClick()
         assertEquals(original.frameStyleId, cards.cards.value.single().frameStyleId)
-        compose.onNodeWithTag("polaroid/" + original.id).performScrollTo()
+        compose.onNodeWithTag("polaroid/" + original.id).assertIsDisplayed()
         val paper = compose.onNodeWithTag("polaroid/" + original.id).fetchSemanticsNode().boundsInRoot
         val photo = compose.onNodeWithTag("card-photo/" + original.id).fetchSemanticsNode().boundsInRoot
         assertEquals(PolaroidFormat.WIDE.geometry.aspectRatio, (paper.width / paper.height).toDouble(), .01)

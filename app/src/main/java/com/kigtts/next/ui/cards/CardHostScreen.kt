@@ -17,5 +17,6 @@ fun CardHostScreen(model: AppViewModel) {
         { model.cardUi.open(StickerUiTarget.CARDS, it) }, { model.navigate(Destination.CardEditor(it)) }, model::message,
         onQuickImage = model::quickImageCard, openCamera = { model.cardCapture.open() },
         requestedCardId = request.cardId.takeIf { active }, requestVersion = if (active) request.version else 0L,
+        openRequestedPreview = request.openPreview,
         onAlbumSelected = model.cardUi::selectAlbum, onPreviewRequestHandled = model.cardUi::previewHandled)
 }

@@ -1,7 +1,5 @@
 package com.kigtts.next.ui.cards.camera
 
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -35,11 +33,17 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     displayReady: Boolean = session.ready, morphChanged: (Boolean) -> Unit = {},
     options: CameraOptions? = null, rotation: Int = Surface.ROTATION_0, active: Boolean = true,
     filterStrength: Float = 1f,
+    verticalChrome: Boolean = false, headerOverlay: Boolean = false,
+    chrome: @Composable BoxScope.(CameraChromeLayout) -> Unit = {},
+    streamTransition: CameraStreamTransition? = null,
     overlay: @Composable BoxScope.() -> Unit = {}) {
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
     val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
+    LaunchedEffect(session, colors) {
+        snapshotFlow { colors.values() }.collect(session::setPreviewFilter)
+    }
     DisposableEffect(view, session) {
         var pinched = false
         val scale = ScaleGestureDetector(view.context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -70,13 +74,18 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val fitted = cameraPhotoWindow(maxWidth.value, maxHeight.value, motion.ratio.value)
+        val layout = rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
+            cameraPhotoWindow(maxWidth.value, maxHeight.value, format.geometry.photoAspectRatio.toFloat()), verticalChrome,
+            headerInset = if (headerOverlay) 56f else 0f)
         Box(Modifier.size(fitted.width.dp, fitted.height.dp).clip(RoundedCornerShape(16.dp)).background(Color.Black)
             .testTag("camera-photo-window")) {
-            AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().onSizeChanged(sizeChanged).cameraPullViewfinder(), update = { preview ->
-                preview.setLayerType(View.LAYER_TYPE_HARDWARE, Paint().apply { colorFilter = ColorMatrixColorFilter(colors.matrix()) })
-            })
+            AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().onSizeChanged(sizeChanged).cameraPullViewfinder())
             motion.snapshot?.let { snapshot ->
                 BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = motion.alpha.value }.testTag("camera-ratio-cover"))
+            }
+            streamTransition?.snapshot?.let { snapshot ->
+                BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = streamTransition.alpha.value }
+                    .testTag("camera-stream-cover"))
             }
             options?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
@@ -86,5 +95,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
             CameraCountdownOverlay(session.countdownSeconds)
             overlay()
         }
+        // The same native preview remains in its photo box; only chrome is positioned in the surrounding space.
+        chrome(layout)
     }
 }

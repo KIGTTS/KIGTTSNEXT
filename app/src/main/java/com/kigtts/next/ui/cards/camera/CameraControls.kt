@@ -70,13 +70,16 @@ internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry:
 @Composable
 internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean, canFlip: Boolean,
     cancel: () -> Unit, capture: () -> Unit, flip: () -> Unit, vertical: Boolean, locked: Boolean = busy,
-    countingDown: Boolean = false, cancelCountdown: () -> Unit = {}) {
+    countingDown: Boolean = false, cancelCountdown: () -> Unit = {}, showCancel: Boolean = true,
+    gallery: (() -> Unit)? = null) {
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
-        ToolButton("取消拍摄", Icons.Default.Close, cancel,
-            Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterStart).padding(12.dp).testTag("camera-cancel"),
+        if (showCancel || gallery != null) ToolButton(if (gallery != null) "选择照片" else "取消拍摄",
+            if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
+            Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterStart).padding(12.dp)
+                .testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
-            enabled = active && !busy)
+            enabled = active && if (gallery != null) !locked else !busy)
         ToolButton(if (countingDown) "取消倒计时" else "拍照", when {
             countingDown -> Icons.Default.TimerOff
             busy -> Icons.Default.HourglassEmpty

@@ -84,4 +84,16 @@ class CardPreviewRoutingTest {
         assertNull(model.cardUi.previewRequest.value.cardId); assertEquals(version, model.cardUi.previewRequest.value.version)
         assertEquals(album.id, model.cardUi.selectedAlbum.value)
     }
+    @Test fun focusingAGlobalPrintedPreviewSelectsItsAlbumWithoutNavigatingOrOpeningAnotherWindow() {
+        val model=model();val album=model.cards.createAlbum("本次打印")
+        val card=model.cards.create(PolaroidCard(title="已展开预览"),album.id)
+        model.navigate(Destination.Cards);val history=model.state.value.navigationStack
+        assertTrue(model.cardUi.focusCard(card.id))
+        val request=model.cardUi.previewRequest.value
+        assertEquals(card.id,request.cardId);assertFalse(request.openPreview);assertEquals(album.id,model.cardUi.selectedAlbum.value)
+        assertEquals(Destination.Cards,model.state.value.destination);assertEquals(history,model.state.value.navigationStack)
+        model.cardUi.previewHandled(request.version);assertNull(model.cardUi.previewRequest.value.cardId)
+        assertTrue(model.cardUi.open(StickerUiTarget.CARDS,card.id));assertTrue(model.cardUi.previewRequest.value.openPreview)
+        assertEquals(history,model.state.value.navigationStack)
+    }
 }

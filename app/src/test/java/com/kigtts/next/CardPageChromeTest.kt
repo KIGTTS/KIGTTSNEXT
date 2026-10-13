@@ -6,11 +6,15 @@ import android.view.ViewGroup
 import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -81,8 +85,8 @@ class CardPageChromeTest {
             assertEquals(0f, bar.top.value, .5f)
             assertEquals(88f, (bar.bottom - bar.top).value, .5f)
             assertTrue(back.top.value >= 24f)
-            assertEquals(bar.bottom.value, body.top.value, .5f)
-            assertTrue("Small title must leave the remaining browsing height", (body.bottom - body.top) >= page.bottom - bar.bottom - 25.dp)
+            assertEquals("Floating chrome must not reserve an app-bar strip", page.top.value, body.top.value, .5f)
+            assertTrue("The photographs retain the full window below floating controls", (body.bottom - body.top) >= page.bottom - page.top - 25.dp)
             val title = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             compose.onNodeWithTag("page-title").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(title) }
             assertEquals(1, title.single().lineCount)
@@ -92,7 +96,7 @@ class CardPageChromeTest {
             try {
                 val density = image.height / (bar.bottom - bar.top).value
                 val statusColor = image.getPixel(2, 2)
-                assertEquals("Status region shares the opaque toolbar paint", image.getPixel(2, (32 * density).toInt()), statusColor)
+                assertEquals("The immersive page continues behind transparent window chrome", image.getPixel(2, (32 * density).toInt()), statusColor)
                 assertNotEquals(android.graphics.Color.BLACK, statusColor)
                 assertEquals(255, android.graphics.Color.alpha(statusColor))
             } finally { image.recycle() }
@@ -118,13 +122,42 @@ class CardPageChromeTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
+    fun theFloatingLandscapeToolbarRevealsTheBodyPixelsAndConsumesNoBrowsingHeight() {
+        var returns = 0
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            Box(Modifier.size(700.dp, 300.dp)) { CardPageScaffold("拍立得", { returns++ }) {
+                Box(Modifier.fillMaxSize().background(Color.Blue).testTag("floating-card-body"))
+            } }
+        } }
+        val body = compose.onNodeWithTag("floating-card-body").getUnclippedBoundsInRoot()
+        val bar = compose.onNodeWithTag("small-page-bar").getUnclippedBoundsInRoot()
+        assertEquals(bar.top.value, body.top.value, .5f)
+        assertTrue(body.bottom > bar.bottom)
+        val output = File("build/previews/polaroid-floating-landscape-header.png").apply { parentFile.mkdirs() }
+        compose.onNodeWithTag("small-page-bar").captureRoboImage(output.absolutePath)
+        val image = requireNotNull(BitmapFactory.decodeFile(output.absolutePath))
+        try {
+            listOf(2 to 2, 2 to (image.height / 2), (image.width - 3) to 2).forEach { (x, y) ->
+                val pixel = image.getPixel(x, y)
+                assertTrue("Transparent chrome must reveal the actual blue body pixels", android.graphics.Color.blue(pixel) >= 248 &&
+                    android.graphics.Color.red(pixel) <= 8 && android.graphics.Color.green(pixel) <= 8)
+            }
+        } finally { image.recycle() }
+        compose.onNodeWithTag("page-back").performClick()
+        assertEquals(1, returns)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
     fun resizingTheWindowOverridesDeviceOrientationWithoutRecreatingTheBody() {
         var width by mutableStateOf(700.dp)
         var height by mutableStateOf(300.dp)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
             Box(Modifier.size(width, height)) { CardPageScaffold("拍立得", {}) {
                 var count by remember { mutableIntStateOf(0) }
-                TextButton({ count++ }, Modifier.testTag("body-counter")) { Text("$count") }
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    TextButton({ count++ }, Modifier.testTag("body-counter")) { Text("$count") }
+                }
             } }
         } }
         compose.onNodeWithTag("small-page-bar").assertIsDisplayed()

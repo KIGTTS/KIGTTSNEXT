@@ -1,11 +1,11 @@
 package com.kigtts.next.ui.cards
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.*
 import com.kigtts.next.cards.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
-import java.util.UUID
 
 /** Disk imports and rendering stay off the UI thread; each user operation publishes once. */
 internal class CardWorkspaceActions(private val context: Context, private val cards: CardRepository,
@@ -13,28 +13,30 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
     private val openEditor: (String) -> Unit, private val message: (String) -> Unit,
     private val onQuickImage: (String, String) -> Unit,
     private val io: CoroutineDispatcher = Dispatchers.IO) {
-    var busy by mutableStateOf(false); private set
+    private var working by mutableStateOf(false)
+    private var quickClosing by mutableStateOf(false)
+    val busy get() = working || quickClosing
+    var quickCard by mutableStateOf<PolaroidCard?>(null); private set
     fun <T> work(operation: () -> T, complete: (T) -> Unit = {}) {
-        startWork(operation, complete, {})
+        startWork({ operation() }, complete, {})
     }
-    private fun <T> startWork(operation: () -> T, complete: (T) -> Unit, finish: () -> Unit) {
+    private fun <T> startWork(operation: suspend () -> T, complete: (T) -> Unit, finish: () -> Unit) {
         if (busy || !scope.isActive) { runCatching(finish); return }
-        busy = true
+        working = true
         // Install the finally block before dispatch; a queued, cancelled launch may never enter it.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try { val result = withContext(io) { operation() }; complete(result) }
             catch (cancel: CancellationException) { throw cancel }
             catch (failure: Exception) { message(failure.message ?: "操作未完成，请重试") }
-            finally { runCatching(finish); busy = false }
+            finally { runCatching(finish); working = false }
         }
     }
-    fun newCard(albumId: String = CardRepository.DEFAULT_ALBUM) = work({ cards.create(PolaroidCard(title = "拍立得"), albumId) }) { openEditor(it.id) }
     fun importPhoto(selection: CardPhotoSelection, library: String? = null, asSticker: Boolean = false,
         albumId: String = CardRepository.DEFAULT_ALBUM) {
         if (busy) { selection.release(); message("正在处理图片，请稍后重试"); return }
         startWork({
             val image = stickers.importImage(selection.uri)
-            if (!asSticker) cards.create(PolaroidCard(title = "拍立得", imageId = image.id), albumId).id
+            if (!asSticker) cards.create(PolaroidCard(title = "", imageId = image.id), albumId).id
             else {
                 val target = stickers.libraries.value.firstOrNull { it.id == library } ?: stickers.libraries.value.first()
                 stickers.apply(listOf(StickerEdit.PutItem(StickerItem(libraryId = target.id,
@@ -44,18 +46,40 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
         }, { id -> if (id != null) openEditor(id) else message("已添加到贴纸库") }, selection.release)
     }
     fun cardAction(card: PolaroidCard, action: CardMenuAction) = when (action) {
-        CardMenuAction.COPY -> work({ cards.create(card.copy(id = UUID.randomUUID().toString(), title = (card.title + " 副本").take(128)),
-            albumContaining(cards.albums.value, card.id)?.id ?: CardRepository.DEFAULT_ALBUM) }) { message("已复制拍立得") }
-        CardMenuAction.QUICK -> work({
-            val image = stickers.importResource(stickers.exportCard(card.id))
-            stickers.publishQuickMedia(image.id)
-        }) { onQuickImage(it.id, card.title) }
+        CardMenuAction.COPY -> work({ cards.copy(card) }) { message("已复制拍立得") }
+        CardMenuAction.QUICK -> requestQuick(card)
         CardMenuAction.DELETE -> work({ cards.remove(card.id) }) { message("已删除拍立得") }
     }
-    fun share(card: PolaroidCard) = work({ preparePolaroidShare(context, stickers.exportCard(card.id)) }) { file ->
+    fun share(card: PolaroidCard) = startWork({
+        val source = exportPolaroidMedia(stickers, card)
+        try { preparePolaroidShare(context, source) } finally { releaseMotionExport(source) }
+    }, { file ->
         try { sharePolaroid(context, file) } catch (_: Exception) { message("没有可用的分享应用") }
+    }, {})
+    private fun requestQuick(card: PolaroidCard) { if (!busy) quickCard = card }
+    fun cancelQuick() { if (!busy) quickCard = null }
+    fun publishQuick(includeFrame: Boolean, includeStickers: Boolean, complete: (() -> Unit) -> Unit) {
+        val card = quickCard ?: return
+        startWork({
+            val current = cards.cards.value.firstOrNull { it.id == card.id } ?: error("这张拍立得已移除")
+            val file = exportPolaroidMedia(stickers, current, includeFrame, includeStickers)
+            try { stickers.media.import(Uri.fromFile(file), if (file.extension.equals("png", true)) "image/png" else "image/jpeg") }
+            finally { releaseMotionExport(file) }
+        }, { media ->
+            quickClosing = true
+            complete {
+                if (quickClosing && quickCard?.id == card.id) {
+                    quickCard = null; quickClosing = false
+                    onQuickImage(media.id, card.description.ifBlank { card.title })
+                }
+            }
+        }, {})
+    }
+    private fun releaseMotionExport(file: java.io.File) {
+        if (file.name.endsWith("MP.jpg", true) && file.canonicalFile.parentFile == java.io.File(stickers.root, "exports").canonicalFile)
+            file.delete()
     }
     fun quickSticker(item: StickerItem) = work({ stickers.publishQuickMedia(item.imageId) }) { onQuickImage(it.id, item.name) }
-    fun stickerCard(item: StickerItem) = work({ cards.create(PolaroidCard(title = item.name, imageId = item.imageId)) }) { openEditor(it.id) }
+    fun stickerCard(item: StickerItem) = work({ cards.create(PolaroidCard(title = "", imageId = item.imageId)) }) { openEditor(it.id) }
     fun edit(edits: List<StickerEdit>) = work({ stickers.apply(edits) }) { message("已保存") }
 }

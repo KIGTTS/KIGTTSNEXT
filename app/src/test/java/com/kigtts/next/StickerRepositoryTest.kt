@@ -139,8 +139,9 @@ class StickerRepositoryTest {
         CardStore(app).save(listOf(ContactCard("旧名片","旧说明",Uri.fromFile(photo).toString()),ContactCard("失效图片","文字保留","content://missing/photo")))
         CardRepository(app,repo).migrateLegacy();assertEquals(2,repo.cards.value.size);assertEquals(1,repo.images.value.size)
         photo.delete();val restored=StickerRepository(app,paths,media);CardRepository(app,restored).migrateLegacy()
-        assertEquals(repo.cards.value,restored.cards.value);assertEquals(1,restored.images.value.size);assertTrue(restored.imageFile(restored.cards.value.first().imageId!!)!!.exists())
-        assertEquals("文字保留",restored.cards.value.last().description)
+        assertEquals(repo.cards.value,restored.cards.value);assertEquals(1,restored.images.value.size)
+        assertTrue(restored.imageFile(restored.cards.value.single {it.title=="旧名片"}.imageId!!)!!.exists())
+        assertEquals("文字保留",restored.cards.value.single {it.title=="失效图片"}.description)
     }
     @Test fun referencedImagesCannotBeRemovedAndConfirmedCompoundRemovalReleasesOnlyThatResource()=runBlocking {
         val image=image();val item=StickerItem(libraryId=StickerRepository.DEFAULT_LIBRARY,name="保留引用",imageId=image.id)
@@ -249,7 +250,9 @@ class StickerRepositoryTest {
     @Test fun oldCatalogMissingFrameIdStaysLegacyWhileNewPolaroidsDefaultSquare() {
         val legacy=PolaroidCard(title="旧数据",frameStyleId="classic");repo.apply(listOf(StickerEdit.PutCard(legacy)))
         val file=File(repo.root,"catalog.json");val root=org.json.JSONObject(file.readText());val snapshot=org.json.JSONObject(root.getString("snapshot"))
-        snapshot.getJSONArray("cards").getJSONObject(0).remove("frameStyleId");root.put("snapshot",snapshot.toString());file.writeText(root.toString())
+        val storedCards=snapshot.getJSONArray("cards")
+        (0 until storedCards.length()).map {storedCards.getJSONObject(it)}.single {it.getString("id")==legacy.id}.remove("frameStyleId")
+        root.put("snapshot",snapshot.toString());file.writeText(root.toString())
         val restored=StickerRepository(app,paths,media)
         assertEquals(PolaroidFormat.LEGACY,restored.frameStyle(restored.cards.value.single()).format)
         assertEquals("instax.square.classic",PolaroidCard(title="新拍立得").frameStyleId)
@@ -317,7 +320,9 @@ class StickerRepositoryTest {
         val branded=PolaroidCard(title="品牌色",frameStyleId=brand.id,frameColor=0xFFF7F2E8)
         repo.apply(listOf(StickerEdit.PutFrameStyle(brand),StickerEdit.PutCard(legacy),StickerEdit.PutCard(explicit),StickerEdit.PutCard(branded)))
         val file=File(repo.root,"catalog.json");val root=org.json.JSONObject(file.readText());val snapshot=org.json.JSONObject(root.getString("snapshot"))
-        snapshot.getJSONArray("cards").getJSONObject(0).remove("frameStyleId");root.put("snapshot",snapshot.toString());file.writeText(root.toString())
+        val storedCards=snapshot.getJSONArray("cards")
+        val legacyRecord=(0 until storedCards.length()).map(storedCards::getJSONObject).single {it.getString("id")==legacy.id}
+        legacyRecord.remove("frameStyleId");root.put("snapshot",snapshot.toString());file.writeText(root.toString())
         val restored=StickerRepository(app,paths,media)
         val saved=restored.cards.value.associateBy {it.id}
         assertEquals(0xFFFFFFFFL,saved.getValue(legacy.id).frameColor)

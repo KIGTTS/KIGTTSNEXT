@@ -64,7 +64,7 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
-                    4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.Badge,
+                    4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoLibrary,
                         { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
                         Modifier.width(width).testTag("dock-end"), sources[4], shapes, size = sideSize)
                 }

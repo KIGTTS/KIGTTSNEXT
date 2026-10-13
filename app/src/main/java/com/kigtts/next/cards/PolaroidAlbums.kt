@@ -33,7 +33,7 @@ internal object PolaroidAlbums {
         }
         edits.forEach {edit->when(edit) {
             is StickerEdit.PutCard->if(cards.add(edit.card.id)) {
-                val target=album(DEFAULT_POLAROID_ALBUM_ID);put(target.copy(cardIds=target.cardIds+edit.card.id))
+                val target=album(DEFAULT_POLAROID_ALBUM_ID);put(target.copy(cardIds=listOf(edit.card.id)+target.cardIds))
             }
             is StickerEdit.RemoveCards->{cards.removeAll(edit.ids.toSet());albums.replaceAll {it.copy(cardIds=it.cardIds.filterNot {id->id in edit.ids})}}
             is StickerEdit.OrderCards->albums.replaceAll {current->current.copy(cardIds=edit.ids.filter {it in current.cardIds})}
@@ -48,7 +48,7 @@ internal object PolaroidAlbums {
             is StickerEdit.MoveAlbumCards->{
                 ids(edit.cardIds,cards,"待移动的拍立得不存在");val target=album(edit.albumId)
                 val incoming=edit.cardIds.filterNot {it in target.cardIds}
-                albums.replaceAll {if(it.id==target.id)it.copy(cardIds=it.cardIds+incoming)
+                albums.replaceAll {if(it.id==target.id)it.copy(cardIds=incoming+it.cardIds)
                     else it.copy(cardIds=it.cardIds.filterNot {id->id in edit.cardIds})}
             }
             is StickerEdit.OrderAlbums->{

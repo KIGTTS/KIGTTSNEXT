@@ -4,11 +4,12 @@ import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class CardPreviewRequest(val cardId: String? = null, val version: Long = 0)
+data class CardPreviewRequest(val cardId: String? = null, val version: Long = 0, val openPreview: Boolean = true)
 
 /** Navigation requests are separate from the durable gallery and the main subtitle state. */
 class CardWorkspace(private val navigate: (Destination) -> Unit, private val showCards: () -> Unit,
-    private val albums: () -> List<PolaroidAlbum> = { emptyList() }, private val cardExists: (String) -> Boolean = { false }) {
+    private val albums: () -> List<PolaroidAlbum> = { emptyList() }, private val cardExists: (String) -> Boolean = { false },
+    private val cardEditable: (String) -> Boolean = { true }) {
     private val requested = MutableStateFlow(CardPreviewRequest()); val previewRequest = requested.asStateFlow()
     private val album = MutableStateFlow(DEFAULT_POLAROID_ALBUM_ID); val selectedAlbum = album.asStateFlow()
     fun selectAlbum(id: String) {
@@ -16,6 +17,13 @@ class CardWorkspace(private val navigate: (Destination) -> Unit, private val sho
     }
     fun previewHandled(version: Long) {
         requested.value.takeIf { it.version == version }?.let { requested.value = it.copy(cardId = null) }
+    }
+    /** Focus an already visible global preview's album without navigating or opening a second window. */
+    fun focusCard(id: String, openPreview: Boolean = false): Boolean {
+        if (!cardExists(id)) return false
+        albums().firstOrNull { id in it.cardIds }?.let { selectAlbum(it.id) }
+        requested.value = CardPreviewRequest(id, requested.value.version + 1, openPreview)
+        return true
     }
     fun open(target: StickerUiTarget, id: String?): Boolean {
         when (target) {
@@ -29,7 +37,11 @@ class CardWorkspace(private val navigate: (Destination) -> Unit, private val sho
                     else requested.value.copy(cardId = null)
             }
             StickerUiTarget.LIBRARY -> navigate(Destination.StickerLibrary(id))
-            StickerUiTarget.EDIT_CARD -> navigate(Destination.CardEditor(id ?: return false))
+            StickerUiTarget.EDIT_CARD -> {
+                val card=id ?: return false
+                if(!cardExists(card)||!cardEditable(card))return false
+                navigate(Destination.CardEditor(card))
+            }
             StickerUiTarget.REVIEW -> navigate(Destination.StickerReview(id ?: return false))
         }
         return true

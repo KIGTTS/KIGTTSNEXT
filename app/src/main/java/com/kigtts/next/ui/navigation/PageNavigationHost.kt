@@ -44,7 +44,12 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                 remember(pull, entry) { CameraPagePose(pull, entry.cameraRequestId != null) } else null
             PageMotion(entry, role, active, if (foreground) progress else 0f, edge,
                 if (entry == navigation.wanted.getOrNull(navigation.wanted.lastIndex - 1)) progress else 0f,
-                { navigation.retention.retire(entry) }, vertical = entry == camera || entry == parent,
+                {
+                    navigation.retention.retire(entry)
+                    // Covered pages remain wanted. Only a truly retired visit loses its draft/ACK
+                    // registry; reopening the same plugin page must not replay an old save return.
+                    if(latestNavigation.value.wanted.none {it.identity==entry.identity})holder.removeState(entry.identity)
+                }, vertical = entry == camera || entry == parent,
                 cameraPose = cameraPose) {
                 holder.SaveableStateProvider(entry.identity) {
                     when (val scene = entry.scene) {

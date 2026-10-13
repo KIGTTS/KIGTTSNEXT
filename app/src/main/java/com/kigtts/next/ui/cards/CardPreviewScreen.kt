@@ -18,6 +18,7 @@ import kotlinx.coroutines.*
 fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId: String, openEditor: (String) -> Unit,
     message: (String) -> Unit, onQuickImage: (String, String) -> Unit = { _, _ -> }) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
+    val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val saved = catalog.cards.firstOrNull { it.id == cardId }
     if (saved == null) { androidx.compose.material3.Text("这张拍立得已移除", Modifier.padding(24.dp)); return }
@@ -30,11 +31,11 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
         { callback.value(it) }, { id, title -> quick.value(id, title) }) }
     val active = LocalPageActive.current; val enabled = active && !busy && !actions.busy
     RegisterPageLoading(busy || actions.busy)
-    RegisterPageActions(listOf(
-        ToolbarAction("edit-card-preview", "编辑拍立得", Icons.Default.Edit, enabled, click = { openEditor(cardId) }),
-        ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { actions.share(saved) }),
-        ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
-            click = { actions.cardAction(saved, CardMenuAction.QUICK) })))
+    RegisterPageActions(buildList {
+        if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑拍立得", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
+        add(ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { actions.share(saved) }))
+        add(ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
+            click = { actions.cardAction(saved, CardMenuAction.QUICK) })) })
     fun finishPhoto() {
         if (busy) return
         val candidate = view
@@ -54,8 +55,9 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     BoxWithConstraints(Modifier.fillMaxSize().padding(18.dp), contentAlignment = Alignment.Center) {
         val frame = frames.firstOrNull { it.id == view.frameStyleId }
         val width = minOf(maxWidth, maxHeight * polaroidFormat(view, frame).geometry.aspectRatio.toFloat(), 520.dp).coerceAtLeast(1.dp)
-        PolaroidCanvas(view, stickers::imageFile, Modifier.width(width), photoEditable = enabled,
+        PolaroidCanvas(view, stickers::imageFile, Modifier.width(width), photoEditable = enabled && cardId !in readOnly,
             onPhotoChange = { view = it }, onPhotoEnd = ::finishPhoto,
             frame = frame)
     }
+    if (active) CardQuickExportDialog(actions)
 }

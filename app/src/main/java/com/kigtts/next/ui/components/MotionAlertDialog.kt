@@ -27,6 +27,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 
 private data class DialogActions(val isClosing: () -> Boolean, val close: (() -> Unit) -> Unit)
@@ -48,7 +49,9 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
     fun close(action: () -> Unit) {
         if (closing) return
         closing = true; keyboard?.hide()
-        scope.launch { state.animateTo(false); action() }
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try { state.animateTo(false) } finally { action() }
+        }
     }
     LaunchedEffect(Unit) { if (!opened) { opened = true; withFrameNanos { }; state.animateTo(true) } }
     val reveal by transition.animateFloat({ DialogMotion.compact(targetState) }, label = "alert-size") { if (it) 1f else 0f }

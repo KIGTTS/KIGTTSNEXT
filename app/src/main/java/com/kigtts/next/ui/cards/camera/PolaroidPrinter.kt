@@ -16,12 +16,17 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.R
 import com.kigtts.next.state.CardPrintRequest
+import com.kigtts.next.state.CardPrintOrigin
 import com.kigtts.next.ui.cards.PolaroidCanvas
 import com.kigtts.next.ui.cards.cardImageDecodeSize
 import com.kigtts.next.ui.cards.polaroidFormat
@@ -35,14 +40,17 @@ import java.io.File
 /** A physical paper feed: only the paper's position changes, with no repeated photo layout or decoding. */
 @Composable
 internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> File?,
-    frame: PolaroidFrameStyle?, active: Boolean, finished: () -> Boolean) {
+    frame: PolaroidFrameStyle?, active: Boolean, finished: () -> Boolean,
+    previewHandoff: ((CardPrintOrigin) -> Boolean)? = null) {
     var savedHousing by rememberSaveable(request.requestId) { mutableFloatStateOf(0f) }
     var savedFeed by rememberSaveable(request.requestId) { mutableFloatStateOf(0f) }
     var delivered by rememberSaveable(request.requestId) { mutableStateOf(false) }
     val housing = remember(request.requestId) { Animatable(savedHousing) }
     val feed = remember(request.requestId) { Animatable(savedFeed) }
     val complete = rememberUpdatedState(finished)
+    val handoff = rememberUpdatedState(previewHandoff)
     val live = rememberUpdatedState(active)
+    var paperCoordinates by remember(request.requestId) { mutableStateOf<LayoutCoordinates?>(null) }
     val colors = MaterialTheme.colorScheme
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).testTag("polaroid-printer")) {
         val density = LocalDensity.current
@@ -50,7 +58,7 @@ internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> F
         val bottom = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
         val slot = inset + 100.dp
         val ratio = polaroidFormat(request.card, frame).geometry.aspectRatio.toFloat()
-        val height = (maxHeight - slot - bottom - 36.dp).coerceAtLeast(1.dp)
+        val height = (maxHeight - slot - bottom - 24.dp).coerceAtLeast(1.dp)
         val width = minOf(maxWidth * .78f, height * ratio, 460.dp).coerceAtLeast(1.dp)
         val paperHeight = width / ratio
         val decoded = rememberCardImage(request.card.imageId?.let(imageFile),
@@ -66,7 +74,15 @@ internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> F
             delay(160)
             while (!delivered) {
                 snapshotFlow { live.value }.first { it }
-                if (complete.value()) delivered = true
+                val prepared = handoff.value?.let { prepare ->
+                    paperCoordinates?.takeIf { it.isAttached }?.let { coordinates ->
+                        val bounds = coordinates.boundsInWindow()
+                        val viewport = coordinates.findRootCoordinates().size
+                        prepare(CardPrintOrigin(bounds.left, bounds.top, bounds.width, bounds.height,
+                            viewport.width.toFloat(), viewport.height.toFloat()))
+                    } ?: false
+                } ?: complete.value()
+                if (prepared) delivered = true
                 else withFrameNanos { }
             }
         }
@@ -76,7 +92,7 @@ internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> F
             PolaroidCanvas(request.card, imageFile, Modifier.align(Alignment.TopCenter)
                 .offset(y = slot - paperHeight).width(width).graphicsLayer {
                     translationY = (paperHeight + 16.dp).toPx() * feed.value
-                }.testTag("printer-paper"), frame = frame)
+                }.onGloballyPositioned { paperCoordinates = it }.testTag("printer-paper"), frame = frame)
         }
         Surface(Modifier.fillMaxWidth().height(slot + 8.dp).graphicsLayer {
             translationY = -(slot + 8.dp).toPx() * (1f - housing.value)
@@ -92,7 +108,5 @@ internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> F
                     .testTag("printer-slot"))
             }
         }
-        Text("正在打印", Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 8.dp),
-            style = MaterialTheme.typography.labelLarge, color = colors.onSurfaceVariant)
     }
 }

@@ -24,7 +24,8 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
         awaitEachGesture {
             val first = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             val candidate = latest.value() ?: return@awaitEachGesture
-            if (!state.acceptingGesture || state.blocked || state.excludedStart(first.position) || !cameraPullSafeStart(first.position.x, first.position.y,
+            val entry = candidate.mode == CameraPullMode.ENTER && state.entryStart(first.position)
+            if (!state.acceptingGesture || state.blocked || state.excludedStart(first.position) || !entry && !cameraPullSafeStart(first.position.x, first.position.y,
                     size.width.toFloat(), size.height.toFloat(), density)) return@awaitEachGesture
             val nativeViewfinder = candidate.mode == CameraPullMode.EXIT && state.nativeViewfinderStart(first.position)
             val paused = state.pauseSettlement()
@@ -33,7 +34,8 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
             var dx = 0f; var dy = 0f
             try {
                 do {
-                    val event = awaitPointerEvent(PointerEventPass.Main)
+                    // A registered heading claims at slop before the app bar's native collapse drag.
+                    val event = awaitPointerEvent(if (entry) PointerEventPass.Initial else PointerEventPass.Main)
                     val change = event.changes.firstOrNull { it.id == first.id } ?: break
                     if (event.changes.count { it.pressed } > 1) { cancelled = true; break }
                     velocity.addPosition(change.uptimeMillis, change.position)
@@ -41,7 +43,7 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
                     if (!claimed) {
                         // Only an explicitly registered Android viewfinder may yield native consumption;
                         // exposure/zoom controls and every other native slider keep their gesture.
-                        if (!nativeViewfinder && change.isConsumed && (delta.x != 0f || delta.y != 0f)) break
+                        if (!entry && !nativeViewfinder && change.isConsumed && (delta.x != 0f || delta.y != 0f)) break
                         dx += delta.x; dy += delta.y
                         if (abs(dx) > viewConfiguration.touchSlop && abs(dx) > abs(dy)) break
                         val directed = if (candidate.mode == CameraPullMode.ENTER) dy else -dy

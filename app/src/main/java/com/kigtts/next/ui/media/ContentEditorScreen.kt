@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
+import com.kigtts.next.ui.components.SaveChangesDialog
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -21,8 +22,12 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.RegisterPageActions
+import com.kigtts.next.ui.navigation.RegisterPageBackGuard
+import com.kigtts.next.ui.navigation.RegisterPageLoading
 import com.kigtts.next.ui.navigation.ToolbarAction
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import com.kigtts.next.text.*
 import com.kigtts.next.ui.components.richTextMenu
 import com.kigtts.next.ui.components.textMenuAnchor
@@ -34,6 +39,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 fun ContentEditorScreen(model: AppViewModel, token: String) {
     val draft by model.content.editorDraft.collectAsStateWithLifecycle()
     val pending by model.content.discardRequested.collectAsStateWithLifecycle()
+    val savePending by model.content.editorSavePending.collectAsStateWithLifecycle()
+    val saveCompleted by model.content.editorSaveCompleted.collectAsStateWithLifecycle()
     val active = LocalPageActive.current
     val entry = draft?.takeIf { it.token == token } ?: return
     if(entry.html) { com.kigtts.next.ui.media.code.HtmlCodeEditorScreen(model,entry,pending);return }
@@ -41,7 +48,8 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     val value = editor.value.text
     var title by rememberSaveable(token) { mutableStateOf(entry.currentTitle) }
     var search by remember { mutableStateOf(false) }
-    var saving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
+    var localSaving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
+    val saving = localSaving || savePending
     val scope = rememberCoroutineScope()
     fun change(text: String) {
         if (text == value) return
@@ -51,13 +59,22 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     LaunchedEffect(editor.value, editor.formats, title) { model.content.editEditor(value, title, editor.formats, editor.value.selection.end) }
     val transform = remember(editor.formats) { RichTextVisualTransformation(editor.formats) }
     val menu = Modifier.richTextMenu(active&&!saving, { editor.value.selection }, editor.formats, editor::format)
-    RegisterPageActions(listOf(
-        ToolbarAction("save-content","保存内容",Icons.Default.Save,!saving) {
-            scope.launch { saving=true;try {
+    fun saveDraft() {
+        if (!active || saving) return
+        localSaving = true; error = null
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
                 model.content.editEditor(editor.value.text,title,editor.formats,editor.value.selection.end)
                 model.content.saveEditor(editor.value.text,title)
-            } catch(e:Exception) { error=e.message ?: "保存失败" } finally { saving=false } }
-        },
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (failure: Exception) { error = failure.message ?: "保存失败，请重试" }
+            finally { localSaving = false }
+        }
+    }
+    RegisterPageLoading(saving)
+    RegisterPageBackGuard(active && saving) { }
+    RegisterPageActions(listOf(
+        ToolbarAction("save-content","保存内容",Icons.Default.Save,active&&!saving) { saveDraft() },
         ToolbarAction("find-content","查找替换",Icons.Default.FindReplace) { search=true }
     ))
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -71,9 +88,10 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
                 .textMenuAnchor { editor.change(editor.value.copy(selection=TextRange(editor.value.selection.end))) },
             enabled=active&&!saving, label = { Text("文本内容") }, textStyle = MaterialTheme.typography.bodyLarge, visualTransformation=transform)
     }
-    if (active && pending) MotionAlertDialog(onDismissRequest = model.content::keepEditor, title = { Text("放弃未保存的修改？") },
-        confirmButton = { MotionTextButton(dialogFeedbackClick(model.content::discardEditor)) { Text("放弃") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick(model.content::keepEditor)) { Text("继续编辑") } })
+    if (active && pending) SaveChangesDialog(
+        save = { _ -> saveDraft() },
+        discard = model.content::discardEditor, keepEditing = model.content::keepEditor,
+        busy = saving, error = error, completed = if (saveCompleted) ({ model.content.cleanupEditorSave(token) }) else null)
     if (active && search) {
         var find by remember { mutableStateOf("") }; var replacement by remember { mutableStateOf("") }
         MotionAlertDialog(onDismissRequest = { search = false }, title = { Text("查找替换") }, text = { Column {

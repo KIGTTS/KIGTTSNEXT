@@ -1,71 +1,101 @@
-@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-
 package com.kigtts.next.ui.sketch
 
-import com.kigtts.next.ui.components.feedbackClick
-
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.focusable
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.FitScreen
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.kigtts.next.ui.components.MotionAlertDialog
-import com.kigtts.next.ui.components.dialogFeedbackClick
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.focus.*
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.input.key.*
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.*
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.navigation.*
+import kotlinx.coroutines.*
 
-@Composable
-fun SketchScreen(state: SketchState, shareRequest: Int, shareConsumed: () -> Unit, message: (String) -> Unit) {
-    val context = LocalContext.current
-    val density = LocalDensity.current.density
+@Composable fun SketchScreen(state: SketchState, shareRequest: Int, shareConsumed: () -> Unit, message: (String) -> Unit) {
+    val context = LocalContext.current; val scope = rememberCoroutineScope()
+    val repository = remember(context.applicationContext) { SketchAlbumRepository(context.applicationContext) }
     val background = MaterialTheme.colorScheme.surfaceContainerLowest
-    var canvasSize by remember { mutableStateOf(IntSize(1, 1)) }
-    val input = remember(state) { SketchInput(state) }
-    DisposableEffect(input) { onDispose { input.release() } }
-    val focus = remember { FocusRequester() }
-    var clear by remember { mutableStateOf(false) }
-    fun export(share: Boolean) {
-        runCatching { exportSketch(context, state.strokes.toList(), background.toArgb(), share, canvasSize) }
-            .onSuccess { if (!share) message("画板已保存到应用内") }.onFailure { message("无法导出画板") }
-    }
-    LaunchedEffect(shareRequest) { if (shareRequest > 0) { export(true); shareConsumed() } }
-    Surface(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), shape = MaterialTheme.shapes.large, color = background) {
-        Box {
-            Canvas(Modifier.fillMaxSize().padding(bottom = 80.dp).testTag("sketch-canvas")
-                .onSizeChanged { canvasSize = it }.clipToBounds()
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                .focusRequester(focus).onFocusChanged { if (!it.hasFocus) input.keyboardEraser(false) }
-                .onKeyEvent { event ->
-                    if (event.key == Key.E) { input.keyboardEraser(event.type == KeyEventType.KeyDown); true } else false
-                }.focusable().pointerInteropFilter { event ->
-                    if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) focus.requestFocus()
-                    input.process(event, canvasSize, density)
-                }) {
-                state.strokes.forEach { stroke ->
-                    drawPath(strokePath(stroke, size.width, size.height).asComposePath(),
-                        color = if (stroke.erase) Color.Black else Color(stroke.color),
-                        alpha = stroke.alpha, blendMode = if (stroke.erase) BlendMode.Clear else BlendMode.SrcOver)
-                }
-            }
-            if (state.strokes.none { !it.erase }) Icon(Icons.Default.Draw, null,
-                Modifier.align(Alignment.Center).size(30.dp), tint = MaterialTheme.colorScheme.primary)
-            SketchToolbar(state, { export(false) }, { clear = true },
-                Modifier.align(Alignment.BottomCenter).padding(16.dp))
+    val active = LocalPageActive.current; val chrome = LocalSketchChrome.current
+    var ready by remember { mutableStateOf(state.documentSize.width > 0) }
+    var busy by remember { mutableStateOf(false) }
+    var clear by rememberSaveable { mutableStateOf(false) }
+    var album by rememberSaveable { mutableStateOf(false) }
+    var opening by rememberSaveable { mutableStateOf<String?>(null) }
+    val enabled = active && ready && !busy
+    SideEffect { chrome?.drawing = !album }
+    DisposableEffect(chrome) { onDispose { chrome?.drawing = true } }
+    LaunchedEffect(state, repository) {
+        if (!ready) {
+            try { withContext(Dispatchers.IO) { repository.loadDraft() }?.let(state::restore) }
+            catch (failure: Exception) { if (failure is CancellationException) throw failure; message("无法恢复上次画板，已打开空白画板") }
+            ready = true
         }
     }
-    if (clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
-        text = { Text("当前笔画将被移除。已保存的图片不受影响。") },
-        confirmButton = { TextButton(onClick = dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },
-        dismissButton = { TextButton(onClick = dialogFeedbackClick { clear = false }) { Text("取消") } })
+    LaunchedEffect(state.revision, ready) {
+        if (ready && state.documentSize.width > 0) SketchDraftWriter.submit(repository, state.document())
+    }
+    DisposableEffect(state, repository) { onDispose {
+        if (state.documentSize.width > 0) SketchDraftWriter.submit(repository, state.document())
+    } }
+    fun work(operation: suspend () -> Unit) {
+        if (!enabled) return
+        busy = true
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try { operation() }
+            catch (failure: Exception) { if (failure is CancellationException) throw failure; message(failure.message ?: "操作未完成，请重试") }
+            finally { busy = false }
+        }
+    }
+    val save = rememberSketchSavePermission({ val drawing = state.document(); work {
+        withContext(Dispatchers.IO) { repository.save(drawing) }; message("已保存到作品相册和系统相册")
+    } }, message)
+    fun share() { val drawing = state.document(); work {
+        val file = withContext(Dispatchers.IO) { exportSketch(context, drawing.strokes, drawing.background.toInt(), false,
+            IntSize(drawing.width, drawing.height)) }
+        shareSketchFile(context, file)
+    } }
+    LaunchedEffect(shareRequest, ready) { if (ready && shareRequest > 0) { share(); shareConsumed() } }
+    fun openWork(id: String) { work {
+        val drawing = withContext(Dispatchers.IO) { repository.load(id) }
+        state.restore(drawing); album = false; opening = null
+    } }
+    RegisterPageLoading(busy || !ready)
+    RegisterPageActions(listOf(
+        ToolbarAction("sketch-album-open", "画板作品", Icons.Default.Collections, enabled, preserveColorWhenLocked = busy, click = { album = true }),
+        ToolbarAction("sketch-reset-view", "恢复画布视图", Icons.Default.FitScreen, enabled, click = state::resetViewport)))
+    RegisterPageBackGuard(active && (busy || album)) { if (!busy) album = false }
+    PredictiveBackHandler(active && (busy || album) && opening == null && !clear) { progress ->
+        try { progress.collect { }; if (!busy) album = false } catch (_: CancellationException) { }
+    }
+    if (album) SketchGalleryScreen(repository, { id ->
+        if (state.strokes.any { !it.erase }) opening = id else openWork(id)
+    }, { album = false }, message)
+    else BoxWithConstraints(Modifier.fillMaxSize().background(background).testTag("sketch-workspace")) {
+        val landscape = maxWidth > maxHeight
+        SketchCanvas(state, enabled, ready, background.toArgb().toLong() and 0xFFFFFFFFL)
+        SketchToolbar(state, save, { clear = true },
+            Modifier.align(if (landscape) Alignment.CenterEnd else Alignment.BottomCenter)
+                .padding(if (landscape) PaddingValues(end = 12.dp) else PaddingValues(bottom = 16.dp))
+                .testTag(if (landscape) "sketch-toolbar-vertical" else "sketch-toolbar-horizontal")
+                .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent(PointerEventPass.Final).changes.forEach { it.consume() } } },
+            vertical = landscape, enabled = enabled)
+    }
+    if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
+        text = { Text("当前笔画将被移除。已保存的作品不受影响。") },
+        confirmButton = { MotionTextButton(dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { clear = false }) { Text("取消") } })
+    if (active && opening != null) MotionAlertDialog(onDismissRequest = { opening = null }, title = { Text("打开这幅作品？") },
+        text = { Text("当前未保存的笔画将被替换。") },
+        confirmButton = { MotionTextButton(dialogFeedbackClick { opening?.let(::openWork) }, enabled = !busy) { Text("打开") } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { opening = null }, enabled = !busy) { Text("取消") } })
 }

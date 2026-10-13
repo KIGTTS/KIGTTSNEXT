@@ -37,6 +37,7 @@ class CardCaptureAlbumTest {
             waitForSave(state, source)
             assertEquals(1, cards.cardsInAlbum(selected.id).size); assertTrue(cards.cardsInAlbum(other.id).isEmpty())
             val saved = cards.cardsInAlbum(selected.id).single()
+            assertEquals("", saved.title)
             assertEquals(saved.originalImageId, saved.imageId); assertEquals("instax.mini.classic", saved.frameStyleId)
         } finally { scope.cancel(); source.delete() }
     }

@@ -5,7 +5,7 @@ import com.kigtts.plugin.api.*
 internal object StickerEdits {
     private val idPattern=Regex("[a-zA-Z0-9][a-zA-Z0-9._-]{0,95}")
     private fun id(value:String) {stickerRequire(value.matches(idPattern),message="标识不合法")}
-    private fun name(value:String,max:Int=128) {stickerRequire(value.isNotBlank()&&value.length<=max&&!value.contains('\u0000'),message="名称不合法")}
+    private fun name(value:String,max:Int=128,allowEmpty:Boolean=false) {stickerRequire((allowEmpty||value.isNotBlank())&&value.length<=max&&!value.contains('\u0000'),message="名称不合法")}
     fun validate(value:StickerSnapshot) {
         PolaroidAlbums.validate(value)
         stickerRequire(value.revision>=0&&value.libraries.size in 1..128&&value.items.size<=2048&&value.images.size<=4096&&value.cards.size<=256,StickerError.TOO_LARGE,"内容数量超出上限")
@@ -15,7 +15,7 @@ internal object StickerEdits {
         val libraries=value.libraries.map {it.id}.toSet();val images=value.images.map {it.id}.toSet()
         value.images.forEach {stickerRequire(it.mime.startsWith("image/")&&it.bytes in 1..StickerImages.MAX_BYTES&&it.width in 1..32768&&it.height in 1..32768&&it.width.toLong()*it.height<=80_000_000,message="图片信息不合法")}
         value.items.forEach {name(it.name);stickerRequire(it.libraryId in libraries&&it.imageId in images,message="贴纸的图库或图片不存在")}
-        value.cards.forEach {card->name(card.title);stickerRequire(card.description.length<=8192&&card.layers.size<=64&&card.frameColor in 0..0xFFFFFFFFL,message="拍立得内容过大或颜色不合法")
+        value.cards.forEach {card->name(card.title,allowEmpty=true);stickerRequire(card.description.length<=8192&&card.layers.size<=64&&card.frameColor in 0..0xFFFFFFFFL,message="拍立得内容过大或颜色不合法")
             stickerRequire(card.photoX.isFinite()&&card.photoY.isFinite()&&card.photoZoom.isFinite()&&card.photoX in 0.0..1.0&&card.photoY in 0.0..1.0&&card.photoZoom in 1.0..8.0,message="照片构图位置或缩放不合法")
             stickerRequire(card.frameStyleId.matches(Regex("[a-z][a-z0-9.-]{1,95}"))&&!card.frameStyleId.contains(".."),message="边框标识不合法")
             stickerRequire(card.imageId==null||card.imageId in images,message="拍立得图片不存在")
@@ -35,7 +35,7 @@ internal object StickerEdits {
         edits.forEach {edit->when(edit) {
             is StickerEdit.PutLibrary->put(libraries,edit.library) {it.id}
             is StickerEdit.PutItem->put(items,edit.item) {it.id}
-            is StickerEdit.PutCard->put(cards,edit.card) {it.id}
+            is StickerEdit.PutCard->{val index=cards.indexOfFirst {it.id==edit.card.id};if(index<0)cards.add(0,edit.card) else cards[index]=edit.card}
             is StickerEdit.PutFrameStyle,is StickerEdit.RemoveFrameStyles,is StickerEdit.PutAlbum,is StickerEdit.RemoveAlbums,
             is StickerEdit.MoveAlbumCards,is StickerEdit.OrderAlbums,is StickerEdit.OrderAlbumCards->Unit
             is StickerEdit.RemoveItems->{existing(edit.ids,items.map {it.id});items.removeAll {it.id in edit.ids}}

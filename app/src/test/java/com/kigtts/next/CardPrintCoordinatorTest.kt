@@ -24,19 +24,19 @@ import java.util.UUID
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk=[35])
 class CardPrintCoordinatorTest {
-    private class Fixture {
+    internal class Fixture {
         val app=ApplicationProvider.getApplicationContext<Application>()
         val paths=PluginPaths(app)
         val stickers=StickerRepository(app,paths,MediaRepository(app,paths))
         val cards=CardRepository(app,stickers)
         val state=MutableStateFlow(AppState(destination=Destination.Cards))
         val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
-        val printed=mutableListOf<String>();val messages=mutableListOf<String>();var backs=0
+        val printed=mutableListOf<String>();val previewed=mutableListOf<String>();val messages=mutableListOf<String>();var backs=0
         var selected=CardRepository.DEFAULT_ALBUM
         val coordinator=CardCaptureCoordinator(cards,stickers,scope,{state.value},
             {state.value=state.value.copy(destination=it)},
             {backs++;state.value=state.value.copy(destination=Destination.Cards)},
-            {messages+=it},selectedAlbum={selected},onPrintedCard={printed+=it})
+            {messages+=it},selectedAlbum={selected},onPrintedCard={printed+=it},onPreviewedCard={previewed+=it})
         fun photo():File {
             val file=File(app.cacheDir,"print-${UUID.randomUUID()}.jpg")
             val bitmap=Bitmap.createBitmap(46,62,Bitmap.Config.ARGB_8888).apply {eraseColor(Color.BLUE)}
@@ -60,6 +60,7 @@ class CardPrintCoordinatorTest {
             f.coordinator.open();val scene=f.state.value.destination as Destination.CardCamera
             f.coordinator.captured(scene,source,source,PolaroidFormat.MINI,print=true)
             val request=f.waitForPrint(source)
+            assertEquals("",request.card.title)
             assertEquals(scene.requestId,request.requestId);assertEquals(scene,f.state.value.destination);assertEquals(0,f.backs)
             assertEquals(before+1,f.cards.cards.value.size);assertEquals(request.card.id,f.cards.cardsInAlbum(album.id).single().id);f.assertSaved(request.card)
             val duplicate=f.photo();f.coordinator.captured(scene,duplicate,duplicate,PolaroidFormat.MINI,print=true)

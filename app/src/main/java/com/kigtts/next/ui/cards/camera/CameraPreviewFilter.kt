@@ -12,7 +12,10 @@ internal class CameraPreviewFilter(initial: FloatArray) {
     var start = 0f
     var end = 0f
     fun values(): FloatArray {
-        val phase = if (end <= start) 1f else ((clock.value - start) / (end - start)).coerceIn(0f, 1f)
+        // Observe the clock even before the first transition, so a retained collector
+        // is notified when a later selection starts animating.
+        val now = clock.value
+        val phase = if (end <= start) 1f else ((now - start) / (end - start)).coerceIn(0f, 1f)
         return FloatArray(20) { from[it] + (target[it] - from[it]) * phase }
     }
     fun matrix() = ColorMatrix(values())

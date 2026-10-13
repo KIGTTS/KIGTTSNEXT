@@ -54,6 +54,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
                             StickerReply.Media(repository.publishQuickMedia(command.imageId))}
                         is StickerCommand.OpenUi->{if(command.target==StickerUiTarget.REVIEW)owned(owner,requireNotNull(command.id))
                             if(command.target==StickerUiTarget.EDIT_CARD||command.target==StickerUiTarget.CARDS&&command.id!=null)stickerRequire(repository.cards.value.any {it.id==command.id},StickerError.NOT_FOUND,"拍立得不存在")
+                            if(command.target==StickerUiTarget.EDIT_CARD)stickerRequire(!repository.isCardReadOnly(requireNotNull(command.id)),StickerError.PERMISSION_DENIED,"接收的照片只能查看和分享，不能编辑")
                             if(command.target==StickerUiTarget.LIBRARY&&command.id!=null)stickerRequire(repository.libraries.value.any {it.id==command.id},StickerError.NOT_FOUND,"图库不存在")
                             stickerRequire(withContext(Dispatchers.Main) {openUi(command.target,command.id)},StickerError.HOST_UNAVAILABLE,"请先打开 KIGTTS")
                             StickerReply.UiOpened(command.target)}
@@ -105,7 +106,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         val deleted=before.libraries.count {old->after.libraries.none {it.id==old.id}}+before.items.count {old->after.items.none {it.id==old.id}}+
             before.cards.count {old->after.cards.none {it.id==old.id}}+before.images.count {old->after.images.none {it.id==old.id}}+
             repository.frameStyles.value.count {old->frames.none {it.id==old.id}}+before.albums.count {old->after.albums.none {it.id==old.id}}
-        val titles=command.edits.mapNotNull {when(it) {is StickerEdit.PutCard->it.card.title;is StickerEdit.PutItem->it.item.name;is StickerEdit.PutLibrary->it.library.name;
+        val titles=command.edits.mapNotNull {when(it) {is StickerEdit.PutCard->it.card.title.ifBlank {"未命名拍立得"};is StickerEdit.PutItem->it.item.name;is StickerEdit.PutLibrary->it.library.name;
             is StickerEdit.PutFrameStyle->it.style.name;is StickerEdit.RemoveFrameStyles->"移除边框："+repository.frameStyles.value.filter {style->style.id in it.ids}.joinToString {style->style.name}
             is StickerEdit.PutAlbum->"相册："+it.name
             is StickerEdit.RemoveAlbums->"删除相册（照片将保留）："+before.albums.filter {album->album.id in it.ids}.joinToString {album->album.name}

@@ -13,11 +13,13 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     private var showLevel by mutableStateOf(preferences.getBoolean("level", true))
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
+    private var motionEnabled by mutableStateOf(preferences.getBoolean("motion", false))
     private var selectedStrength by mutableFloatStateOf(preferences.getFloat("filter-strength", 1f).takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f)
     val grid get() = selectedGrid
     val level get() = showLevel
     val flash get() = selectedFlash
-    val processing get() = selectedProcessing
+    val processing get() = if (motionEnabled) CameraProcessing.STANDARD else selectedProcessing
+    val motion get() = motionEnabled
     val filterStrength get() = selectedStrength
     var timerSeconds by mutableIntStateOf(preferences.getInt("timer", 0).takeIf { it in TIMERS } ?: 0); private set
     var settingsVisible by mutableStateOf(false); private set
@@ -28,6 +30,7 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     fun setLevel(value: Boolean) { showLevel = value; preferences.edit().putBoolean("level", value).apply() }
     fun setFlash(value: CameraFlash) { selectedFlash = value; preferences.edit().putString("flash", value.name).apply() }
     fun setProcessing(value: CameraProcessing) { selectedProcessing = value; preferences.edit().putString("processing", value.name).apply() }
+    fun setMotion(value: Boolean) { motionEnabled = value; preferences.edit().putBoolean("motion", value).apply() }
     fun setFilterStrength(value: Float) {
         if (!value.isFinite()) return
         selectedStrength = value.coerceIn(0f, 1f); preferences.edit().putFloat("filter-strength", selectedStrength).apply()

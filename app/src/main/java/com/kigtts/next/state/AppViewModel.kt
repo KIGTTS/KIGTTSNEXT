@@ -24,6 +24,7 @@ import com.kigtts.next.manager.HostPluginRuntime
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
+    val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
     val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures + builtinPlugins(application))
     val registry = pluginManager.registry
@@ -49,8 +50,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
+    val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)
     val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
-        { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } })
+        { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } }, { id -> !cards.isReadOnly(id) })
     val stickerPlugins = hostRuntime?.stickerPlugins ?: com.kigtts.next.plugins.stickers.StickerHost(stickers, pluginManager.paths,
         { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() })
     init { if (hostRuntime == null) pluginManager.stickerBrokerFactory = stickerPlugins::forPlugin }
@@ -66,7 +68,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
-        { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) })
+        { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
+        { id -> cardUi.focusCard(id, openPreview = false) }, saveMotion = { imageId, clip ->
+            cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix)
+        })
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
@@ -115,6 +120,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private fun update(transform: (AppState) -> AppState) {
         mutableState.update(transform)
         cardCapture.onDestinationChanged(state.value.destination)
+        content.onDestinationChanged(state.value.destination)
     }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
@@ -124,6 +130,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
         recognitionServiceId = selectedAsrId, locale = getApplication<Application>().resources.configuration.locales[0].toLanguageTag()) }
     fun navigate(destination: Destination) {
+        if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {
+            message("接收的照片只能查看和分享")
+            return
+        }
         if (destination is Destination.CardPreview) {
             cardUi.open(StickerUiTarget.CARDS, destination.cardId)
             return
@@ -165,7 +175,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun quickImageCard(mediaId: String, title: String) {
         editPhraseDetails(null, state.value.selectedCategory)
-        content.editPhrase { it.attach(QuickCardType.MEDIA, mediaId).copy(text = title) }
+        content.editPhrase { it.switchType(QuickCardType.MEDIA).attach(QuickCardType.MEDIA, mediaId).copy(text = title) }
     }
     fun closeSidePage() { update { it.copy(sidePage = null) } }
     fun closePanel() { update { it.copy(panel = null, quickTextEditing = false) } }

@@ -4,6 +4,7 @@ import android.content.Context
 import com.kigtts.next.media.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,15 +22,20 @@ data class ContentDraft(val token:String,val html:Boolean,val title:String,val i
 class ContentWorkspace(context:Context,val repository:MediaRepository,private val library:QuickTextLibrary,
     private val state:()->AppState,private val update:((AppState)->AppState)->Unit,private val navigate:(Destination)->Unit,
     private val back:()->Unit,private val setText:(String)->Unit,private val playAudio:(MediaEntry,Boolean)->Unit = { _,_ -> },
-    private val stopAudio:()->Unit = {}, private val autoRead:()->Unit = {}) {
+    private val stopAudio:()->Unit = {}, private val autoRead:()->Unit = {},
+    private val editorIo:CoroutineDispatcher=Dispatchers.IO) {
     private val history = ContentHistory()
     private val editorSnapshot=ContentEditorSnapshot(context)
-    private var savingEditor=false
+    private val editorCompletion=EditorSaveCompletion()
+    val editorSavePending=editorCompletion.pending;val editorSaveCompleted=editorCompletion.completed
+    private val phraseCompletion=EditorSaveCompletion()
+    val phraseSavePending=phraseCompletion.pending;val phraseSaveCompleted=phraseCompletion.completed
     private val preferences=context.getSharedPreferences("media-presentation",0)
     private val phraseState=MutableStateFlow<PhraseDraft?>(null);val phraseDraft=phraseState.asStateFlow()
     private val editorState=MutableStateFlow<ContentDraft?>(null);val editorDraft=editorState.asStateFlow()
     private val discardState=MutableStateFlow(false);val discardRequested=discardState.asStateFlow()
     fun editEditor(value:String,title:String,formats:List<TextFormatRun>?=null,selection:Int?=null) {
+        if(editorSavePending.value)return
         editorState.value=editorState.value?.let { it.copy(value=value,currentTitle=title,
             formats = formats ?: TextFormatting.rebase(it.formats,it.value,value), selection=selection ?: it.selection) }
     }
@@ -39,9 +45,9 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         if(editorState.value!=null)return false
         editorState.value=editorSnapshot.read(token) ?: return false;return true
     }
-    fun requestDiscard():Boolean { if(savingEditor)return true;if(editorState.value?.dirty!=true) { editorState.value=null;return false };discardState.value=true;return true }
-    fun keepEditor() { discardState.value=false }
-    fun discardEditor() { discardState.value=false;editorState.value=null;back() }
+    fun requestDiscard():Boolean { if(editorSavePending.value)return true;if(editorState.value?.dirty!=true) { discardState.value=false;editorState.value=null;return false };discardState.value=true;return true }
+    fun keepEditor() { if(!editorSavePending.value)discardState.value=false }
+    fun discardEditor() { if(editorSavePending.value)return;discardState.value=false;editorState.value=null;back() }
     fun show(entry:MediaEntry,autoPlay:Boolean=true,audioMode:MediaAudioMode?=null) {
         if(entry.kind!=MediaKind.AUDIO)history.push(state())
         showCurrent(entry,autoPlay,audioMode)
@@ -86,13 +92,14 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         }
     }
     fun beginPhrase(phrase:QuickPhrase?,category:String) {
+        if(phraseSavePending.value)return
         val type = phrase?.cardType(repository.get(phrase.mediaId)?.kind) ?: QuickCardType.TEXT
         phraseState.value=PhraseDraft(UUID.randomUUID().toString(),phrase?.id,phrase?.text.orEmpty(),phrase?.title.orEmpty(),phrase?.category ?: category,phrase?.mediaId,
             type,phrase?.colorMode ?: CardColorMode.DEFAULT,phrase?.color ?: 0xFF00696E,true,phrase?.formats.orEmpty(),
             mapOf(type to phrase?.mediaId),phrase?.autoPlay ?: true,phrase?.audioMode,phrase?.metadata.orEmpty())
     }
-    fun editPhrase(change:(PhraseDraft)->PhraseDraft) { phraseState.value=phraseState.value?.let(change) }
-    fun cancelPhrase() { phraseState.value=null }
+    fun editPhrase(change:(PhraseDraft)->PhraseDraft) { if(!phraseSavePending.value)phraseState.value=phraseState.value?.let(change) }
+    fun cancelPhrase() { if(!phraseSavePending.value)phraseState.value=null }
     fun savedPhraseDraft(): String? = phraseState.value?.let(PhraseDraftState::write)
     fun restorePhraseDraft(value: String): Boolean {
         if(phraseState.value!=null)return false
@@ -112,10 +119,53 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         }
         editPhrase { it.attach(type, entry.id) }
     }
-    fun savePhrase() { phraseState.value?.let { draft ->
-        if (draft.valid(repository)) library.savePhrase(QuickPhrase(draft.text,draft.category,draft.phraseId ?: UUID.randomUUID().toString(),draft.title,
+    fun savePhrase():Boolean {
+        if(phraseSavePending.value)return false
+        val draft=phraseState.value ?: return false
+        return persistPhrase(draft,false)
+    }
+    private fun persistPhrase(draft:PhraseDraft,retain:Boolean):Boolean {
+        if(!draft.valid(repository))return false
+        val id=draft.phraseId ?: UUID.randomUUID().toString()
+        val saved=library.savePhrase(QuickPhrase(draft.text,draft.category,id,draft.title,
             if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay,draft.audioMode,draft.metadata))
-    };phraseState.value=null }
+        if(saved)phraseState.value=if(retain)draft.copy(phraseId=id) else null
+        return saved
+    }
+    fun savePhraseForExit(animated:Boolean):Boolean {
+        val draft=phraseState.value ?: return false
+        if(!phraseCompletion.begin(draft.key))return false
+        try {
+            if(!persistPhrase(draft,true)) {phraseCompletion.clear(draft.key);return false}
+            phraseCompletion.acknowledge(draft.key,animated)
+            if(!animated)cleanupPhraseSave(draft.key)
+            return true
+        } catch(failure:Exception) {phraseCompletion.clear(draft.key);throw failure}
+    }
+    fun cleanupPhraseSave(token:String):Boolean {
+        if(!phraseCompletion.ready(token)||(state().destination as? Destination.PhraseEditor)?.token!=token)return false
+        phraseCompletion.clear(token);if(phraseState.value?.key==token)phraseState.value=null
+        back();return true
+    }
+    fun cleanupEditorSave(token:String):Boolean {
+        if(!editorCompletion.ready(token)||(state().destination as? Destination.ContentEditor)?.token!=token)return false
+        editorCompletion.clear(token);discardState.value=false;if(editorState.value?.token==token)editorState.value=null
+        back();return true
+    }
+    /** Covered editors keep accepted saves; actual pop abandons UI completion without undoing saved data. */
+    fun onDestinationChanged(destination:Destination) {
+        val owners=state().navigationStack+destination
+        editorCompletion.token?.let {token->
+            if(owners.none {(it as? Destination.ContentEditor)?.token==token}) {
+                editorCompletion.clear(token);discardState.value=false;if(editorState.value?.token==token)editorState.value=null
+            } else if(editorCompletion.ready(token)&&!editorCompletion.animated)cleanupEditorSave(token)
+        }
+        phraseCompletion.token?.let {token->
+            if(owners.none {(it as? Destination.PhraseEditor)?.token==token}) {
+                phraseCompletion.clear(token);if(phraseState.value?.key==token)phraseState.value=null
+            } else if(phraseCompletion.ready(token)&&!phraseCompletion.animated)cleanupPhraseSave(token)
+        }
+    }
     fun picker(target:String="display")=navigate(Destination.MediaLibrary(target))
     suspend fun htmlFiles(target:String="display",selectedMedia:String?=null) {
         val selected=selectedMedia ?: if(target.startsWith("phrase:"))phraseState.value?.mediaId else state().mediaId
@@ -124,8 +174,10 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         navigate(Destination.HtmlFiles(entry.id,target))
     }
     suspend fun editorFile(id:String,path:String,target:String) {
+        if(editorSavePending.value)return
         val text=withContext(Dispatchers.IO) { repository.htmlFiles.read(id,path) }
         val token=UUID.randomUUID().toString()
+        discardState.value=false
         editorState.value=ContentDraft(token,true,path.substringAfterLast('/'),text,target,id,filePath=path)
         navigate(Destination.ContentEditor(token))
     }
@@ -134,30 +186,34 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         back()
     }
     fun editor(html:Boolean=false,target:String="display",selectedMedia:String?=null) {
+        if(editorSavePending.value)return
         val draft=phraseState.value;val media=repository.get(selectedMedia ?: if(target.startsWith("phrase:"))draft?.mediaId else state().mediaId)
         val initial=if(html) { if(media?.kind==MediaKind.HTML) repository.file(media)?.takeIf { it.length()<=2*1024*1024 }?.readText().orEmpty()
             else "<!doctype html>\n<html lang=\"zh\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><body><h1>你好</h1></body></html>" }
             else if(target.startsWith("phrase:"))draft?.text.orEmpty() else state().editorText
         val formats=if(html)emptyList() else if(target.startsWith("phrase:"))draft?.formats.orEmpty() else state().subtitleFormats
-        val key=UUID.randomUUID().toString();editorState.value=ContentDraft(key,html,media?.name ?: if(html)"HTML" else "文本",initial,target,media?.id,formats=formats)
+        val key=UUID.randomUUID().toString();discardState.value=false;editorState.value=ContentDraft(key,html,media?.name ?: if(html)"HTML" else "文本",initial,target,media?.id,formats=formats)
         navigate(Destination.ContentEditor(key))
     }
-    suspend fun saveEditor(value:String,title:String) {
-        if(savingEditor)return
+    suspend fun saveEditor(value:String,title:String,afterSaved:((cleanup:()->Unit)->Unit)?=null) {
         val draft=editorState.value ?: return
-        savingEditor=true
+        if(!editorCompletion.begin(draft.token))return
         try {
         if(draft.html) {
-            if(draft.filePath!=null) withContext(Dispatchers.IO) { repository.htmlFiles.write(requireNotNull(draft.mediaId),draft.filePath,value) }
-            else { val entry=withContext(Dispatchers.IO) { repository.html(title,value,draft.mediaId?.takeIf { repository.get(it)?.kind==MediaKind.HTML&&repository.get(it)?.pluginId==null }) }
+            if(draft.filePath!=null) withContext(editorIo) { repository.htmlFiles.write(requireNotNull(draft.mediaId),draft.filePath,value) }
+            else { val entry=withContext(editorIo) { repository.html(title,value,draft.mediaId?.takeIf { repository.get(it)?.kind==MediaKind.HTML&&repository.get(it)?.pluginId==null }) }
                 if(draft.target.startsWith("phrase:"))editPhrase { it.attach(QuickCardType.PAGE,entry.id) } else show(entry) }
         } else {
             val formats=TextFormatting.rebase(draft.formats,draft.value,value)
             if(draft.target.startsWith("phrase:"))editPhrase { it.copy(text=value,richText=true,formats=formats) }
             else { setText(value);update { it.copy(subtitleFormats=formats) } }
         }
-        editorState.value=null;savingEditor=false;back()
-        } finally { savingEditor=false }
+        // Retain the form and its confirmation window until a successful exit animation completes.
+        val animated=discardState.value||afterSaved!=null
+        if(!editorCompletion.acknowledge(draft.token,animated))return
+        val cleanup:()->Unit={cleanupEditorSave(draft.token);Unit}
+        if(afterSaved!=null)afterSaved(cleanup) else if(!animated)cleanup()
+        } catch(failure:Exception) {editorCompletion.clear(draft.token);throw failure}
     }
     suspend fun present(owner:String,content:SubtitleContent) {
         if(content is SubtitleContent.Text) { setText(content.text);return }

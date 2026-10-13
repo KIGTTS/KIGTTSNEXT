@@ -49,21 +49,26 @@ class PhraseEditorNavigationTest {
         assertEquals(Destination.Home, model.state.value.destination); assertNull(model.content.phraseDraft.value)
         assertTrue(model.state.value.quickTextEditing); assertEquals(before, source.getUnclippedBoundsInRoot())
     }
-    @Test fun predictiveBackHasFixedDirectionAndCancellationKeepsTheDraft() {
+    @Test fun predictiveBackCancellationKeepsTheDirtyDraftUntilExplicitDiscard() {
         val model = show()
         compose.onNodeWithTag("edit-phrase-" + model.phrases.value.first().id).performClick()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("保留草稿")
+        // The native input action returns before its StateFlow/guard recomposes. Settle entry
+        // and register the dirty editor's handler before pausing the clock for gesture sampling.
+        compose.waitForIdle()
         val dispatcher = compose.activity.onBackPressedDispatcher; val page = layer(model)
+        assertEquals(0f,page.getUnclippedBoundsInRoot().left.value,.1f)
         compose.mainClock.autoAdvance = false
         compose.runOnIdle {
             dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 100f, 0f, BackEventCompat.EDGE_RIGHT))
             dispatcher.dispatchOnBackProgressed(BackEventCompat(120f, 100f, .65f, BackEventCompat.EDGE_RIGHT))
         }
-        step(64); assertTrue(page.getUnclippedBoundsInRoot().left.value > 0f)
+        step(64); assertEquals(0f, page.getUnclippedBoundsInRoot().left.value, .1f)
         compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }; step(800)
         assertEquals(0f, page.getUnclippedBoundsInRoot().left.value, .1f)
         assertEquals("保留草稿", model.content.phraseDraft.value!!.text)
         compose.runOnIdle { dispatcher.onBackPressed() }; step(1000)
+        compose.onNodeWithTag("save-changes-discard").performClick(); step(1000)
         assertNull(model.content.phraseDraft.value); assertTrue(model.state.value.quickTextEditing)
         compose.mainClock.autoAdvance = true
     }
@@ -71,6 +76,7 @@ class PhraseEditorNavigationTest {
         val model = show(); val item = model.phrases.value.first(); val card = compose.onNodeWithTag("edit-phrase-" + item.id)
         card.performClick(); compose.onNodeWithTag("phrase-detail-text").performTextReplacement("取消的文字")
         compose.onNodeWithTag("cancel-phrase-details").performClick(); compose.waitForIdle()
+        compose.onNodeWithTag("save-changes-discard").performClick(); compose.waitForIdle()
         assertEquals(item.text, model.phrases.value.first { it.id == item.id }.text)
         card.performClick(); compose.onNodeWithTag("phrase-detail-text").performTextReplacement("保存的文字")
         compose.onNodeWithTag("save-phrase-details").performClick(); compose.waitForIdle()

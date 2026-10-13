@@ -1,9 +1,6 @@
 package com.kigtts.next.ui.cards.camera
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.ColorMatrixColorFilter
-import android.graphics.Paint
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
@@ -29,7 +26,7 @@ internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidForma
     LaunchedEffect(format, view) {
         if (last == format) return@LaunchedEffect
         last = format
-        motion.snapshot = cameraPreviewSnapshot(view, filter, strength) ?: motion.snapshot
+        motion.snapshot = cameraPreviewSnapshot(view) ?: motion.snapshot
         changed.value(true)
         try {
             coroutineScope {
@@ -46,7 +43,7 @@ internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidForma
     return motion
 }
 
-private fun cameraPreviewSnapshot(view: PreviewView, filter: PhotoFilter, strength: Float): Bitmap? {
+internal fun cameraPreviewSnapshot(view: PreviewView): Bitmap? {
     val original = try { view.bitmap } catch (_: Exception) { null } catch (_: OutOfMemoryError) { null } ?: return null
     var small: Bitmap? = null
     var retained: Bitmap? = null
@@ -54,11 +51,9 @@ private fun cameraPreviewSnapshot(view: PreviewView, filter: PhotoFilter, streng
         val scale = minOf(1f, 384f / maxOf(original.width, original.height).coerceAtLeast(1))
         small = Bitmap.createScaledBitmap(original, (original.width * scale).roundToInt().coerceAtLeast(1),
             (original.height * scale).roundToInt().coerceAtLeast(1), true)
-        if (filter == PhotoFilter.ORIGINAL || strength <= 0f) { retained = small; return small }
-        val tinted = Bitmap.createBitmap(small.width, small.height, Bitmap.Config.ARGB_8888)
-        Canvas(tinted).drawBitmap(small, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(PhotoFilters.matrix(filter, strength)) })
-        retained = tinted
-        return tinted
+        // The CameraX preview buffer already contains the filter. Keep that frame unchanged.
+        retained = small
+        return small
     } catch (_: Exception) { return null } catch (_: OutOfMemoryError) { return null }
     finally {
         if (small !== retained) small?.recycle()

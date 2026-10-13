@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -24,7 +25,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     filter: PhotoFilter, enabled: Boolean, vertical: Boolean, filtersExpanded: Boolean,
     cycleFormat: () -> Unit, openSettings: () -> Unit, toggleFilters: () -> Unit, selectFilter: (PhotoFilter) -> Unit,
     flash: CameraFlash = CameraFlash.OFF, flashAvailable: Boolean = false, cycleFlash: () -> Unit = {},
-    strength: Float = 1f, changeStrength: (Float) -> Unit = {}) {
+    strength: Float = 1f, changeStrength: (Float) -> Unit = {}, layout: CameraChromeLayout? = null,
+    showSettings: Boolean = true) {
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
@@ -45,7 +47,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
                 CameraFlash.ON -> Icons.Default.FlashOn
             }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
         }
-        ToolButton("相机设置", Icons.Default.Tune, openSettings,
+        if (showSettings) ToolButton("相机设置", Icons.Default.Tune, openSettings,
             Modifier.testTag("camera-settings"), size = 44.dp,
             shapes = shape, colors = colors, enabled = enabled)
         ToolButton(if (filtersExpanded) "收起滤镜" else "滤镜", Icons.Default.PhotoFilter, toggleFilters,
@@ -53,10 +55,16 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
     }
-    if (vertical) Column(Modifier.align(Alignment.CenterStart).width(56.dp).fillMaxHeight().padding(vertical = 6.dp).excludeCameraPull(),
+    val strip = (if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.controls)
+        else if (vertical) Modifier.align(Alignment.CenterStart).width(56.dp).fillMaxHeight()
+        else Modifier.align(Alignment.TopCenter).height(56.dp).fillMaxWidth())
+        .testTag("camera-switch-strip").excludeCameraPull()
+    if (vertical) Column(strip.padding(vertical = 6.dp),
         verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) { items() }
-    else Row(Modifier.align(Alignment.TopCenter).height(56.dp).fillMaxWidth().padding(horizontal = 6.dp).excludeCameraPull(),
+    else Row(strip.padding(horizontal = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { items() }
+    Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
+        else Modifier.matchParentSize()) {
     AnimatedVisibility(filtersExpanded,
         modifier = if (vertical) Modifier.align(Alignment.CenterEnd).widthIn(max = 104.dp).fillMaxHeight()
             else Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
@@ -65,5 +73,6 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
         Surface(color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .92f), shape = MaterialTheme.shapes.large) {
             CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength)
         }
+    }
     }
 }

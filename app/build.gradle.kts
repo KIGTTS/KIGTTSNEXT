@@ -91,10 +91,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-effect:1.11.1")
+    implementation("androidx.media3:media3-transformer:1.11.1")
     implementation("androidx.webkit:webkit:1.16.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     val cameraX = "1.6.2"
     implementation("androidx.camera:camera-core:$cameraX")
+    implementation("androidx.camera:camera-video:$cameraX")
     implementation("androidx.camera:camera-camera2:$cameraX")
     implementation("androidx.camera:camera-lifecycle:$cameraX")
     implementation("androidx.camera:camera-view:$cameraX")

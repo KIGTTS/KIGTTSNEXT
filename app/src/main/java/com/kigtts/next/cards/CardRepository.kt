@@ -27,6 +27,21 @@ class CardRepository(private val context:Context,val stickers:StickerRepository)
         stickers.apply(listOf(StickerEdit.PutCard(card)));card
     }
     fun remove(id:String) {stickers.apply(listOf(StickerEdit.RemoveCards(listOf(id))))}
+    fun removeCards(ids:List<String>) {stickers.apply(listOf(StickerEdit.RemoveCards(ids)))}
+    fun createdAt(id:String):Long=stickers.cardCreatedAt(id)
+    fun isReadOnly(id:String):Boolean=stickers.isCardReadOnly(id)
+    /** Future native receive entry: design and immutable provenance are written in one transaction. */
+    fun receive(card:PolaroidCard,albumId:String=DEFAULT_ALBUM):PolaroidCard=synchronized(stickers) {
+        stickerRequire(cards.value.none {it.id==card.id},message="拍立得已存在")
+        val edits=listOf(StickerEdit.PutCard(card))+if(albumId==DEFAULT_ALBUM)emptyList() else listOf(StickerEdit.MoveAlbumCards(albumId,listOf(card.id)))
+        stickers.applyReceived(edits,setOf(card.id));card
+    }
+    fun copy(card:PolaroidCard):PolaroidCard=synchronized(stickers) {
+        val source=cards.value.firstOrNull {it.id==card.id} ?: throw StickerFault(StickerError.NOT_FOUND,"拍立得不存在")
+        val duplicate=source.copy(id=UUID.randomUUID().toString(),title=if(source.title.isBlank())"" else (source.title+" 副本").take(128))
+        val album=stickers.albums.value.firstOrNull {source.id in it.cardIds}?.id ?: DEFAULT_ALBUM
+        if(isReadOnly(source.id))receive(duplicate,album) else create(duplicate,album)
+    }
     fun createAlbum(name:String,id:String=UUID.randomUUID().toString()):PolaroidAlbum=synchronized(stickers) {
         stickerRequire(albums.value.none {it.id==id},message="相册已存在")
         stickers.apply(listOf(StickerEdit.PutAlbum(id,name.trim()))).albums.first {it.id==id}
@@ -36,6 +51,7 @@ class CardRepository(private val context:Context,val stickers:StickerRepository)
         stickers.apply(listOf(StickerEdit.PutAlbum(id,name.trim()))).albums.first {it.id==id}
     }
     fun removeAlbum(id:String) {stickers.apply(listOf(StickerEdit.RemoveAlbums(listOf(id))))}
+    fun removeAlbums(ids:List<String>) {stickers.apply(listOf(StickerEdit.RemoveAlbums(ids)))}
     fun moveCards(ids:List<String>,albumId:String) {stickers.apply(listOf(StickerEdit.MoveAlbumCards(albumId,ids)))}
     fun orderAlbums(ids:List<String>) {stickers.apply(listOf(StickerEdit.OrderAlbums(ids)))}
     fun orderCards(albumId:String,ids:List<String>) {stickers.apply(listOf(StickerEdit.OrderAlbumCards(albumId,ids)))}
@@ -48,7 +64,7 @@ class CardRepository(private val context:Context,val stickers:StickerRepository)
                 val id=UUID.nameUUIDFromBytes("legacy-card/$index/${old.title}/${old.description}".toByteArray(Charsets.UTF_8)).toString()
                 if(this@CardRepository.cards.value.any {it.id==id})null else {
                     val image=old.imageUri?.let {uri->runCatching {stickers.importImage(Uri.parse(uri)).id}.getOrNull()}
-                    PolaroidCard(id,old.title.ifBlank {"拍立得"}.take(128),old.description.take(8192),image,frameStyleId="classic")
+                    PolaroidCard(id,old.title.take(128),old.description.take(8192),image,frameStyleId="classic")
                 }
             }
             cards.chunked(100).forEach {batch->stickers.apply(batch.map {StickerEdit.PutCard(it)})}

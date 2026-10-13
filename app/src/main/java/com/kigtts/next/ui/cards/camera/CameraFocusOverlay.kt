@@ -1,31 +1,28 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material3.Icon
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.navigation.excludeCameraPull
+import kotlin.math.roundToInt
 
 /** The exposure control follows the focus point, while its entire touch target stays in the photo. */
 @Composable
@@ -44,7 +41,7 @@ internal fun CameraFocusOverlay(target: CameraFocusTarget?, index: Int, range: I
                     drawCircle(Color(0xFFF9E89A), radius = size.minDimension / 2 - 2.dp.toPx(), style = Stroke(2.dp.toPx()))
                 }
                 if (range.first < range.last && enabled) {
-                    val width = minOf(40.dp, maxWidth)
+                    val width = minOf(48.dp, maxWidth)
                     val height = minOf(132.dp, maxHeight).coerceAtLeast(1.dp)
                     val right = x + circle / 2 + 8.dp
                     val handleX = (if (right + width <= maxWidth) right else x - circle / 2 - width - 8.dp)
@@ -59,42 +56,31 @@ internal fun CameraFocusOverlay(target: CameraFocusTarget?, index: Int, range: I
 
 @Composable
 private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> Unit, modifier: Modifier) {
-    val latestIndex = rememberUpdatedState(index); val update = rememberUpdatedState(change)
+    val update = rememberUpdatedState(change)
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
-    var pressed by remember { mutableStateOf(false) }
-    val thickness by animateFloatAsState(if (pressed) 4f else 2f, label = "camera-exposure-track")
+    var last by remember(range) { mutableIntStateOf(index) }
+    SideEffect { last = index }
     fun commit(value: Int) {
-        if (value != latestIndex.value) {
+        if (value != last) {
+            last = value
             feedback.value.performHapticFeedback(HapticFeedbackType.SegmentTick)
             update.value(value)
         }
     }
-    Box(modifier.excludeCameraPull().background(Color.Black.copy(alpha = .22f), RoundedCornerShape(20.dp))
-        .testTag("camera-exposure").semantics {
-            contentDescription = "曝光补偿"
-            progressBarRangeInfo = ProgressBarRangeInfo(index.toFloat(), range.first.toFloat()..range.last.toFloat(), (range.last - range.first - 1).coerceAtLeast(0))
-            setProgress { commit(it.toInt().coerceIn(range)); true }
-        }.pointerInput(range) {
-            awaitEachGesture {
-                val down = awaitFirstDown(requireUnconsumed = false); down.consume()
-                pressed = true; feedback.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                val inset = 18.dp.toPx()
-                fun choose(y: Float) = commit(cameraExposureAt(y - inset, (size.height - 2 * inset).coerceAtLeast(1f), range))
-                choose(down.position.y)
-                try {
-                    do {
-                        val event = awaitPointerEvent()
-                        event.changes.firstOrNull { it.id == down.id && it.pressed }?.let { input -> choose(input.position.y); input.consume() }
-                    } while (event.changes.any { it.pressed })
-                } finally { pressed = false }
-            }
-        }) {
-        Canvas(Modifier.matchParentSize()) {
-            val top = 18.dp.toPx(); val bottom = size.height - top
-            val fraction = (index - range.first).toFloat() / (range.last - range.first).coerceAtLeast(1)
-            drawLine(Color.White.copy(alpha = .65f), Offset(size.width / 2, top), Offset(size.width / 2, bottom), thickness.dp.toPx())
-            drawCircle(Color(0xFFF9E89A), radius = 7.dp.toPx(), center = Offset(size.width / 2, bottom - (bottom - top) * fraction))
+    val source = remember { MutableInteractionSource() }
+    val state = rememberSliderState(index.toFloat(), steps = (range.last - range.first - 1).coerceAtLeast(0),
+        valueRange = range.first.toFloat()..range.last.toFloat())
+    state.value = index.toFloat()
+    state.onValueChange = { value ->
+        val selected = value.roundToInt().coerceIn(range)
+        state.value = selected.toFloat(); commit(selected)
+    }
+    Surface(modifier.excludeCameraPull(), shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {
+        Column(Modifier.fillMaxSize().padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.LightMode, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
+            VerticalSlider(state, Modifier.weight(1f).fillMaxWidth().cameraSliderPressFeedback().testTag("camera-exposure")
+                .semantics { contentDescription = "曝光补偿" }, reverseDirection = true, interactionSource = source)
         }
-        Icon(Icons.Default.LightMode, null, Modifier.align(Alignment.TopCenter).size(16.dp), tint = Color.White)
     }
 }

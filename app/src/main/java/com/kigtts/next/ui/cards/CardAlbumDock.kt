@@ -29,7 +29,8 @@ import java.io.File
 internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, photos: List<PolaroidCard>,
     focusedId: String?, imageFile: (String) -> File?, enabled: Boolean, landscape: Boolean,
     expanded: Boolean, expand: (Boolean) -> Unit, chooseAlbum: (String) -> Unit, choosePhoto: (PolaroidCard) -> Unit,
-    create: () -> Unit, rename: () -> Unit, remove: () -> Unit, modifier: Modifier = Modifier) {
+    create: () -> Unit, rename: () -> Unit, remove: () -> Unit, modifier: Modifier = Modifier,
+    manage: () -> Unit = {}, manageAlbum: (String) -> Unit = {}) {
     var menu by remember(selectedId) { mutableStateOf(false) }
     val albumScroll = rememberLazyListState(); val photoScroll = rememberLazyListState()
     val reveal = animateFloatAsState(if (expanded) 1f else 0f, tween(200), label = "card-album-reveal")
@@ -46,14 +47,15 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
     // Read the parent's available space before choosing the collapsed endpoint. Reading the
     // collapsed slot (54/60) here would incorrectly shrink the retained outgoing drawing layer.
     BoxWithConstraints(modifier) {
-      val fullWidth = if (landscape) minOf(224.dp, maxWidth).coerceAtLeast(1.dp) else maxWidth
+      val fullWidth = if (landscape) minOf(192.dp, maxWidth).coerceAtLeast(1.dp) else maxWidth
       val fullHeight = if (landscape) maxHeight else minOf(208.dp, maxHeight).coerceAtLeast(1.dp)
       val collapsedWidth = minOf(54.dp, fullWidth)
       val collapsedHeight = minOf(60.dp, fullHeight)
+      val shape = homeCardShape()
       Box(Modifier.then(if (landscape) Modifier.width(if (expanded) fullWidth else collapsedWidth).height(fullHeight)
           else Modifier.width(fullWidth).height(if (expanded) fullHeight else collapsedHeight)).testTag("card-album-dock")) {
-      Box(Modifier.cardDockGeometry(fullWidth, fullHeight, landscape, reveal, MaterialTheme.shapes.large)) {
-       Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer, shape = MaterialTheme.shapes.large) {
+      Box(Modifier.cardDockGeometry(fullWidth, fullHeight, landscape, reveal, shape)) {
+       Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer, shape = shape) {
         Column(Modifier.padding(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth().height(48.dp).zIndex(1f).graphicsLayer {
                 translationX = if (landscape) (fullWidth - collapsedWidth).toPx() * (1f - reveal.value) else 0f
@@ -63,19 +65,23 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
                 ToolButton(if (expanded) "收起相册" else "展开相册",
                     if (landscape) { if (expanded) Icons.Default.ChevronRight else Icons.Default.ChevronLeft }
                     else { if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp },
-                    { expand(!expanded) }, Modifier.testTag("toggle-card-albums"), size = 40.dp,
-                    shapes = IconButtonDefaults.shapes(RoundedCornerShape(20.dp), RoundedCornerShape(10.dp)), enabled = enabled)
-                Text(selected?.name ?: "相册", Modifier.weight(1f).padding(horizontal = 8.dp)
-                    .graphicsLayer { alpha = if (landscape) reveal.value else 1f },
+                    { expand(!expanded) }, Modifier.width(32.dp).testTag("toggle-card-albums"), size = 32.dp,
+                    shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)), enabled = enabled)
+                if (landscape) Spacer(Modifier.weight(1f))
+                else Text(selected?.name ?: "相册", Modifier.weight(1f).padding(horizontal = 8.dp),
                     maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
                 ToolButton("新建相册", Icons.Default.CreateNewFolder, create,
-                    Modifier.testTag("create-card-album").graphicsLayer { alpha = if (landscape) reveal.value else 1f },
-                    size = 36.dp, enabled = enabled && (!landscape || expanded))
+                    Modifier.width(32.dp).testTag("create-card-album").graphicsLayer { alpha = if (landscape) reveal.value else 1f },
+                    size = 32.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)),
+                    enabled = enabled && (!landscape || expanded))
                 Box {
                     ToolButton("相册操作", Icons.Default.MoreVert, { menu = true },
-                        Modifier.graphicsLayer { alpha = if (landscape) reveal.value else 1f }, size = 36.dp,
+                        Modifier.width(32.dp).testTag("card-album-menu").graphicsLayer { alpha = if (landscape) reveal.value else 1f }, size = 32.dp,
+                        shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)),
                         enabled = enabled && selected != null && (!landscape || expanded))
                     DropdownMenu(menu && enabled, { menu = false }) {
+                        DropdownMenuItem({ Text("整理相册") }, feedbackClick { menu = false; manage() },
+                            leadingIcon = { Icon(Icons.Default.Sort, null) })
                         DropdownMenuItem({ Text("重命名") }, feedbackClick { menu = false; rename() },
                             leadingIcon = { Icon(Icons.Default.Edit, null) })
                         if (selectedId != com.kigtts.next.cards.CardRepository.DEFAULT_ALBUM)
@@ -92,7 +98,8 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
                     translationY = if (landscape) 0f else (1f - reveal.value) * 18.dp.toPx()
                 }, enter = fadeIn(tween(160)), exit = fadeOut(tween(140))) {
                 CardAlbumRails(albums, selectedId, photos, focusedId, imageFile, railsEnabled, landscape,
-                    albumScroll, photoScroll, chooseAlbum, choosePhoto, temporarilyLocked = enabled && !railsEnabled)
+                    albumScroll, photoScroll, chooseAlbum, choosePhoto, temporarilyLocked = enabled && !railsEnabled,
+                    manageAlbum = manageAlbum)
             }
         }
        }

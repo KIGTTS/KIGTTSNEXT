@@ -12,13 +12,26 @@ import kotlin.math.roundToInt
 
 /** Shared export geometry: overlays are positioned against the complete paper canvas. */
 internal object PolaroidRenderer {
-    fun export(repository:StickerRepository,card:PolaroidCard):File=try {render(repository,card)}
+    fun export(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions()):File=try {render(repository,card,options)}
         catch(_:OutOfMemoryError) {throw StickerFault(StickerError.TOO_LARGE,"设备内存不足，请稍后重试导出")}
-    private fun render(repository:StickerRepository,card:PolaroidCard):File {
+    private fun render(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions):File {
+        val result=renderBitmap(repository,card,options)
+        try {
+            val suffix=if(options.includeFrame&&options.includeStickers) "" else "-${options.includeFrame}-${options.includeStickers}"
+            val output=File(repository.root,"exports/${card.id}$suffix.png").apply {parentFile!!.mkdirs()}
+            val stage=File(output.parentFile,".${card.id}-${java.util.UUID.randomUUID()}.tmp")
+            try {stage.outputStream().use {stickerRequire(result.compress(Bitmap.CompressFormat.PNG,100,it),message="拍立得导出失败")}
+                java.nio.file.Files.move(stage.toPath(),output.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);return output
+            } finally {stage.delete()}
+        } finally {result.recycle()}
+    }
+    /** A transparent photo window is reused as a single immutable overlay by the GPU movie renderer. */
+    fun renderBitmap(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions(),
+        transparentPhoto:Boolean=false,maximumHeight:Int=1500):Bitmap {
         val frame=repository.frameStyle(card);val geometry=frame.format.geometry
         val branding=polaroidBranding(card,frame)
         val captionWidth=branding?.captionWidth ?: geometry.titleWidth
-        val height=1500;val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
+        val height=maximumHeight.coerceIn(128,1500);val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
         val result=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         try {
         val paperColor=polaroidPaperColor(card,frame).toInt()
@@ -28,14 +41,17 @@ internal object PolaroidRenderer {
         val radius=(frame.photoCornerRadius*width).toFloat()
         val photoPath=Path().apply {addRoundRect(imageArea,radius,radius,Path.Direction.CW)}
         canvas.save();canvas.clipPath(photoPath)
-        canvas.drawColor(0xFFB0B0B0.toInt())
-        card.imageId?.let {id->decode(repository,id)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}};canvas.restore()
-        if(frame.borderWidth>0&&frame.borderColor!=null) {
+        if(transparentPhoto)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
+            canvas.drawColor(0xFFB0B0B0.toInt())
+            card.imageId?.let {id->decode(repository,id)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}}
+        };canvas.restore()
+        if(options.includeFrame&&frame.borderWidth>0&&frame.borderColor!=null) {
             val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
             canvas.drawPath(photoPath,line)
         }
-        frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
+        if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
+        if(options.includeFrame) {
         drawText(canvas,card.title,(geometry.titleX*unit).toFloat(),(geometry.titleY*unit).toFloat(),
             (captionWidth*unit).roundToInt(),(geometry.titleSize*unit).toFloat(),if(dark)Color.WHITE else 0xFF202020.toInt(),true)
         drawText(canvas,card.description,(geometry.titleX*unit).toFloat(),(geometry.descriptionY*unit).toFloat(),
@@ -48,7 +64,8 @@ internal object PolaroidRenderer {
                 logo.draw(canvas)
             }
         }
-        card.layers.forEach {layer->
+        }
+        if(options.includeStickers)card.layers.forEach {layer->
             val x=(layer.x*width).toFloat();val y=(layer.y*height).toFloat();val span=(layer.width*width).toFloat()
             canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)
             canvas.scale(if(layer.flipX)-1f else 1f,if(layer.flipY)-1f else 1f,x,y)
@@ -61,12 +78,13 @@ internal object PolaroidRenderer {
                     canvas.translate(x-width/2f,y-layout.height/2f);layout.draw(canvas)}
             };canvas.restore()
         }
-        val output=File(repository.root,"exports/${card.id}.png").apply {parentFile!!.mkdirs()}
-        val stage=File(output.parentFile,".${card.id}.tmp")
-        try {stage.outputStream().use {stickerRequire(result.compress(Bitmap.CompressFormat.PNG,100,it),message="拍立得导出失败")}
-            java.nio.file.Files.move(stage.toPath(),output.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);return output
-        } finally {stage.delete()}
-        } finally {result.recycle()}
+        if(options.includeFrame)return result
+        val left=imageArea.left.roundToInt().coerceIn(0,width-1);val top=imageArea.top.roundToInt().coerceIn(0,height-1)
+        val clipped=Bitmap.createBitmap(result,left,top,imageArea.width().roundToInt().coerceIn(1,width-left),
+            imageArea.height().roundToInt().coerceIn(1,height-top))
+        if(clipped!==result)result.recycle()
+        return clipped
+        } catch(failure:Throwable) {result.recycle();throw failure}
     }
     private fun decode(repository:StickerRepository,id:String):Bitmap?=repository.imageFile(id)?.let {file->
         val image=repository.images.value.firstOrNull {it.id==id} ?: return@let null

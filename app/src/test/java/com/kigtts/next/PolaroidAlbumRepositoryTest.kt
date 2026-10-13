@@ -53,9 +53,9 @@ class PolaroidAlbumRepositoryTest {
         assertEquals(listOf(third,second),cards.cardsInAlbum(travel.id))
         cards.moveCards(listOf(third.id),work.id);cards.moveCards(listOf(second.id),work.id)
         cards.moveCards(listOf(third.id),work.id)
-        assertEquals(listOf(third,second),cards.cardsInAlbum(work.id));assertTrue(cards.cardsInAlbum(travel.id).isEmpty())
+        assertEquals(listOf(second,third),cards.cardsInAlbum(work.id));assertTrue(cards.cardsInAlbum(travel.id).isEmpty())
         cards.orderAlbums(listOf(work.id,CardRepository.DEFAULT_ALBUM,travel.id));cards.removeAlbum(work.id)
-        assertEquals(listOf(first,third,second),cards.cardsInAlbum(CardRepository.DEFAULT_ALBUM))
+        assertEquals(listOf(first,second,third),cards.cardsInAlbum(CardRepository.DEFAULT_ALBUM))
         assertEquals(listOf(CardRepository.DEFAULT_ALBUM,travel.id),cards.albums.value.map {it.id})
         assertEquals("旅途",cards.albums.value.last().name);assertEquals(3,repo.cards.value.size)
         val restored=StickerRepository(app,paths,media)
@@ -63,6 +63,7 @@ class PolaroidAlbumRepositoryTest {
     }
     @Test fun legacyCatalogWithoutAlbumsMigratesEveryPhotoOnceAndNextSavePersistsMembership() {
         val first=cards.create(PolaroidCard(title="旧一"));val second=cards.create(PolaroidCard(title="旧二"))
+        repo.apply(listOf(StickerEdit.OrderCards(listOf(first.id,second.id))))
         val file=File(repo.root,"catalog.json");val json=JSONObject(file.readText());val value=JSONObject(json.getString("snapshot"))
         value.remove("albums");json.put("snapshot",value.toString());file.writeText(json.toString())
         val restored=StickerRepository(app,paths,media);val migrated=CardRepository(app,restored)
@@ -93,7 +94,7 @@ class PolaroidAlbumRepositoryTest {
         repo.apply(listOf(StickerEdit.OrderCards(listOf(third.id,first.id,second.id))))
         assertEquals(listOf(third,updated),cards.cardsInAlbum(album.id))
         cards.remove(third.id);assertEquals(listOf(updated),cards.cardsInAlbum(album.id))
-        val fourth=cards.create(PolaroidCard(title="四"));assertEquals(listOf(first,fourth),cards.cardsInAlbum(CardRepository.DEFAULT_ALBUM))
+        val fourth=cards.create(PolaroidCard(title="四"));assertEquals(listOf(fourth,first),cards.cardsInAlbum(CardRepository.DEFAULT_ALBUM))
         val assigned=repo.albums.value.flatMap {it.cardIds};assertEquals(repo.cards.value.map {it.id}.toSet(),assigned.toSet());assertEquals(assigned.size,assigned.distinct().size)
     }
     @Test fun albumLimitRejectsTheEntireExtraBatchAndPreservesDurableCatalog() {

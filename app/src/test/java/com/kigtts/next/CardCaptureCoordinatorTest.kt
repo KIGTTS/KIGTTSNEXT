@@ -35,7 +35,7 @@ class CardCaptureCoordinatorTest {
         return file
     }
     @Test fun duplicateDeliveryDoesNotDeleteAnInFlightFileOrCreateTwoDesigns() = runBlocking {
-        val (cards, stickers) = repositories(); val before = cards.cards.value.size
+        val (cards, stickers) = repositories(); val beforeIds = cards.cards.value.map { it.id }.toSet(); val before = beforeIds.size
         val state = MutableStateFlow(AppState(destination = Destination.Cards))
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val coordinator = CardCaptureCoordinator(cards, stickers, scope, { state.value },
@@ -47,7 +47,8 @@ class CardCaptureCoordinatorTest {
             coordinator.captured(destination, source, source, PolaroidFormat.SQUARE)
             withTimeout(5_000) { while (state.value.destination != Destination.Cards || source.exists()) delay(10) }
             assertEquals(before + 1, cards.cards.value.size)
-            val saved = cards.cards.value.last()
+            val saved = cards.cards.value.single { it.id !in beforeIds }
+            assertEquals("", saved.title)
             assertEquals(saved.imageId, saved.originalImageId); assertEquals("instax.square.classic", saved.frameStyleId)
         } finally { scope.cancel(); source.delete() }
     }

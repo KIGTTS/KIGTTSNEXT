@@ -13,6 +13,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.cards.*
@@ -30,24 +32,33 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     cameraOriginalImageId: String? = null, cameraFrameStyleId: String? = null, cameraRequestVersion: Long = 0L) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
+    val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val persisted = catalog.cards.firstOrNull { it.id == cardId }
     if (persisted == null) { Text("这张拍立得已移除", Modifier.padding(24.dp)); return }
+    if (cardId in readOnly) {
+        Text("接收的照片只能查看和分享", Modifier.padding(24.dp))
+        return
+    }
     var draft by rememberSaveable(cardId, stateSaver = CardDraftSaver) { mutableStateOf(persisted) }
-    var baseline by remember(cardId) { mutableStateOf(persisted) }
+    var baseline by rememberSaveable(cardId, stateSaver = CardDraftSaver) { mutableStateOf(persisted) }
     var selectedId by rememberSaveable(cardId) { mutableStateOf<String?>(null) }
     var handledCameraVersion by rememberSaveable(cardId) { mutableLongStateOf(0L) }
     var mode by rememberSaveable(cardId) { mutableStateOf(CardEditorMode.CROP) }
-    var textDialog by rememberSaveable { mutableStateOf(false) }
+    var textEditing by rememberSaveable { mutableStateOf(false) }
     var qrDialog by rememberSaveable { mutableStateOf(false) }
     var qrPayload by rememberSaveable { mutableStateOf("") }
     var showStickers by rememberSaveable { mutableStateOf(false) }
     var paperColor by rememberSaveable { mutableStateOf(false) }
     var textColor by rememberSaveable { mutableStateOf(false) }
-    var discard by remember { mutableStateOf(false) }
+    var discard by rememberSaveable(cardId) { mutableStateOf(false) }
+    var savedReturn by rememberSaveable(cardId) { mutableStateOf(false) }
     var overlayImport by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     val active = LocalPageActive.current
+    val currentActive = rememberUpdatedState(active)
     val leave = LocalPageBackAction.current
     val dirty = draft != baseline
     val selected = draft.layers.firstOrNull { it.id == selectedId }
@@ -64,7 +75,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     fun work(operation: suspend () -> Unit) {
         if (busy) return
         busy = true
-        scope.launch {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try { operation() }
             catch (cancel: CancellationException) { throw cancel }
             catch (failure: Exception) { message(failure.message ?: "操作未完成，请重试") }
@@ -84,47 +95,51 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             else draft = draft.copy(imageId = image.id, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0)
         }
     }, message)
-    val enabled = active && !busy && !photo.processing
+    val enabled = active && !busy && !photo.processing && !savedReturn
     RegisterPageLoading(busy || photo.processing)
-    RegisterPageActions(listOf(ToolbarAction("save-card", "保存拍立得", Icons.Default.Save,
-        enabled && dirty && !conflict && draft.title.isNotBlank(), preserveColorWhenLocked = busy, click = {
-            val candidate = draft; val previous = baseline
-            work {
-                val saved = withContext(Dispatchers.IO) { synchronized(stickers) {
-                    check(cards.cards.value.firstOrNull { it.id == cardId } == previous) { "拍立得已在其它位置更新，请重新打开后保存" }
-                    cards.update(candidate.copy(title = candidate.title.trim()))
-                } }
-                baseline = saved; draft = saved; message("已保存拍立得"); leave?.invoke()
-            }
-        })))
-    RegisterPageBackGuard(active && dirty) { discard = true }
-    PredictiveBackHandler(active && dirty && !discard && !showStickers && !paperColor && !textColor && !textDialog && !qrDialog) { events ->
-        try { events.collect { }; discard = true } catch (_: CancellationException) { }
-    }
-    Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).testTag("card-editor"),
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
-        BoxWithConstraints(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) {
-            PolaroidCanvas(draft, stickers::imageFile, Modifier.width(minOf(maxWidth, 340.dp)),
-                if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
-                { selectedId = it }, ::updateLayer, photoEditable = enabled && mode == CardEditorMode.CROP,
-                onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId })
+    fun saveDraft() {
+        if (!enabled || !dirty || conflict) return
+        val candidate = draft; val previous = baseline
+        work {
+            val saved = withContext(Dispatchers.IO) { synchronized(stickers) {
+                check(cards.cards.value.firstOrNull { it.id == cardId } == previous) { "拍立得已在其它位置更新，请重新打开后保存" }
+                cards.update(candidate.copy(title = candidate.title.trim(),
+                    layers = candidate.layers.filterNot { it.kind == CardLayerKind.TEXT && it.text.isBlank() }))
+            } }
+            baseline = saved; draft = saved; savedReturn = true; message("已保存拍立得")
         }
+    }
+    LaunchedEffect(active, savedReturn, discard) {
+        if (active && savedReturn && !discard) { savedReturn = false; leave?.invoke() }
+    }
+    RegisterPageActions(listOf(ToolbarAction("save-card", "保存拍立得", Icons.Default.Save,
+        enabled && dirty && !conflict, preserveColorWhenLocked = busy, click = { saveDraft() })))
+    fun cancelAdjustment() { selectedId = null; textEditing = false; focus.clearFocus(); keyboard?.hide() }
+    fun backFromEditor() { if (selectedId != null || textEditing) cancelAdjustment() else discard = true }
+    RegisterPageBackGuard(active && (dirty || selectedId != null || textEditing || savedReturn || busy)) { if (!savedReturn && !busy) backFromEditor() }
+    PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !showStickers && !paperColor && !textColor && !qrDialog) { events ->
+        try { events.collect { }; if (!savedReturn && !busy) backFromEditor() } catch (_: CancellationException) { }
+    }
+    CardEditorPanelScaffold(polaroidFormat(draft, frames.firstOrNull { it.id == draft.frameStyleId }).geometry.aspectRatio.toFloat(),
+        enabled, textEditing, ::cancelAdjustment, preview = { paperModifier ->
+            PolaroidCanvas(draft, stickers::imageFile, paperModifier,
+                if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
+                { if (it == null) cancelAdjustment() else { selectedId = it; if (draft.layers.none { layer -> layer.id == it && layer.kind == CardLayerKind.TEXT }) textEditing = false } },
+                ::updateLayer, photoEditable = enabled && mode == CardEditorMode.CROP,
+                onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId })
+        }, tools = {
+        if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
         CardEditorFields(draft, enabled, { draft = it },
             camera = { overlayImport = false; openCamera() }, gallery = { overlayImport = false; photo.gallery() },
-            addText = { selectedId = null; textDialog = true }, addSticker = { showStickers = true },
+            addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { showStickers = true },
             addImage = { overlayImport = true; photo.gallery() }, addQrCode = { qrDialog = true }, frameColor = { paperColor = true },
-            selected = selected, editText = { textDialog = true }, layerColor = { textColor = true },
+            selected = selected, editText = { textEditing = true }, layerColor = { textColor = true },
             deleteLayer = { draft = draft.copy(layers = draft.layers.filterNot { it.id == selectedId }); selectedId = null },
             forwardLayer = { selected?.let { layer -> draft = draft.copy(layers = draft.layers.filterNot { it.id == layer.id } + layer) } },
-            mode = mode, selectMode = { mode = it }, frames = frames, openLibrary = openLibrary)
-    }
-    if (active && textDialog) CardNameDialog(if (selected?.kind == CardLayerKind.TEXT) "编辑文字" else "添加文字",
-        selected?.takeIf { it.kind == CardLayerKind.TEXT }?.text.orEmpty(), { textDialog = false }, { text ->
-            textDialog = false
-            if (selected?.kind == CardLayerKind.TEXT) updateLayer(selected.copy(text = text))
-            else addLayer(CardLayer(kind = CardLayerKind.TEXT, text = text, width = .07))
-        }, multiline = true, maximum = 2048)
+            mode = mode, selectMode = { mode = it; cancelAdjustment() }, frames = frames, openLibrary = openLibrary,
+            textEditing = textEditing, updateTextLayer = ::updateLayer,
+            finishText = { textEditing = false; focus.clearFocus(); keyboard?.hide() })
+    })
     if (active && qrDialog) CardNameDialog("添加二维码", qrPayload, { qrDialog = false }, { text ->
         qrDialog = false; qrPayload = text
         work {
@@ -141,7 +156,11 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     if (active && textColor && selected?.kind == CardLayerKind.TEXT) ColorPickerDialog(selected.color, { color ->
         updateLayer(selected.copy(color = color)); textColor = false
     }, { textColor = false }, title = "文字颜色")
-    if (active && discard) MotionAlertDialog(onDismissRequest = { discard = false }, title = { Text("放弃未保存的修改？") },
-        confirmButton = { MotionTextButton(dialogFeedbackClick { draft = baseline; discard = false; leave?.invoke() }) { Text("放弃") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { discard = false }) { Text("继续编辑") } })
+    if (active && discard) SaveChangesDialog({ _ -> saveDraft() },
+        { draft = baseline; discard = false; leave?.invoke() }, { discard = false },
+        canSave = enabled && dirty && !conflict, busy = busy || savedReturn,
+        error = if (conflict) "这张照片已更新，请重新打开。" else null,
+        completed = if (savedReturn) ({
+            if (currentActive.value && savedReturn) { savedReturn = false; discard = false; leave?.invoke() }
+        }) else null)
 }

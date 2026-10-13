@@ -6,6 +6,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.MutatorMutex
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.contextmenu.data.*
 import androidx.compose.foundation.text.contextmenu.provider.*
@@ -18,10 +20,16 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.*
 import com.kigtts.next.text.TextFormat
@@ -102,17 +110,39 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
     val safe = WindowInsets.safeDrawing
     val bottom = maxOf(safe.getBottom(density), WindowInsets.ime.getBottom(density))
     val margin = with(density) { 8.dp.roundToPx() }
+    val shadowInset = 18.dp
+    val menuShape = MaterialTheme.shapes.medium
+    val menuShadow = remember { Shadow(radius = 10.dp, color = Color.Black.copy(alpha = .2f), offset = DpOffset(0.dp, 3.dp)) }
+    val shadowPixels = with(density) { shadowInset.roundToPx() }
     val top = safe.getTop(density)
-    val availableWidth=with(density) { (LocalWindowInfo.current.containerSize.width-margin*3).coerceAtLeast(margin*6).toDp() }
+    val left = safe.getLeft(density,LocalLayoutDirection.current)
+    val right = safe.getRight(density,LocalLayoutDirection.current)
+    val availableWidth=with(density) { (LocalWindowInfo.current.containerSize.width-left-right-margin*2-shadowPixels*2).coerceAtLeast(1).toDp() }
     val lastItems=remember { arrayOf<List<TextContextMenuItem>>(emptyList()) }
     val components=if(session.visible)session.data.data().components.filterIsInstance<TextContextMenuItem>()
         .filter { it.key !is TextMenuAnchor&&!isReadAloudItem(it) }.also { lastItems[0]=it } else lastItems[0]
     // A field can move while the provider's full-window root stays still (scroll/app bar).
     // Reposition the native popup on actual geometry changes, not on every animation draw.
-    val position = remember(session.owner?.windowBounds,top,bottom,margin) { TextMenuPosition(::bounds,top,bottom,margin) }
+    val position = remember(session.owner?.windowBounds,top,bottom,margin,shadowPixels,left,right) {
+        TextMenuPosition(::bounds,top,bottom,margin,shadowPixels,left,right)
+    }
     Popup(position, onDismissRequest = dismiss, properties = PopupProperties(focusable = false)) {
-        Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh, shadowElevation = 6.dp,
-            modifier = Modifier.animateContentSize(tween(140)).graphicsLayer { alpha=reveal.value;scaleX=.92f+.08f*reveal.value;scaleY=.8f+.2f*reveal.value }.testTag("text-icon-menu")) {
+        // Both resize clipping and the alpha offscreen layer must include the shadow, not just the surface.
+        Box(Modifier.animateContentSize(tween(140)).graphicsLayer { alpha=reveal.value }
+            .testTag("text-icon-menu-window").pointerInput(session,shadowPixels) {
+                awaitEachGesture {
+                    val down=awaitFirstDown(requireUnconsumed=false,pass=PointerEventPass.Initial)
+                    if(down.position.x<shadowPixels||down.position.x>size.width-shadowPixels||
+                        down.position.y<shadowPixels||down.position.y>size.height-shadowPixels) {
+                        dismiss();down.consume()
+                    }
+                }
+            }.padding(shadowInset)) {
+        // Draw a cached native blur rather than an elevation-only RenderNode: popup fallback canvases
+        // also retain the real shadow, and the padded parent owns its clipping/opacity during transitions.
+        Surface(shape = menuShape, color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            modifier = Modifier.graphicsLayer { scaleX=.92f+.08f*reveal.value;scaleY=.8f+.2f*reveal.value }
+                .dropShadow(menuShape, menuShadow).testTag("text-icon-menu")) {
             FlowRow(Modifier.widthIn(max = availableWidth).padding(6.dp)
                 .graphicsLayer { scaleX=1f/(.92f+.08f*reveal.value);scaleY=1f/(.8f+.2f*reveal.value) },
                 horizontalArrangement = Arrangement.spacedBy(2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -128,6 +158,7 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
                     }
                 }
             }
+        }
         }
     }
 }

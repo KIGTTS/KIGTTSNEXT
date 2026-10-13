@@ -11,14 +11,15 @@ import java.util.UUID
 
 /** Produces an owned high-resolution photo, preserving its original JPEG until the host imports both copies. */
 internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCapture, front: Boolean,
-    format: PolaroidFormat, filter: PhotoFilter, message: (String) -> Unit, strength: Float = 1f): PolaroidCameraCapture {
+    format: PolaroidFormat, filter: PhotoFilter, message: (String) -> Unit, strength: Float = 1f,
+    exposureStarted: () -> Unit = {}): PolaroidCameraCapture {
     val directory = File(context.cacheDir, "polaroid-camera")
     val id = UUID.randomUUID().toString()
     val original = File(directory, "$id-original.jpg"); val processed = File(directory, "$id-filtered.jpg")
     val started = SystemClock.elapsedRealtime()
     try {
         directory.mkdirs()
-        capture.captureJpeg(context, original, front)
+        capture.captureJpeg(context, original, front, exposureStarted)
         val captured = SystemClock.elapsedRealtime()
         Log.d(CAMERA_LOG_TAG, "JPEG ready after ${captured - started}ms,bytes=${original.length()},resolution=${capture.resolutionInfo?.resolution}")
         val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(original, processed, filter, strength) } }

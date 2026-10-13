@@ -5,12 +5,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.CardPreviewDialog
@@ -89,5 +91,36 @@ class CardPreviewWindowUiTest {
         compose.waitForIdle()
         assertEquals(1, actions.dismisses)
         compose.onNodeWithTag("card-preview-window").assertDoesNotExist()
+    }
+
+    @Test fun anAcceptedEditSurvivesDisposalOfTheExitingWindowAndRunsOnlyOnce() {
+        val restoration = StateRestorationTester(compose)
+        val card = PolaroidCard(title = "窗口重建")
+        var visible by mutableStateOf(true)
+        var edits = 0
+        var compositionsDisposed = 0
+        restoration.setContent { KigttsTheme(ThemeSettings()) {
+            DisposableEffect(Unit) { onDispose { compositionsDisposed++ } }
+            if (visible) CardPreviewDialog(card, { null }, null, { visible = false },
+                { edits++; visible = false }, {}, {}, {}, {})
+        } }
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("edit-card-preview").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        compose.onNodeWithTag("edit-card-preview").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
+        assertEquals(0, edits)
+        // The restoration tester removes and re-adds content through two snapshot updates.
+        // A paused frame clock can conflate them and never dispose the original window.
+        compose.mainClock.autoAdvance = true
+        restoration.emulateSavedInstanceStateRestore()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { Snapshot.sendApplyNotifications() }
+        compose.mainClock.advanceTimeByFrame()
+        compose.waitForIdle()
+        assertEquals("The fixture must actually dispose the old composition", 1, compositionsDisposed)
+        assertEquals("An accepted edit must finish even if rotation cancels the exit animation", 1, edits)
+        compose.onNodeWithTag("card-preview-window").assertDoesNotExist()
+        compose.mainClock.advanceTimeBy(400); compose.waitForIdle()
+        assertEquals(1, edits)
+        compose.mainClock.autoAdvance = true
     }
 }

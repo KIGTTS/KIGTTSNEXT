@@ -5,22 +5,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 
-internal class CameraPullRegion(val control: Boolean, val active: State<Boolean>) {
+internal enum class CameraPullRegionKind { VIEWFINDER, CONTROL, ENTRY }
+internal class CameraPullRegion(val kind: CameraPullRegionKind, val active: State<Boolean>) {
     var coordinates: LayoutCoordinates? = null
 }
 
 /** Opt in only the native preview; Compose sliders and exposure controls are explicit exclusions. */
 @Composable
-internal fun Modifier.cameraPullViewfinder(): Modifier = cameraPullRegion(control = false)
+internal fun Modifier.cameraPullViewfinder(): Modifier = cameraPullRegion(CameraPullRegionKind.VIEWFINDER)
 
 @Composable
-internal fun Modifier.excludeCameraPull(): Modifier = cameraPullRegion(control = true)
+internal fun Modifier.excludeCameraPull(): Modifier = cameraPullRegion(CameraPullRegionKind.CONTROL)
 
 @Composable
-private fun Modifier.cameraPullRegion(control: Boolean): Modifier {
+internal fun Modifier.cameraPullEntryRegion(): Modifier = cameraPullRegion(CameraPullRegionKind.ENTRY)
+
+@Composable
+private fun Modifier.cameraPullRegion(kind: CameraPullRegionKind): Modifier {
     val host = LocalCameraPullState.current ?: return this
     val active = rememberUpdatedState(LocalPageActive.current)
-    val region = remember(host, control) { CameraPullRegion(control, active) }
+    val region = remember(host, kind) { CameraPullRegion(kind, active) }
     DisposableEffect(host, region) { host.addRegion(region); onDispose { host.removeRegion(region) } }
     return onGloballyPositioned { region.coordinates = it }
 }

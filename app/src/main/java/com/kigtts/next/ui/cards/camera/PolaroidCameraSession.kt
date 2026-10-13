@@ -14,6 +14,8 @@ import androidx.core.content.ContextCompat
 import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.*
 import android.view.View
+import java.io.File
+import java.util.UUID
 import kotlin.coroutines.resume
 
 /** Only this leaf's use cases are unbound; leaving/backgrounding cannot deliver a late capture. */
@@ -34,6 +36,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     var maxZoomRatio by mutableFloatStateOf(1f); private set
     var availableProcessing by mutableStateOf(setOf(CameraProcessing.STANDARD)); private set
     private var binding: CameraBinding? = null
+    private val previewColors = CameraPreviewColors()
+    val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
+    fun setPreviewFilter(values: FloatArray) { previewColors.update(values) }
+    private var motionBuffer: CameraMotionBuffer? = null
+    val motionAvailable: Boolean get() = motionBuffer?.failed == false
+    val motionReady: Boolean get() = motionBuffer?.ready == true
     private var captureJob: Job? = null
     private var observer: Observer<CameraState>? = null
     private var zoomObserver: Observer<ZoomState>? = null
@@ -49,7 +57,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     val manual = CameraManualController(context, message, ::clearFocus)
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
-    suspend fun bind(view: PreviewView, front: Boolean, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD) {
+    suspend fun bind(view: PreviewView, front: Boolean, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
+        motion: Boolean = false) {
         if (delivering || countingDown) return
         val previous = binding
         unbind(); val epoch = generation; loading = true; error = null
@@ -68,11 +77,25 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             val selector = if (front && selfie || !back && selfie) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             boundFront = selector == CameraSelector.DEFAULT_FRONT_CAMERA
             require(cameras.hasCamera(selector)) { "没有可用相机" }
-            val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing, manual.metadataCallback())
+            val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
+                manual.metadataCallback(), motion, previewColors) { failure ->
+                ContextCompat.getMainExecutor(context).execute {
+                    if (epoch == generation && binding != null) {
+                        error = "实时滤镜暂时不可用，请重试"
+                        Log.w(CAMERA_LOG_TAG, "Live filter unavailable in the current session", failure)
+                    }
+                }
+            }
             if (epoch != generation) { attached.release(); return }
             // Adopt before checking cancellation: catch/unbind can then release the newly created session.
             binding = attached
             currentCoroutineContext().ensureActive()
+            if (attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
+            attached.motionCapture?.let { video ->
+                motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
+                    CameraMotionRecorder(context, video.output), scope, message).also { it.start() }
+            }
+            if (motion && attached.motionCapture == null) message("此镜头暂不支持实况录制，仍可正常拍照")
             flashAvailable = attached.camera.cameraInfo.hasFlashUnit()
             applyFlash()
             manual.bind(attached.camera, attached.processing)
@@ -206,12 +229,21 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         // Do not restore compensation while HDR/night is still exposing or processing the photograph.
         focusJob?.cancel(); focusJob = null
         val front = boundFront
+        val motion = motionBuffer
         captureJob = scope.launch {
             var photo: PolaroidCameraCapture? = null
+            var motionTicket: CameraMotionTicket? = null
             var delivered = false
             try {
                 manual.awaitConfigured()
-                photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength)
+                motionTicket = motion?.beginCapture()
+                if (motion != null && motionTicket == null && !motion.failed) message("实况还在准备，本次保存照片")
+                photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength) {
+                    motionTicket?.let { motion?.exposureStarted(it) }
+                }
+                val clip = motionTicket?.let { ticket -> motion?.finish(ticket,
+                    PhotoFilters.coefficients(requireNotNull(photo).filter, strength)) }
+                if (clip != null) photo = requireNotNull(photo).withMotion(clip)
                 currentCoroutineContext().ensureActive()
                 if (epoch == generation) {
                     complete(photo)
@@ -220,11 +252,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { if (epoch == generation) message("拍照未完成，请重试") }
             finally {
-                if (!delivered) photo?.discard()
+                if (!delivered) { motion?.abort(motionTicket); photo?.discard() }
                 if (epoch == generation) {
                     busy = delivering
                     if (!delivering) {
                         clearFocus()
+                        motion?.start()
                     }
                 }
             }
@@ -234,6 +267,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         generation++; captureJob?.cancel(); captureJob = null
         capabilitiesJob?.cancel(); capabilitiesJob = null
         countdown.cancel()
+        motionBuffer?.close(); motionBuffer = null
         clearFocus()
         manual.unbind()
         binding?.let { attached -> observer?.let { attached.camera.cameraInfo.cameraState.removeObserver(it) }

@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.state.CardPrintRequest
+import com.kigtts.next.state.CardPrintOrigin
 import com.kigtts.next.theme.*
 import com.kigtts.plugin.api.*
 import org.junit.Assert.*
@@ -98,6 +101,36 @@ class PolaroidPrinterUiTest {
         compose.runOnIdle { active = false }; frames(2)
         compose.runOnIdle { active = true }; frames(2)
         assertEquals(1, delivered)
+        compose.mainClock.autoAdvance = true
+    }
+
+    @Test fun thePreviewReceivesTheActuallyDrawnWholePaperEndpointWithoutLegacyCompletion() {
+        var origin: CardPrintOrigin? = null
+        var handoffs = 0; var legacyCompletions = 0
+        compose.mainClock.autoAdvance = false
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.size(360.dp, 640.dp)) {
+                PolaroidPrinter(CardPrintRequest("paper-handoff", card), { null }, frame, true,
+                    { legacyCompletions++; true }, previewHandoff = { measured ->
+                        handoffs++; origin = measured; true
+                    })
+            }
+        } }
+        frames(160)
+        val measured = requireNotNull(origin)
+        val paper = compose.onNodeWithTag("printer-paper").fetchSemanticsNode().layoutInfo.coordinates
+        val actual = paper.boundsInWindow()
+        assertEquals(actual.left, measured.left, 1f)
+        assertEquals(actual.top, measured.top, 1f)
+        assertEquals(actual.width, measured.width, 1f)
+        assertEquals(actual.height, measured.height, 1f)
+        assertEquals(PolaroidFormat.MINI.geometry.aspectRatio, (measured.width / measured.height).toDouble(), .01)
+        assertTrue(measured.viewportWidth >= measured.width && measured.viewportHeight >= measured.height)
+        assertTrue(paper.localToWindow(Offset.Zero).y > compose.onNodeWithTag("printer-slot")
+            .fetchSemanticsNode().layoutInfo.coordinates.boundsInWindow().bottom)
+        assertEquals(1, handoffs); assertEquals(0, legacyCompletions)
+        frames(30)
+        assertEquals(1, handoffs); assertEquals(0, legacyCompletions)
         compose.mainClock.autoAdvance = true
     }
 }

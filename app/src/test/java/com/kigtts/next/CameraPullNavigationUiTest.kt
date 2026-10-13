@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Modifier
@@ -34,12 +36,13 @@ import kotlin.math.abs
 @Config(sdk=[35],qualifiers="zh-rCN-w393dp-h852dp-xxhdpi")
 class CameraPullNavigationUiTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
-    private class Fixture(parent:Destination=Destination.Cards,side:Boolean=false) {
+    private class Fixture(parent:Destination=Destination.Cards,side:Boolean=false, val header:Boolean=false, large:Boolean=true) {
         var state by mutableStateOf(AppState(destination=if(side)Destination.Home else parent,
             navigationStack=if(side)emptyList() else listOf(Destination.Home),sidePage=if(side)SidePage.CARDS else null))
         var cameraGuard by mutableStateOf(false);var printerGuard by mutableStateOf(false)
         var slider by mutableStateOf(false);var sliderDistance=0f
         var nativeViewfinder by mutableStateOf(false);var exposureControl by mutableStateOf(false)
+        var largeBar by mutableStateOf(large);var headerActions=0
         var opens=0;var backs=0
         lateinit var pull:CameraPullState
         val parentIdentity=if(side)"1/side/cards" else if(parent==Destination.Cards)"1/cards" else "1/card-editor/existing"
@@ -47,8 +50,8 @@ class CameraPullNavigationUiTest {
         fun back() {backs++;val stack=state.navigationStack;state=state.copy(destination=stack.last(),navigationStack=stack.dropLast(1))}
         val cameraIdentity get()="2/card-camera/pull-$opens"
     }
-    private fun show(parent:Destination=Destination.Cards,side:Boolean=false):Fixture {
-        val f=Fixture(parent,side)
+    private fun show(parent:Destination=Destination.Cards,side:Boolean=false,header:Boolean=false,large:Boolean=true):Fixture {
+        val f=Fixture(parent,side,header,large)
         compose.setContent {KigttsTheme(ThemeSettings()) {
             val navigation=rememberPageNavigation(f.state);val current=navigation.current
             val scope=rememberCoroutineScope();val pull=remember {CameraPullState(scope,f::open,f::back,
@@ -75,7 +78,7 @@ class CameraPullNavigationUiTest {
                         PageMotion(entry,role,foreground&&!navigation.outgoingAbove,if(foreground)back.progress else 0f,back.edge,
                             if(entry==navigation.wanted.getOrNull(navigation.wanted.lastIndex-1))back.progress else 0f,
                             {navigation.retention.retire(entry)},vertical=entry==camera||entry==covered,cameraPose=pose) {
-                            Box(Modifier.fillMaxSize().background(if(entry.cameraRequestId!=null)Color.Blue else Color.Green)
+                            val body: @Composable () -> Unit = { Box(Modifier.fillMaxSize().background(if(entry.cameraRequestId!=null)Color.Blue else Color.Green)
                                 .then(if(f.slider)Modifier.testTag("fixture-native-slider").draggable(rememberDraggableState {f.sliderDistance+=it},Orientation.Vertical)
                                 else Modifier.clickable { /* Clickable down is deliberately consumed. */ })) {
                                 if(entry.cameraRequestId!=null && f.nativeViewfinder) Box(Modifier.fillMaxSize()
@@ -88,7 +91,10 @@ class CameraPullNavigationUiTest {
                                 if(entry.cameraRequestId!=null && f.exposureControl) Box(Modifier.align(Alignment.Center)
                                     .size(48.dp,160.dp).excludeCameraPull()
                                     .draggable(rememberDraggableState {f.sliderDistance+=it},Orientation.Vertical))
-                            }
+                            } }
+                            if(f.header && entry.cameraRequestId==null) PageScaffold("拍立得",f::back,largeBar=f.largeBar,subtitle="下滑进行拍照",
+                                actions=listOf(ToolbarAction("fixture-header-add","新建",Icons.Default.Add) {f.headerActions++}),content=body)
+                            else body()
                         }
                     }}
                 }
@@ -110,6 +116,51 @@ class CameraPullNavigationUiTest {
     }
     private fun release() {compose.onNodeWithTag("camera-pull-root").performTouchInput {advanceEventTime(600);up()}}
     private fun rest() {step(700);compose.mainClock.autoAdvance=true;compose.waitForIdle()}
+    private fun dragHeader(tag:String,leftTitle:Boolean=false) {
+        val bounds=compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+        val startX=if(leftTitle)bounds.left.value+8f else (bounds.left.value+bounds.right.value)/2f
+        val startY=(bounds.top.value+bounds.bottom.value)/2f
+        if(leftTitle)assertTrue("The gesture begins in the title outside the central safe region",startX<360f*.23f)
+        compose.onNodeWithTag("camera-pull-root").performTouchInput {
+            val start=Offset(width*startX/360f,height*startY/640f)
+            down(start);moveTo(start+Offset(0f,height*.45f),delayMillis=160)
+        };step(16)
+    }
+
+    @Test fun leftAlignedLargeTitleCanPullIntoTheCameraWhileBackAndHeaderActionsKeepTheirGestures() {
+        val f=show(header=true)
+        dragHeader("page-back");release();step(32)
+        assertEquals(0,f.opens);assertEquals(0,f.backs)
+        dragHeader("fixture-header-add");release();step(32)
+        assertEquals(0,f.opens);assertEquals(0,f.headerActions)
+        compose.onNodeWithTag("fixture-header-add").performClick();step(32)
+        assertEquals(1,f.headerActions)
+        dragHeader("page-title",leftTitle=true);assertEquals(1,f.opens)
+        release();rest();assertTrue(f.state.destination is Destination.CardCamera)
+        assertEquals(0f,top(f.cameraIdentity),.2f);assertEquals(0,f.backs)
+    }
+    @Test fun compactTitleRegistrationFollowsItsActualPositionAfterTheHeaderChangesSize() {
+        val f=show(header=true)
+        compose.runOnIdle {f.largeBar=false};step(64)
+        compose.onNodeWithTag("small-page-bar").assertExists()
+        compose.onNodeWithTag("large-page-bar").assertDoesNotExist()
+        dragHeader("page-subtitle",leftTitle=true);release();rest()
+        assertEquals(1,f.opens);assertTrue(f.state.destination is Destination.CardCamera)
+        assertEquals(0f,top(f.cameraIdentity),.2f)
+    }
+    @Test fun registeredHeadingDoesNotEnableCameraPullOnAnEditorOrWithTwoPointers() {
+        val f=show(Destination.CardEditor("existing"),header=true)
+        dragHeader("page-title",leftTitle=true);release();step(32)
+        assertEquals(0,f.opens);assertEquals(Destination.CardEditor("existing"),f.state.destination)
+        compose.runOnIdle {f.state=f.state.copy(destination=Destination.Cards)};step(700)
+        val title=compose.onNodeWithTag("page-title").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("camera-pull-root").performTouchInput {
+            val x=width*(title.left.value+8f)/360f;val y=height*(title.top.value+title.bottom.value)/1280f
+            down(0,Offset(x,y));down(1,Offset(x+16f,y))
+            moveTo(0,Offset(x,y+height*.45f));moveTo(1,Offset(x+16f,y+height*.45f));up(0);up(1)
+        };step(64)
+        assertEquals(0,f.opens);assertEquals(Destination.Cards,f.state.destination)
+    }
 
     @Test fun shortPullOpensAtSlopThenCancelsWithTheSameRetainedPoseAndRestoresTheBrowser() {
         val f=show();beginDrag(.32f,.44f)

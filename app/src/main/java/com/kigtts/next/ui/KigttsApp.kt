@@ -31,7 +31,7 @@ fun KigttsApp(model: AppViewModel) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val snackbarAvoidance = remember { SnackbarAvoidance() }
-    val sketch = remember { SketchState() }
+    val sketch = model.sketch
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     var sketchShare by remember { mutableIntStateOf(0) }
@@ -107,6 +107,7 @@ fun KigttsApp(model: AppViewModel) {
                         com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }
                 }
+            com.kigtts.next.ui.cards.PolaroidPrintPreviewHost(model)
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
                 confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
             pluginMenu?.let { (plugin, content) ->

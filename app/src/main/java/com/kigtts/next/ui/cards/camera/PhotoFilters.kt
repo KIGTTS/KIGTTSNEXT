@@ -3,7 +3,7 @@ package com.kigtts.next.ui.cards.camera
 import android.graphics.ColorMatrix
 import kotlin.math.roundToInt
 
-/** Shared coefficients for the live TextureView layer and the full-resolution saved photograph. */
+/** Shared encoded-RGB coefficients for the CameraX GPU preview and full-resolution saved photograph. */
 internal object PhotoFilters {
     fun coefficients(filter: PhotoFilter, strength: Float = 1f): FloatArray {
         val selected = preset(filter)

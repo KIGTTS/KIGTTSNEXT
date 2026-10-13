@@ -60,7 +60,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.Badge,
+        ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.PhotoLibrary,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
             Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize)
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {

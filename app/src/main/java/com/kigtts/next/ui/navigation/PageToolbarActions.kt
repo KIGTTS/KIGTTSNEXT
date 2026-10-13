@@ -5,6 +5,7 @@ import com.kigtts.next.ui.components.animateEnabled
 import com.kigtts.next.ui.components.MotionIconButton
 import com.kigtts.next.ui.components.MotionIconToggleButton
 import com.kigtts.next.ui.components.keepColorsWhenLocked
+import com.kigtts.next.ui.components.compactPlainIconColors
 
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
@@ -78,8 +79,8 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
         SideEffect { shown = current != null }
         val reveal by animateFloatAsState(if(shown)1f else 0f,tween(180),label="page-action-reveal")
         Box(Modifier.width((48f*reveal).dp).height(48.dp).clipToBounds().graphicsLayer { alpha=reveal }
-            .testTag("page-action/" + stored.id)) {
-            val colors = IconButtonDefaults.iconButtonColors().let { if(action.preserveColorWhenLocked)it.keepColorsWhenLocked() else it }
+            .testTag("page-action/" + stored.id).excludeCameraPull()) {
+            val colors = compactPlainIconColors().let { if(action.preserveColorWhenLocked)it.keepColorsWhenLocked() else it }
             if (action.checked != null) MotionIconToggleButton(action.checked, { action.click() },
                 Modifier.requiredSize(48.dp).testTag(action.id), enabled = active && current != null && action.enabled) { Icon(action.icon, action.label) }
             else MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=action.preserveColorWhenLocked) { Icon(action.icon,action.label) }
@@ -87,8 +88,8 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     } }
     AnimatedVisibility(actions.size>2, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180))) {
-    Box {
-        MotionIconButton(feedbackClick { more=true },enabled=active) { Icon(Icons.Default.MoreVert,"更多页面操作") }
+    Box(Modifier.excludeCameraPull()) {
+        MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert,"更多页面操作") }
         DropdownMenu(more&&active,{ more=false }) {
             actions.drop(2).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ Icon(action.icon,null) },
                 colors=MenuDefaults.itemColors().animateEnabled(action.enabled),

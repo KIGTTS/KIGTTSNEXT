@@ -29,7 +29,8 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
         itemState.value=items;groupState.value=groups;iconState.value=icons;idState.value=ids;revisionState.value=next
     }
     fun savePhrase(phrase: QuickPhrase): Boolean {
-        if (phrase.text.isBlank() || phrase.category !in groupState.value) return false
+        if (phrase.category !in groupState.value || (phrase.text.isBlank() &&
+            (phrase.cardType() == QuickCardType.TEXT || phrase.mediaId.isNullOrBlank()))) return false
         val value = phrase.copy(title = phrase.title.trim(), formats = com.kigtts.next.text.TextFormatting.normalize(phrase.formats, phrase.text.length))
         itemState.value = if (itemState.value.any { it.id == phrase.id }) itemState.value.map { if (it.id == phrase.id) value else it } else itemState.value + value
         save(); return true
