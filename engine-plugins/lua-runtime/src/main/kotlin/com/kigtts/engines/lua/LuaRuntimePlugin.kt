@@ -10,7 +10,7 @@ import java.io.File
 import java.util.UUID
 
 class LuaRuntimePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.8.0")
+    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.8.1")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: LuaSourceStore
     private lateinit var executor: LuaExecutor

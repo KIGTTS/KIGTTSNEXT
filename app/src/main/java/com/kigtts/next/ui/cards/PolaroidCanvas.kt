@@ -18,7 +18,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
@@ -28,15 +27,15 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.media.decodeImage
+import com.kigtts.next.R
+import com.kigtts.next.cards.polaroidBranding
 import com.kigtts.plugin.api.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -47,7 +46,8 @@ private class CardGestureLayer { var layer: CardLayer? = null; var handleActive 
 internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, modifier: Modifier = Modifier,
     selectedLayer: String? = null, editable: Boolean = false, selectLayer: (String?) -> Unit = {},
     updateLayer: (CardLayer) -> Unit = {}, photoEditable: Boolean = false,
-    onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null) {
+    onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null,
+    decodeMaximum: Int = 1200) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
@@ -55,8 +55,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val change = rememberUpdatedState(updateLayer)
     val select = rememberUpdatedState(selectLayer)
     val geometry = polaroidFormat(card, frame).geometry
+    val branding = polaroidBranding(card, frame)
+    val captionWidth = branding?.captionWidth ?: geometry.titleWidth
     val gesture = remember(card.id) { CardGestureLayer() }
-    val paper = Color(frame?.color ?: card.frameColor)
+    val paper = Color(polaroidPaperColor(card, frame))
     val darkPaper = paper.luminance() < .45f
     val ink = if (darkPaper) Color.White else Color(0xFF202020)
     val captionInk = if (darkPaper) Color(0xFFDDDDDD) else Color(0xFF4A4A4A)
@@ -92,7 +94,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * (frame?.photoCornerRadius ?: 0.0).toFloat()))
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
-                val image = card.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, 1200)) }
+                val image = card.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum))) }
                 CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize())
             }
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier
@@ -101,26 +103,31 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .border(width * frame.borderWidth.toFloat(), Color(requireNotNull(frame.borderColor)),
                     RoundedCornerShape(width * frame.photoCornerRadius.toFloat())))
             frame?.overlayImageId?.let { imageId ->
-                rememberCardImage(imageFile(imageId), cardImageDecodeSize(canvasWidthPx, 1200))?.let { overlay ->
+                rememberCardImage(imageFile(imageId), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))?.let { overlay ->
                     Image(overlay, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
                 }
             }
             Text(card.title, Modifier.offset(x = paperLength(geometry.titleX), y = paperLength(geometry.titleY))
-                .width(paperLength(geometry.titleWidth)), color = ink, maxLines = 1,
+                .width(paperLength(captionWidth)), color = ink, maxLines = 1,
                 style = MaterialTheme.typography.titleMedium.copy(platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)),
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
                 fontSize = with(density) { paperLength(geometry.titleSize).toSp() }, lineHeight = with(density) { paperLength(geometry.titleSize * 1.2).toSp() })
             if (card.description.isNotBlank()) Text(card.description,
-                Modifier.offset(x = paperLength(geometry.titleX), y = paperLength(geometry.descriptionY)).width(paperLength(geometry.titleWidth)),
+                Modifier.offset(x = paperLength(geometry.titleX), y = paperLength(geometry.descriptionY)).width(paperLength(captionWidth)),
                 color = captionInk, maxLines = 3,
                 style = MaterialTheme.typography.bodySmall.copy(platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)),
                 fontSize = with(density) { paperLength(geometry.descriptionSize).toSp() }, lineHeight = with(density) { paperLength(geometry.descriptionSize * 1.2).toSp() })
+            branding?.let { logo ->
+                Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS",
+                    Modifier.offset(x = paperLength(logo.x), y = paperLength(logo.y))
+                        .width(paperLength(logo.width)).height(paperLength(logo.height)).testTag("polaroid-brand-logo"), tint = ink)
+            }
             card.layers.forEach { layer -> key(layer.id) {
                 val density = LocalDensity.current
                 var textControlWidth by remember(layer.id) { mutableStateOf(72.dp) }
                 val layerWidth = width * layer.width.toFloat()
                 val isSelected = editable && selectedLayer == layer.id
-                val image = layer.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize((canvasWidthPx * layer.width).toFloat(), 512)) }
+                val image = layer.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize((canvasWidthPx * layer.width).toFloat(), minOf(512, decodeMaximum))) }
                 val mirrored = Modifier.graphicsLayer { scaleX = if (layer.flipX) -1f else 1f; scaleY = if (layer.flipY) -1f else 1f }
                 Box(Modifier.align(Alignment.Center).offset {
                     IntOffset(((layer.x - .5) * canvasWidthPx).roundToInt(),
@@ -157,16 +164,8 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     }
 }
 
-@Composable
-internal fun rememberCardImage(file: File?, maximum: Int = 384): ImageBitmap? {
-    val image by produceState<ImageBitmap?>(null, file?.path, file?.lastModified(), maximum) {
-        value = withContext(Dispatchers.IO) { file?.let { runCatching { decodeImage(it, maximum) }.getOrNull() } }
-    }
-    return image
-}
-
 /** Pinch gestures cross a few decode buckets rather than cancelling/restarting image IO every frame. */
-private fun cardImageDecodeSize(pixels: Float, maximum: Int): Int = when {
+internal fun cardImageDecodeSize(pixels: Float, maximum: Int): Int = when {
     pixels <= 128f -> minOf(128, maximum)
     pixels <= 256f -> minOf(256, maximum)
     pixels <= 512f -> minOf(512, maximum)

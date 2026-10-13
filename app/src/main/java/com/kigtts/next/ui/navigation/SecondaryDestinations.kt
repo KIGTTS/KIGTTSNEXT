@@ -10,6 +10,8 @@ import com.kigtts.next.ui.plugins.*
 import com.kigtts.next.ui.settings.*
 import com.kigtts.next.ui.media.*
 import com.kigtts.next.ui.home.PhraseEditorScreen
+import com.kigtts.next.ui.cards.CardHostScreen
+import com.kigtts.next.ui.cards.CardPageScaffold
 
 /** Page content is independent of its lifetime and transition in the navigation host. */
 @Composable
@@ -35,6 +37,14 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.StickerReview -> "修改预览"
             is Destination.StickerLibrary -> "贴纸库"
         }
+    if (destination == Destination.Cards) {
+        CardPageScaffold(title, model::navigateBack) { CardHostScreen(model) }
+        return
+    }
+    if (destination is Destination.CardCamera) {
+        com.kigtts.next.ui.cards.camera.PolaroidCameraRoute(model, destination)
+        return
+    }
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
             when (destination) {
@@ -59,16 +69,10 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     cameraOriginalImageId = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.originalImageId,
                     cameraFrameStyleId = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.frameStyleId,
                     cameraRequestVersion = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.version ?: 0L)
-                is Destination.CardCamera -> com.kigtts.next.ui.cards.camera.CardCameraScreen(
-                    onCapture = { shot -> model.cardCapture.captured(destination, shot.original, shot.displayFile, shot.format) },
-                    onCancel = model::navigateBack, message = model::message,
-                    initialFormat = destination.cardId?.let { id -> model.cards.cards.value.firstOrNull { it.id == id } }
-                        ?.let { model.stickers.frameStyle(it).format })
+                is Destination.CardCamera -> Unit // Native camera/printing route handled above.
                 is Destination.CardPreview -> com.kigtts.next.ui.cards.CardPreviewScreen(model.cards, model.stickers, destination.cardId,
                     { model.navigate(Destination.CardEditor(it)) }, model::message, onQuickImage = model::quickImageCard)
-                Destination.Cards -> com.kigtts.next.ui.cards.CardsScreen(model.cards, model.stickers,
-                    { model.navigate(Destination.CardPreview(it)) }, { model.navigate(Destination.CardEditor(it)) }, model::message,
-                    onQuickImage = model::quickImageCard, openCamera = { model.cardCapture.open() })
+                Destination.Cards -> Unit // Handled by the window-adaptive scaffold above.
                 is Destination.StickerReview -> com.kigtts.next.ui.cards.StickerReviewScreen(model, destination.token)
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)

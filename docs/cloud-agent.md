@@ -28,7 +28,7 @@
 | --- | --- |
 | `app` | 按 `AppCommand` 操作文本、导航、自动朗读、朗读状态、已开放设置与插件入口；先 `describe` 获取能力 |
 | `quick_text` | 按 `QuickTextCommand` 查询、准备与提交批量变更，管理和发布 HTML 页面、导入导出及编辑页面文件 |
-| `stickers` | 按 `StickerCommand` 读取照片、贴纸库和名片，准备库与名片变更，复制图片，双向转换快捷文本图片与贴纸 |
+| `stickers` | 按 `StickerCommand` 读取照片、贴纸库、拍立得与相册，准备移动和排序等变更，复制图片，双向转换快捷文本图片与贴纸 |
 | `write_file` / `read_file` / `list_files` | 只访问助手的工作文件，不访问密钥和其它插件目录 |
 | `draft_lua` | 写 `manifest.json` 与 `main.lua`，不安装 |
 | `deliver_lua` | 把草稿复制给独立 Lua 运行时的导入入口并打开审核 |
@@ -71,6 +71,23 @@ Lua 草稿格式与 `runtime.lua` 相同：`manifest.json` 包含 `id`、`name`�
 名片照片构图通过 `photoX` / `photoY`（照片窗内的中心位置，0 至 1）、`photoZoom`（1 至 8）以及 `photoBackdrop`（`GRAY` / `BLUR`）设置；贴纸图层支持 `flipX` / `flipY` 镜像。Agent 读取完整名片后再修改需要的字段，保留其它构图与图层，不能重建旧字段而丢失新配置。
 
 边框先调用 `query-frames` 分页发现，取得稳定 `id`、显示名、宿主 `version`、纸色/照片细边/照片圆角、`format` 及可选透明 `overlayImageId`；再把返回 ID 写入拍立得的 `frameStyleId`，不猜测样式名称。纸面比例和照片窗口由 `format.geometry` 决定，Mini、Square、Wide 和旧版 4:5 各不相同；品牌 PNG 按对应纸面比例制作。自定义品牌 PNG 先经 `publish-image` 复制为宿主图库图片，再在 `frame.put` 的 `style.overlayImageId` 中引用图片 ID，不使用文件路径。新样式 ID 必须位于 `tools.cloud-agent.` 命名空间；`owner` 由宿主绑定，`version` 由宿主递增，模型不得伪造。内置及其它插件的样式可以查询和选用，不能改删。样式移除走 `frame.remove` 和同一原生审核流程；样式缺失时显示默认边框并保留原 `frameStyleId`，Agent 不应静默替用户改成默认 ID。
+
+相册先用 `query-albums` 分页读取 `id`、`name` 和有序 `cardIds`，再用 `query-album-cards(albumId,offset,limit,revision)` 获取册内完整拍立得字段及相册信息。每张拍立得恰好属于一个相册；默认相册的稳定 ID 为 `user.polaroids`。相册分组不改变贴纸图库或原始图片资源。
+
+相册变更同样经过 `prepare` → `commit`：
+
+- `album.put` 直接包含 `id`、`name`，只更新相册名称等元数据，不接收 `cardIds`。
+- `album.move-cards` 包含目标 `albumId` 与要移动的 `cardIds`；新 `card.put` 先归默认册，可在同一批次移至指定相册，更新已有拍立得则保留归属。
+- `album.order` 的 `ids` 必须将所有相册各列一次；`album.cards-order` 包含 `albumId` 及该册完整的 `cardIds`，各列一次。
+- `album.remove` 包含 `ids`，经过原生确认后将其中照片移回默认相册，保留拍立得和图片。默认相册不能删除。
+
+例如移动已有拍立得，修订号和 ID 都应先查询取得：
+
+```json
+{"command":{"type":"prepare","transactionId":"move-photo-1","revision":12,"edits":[{"type":"album.move-cards","albumId":"查询得到的相册ID","cardIds":["查询得到的拍立得ID"]}]}}
+```
+
+`open-ui(target="CARDS",id=cardId)` 会定位到所属相册并打开与用户点按一致的原生预览浮窗，返回关闭浮窗并保留浏览位置；`EDIT_CARD` 则进入正常编辑页面。读取和复制资源不会自动把图片上传给模型，当前插件不声明云端视觉分析能力。
 
 ## 供应商依据与验证边界
 

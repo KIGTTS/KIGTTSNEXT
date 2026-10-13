@@ -3,6 +3,8 @@ package com.kigtts.plugin.runtime
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.plugin.api.PluginJson
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -161,9 +163,16 @@ class PluginPackageTest {
             assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION,tools.manifest.apiVersion)
             assertTrue("quick-text-write" in tools.manifest.capabilities);assertFalse("network" in tools.manifest.capabilities)
             assertTrue(tools.manifest.files.keys.contains("assets/calculator.html"))}
-        for (id in listOf("tools.cloud-agent", "runtime.lua", "tools.package-store", "tools.native-builder")) {
-            val extension = store.inspect(File(directory, "$id-0.8.0.kigplugin"))
+        val modules = mapOf("tools.cloud-agent" to "cloud-agent", "runtime.lua" to "lua-runtime",
+            "tools.package-store" to "package-store", "tools.native-builder" to "native-builder")
+        for ((id, module) in modules) {
+            val project = requireNotNull(directory.parentFile?.parentFile)
+            val spec = PluginJson.parseToJsonElement(File(project, "engine-plugins/$module/plugin-spec.json").readText()).jsonObject
+            val version = spec.getValue("version").jsonPrimitive.content
+            val extension = store.inspect(File(directory, "$id-$version.kigplugin"))
             assertEquals(id, extension.manifest.id)
+            assertEquals(version, extension.manifest.version)
+            assertEquals(spec.getValue("versionCode").jsonPrimitive.content.toInt(), extension.manifest.versionCode)
             assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION, extension.manifest.apiVersion)
             assertEquals(base.publisherSha256, extension.publisherSha256)
             assertTrue(extension.manifest.files.keys.any { it.startsWith("code/") && it.endsWith(".dex") })

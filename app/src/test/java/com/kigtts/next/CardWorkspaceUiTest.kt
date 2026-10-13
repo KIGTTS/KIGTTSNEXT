@@ -51,7 +51,10 @@ class CardWorkspaceUiTest {
         } } }
         compose.onNodeWithTag("cards-tabs").assertDoesNotExist()
         compose.onNodeWithTag("polaroid/" + card.id).performClick()
-        assertEquals(listOf(card.id), previews)
+        compose.onNodeWithTag("card-preview-content").assertIsDisplayed()
+        assertTrue(previews.isEmpty())
+        compose.onNodeWithTag("close-card-preview").performClick()
+        compose.onNodeWithTag("card-preview-content").assertDoesNotExist()
         compose.onNodeWithTag("polaroid/" + card.id).performTouchInput { longClick() }
         assertEquals(listOf(card.id), edits)
         compose.onNodeWithTag("card-add-fab").performClick()

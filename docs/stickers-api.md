@@ -21,8 +21,11 @@
 - `items`：`id/libraryId/name/imageId`，同一图片可以用于多张贴纸或名片。
 - `images`：`id/mime/bytes/width/height/version`，没有 URI 或路径。
 - `cards`：`PolaroidCard(id,title,description,imageId,layers,frameColor,photoX,photoY,photoZoom,photoBackdrop,frameStyleId,originalImageId)`。`imageId` 是显示图，`originalImageId` 可保留内建相机未加滤镜的原始 JPEG；两者都纳入资源引用检查。
+- `albums`：`PolaroidAlbum(id,name,cardIds)`，是拍立得卡片的相册，与贴纸图库、原始图片资源分开；相册列表顺序和各册的 `cardIds` 分别保存相册顺序与照片顺序。
 
 `Query.scope` 可选 `ALL/LIBRARIES/ITEMS/IMAGES/CARDS`，`libraryId` 筛选图库及其贴纸；`offset` 起点、`limit` 为 1–50。`ALL` 对各集合使用相同的分页区间，`total` 是这些集合中的最大长度；按 `nextOffset` 继续查询并合并各集合。分类型查询的 `total` 则是该集合长度。传入 `revision` 可避免把不同版本的分页结果混在一起。`changes(afterRevision)` 是失效通知，收到通知后重新读取。
+
+`QueryAlbums(offset,limit,revision)` 返回 `StickerReply.Albums(revision,items,total,nextOffset)`。`QueryAlbumCards(albumId,offset,limit,revision)` 按该相册的 `cardIds` 顺序返回 `StickerReply.Snapshot`，`cards` 是完整 `PolaroidCard`，包含原图、构图、边框和图层字段；`albums` 带选中相册元数据，`total` 是该册照片数量。两种查询都要求 `stickers-read` 或 `stickers-write`，分页 revision 是整个共享 catalog 的 revision；`Query(ALL)` 也包含分页相册。不提供图片文件路径，读取原图或导出仍使用既有调用方副本接口。
 
 图层 `CardLayer`：
 
@@ -59,8 +62,17 @@
 | `item.remove` / `card.remove` | 移除贴纸或名片 |
 | `image.remove` | 删除无引用图片资源；同批可先移除/修改其所有引用 |
 | `frame.put` / `frame.remove` | 注册、更新或移除调用方发布的自定义装饰边框 |
+| `album.put` | `id/name` 创建或重命名相册，只改名称，保留成员与顺序 |
+| `album.remove` | `ids` 移除相册，把照片保留并移入默认相册 |
+| `album.move-cards` | `albumId/cardIds` 移动照片到指定相册 |
+| `album.order` | `ids` 为包含全部相册的顺序 |
+| `album.cards-order` | `albumId/cardIds` 为指定相册全部照片的顺序 |
 
 排序必须恰好包含对应集合的每个 ID。至少保留一个图库。被任何贴纸、名片照片或图层引用的图片不能删除，批次会整体失败。
+
+每张拍立得只能属于一册。默认相册 ID 为 `user.polaroids`，不能删除，可以重命名和排序。新卡片默认归入此册；新增前尚无相册字段的旧 catalog 载入后将所有旧卡按原顺序迁入默认册，正常保存写回。更新既有 `card.put` 不改变其相册，`album.put` 不接收照片列表，成员变动必须通过 `album.move-cards`。移动到目标册时保留目标已有顺序，把新移入照片按请求顺序追加；已经属于该册的照片不重复追加。删除相册时，按当前册序及各册照片顺序追加到默认册，保留全部卡片、贴纸图层和图片文件。`album.cards-order` 只改该册顺序；旧 `card.order` 对全体卡片排序时也按该顺序更新各册。最多 128 册，所有修改沿同一原子事务、额度和原生删除审核。`Describe.operations` 中的 `album.*` 指 `Prepare.edits` 的 type，不是单独顶层命令。
+
+API9 保留 `StickerSnapshot` 原八字段构造、Kotlin 默认构造、`copy` 和 `copy$default` 符号；旧复制调用在更新其它字段时保留已有相册数据。`PolaroidCard` 构造没有因相册功能变更。
 
 移除需要用户在原生审核页确认。`Prepared.value.requiresConfirmation` 或 `Failure(CONFIRMATION_REQUIRED,reviewToken)` 出现后，调用 `OpenUi(REVIEW,token)` 并等待用户操作，插件不能自行批准。原生确认会提交一次；随后重复 `Commit(token)` 返回同一 `Applied`，不会重复修改。已提交 token 的幂等记录绑定调用方并保留十分钟；事务回执通过 `Transaction(transactionId)` 查询，保留最近有限记录，能跨主程序重启读取。重复准备同事务、同内容返回原结果；把事务 ID 用于不同内容会返回冲突。
 
@@ -87,9 +99,13 @@
 
 `PolaroidFrameStyle` 具有 `id/name/version/owner/format`（LEGACY、MINI、SQUARE、WIDE）、可选 `color/borderColor`、`borderWidth`（整卡宽比，0–0.02）、`photoCornerRadius`（整卡宽比，0–0.1）和可选 `overlayImageId`。`color=null` 时使用拍立得自身 `frameColor`。装饰图片按该格式的完整纸面比例缩放，在照片上方、标题与贴纸下方；建议用带透明照片窗口的 PNG。资源仍先 `PublishImage`，不能通过边框声明引入外部路径。
 
+默认纸面和内置细框使用纯白 `0xFFFFFFFF`，预览与 PNG 导出通过 `polaroidPaperColor` 采用同一解析规则。旧记录中经典内置纸框的原默认奶黄 `0xFFF7F2E8` 在载入时转换为纯白，下次正常保存写回；其它自定义颜色、深色/柔色样式和品牌边框资源保持不变。旧默认奶黄与用户在经典纸框手动选择的同值颜色无法区分，按「不要发黄」要求统一转白。API9 的旧构造与复制方法继续保留，省略纸面颜色的旧构造也采用纯白默认值。
+
 `frame.put` 使用 `style` 字段，ID 必须在 `<调用方pluginId>.<局部样式名>` 命名空间中，发布者由宿主绑定，更新版本由宿主递增。最多 128 自定义样式，内置样式单独计数；插件不能改写内置或其它插件的边框。边框图片也纳入 `image.remove` 引用检查。`frame.remove(ids)` 经原生删除审核，可与移除其图片同批完成；拍立得保留原 `frameStyleId`，找不到样式时按既有合同回退旧经典。将来重新注册同 ID 可恢复选择。
 
 catalog 仅保存自定义样式，读取时合并当前内置样式；内置色彩或名称更新不会让有效旧名片变成损坏数据。本接口可承载后续品牌合作资源，当前只含原创默认样式，没有内置第三方品牌素材。
+
+经典白纸样式（`classic` 与三种 `instax.*.classic`）在右下保留 KIGTTS 横版 Logo，原生预览和 PNG 导出共用纸面坐标，标题和说明预留独立宽度。品牌、自定义、缺失的第三方样式及其它内置样式不会被强加 Logo；纸色继续沿用纯白默认或用户显式颜色。此装饰由主程序原生实现，不是插件，也不会新增资源路径给插件。
 
 API9 新增模型字段仍保留旧六、十、十一字段的 JVM 构造、默认构造、copy/copy-default，以及旧九字段边框构造/复制符号。旧 catalog 注入 classic 保持既有排版，新 JSON 创建使用 Square 默认值；`originalImageId` 的加入不会让旧 copy 丢掉已保存的原图引用。
 

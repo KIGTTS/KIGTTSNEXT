@@ -11,15 +11,34 @@ import java.util.UUID
 /** The UI and plugin broker edit exactly the same design catalog. */
 class CardRepository(private val context:Context,val stickers:StickerRepository) {
     val cards=stickers.cards
-    fun create(card:PolaroidCard):PolaroidCard=synchronized(stickers) {
+    val albums=stickers.albums
+    fun cardsInAlbum(albumId:String):List<PolaroidCard> = synchronized(stickers) {
+        val value=stickers.snapshot.value;val album=value.albums.firstOrNull {it.id==albumId} ?: return@synchronized emptyList()
+        val indexed=value.cards.associateBy {it.id};album.cardIds.mapNotNull {indexed[it]}
+    }
+    fun create(card:PolaroidCard):PolaroidCard=create(card,DEFAULT_ALBUM)
+    fun create(card:PolaroidCard,albumId:String):PolaroidCard=synchronized(stickers) {
         stickerRequire(cards.value.none {it.id==card.id},message="拍立得已存在")
-        stickers.apply(listOf(StickerEdit.PutCard(card)));card
+        val edits=listOf(StickerEdit.PutCard(card))+if(albumId==DEFAULT_ALBUM)emptyList() else listOf(StickerEdit.MoveAlbumCards(albumId,listOf(card.id)))
+        stickers.apply(edits);card
     }
     fun update(card:PolaroidCard):PolaroidCard=synchronized(stickers) {
         stickerRequire(cards.value.any {it.id==card.id},StickerError.NOT_FOUND,"拍立得不存在")
         stickers.apply(listOf(StickerEdit.PutCard(card)));card
     }
     fun remove(id:String) {stickers.apply(listOf(StickerEdit.RemoveCards(listOf(id))))}
+    fun createAlbum(name:String,id:String=UUID.randomUUID().toString()):PolaroidAlbum=synchronized(stickers) {
+        stickerRequire(albums.value.none {it.id==id},message="相册已存在")
+        stickers.apply(listOf(StickerEdit.PutAlbum(id,name.trim()))).albums.first {it.id==id}
+    }
+    fun renameAlbum(id:String,name:String):PolaroidAlbum=synchronized(stickers) {
+        stickerRequire(albums.value.any {it.id==id},StickerError.NOT_FOUND,"相册不存在")
+        stickers.apply(listOf(StickerEdit.PutAlbum(id,name.trim()))).albums.first {it.id==id}
+    }
+    fun removeAlbum(id:String) {stickers.apply(listOf(StickerEdit.RemoveAlbums(listOf(id))))}
+    fun moveCards(ids:List<String>,albumId:String) {stickers.apply(listOf(StickerEdit.MoveAlbumCards(albumId,ids)))}
+    fun orderAlbums(ids:List<String>) {stickers.apply(listOf(StickerEdit.OrderAlbums(ids)))}
+    fun orderCards(albumId:String,ids:List<String>) {stickers.apply(listOf(StickerEdit.OrderAlbumCards(albumId,ids)))}
     /** IDs are deterministic so an interrupted migration never duplicates old cards. */
     suspend fun migrateLegacy()=withContext(Dispatchers.IO) {
         synchronized(stickers) {
@@ -36,4 +55,5 @@ class CardRepository(private val context:Context,val stickers:StickerRepository)
             stickers.markMigrated()
         }
     }
+    companion object {const val DEFAULT_ALBUM=DEFAULT_POLAROID_ALBUM_ID}
 }

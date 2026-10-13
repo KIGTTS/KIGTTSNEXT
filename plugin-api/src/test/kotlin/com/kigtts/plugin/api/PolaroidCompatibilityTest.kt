@@ -10,7 +10,7 @@ class PolaroidCompatibilityTest {
         assertEquals(PhotoBackdropMode.GRAY,old.photoBackdrop);assertEquals(1.0,old.photoZoom)
         val defaults=PolaroidCard::class.java.getConstructor(String::class.java,String::class.java,String::class.java,String::class.java,List::class.java,
             Long::class.javaPrimitiveType,Int::class.javaPrimitiveType,marker).newInstance(null,"旧默认构造",null,null,null,0L,61,null)
-        assertEquals("旧默认构造",defaults.title);assertTrue(defaults.id.isNotBlank());assertEquals(0xFFF7F2E8,defaults.frameColor)
+        assertEquals("旧默认构造",defaults.title);assertTrue(defaults.id.isNotBlank());assertEquals(DEFAULT_POLAROID_PAPER_COLOR,defaults.frameColor)
     }
     @Test fun oldCardCopyAndCopyDefaultPreserveNewPoseInsteadOfResettingIt() {
         val original=PolaroidCard(title="原名片",photoX=.25,photoY=.75,photoZoom=3.0,photoBackdrop=PhotoBackdropMode.BLUR)
@@ -45,7 +45,7 @@ class PolaroidCompatibilityTest {
             Double::class.javaPrimitiveType!!,Double::class.javaPrimitiveType!!,Double::class.javaPrimitiveType!!,PhotoBackdropMode::class.java)
         val old=PolaroidCard::class.java.getConstructor(*signature,Int::class.javaPrimitiveType!!,marker)
             .newInstance(null,"兼容构造",null,null,null,0L,0.0,0.0,0.0,null,1021,null)
-        assertEquals("classic",old.frameStyleId);assertEquals(.5,old.photoX)
+        assertEquals("classic",old.frameStyleId);assertEquals(.5,old.photoX);assertEquals(DEFAULT_POLAROID_PAPER_COLOR,old.frameColor)
         val branded=old.copy(frameStyleId="brand.example",photoZoom=3.0)
         val copied=PolaroidCard::class.java.getMethod("copy\$default",PolaroidCard::class.java,*signature,Int::class.javaPrimitiveType!!,Any::class.java)
             .invoke(null,branded,null,"兼容copy",null,null,null,0L,0.0,0.0,0.0,null,1021,null) as PolaroidCard
@@ -67,7 +67,7 @@ class PolaroidCompatibilityTest {
             Double::class.javaPrimitiveType!!,Double::class.javaPrimitiveType!!,Double::class.javaPrimitiveType!!,PhotoBackdropMode::class.java,String::class.java)
         val constructed=PolaroidCard::class.java.getConstructor(*signature,Int::class.javaPrimitiveType!!,marker)
             .newInstance(null,"旧十一字段",null,null,null,0L,0.0,0.0,0.0,null,null,2045,null)
-        assertEquals("classic",constructed.frameStyleId);assertNull(constructed.originalImageId)
+        assertEquals("classic",constructed.frameStyleId);assertNull(constructed.originalImageId);assertEquals(DEFAULT_POLAROID_PAPER_COLOR,constructed.frameColor)
         val original=constructed.copy(originalImageId="raw-photo",frameStyleId="instax.square.classic")
         val copied=PolaroidCard::class.java.getMethod("copy\$default",PolaroidCard::class.java,*signature,Int::class.javaPrimitiveType!!,Any::class.java)
             .invoke(null,original,null,"旧copy保持原图",null,null,null,0L,0.0,0.0,0.0,null,null,2045,null) as PolaroidCard
@@ -83,5 +83,21 @@ class PolaroidCompatibilityTest {
         val copy=PolaroidFrameStyle::class.java.getMethod("copy\$default",PolaroidFrameStyle::class.java,*signature,Int::class.javaPrimitiveType!!,Any::class.java)
             .invoke(null,modern,null,"旧copy",0L,null,null,0.0,0.0,null,null,509,null) as PolaroidFrameStyle
         assertEquals(PolaroidFormat.WIDE,copy.format);assertEquals("旧copy",copy.name)
+    }
+    @Test fun pureWhiteDefaultsAndLegacyCreamNormalizationPreserveCustomPaperAndBrandResources() {
+        assertEquals(0xFFFFFFFFL,PolaroidCard(title="新纸面").frameColor)
+        assertEquals(0xFFFFFFFFL,PluginJson.decodeFromString<PolaroidCard>("""{"id":"old","title":"未保存颜色"}""").frameColor)
+        val cream=0xFFF7F2E8L
+        for(style in listOf("classic","instax.mini.classic","instax.square.classic","instax.wide.classic")) {
+            val legacy=PolaroidCard(title="旧默认",frameStyleId=style,frameColor=cream)
+            assertEquals(0xFFFFFFFFL,legacy.normalizeLegacyPaper().frameColor)
+            assertEquals(0xFFFFFFFFL,polaroidPaperColor(legacy))
+            assertEquals(0xFF123456L,polaroidPaperColor(legacy.copy(frameColor=0xFF123456)))
+        }
+        val branded=PolaroidCard(title="品牌",frameStyleId="brand.paper",frameColor=cream)
+        val frame=PolaroidFrameStyle("brand.paper","品牌",owner="brand",overlayImageId="brand-resource")
+        assertEquals(branded,branded.normalizeLegacyPaper());assertEquals(cream,polaroidPaperColor(branded,frame))
+        assertEquals(0xFF112233L,polaroidPaperColor(branded,frame.copy(color=0xFF112233)))
+        assertEquals("brand-resource",frame.overlayImageId)
     }
 }

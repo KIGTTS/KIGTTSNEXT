@@ -49,7 +49,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
-    val cardUi = CardWorkspace(::navigate) { openSidePage(SidePage.CARDS) }
+    val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
+        { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } })
     val stickerPlugins = hostRuntime?.stickerPlugins ?: com.kigtts.next.plugins.stickers.StickerHost(stickers, pluginManager.paths,
         { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() })
     init { if (hostRuntime == null) pluginManager.stickerBrokerFactory = stickerPlugins::forPlugin }
@@ -64,7 +65,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
         mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
     val state = mutableState.asStateFlow()
-    val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message)
+    val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
+        { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) })
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
@@ -87,6 +89,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun continueVoiceInput() = speech.continueInput()
     val microphoneRequests = speech.permissionRequests
     fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
+    // Every callback dependency must exist before bootstrap can resume from background I/O.
+    private val navigationHistory = ArrayDeque<Destination>()
+    private val sourceLinks by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
+        ::invokeWithResult, ::message) { it !in state.value.busyPlugins } }
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun observePluginContext() = viewModelScope.launch {
@@ -104,12 +110,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     } }
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
-    private val navigationHistory = ArrayDeque<Destination>()
-    private val sourceLinks by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
-        ::invokeWithResult, ::message) { it !in state.value.busyPlugins } }
     fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
 
-    private fun update(transform: (AppState) -> AppState) { mutableState.update(transform) }
+    private fun update(transform: (AppState) -> AppState) {
+        mutableState.update(transform)
+        cardCapture.onDestinationChanged(state.value.destination)
+    }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
         automaticRead = it.autoPlayback, speechActive = it.speaking,
@@ -118,6 +124,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
         recognitionServiceId = selectedAsrId, locale = getApplication<Application>().resources.configuration.locales[0].toLanguageTag()) }
     fun navigate(destination: Destination) {
+        if (destination is Destination.CardPreview) {
+            cardUi.open(StickerUiTarget.CARDS, destination.cardId)
+            return
+        }
         if (destination == Destination.Home) navigationHistory.clear()
         else if (state.value.destination != destination) navigationHistory.addLast(state.value.destination)
         update { it.copy(destination = destination, navigationStack = navigationHistory.toList(), editing = false) }

@@ -11,36 +11,41 @@ import java.util.UUID
 internal class CardWorkspaceActions(private val context: Context, private val cards: CardRepository,
     private val stickers: StickerRepository, private val scope: CoroutineScope,
     private val openEditor: (String) -> Unit, private val message: (String) -> Unit,
-    private val onQuickImage: (String, String) -> Unit) {
+    private val onQuickImage: (String, String) -> Unit,
+    private val io: CoroutineDispatcher = Dispatchers.IO) {
     var busy by mutableStateOf(false); private set
     fun <T> work(operation: () -> T, complete: (T) -> Unit = {}) {
-        if (busy) return
+        startWork(operation, complete, {})
+    }
+    private fun <T> startWork(operation: () -> T, complete: (T) -> Unit, finish: () -> Unit) {
+        if (busy || !scope.isActive) { runCatching(finish); return }
         busy = true
-        scope.launch {
-            try { val result = withContext(Dispatchers.IO) { operation() }; complete(result) }
+        // Install the finally block before dispatch; a queued, cancelled launch may never enter it.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try { val result = withContext(io) { operation() }; complete(result) }
             catch (cancel: CancellationException) { throw cancel }
             catch (failure: Exception) { message(failure.message ?: "操作未完成，请重试") }
-            finally { busy = false }
+            finally { runCatching(finish); busy = false }
         }
     }
-    fun newCard() = work({ cards.create(PolaroidCard(title = "拍立得")) }) { openEditor(it.id) }
-    fun importPhoto(selection: CardPhotoSelection, library: String? = null, asSticker: Boolean = false) {
+    fun newCard(albumId: String = CardRepository.DEFAULT_ALBUM) = work({ cards.create(PolaroidCard(title = "拍立得"), albumId) }) { openEditor(it.id) }
+    fun importPhoto(selection: CardPhotoSelection, library: String? = null, asSticker: Boolean = false,
+        albumId: String = CardRepository.DEFAULT_ALBUM) {
         if (busy) { selection.release(); message("正在处理图片，请稍后重试"); return }
-        work({
-        try {
+        startWork({
             val image = stickers.importImage(selection.uri)
-            if (!asSticker) cards.create(PolaroidCard(title = "拍立得", imageId = image.id)).id
+            if (!asSticker) cards.create(PolaroidCard(title = "拍立得", imageId = image.id), albumId).id
             else {
                 val target = stickers.libraries.value.firstOrNull { it.id == library } ?: stickers.libraries.value.first()
                 stickers.apply(listOf(StickerEdit.PutItem(StickerItem(libraryId = target.id,
                     name = "贴纸 " + (stickers.items.value.count { it.libraryId == target.id } + 1), imageId = image.id))))
                 null
             }
-        } finally { selection.release() }
-        }) { id -> if (id != null) openEditor(id) else message("已添加到贴纸库") }
+        }, { id -> if (id != null) openEditor(id) else message("已添加到贴纸库") }, selection.release)
     }
     fun cardAction(card: PolaroidCard, action: CardMenuAction) = when (action) {
-        CardMenuAction.COPY -> work({ cards.create(card.copy(id = UUID.randomUUID().toString(), title = (card.title + " 副本").take(128))) }) { message("已复制拍立得") }
+        CardMenuAction.COPY -> work({ cards.create(card.copy(id = UUID.randomUUID().toString(), title = (card.title + " 副本").take(128)),
+            albumContaining(cards.albums.value, card.id)?.id ?: CardRepository.DEFAULT_ALBUM) }) { message("已复制拍立得") }
         CardMenuAction.QUICK -> work({
             val image = stickers.importResource(stickers.exportCard(card.id))
             stickers.publishQuickMedia(image.id)

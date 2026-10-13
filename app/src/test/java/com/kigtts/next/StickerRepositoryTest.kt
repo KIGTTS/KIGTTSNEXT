@@ -242,7 +242,7 @@ class StickerRepositoryTest {
             assertEquals(widths.getValue(format),bitmap.width)
             assertEquals(1500,bitmap.height)
             val left=(geometry.photoLeft*scale).toInt();val top=(geometry.photoTop*scale).toInt()
-            assertEquals(0xFFB0B0B0.toInt(),bitmap.getPixel(left+10,top+10));assertEquals(0xFFF7F2E8.toInt(),bitmap.getPixel(10,10))
+            assertEquals(0xFFB0B0B0.toInt(),bitmap.getPixel(left+10,top+10));assertEquals(Color.WHITE,bitmap.getPixel(10,10))
             assertEquals(Color.GREEN,bitmap.getPixel((bitmap.width*.8).toInt(),(bitmap.height*.85).toInt()));bitmap.recycle()
         }
     }
@@ -294,5 +294,40 @@ class StickerRepositoryTest {
         val excessive=card.copy(layers=listOf(layer.copy(text="文".repeat(683))))
         assertTrue(prepare(listOf(StickerEdit.PutCard(excessive)),"excessive-metadata") is StickerReply.Failure)
         assertEquals(before,repo.snapshot.value)
+    }
+    @Test fun classicAndSlimPaperExportAsPureWhiteWhileCustomColorsRemainExact() {
+        val styles=listOf("classic","slim")+listOf("mini","square","wide").flatMap {format->listOf("instax.$format.classic","instax.$format.slim")}
+        for(style in styles) {
+            val card=PolaroidCard(title="白纸",frameStyleId=style,frameColor=0xFFF7F2E8)
+            val paper=decoded(repo.exportCard(card))
+            try {assertEquals(style,Color.WHITE,paper.getPixel(paper.width/2,20))} finally {paper.recycle()}
+        }
+        val custom=PolaroidCard(title="自定义",frameStyleId="classic",frameColor=0xFF123456)
+        val customPaper=decoded(repo.exportCard(custom))
+        try {assertEquals(0xFF123456.toInt(),customPaper.getPixel(20,20))} finally {customPaper.recycle()}
+        val brand=PolaroidFrameStyle("test.stickers.cream","品牌纸色",owner="test.stickers",color=0xFFF7F2E8)
+        repo.apply(listOf(StickerEdit.PutFrameStyle(brand)))
+        val branded=decoded(repo.exportCard(PolaroidCard(title="品牌",frameStyleId=brand.id)))
+        try {assertEquals(0xFFF7F2E8.toInt(),branded.getPixel(20,20))} finally {branded.recycle()}
+    }
+    @Test fun loadingLegacyCreamDefaultMigratesOnlyClassicPaperAndPersistsOnNextSave() {
+        val brand=PolaroidFrameStyle("test.stickers.paper","品牌",owner="test.stickers")
+        val legacy=PolaroidCard(title="旧默认",frameStyleId="classic",frameColor=0xFFF7F2E8)
+        val explicit=PolaroidCard(title="自定义色",frameStyleId="instax.square.classic",frameColor=0xFF123456)
+        val branded=PolaroidCard(title="品牌色",frameStyleId=brand.id,frameColor=0xFFF7F2E8)
+        repo.apply(listOf(StickerEdit.PutFrameStyle(brand),StickerEdit.PutCard(legacy),StickerEdit.PutCard(explicit),StickerEdit.PutCard(branded)))
+        val file=File(repo.root,"catalog.json");val root=org.json.JSONObject(file.readText());val snapshot=org.json.JSONObject(root.getString("snapshot"))
+        snapshot.getJSONArray("cards").getJSONObject(0).remove("frameStyleId");root.put("snapshot",snapshot.toString());file.writeText(root.toString())
+        val restored=StickerRepository(app,paths,media)
+        val saved=restored.cards.value.associateBy {it.id}
+        assertEquals(0xFFFFFFFFL,saved.getValue(legacy.id).frameColor)
+        assertEquals(PolaroidFormat.LEGACY,restored.frameStyle(saved.getValue(legacy.id)).format)
+        assertEquals(explicit,saved.getValue(explicit.id));assertEquals(branded,saved.getValue(branded.id))
+        val paper=decoded(restored.exportCard(legacy.id))
+        try {assertEquals(Color.WHITE,paper.getPixel(20,20))} finally {paper.recycle()}
+        restored.apply(listOf(StickerEdit.OrderCards(restored.cards.value.map {it.id}.reversed())))
+        val persisted=PluginJson.decodeFromString<StickerSnapshot>(org.json.JSONObject(file.readText()).getString("snapshot"))
+        assertEquals(0xFFFFFFFFL,persisted.cards.first {it.id==legacy.id}.frameColor)
+        assertEquals(explicit,persisted.cards.first {it.id==explicit.id});assertEquals(branded,persisted.cards.first {it.id==branded.id})
     }
 }

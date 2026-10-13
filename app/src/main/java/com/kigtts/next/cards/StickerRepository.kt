@@ -27,8 +27,10 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
     private val itemState=MutableStateFlow(state.value.items)
     private val imageState=MutableStateFlow(state.value.images)
     private val cardState=MutableStateFlow(state.value.cards)
+    private val albumState=MutableStateFlow(state.value.albums)
     val libraries=libraryState.asStateFlow();val items=itemState.asStateFlow()
     val images=imageState.asStateFlow();val cards=cardState.asStateFlow()
+    val albums=albumState.asStateFlow()
     private val resources=StickerImages(this)
 
     private fun load():StickerSnapshot {
@@ -39,7 +41,8 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
             val snapshotJson=JSONObject(json.getString("snapshot"))
             snapshotJson.optJSONArray("cards")?.let {cards->for(index in 0 until cards.length()) {
                 val card=cards.getJSONObject(index);if(!card.has("frameStyleId"))card.put("frameStyleId","classic")}}
-            val value=PluginJson.decodeFromString<StickerSnapshot>(snapshotJson.toString())
+            val stored=PluginJson.decodeFromString<StickerSnapshot>(snapshotJson.toString())
+            val value=PolaroidAlbums.migrate(stored.copy(cards=stored.cards.map {it.normalizeLegacyPaper()}))
             StickerEdits.validate(value)
             val savedFrames=json.optString("frames").takeIf {it.isNotBlank()}?.let {PluginJson.decodeFromString<List<PolaroidFrameStyle>>(it)}.orEmpty()
             // Host style revisions must not turn an otherwise valid user catalog into recovery data.
@@ -56,7 +59,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
             empty()
         }
     }
-    private fun empty()=StickerSnapshot(0,libraries=listOf(StickerLibrary(DEFAULT_LIBRARY,"我的贴纸")))
+    private fun empty()=PolaroidAlbums.migrate(StickerSnapshot(0,libraries=listOf(StickerLibrary(DEFAULT_LIBRARY,"我的贴纸"))))
     @Synchronized internal fun receipt(key:String)=receipts[key]
     @Synchronized internal fun record(key:String,hash:String,reply:StickerReply) {
         val previous=LinkedHashMap(receipts);receipts[key]=hash to reply
@@ -96,7 +99,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
         try {persist(state.value)} catch(error:Exception) {legacyMigrated=before;throw error}}
     internal fun checkRevision(revision:Long)=stickerRequire(revision==state.value.revision,StickerError.CONFLICT,"内容已更新，请重新读取")
     private fun publish(value:StickerSnapshot) {
-        libraryState.value=value.libraries;itemState.value=value.items;imageState.value=value.images;cardState.value=value.cards;state.value=value
+        libraryState.value=value.libraries;itemState.value=value.items;imageState.value=value.images;cardState.value=value.cards;albumState.value=value.albums;state.value=value
     }
     private fun persist(value:StickerSnapshot,frames:List<PolaroidFrameStyle> = frameState.value) {
         val data=JSONObject().put("schema",1).put("snapshot",PluginJson.encodeToString(value)).put("legacyMigrated",legacyMigrated)

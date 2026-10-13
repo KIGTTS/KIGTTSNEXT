@@ -55,7 +55,7 @@ import kotlin.jvm.internal.DefaultConstructorMarker
 
 /** Photo center is relative to its window. Zoom multiplies the centered Fit scale. */
 @Serializable data class PolaroidCard constructor(val id:String=UUID.randomUUID().toString(),val title:String,val description:String="",
-    val imageId:String?=null,val layers:List<CardLayer> = emptyList(),val frameColor:Long=0xFFF7F2E8,
+    val imageId:String?=null,val layers:List<CardLayer> = emptyList(),val frameColor:Long=DEFAULT_POLAROID_PAPER_COLOR,
     val photoX:Double=.5,val photoY:Double=.5,val photoZoom:Double=1.0,val photoBackdrop:PhotoBackdropMode=PhotoBackdropMode.GRAY,
     val frameStyleId:String="instax.square.classic",val originalImageId:String?=null) {
     constructor(id:String,title:String,description:String,imageId:String?,layers:List<CardLayer>,frameColor:Long):this(
@@ -69,19 +69,19 @@ import kotlin.jvm.internal.DefaultConstructorMarker
     constructor(id:String?,title:String?,description:String?,imageId:String?,layers:List<CardLayer>?,frameColor:Long,
         mask:Int,marker:DefaultConstructorMarker?):this(if(mask and 1!=0)UUID.randomUUID().toString() else requireNotNull(id),requireNotNull(title),
         if(mask and 4!=0)"" else requireNotNull(description),if(mask and 8!=0)null else imageId,
-        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)0xFFF7F2E8 else frameColor,frameStyleId="classic")
+        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)DEFAULT_POLAROID_PAPER_COLOR else frameColor,frameStyleId="classic")
     constructor(id:String?,title:String?,description:String?,imageId:String?,layers:List<CardLayer>?,frameColor:Long,
         photoX:Double,photoY:Double,photoZoom:Double,photoBackdrop:PhotoBackdropMode?,mask:Int,marker:DefaultConstructorMarker?):this(
         if(mask and 1!=0)UUID.randomUUID().toString() else requireNotNull(id),requireNotNull(title),
         if(mask and 4!=0)"" else requireNotNull(description),if(mask and 8!=0)null else imageId,
-        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)0xFFF7F2E8 else frameColor,
+        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)DEFAULT_POLAROID_PAPER_COLOR else frameColor,
         if(mask and 64!=0).5 else photoX,if(mask and 128!=0).5 else photoY,if(mask and 256!=0)1.0 else photoZoom,
         if(mask and 512!=0)PhotoBackdropMode.GRAY else requireNotNull(photoBackdrop),frameStyleId="classic")
     constructor(id:String?,title:String?,description:String?,imageId:String?,layers:List<CardLayer>?,frameColor:Long,
         photoX:Double,photoY:Double,photoZoom:Double,photoBackdrop:PhotoBackdropMode?,frameStyleId:String?,mask:Int,
         marker:DefaultConstructorMarker?):this(if(mask and 1!=0)UUID.randomUUID().toString() else requireNotNull(id),requireNotNull(title),
         if(mask and 4!=0)"" else requireNotNull(description),if(mask and 8!=0)null else imageId,
-        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)0xFFF7F2E8 else frameColor,
+        if(mask and 16!=0)emptyList() else requireNotNull(layers),if(mask and 32!=0)DEFAULT_POLAROID_PAPER_COLOR else frameColor,
         if(mask and 64!=0).5 else photoX,if(mask and 128!=0).5 else photoY,if(mask and 256!=0)1.0 else photoZoom,
         if(mask and 512!=0)PhotoBackdropMode.GRAY else requireNotNull(photoBackdrop),if(mask and 1024!=0)"classic" else requireNotNull(frameStyleId))
     @JvmName("copy") fun legacyCopy(id:String,title:String,description:String,imageId:String?,layers:List<CardLayer>,frameColor:Long)=

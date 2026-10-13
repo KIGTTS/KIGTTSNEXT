@@ -7,6 +7,7 @@ internal object StickerEdits {
     private fun id(value:String) {stickerRequire(value.matches(idPattern),message="标识不合法")}
     private fun name(value:String,max:Int=128) {stickerRequire(value.isNotBlank()&&value.length<=max&&!value.contains('\u0000'),message="名称不合法")}
     fun validate(value:StickerSnapshot) {
+        PolaroidAlbums.validate(value)
         stickerRequire(value.revision>=0&&value.libraries.size in 1..128&&value.items.size<=2048&&value.images.size<=4096&&value.cards.size<=256,StickerError.TOO_LARGE,"内容数量超出上限")
         fun unique(ids:List<String>) {ids.forEach(::id);stickerRequire(ids.toSet().size==ids.size,message="标识重复")}
         unique(value.libraries.map {it.id});unique(value.items.map {it.id});unique(value.images.map {it.id});unique(value.cards.map {it.id})
@@ -35,7 +36,8 @@ internal object StickerEdits {
             is StickerEdit.PutLibrary->put(libraries,edit.library) {it.id}
             is StickerEdit.PutItem->put(items,edit.item) {it.id}
             is StickerEdit.PutCard->put(cards,edit.card) {it.id}
-            is StickerEdit.PutFrameStyle,is StickerEdit.RemoveFrameStyles->Unit
+            is StickerEdit.PutFrameStyle,is StickerEdit.RemoveFrameStyles,is StickerEdit.PutAlbum,is StickerEdit.RemoveAlbums,
+            is StickerEdit.MoveAlbumCards,is StickerEdit.OrderAlbums,is StickerEdit.OrderAlbumCards->Unit
             is StickerEdit.RemoveItems->{existing(edit.ids,items.map {it.id});items.removeAll {it.id in edit.ids}}
             is StickerEdit.RemoveCards->{existing(edit.ids,cards.map {it.id});cards.removeAll {it.id in edit.ids}}
             is StickerEdit.RemoveImages->{existing(edit.ids,images.map {it.id});images.removeAll {it.id in edit.ids}}
@@ -51,6 +53,6 @@ internal object StickerEdits {
             is StickerEdit.OrderItems->{val selected=items.filter {it.libraryId==edit.libraryId}.toMutableList();stickerRequire(libraries.any {it.id==edit.libraryId},StickerError.NOT_FOUND,"图库不存在")
                 order(selected,edit.ids) {it.id};val iterator=selected.iterator();items.replaceAll {if(it.libraryId==edit.libraryId)iterator.next() else it}}
         }}
-        return before.copy(libraries=libraries,items=items,cards=cards,images=images).also(::validate)
+        return before.copy(libraries=libraries,items=items,cards=cards,images=images,albums=PolaroidAlbums.apply(before,edits)).also(::validate)
     }
 }

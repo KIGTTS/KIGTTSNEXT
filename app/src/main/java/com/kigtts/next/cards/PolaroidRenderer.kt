@@ -5,6 +5,7 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.exifinterface.media.ExifInterface
+import com.kigtts.next.R
 import com.kigtts.plugin.api.*
 import java.io.File
 import kotlin.math.roundToInt
@@ -15,10 +16,12 @@ internal object PolaroidRenderer {
         catch(_:OutOfMemoryError) {throw StickerFault(StickerError.TOO_LARGE,"设备内存不足，请稍后重试导出")}
     private fun render(repository:StickerRepository,card:PolaroidCard):File {
         val frame=repository.frameStyle(card);val geometry=frame.format.geometry
+        val branding=polaroidBranding(card,frame)
+        val captionWidth=branding?.captionWidth ?: geometry.titleWidth
         val height=1500;val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
         val result=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         try {
-        val paperColor=(frame.color ?: card.frameColor).toInt()
+        val paperColor=polaroidPaperColor(card,frame).toInt()
         val canvas=Canvas(result);canvas.drawColor(paperColor);val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val imageArea=RectF((geometry.photoLeft*unit).toFloat(),(geometry.photoTop*unit).toFloat(),
             (geometry.photoRight*unit).toFloat(),(geometry.photoBottom*unit).toFloat())
@@ -34,9 +37,17 @@ internal object PolaroidRenderer {
         frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         drawText(canvas,card.title,(geometry.titleX*unit).toFloat(),(geometry.titleY*unit).toFloat(),
-            (geometry.titleWidth*unit).roundToInt(),(geometry.titleSize*unit).toFloat(),if(dark)Color.WHITE else 0xFF202020.toInt(),true)
+            (captionWidth*unit).roundToInt(),(geometry.titleSize*unit).toFloat(),if(dark)Color.WHITE else 0xFF202020.toInt(),true)
         drawText(canvas,card.description,(geometry.titleX*unit).toFloat(),(geometry.descriptionY*unit).toFloat(),
-            (geometry.titleWidth*unit).roundToInt(),(geometry.descriptionSize*unit).toFloat(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt(),false)
+            (captionWidth*unit).roundToInt(),(geometry.descriptionSize*unit).toFloat(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt(),false)
+        branding?.let { box ->
+            repository.context.getDrawable(R.drawable.logo_horizontal)?.mutate()?.let { logo ->
+                logo.setTint(if(dark) Color.WHITE else 0xFF202020.toInt())
+                logo.setBounds((box.x*unit).roundToInt(),(box.y*unit).roundToInt(),
+                    ((box.x+box.width)*unit).roundToInt(),((box.y+box.height)*unit).roundToInt())
+                logo.draw(canvas)
+            }
+        }
         card.layers.forEach {layer->
             val x=(layer.x*width).toFloat();val y=(layer.y*height).toFloat();val span=(layer.width*width).toFloat()
             canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)

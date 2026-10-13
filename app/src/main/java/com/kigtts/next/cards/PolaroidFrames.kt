@@ -5,7 +5,7 @@ import com.kigtts.plugin.api.*
 /** Original host frames and a resource-backed registry; IDs outlive missing optional styles. */
 internal object PolaroidFrames {
     private val legacy=listOf(PolaroidFrameStyle("classic","经典"),PolaroidFrameStyle("night","深色",color=0xFF24282A),
-        PolaroidFrameStyle("slim","细框",color=0xFFF8F7F3,borderColor=0xFF777777,borderWidth=.003333),
+        PolaroidFrameStyle("slim","细框",color=DEFAULT_POLAROID_PAPER_COLOR,borderColor=0xFF777777,borderWidth=.003333),
         PolaroidFrameStyle("soft","柔色",color=0xFFF2E6EB,photoCornerRadius=.024))
     val defaults=legacy+listOf(PolaroidFormat.MINI,PolaroidFormat.SQUARE,PolaroidFormat.WIDE).flatMap {format->
         legacy.map {it.copy(id="instax.${format.name.lowercase()}.${it.id}",format=format)}}

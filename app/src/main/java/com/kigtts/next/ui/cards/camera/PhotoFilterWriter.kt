@@ -10,8 +10,8 @@ import java.io.File
 /** Process the original resolution in small pixel strips using one mutable bitmap, not two full copies. */
 internal object PhotoFilterWriter {
     const val MAX_PIXELS = 80_000_000L
-    suspend fun write(original: File, output: File, filter: PhotoFilter): File? {
-        if (filter == PhotoFilter.ORIGINAL) return null
+    suspend fun write(original: File, output: File, filter: PhotoFilter, strength: Float = 1f): File? {
+        if (filter == PhotoFilter.ORIGINAL || strength <= 0f) return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         original.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
         require(bounds.outWidth > 0 && bounds.outHeight > 0 && bounds.outWidth.toLong() * bounds.outHeight <= MAX_PIXELS) { "照片尺寸超出支持范围" }
@@ -20,17 +20,7 @@ internal object PhotoFilterWriter {
         }) }) { "照片暂时无法读取" }
         val stage = File(output.parentFile, ".${output.name}.tmp")
         try {
-            val matrix = PhotoFilters.coefficients(filter)
-            val stripHeight = minOf(32, image.height)
-            val pixels = IntArray(image.width * stripHeight)
-            var y = 0
-            while (y < image.height) {
-                currentCoroutineContext().ensureActive()
-                val rows = minOf(stripHeight, image.height - y)
-                image.getPixels(pixels, 0, image.width, 0, y, image.width, rows)
-                for (index in 0 until image.width * rows) pixels[index] = PhotoFilters.apply(pixels[index], matrix)
-                image.setPixels(pixels, 0, image.width, 0, y, image.width, rows); y += rows
-            }
+            applyPhotoFilterBands(image, filter, strength)
             currentCoroutineContext().ensureActive()
             stage.outputStream().use { require(image.compress(Bitmap.CompressFormat.JPEG, 98, it)) { "照片暂时无法保存" } }
             val sourceExif = original.inputStream().use { ExifInterface(it) }

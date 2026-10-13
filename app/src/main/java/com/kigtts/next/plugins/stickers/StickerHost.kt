@@ -24,11 +24,13 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         return object:StickerBroker {
             override suspend fun request(command:StickerCommand):StickerReply=withContext(Dispatchers.IO) {lock.withLock {
                 try {
-                    val read=command is StickerCommand.Query||command is StickerCommand.QueryFrames||command==StickerCommand.Describe||command is StickerCommand.Transaction||command is StickerCommand.ReadImage||command is StickerCommand.PublishQuickMedia||command is StickerCommand.ExportCard
+                    val read=command is StickerCommand.Query||command is StickerCommand.QueryFrames||command is StickerCommand.QueryAlbums||command is StickerCommand.QueryAlbumCards||command==StickerCommand.Describe||command is StickerCommand.Transaction||command is StickerCommand.ReadImage||command is StickerCommand.PublishQuickMedia||command is StickerCommand.ExportCard
                     requireAccess(capabilities,read);retire()
                     when(command) {
                         StickerCommand.Describe->StickerReply.Features(writable="stickers-write" in capabilities,operations=operations)
                         is StickerCommand.Query->query(command)
+                        is StickerCommand.QueryAlbums->StickerAlbumQueries.albums(repository,command)
+                        is StickerCommand.QueryAlbumCards->StickerAlbumQueries.cards(repository,command)
                         is StickerCommand.QueryFrames->{stickerRequire(command.offset>=0&&command.limit in 1..50,message="分页参数不合法")
                             command.revision?.let {repository.checkRevision(it)};val styles=repository.frameStyles.value
                             StickerReply.Frames(repository.snapshot.value.revision,styles.drop(command.offset).take(command.limit),styles.size,
@@ -51,7 +53,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
                         is StickerCommand.PublishQuickMedia->{stickerRequire("quick-text-write" in capabilities,StickerError.PERMISSION_DENIED,"发布快捷文本图片需要 quick-text-write 能力")
                             StickerReply.Media(repository.publishQuickMedia(command.imageId))}
                         is StickerCommand.OpenUi->{if(command.target==StickerUiTarget.REVIEW)owned(owner,requireNotNull(command.id))
-                            if(command.target==StickerUiTarget.EDIT_CARD)stickerRequire(repository.cards.value.any {it.id==command.id},StickerError.NOT_FOUND,"拍立得不存在")
+                            if(command.target==StickerUiTarget.EDIT_CARD||command.target==StickerUiTarget.CARDS&&command.id!=null)stickerRequire(repository.cards.value.any {it.id==command.id},StickerError.NOT_FOUND,"拍立得不存在")
                             if(command.target==StickerUiTarget.LIBRARY&&command.id!=null)stickerRequire(repository.libraries.value.any {it.id==command.id},StickerError.NOT_FOUND,"图库不存在")
                             stickerRequire(withContext(Dispatchers.Main) {openUi(command.target,command.id)},StickerError.HOST_UNAVAILABLE,"请先打开 KIGTTS")
                             StickerReply.UiOpened(command.target)}
@@ -77,10 +79,11 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         val libraries=value.libraries.filter {command.libraryId==null||it.id==command.libraryId}
         val items=value.items.filter {command.libraryId==null||it.libraryId==command.libraryId}
         fun <T> page(all:List<T>,scope:StickerScope)=if(command.scope in setOf(StickerScope.ALL,scope))all.drop(command.offset).take(command.limit) else emptyList()
-        val total=when(command.scope) {StickerScope.ALL->maxOf(libraries.size,items.size,value.images.size,value.cards.size)
+        val total=when(command.scope) {StickerScope.ALL->maxOf(libraries.size,items.size,value.images.size,value.cards.size,value.albums.size)
             StickerScope.LIBRARIES->libraries.size;StickerScope.ITEMS->items.size;StickerScope.IMAGES->value.images.size;StickerScope.CARDS->value.cards.size}
         return StickerReply.Snapshot(StickerSnapshot(value.revision,page(libraries,StickerScope.LIBRARIES),page(items,StickerScope.ITEMS),
-            page(value.images,StickerScope.IMAGES),page(value.cards,StickerScope.CARDS),command.offset,total,(command.offset+command.limit).takeIf {it<total}))
+            page(value.images,StickerScope.IMAGES),page(value.cards,StickerScope.CARDS),command.offset,total,(command.offset+command.limit).takeIf {it<total},
+            albums=if(command.scope==StickerScope.ALL)value.albums.drop(command.offset).take(command.limit) else emptyList()))
     }
     private fun prepare(owner:String,command:StickerCommand.Prepare):StickerReply {
         stickerRequire(command.transactionId.matches(Regex("[a-zA-Z0-9._-]{1,128}")),message="事务标识不合法")
@@ -101,9 +104,13 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         val (after,frames)=synchronized(repository) {repository.plan(edits,command.revision) to repository.framePlan(edits)};checkDraft(after,frames)
         val deleted=before.libraries.count {old->after.libraries.none {it.id==old.id}}+before.items.count {old->after.items.none {it.id==old.id}}+
             before.cards.count {old->after.cards.none {it.id==old.id}}+before.images.count {old->after.images.none {it.id==old.id}}+
-            repository.frameStyles.value.count {old->frames.none {it.id==old.id}}
+            repository.frameStyles.value.count {old->frames.none {it.id==old.id}}+before.albums.count {old->after.albums.none {it.id==old.id}}
         val titles=command.edits.mapNotNull {when(it) {is StickerEdit.PutCard->it.card.title;is StickerEdit.PutItem->it.item.name;is StickerEdit.PutLibrary->it.library.name;
-            is StickerEdit.PutFrameStyle->it.style.name;is StickerEdit.RemoveFrameStyles->"移除边框："+repository.frameStyles.value.filter {style->style.id in it.ids}.joinToString {style->style.name};else->null}}.take(100)
+            is StickerEdit.PutFrameStyle->it.style.name;is StickerEdit.RemoveFrameStyles->"移除边框："+repository.frameStyles.value.filter {style->style.id in it.ids}.joinToString {style->style.name}
+            is StickerEdit.PutAlbum->"相册："+it.name
+            is StickerEdit.RemoveAlbums->"删除相册（照片将保留）："+before.albums.filter {album->album.id in it.ids}.joinToString {album->album.name}
+            is StickerEdit.MoveAlbumCards->"移动 ${it.cardIds.size} 张拍立得"
+            is StickerEdit.OrderAlbums->"调整相册顺序";is StickerEdit.OrderAlbumCards->"调整相册照片顺序";else->null}}.take(100)
         val preview=StickerPreview(UUID.randomUUID().toString(),before.revision,titles,deleted,deleted>0)
         pending[preview.token]=Plan(owner,command.transactionId,hash,preview,after,frames,System.currentTimeMillis()+10*60*1000)
         return StickerReply.Prepared(preview)
@@ -156,7 +163,8 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
     }}
     suspend fun reject(token:String)=withContext(Dispatchers.IO) {lock.withLock {pending[token]?.let(::discard)}}
     companion object {
-        val operations=listOf("query","query-frames","changes","prepare","commit","discard","transaction","publish-image","create-qr-code","import-media","read-image","publish-quick-media","export-card","open-ui")
+        val operations=listOf("query","query-frames","query-albums","query-album-cards","changes","prepare","commit","discard","transaction","publish-image","create-qr-code","import-media","read-image","publish-quick-media","export-card","open-ui",
+            "album.put","album.remove","album.move-cards","album.order","album.cards-order")
         private fun key(owner:String,id:String)="$owner/$id"
     }
 }

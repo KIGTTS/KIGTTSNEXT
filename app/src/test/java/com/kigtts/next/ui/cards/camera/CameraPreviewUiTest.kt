@@ -32,25 +32,92 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-xxhdpi")
 class CameraPreviewUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun landscapeKeepsTheControlRailNarrowAndCyclesOneRatioIcon() {
+    @Composable
+    private fun CameraTestLayout(format: PolaroidFormat, formats: List<PolaroidFormat>, cycle: () -> Unit) {
+        var filtersExpanded by remember { mutableStateOf(false) }
+        var filter by remember { mutableStateOf(PhotoFilter.ORIGINAL) }
+        CameraPageLayout({ modifier, vertical ->
+            Box(modifier.testTag("test-preview").background(MaterialTheme.colorScheme.surface)) {
+                CameraOverlayControls(format, formats, filter, true, vertical, filtersExpanded,
+                    cycle, {}, { filtersExpanded = !filtersExpanded }, { filter = it })
+            }
+        }, { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical) })
+    }
+
+    @Test fun landscapeRotatesCameraChromeAndCentersTheShutterOnTheRight() {
         var format by mutableStateOf(PolaroidFormat.WIDE)
         val formats = listOf(PolaroidFormat.WIDE, PolaroidFormat.SQUARE)
-        compose.setContent { KigttsTheme(ThemeSettings()) {
-            CameraPageLayout({ modifier -> Box(modifier.testTag("test-preview").background(MaterialTheme.colorScheme.surface)) },
-                { CameraFilters(PhotoFilter.ORIGINAL, true, false, {}) }, { vertical ->
-                    CameraActionBar(false, true, true, true, format, formats, {}, {}, {},
-                        { format = nextCameraFormat(formats, format) }, vertical)
-                })
-        } }
+        compose.setContent { KigttsTheme(ThemeSettings()) { CameraTestLayout(format, formats) { format = nextCameraFormat(formats, format) } } }
         val page = compose.onNodeWithTag("polaroid-camera").fetchSemanticsNode().boundsInRoot
         val controls = compose.onNodeWithTag("camera-side-controls").fetchSemanticsNode().boundsInRoot
         val preview = compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot
+        val shutter = compose.onNodeWithTag("camera-shutter").fetchSemanticsNode().boundsInRoot
+        val cancel = compose.onNodeWithTag("camera-cancel").fetchSemanticsNode().boundsInRoot
+        val flip = compose.onNodeWithTag("camera-flip").fetchSemanticsNode().boundsInRoot
+        assertEquals(page.center.y.toDouble(), shutter.center.y.toDouble(), 1.0)
         assertTrue(controls.width < page.width * .2f)
+        assertTrue(shutter.center.x > page.left + page.width * .85f)
         assertTrue(preview.right <= controls.left)
+        assertTrue(cancel.bottom < shutter.top && flip.top > shutter.bottom)
         compose.onAllNodesWithTag("camera-format").assertCountEquals(1)
+        val ratio = compose.onNodeWithTag("camera-format").fetchSemanticsNode().boundsInRoot
+        val settings = compose.onNodeWithTag("camera-settings").fetchSemanticsNode().boundsInRoot
+        val toggle = compose.onNodeWithTag("camera-filter-toggle").fetchSemanticsNode().boundsInRoot
+        assertTrue(ratio.bottom < settings.top && settings.bottom < toggle.top)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：矩形，点按切换").performClick()
         assertEquals(PolaroidFormat.SQUARE, format)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：方形，点按切换")
+        compose.onNodeWithTag("camera-filters").assertDoesNotExist()
+        compose.onNodeWithTag("camera-filter-toggle").performClick()
+        compose.onNodeWithTag("camera-filters").assertExists()
+        val original = compose.onNodeWithTag("camera-filter/ORIGINAL").fetchSemanticsNode().boundsInRoot
+        val bw = compose.onNodeWithTag("camera-filter/BW").fetchSemanticsNode().boundsInRoot
+        assertTrue(original.bottom <= bw.top)
+        assertEquals(preview, compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot)
+        compose.onNodeWithTag("camera-filter/BW").performClick().assertIsSelected()
+        compose.onNodeWithTag("camera-filter-toggle").performClick()
+        compose.onNodeWithTag("camera-filters").assertDoesNotExist()
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
+    fun portraitCentersTheShutterAtTheBottomAndExpandsFiltersAcrossThePhoto() {
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CameraTestLayout(PolaroidFormat.MINI, listOf(PolaroidFormat.MINI, PolaroidFormat.SQUARE), {})
+        } }
+        val page = compose.onNodeWithTag("polaroid-camera").fetchSemanticsNode().boundsInRoot
+        val shutter = compose.onNodeWithTag("camera-shutter").fetchSemanticsNode().boundsInRoot
+        val cancel = compose.onNodeWithTag("camera-cancel").fetchSemanticsNode().boundsInRoot
+        val flip = compose.onNodeWithTag("camera-flip").fetchSemanticsNode().boundsInRoot
+        val preview = compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot
+        assertEquals(page.center.x.toDouble(), shutter.center.x.toDouble(), 1.0)
+        assertTrue(shutter.center.y > page.top + page.height * .85f)
+        assertTrue(cancel.right < shutter.left && flip.left > shutter.right)
+        compose.onNodeWithTag("camera-side-controls").assertDoesNotExist()
+        val ratio = compose.onNodeWithTag("camera-format").fetchSemanticsNode().boundsInRoot
+        val settings = compose.onNodeWithTag("camera-settings").fetchSemanticsNode().boundsInRoot
+        val toggle = compose.onNodeWithTag("camera-filter-toggle").fetchSemanticsNode().boundsInRoot
+        assertTrue(ratio.right < settings.left && settings.right < toggle.left)
+        compose.onNodeWithTag("camera-filters").assertDoesNotExist()
+        compose.onNodeWithTag("camera-filter-toggle").performClick()
+        val original = compose.onNodeWithTag("camera-filter/ORIGINAL").fetchSemanticsNode().boundsInRoot
+        val bw = compose.onNodeWithTag("camera-filter/BW").fetchSemanticsNode().boundsInRoot
+        assertTrue(original.right <= bw.left)
+        assertEquals(preview, compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot)
+    }
+
+    @Test fun countdownKeepsTheShutterAsAnExplicitCancelAndLocksTheLens() {
+        var cancelled = false
+        var countdownCancelled = false
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CameraActionBar(false, true, true, true, { cancelled = true }, {}, {}, vertical = true, locked = true,
+                countingDown = true, cancelCountdown = { countdownCancelled = true })
+        } }
+        compose.onNodeWithTag("camera-shutter").assertIsEnabled().assertContentDescriptionContains("取消倒计时").performClick()
+        assertTrue(countdownCancelled)
+        compose.onNodeWithTag("camera-flip").assertIsNotEnabled()
+        compose.onNodeWithTag("camera-cancel").assertIsEnabled().performClick()
+        assertTrue(cancelled)
     }
     @Test fun exposureHandleStaysInsideThePhotoAndSupportsRealDraggingAndAccessibility() {
         var index by mutableIntStateOf(0)

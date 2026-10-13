@@ -49,4 +49,11 @@ class LuaStickerBrokerTest {
         assertTrue(runCatching {LuaExecutor(env,store).call(project,"execute",PluginContext("",""),"foreign")}.isFailure)
         assertTrue(requests.isEmpty())
     }
+    @Test fun readOnlyPageRefreshCanQueryAlbumsAndOrderedPhotosWithoutWriteCapability()=runBlocking {
+        val env=environment();val (store,project)=project(env,"return {pages=function(c) host.stickers({type='query-albums'});return host.stickers({type='query-album-cards',albumId='user.polaroids',limit=10}) end}",listOf("stickers-read"))
+        LuaExecutor(env,store).call(project,"pages",PluginContext("",""))
+        assertTrue(requests[0] is StickerCommand.QueryAlbums)
+        val photos=requests[1] as StickerCommand.QueryAlbumCards
+        assertEquals(DEFAULT_POLAROID_ALBUM_ID,photos.albumId);assertEquals(10,photos.limit)
+    }
 }

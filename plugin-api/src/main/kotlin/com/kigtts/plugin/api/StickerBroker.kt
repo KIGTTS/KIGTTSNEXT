@@ -14,9 +14,6 @@ interface StickerBroker {
 @Serializable data class StickerImage(val id:String,val mime:String,val bytes:Long,val width:Int,val height:Int,val version:Long)
 @Serializable data class StickerLibrary(val id:String=UUID.randomUUID().toString(),val name:String)
 @Serializable data class StickerItem(val id:String=UUID.randomUUID().toString(),val libraryId:String,val name:String,val imageId:String)
-@Serializable data class StickerSnapshot(val revision:Long,val libraries:List<StickerLibrary> = emptyList(),
-    val items:List<StickerItem> = emptyList(),val images:List<StickerImage> = emptyList(),val cards:List<PolaroidCard> = emptyList(),
-    val offset:Int=0,val total:Int=0,val nextOffset:Int?=null)
 @Serializable data class StickerChange(val revision:Long,val decisionsVersion:Long=0)
 @Serializable data class StickerPreview(val token:String,val revision:Long,val titles:List<String>,val deleted:Int,val requiresConfirmation:Boolean)
 @Serializable enum class StickerScope { ALL, LIBRARIES, ITEMS, IMAGES, CARDS }
@@ -37,6 +34,13 @@ interface StickerBroker {
     @Serializable @SerialName("library.order") data class OrderLibraries(val ids:List<String>):StickerEdit
     @Serializable @SerialName("item.order") data class OrderItems(val libraryId:String,val ids:List<String>):StickerEdit
     @Serializable @SerialName("card.order") data class OrderCards(val ids:List<String>):StickerEdit
+    /** Metadata only; album membership/order is changed explicitly by MoveAlbumCards/OrderAlbumCards. */
+    @Serializable @SerialName("album.put") data class PutAlbum(val id:String,val name:String):StickerEdit
+    /** Photos are retained and appended to the protected default album. */
+    @Serializable @SerialName("album.remove") data class RemoveAlbums(val ids:List<String>):StickerEdit
+    @Serializable @SerialName("album.move-cards") data class MoveAlbumCards(val albumId:String,val cardIds:List<String>):StickerEdit
+    @Serializable @SerialName("album.order") data class OrderAlbums(val ids:List<String>):StickerEdit
+    @Serializable @SerialName("album.cards-order") data class OrderAlbumCards(val albumId:String,val cardIds:List<String>):StickerEdit
 }
 
 @Serializable sealed interface StickerCommand {
@@ -44,6 +48,8 @@ interface StickerBroker {
     @Serializable @SerialName("query") data class Query(val scope:StickerScope=StickerScope.ALL,val libraryId:String?=null,
         val offset:Int=0,val limit:Int=50,val revision:Long?=null):StickerCommand
     @Serializable @SerialName("query-frames") data class QueryFrames(val offset:Int=0,val limit:Int=50,val revision:Long?=null):StickerCommand
+    @Serializable @SerialName("query-albums") data class QueryAlbums(val offset:Int=0,val limit:Int=50,val revision:Long?=null):StickerCommand
+    @Serializable @SerialName("query-album-cards") data class QueryAlbumCards(val albumId:String,val offset:Int=0,val limit:Int=50,val revision:Long?=null):StickerCommand
     /** Tokens are caller-bound. Removal requires a private, native review confirmation. */
     @Serializable @SerialName("prepare") data class Prepare(val transactionId:String,val revision:Long,val edits:List<StickerEdit>):StickerCommand
     @Serializable @SerialName("commit") data class Commit(val token:String):StickerCommand
@@ -65,6 +71,7 @@ interface StickerBroker {
     @Serializable @SerialName("features") data class Features(val protocol:Int=1,val writable:Boolean,val operations:List<String>,val maxBatch:Int=100,val maxQuery:Int=50):StickerReply
     @Serializable @SerialName("snapshot") data class Snapshot(val value:StickerSnapshot):StickerReply
     @Serializable @SerialName("frames") data class Frames(val revision:Long,val items:List<PolaroidFrameStyle>,val total:Int,val nextOffset:Int?=null):StickerReply
+    @Serializable @SerialName("albums") data class Albums(val revision:Long,val items:List<PolaroidAlbum>,val total:Int,val nextOffset:Int?=null):StickerReply
     @Serializable @SerialName("prepared") data class Prepared(val value:StickerPreview):StickerReply
     @Serializable @SerialName("applied") data class Applied(val revision:Long,val transactionId:String):StickerReply
     @Serializable @SerialName("discarded") data class Discarded(val token:String):StickerReply

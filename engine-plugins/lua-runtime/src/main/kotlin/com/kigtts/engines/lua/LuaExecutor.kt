@@ -132,7 +132,7 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
             host.set("stickers", function { args ->
                 val request=rewriteResources(LuaJson.result(args.arg1())).jsonObject.toMutableMap()
                 val type=request["type"]?.jsonPrimitive?.content.orEmpty()
-                val pureRead=type in setOf("describe","query","query-frames","transaction")
+                val pureRead=type in setOf("describe","query","query-frames","query-albums","query-album-cards","transaction")
                 val reading=pureRead||type in setOf("read-image","export-card","publish-quick-media")
                 gate(if(reading&&"stickers-read" in permissions) "stickers-read" else "stickers-write")
                 require(writable||pureRead) { "页面刷新只能读取数据" }

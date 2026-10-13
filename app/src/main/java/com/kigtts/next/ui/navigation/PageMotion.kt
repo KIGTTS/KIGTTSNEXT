@@ -24,29 +24,35 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
     var animation = Animatable(initial)
     var gesture = 0f
     var parentPreview = 0f
+    var overridePosition: Float? = null
 }
 
 /** Retire only after reaching the off-screen endpoint; interrupted/re-entered pages reuse their pose. */
 @Composable
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
-    parentPreview: Float, finished: () -> Unit, content: @Composable () -> Unit) {
+    parentPreview: Float, finished: () -> Unit, vertical: Boolean = entry.cameraRequestId != null,
+    cameraPose: CameraPagePose? = null, content: @Composable () -> Unit) {
     var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
     val memory = remember(entry) { PageMotionMemory(if (mounted) {
-        if (role == PageRole.BACKGROUND) -.08f else 0f
+        if (role == PageRole.BACKGROUND) if(vertical) .08f else -.08f else 0f
     } else if (entry.scene == PageScene.Home) 0f else
-        if (role == PageRole.FOREGROUND) entry.direction else -.08f, role) }
+        if (role == PageRole.FOREGROUND) if(vertical) -1f else entry.direction else if(vertical) .08f else -.08f, role) }
     val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
     val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
-    val leavingDirection = entry.direction
-    val animation = remember(role) {
-        Animatable(memory.animation.value * (1f - memory.parentPreview)).also { memory.animation = it }
+    val leavingDirection = if (vertical) -1f else entry.direction
+    val controlled = cameraPose != null
+    val animation = remember(role, vertical, controlled) {
+        val seed = memory.overridePosition ?: (memory.animation.value * (1f - memory.parentPreview) -
+            if(vertical && entry.cameraRequestId != null && role == PageRole.EXITING) memory.gesture else 0f)
+        Animatable(seed).also { memory.animation = it }
     }
     val latestFinished by rememberUpdatedState(finished)
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val entrance = tween<Float>(durationMillis = 320, easing = FastOutSlowInEasing)
-    LaunchedEffect(role, animation) {
-        animation.animateTo(when (role) { PageRole.FOREGROUND -> 0f; PageRole.BACKGROUND -> -.08f; PageRole.EXITING -> leavingDirection },
-            if (role == PageRole.FOREGROUND && !restoringParent) entrance else spatial)
+    LaunchedEffect(role, animation, controlled) {
+        if (controlled) return@LaunchedEffect
+        animation.animateTo(when (role) { PageRole.FOREGROUND -> 0f; PageRole.BACKGROUND -> if(vertical) .08f else -.08f; PageRole.EXITING -> leavingDirection },
+            if (vertical || role == PageRole.FOREGROUND && !restoringParent) entrance else spatial)
         if (role == PageRole.EXITING) latestFinished()
     }
     SideEffect {
@@ -54,28 +60,37 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
         memory.role = role
         memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
         memory.parentPreview = parentPreview
+        if (!controlled) memory.overridePosition = null
     }
     val currentRole by rememberUpdatedState(role)
     val currentProgress by rememberUpdatedState(progress)
     val currentPreview by rememberUpdatedState(parentPreview)
+    val currentPose by rememberUpdatedState(cameraPose)
     val layer = Modifier.fillMaxSize().graphicsLayer {
-        val position = animation.value * (1f - currentPreview)
+        val position = currentPose?.position ?: animation.value * (1f - currentPreview)
+        currentPose?.let { memory.overridePosition = position }
         val departed = if (currentRole == PageRole.EXITING) abs(position).coerceIn(0f, 1f) else 0f
-        val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress else prediction * (1f - departed)
+        val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress else if(vertical) 0f else prediction * (1f - departed)
         val gestureDirection = entry.direction
-        val underlay = if (currentRole != PageRole.EXITING) (-position / .08f).coerceIn(0f, 1f) else 0f
-        translationX = size.width * position + 28.dp.toPx() * gesture * gestureDirection
-        scaleX = 1f - .015f * underlay - .06f * gesture
+        val underlay = if (currentRole != PageRole.EXITING) ((if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
+        translationX = if(vertical) 0f else size.width * position + 28.dp.toPx() * gesture * gestureDirection
+        translationY = if(vertical) size.height * (position - if(entry.cameraRequestId != null && !controlled) gesture else 0f) else 0f
+        scaleX = if(vertical) 1f else 1f - .015f * underlay - .06f * gesture
         scaleY = scaleX
-        shape = RoundedCornerShape((28f * gesture + 12f * underlay).dp)
-        clip = gesture > 0f || underlay > 0f
+        shape = RoundedCornerShape((if(vertical) 0f else 28f * gesture + 12f * underlay).dp)
+        clip = !vertical && (gesture > 0f || underlay > 0f)
     }.then(if (interactive) Modifier.semantics { testTag = "page-layer/" + entry.identity }
         else Modifier.clearAndSetSemantics { testTag = "page-layer/" + entry.identity })
         .pointerInput(interactive) {
             if (!interactive) awaitEachGesture {
                 while (true) {
                     val event = awaitPointerEvent(PointerEventPass.Initial)
-                    event.changes.forEach { it.consume() }
+                    val resume = currentPose?.allowUnderlayResumeMovement == true && event.changes.count { it.pressed } == 1
+                    event.changes.forEach { change ->
+                        // Block descendant presses/releases while allowing the fixed ancestor to
+                        // take over a new upward pull from a partially revealed camera's underlay.
+                        if (!resume || !change.pressed || !change.previousPressed) change.consume()
+                    }
                     if (event.changes.none { it.pressed }) break
                 }
             }
@@ -86,7 +101,8 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
                 content()
                 val shade = MaterialTheme.colorScheme.scrim
                 Box(Modifier.matchParentSize().graphicsLayer {
-                    alpha = if (currentRole != PageRole.EXITING) .12f * (-animation.value * (1f - currentPreview) / .08f).coerceIn(0f, 1f) else 0f
+                    val position = currentPose?.position ?: animation.value * (1f - currentPreview)
+                    alpha = if (currentRole != PageRole.EXITING) .12f * ((if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
                 }.background(shade))
             }
         }

@@ -1,10 +1,13 @@
 package com.kigtts.next.ui.cards.camera
 
 import android.content.Context
+import android.hardware.camera2.CameraCaptureSession
 import android.util.Log
 import androidx.camera.core.*
 import androidx.camera.core.resolutionselector.*
 import androidx.camera.extensions.*
+import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
@@ -15,30 +18,31 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal data class CameraBinding(val camera: Camera, val preview: Preview, val capture: ImageCapture,
-    val lease: CameraSessionLease) {
+    val lease: CameraSessionLease, val processing: CameraProcessing = CameraProcessing.STANDARD) {
     fun release() { lease.close(); preview.setSurfaceProvider(null) }
 }
 
+@androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCameraProvider, owner: LifecycleOwner,
-    selector: CameraSelector, view: PreviewView, rotation: Int): CameraBinding {
+    selector: CameraSelector, view: PreviewView, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
+    metadata: CameraCaptureSession.CaptureCallback? = null): CameraBinding {
     val viewport = requireNotNull(view.viewPort) { "相机预览尚未就绪" }
-    val manager = try { ExtensionsManager.getInstanceAsync(context, provider).awaitCamera(context) }
+    // Ordinary capture does not initialize a vendor extension or wait for its metadata discovery.
+    val manager = if (processing == CameraProcessing.STANDARD) null else try { ExtensionsManager.getInstanceAsync(context, provider).awaitCamera(context) }
         catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
-    val modes = buildList<Int?> {
-        listOf(ExtensionMode.AUTO, ExtensionMode.HDR, ExtensionMode.NIGHT).forEach {
-            if (runCatching { manager?.isExtensionAvailable(selector, it) == true }.getOrDefault(false)) add(it)
-        }
-        add(null)
-    }
+    val available = processing.extensionMode?.let { mode -> runCatching { manager?.isExtensionAvailable(selector, mode) == true }.getOrDefault(false) } ?: false
+    val modes = cameraExtensionPlan(processing, available)
     var failure: Exception? = null
     var skipExtensions = false
-    // Prefer OEM processing and high-resolution sizes, then try compatible normal sizes/session.
+    // Preserve high-resolution/quality preference. Only the explicitly selected OEM mode may precede normal fallback.
     for (mode in modes) for (highResolution in listOf(true, false)) {
         currentCoroutineContext().ensureActive()
         if (mode != null && skipExtensions) continue
         // A previous OPEN/STREAMING value must never make a new session look ready before its first frame.
         awaitCameraPreviewIdle(view.previewStreamState)
-        val preview = Preview.Builder().setTargetRotation(rotation).build()
+        val previewBuilder = Preview.Builder().setTargetRotation(rotation)
+        if (mode == null && metadata != null) Camera2Interop.Extender(previewBuilder).setSessionCaptureCallback(metadata)
+        val preview = previewBuilder.build()
         val resolution = ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
             .setAllowedResolutionMode(if (highResolution) ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE else ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
             .setResolutionFilter { sizes, _ -> sizes.filter { it.width.toLong() * it.height <= PhotoFilterWriter.MAX_PIXELS } }.build()
@@ -56,7 +60,8 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
         try {
             Log.d(CAMERA_LOG_TAG, "Binding $label")
             val camera = provider.bindToLifecycle(owner, selector, session)
-            attached = CameraBinding(camera, preview, capture, lease)
+            attached = CameraBinding(camera, preview, capture, lease,
+                CameraProcessing.entries.firstOrNull { it.extensionMode == mode } ?: CameraProcessing.STANDARD)
             return finishCameraStartup(attached, { it.release() }) {
                 awaitCameraReady(camera.cameraInfo.cameraState, view.previewStreamState)
                 Log.d(CAMERA_LOG_TAG, "OPEN and STREAMING $label")

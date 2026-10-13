@@ -18,7 +18,7 @@ import com.kigtts.next.ui.components.feedbackClick
 /** The page background covers the full window; only its controls consume safe drawing insets. */
 @Composable
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String="返回上一页",largeBar:Boolean=true,
-    actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",content:@Composable ()->Unit) {
+    actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
@@ -42,10 +42,14 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
             containerColor=MaterialTheme.colorScheme.background,
             contentWindowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading?.value==true) },Modifier.testTag("large-page-bar"),
+                subtitle=subtitle?.let { text -> { Text(text, Modifier.testTag("page-subtitle"), maxLines=1, overflow=TextOverflow.Ellipsis) } },
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
                 navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,host.loading?.value==true&&!compact) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) },scrollBehavior=behavior)
-            else TopAppBar(title={ PageBarTitle(title,true,host.loading?.value==true) },modifier=Modifier.testTag("small-page-bar"),
+            else TopAppBar(title={ Column { PageBarTitle(title,true,host.loading?.value==true)
+                subtitle?.let { Text(it, Modifier.testTag("page-subtitle"), style=MaterialTheme.typography.labelMedium,
+                    color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1, overflow=TextOverflow.Ellipsis) }
+            } },modifier=Modifier.testTag("small-page-bar"),
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
                 navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,false) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) }) }) { insets ->

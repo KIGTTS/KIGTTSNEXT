@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.ui.navigation.excludeCameraPull
 
 /** The exposure control follows the focus point, while its entire touch target stays in the photo. */
 @Composable
@@ -68,7 +69,7 @@ private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> U
             update.value(value)
         }
     }
-    Box(modifier.background(Color.Black.copy(alpha = .22f), RoundedCornerShape(20.dp))
+    Box(modifier.excludeCameraPull().background(Color.Black.copy(alpha = .22f), RoundedCornerShape(20.dp))
         .testTag("camera-exposure").semantics {
             contentDescription = "曝光补偿"
             progressBarRangeInfo = ProgressBarRangeInfo(index.toFloat(), range.first.toFloat()..range.last.toFloat(), (range.last - range.first - 1).coerceAtLeast(0))

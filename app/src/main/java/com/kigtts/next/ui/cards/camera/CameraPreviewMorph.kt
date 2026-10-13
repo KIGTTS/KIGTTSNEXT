@@ -22,14 +22,14 @@ internal class CameraPreviewMorph(ratio: Float) {
 /** One small cached frame per format change. The final live STREAMING frame releases the cover. */
 @Composable
 internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidFormat, filter: PhotoFilter,
-    displayReady: Boolean, morphChanged: (Boolean) -> Unit): CameraPreviewMorph {
+    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f): CameraPreviewMorph {
     val motion = remember(view) { CameraPreviewMorph(format.geometry.photoAspectRatio.toFloat()) }
     val ready = rememberUpdatedState(displayReady); val changed = rememberUpdatedState(morphChanged)
     var last by remember(view) { mutableStateOf(format) }
     LaunchedEffect(format, view) {
         if (last == format) return@LaunchedEffect
         last = format
-        motion.snapshot = cameraPreviewSnapshot(view, filter) ?: motion.snapshot
+        motion.snapshot = cameraPreviewSnapshot(view, filter, strength) ?: motion.snapshot
         changed.value(true)
         try {
             coroutineScope {
@@ -46,7 +46,7 @@ internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidForma
     return motion
 }
 
-private fun cameraPreviewSnapshot(view: PreviewView, filter: PhotoFilter): Bitmap? {
+private fun cameraPreviewSnapshot(view: PreviewView, filter: PhotoFilter, strength: Float): Bitmap? {
     val original = try { view.bitmap } catch (_: Exception) { null } catch (_: OutOfMemoryError) { null } ?: return null
     var small: Bitmap? = null
     var retained: Bitmap? = null
@@ -54,9 +54,9 @@ private fun cameraPreviewSnapshot(view: PreviewView, filter: PhotoFilter): Bitma
         val scale = minOf(1f, 384f / maxOf(original.width, original.height).coerceAtLeast(1))
         small = Bitmap.createScaledBitmap(original, (original.width * scale).roundToInt().coerceAtLeast(1),
             (original.height * scale).roundToInt().coerceAtLeast(1), true)
-        if (filter == PhotoFilter.ORIGINAL) { retained = small; return small }
+        if (filter == PhotoFilter.ORIGINAL || strength <= 0f) { retained = small; return small }
         val tinted = Bitmap.createBitmap(small.width, small.height, Bitmap.Config.ARGB_8888)
-        Canvas(tinted).drawBitmap(small, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(PhotoFilters.matrix(filter)) })
+        Canvas(tinted).drawBitmap(small, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(PhotoFilters.matrix(filter, strength)) })
         retained = tinted
         return tinted
     } catch (_: Exception) { return null } catch (_: OutOfMemoryError) { return null }

@@ -45,7 +45,7 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 ## 当前 API9 插件
 
-外置引擎、服务和工具包统一为 0.8.0/API9，管理桥仍为 1。主程序有 12 个外置工作进程槽；Lua、云端助手、商店与原生构建均为独立可选包。系统 TTS 已并入语音合成服务作为内置保底，不再分发独立系统包；自检应调用 service.speech-synthesis。
+外置包统一使用 API9，管理桥仍为 1。引擎、服务、商店与原生构建为 0.8.0；云端助手和 Lua 编辑器的相册支持更新为 0.8.1／versionCode 3。主程序有 12 个外置工作进程槽；Lua、云端助手、商店与原生构建均为独立可选包。系统 TTS 已并入语音合成服务作为内置保底，不再分发独立系统包；自检应调用 service.speech-synthesis。
 
 主页直接进入设置，插件按 SettingsEntry 归入音频、内容、扩展或自定义分类；管理器的 navigate 仍通过正常页面栈打开对应页面。商店下载后的原生包继续走宿主验签与审核，Lua/源码交付也不能绕过对应编辑器确认。原生与 Lua 模板、源目录 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 

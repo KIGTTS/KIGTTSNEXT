@@ -6,14 +6,14 @@ KIGTTS 的 Android 原生重构续作，采用 Kotlin、Jetpack Compose 和 Mate
 
 - 主页支持大字幕、可调整的聆听面板和快捷文本面板；横屏使用左侧栏、左侧聆听字幕与右侧可变列数快捷栏。输入、排序、缩放、面板吸附及预测返回共用原生动效与触感反馈。
 - 快捷卡片共有字幕和可选缩略标题，可附加音频、图片/实况照片、视频或 HTML 页面。内置富文本编辑、媒体预览、内容感知缩略图、HTML 项目文件管理与带行号的源码编辑器。
-- 拍立得支持富士 mini／SQUARE／WIDE 三款相纸布局、内建相机和五款滤镜，原始 JPEG 与滤镜图分开保存。裁剪与贴纸分为两个 Tab，支持双指构图、贴纸旋转/缩放/镜像、Unicode 二维码，以及可扩展的品牌边框资源；贴纸库与快捷文本图片可互转，面对面发现仅预留开关。
+- 拍立得支持富士 mini／SQUARE／WIDE 三款相纸布局和纯白纸边，经典默认框右下的 KIGTTS Logo 与 PNG 导出一致，品牌框不强制添加。相册支持三层平面堆叠翻页、2／3／4 列宫格及继续缩小进入相册总览；反向放大恢复。透明全屏预览可缩放整张带边框照片，裁剪仅在编辑页进行。下滑进入原生相机、上滑返回；新照片经主题化 KIGTTS 打印顶栏送出后返回相册，并打开该照片预览。相机提供辅助线、水平仪、闪光灯、倒计时和五款滤镜，原始 JPEG 与滤镜图分开保存。裁剪与贴纸分为两个 Tab，支持双指构图、贴纸旋转/缩放/镜像、Unicode 二维码及品牌边框资源；贴纸库与快捷文本图片可互转，面对面发现仅预留开关。
 - 设置采用双层分组卡片，统一主题、动态取色、亮/深色、三档对比度、三档圆角和触感反馈。主页设置键直接进入设置；插件入口按分类并入同一页面，不再使用抽屉菜单。
 - 语音合成服务管理声音与跨引擎语音包，**内置系统 TTS 保底**，不再分发独立系统 TTS 包。Piper 在独立插件中复用模型/发音转换器并分段输出；预热、保持加载和两分钟空闲释放也由插件实现。
 - 语音识别服务统一提供聆听字幕、浮窗和语音输入，调用独立的增量流式/SenseVoice 引擎。连续结果自动分句、固化前文并修订尾段；长按语音输入使用覆盖主界面的滑动释放区，可发送、取消、持续输入或单次朗读。空白提示也遵循大字幕字号设置。
 - 可选外置插件提供云端 AI 助手、多会话流式聊天、Lua 插件编辑器、带依赖解析的插件商店和 Java/Kotlin 原生构建。主程序提供标准页面与授权接口，不包含这些实现或编译器。
 - 独立插件管理器 APK 可反复安装、更新、调试与监控专用包，减少测试 APK 重装。
 
-Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Expressive 预览 API。当前插件 API 为 **9**，随仓库构建的外置包统一为 **0.8.0**；API8 及更早的二进制需同发布者升级。运行时提供 12 个外置插件工作进程槽，各插件资源统一归入 `appdata/Kigtts/plugin/plugindata/<pluginId>/`。独立进程隔离崩溃，原生插件仍以本应用 UID 运行，应安装可信来源。
+Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Expressive 预览 API。当前插件 API 为 **9**，云端助手和 Lua 编辑器为 **0.8.1**，其余外置包为 **0.8.0**；API8 及更早的二进制需同发布者升级。运行时提供 12 个外置插件工作进程槽，各插件资源统一归入 `appdata/Kigtts/plugin/plugindata/<pluginId>/`。独立进程隔离崩溃，原生插件仍以本应用 UID 运行，应安装可信来源。
 
 ## 开发文档
 
@@ -23,7 +23,7 @@ Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Ex
 | 专用包、资源归属、安装与调试 | [插件包](docs/plugin-packages.md)、[独立管理器](docs/plugin-manager.md) |
 | 合成与识别 | [合成生命周期](docs/tts-lifecycle.md)、[识别服务](docs/recognition-service.md)、[流式识别包](docs/streaming-recognition.md) |
 | 媒体、卡片与源码 | [媒体协议](docs/media-content.md)、[快捷卡片](docs/quick-cards.md)、[HTML 文件与编辑器](docs/html-editor.md) |
-| 拍立得、贴纸与界面语言 | [贴纸与拍立得接口](docs/stickers-api.md)、[内建相机](app/src/main/java/com/kigtts/next/ui/cards/camera/README.md)、[本地化预留](docs/ui-localization.md)、[空白提示](docs/subtitle-placeholder.md) |
+| 拍立得、贴纸与界面语言 | [浏览与相册](docs/polaroid-browsing.md)、[贴纸与拍立得接口](docs/stickers-api.md)、[内建相机](app/src/main/java/com/kigtts/next/ui/cards/camera/README.md)、[本地化预留](docs/ui-localization.md)、[空白提示](docs/subtitle-placeholder.md) |
 | 可选工具 | [云端助手](docs/cloud-agent.md)、[Lua 编辑器](docs/lua-plugins.md)、[原生构建](docs/native-builder.md)、[插件商店](docs/package-store.md) |
 | 构建、包体与实测记录 | [Release 验证记录](docs/release-testing.md) |
 
