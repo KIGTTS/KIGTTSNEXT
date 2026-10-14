@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.kigtts.next.ui.cards
 
 import androidx.compose.animation.core.Animatable
@@ -12,14 +13,16 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 
-/** Retain both endpoint layouts; opening and closing only change their painted transforms. */
+/** Retain browser state while the same photo travels to or from its management slot. */
 @Composable
 internal fun CardManagementTransition(managing: Boolean, browser: @Composable () -> Unit, manager: @Composable () -> Unit) {
+    androidx.compose.animation.SharedTransitionLayout {
+    val shared = this
     val geometry = remember { CardManagementGeometry() }
     val progress = remember { Animatable(if (managing) 1f else 0f) }
     val reveal = remember(progress) { derivedStateOf { progress.value } }
     val managerVisible by remember(managing, progress) { derivedStateOf { managing || progress.value > .001f } }
-    val managerInteractive by remember(managing, progress) { derivedStateOf { managing && progress.value >= .999f } }
+    val managerInteractive by remember(managing, progress, shared) { derivedStateOf { managing && progress.value >= .999f && !shared.isTransitionActive } }
     var retainedManager by remember { mutableStateOf(manager) }
     SideEffect { if (managing) retainedManager = manager }
     LaunchedEffect(managing) {
@@ -31,7 +34,7 @@ internal fun CardManagementTransition(managing: Boolean, browser: @Composable ()
         progress.animateTo(if (managing) 1f else 0f, tween(300, easing = FastOutSlowInEasing))
         if (!managing) geometry.reset()
     }
-    CompositionLocalProvider(LocalCardManagementGeometry provides geometry, LocalCardManagementReveal provides reveal,
+    CompositionLocalProvider(LocalPolaroidSharedScope provides this, LocalCardManagementGeometry provides geometry, LocalCardManagementReveal provides reveal,
         LocalCardManagementActive provides managerInteractive) {
         Box(Modifier.fillMaxSize().testTag("card-management-transition")) {
             Box(Modifier.fillMaxSize().onGloballyPositioned { geometry.browser = it }
@@ -42,21 +45,16 @@ internal fun CardManagementTransition(managing: Boolean, browser: @Composable ()
                     scaleX = 1f; scaleY = 1f
                     translationX = 0f; translationY = 0f
                     clip = false
-                    val paper = geometry.geometry
-                    val bounds = paper?.browser
-                    if (paper != null && bounds != null) {
-                        val scale = 1f + (paper.target.width / paper.source.width.coerceAtLeast(1f) - 1f) * phase
-                        scaleX = scale; scaleY = scale
-                        val desired = managementPaperCenter(paper, phase)
-                        val transformed = bounds.center + (paper.source.center - bounds.center) * scale
-                        val offset = desired - transformed
-                        translationX = offset.x; translationY = offset.y
-                    }
                     alpha = 1f - phase
-                }.then(if (managing) Modifier.clearAndSetSemantics { } else Modifier)) { browser() }
-            if (managerVisible) Box(Modifier.fillMaxSize()
+                }.then(if (managing) Modifier.clearAndSetSemantics { } else Modifier)) {
+                    CompositionLocalProvider(LocalPolaroidPhotoVisible provides !managing) { browser() }
+                }
+            if (managerVisible || isTransitionActive) Box(Modifier.fillMaxSize()
                 .graphicsLayer { alpha = reveal.value }
-                .then(if (!managing) Modifier.clearAndSetSemantics { } else Modifier)) { retainedManager() }
+                .then(if (!managing) Modifier.clearAndSetSemantics { } else Modifier)) {
+                    CompositionLocalProvider(LocalPolaroidPhotoVisible provides managing) { retainedManager() }
+                }
         }
+    }
     }
 }

@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.cards
 
 import androidx.compose.runtime.*
+import androidx.compose.ui.unit.dp
 
 internal class CardPageChromeState {
     var albums: State<Boolean>? by mutableStateOf(null)
@@ -19,6 +20,7 @@ internal class CardPageChromeState {
 }
 internal val LocalCardPageChrome = compositionLocalOf<CardPageChromeState?> { null }
 internal val LocalCardWindowLandscape = compositionLocalOf<Boolean?> { null }
+internal val LocalCardHeaderClearance = compositionLocalOf { 0.dp }
 
 /** Album state controls the native title without replacing the scene or its browser composition. */
 @Composable internal fun RegisterCardAlbumExpanded(expanded: Boolean, stage: Int = if (expanded) 2 else 0) {

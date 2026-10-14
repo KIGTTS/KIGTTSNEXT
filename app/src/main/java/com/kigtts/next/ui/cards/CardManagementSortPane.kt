@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.kigtts.next.ui.cards
 
 import androidx.compose.foundation.gestures.scrollBy
@@ -82,9 +82,11 @@ import com.kigtts.next.ui.components.reorder.*
             ReorderAutoScroll(drag, { list.layoutInfo.viewportSize.height.toFloat() }, { list.scrollBy(it) })
         }
         drag.key?.takeIf { it in positions }?.let { id ->
+          CompositionLocalProvider(LocalPolaroidSharedScope provides null) {
             item(id, Modifier.width(with(density) { drag.floatingBounds.width.toDp() })
                 .graphicsLayer { translationX = dropped.value.x; translationY = dropped.value.y }
                 .clearAndSetSemantics { }, Modifier, true)
+          }
         }
     }
 }

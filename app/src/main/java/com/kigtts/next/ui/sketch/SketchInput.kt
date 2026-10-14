@@ -42,7 +42,6 @@ class SketchInput(private val state: SketchState) {
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                if (!state.viewport(canvas).contains(Offset(event.x, event.y))) return true
                 begin(event, event.actionIndex)
             }
             MotionEvent.ACTION_POINTER_DOWN -> {

@@ -10,7 +10,4 @@ internal data class SketchViewport(val document: IntSize, val window: IntSize, v
     val origin = Offset((window.width - document.width * scale) / 2f,
         (window.height - document.height * scale) / 2f) + pan * scale
     fun toDocument(point: Offset) = (point - origin) / scale
-    fun contains(point: Offset): Boolean = toDocument(point).let {
-        it.x in 0f..document.width.toFloat() && it.y in 0f..document.height.toFloat()
-    }
 }

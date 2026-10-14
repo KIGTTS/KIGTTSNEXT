@@ -93,7 +93,8 @@ class CardManagementTransitionUiTest {
         return paper.localToRoot(Offset(paper.size.width / 2f, paper.size.height * .4f))
     }
     private fun capture(name: String): File = File("build/previews/polaroid-management-" + name + ".png").also {
-        compose.onNodeWithTag("card-management-transition").captureRoboImage(it.absolutePath)
+        // Shared papers paint in the parent overlay, outside the retained endpoint subtree.
+        compose.onRoot().captureRoboImage(it.absolutePath)
     }
     @Test fun theRealLargePaperAndSelectedSmallPaperShareTheirMidPoseWhileNeighborsSpreadAndThenReverse() {
         val f = show(); val initial = paintedWidth("focus", "management-browser")
@@ -101,7 +102,7 @@ class CardManagementTransitionUiTest {
         compose.runOnIdle { f.enter(); Snapshot.sendApplyNotifications() }; repeat(9) { frame() }
         val large = paintedWidth("focus", "management-browser"); val selected = paintedWidth("focus", "management-strip")
         assertTrue(large < initial - 30f)
-        assertEquals("Crossfade must share one paper size rather than jump from big to small", large, selected, 1.5f)
+        assertEquals("Shared paper endpoints must follow the same continuous bounds", large, selected, 1.5f)
         val old = center("focus", "management-browser"); val current = center("focus", "management-strip")
         assertEquals(old.x, current.x, 1.5f); assertEquals(old.y, current.y, 1.5f)
         assertTrue(center("left", "management-strip").x < current.x - 10f)

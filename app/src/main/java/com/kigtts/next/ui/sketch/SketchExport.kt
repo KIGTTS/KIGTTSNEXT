@@ -30,13 +30,14 @@ fun renderSketch(strokes: List<Stroke>, background: Int, width: Int, height: Int
 }
 
 fun exportSketch(context: Context, strokes: List<Stroke>, background: Int, share: Boolean,
-                 canvasSize: IntSize = IntSize(1080, 1600)): File {
-    val scale = 1600f / maxOf(canvasSize.width, canvasSize.height).coerceAtLeast(1)
-    val bitmap = renderSketch(strokes, background, (canvasSize.width * scale).toInt().coerceAtLeast(1),
-        (canvasSize.height * scale).toInt().coerceAtLeast(1))
+                 canvasSize: IntSize = IntSize(1080, 1600)): File = exportSketch(context,
+    SketchDocument(canvasSize.width, canvasSize.height, background.toLong() and 0xFFFFFFFFL, strokes), share)
+
+fun exportSketch(context: Context, document: SketchDocument, share: Boolean): File {
+    val bitmap = renderSketchDocument(document)
     val dir = File(context.filesDir, "sketches").apply { mkdirs() }
     val file = File(dir, "sketch-" + System.currentTimeMillis() + ".png")
-    try { file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+    try { file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) { "无法编码画板" } } }
     finally { bitmap.recycle() }
     if (share) {
         val uri = FileProvider.getUriForFile(context, context.packageName + ".files", file)

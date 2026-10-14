@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.kigtts.next.ui.cards
 
 import androidx.compose.animation.*
@@ -63,23 +64,29 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
             } while (event.changes.any { it.pressed })
         }
     } else Modifier)) {
+        val pageVisible = LocalPolaroidPhotoVisible.current
         AnimatedContent(mode, modifier = Modifier.fillMaxSize().polaroidAlbumDrawingClip(), label = "polaroid-browse-mode",
-            transitionSpec = { (fadeIn() togetherWith fadeOut()).using(null) }) { target ->
+            transitionSpec = { (fadeIn(androidx.compose.animation.core.tween(340)) togetherWith fadeOut(androidx.compose.animation.core.tween(340))).using(null) }) { target ->
+          CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && mode == target),
+              LocalPolaroidSharedScope provides LocalPolaroidSharedScope.current.takeUnless { target == PolaroidBrowseMode.ALBUMS }) {
             if (target == PolaroidBrowseMode.ALBUMS) PolaroidAlbumOverview(albums, albumCards, selectedAlbumId ?: albumContaining(albums, focusedId)?.id,
                     imageFile, frames, enabled,
                     choose = { id -> chooseAlbum(id); columnsChanged.value(4); switch.value(PolaroidBrowseMode.GRID) }, manage = onManageAlbum)
             else PolaroidAlbumTransition(albumChangeRequest,
                 AlbumBrowseSnapshot(cards, gridCards, focusedId, selectedAlbumId, positionRequest), albums) { scene, current ->
                 val interactive = enabled && current
+                CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && mode == target && current)) {
                 when {
                     target == PolaroidBrowseMode.STACK && scene.cards.isNotEmpty() -> PolaroidStack(scene.cards, scene.focusedId, imageFile, frames,
                         interactive, { if (current) focus(it) }, { if (current) preview(it) }, { if (current) managePhoto(it) },
                         scene.positionRequest, { if (current) onPositioned(it) }, wideLayout, current)
                     target == PolaroidBrowseMode.GRID && scene.gridCards.isNotEmpty() -> PolaroidGallery(scene.gridCards, imageFile, frames, interactive,
-                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, gridColumns, current)
+                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, gridColumns, current, scene.focusedId)
                     else -> PolaroidEmpty()
                 }
+                }
             }
+          }
         }
     }
 }
@@ -177,12 +184,12 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 val visibleImages: (String) -> File? = if (index in foreground - (if (wide) 3 else 1)..foreground + (if (wide) 3 else 2) ||
                     index == pager.currentPage || index == pager.settledPage) imageFile else { _ -> null }
                 PolaroidCanvas(card, visibleImages, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
-                    .then(if (wide) Modifier.drawBehind {
+                    .then(if (wide) Modifier.polaroidShadowFade {
+                        carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
+                    }.drawBehind {
                         val pose = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth)
                         // Fade into the page color, so stacked photos do not ghost through one another.
                         drawRoundRect(backdrop.copy(alpha = (pose.alpha / .22f).coerceIn(0f, 1f)), cornerRadius = CornerRadius(6.dp.toPx()))
-                    }.graphicsLayer {
-                        alpha = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
                     } else Modifier)
                     .combinedClickable(enabled = enabled,
                         onClick = feedbackClick { if (pager.currentPage == index) preview(card) },
@@ -198,9 +205,11 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
 
 @Composable
 private fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> File?, frames: List<PolaroidFrameStyle>,
-    enabled: Boolean, preview: (PolaroidCard) -> Unit, edit: (PolaroidCard) -> Unit, columns: Int, registerManagementSource: Boolean) {
+    enabled: Boolean, preview: (PolaroidCard) -> Unit, edit: (PolaroidCard) -> Unit, columns: Int, registerManagementSource: Boolean, focusedId: String?) {
+    val grid = rememberLazyGridState(initialFirstVisibleItemIndex = cards.indexOfFirst { it.id == focusedId }.coerceAtLeast(0) / columns * columns)
     LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 4)), Modifier.fillMaxSize().clipToBounds().testTag("cards-grid")
         .semantics { stateDescription = columns.toString() + " 列" },
+        state = grid,
         contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 100.dp),
         horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(cards, key = { it.id }) { card ->

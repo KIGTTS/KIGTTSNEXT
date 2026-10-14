@@ -24,10 +24,12 @@ internal val LocalSketchChrome = compositionLocalOf<SketchChrome?> { null }
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back, LocalSketchChrome provides chrome) {
         Box(Modifier.fillMaxSize().testTag("sketch-fullscreen-page")) {
             content()
-            if (chrome.drawing) Row(Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            if (chrome.drawing) Row(Modifier.align(Alignment.TopCenter).fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                .padding(horizontal = 8.dp, vertical = 4.dp).testTag("sketch-header"),
                 verticalAlignment = Alignment.CenterVertically) {
                 MotionIconButton(feedbackClick { if (host.backGuard?.value?.invoke() != true) back() },
-                    Modifier.testTag("page-back"), enabled = active, colors = compactTonalIconColors()) {
+                    Modifier.testTag("page-back"), enabled = active, colors = compactPlainIconColors()) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回大字幕")
                 }
                 Text("画板", Modifier.weight(1f).padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)

@@ -1,6 +1,10 @@
 package com.kigtts.next.ui.components
 
 import android.content.res.Configuration
+import android.view.View
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -44,10 +48,18 @@ internal fun AppSnackbarHost(state: SnackbarHostState, avoidance: SnackbarAvoida
     val density = LocalDensity.current
     val safe = WindowInsets.safeDrawing
     val ime = WindowInsets.ime
+    var windowHeight by remember(view) { mutableIntStateOf(view.height) }
+    DisposableEffect(view) {
+        val listener = View.OnLayoutChangeListener { _, _, top, _, bottom, _, _, _, _ -> windowHeight = bottom - top }
+        view.addOnLayoutChangeListener(listener)
+        onDispose { view.removeOnLayoutChangeListener(listener) }
+    }
+    val target = snackbarClearance(windowHeight, avoidance.anchors.values.minOrNull(),
+        maxOf(safe.getBottom(density), ime.getBottom(density)), with(density) { 8.dp.roundToPx() })
+    val animatedClearance by animateIntAsState(target,
+        spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium), label = "snackbar-avoidance")
     SnackbarHost(state, Modifier.fillMaxWidth().windowInsetsPadding(safe.only(WindowInsetsSides.Horizontal)).testTag("snackbar-host").layout { measurable, constraints ->
-        val minimum = maxOf(safe.getBottom(density), ime.getBottom(density))
-        val clearance = snackbarClearance(view.height, avoidance.anchors.values.minOrNull(), minimum, 8.dp.roundToPx())
-            .coerceAtMost(constraints.maxHeight)
+        val clearance = animatedClearance.coerceIn(0, constraints.maxHeight)
         val child = measurable.measure(constraints.offset(vertical = -clearance))
         layout(child.width, child.height + clearance) { child.place(0, 0) }
     }) { data -> Snackbar(data, Modifier.testTag("app-snackbar"), shape=MaterialTheme.shapes.medium) }

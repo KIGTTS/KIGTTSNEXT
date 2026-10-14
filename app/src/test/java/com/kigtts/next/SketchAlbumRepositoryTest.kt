@@ -55,7 +55,10 @@ class SketchAlbumRepositoryTest {
         assertEquals(listOf(work), restored.list()); assertEquals(drawing, restored.load(work.id))
         listOf(restored.imageFile(work.id), provider.file(Uri.parse(work.mediaUri))).forEach { file ->
             val bitmap = requireNotNull(file.inputStream().use { BitmapFactory.decodeStream(it) })
-            try { assertEquals(200, bitmap.width); assertEquals(400, bitmap.height); assertEquals(Color.RED, bitmap.getPixel(100, 200)) }
+            try {
+                assertEquals(220, bitmap.width); assertEquals(60, bitmap.height)
+                assertEquals(Color.RED, bitmap.getPixel(110, 30)); assertEquals(Color.WHITE, bitmap.getPixel(0, 0))
+            }
             finally { bitmap.recycle() }
         }
         repo.remove(work.id)

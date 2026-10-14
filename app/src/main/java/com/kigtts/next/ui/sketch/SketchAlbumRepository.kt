@@ -30,10 +30,8 @@ class SketchAlbumRepository internal constructor(context: Context,
         var uri: Uri? = null
         try {
             val image = File(directory, "image.png")
-            val scale = minOf(1f, 2400f / maxOf(document.width, document.height))
-            val width = (document.width * scale).toInt().coerceAtLeast(1)
-            val height = (document.height * scale).toInt().coerceAtLeast(1)
-            val bitmap = renderSketch(document.strokes, document.background.toInt(), width, height)
+            val bitmap = renderSketchDocument(document)
+            val width = bitmap.width; val height = bitmap.height
             try { image.outputStream().use { check(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) { "无法编码画板" } } }
             finally { bitmap.recycle() }
             File(directory, "drawing.json").writeText(encoded, Charsets.UTF_8)

@@ -61,11 +61,14 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
       val density = LocalDensity.current
       val anchors = remember(extents, density) { DraggableAnchors { extents.forEachIndexed { index, size -> index at with(density) { size.toPx() } } } }
       SideEffect { if (state.anchors != anchors) state.updateAnchors(anchors, state.targetValue) }
-      val visibleExtent = remember(state, anchors) { derivedStateOf {
-          state.offset.takeIf(Float::isFinite) ?: anchors.positionOf(state.targetValue)
+      // Read offset directly in each drawing phase. A cached derived value first evaluated
+      // while restoring new anchors can retain the collapsed mask until another UI action.
+      val visibleExtent = remember(state, anchors) { object : State<Float> {
+          override val value get() = state.offset.takeIf(Float::isFinite) ?: anchors.positionOf(state.targetValue)
       } }
-      val reveal = remember(state, anchors) { derivedStateOf {
-          ((visibleExtent.value - anchors.positionOf(0)) / (anchors.positionOf(2) - anchors.positionOf(0)).coerceAtLeast(1f)).coerceIn(0f, 1f)
+      val reveal = remember(state, anchors) { object : State<Float> {
+          override val value get() = ((visibleExtent.value - anchors.positionOf(0)) /
+              (anchors.positionOf(2) - anchors.positionOf(0)).coerceAtLeast(1f)).coerceIn(0f, 1f)
       } }
       val showPhotos by remember { derivedStateOf { state.targetValue > 0 || state.currentValue > 0 } }
       val showAlbums by remember { derivedStateOf { state.targetValue == 2 || state.currentValue == 2 } }

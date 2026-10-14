@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,7 +16,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.*
@@ -30,6 +30,7 @@ import kotlinx.coroutines.*
     var busy by remember { mutableStateOf(false) }
     var clear by rememberSaveable { mutableStateOf(false) }
     var album by rememberSaveable { mutableStateOf(false) }
+    var paper by rememberSaveable { mutableStateOf(false) }
     var opening by rememberSaveable { mutableStateOf<String?>(null) }
     val enabled = active && ready && !busy
     SideEffect { chrome?.drawing = !album }
@@ -60,8 +61,7 @@ import kotlinx.coroutines.*
         withContext(Dispatchers.IO) { repository.save(drawing) }; message("已保存到作品相册和系统相册")
     } }, message)
     fun share() { val drawing = state.document(); work {
-        val file = withContext(Dispatchers.IO) { exportSketch(context, drawing.strokes, drawing.background.toInt(), false,
-            IntSize(drawing.width, drawing.height)) }
+        val file = withContext(Dispatchers.IO) { exportSketch(context, drawing, false) }
         shareSketchFile(context, file)
     } }
     LaunchedEffect(shareRequest, ready) { if (ready && shareRequest > 0) { share(); shareConsumed() } }
@@ -72,7 +72,8 @@ import kotlinx.coroutines.*
     RegisterPageLoading(busy || !ready)
     RegisterPageActions(listOf(
         ToolbarAction("sketch-album-open", "画板作品", Icons.Default.Collections, enabled, preserveColorWhenLocked = busy, click = { album = true }),
-        ToolbarAction("sketch-reset-view", "恢复画布视图", Icons.Default.FitScreen, enabled, click = state::resetViewport)))
+        ToolbarAction("sketch-reset-view", "显示全部笔迹", Icons.Default.FitScreen, enabled, click = state::resetViewport),
+        ToolbarAction("sketch-paper", "画布背景", Icons.Default.GridOn, enabled, click = { paper = true })))
     RegisterPageBackGuard(active && (busy || album)) { if (!busy) album = false }
     PredictiveBackHandler(active && (busy || album) && opening == null && !clear) { progress ->
         try { progress.collect { }; if (!busy) album = false } catch (_: CancellationException) { }
@@ -85,11 +86,13 @@ import kotlinx.coroutines.*
         SketchCanvas(state, enabled, ready, background.toArgb().toLong() and 0xFFFFFFFFL)
         SketchToolbar(state, save, { clear = true },
             Modifier.align(if (landscape) Alignment.CenterEnd else Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(if (landscape) PaddingValues(end = 12.dp) else PaddingValues(bottom = 16.dp))
                 .testTag(if (landscape) "sketch-toolbar-vertical" else "sketch-toolbar-horizontal")
                 .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent(PointerEventPass.Final).changes.forEach { it.consume() } } },
             vertical = landscape, enabled = enabled)
     }
+    if (active && paper) SketchBackgroundDialog(state) { paper = false }
     if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
         text = { Text("当前笔画将被移除。已保存的作品不受影响。") },
         confirmButton = { MotionTextButton(dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },

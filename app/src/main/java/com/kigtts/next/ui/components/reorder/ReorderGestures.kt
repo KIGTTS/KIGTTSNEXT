@@ -28,6 +28,7 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     private var initial = Offset.Zero
     private var touch = Offset.Zero
     private var pickedBounds = Rect.Zero
+    private var acceptedSlot: Rect? = null
     val pointer get() = touch + offset
     val floatingBounds get() = pickedBounds.translate(offset)
     private fun currentTargets() = targetProvider?.invoke() ?: targets()
@@ -36,12 +37,22 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     fun begin(item: ReorderTarget, point: Offset) {
         settling = false
         key = item.key; initial = item.bounds.topLeft; touch = point; offset = Offset.Zero; pickedBounds = item.bounds
+        acceptedSlot = null
         feedback?.start(0f)
     }
     fun drag(delta: Offset) { offset += if (horizontalOnly) Offset(delta.x, 0f) else if (verticalOnly) Offset(0f, delta.y) else delta; checkTarget() }
     fun checkTarget() {
         val current = key ?: return
-        hit(pointer)?.takeIf { it.key != current }?.let { (moveProvider ?: move)(current, it.key) }
+        if (settling || acceptedSlot?.contains(pointer) == true) return
+        hit(pointer)?.takeIf { it.key != current }?.let {
+            // Animated neighbors can move back beneath a stationary finger. Keep the accepted
+            // slot until the finger leaves it, rather than swapping back on every frame.
+            acceptedSlot = it.bounds.inflate(minOf(it.bounds.width, it.bounds.height) * .08f)
+            (moveProvider ?: move)(current, it.key)
+        }
+    }
+    fun viewportScrolled(amount: Float, horizontal: Boolean) {
+        acceptedSlot = acceptedSlot?.translate(if (horizontal) Offset(-amount, 0f) else Offset(0f, -amount))
     }
     fun translation(id: String): Offset = if (key != id) Offset.Zero else
         currentTargets().firstOrNull { it.key == id }?.let { initial + offset - it.bounds.topLeft } ?: Offset.Zero
@@ -135,7 +146,9 @@ fun ReorderAutoScroll(drag: ReorderDrag, extent: () -> Float, scroll: suspend (F
             if (speed == 0f) break
             withFrameNanos { }
             if (drag.settling) break
-            if (latestScroll(speed) == 0f) break
+            val consumed = latestScroll(speed)
+            if (consumed == 0f) break
+            drag.viewportScrolled(consumed, horizontal)
             drag.checkTarget()
         }
     }

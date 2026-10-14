@@ -12,6 +12,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.next.theme.LocalUseCompactControlPalette
 
@@ -71,7 +72,11 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                 val padding = if (landscape) PaddingValues(start = insets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
                     end = insets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), bottom = insets.calculateBottomPadding()) else insets
                 Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)
-                    .then(if (landscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)) else Modifier)) { content() }
+                    .then(if (landscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)) else Modifier)) {
+                    val headerClearance = if (landscape) insets.calculateTopPadding() - with(density) { WindowInsets.safeDrawing.getTop(density).toDp() }
+                        else 0.dp
+                    CompositionLocalProvider(LocalCardHeaderClearance provides headerClearance) { content() }
+                }
             }
         }
     }

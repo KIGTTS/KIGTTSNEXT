@@ -66,7 +66,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val captionInk = if (darkPaper) Color(0xFFDDDDDD) else Color(0xFF4A4A4A)
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
     val elevation by animateDpAsState(if (transforming) 10.dp else 3.dp, label = "polaroid-elevation")
-    Surface(modifier.aspectRatio(geometry.aspectRatio.toFloat()).onSizeChanged { size = it }.testTag("polaroid/" + card.id),
+    Surface(modifier.sharedPolaroidPhoto(card.id).aspectRatio(geometry.aspectRatio.toFloat()).onSizeChanged { size = it }.testTag("polaroid/" + card.id),
         shape = RoundedCornerShape(6.dp), color = paper, shadowElevation = elevation) {
         BoxWithConstraints(Modifier.fillMaxSize().then(if (editable && selectedLayer != null) Modifier.pointerInput(card.id) {
             awaitEachGesture {

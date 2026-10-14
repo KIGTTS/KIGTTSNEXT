@@ -9,7 +9,7 @@ enum class SketchTool { PEN, ERASER }
 enum class PenType(val label: String) { ROUND("圆笔"), FOUNTAIN("钢笔"), HIGHLIGHTER("荧光笔") }
 enum class EraserType(val label: String) { PIXEL("局部擦除"), STROKE("整笔擦除") }
 
-/** Position is normalized to the canvas; width is relative to its shorter edge. */
+/** Coordinates use the original reference size; they may extend beyond every edge, including negative values. */
 data class StrokePoint(val position: Offset, val width: Float)
 data class Stroke(val points: List<StrokePoint>, val color: Long, val alpha: Float = 1f, val erase: Boolean = false)
 
@@ -26,6 +26,8 @@ class SketchState {
     var documentSize by mutableStateOf(IntSize.Zero)
         private set
     var background by mutableStateOf(0xFFFFFFFFL)
+        private set
+    var pattern by mutableStateOf(SketchPaperPattern.PLAIN)
         private set
     var viewportZoom by mutableFloatStateOf(1f)
         internal set
@@ -46,8 +48,8 @@ class SketchState {
     fun sample(point: Offset, pressure: Float, stylus: Boolean, erase: Boolean,
                density: Float, width: Float, height: Float) {
         val shorter = minOf(width, height).coerceAtLeast(1f)
-        val normalized = Offset((point.x / width.coerceAtLeast(1f)).coerceIn(0f, 1f),
-            (point.y / height.coerceAtLeast(1f)).coerceIn(0f, 1f))
+        if (!point.x.isFinite() || !point.y.isFinite()) return
+        val normalized = Offset(point.x / width.coerceAtLeast(1f), point.y / height.coerceAtLeast(1f))
         if (erase && eraserType == EraserType.STROKE) {
             activeStroke = null
             val radius = eraserSize * density / 2f
@@ -79,21 +81,28 @@ class SketchState {
     }
 
     fun document(): SketchDocument = SketchDocument(documentSize.width.coerceAtLeast(1),
-        documentSize.height.coerceAtLeast(1), background, strokes.toList())
+        documentSize.height.coerceAtLeast(1), background, strokes.toList(), pattern)
 
     fun restore(document: SketchDocument) {
         endStroke(); strokes.clear(); strokes.addAll(document.strokes)
         documentSize = IntSize(document.width, document.height); background = document.background
+        pattern = document.pattern
         resetViewport(); revision++
     }
 
-    fun resetViewport() { viewportZoom = 1f; viewportPan = Offset.Zero }
+    fun resetViewport() {
+        val bounds = sketchExportBounds(document())
+        viewportZoom = minOf(documentSize.width / bounds.width, documentSize.height / bounds.height, 1f).coerceAtLeast(.00001f)
+        viewportPan = Offset(documentSize.width / 2f, documentSize.height / 2f) - bounds.center
+    }
+    fun setPaperPattern(value: SketchPaperPattern) { if (pattern != value) { pattern = value; revision++ } }
     internal fun viewport(window: IntSize) = SketchViewport(documentSize, window, viewportZoom, viewportPan)
 
     internal fun navigate(window: IntSize, previousCenter: Offset, center: Offset, factor: Float) {
         val old = viewport(window)
         val anchor = old.toDocument(previousCenter)
-        viewportZoom = (viewportZoom * factor).coerceIn(.5f, 8f)
+        if (!factor.isFinite() || factor <= 0f) return
+        viewportZoom = (viewportZoom * factor).coerceIn(.00001f, 16f)
         val next = viewport(window)
         viewportPan = (center - Offset(window.width / 2f, window.height / 2f)) / next.scale -
             (anchor - Offset(documentSize.width / 2f, documentSize.height / 2f))

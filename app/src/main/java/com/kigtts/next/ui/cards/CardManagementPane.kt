@@ -45,7 +45,8 @@ import com.kigtts.plugin.api.*
         add(ToolbarAction("cards-manage-delete", if (albumsMode) "删除所选相册" else "删除所选照片",
             Icons.Default.DeleteOutline, interactive && removable.isNotEmpty(), click = { delete = removable }))
     })
-    Column(Modifier.fillMaxSize().testTag("card-management")) {
+    val topInset = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)
+    Column(Modifier.fillMaxSize().padding(top = topInset).testTag("card-management")) {
         Text("已选择 ${selected.size} " + if (albumsMode) "个相册" else "张照片", Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             .testTag("card-management-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.weight(1f).fillMaxWidth()) {
