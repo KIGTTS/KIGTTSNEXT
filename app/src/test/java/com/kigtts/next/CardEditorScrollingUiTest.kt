@@ -22,7 +22,6 @@ import com.kigtts.next.cards.*
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.*
-import com.kigtts.next.ui.navigation.PageScaffold
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.runtime.PluginPaths
@@ -170,7 +169,7 @@ class CardEditorScrollingUiTest {
         // real window to exercise overflow, then retain the keyboard and rotation checks below.
         var width by mutableStateOf(400.dp); var height by mutableStateOf(620.dp)
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            Box(Modifier.size(width, height)) { PageScaffold("编辑拍立得", {}, largeBar = false) {
+            Box(Modifier.size(width, height)) { CardPageScaffold("编辑拍立得", {}, subtitle = null) {
                 CardEditorScreen(cards, stickers, card.id, {})
             } }
         } }

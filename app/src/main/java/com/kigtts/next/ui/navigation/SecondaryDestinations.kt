@@ -17,7 +17,6 @@ import com.kigtts.next.ui.cards.CardPageScaffold
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
     val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
-    val cameraPhoto by model.cardCapture.result.collectAsStateWithLifecycle()
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
             Destination.Settings -> "设置"
@@ -45,6 +44,10 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         com.kigtts.next.ui.cards.camera.PolaroidCameraRoute(model, destination)
         return
     }
+    if (destination is Destination.CardEditor) {
+        com.kigtts.next.ui.cards.CardEditorRoute(model, destination)
+        return
+    }
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
             when (destination) {
@@ -63,12 +66,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.QuickTextReview -> QuickTextReviewScreen(model,destination.token)
                 is Destination.ContentEditor -> ContentEditorScreen(model, destination.token)
                 is Destination.PhraseEditor -> PhraseEditorScreen(model, destination.token)
-                is Destination.CardEditor -> com.kigtts.next.ui.cards.CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
-                    openLibrary = { model.navigate(Destination.StickerLibrary()) }, openCamera = { model.cardCapture.open(destination.cardId) },
-                    cameraImageId = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.imageId,
-                    cameraOriginalImageId = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.originalImageId,
-                    cameraFrameStyleId = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.frameStyleId,
-                    cameraRequestVersion = cameraPhoto?.takeIf { it.cardId == destination.cardId }?.version ?: 0L)
+                is Destination.CardEditor -> Unit // Shares the album's adaptive chrome above.
                 is Destination.CardCamera -> Unit // Native camera/printing route handled above.
                 is Destination.CardPreview -> com.kigtts.next.ui.cards.CardPreviewScreen(model.cards, model.stickers, destination.cardId,
                     { model.navigate(Destination.CardEditor(it)) }, model::message, onQuickImage = model::quickImageCard)

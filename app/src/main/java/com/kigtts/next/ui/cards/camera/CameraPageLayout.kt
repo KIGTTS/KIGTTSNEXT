@@ -26,13 +26,12 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
                 controls(true)
             }
         } else Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.BottomCenter) {
-                val stageHeight = photoAspect?.let { minOf(maxHeight, maxWidth / it + 168.dp) } ?: maxHeight
-                Box(Modifier.fillMaxWidth().height(stageHeight).testTag("camera-stage")) {
-                    preview(Modifier.fillMaxSize().padding(vertical = 4.dp), false)
-                    header()
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
-                }
+            // The stage belongs to the screen, not the current photo ratio. Keeping its
+            // bounds fixed anchors the corner actions and the centre of every crop.
+            Box(Modifier.fillMaxWidth().weight(1f).testTag("camera-stage")) {
+                preview(Modifier.fillMaxSize().padding(vertical = 4.dp), false)
+                header()
+                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
             }
             controls(false)
         }

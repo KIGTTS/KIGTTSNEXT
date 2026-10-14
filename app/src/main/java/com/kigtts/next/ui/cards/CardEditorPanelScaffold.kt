@@ -31,7 +31,8 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth > maxHeight
+        val wide = LocalCardWindowLandscape.current ?: (maxWidth > maxHeight)
+        val floatingHeader = wide && LocalCardPageChrome.current != null
         BoxWithConstraints(Modifier.fillMaxSize().imePadding().clipToBounds().testTag("card-editor")) {
             val compactTabs = wide || maxHeight < 360.dp
             val header = if (wide || maxHeight < 240.dp) 44.dp else 56.dp
@@ -48,12 +49,14 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             val middle = with(density) { (axis - partial).toPx() }
             val end = with(density) { (axis - collapsed).toPx() }
             val sheet = rememberCardToolsSheet(start, middle, end)
+            RegisterCardPanelInset { if (wide) full - (sheet.offset.takeIf(Float::isFinite) ?: middle) else 0f }
             val drag = rememberCardPanelDrag(sheet, if (wide) Orientation.Horizontal else Orientation.Vertical, false, enabled)
             LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
             val openTools = { scope.launch { if (sheet.targetValue == CardToolsPosition.COLLAPSED)
                 sheet.animateTo(CardToolsPosition.PARTIAL, tween(220)) }; Unit }
             val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
             val stageHeight = maxHeight
+            val photoTop = if (floatingHeader) 64.dp else 0.dp
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { clearSelection() } }
                 .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
                 preview(Modifier.width(paperWidth).graphicsLayer {
@@ -61,10 +64,10 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                     val available = (offset - 24.dp.toPx()).coerceAtLeast(1f)
                     val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
                     scaleX = if (wide) minOf(1f, available / size.width.coerceAtLeast(1f),
-                        (stageHeight.toPx() - 24.dp.toPx()).coerceAtLeast(1f) / paperHeight)
+                        (stageHeight.toPx() - photoTop.toPx() - 24.dp.toPx()).coerceAtLeast(1f) / paperHeight)
                         else minOf(1f, available / paperHeight.coerceAtLeast(1f))
                     scaleY = scaleX
-                    if (wide) translationX = offset / 2f - full / 2f
+                    if (wide) { translationX = offset / 2f - full / 2f; translationY = photoTop.toPx() / 2f }
                     else translationY = offset / 2f - full / 2f
                 })
             }
