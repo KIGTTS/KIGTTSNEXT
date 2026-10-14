@@ -71,9 +71,8 @@ class PolaroidBrowserUiTest {
         expandFixtureDock()
     }
     private fun expandFixtureDock() {
-        // Two detents expose photographs first and album groups second.
-        compose.onNodeWithTag("toggle-card-albums").performClick()
-        compose.onNodeWithTag("toggle-card-albums").performClick()
+        // Drag to the full detent; the arrow only opens or closes the sheet.
+        compose.expandAlbumGroups()
         compose.waitForIdle()
     }
     private fun capture(name: String): File {
@@ -260,8 +259,10 @@ class PolaroidBrowserUiTest {
         capture(name + "-full-expansion-first")
         repeat(20) { frame() }
         compose.onNodeWithTag("cards-position").assertTextEquals("1 / 2")
-        compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).assertIsSelected()
         compose.mainClock.autoAdvance = true
+        // Button toggles return to the photo detent. Drag farther to inspect album selection.
+        compose.expandAlbumGroups()
+        compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).assertIsSelected()
     }
 
     @Test fun rapidlyReversingTheRealPortraitPagerDockKeepsMiniPaperUnclipped() {
@@ -520,9 +521,17 @@ class PolaroidBrowserUiTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w1280dp-h600dp-land-xxhdpi")
-    fun aWideWindowFansThreeOpaquePapersAcrossBothSidesAndKeepsItsVerticalRailsCompact() {
+    fun aWideWindowFansThreeOpaquePapersAcrossBothSidesAndKeepsItsVerticalRailsCompact() = exerciseWideFan(false)
+
+    @Test
+    @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
+    fun mixedPaperFormatsSeparateBeforeForegroundChangesInANarrowLandscapeWindow() = exerciseWideFan(true)
+
+    private fun exerciseWideFan(mixedFormats: Boolean) {
         val f = fixture()
-        val middle = f.cards.create(PolaroidCard(title = "绿色照片", imageId = image(f.stickers, android.graphics.Color.GREEN)))
+        if (mixedFormats) f.cards.update(f.first.copy(frameStyleId = "instax.wide.classic"))
+        val middle = f.cards.create(PolaroidCard(title = "绿色照片", imageId = image(f.stickers, android.graphics.Color.GREEN),
+            frameStyleId = if (mixedFormats) "instax.mini.classic" else "instax.square.classic"))
         f.cards.orderCards(CardRepository.DEFAULT_ALBUM, listOf(f.first.id, middle.id))
         compose.setContent { KigttsTheme(ThemeSettings()) {
             CardPageScaffold("拍立得", {}) { CardsScreen(f.cards, f.stickers, {}, {}, {}) }
@@ -551,7 +560,7 @@ class PolaroidBrowserUiTest {
         assertTrue("Landscape albums remain compact rows", album.bottom - album.top <= 48.dp)
         val thumbnail = compose.onNodeWithTag("card-album-photo/" + middle.id).getUnclippedBoundsInRoot()
         assertTrue(thumbnail.right - thumbnail.left <= 64.dp)
-        assertEquals(PolaroidFormat.SQUARE.geometry.aspectRatio,
+        assertEquals((if (mixedFormats) PolaroidFormat.MINI else PolaroidFormat.SQUARE).geometry.aspectRatio,
             ((thumbnail.right - thumbnail.left) / (thumbnail.bottom - thumbnail.top)).toDouble(), .01)
         compose.waitUntil(8_000) {
             val output = capture("wide-planar-fan")
@@ -566,9 +575,15 @@ class PolaroidBrowserUiTest {
             down(center); moveTo(center - Offset(width * .1f, 0f)); moveTo(center - Offset(width * .48f, 0f))
         }
         fun opaqueFront(stage: String) {
-            val white = paperPixel(capture(stage), middle.id, .97f, .43f)
-            assertTrue("The wide fan keeps the outgoing paper above its neighbor on both sides of half-page", android.graphics.Color.red(white) >= 248 &&
-                android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
+            val output = capture(stage)
+            listOf(middle.id, f.next.id).forEach { id -> listOf(.03f, .97f).forEach { edge ->
+                val white = paperPixel(output, id, edge, .43f)
+                assertTrue("Both turning papers keep their complete opaque margins", android.graphics.Color.red(white) >= 248 &&
+                    android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
+            } }
+            val left = compose.onNodeWithTag("polaroid/" + middle.id).fetchSemanticsNode().boundsInRoot
+            val right = compose.onNodeWithTag("polaroid/" + f.next.id).fetchSemanticsNode().boundsInRoot
+            assertTrue("Papers separate before their foreground order changes", left.right < right.left)
         }
         opaqueFront("wide-planar-before-half")
         compose.onNodeWithTag("cards-stack").performTouchInput { moveTo(center - Offset(width * .56f, 0f)) }
@@ -577,6 +592,10 @@ class PolaroidBrowserUiTest {
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("3 / 3")
         compose.onNodeWithTag("card-album/" + f.nextAlbum).assertIsSelected()
+        listOf(.03f, .97f).forEach { edge ->
+            val white = paperPixel(capture("wide-settled-front"), f.next.id, edge, .43f)
+            assertTrue(android.graphics.Color.red(white) >= 248 && android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
+        }
         compose.onNodeWithTag("cards-stack").performTouchInput { swipeRight() }
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("2 / 3")

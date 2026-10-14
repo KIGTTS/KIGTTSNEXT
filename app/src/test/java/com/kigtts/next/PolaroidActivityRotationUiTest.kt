@@ -36,7 +36,7 @@ class PolaroidActivityRotationUiTest {
         val album = model.cards.createAlbum("旋转验证")
         val card = model.cards.create(PolaroidCard(title = "", imageId = image.id), album.id)
         compose.runOnIdle { model.openSidePage(SidePage.CARDS) }
-        repeat(2) { compose.onNodeWithTag("toggle-card-albums").performClick() }
+        compose.expandAlbumGroups()
         compose.onNodeWithTag("card-album/" + album.id).performClick()
         repeat(3) { pass ->
             listOf("zh-rCN-w852dp-h393dp-land-xxhdpi", "zh-rCN-w393dp-h852dp-port-xxhdpi").forEachIndexed { index, config ->
@@ -66,7 +66,7 @@ class PolaroidActivityRotationUiTest {
             compose.onNodeWithTag("toggle-card-albums").performClick()
             compose.onNodeWithTag("card-album-photos").assertIsDisplayed()
             compose.onNodeWithTag("card-albums").assertDoesNotExist()
-            compose.onNodeWithTag("toggle-card-albums").performClick()
+            compose.expandAlbumGroups()
         }
     }
 }

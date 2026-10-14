@@ -71,7 +71,7 @@ class PolaroidAlbumChromeUiTest {
                 } }
             }
         } }
-        repeat(2) { compose.onNodeWithTag("toggle-card-albums").performClick() }
+        compose.expandAlbumGroups()
         val tags = listOf("cards-browse-mode", "face-discovery", "toggle-card-albums", "create-card-album", "card-album-menu")
         fun pixels(tag: String): IntArray {
             val output = File("build/previews/album-action-$tag.png").apply { parentFile.mkdirs() }
@@ -111,8 +111,7 @@ class PolaroidAlbumChromeUiTest {
         compose.waitForIdle()
         compose.onNodeWithTag("card-albums").assertDoesNotExist()
         compose.onNodeWithTag("card-album-photos").assertIsDisplayed()
-        compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
-        compose.onNodeWithTag("card-albums").assertIsDisplayed()
+        compose.expandAlbumGroups()
         val compactBar = compose.onNodeWithTag("large-page-bar").getUnclippedBoundsInRoot()
         assertTrue("Expanded albums must collapse the large title", fullBar.bottom - fullBar.top > compactBar.bottom - compactBar.top + 48.dp)
         val title = mutableListOf<TextLayoutResult>()
@@ -142,8 +141,7 @@ class PolaroidAlbumChromeUiTest {
                 CardsScreen(f.cards, f.stickers, {}, {}, {})
             } }
         } }
-        compose.onNodeWithTag("toggle-card-albums").performClick()
-        compose.onNodeWithTag("toggle-card-albums").performClick()
+        compose.expandAlbumGroups()
         compose.onNodeWithTag("card-album/" + album.id).performClick()
         compose.onNodeWithTag("cards-position").assertTextEquals("2 / 2")
         fun actualRedPaper(stage: String) {
@@ -179,8 +177,7 @@ class PolaroidAlbumChromeUiTest {
             compose.runOnIdle { width = 400.dp; height = 780.dp }
             compose.waitForIdle()
             actualRedPaper("tall-folded-$cycle")
-            compose.onNodeWithTag("toggle-card-albums").performClick()
-            compose.onNodeWithTag("toggle-card-albums").performClick()
+            compose.expandAlbumGroups()
             compose.onNodeWithTag("card-album/" + album.id).assertIsSelected()
             actualRedPaper("tall-expanded-$cycle")
         }

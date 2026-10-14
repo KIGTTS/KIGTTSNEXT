@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
 import androidx.compose.animation.AnimatedVisibility
@@ -28,22 +29,22 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
         else if (mode == CardEditorMode.FRAME) CardFrameTools(card, enabled, change, frameColor, frames)
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                MotionOutlinedButton(addText, enabled = enabled) { Icon(Icons.Default.TextFields, null); Spacer(Modifier.width(6.dp)); Text("添加文字") }
-                MotionOutlinedButton(addSticker, enabled = enabled) { Icon(Icons.Default.Collections, null); Spacer(Modifier.width(6.dp)); Text("贴纸") }
-                MotionOutlinedButton(addImage, enabled = enabled) { Icon(Icons.Default.AddPhotoAlternate, null); Spacer(Modifier.width(6.dp)); Text("表情图片") }
-                MotionOutlinedButton(addQrCode, Modifier.testTag("card-add-qr"), enabled = enabled) { Icon(Icons.Default.QrCode2, null); Spacer(Modifier.width(6.dp)); Text("二维码") }
-                MotionOutlinedButton(openLibrary, enabled = enabled) { Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(6.dp)); Text("管理贴纸库") }
+                PillButton("添加文字", Icons.Default.TextFields, addText, enabled = enabled)
+                PillButton("贴纸", Icons.Default.Collections, addSticker, enabled = enabled)
+                PillButton("表情图片", Icons.Default.AddPhotoAlternate, addImage, enabled = enabled)
+                PillButton("二维码", Icons.Default.QrCode2, addQrCode, Modifier.testTag("card-add-qr"), enabled = enabled)
+                PillButton("管理贴纸库", Icons.Default.FolderOpen, openLibrary, enabled = enabled)
             }
             if (selected == null) stickerLibrary()
             AnimatedVisibility(selected != null) {
-                Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-                    Row(Modifier.fillMaxWidth().padding(4.dp), horizontalArrangement = Arrangement.Center) {
+                Surface(shape = homeCardShape(), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.CenterHorizontally)) {
                         if (selected?.kind == CardLayerKind.TEXT) {
-                            MotionIconButton(feedbackClick(editText), enabled = enabled) { Icon(Icons.Default.Edit, "编辑图层文字") }
-                            MotionIconButton(feedbackClick(layerColor), enabled = enabled) { Icon(Icons.Default.Palette, "文字颜色") }
+                            ToolButton("编辑图层文字", Icons.Default.Edit, editText, Modifier.width(32.dp), enabled = enabled)
+                            ToolButton("文字颜色", Icons.Default.Palette, layerColor, Modifier.width(32.dp), enabled = enabled)
                         }
-                        MotionIconButton(feedbackClick(forwardLayer), enabled = enabled) { Icon(Icons.Default.FlipToFront, "移到最上层") }
-                        MotionIconButton(feedbackClick(deleteLayer), enabled = enabled) { Icon(Icons.Default.DeleteOutline, "移除选中图层") }
+                        ToolButton("移到最上层", Icons.Default.FlipToFront, forwardLayer, Modifier.width(32.dp), enabled = enabled)
+                        ToolButton("移除选中图层", Icons.Default.DeleteOutline, deleteLayer, Modifier.width(32.dp), enabled = enabled)
                     }
                 }
             }

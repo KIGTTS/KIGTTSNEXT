@@ -1,8 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import com.kigtts.next.ui.home.PanelDragIndicator
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.AnchoredDraggableState
 import androidx.compose.foundation.layout.*
@@ -13,7 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -29,7 +29,7 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
     toggle: () -> Unit, create: () -> Unit, manage: () -> Unit, rename: () -> Unit, remove: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val colors = compactTonalIconColors().let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
-    val drag = rememberCardAlbumDrag(state, landscape, enabled)
+    val drag = rememberCardPanelDrag(state, if (landscape) Orientation.Horizontal else Orientation.Vertical, true, enabled)
     val toggleButton: @Composable () -> Unit = {
         ToolButton(if (expanded) "收起相册" else "展开相册",
             if (landscape) { if (expanded) Icons.Default.ChevronRight else Icons.Default.ChevronLeft }
@@ -59,12 +59,10 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
         }
     }
     val grip: @Composable (Modifier) -> Unit = { modifier ->
-        val length by animateDpAsState(if (drag.active()) 88.dp else 76.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "album-grip-length")
-        val thickness by animateDpAsState(if (drag.active()) 7.dp else 5.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "album-grip-thickness")
         Box(modifier.then(drag.modifier).testTag("card-album-handle")
-            .semantics { contentDescription = "调整相册面板" }.clickable(enabled = enabled, onClick = toggle), contentAlignment = Alignment.Center) {
-            Box(Modifier.then(if (landscape) Modifier.width(thickness).height(length) else Modifier.width(length).height(thickness))
-                .testTag("card-album-grip").clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary))
+            .semantics { contentDescription = "调整相册面板" }
+            .clickable(interactionSource = null, indication = null, enabled = enabled, onClick = toggle), contentAlignment = Alignment.Center) {
+            PanelDragIndicator(drag.active(), "card-album-grip", vertical = landscape)
         }
     }
     if (landscape) Column(Modifier.width(42.dp).fillMaxHeight().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {

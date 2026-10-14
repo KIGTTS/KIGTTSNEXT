@@ -77,7 +77,10 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
         val chrome: @Composable () -> Unit = {
             CardAlbumChrome(state, landscape, enabled, expanded, reveal, selected != null,
                 selectedId != com.kigtts.next.cards.CardRepository.DEFAULT_ALBUM,
-                toggle = { if (sheet == null) expand(!expanded) else scope.launch { state.animateTo(if (stage == 2) 0 else stage + 1, tween(240)) } },
+                toggle = { if (sheet == null) expand(!expanded) else scope.launch {
+                    // The arrow always folds an open sheet; dragging selects the two open detents.
+                    state.animateTo(if (state.targetValue > 0) 0 else 1, tween(240))
+                } },
                 create = create, manage = manage, rename = rename, remove = remove)
         }
         val rails: @Composable (Modifier) -> Unit = { railModifier ->

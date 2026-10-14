@@ -126,6 +126,13 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
     }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("cards-stack")) {
         val wide = wideLayout ?: (maxWidth > maxHeight)
+        // Different paper formats share one spacing envelope, so their paths cannot cross.
+        val fanPaperWidth = remember(cards, frames, maxWidth, maxHeight, wide) {
+            if (wide) cards.maxOfOrNull { card ->
+                polaroidBrowseWidth(maxWidth, maxHeight,
+                    polaroidFormat(card, frames.firstOrNull { it.id == card.frameStyleId }).geometry.aspectRatio.toFloat(), true)
+            } ?: 1.dp else 1.dp
+        }
         val drawingPadding = 208.dp
         HorizontalPager(pager, Modifier.fillMaxSize().polaroidPagerDrawingSpace(drawingPadding),
             contentPadding = PaddingValues(vertical = drawingPadding),
@@ -143,10 +150,10 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 layout(placed.width, placed.height) {
                     val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                     val distance = relative.absoluteValue
-                    // Keep the outgoing paper above its neighbors for the whole gesture, then
-                    // promote the settled selection. Crossing half a page must not swap layers.
-                    placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.settledPage).absoluteValue.toFloat() else -index.toFloat()) {
-                        translationX = if (wide) relative * (polaroidFanSpacing(size.width, width.toPx()) - size.width)
+                    // In landscape, the two turning papers separate before the nearest page
+                    // takes the foreground. Changing order while they overlap would interleave them.
+                    placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.currentPage).absoluteValue.toFloat() else -index.toFloat()) {
+                        translationX = if (wide) relative * (polaroidFanSpacing(size.width, fanPaperWidth.toPx(), pager.currentPageOffsetFraction) - size.width)
                             else if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
                         scaleX = (1f - distance * (if (wide) .035f else .07f)).coerceAtLeast(.82f); scaleY = scaleX
                         rotationZ = (relative * (if (wide) 4f else 2.5f)).coerceIn(if (wide) -8f else -5f, if (wide) 8f else 5f)

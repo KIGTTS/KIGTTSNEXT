@@ -66,6 +66,13 @@ class PolaroidAlbumHandleUiTest {
         assertEquals(1, sheet.currentValue)
         compose.onNodeWithTag("card-album-photos").assertIsDisplayed()
         compose.onNodeWithTag("card-albums").assertDoesNotExist()
+        compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
+        compose.waitForIdle()
+        assertEquals("The photo detent must fold directly instead of advancing to albums", 0, sheet.currentValue)
+        compose.onNodeWithTag("card-album-photos").assertDoesNotExist()
+        compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
+        compose.waitForIdle()
+        assertEquals(1, sheet.currentValue)
         compose.onNodeWithTag("card-album-handle").performTouchInput { down(center) }
         moveToNext(if (wide) 130f else 66f)
         assertEquals(2, sheet.currentValue)
@@ -84,6 +91,10 @@ class PolaroidAlbumHandleUiTest {
             if (wide) swipeUp() else swipeLeft()
         }
         assertEquals("Scrolling photos must not resize their panel", 2, sheet.currentValue)
+        compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
+        compose.waitForIdle()
+        assertEquals("The full album detent also folds directly", 0, sheet.currentValue)
+        compose.expandAlbumGroups()
         compose.onNodeWithTag("card-album-handle").performTouchInput { down(center) }
         moveToNext(-250f)
         assertEquals(0, sheet.currentValue)

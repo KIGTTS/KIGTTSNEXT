@@ -121,7 +121,9 @@ class CardEditorScrollingUiTest {
         val paths = PluginPaths(app); val stickers = StickerRepository(app, paths, MediaRepository(app, paths))
         val cards = CardRepository(app, stickers)
         val card = cards.create(PolaroidCard(title = ""))
-        var width by mutableStateOf(400.dp); var height by mutableStateOf(780.dp)
+        // Compact home-style controls fit without scrolling on tall screens. Start in a shorter
+        // real window to exercise overflow, then retain the keyboard and rotation checks below.
+        var width by mutableStateOf(400.dp); var height by mutableStateOf(620.dp)
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.size(width, height)) { PageScaffold("编辑拍立得", {}, largeBar = false) {
                 CardEditorScreen(cards, stickers, card.id, {})

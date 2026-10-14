@@ -3,6 +3,8 @@ package com.kigtts.next.ui.cards
 
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.gestures.Orientation
+import com.kigtts.next.ui.home.PanelDragIndicator
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +48,7 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
         val expandedTop = with(density) { (maxHeight - panelHeight).toPx() }
         val foldedTop = with(density) { (maxHeight - minOf(handleHeight, maxHeight)).toPx() }
         val sheet = rememberCardToolsSheet(expandedTop, foldedTop)
+        val drag = rememberCardPanelDrag(sheet, Orientation.Vertical, false, enabled)
         LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
         val stageHeight = maxHeight
         Box(Modifier.fillMaxSize().pointerInput(Unit) {
@@ -66,14 +69,14 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             IntOffset(0, (sheet.offset.takeIf(Float::isFinite) ?: expandedTop).roundToInt())
         }.testTag("card-editor-panel"), shape = homeCardShape(), color = MaterialTheme.colorScheme.surfaceContainer) {
                 Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxWidth().height(handleHeight).cardToolsDrag(sheet, enabled)
+                    Box(Modifier.fillMaxWidth().height(handleHeight).then(drag.modifier)
                         .testTag("card-editor-panel-header"), contentAlignment = Alignment.Center) {
-                        BottomSheetDefaults.DragHandle(Modifier.testTag("card-editor-panel-handle"))
+                        PanelDragIndicator(drag.active(), "card-editor-panel-handle")
                         val open = sheet.targetValue == CardToolsPosition.EXPANDED
                         ToolButton(if (open) "收起编辑面板" else "展开编辑面板",
                             if (open) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            { scope.launch { sheet.animateTo(if (open) CardToolsPosition.COLLAPSED else CardToolsPosition.EXPANDED, tween(220)) } },
-                            Modifier.align(Alignment.CenterEnd).padding(end = 12.dp).testTag("toggle-card-editor-panel"),
+                            { scope.launch { sheet.animateTo(if (sheet.targetValue == CardToolsPosition.EXPANDED) CardToolsPosition.COLLAPSED else CardToolsPosition.EXPANDED, tween(220)) } },
+                            Modifier.align(Alignment.CenterEnd).padding(end = 12.dp).width(32.dp).testTag("toggle-card-editor-panel"),
                             shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(8.dp)),
                             size = 32.dp, enabled = enabled)
                     }
