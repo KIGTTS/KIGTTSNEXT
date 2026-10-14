@@ -10,6 +10,8 @@ CameraX 1.6.2 的 `ImageCapture` 保存设备支持的高分辨率 JPEG，并采
 
 统一相机设置支持三分线／方格／关闭、水平仪、关闭／自动／开启闪光灯和 0／3／10 秒倒计时，采用设置页的卡片、相连按钮组及动效弹窗。闪灯能力由实际镜头检查，前摄无 LED 时不覆盖用户已保存的选择；返回支持闪灯的镜头后恢复。倒计时只拍摄一次，重复快门可取消；返回或退入后台会取消，实际曝光及保存期间保持忙碌保护。辅助线和水平仪只叠在预览，不写入照片。重力数据按自然设备坐标和显示旋转映射；近乎平放时改成圆形水平指示，传感器不可用时不假装对齐。监听随页面和生命周期停用，绘制状态限流到 30 Hz，不驱动整个相机布局重新测量。
 
+闪光灯入口始终保留48dp布局槽位，镜头能力变化时仅整体淡入淡出和轻微缩放，邻近画幅及滤镜按钮不跳位；退出中的入口禁止操作并隐藏无障碍语义。倒计时固定88dp圆底，数字独立居中交叉淡化，取消时保留最后数字直到完整淡出，快速重开可从当前动画状态反向过渡。两个浮层都不使用从零尺寸展开的矩形裁剪。
+
 画幅变化时缓存一次小预览图作模糊过渡，矩形达到最终尺寸后只重绑一次，新画面出帧后淡出覆盖层。点按设置焦点，双指连续变焦；焦点旁的曝光手柄只在设备支持曝光补偿时出现。焦点失效、五秒未交互或离开页面时取消测光区域并复位曝光补偿，倒计时及拍摄期间不会因焦点计时结束改动曝光。
 
 常规操作布局与功能参考 [Pixel Camera 设置与辅助线](https://support.google.com/pixelcamera/answer/2838995?hl=en-GB)、[Samsung 相机快捷控制](https://www.samsung.com/us/support/answer/ANS10010343/) 和 [构图指引](https://www.samsung.com/in/support/mobile-devices/composition-guide-feature-in-galaxy-devices/)。重力与坐标依据 [Android 传感器概述](https://developer.android.com/develop/sensors-and-location/sensors/sensors_overview) 和 [运动传感器](https://developer.android.com/develop/sensors-and-location/sensors/sensors_motion)。这里实现应用所需的拍照控制，不复制相机素材或加入视频／专业拍摄模式。

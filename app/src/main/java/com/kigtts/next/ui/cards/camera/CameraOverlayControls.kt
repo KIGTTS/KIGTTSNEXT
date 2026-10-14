@@ -42,14 +42,13 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
     }
     val flashButton: @Composable () -> Unit = {
-        AnimatedVisibility(flashAvailable,
-            enter = fadeIn() + if (vertical) expandVertically() else expandHorizontally(),
-            exit = fadeOut() + if (vertical) shrinkVertically() else shrinkHorizontally()) {
+        CameraOverlayPresence(flashAvailable, Modifier.size(48.dp)) {
             ToolButton("闪光灯：" + flash.label + "，点按切换", when (flash) {
                 CameraFlash.OFF -> Icons.Default.FlashOff
                 CameraFlash.AUTO -> Icons.Default.FlashAuto
                 CameraFlash.ON -> Icons.Default.FlashOn
-            }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
+            }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape,
+                colors = if (flashAvailable) colors else colors.keepColorsWhenLocked(), enabled = enabled && flashAvailable)
         }
     }
     val settingsButton: @Composable () -> Unit = {
