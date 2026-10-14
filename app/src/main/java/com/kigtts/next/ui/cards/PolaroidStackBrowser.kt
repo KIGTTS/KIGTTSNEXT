@@ -126,8 +126,8 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
     }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("cards-stack")) {
         val wide = wideLayout ?: (maxWidth > maxHeight)
-        // Different paper formats share one spacing envelope, so their paths cannot cross.
-        val fanPaperWidth = remember(cards, frames, maxWidth, maxHeight, wide) {
+        // Fixed slots fit every paper format, including while both neighbors are growing.
+        val carouselPaperWidth = remember(cards, frames, maxWidth, maxHeight, wide) {
             if (wide) cards.maxOfOrNull { card ->
                 polaroidBrowseWidth(maxWidth, maxHeight,
                     polaroidFormat(card, frames.firstOrNull { it.id == card.frameStyleId }).geometry.aspectRatio.toFloat(), true)
@@ -143,23 +143,28 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
             val width = polaroidBrowseWidth(maxWidth, maxHeight, polaroidFormat(card, frame).geometry.aspectRatio.toFloat(), wide)
             val resize = rememberPolaroidResize(card.id, width, maxWidth, maxHeight, coordinateSpace = wide)
             // Read pager offsets during placement/layer updates, leaving photo decoding and canvas
-            // composition unchanged on animation frames. Album order fixes the drawing order:
-            // a preceding card exits fully before a following card becomes the foreground.
+            // composition unchanged on animation frames. Landscape slots stay evenly spaced;
+            // portrait keeps the overlapping paper stack in album order.
             Box(Modifier.fillMaxSize().layout { measurable, constraints ->
                 val placed = measurable.measure(constraints)
                 layout(placed.width, placed.height) {
                     val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                     val distance = relative.absoluteValue
-                    // In landscape, the two turning papers separate before the nearest page
-                    // takes the foreground. Changing order while they overlap would interleave them.
                     placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.currentPage).absoluteValue.toFloat() else -index.toFloat()) {
-                        translationX = if (wide) relative * (polaroidFanSpacing(size.width, fanPaperWidth.toPx(), pager.currentPageOffsetFraction) - size.width)
+                        translationX = if (wide) relative * (carouselPaperWidth.toPx() + 16.dp.toPx() - size.width)
                             else if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
-                        scaleX = (1f - distance * (if (wide) .035f else .07f)).coerceAtLeast(.82f); scaleY = scaleX
-                        rotationZ = (relative * (if (wide) 4f else 2.5f)).coerceIn(if (wide) -8f else -5f, if (wide) 8f else 5f)
-                        // Paper stays opaque: overlapping captions must never ghost through it.
-                        // Only a distant page that is leaving the stack fades away.
-                        alpha = if (distance <= 2f) 1f else (3f - distance).coerceIn(0f, 1f)
+                        if (wide) {
+                            val progress = distance.coerceIn(0f, 1f)
+                            val emphasis = progress * progress * (3f - 2f * progress)
+                            scaleX = 1f - .16f * emphasis; scaleY = scaleX
+                            rotationZ = 0f
+                            alpha = (1f - .5f * emphasis) * (2f - distance).coerceIn(0f, 1f)
+                        } else {
+                            scaleX = (1f - distance * .07f).coerceAtLeast(.82f); scaleY = scaleX
+                            rotationZ = (relative * 2.5f).coerceIn(-5f, 5f)
+                            // Overlapping portrait papers stay opaque to avoid ghosting text.
+                            alpha = if (distance <= 2f) 1f else (3f - distance).coerceIn(0f, 1f)
+                        }
                     }
                 }
             }, contentAlignment = Alignment.Center) {

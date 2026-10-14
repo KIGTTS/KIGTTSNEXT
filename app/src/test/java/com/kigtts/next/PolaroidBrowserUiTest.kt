@@ -521,13 +521,13 @@ class PolaroidBrowserUiTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w1280dp-h600dp-land-xxhdpi")
-    fun aWideWindowFansThreeOpaquePapersAcrossBothSidesAndKeepsItsVerticalRailsCompact() = exerciseWideFan(false)
+    fun aWideWindowShowsAStraightCarouselWithSmallerFadedNeighborsAndCompactRails() = exerciseWideCarousel(false)
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
-    fun mixedPaperFormatsSeparateBeforeForegroundChangesInANarrowLandscapeWindow() = exerciseWideFan(true)
+    fun mixedPaperFormatsKeepFixedSlotsThroughForwardAndReverseLandscapePaging() = exerciseWideCarousel(true)
 
-    private fun exerciseWideFan(mixedFormats: Boolean) {
+    private fun exerciseWideCarousel(mixedFormats: Boolean) {
         val f = fixture()
         if (mixedFormats) f.cards.update(f.first.copy(frameStyleId = "instax.wide.classic"))
         val middle = f.cards.create(PolaroidCard(title = "绿色照片", imageId = image(f.stickers, android.graphics.Color.GREEN),
@@ -550,7 +550,16 @@ class PolaroidBrowserUiTest {
             return Math.toDegrees(kotlin.math.atan2(edge.y.toDouble(), edge.x.toDouble()))
         }
         assertTrue(center(f.first.id).x < center(middle.id).x && center(middle.id).x < center(f.next.id).x)
-        assertEquals(-4.0, angle(f.first.id), .1); assertEquals(0.0, angle(middle.id), .1); assertEquals(4.0, angle(f.next.id), .1)
+        fun scale(id: String): Float {
+            val paper = coordinates(id)
+            return (paper.localToRoot(Offset(0f, paper.size.height.toFloat())).y - paper.localToRoot(Offset.Zero).y) / paper.size.height
+        }
+        val slot = center(f.next.id).x - center(middle.id).x
+        listOf(f.first.id, middle.id, f.next.id).forEach { assertEquals(0.0, angle(it), .1) }
+        assertEquals(.84f, scale(f.first.id), .01f); assertEquals(1f, scale(middle.id), .01f); assertEquals(.84f, scale(f.next.id), .01f)
+        assertEquals(slot, center(middle.id).x - center(f.first.id).x, 2f)
+        assertEquals(center(middle.id).y, center(f.first.id).y, 2f)
+        assertEquals(center(middle.id).y, center(f.next.id).y, 2f)
         val albums = compose.onNodeWithTag("card-albums").fetchSemanticsNode().boundsInRoot
         val photos = compose.onNodeWithTag("card-album-photos").fetchSemanticsNode().boundsInRoot
         assertTrue(photos.right <= albums.left && kotlin.math.abs(albums.top - photos.top) <= 1f)
@@ -563,35 +572,39 @@ class PolaroidBrowserUiTest {
         assertEquals((if (mixedFormats) PolaroidFormat.MINI else PolaroidFormat.SQUARE).geometry.aspectRatio,
             ((thumbnail.right - thumbnail.left) / (thumbnail.bottom - thumbnail.top)).toDouble(), .01)
         compose.waitUntil(8_000) {
-            val output = capture("wide-planar-fan")
+            val output = capture("wide-carousel-" + mixedFormats)
             val blue = paperPixel(output, f.first.id, .5f, .4f)
             val green = paperPixel(output, middle.id, .5f, .4f)
             val red = paperPixel(output, f.next.id, .5f, .4f)
-            android.graphics.Color.blue(blue) >= 220 && android.graphics.Color.red(blue) <= 8 &&
+            android.graphics.Color.blue(blue) >= 220 && android.graphics.Color.red(blue) in 90..165 &&
                 android.graphics.Color.green(green) >= 220 && android.graphics.Color.blue(green) <= 8 &&
-                android.graphics.Color.red(red) >= 220 && android.graphics.Color.green(red) <= 8
+                android.graphics.Color.red(red) >= 220 && android.graphics.Color.green(red) in 90..165
         }
         compose.onNodeWithTag("cards-stack").performTouchInput {
             down(center); moveTo(center - Offset(width * .1f, 0f)); moveTo(center - Offset(width * .48f, 0f))
         }
-        fun opaqueFront(stage: String) {
+        fun straightSlots(stage: String) {
             val output = capture(stage)
             listOf(middle.id, f.next.id).forEach { id -> listOf(.03f, .97f).forEach { edge ->
                 val white = paperPixel(output, id, edge, .43f)
-                assertTrue("Both turning papers keep their complete opaque margins", android.graphics.Color.red(white) >= 248 &&
-                    android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
+                assertTrue("Both papers retain visible, unoccluded margins while fading", android.graphics.Color.red(white) >= 220 &&
+                    android.graphics.Color.green(white) >= 220 && android.graphics.Color.blue(white) >= 220)
             } }
+            assertEquals("Horizontal spacing must not expand or contract while paging", slot, center(f.next.id).x - center(middle.id).x, 2f)
+            assertEquals(center(middle.id).y, center(f.next.id).y, 2f)
+            listOf(middle.id, f.next.id).forEach { assertEquals(0.0, angle(it), .1); assertTrue(scale(it) in .84f..1.001f) }
             val left = compose.onNodeWithTag("polaroid/" + middle.id).fetchSemanticsNode().boundsInRoot
             val right = compose.onNodeWithTag("polaroid/" + f.next.id).fetchSemanticsNode().boundsInRoot
-            assertTrue("Papers separate before their foreground order changes", left.right < right.left)
+            assertTrue("Adjacent carousel papers never overlap", left.right < right.left)
         }
-        opaqueFront("wide-planar-before-half")
+        straightSlots("wide-carousel-before-half-" + mixedFormats)
         compose.onNodeWithTag("cards-stack").performTouchInput { moveTo(center - Offset(width * .56f, 0f)) }
-        opaqueFront("wide-planar-after-half")
+        straightSlots("wide-carousel-after-half-" + mixedFormats)
         compose.onNodeWithTag("cards-stack").performTouchInput { up() }
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("3 / 3")
         compose.onNodeWithTag("card-album/" + f.nextAlbum).assertIsSelected()
+        assertEquals(1f, scale(f.next.id), .01f); assertEquals(.84f, scale(middle.id), .01f)
         listOf(.03f, .97f).forEach { edge ->
             val white = paperPixel(capture("wide-settled-front"), f.next.id, edge, .43f)
             assertTrue(android.graphics.Color.red(white) >= 248 && android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
@@ -600,6 +613,8 @@ class PolaroidBrowserUiTest {
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("2 / 3")
         compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).assertIsSelected()
-        capture("wide-planar-return")
+        assertEquals(1f, scale(middle.id), .01f); assertEquals(.84f, scale(f.next.id), .01f)
+        assertEquals(slot, center(f.next.id).x - center(middle.id).x, 2f)
+        capture("wide-carousel-return-" + mixedFormats)
     }
 }
