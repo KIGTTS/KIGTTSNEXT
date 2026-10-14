@@ -32,6 +32,16 @@ internal fun CardCropTools(card: PolaroidCard, enabled: Boolean, change: (Polaro
         MotionOutlinedButton({ change(card.copy(photoX = .5, photoY = .5, photoZoom = 1.0)) }, enabled = enabled) {
             Icon(Icons.Default.RestartAlt, null); Spacer(Modifier.width(8.dp)); Text("重置照片位置")
         }
+        Text("双指移动和缩放照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
+    frameColor: () -> Unit, frames: List<PolaroidFrameStyle>) {
+    val currentFrame = frames.firstOrNull { it.id == card.frameStyleId }
+    val format = polaroidFormat(card, currentFrame)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("边框样式", style = MaterialTheme.typography.titleSmall)
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             frames.filter { it.format == format }.forEach { style -> FilterChip(card.frameStyleId == style.id,
@@ -39,6 +49,5 @@ internal fun CardCropTools(card: PolaroidCard, enabled: Boolean, change: (Polaro
         }
         if (currentFrame?.color == null)
             MotionOutlinedButton(frameColor, enabled = enabled) { Icon(Icons.Default.Palette, null); Spacer(Modifier.width(8.dp)); Text("纸框颜色") }
-        Text("双指移动和缩放照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

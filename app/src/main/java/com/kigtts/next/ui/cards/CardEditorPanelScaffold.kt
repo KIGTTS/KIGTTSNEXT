@@ -31,15 +31,20 @@ import androidx.compose.animation.core.tween
 /** A native persistent tools sheet; its offset transforms the paper without remeasuring it every frame. */
 @Composable
 internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expandTools: Boolean,
-    clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit) {
+    clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit,
+    categories: (@Composable (Boolean) -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
-    BoxWithConstraints(Modifier.fillMaxSize().imePadding().clipToBounds().testTag("card-editor")) {
+    BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
+    val compactCategories = maxHeight < 360.dp
+    Column(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clipToBounds().testTag("card-editor")) {
         val panelHeight = minOf(maxHeight * .58f, 420.dp).coerceAtLeast(minOf(144.dp, maxHeight))
+        val handleHeight = if (maxHeight < 160.dp) 32.dp else 56.dp
         val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
         val density = LocalDensity.current
         val expandedTop = with(density) { (maxHeight - panelHeight).toPx() }
-        val foldedTop = with(density) { (maxHeight - minOf(56.dp, maxHeight)).toPx() }
+        val foldedTop = with(density) { (maxHeight - minOf(handleHeight, maxHeight)).toPx() }
         val sheet = rememberCardToolsSheet(expandedTop, foldedTop)
         LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
         val stageHeight = maxHeight
@@ -61,7 +66,7 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             IntOffset(0, (sheet.offset.takeIf(Float::isFinite) ?: expandedTop).roundToInt())
         }.testTag("card-editor-panel"), shape = homeCardShape(), color = MaterialTheme.colorScheme.surfaceContainer) {
                 Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxWidth().height(56.dp).cardToolsDrag(sheet, enabled)
+                    Box(Modifier.fillMaxWidth().height(handleHeight).cardToolsDrag(sheet, enabled)
                         .testTag("card-editor-panel-header"), contentAlignment = Alignment.Center) {
                         BottomSheetDefaults.DragHandle(Modifier.testTag("card-editor-panel-handle"))
                         val open = sheet.targetValue == CardToolsPosition.EXPANDED
@@ -76,5 +81,8 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                         .testTag("card-editor-tools-scroll")) { tools() }
                 }
         }
+    }
+    if (categories != null) Surface(color = MaterialTheme.colorScheme.surfaceContainer) { categories(compactCategories) }
+    }
     }
 }

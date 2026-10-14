@@ -39,14 +39,25 @@ internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
             })
             val scroll = rememberScrollState()
             LaunchedEffect(state.voiceInputText) { scroll.scrollTo(scroll.maxValue) }
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 28.dp, vertical = 20.dp), contentAlignment = Alignment.BottomStart) {
+            BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding()) {
+              val landscape = maxWidth > maxHeight
+              val transcript: @Composable (Modifier) -> Unit = { modifier ->
+                Box(modifier.padding(horizontal = 28.dp, vertical = 20.dp), contentAlignment = Alignment.BottomStart) {
                     Text(state.voiceInputText.ifBlank { "正在聆听…" }, Modifier.fillMaxWidth().verticalScroll(scroll).testTag("voice-input-text"),
                         style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color.White)
                 }
-                VoiceInputReleaseZones(gesture, state.autoPlayback,
+              }
+              val releases: @Composable () -> Unit = { VoiceInputReleaseZones(gesture, state.autoPlayback,
                     cancel = { model.endVoiceInput(false) }, send = { model.endVoiceInput(true) },
-                    read = { model.endVoiceInput(true, read = true) }, continuous = model::continueVoiceInput)
+                    read = { model.endVoiceInput(true, read = true) }, continuous = model::continueVoiceInput,
+                    landscape = landscape) }
+              if (landscape) Row(Modifier.fillMaxSize()) {
+                  transcript(Modifier.weight(1f).fillMaxHeight())
+                  releases()
+              } else Column(Modifier.fillMaxSize()) {
+                  transcript(Modifier.weight(1f).fillMaxWidth())
+                  releases()
+              }
             }
         }
     }

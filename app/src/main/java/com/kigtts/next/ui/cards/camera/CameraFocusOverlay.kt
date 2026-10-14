@@ -75,12 +75,15 @@ private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> U
         val selected = value.roundToInt().coerceIn(range)
         state.value = selected.toFloat(); commit(selected)
     }
-    Surface(modifier.excludeCameraPull(), shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {
-        Column(Modifier.fillMaxSize().padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.LightMode, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface)
+    val yellow = Color(0xFFFFD54F)
+    Box(modifier.excludeCameraPull()) {
+        // MD3 adds 10dp at both slider ends for accessibility; reserve it inside the photo.
+        Column(Modifier.fillMaxSize().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Default.LightMode, null, Modifier.size(16.dp), tint = yellow)
             VerticalSlider(state, Modifier.weight(1f).fillMaxWidth().cameraSliderPressFeedback().testTag("camera-exposure")
-                .semantics { contentDescription = "曝光补偿" }, reverseDirection = true, interactionSource = source)
+                .semantics { contentDescription = "曝光补偿" }, reverseDirection = true, interactionSource = source,
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = yellow,
+                    inactiveTrackColor = Color.White.copy(alpha = .7f), activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent))
         }
     }
 }

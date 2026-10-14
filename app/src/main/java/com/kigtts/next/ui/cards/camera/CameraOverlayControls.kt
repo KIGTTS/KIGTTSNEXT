@@ -16,6 +16,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.components.keepColorsWhenLocked
+import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.excludeCameraPull
 import com.kigtts.plugin.api.PolaroidFormat
 
@@ -30,14 +32,16 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
-        contentColor = MaterialTheme.colorScheme.onSurface)
-    val items: @Composable () -> Unit = {
+        contentColor = MaterialTheme.colorScheme.onSurface).let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
+    val formatButton: @Composable () -> Unit = {
         ToolButton("画幅：" + format.cameraLabel(formats.size == 3) + "，点按切换", when (format) {
             PolaroidFormat.MINI -> Icons.Default.CropPortrait
             PolaroidFormat.WIDE -> Icons.Default.CropLandscape
             else -> Icons.Default.CropSquare
         }, cycleFormat, Modifier.testTag("camera-format"),
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
+    }
+    val flashButton: @Composable () -> Unit = {
         AnimatedVisibility(flashAvailable,
             enter = fadeIn() + if (vertical) expandVertically() else expandHorizontally(),
             exit = fadeOut() + if (vertical) shrinkVertically() else shrinkHorizontally()) {
@@ -47,13 +51,21 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
                 CameraFlash.ON -> Icons.Default.FlashOn
             }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
         }
+    }
+    val settingsButton: @Composable () -> Unit = {
         if (showSettings) ToolButton("相机设置", Icons.Default.Tune, openSettings,
             Modifier.testTag("camera-settings"), size = 44.dp,
             shapes = shape, colors = colors, enabled = enabled)
+    }
+    val filterButton: @Composable () -> Unit = {
         ToolButton(if (filtersExpanded) "收起滤镜" else "滤镜", Icons.Default.PhotoFilter, toggleFilters,
             Modifier.testTag("camera-filter-toggle")
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
+    }
+    val items: @Composable () -> Unit = {
+        if (vertical) { filterButton(); settingsButton(); flashButton(); formatButton() }
+        else { formatButton(); flashButton(); settingsButton(); filterButton() }
     }
     val strip = (if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.controls)
         else if (vertical) Modifier.align(Alignment.CenterStart).width(56.dp).fillMaxHeight()

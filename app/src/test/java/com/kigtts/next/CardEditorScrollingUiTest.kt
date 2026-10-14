@@ -129,7 +129,7 @@ class CardEditorScrollingUiTest {
         } }
         dragContent(true)
         assertTrue(position() > 20f)
-        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("保留的草稿")
         compose.runOnIdle {
             WindowCompat.setDecorFitsSystemWindows(compose.activity.window, false)
@@ -148,7 +148,7 @@ class CardEditorScrollingUiTest {
         repeat(8) { dragContent(false) }
         assertEquals(0f, position(), .1f)
         compose.onNodeWithTag("card-editor-tab/STICKERS").performClick()
-        compose.onNodeWithText("文字", substring = false).performClick()
+        compose.onNodeWithText("添加文字", substring = false).performClick()
         compose.onNodeWithTag("card-layer-text").performScrollTo().performTextReplacement("尚未保存的贴纸文字")
         compose.runOnIdle { width = 850.dp; height = 400.dp }
         compose.waitForIdle()
@@ -157,8 +157,9 @@ class CardEditorScrollingUiTest {
         dragContent(false)
         assertTrue("A tiny wide/IME tools viewport must still scroll backward", position() < before)
         assertEquals(panelTop, compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot.top, .5f)
-        compose.onNodeWithTag("card-title").performScrollTo().assertTextContains("保留的草稿")
         compose.onNodeWithTag("card-layer-text").assertTextContains("尚未保存的贴纸文字")
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
+        compose.onNodeWithTag("card-title").performScrollTo().assertTextContains("保留的草稿")
         assertEquals(card, cards.cards.value.single())
     }
 }

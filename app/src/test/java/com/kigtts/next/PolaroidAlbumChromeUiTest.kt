@@ -22,6 +22,7 @@ import com.kigtts.next.cards.*
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.*
+import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.runtime.PluginPaths
 import org.junit.Assert.*
@@ -60,6 +61,38 @@ class PolaroidAlbumChromeUiTest {
         }
     }
 
+    @Test fun pullingTheCameraLocksAlbumActionsWithoutPaintingDisabledColours() {
+        val f = Fixture(); f.photo(Color.BLUE)
+        var active by mutableStateOf(true)
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            CompositionLocalProvider(LocalPageActive provides active) {
+                Box(Modifier.size(400.dp, 780.dp)) { CardPageScaffold("拍立得", {}) {
+                    CardsScreen(f.cards, f.stickers, {}, {}, {})
+                } }
+            }
+        } }
+        repeat(2) { compose.onNodeWithTag("toggle-card-albums").performClick() }
+        val tags = listOf("cards-browse-mode", "face-discovery", "toggle-card-albums", "create-card-album", "card-album-menu")
+        fun pixels(tag: String): IntArray {
+            val output = File("build/previews/album-action-$tag.png").apply { parentFile.mkdirs() }
+            compose.onNodeWithTag(tag).captureRoboImage(output.absolutePath)
+            val bitmap = requireNotNull(BitmapFactory.decodeFile(output.absolutePath))
+            return try { IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) } }
+            finally { bitmap.recycle() }
+        }
+        val before = tags.associateWith(::pixels)
+        compose.runOnIdle { active = false }
+        tags.forEach { tag ->
+            compose.onNodeWithTag(tag).assertIsNotEnabled()
+            assertArrayEquals("Page transition locks must preserve $tag pixels", before.getValue(tag), pixels(tag))
+        }
+        compose.runOnIdle { active = true }
+        tags.forEach { tag ->
+            compose.onNodeWithTag(tag).assertIsEnabled()
+            assertArrayEquals("Returning must preserve $tag pixels", before.getValue(tag), pixels(tag))
+        }
+    }
+
     @Test fun albumsStartFoldedAndTheirExpansionCompactsThePortraitTitleWithHomeSizedCircleButtons() {
         val f = Fixture(); f.photo(Color.BLUE)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
@@ -76,6 +109,9 @@ class PolaroidAlbumChromeUiTest {
         assertEquals(60f, (folded.bottom - folded.top).value, .5f)
         compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
         compose.waitForIdle()
+        compose.onNodeWithTag("card-albums").assertDoesNotExist()
+        compose.onNodeWithTag("card-album-photos").assertIsDisplayed()
+        compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
         compose.onNodeWithTag("card-albums").assertIsDisplayed()
         val compactBar = compose.onNodeWithTag("large-page-bar").getUnclippedBoundsInRoot()
         assertTrue("Expanded albums must collapse the large title", fullBar.bottom - fullBar.top > compactBar.bottom - compactBar.top + 48.dp)
@@ -84,7 +120,7 @@ class PolaroidAlbumChromeUiTest {
         assertEquals(1, title.single().lineCount)
         listOf("toggle-card-albums", "create-card-album", "card-album-menu").forEach { tag ->
             val button = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
-            assertEquals("$tag matches the expanded quick-text side button", 32f, (button.right - button.left).value, .5f)
+            assertEquals("$tag is circular at rest", 32f, (button.right - button.left).value, .5f)
             assertEquals(32f, (button.bottom - button.top).value, .5f)
         }
         compose.onNodeWithTag("toggle-card-albums").performTouchInput { click(center) }
@@ -106,6 +142,7 @@ class PolaroidAlbumChromeUiTest {
                 CardsScreen(f.cards, f.stickers, {}, {}, {})
             } }
         } }
+        compose.onNodeWithTag("toggle-card-albums").performClick()
         compose.onNodeWithTag("toggle-card-albums").performClick()
         compose.onNodeWithTag("card-album/" + album.id).performClick()
         compose.onNodeWithTag("cards-position").assertTextEquals("2 / 2")
@@ -142,6 +179,7 @@ class PolaroidAlbumChromeUiTest {
             compose.runOnIdle { width = 400.dp; height = 780.dp }
             compose.waitForIdle()
             actualRedPaper("tall-folded-$cycle")
+            compose.onNodeWithTag("toggle-card-albums").performClick()
             compose.onNodeWithTag("toggle-card-albums").performClick()
             compose.onNodeWithTag("card-album/" + album.id).assertIsSelected()
             actualRedPaper("tall-expanded-$cycle")

@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.components.keepColorsWhenLocked
+import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.excludeCameraPull
 
 @Composable
@@ -29,7 +31,8 @@ internal fun CameraMotionButton(requested: Boolean, available: Boolean, ready: B
             shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(10.dp)),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = if (requested) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
-                contentColor = if (requested) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface),
+                contentColor = if (requested) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)
+                .let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it },
             size = 44.dp, enabled = enabled)
         if (requested && preparing) CircularProgressIndicator(Modifier.size(40.dp).align(Alignment.Center), strokeWidth = 2.dp)
     }

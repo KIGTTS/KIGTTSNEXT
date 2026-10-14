@@ -38,8 +38,9 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
     var albumChangeRequest by rememberSaveable { mutableLongStateOf(0L) }
     var pendingPosition by remember { mutableStateOf<Long?>(null) }
     val management = rememberCardManagementState()
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    RegisterCardAlbumExpanded(expanded)
+    val albumSheet = rememberCardAlbumSheet()
+    val expanded = albumSheet.targetValue > 0
+    RegisterCardAlbumExpanded(expanded, albumSheet.targetValue)
     var previewId by rememberSaveable { mutableStateOf<String?>(null) }
     var handledRequest by rememberSaveable { mutableLongStateOf(Long.MIN_VALUE) }
     var removeCard by remember { mutableStateOf<PolaroidCard?>(null) }
@@ -140,9 +141,9 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
         }
         val dock: @Composable () -> Unit = {
             CardAlbumDock(albums, selectedAlbum, albumPhotos, focusedId, stickers::imageFile, enabled && !management.active, landscape,
-                expanded, { expanded = it }, ::selectAlbum, ::choosePhoto, { createAlbum = true },
+                expanded, {}, ::selectAlbum, ::choosePhoto, { createAlbum = true },
                 { renameAlbum = selectedAlbum }, { removeAlbum = selectedAlbum }, Modifier.padding(8.dp),
-                manage = { management.albums(selectedAlbum) }, manageAlbum = { management.albums(it) })
+                manage = { management.albums(selectedAlbum) }, manageAlbum = { management.albums(it) }, sheet = albumSheet)
         }
         CompositionLocalProvider(LocalCardWindowLandscape provides landscape) {
             CardBrowsingLayout(landscape, body, dock)

@@ -31,3 +31,9 @@ CameraX 1.6.2 的 `ImageCapture` 保存设备支持的高分辨率 JPEG，并采
 `PolaroidCameraCapture` 的原图和滤镜文件都是临时资源。宿主异步导入完两份后调用 `discard()` / `close()`；拍摄交付后叶子保持忙碌、拦截返回直到宿主导航离开，避免导入中的资源被重复拍摄或删除。未交付的取消与迟到回调会清理文件，页面离开及后台停用时只解绑本叶子的相机用例。
 
 官方依据：[CameraX 发布说明](https://developer.android.com/jetpack/androidx/releases/camera)、[ViewPort 与分辨率](https://developer.android.com/media/camera/camerax/configuration)、[分辨率选择](https://developer.android.com/reference/androidx/camera/core/resolutionselector/ResolutionSelector)、[扩展会话](https://developer.android.com/reference/androidx/camera/extensions/ExtensionSessionConfig.Builder)。
+
+## 布局与临时曝光
+
+快门竖屏位于底部正中，横屏位于右侧正中；竖屏左侧选图对应横屏底部，右侧切换镜头对应横屏顶部。顶部开关组同样逆时针映射到左侧。相机返回、实况、设置归相机取景舞台，右上操作避开快门栏和变焦轨道；可用空间由画幅和安全区共同约束，留白不足时继续叠在取景区域。
+
+对焦点旁的曝光补偿使用原生 MD3 VerticalSlider：黄色轨道和亮度图标、白色手柄、透明容器。两端预留原生无障碍范围，不靠裁剪隐藏越界；实际曝光步进触发反馈，失去对焦点后恢复自动曝光。页面转场期间临时禁止交互时保持相机按钮颜色，真实硬件能力不足或保存中的禁用状态仍保留。

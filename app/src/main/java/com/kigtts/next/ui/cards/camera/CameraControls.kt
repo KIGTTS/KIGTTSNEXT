@@ -72,13 +72,15 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
     cancel: () -> Unit, capture: () -> Unit, flip: () -> Unit, vertical: Boolean, locked: Boolean = busy,
     countingDown: Boolean = false, cancelCountdown: () -> Unit = {}, showCancel: Boolean = true,
     gallery: (() -> Unit)? = null) {
+    val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
         if (showCancel || gallery != null) ToolButton(if (gallery != null) "选择照片" else "取消拍摄",
             if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
-            Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterStart).padding(12.dp)
+            Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterStart).padding(12.dp)
                 .testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
+            colors = tonal,
             enabled = active && if (gallery != null) !locked else !busy)
         ToolButton(if (countingDown) "取消倒计时" else "拍照", when {
             countingDown -> Icons.Default.TimerOff
@@ -87,10 +89,11 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
         }, if (countingDown) cancelCountdown else capture,
             Modifier.align(Alignment.Center).testTag("camera-shutter"), size = 76.dp,
             shapes = IconButtonDefaults.shapes(RoundedCornerShape(38.dp), RoundedCornerShape(20.dp)),
-            colors = IconButtonDefaults.filledIconButtonColors(), enabled = active && !busy && (countingDown || !locked && canCapture))
+            colors = IconButtonDefaults.filledIconButtonColors().let { if (!active) it.keepColorsWhenLocked() else it }, enabled = active && !busy && (countingDown || !locked && canCapture))
         ToolButton("切换镜头", Icons.Default.Cameraswitch, flip,
-            Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterEnd).padding(12.dp).testTag("camera-flip"),
+            Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterEnd).padding(12.dp).testTag("camera-flip"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
+            colors = tonal,
             enabled = active && !locked && canFlip)
     }
 }

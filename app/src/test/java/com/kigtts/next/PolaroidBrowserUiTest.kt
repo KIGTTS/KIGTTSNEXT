@@ -71,7 +71,8 @@ class PolaroidBrowserUiTest {
         expandFixtureDock()
     }
     private fun expandFixtureDock() {
-        // Keep these established geometry/rail fixtures explicit about their expanded endpoint.
+        // Two detents expose photographs first and album groups second.
+        compose.onNodeWithTag("toggle-card-albums").performClick()
         compose.onNodeWithTag("toggle-card-albums").performClick()
         compose.waitForIdle()
     }
@@ -247,7 +248,7 @@ class PolaroidBrowserUiTest {
         val endpointSizes = sizes.toSet()
         repeat(20) { frame() }
         assertEquals("Only endpoint constraints may resize the canvas", endpointSizes, sizes)
-        assertTrue("Rapid reversals use at most two canvas sizes: " + sizes, sizes.size <= 2)
+        assertTrue("Three dock detents use at most three canvas sizes: " + sizes, sizes.size <= 3)
         // Also expand from a completely settled large paper: short reversals alone can miss
         // the old painted bottom being cut by the new, smaller pager's clip on its first frame.
         compose.onNodeWithTag("toggle-card-albums").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { assertTrue(it()) }
@@ -489,7 +490,7 @@ class PolaroidBrowserUiTest {
         compose.onNodeWithTag("card-album-photos").assertDoesNotExist()
         val collapsed = compose.onNodeWithTag("card-album-dock").fetchSemanticsNode().boundsInRoot
         assertTrue(collapsed.height < dock.height)
-        compose.onNodeWithTag("toggle-card-albums").performClick()
+        expandFixtureDock()
         compose.onNodeWithTag("card-album/" + f.nextAlbum).assertIsSelected()
         compose.onNodeWithTag("card-album-photo/" + f.next.id).assertIsSelected()
     }
@@ -543,7 +544,7 @@ class PolaroidBrowserUiTest {
         assertEquals(-4.0, angle(f.first.id), .1); assertEquals(0.0, angle(middle.id), .1); assertEquals(4.0, angle(f.next.id), .1)
         val albums = compose.onNodeWithTag("card-albums").fetchSemanticsNode().boundsInRoot
         val photos = compose.onNodeWithTag("card-album-photos").fetchSemanticsNode().boundsInRoot
-        assertTrue(albums.right <= photos.left && kotlin.math.abs(albums.top - photos.top) <= 1f)
+        assertTrue(photos.right <= albums.left && kotlin.math.abs(albums.top - photos.top) <= 1f)
         compose.onNodeWithTag("card-albums").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "竖向滚动"))
         compose.onNodeWithTag("card-album-photos").assert(SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "竖向滚动"))
         val album = compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).getUnclippedBoundsInRoot()

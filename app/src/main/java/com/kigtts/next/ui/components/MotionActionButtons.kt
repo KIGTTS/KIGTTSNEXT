@@ -27,13 +27,16 @@ fun MotionIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled
 
 @Composable
 fun MotionIconToggleButton(checked: Boolean, onCheckedChange: (Boolean) -> Unit, modifier: Modifier = Modifier,
-    enabled: Boolean = true, content: @Composable () -> Unit) {
+    enabled: Boolean = true, transientLock: Boolean = false, content: @Composable () -> Unit) {
     val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
-    LaunchedEffect(enabled) { if (!enabled) press.cancel() }
+    LaunchedEffect(enabled) { if (!enabled && !transientLock) press.cancel() }
+    val colors = IconButtonDefaults.iconToggleButtonColors().let { colors -> if (transientLock) colors.copy(
+        disabledContainerColor = if (checked) colors.checkedContainerColor else colors.containerColor,
+        disabledContentColor = if (checked) colors.checkedContentColor else colors.contentColor) else colors }
     IconToggleButton(checked, feedbackChange { value -> press.click(); onCheckedChange(value) },
         shapes = IconButtonDefaults.toggleableShapes(),
         modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier),
-        enabled = enabled, interactionSource = press.native, content = content)
+        enabled = enabled, interactionSource = press.native, colors = colors, content = content)
 }
 
 @Composable

@@ -85,8 +85,8 @@ class CardPageChromeTest {
             assertEquals(0f, bar.top.value, .5f)
             assertEquals(88f, (bar.bottom - bar.top).value, .5f)
             assertTrue(back.top.value >= 24f)
-            assertEquals("Floating chrome must not reserve an app-bar strip", page.top.value, body.top.value, .5f)
-            assertTrue("The photographs retain the full window below floating controls", (body.bottom - body.top) >= page.bottom - page.top - 25.dp)
+            assertEquals("The album rail avoids status icons without reserving the whole app bar", page.top.value + 24f, body.top.value, .5f)
+            assertTrue("Only system safe insets reduce the browser", (body.bottom - body.top) >= page.bottom - page.top - 49.dp)
             val title = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             compose.onNodeWithTag("page-title").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(title) }
             assertEquals(1, title.single().lineCount)

@@ -47,7 +47,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     var textEditing by rememberSaveable { mutableStateOf(false) }
     var qrDialog by rememberSaveable { mutableStateOf(false) }
     var qrPayload by rememberSaveable { mutableStateOf("") }
-    var showStickers by rememberSaveable { mutableStateOf(false) }
+    var stickerLibraryId by rememberSaveable { mutableStateOf<String?>(null) }
     var paperColor by rememberSaveable { mutableStateOf(false) }
     var textColor by rememberSaveable { mutableStateOf(false) }
     var discard by rememberSaveable(cardId) { mutableStateOf(false) }
@@ -117,7 +117,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     fun cancelAdjustment() { selectedId = null; textEditing = false; focus.clearFocus(); keyboard?.hide() }
     fun backFromEditor() { if (selectedId != null || textEditing) cancelAdjustment() else discard = true }
     RegisterPageBackGuard(active && (dirty || selectedId != null || textEditing || savedReturn || busy)) { if (!savedReturn && !busy) backFromEditor() }
-    PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !showStickers && !paperColor && !textColor && !qrDialog) { events ->
+    PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
         try { events.collect { }; if (!savedReturn && !busy) backFromEditor() } catch (_: CancellationException) { }
     }
     CardEditorPanelScaffold(polaroidFormat(draft, frames.firstOrNull { it.id == draft.frameStyleId }).geometry.aspectRatio.toFloat(),
@@ -131,15 +131,21 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
         CardEditorFields(draft, enabled, { draft = it },
             camera = { overlayImport = false; openCamera() }, gallery = { overlayImport = false; photo.gallery() },
-            addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { showStickers = true },
+            addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { cancelAdjustment() },
             addImage = { overlayImport = true; photo.gallery() }, addQrCode = { qrDialog = true }, frameColor = { paperColor = true },
             selected = selected, editText = { textEditing = true }, layerColor = { textColor = true },
             deleteLayer = { draft = draft.copy(layers = draft.layers.filterNot { it.id == selectedId }); selectedId = null },
             forwardLayer = { selected?.let { layer -> draft = draft.copy(layers = draft.layers.filterNot { it.id == layer.id } + layer) } },
             mode = mode, selectMode = { mode = it; cancelAdjustment() }, frames = frames, openLibrary = openLibrary,
             textEditing = textEditing, updateTextLayer = ::updateLayer,
-            finishText = { textEditing = false; focus.clearFocus(); keyboard?.hide() })
-    })
+            finishText = { textEditing = false; focus.clearFocus(); keyboard?.hide() }, showTabs = false,
+            stickerLibrary = {
+                StickerLibraryPanel(catalog.libraries, catalog.items, stickerLibraryId, { stickerLibraryId = it },
+                    stickers::imageFile, enabled, addLibrary = openLibrary, editLibrary = {},
+                    selectItem = { addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = it.imageId, width = .32)) },
+                    itemMenu = {}, modifier = Modifier.fillMaxWidth().height(240.dp), showLibraryActions = false)
+            })
+    }, categories = { compact -> CardEditorTabs(mode, { mode = it; cancelAdjustment() }, compact) })
     if (active && qrDialog) CardNameDialog("添加二维码", qrPayload, { qrDialog = false }, { text ->
         qrDialog = false; qrPayload = text
         work {
@@ -147,10 +153,6 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, text = text, width = .32))
         }
     }, multiline = true, maximum = 2048, trimInput = false, inputLabel = "二维码内容")
-    if (active && showStickers) StickerPickerSheet(catalog.libraries, catalog.items, stickers::imageFile,
-        { item -> showStickers = false; addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = item.imageId, width = .32)) },
-        { showStickers = false; overlayImport = true; photo.gallery() }, { showStickers = false },
-        { showStickers = false; openLibrary() })
     if (active && paperColor) ColorPickerDialog(draft.frameColor, { color -> draft = draft.copy(frameColor = color); paperColor = false },
         { paperColor = false }, title = "纸框颜色")
     if (active && textColor && selected?.kind == CardLayerKind.TEXT) ColorPickerDialog(selected.color, { color ->

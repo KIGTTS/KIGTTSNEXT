@@ -76,4 +76,21 @@ class VoiceInputOverlayUiTest {
         compose.waitUntil { !model.state.value.voiceInputActive }
         compose.runOnIdle { assertEquals("完整识别", model.state.value.editorText); assertFalse(model.state.value.autoPlayback) }
     }
+
+    @Test @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
+    fun landscapeReleaseZonesFollowTheRightHandDockAndDoNotCoverTheTranscript() {
+        val model = show(); compose.runOnIdle { model.setAutoPlayback(false) }; holdDock()
+        val zones = compose.onNodeWithTag("voice-input-release-zones").fetchSemanticsNode().boundsInRoot
+        val transcript = compose.onNodeWithTag("voice-input-text").fetchSemanticsNode().boundsInRoot
+        val send = compose.onNodeWithTag("voice-input-send").fetchSemanticsNode().boundsInRoot
+        assertTrue(transcript.right <= zones.left)
+        val targets = listOf("continuous", "cancel", "read").map {
+            compose.onNodeWithTag("voice-input-$it").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        }
+        targets.forEach { assertTrue(it.right <= send.left); assertFalse(it.overlaps(transcript)) }
+        assertTrue(targets[0].bottom < targets[1].top && targets[1].bottom < targets[2].top)
+        compose.onRoot().performTouchInput { moveTo(targets[1].center); up() }
+        compose.waitUntil { !model.state.value.voiceInputActive }
+        compose.runOnIdle { assertEquals("", model.state.value.editorText) }
+    }
 }

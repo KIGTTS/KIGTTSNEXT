@@ -26,7 +26,7 @@ import java.io.File
 internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, photos: List<PolaroidCard>,
     focusedId: String?, imageFile: (String) -> File?, enabled: Boolean, landscape: Boolean,
     albumScroll: LazyListState, photoScroll: LazyListState, chooseAlbum: (String) -> Unit, choosePhoto: (PolaroidCard) -> Unit,
-    temporarilyLocked: Boolean = false, manageAlbum: (String) -> Unit = {}) {
+    temporarilyLocked: Boolean = false, manageAlbum: (String) -> Unit = {}, showAlbums: Boolean = true) {
     val sources = albums.map { album -> key(album.id) { remember { MutableInteractionSource() } } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
     val albumItem: @Composable (Int, PolaroidAlbum) -> Unit = { index, album ->
@@ -82,28 +82,34 @@ internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, pho
     }
     val orientation = if (landscape) "竖向滚动" else "横向滚动"
     if (landscape) Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        LazyColumn(Modifier.weight(1f).fillMaxHeight().testTag("card-albums").semantics { stateDescription = orientation },
-            state = albumScroll, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            itemsIndexed(albums, key = { _, album -> album.id }) { index, album -> albumItem(index, album) }
-        }
-        if (photos.isEmpty()) Box(Modifier.width(68.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
+        if (photos.isEmpty()) Box(Modifier.width(84.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
             Text("还没有照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        } else LazyColumn(Modifier.width(68.dp).fillMaxHeight().testTag("card-album-photos").semantics { stateDescription = orientation },
+        } else LazyColumn(Modifier.width(84.dp).fillMaxHeight().testTag("card-album-photos").semantics { stateDescription = orientation },
             state = photoScroll, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally,
             contentPadding = PaddingValues(4.dp)) {
             items(photos, key = { it.id }) { photoItem(it) }
         }
-    } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        LazyRow(Modifier.fillMaxWidth().height(48.dp).testTag("card-albums").semantics { stateDescription = orientation },
-            state = albumScroll, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            itemsIndexed(albums, key = { _, album -> album.id }) { index, album -> albumItem(index, album) }
+        androidx.compose.animation.AnimatedVisibility(showAlbums, Modifier.weight(1f).fillMaxHeight(),
+            enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+            LazyColumn(Modifier.fillMaxSize().testTag("card-albums").semantics { stateDescription = orientation },
+                state = albumScroll, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                itemsIndexed(albums, key = { _, album -> album.id }) { index, album -> albumItem(index, album) }
+            }
         }
-        if (photos.isEmpty()) Text("这个相册还没有照片", Modifier.padding(12.dp),
+    } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (photos.isEmpty()) Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { Text("这个相册还没有照片",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
         else LazyRow(Modifier.fillMaxWidth().height(92.dp).testTag("card-album-photos").semantics { stateDescription = orientation },
             state = photoScroll, horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(4.dp)) {
             items(photos, key = { it.id }) { photoItem(it) }
+        }
+        androidx.compose.animation.AnimatedVisibility(showAlbums, enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+            LazyRow(Modifier.fillMaxWidth().height(48.dp).testTag("card-albums").semantics { stateDescription = orientation },
+                state = albumScroll, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                itemsIndexed(albums, key = { _, album -> album.id }) { index, album -> albumItem(index, album) }
+            }
         }
     }
 }

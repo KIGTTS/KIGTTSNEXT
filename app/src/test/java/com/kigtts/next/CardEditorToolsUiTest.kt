@@ -91,7 +91,7 @@ class CardEditorToolsUiTest {
         val original = PolaroidCard(title = "删除这个名字")
         val (cards, _) = show(original)
         compose.onNodeWithTag("card-title").assertDoesNotExist()
-        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("")
         compose.onNodeWithTag("card-description").performScrollTo().performTextReplacement("照片说明仍存在")
         compose.onNode(isDialog()).assertDoesNotExist()
@@ -106,8 +106,8 @@ class CardEditorToolsUiTest {
     @Test fun addingTextEditsInsideTheExistingSheetAndSavingItsEmptyValueDropsOnlyThatLayer() {
         val original = PolaroidCard(title = "")
         val (cards, _) = show(original)
-        compose.onNodeWithTag("card-editor-tab/STICKERS").performScrollTo().performClick()
-        compose.onNodeWithText("文字", substring = false).performClick()
+        compose.onNodeWithTag("card-editor-tab/STICKERS").performClick()
+        compose.onNodeWithText("添加文字", substring = false).performClick()
         compose.onNodeWithTag("card-layer-text").performScrollTo().assertIsDisplayed()
             .assert(hasAnyAncestor(hasTestTag("card-editor-panel")))
         compose.onNode(isDialog()).assertDoesNotExist()
@@ -125,7 +125,7 @@ class CardEditorToolsUiTest {
     @Test fun backConfirmationCanSaveTheSameUnnamedCardAndLeaveOnlyAfterTheSuccessfulSave() {
         val original = PolaroidCard(title = "")
         val (cards, _) = show(original)
-        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-description").performScrollTo().performTextReplacement("返回时保存的说明")
         compose.onNodeWithTag("page-back").performClick()
         compose.onNodeWithTag("save-changes-save").assertIsEnabled().performClick()

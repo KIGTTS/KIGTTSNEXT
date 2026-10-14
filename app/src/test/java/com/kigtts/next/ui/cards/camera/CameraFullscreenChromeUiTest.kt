@@ -38,8 +38,10 @@ class CameraFullscreenChromeUiTest {
             reservedControls = with(density) { (92.dp + 8.dp).toPx() }
             Box(Modifier.size(360.dp, 640.dp).testTag("test-camera-fullscreen")) {
                 CameraPageLayout({ modifier, _ -> Box(modifier.background(previewColor).testTag("test-fullscreen-preview")) },
-                    { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false) })
-                CameraCornerToolbar(true, false, true, false, {}, {})
+                    { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {}) },
+                    header = { CameraCornerToolbar(true, false, true, false, {}, {}, applyInsets = false) {
+                        CameraMotionButton(false, true, true, false, true, {})
+                    } })
             }
         } }
         val root = compose.onNodeWithTag("test-camera-fullscreen").fetchSemanticsNode().boundsInRoot
@@ -86,7 +88,7 @@ class CameraFullscreenChromeUiTest {
     }
 
     @Test @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-xxhdpi")
-    fun landscapeCornerActionsOverlayThePreviewAndSideControlsWithoutAHeaderRow() {
+    fun landscapeCameraActionsStayInTheViewfinderAwayFromTheShutterAndGallery() {
         var safeVertical = 0; var previewPadding = 0f
         compose.setContent { KigttsTheme(ThemeSettings()) {
             val density = LocalDensity.current
@@ -94,14 +96,27 @@ class CameraFullscreenChromeUiTest {
             previewPadding = with(density) { 8.dp.toPx() }
             Box(Modifier.size(800.dp, 300.dp).testTag("test-camera-fullscreen")) {
                 CameraPageLayout({ modifier, _ -> Box(modifier.testTag("test-fullscreen-preview")) },
-                    { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false) })
-                CameraCornerToolbar(true, false, true, false, {}, {})
+                    { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {}) },
+                    header = { CameraCornerToolbar(true, false, true, false, {}, {}, applyInsets = false) {
+                        CameraMotionButton(false, true, true, false, true, {})
+                    } })
             }
         } }
         val root = compose.onNodeWithTag("test-camera-fullscreen").fetchSemanticsNode().boundsInRoot
         val preview = compose.onNodeWithTag("test-fullscreen-preview").fetchSemanticsNode().boundsInRoot
         assertEquals(root.height - safeVertical - previewPadding, preview.height, 2f)
         compose.onNodeWithTag("camera-side-controls").assertExists()
+        val controls = compose.onNodeWithTag("camera-side-controls").fetchSemanticsNode().boundsInRoot
+        val shutter = compose.onNodeWithTag("camera-shutter").fetchSemanticsNode().boundsInRoot
+        val flip = compose.onNodeWithTag("camera-flip").fetchSemanticsNode().boundsInRoot
+        val gallery = compose.onNodeWithTag("camera-gallery").fetchSemanticsNode().boundsInRoot
+        assertTrue("Portrait right/left actions rotate to top/bottom", flip.bottom < shutter.top && shutter.bottom < gallery.top)
+        listOf("camera-settings", "camera-motion").forEach { tag ->
+            val action = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+            assertTrue("$tag belongs inside the viewfinder", action.right <= preview.right)
+            assertFalse("$tag must not overlap the shutter rail", action.overlaps(controls))
+            compose.onNodeWithTag(tag).performTouchInput { click(center) }
+        }
         compose.onNodeWithTag("camera-cancel").assertIsDisplayed()
         compose.onNodeWithTag("camera-settings").assertIsDisplayed()
         compose.onAllNodesWithText("拍摄").assertCountEquals(0)

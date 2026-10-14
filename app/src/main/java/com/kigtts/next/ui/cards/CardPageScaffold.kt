@@ -51,7 +51,7 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                             style = MaterialTheme.typography.labelMedium, maxLines = 1,
                             overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     } }, modifier = Modifier.padding(end = if (chrome.albums == null) 0.dp
-                        else (if (forceCompact) 192.dp else 54.dp) + 16.dp).testTag("small-page-bar"),
+                        else listOf(54.dp, 144.dp, 264.dp)[chrome.albumStage?.value ?: 0] + 16.dp).testTag("small-page-bar"),
                         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                         navigationIcon = { PageBackNavigation(guardedBack, backLabel, "page-back", false) },
@@ -67,7 +67,8 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                 // One content invocation keeps the browser/pager alive when only the chrome rotates.
                 val padding = if (landscape) PaddingValues(start = insets.calculateLeftPadding(androidx.compose.ui.platform.LocalLayoutDirection.current),
                     end = insets.calculateRightPadding(androidx.compose.ui.platform.LocalLayoutDirection.current), bottom = insets.calculateBottomPadding()) else insets
-                Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) { content() }
+                Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)
+                    .then(if (landscape) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)) else Modifier)) { content() }
             }
         }
     }

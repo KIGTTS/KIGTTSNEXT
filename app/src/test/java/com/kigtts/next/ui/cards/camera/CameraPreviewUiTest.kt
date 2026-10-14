@@ -58,12 +58,12 @@ class CameraPreviewUiTest {
         assertTrue(controls.width < page.width * .2f)
         assertTrue(shutter.center.x > page.left + page.width * .85f)
         assertTrue(preview.right <= controls.left)
-        assertTrue(cancel.bottom < shutter.top && flip.top > shutter.bottom)
+        assertTrue(flip.bottom < shutter.top && cancel.top > shutter.bottom)
         compose.onAllNodesWithTag("camera-format").assertCountEquals(1)
         val ratio = compose.onNodeWithTag("camera-format").fetchSemanticsNode().boundsInRoot
         val settings = compose.onNodeWithTag("camera-settings").fetchSemanticsNode().boundsInRoot
         val toggle = compose.onNodeWithTag("camera-filter-toggle").fetchSemanticsNode().boundsInRoot
-        assertTrue(ratio.bottom < settings.top && settings.bottom < toggle.top)
+        assertTrue(toggle.bottom < settings.top && settings.bottom < ratio.top)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：矩形，点按切换").performClick()
         assertEquals(PolaroidFormat.SQUARE, format)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：方形，点按切换")
@@ -131,7 +131,7 @@ class CameraPreviewUiTest {
         } }
         val photo = compose.onNodeWithTag("test-photo").fetchSemanticsNode().boundsInRoot
         val handle = compose.onNodeWithTag("camera-exposure").fetchSemanticsNode().boundsInRoot
-        assertTrue(handle.left >= photo.left && handle.right <= photo.right && handle.top >= photo.top && handle.bottom <= photo.bottom)
+        assertTrue("Exposure handle $handle must fit within photo $photo", handle.left >= photo.left && handle.right <= photo.right && handle.top >= photo.top && handle.bottom <= photo.bottom)
         compose.onNodeWithTag("camera-exposure").performTouchInput { swipe(center, topCenter + Offset(0f, 8f), 300) }
         assertEquals(2, index)
         compose.onNodeWithTag("camera-exposure").performSemanticsAction(SemanticsActions.SetProgress) { it(-2f) }

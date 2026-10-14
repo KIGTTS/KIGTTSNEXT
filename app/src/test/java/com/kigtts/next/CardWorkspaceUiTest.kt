@@ -79,12 +79,13 @@ class CardWorkspaceUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("编辑拍立得", { backs++ }) {
             CardEditorScreen(cards, stickers, original.id, {}, openLibrary = { library++ })
         } } }
-        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("新标题")
         assertEquals("旧标题", cards.cards.value.single().title)
-        compose.onNodeWithTag("card-editor-tab/STICKERS").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/STICKERS").performClick()
         compose.onNodeWithText("管理贴纸库").performScrollTo().performClick()
         assertEquals(1, library)
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").assertTextContains("新标题")
         compose.onNodeWithTag("page-back").performClick()
         compose.onNodeWithText("保存修改？").assertIsDisplayed()
@@ -157,9 +158,10 @@ class CardWorkspaceUiTest {
             CardEditorScreen(cards, stickers, original.id, {}, cameraImageId = image.id,
                 cameraOriginalImageId = image.id, cameraFrameStyleId = "instax.mini.classic", cameraRequestVersion = version)
         } } }
-        compose.onNodeWithTag("card-photo-text-section").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("未保存标题")
         compose.runOnIdle { version = 1L }
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").assertTextContains("未保存标题")
         assertEquals(original, cards.cards.value.single())
         compose.onNodeWithTag("save-card").performClick()
@@ -192,7 +194,7 @@ class CardWorkspaceUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("编辑拍立得", {}) {
             CardEditorScreen(cards, stickers, original.id, { messages += it })
         } } }
-        compose.onNodeWithTag("card-editor-tab/STICKERS").performScrollTo().performClick()
+        compose.onNodeWithTag("card-editor-tab/STICKERS").performClick()
         compose.onNodeWithTag("card-add-qr").performScrollTo().performClick()
         val payload = " https://example.test/你好?emoji=🙂 "
         compose.onNodeWithTag("card-name-input").performTextReplacement(payload)

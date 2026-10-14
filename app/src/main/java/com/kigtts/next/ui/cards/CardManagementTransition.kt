@@ -7,9 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -39,6 +37,11 @@ internal fun CardManagementTransition(managing: Boolean, browser: @Composable ()
             Box(Modifier.fillMaxSize().onGloballyPositioned { geometry.browser = it }
                 .graphicsLayer {
                     val phase = reveal.value
+                    // A reused graphics layer must not inherit the last paper's transform.
+                    // Reset the neutral endpoint even before geometry is available after recreation.
+                    scaleX = 1f; scaleY = 1f
+                    translationX = 0f; translationY = 0f
+                    clip = false
                     val paper = geometry.geometry
                     val bounds = paper?.browser
                     if (paper != null && bounds != null) {

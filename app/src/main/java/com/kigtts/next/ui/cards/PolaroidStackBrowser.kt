@@ -143,7 +143,9 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 layout(placed.width, placed.height) {
                     val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                     val distance = relative.absoluteValue
-                    placed.placeWithLayer(0, 0, zIndex = -index.toFloat()) {
+                    // Keep the outgoing paper above its neighbors for the whole gesture, then
+                    // promote the settled selection. Crossing half a page must not swap layers.
+                    placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.settledPage).absoluteValue.toFloat() else -index.toFloat()) {
                         translationX = if (wide) relative * (polaroidFanSpacing(size.width, width.toPx()) - size.width)
                             else if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
                         scaleX = (1f - distance * (if (wide) .035f else .07f)).coerceAtLeast(.82f); scaleY = scaleX

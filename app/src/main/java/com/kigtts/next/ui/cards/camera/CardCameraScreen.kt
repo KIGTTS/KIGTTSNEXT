@@ -109,7 +109,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     }
     val header: @Composable () -> Unit = {
         CameraCornerToolbar(active, session.busy, granted && !locked, session.loading || session.busy || morphing,
-            leave, options::showSettings) {
+            leave, options::showSettings, applyInsets = !granted) {
             CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
                 options.motion && (session.loading || session.motionAvailable && !session.motionReady),
                 active && granted && !locked, options::setMotion)
@@ -148,29 +148,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
             gallery = { onGallery(format) })
     }
-    Box(Modifier.fillMaxSize()) { CameraPageLayout(preview, controls, error); header() }
+    CameraPageLayout(preview, controls, error, header, format.geometry.photoAspectRatio.toFloat())
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing, manual = session.manual)
-}
-
-@Composable
-internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
-    controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {}) {
-    BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp).testTag("polaroid-camera")) {
-        if (cameraSideControls(maxWidth.value, maxHeight.value)) {
-            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(Modifier.weight(1f).fillMaxHeight()) {
-                    preview(Modifier.fillMaxSize().padding(vertical = 4.dp), true)
-                    Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
-                }
-                controls(true)
-            }
-        } else Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.fillMaxWidth().weight(1f)) {
-                preview(Modifier.fillMaxSize().padding(vertical = 4.dp), false)
-                Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
-            }
-            controls(false)
-        }
-    }
 }

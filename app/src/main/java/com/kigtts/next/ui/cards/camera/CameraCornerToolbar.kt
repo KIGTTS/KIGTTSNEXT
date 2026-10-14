@@ -16,17 +16,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.navigation.excludeCameraPull
 
 /** Floating safe-area actions only: this layer neither paints an app bar nor takes viewport height. */
 @Composable
 internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEnabled: Boolean, loading: Boolean,
-    back: () -> Unit, settings: () -> Unit, extraAction: @Composable () -> Unit = {}) {
+    back: () -> Unit, settings: () -> Unit, applyInsets: Boolean = true, extraAction: @Composable () -> Unit = {}) {
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
-        contentColor = MaterialTheme.colorScheme.onSurface)
-    Box(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp, vertical = 8.dp)
+        contentColor = MaterialTheme.colorScheme.onSurface).let { if (!active) it.keepColorsWhenLocked() else it }
+    Box(Modifier.fillMaxSize().then(if (applyInsets) Modifier.safeDrawingPadding() else Modifier).padding(horizontal = 8.dp, vertical = 8.dp)
         .testTag("camera-corner-toolbar")) {
         Box(Modifier.align(Alignment.TopStart).size(44.dp).excludeCameraPull()) {
             ToolButton("返回", Icons.Default.ArrowBack, back, Modifier.fillMaxSize().testTag("camera-cancel"),

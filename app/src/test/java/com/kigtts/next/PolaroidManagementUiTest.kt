@@ -46,7 +46,7 @@ class PolaroidManagementUiTest {
             CardPageScaffold("拍立得",{f.backs++}) {CardsScreen(f.cards,f.stickers,{}, {f.edits+=it},{})}
         }}}
         // The management fixtures exercise expanded rails; the native page now starts folded.
-        compose.onNodeWithTag("toggle-card-albums").performClick()
+        repeat(2) { compose.onNodeWithTag("toggle-card-albums").performClick() }
         compose.waitForIdle()
     }
     private fun action(label:String) {
