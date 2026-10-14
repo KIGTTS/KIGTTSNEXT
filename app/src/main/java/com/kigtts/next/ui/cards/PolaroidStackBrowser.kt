@@ -13,6 +13,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -126,24 +129,25 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
     }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("cards-stack")) {
         val wide = wideLayout ?: (maxWidth > maxHeight)
-        // Fixed slots fit every paper format, including while both neighbors are growing.
-        val carouselPaperWidth = remember(cards, frames, maxWidth, maxHeight, wide) {
-            if (wide) cards.maxOfOrNull { card ->
+        val backdrop = MaterialTheme.colorScheme.background
+        val carouselViewportWidth = maxWidth.value
+        val carouselWidths = remember(cards, frames, maxWidth, maxHeight, wide) {
+            if (wide) cards.map { card ->
                 polaroidBrowseWidth(maxWidth, maxHeight,
-                    polaroidFormat(card, frames.firstOrNull { it.id == card.frameStyleId }).geometry.aspectRatio.toFloat(), true)
-            } ?: 1.dp else 1.dp
+                    polaroidFormat(card, frames.firstOrNull { it.id == card.frameStyleId }).geometry.aspectRatio.toFloat(), true).value
+            } else emptyList()
         }
         val drawingPadding = 208.dp
         HorizontalPager(pager, Modifier.fillMaxSize().polaroidPagerDrawingSpace(drawingPadding),
             contentPadding = PaddingValues(vertical = drawingPadding),
-            key = { latestCards.value.getOrNull(it)?.id ?: "pending/card/" + it }, beyondViewportPageCount = 2,
+            key = { latestCards.value.getOrNull(it)?.id ?: "pending/card/" + it }, beyondViewportPageCount = if (wide) 3 else 2,
             userScrollEnabled = enabled, pageSpacing = 0.dp) { index ->
             val card = latestCards.value.getOrNull(index) ?: return@HorizontalPager
             val frame = frames.firstOrNull { it.id == card.frameStyleId }
             val width = polaroidBrowseWidth(maxWidth, maxHeight, polaroidFormat(card, frame).geometry.aspectRatio.toFloat(), wide)
             val resize = rememberPolaroidResize(card.id, width, maxWidth, maxHeight, coordinateSpace = wide)
             // Read pager offsets during placement/layer updates, leaving photo decoding and canvas
-            // composition unchanged on animation frames. Landscape slots stay evenly spaced;
+            // composition unchanged on animation frames. Landscape fits the actual paper widths;
             // portrait keeps the overlapping paper stack in album order.
             Box(Modifier.fillMaxSize().layout { measurable, constraints ->
                 val placed = measurable.measure(constraints)
@@ -151,15 +155,14 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                     val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                     val distance = relative.absoluteValue
                     placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.currentPage).absoluteValue.toFloat() else -index.toFloat()) {
-                        translationX = if (wide) relative * (carouselPaperWidth.toPx() + 16.dp.toPx() - size.width)
-                            else if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
                         if (wide) {
-                            val progress = distance.coerceIn(0f, 1f)
-                            val emphasis = progress * progress * (3f - 2f * progress)
-                            scaleX = 1f - .16f * emphasis; scaleY = scaleX
+                            val pose = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth)
+                            translationX = pose.x * density - relative * size.width
+                            scaleX = pose.scale; scaleY = scaleX
                             rotationZ = 0f
-                            alpha = (1f - .5f * emphasis) * (2f - distance).coerceIn(0f, 1f)
+                            alpha = 1f
                         } else {
+                            translationX = if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
                             scaleX = (1f - distance * .07f).coerceAtLeast(.82f); scaleY = scaleX
                             rotationZ = (relative * 2.5f).coerceIn(-5f, 5f)
                             // Overlapping portrait papers stay opaque to avoid ghosting text.
@@ -171,9 +174,16 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 val foreground = latestCards.value.indexOfFirst { it.id == focusedId }.takeIf { it >= 0 } ?: pager.settledPage
                 // A reorder or explicit album jump can move the stable focus before the old
                 // page settles. Keep that currently painted page's image while it exits.
-                val visibleImages: (String) -> File? = if (index in foreground - (if (wide) 2 else 1)..foreground + 2 ||
+                val visibleImages: (String) -> File? = if (index in foreground - (if (wide) 3 else 1)..foreground + (if (wide) 3 else 2) ||
                     index == pager.currentPage || index == pager.settledPage) imageFile else { _ -> null }
                 PolaroidCanvas(card, visibleImages, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
+                    .then(if (wide) Modifier.drawBehind {
+                        val pose = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth)
+                        // Fade into the page color, so stacked photos do not ghost through one another.
+                        drawRoundRect(backdrop.copy(alpha = (pose.alpha / .22f).coerceIn(0f, 1f)), cornerRadius = CornerRadius(6.dp.toPx()))
+                    }.graphicsLayer {
+                        alpha = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
+                    } else Modifier)
                     .combinedClickable(enabled = enabled,
                         onClick = feedbackClick { if (pager.currentPage == index) preview(card) },
                         onLongClick = feedbackClick { if (pager.currentPage == index) edit(card) }),

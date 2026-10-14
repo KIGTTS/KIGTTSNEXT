@@ -6,15 +6,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 
-internal enum class CardToolsPosition { EXPANDED, COLLAPSED }
+internal enum class CardToolsPosition { EXPANDED, PARTIAL, COLLAPSED }
 private val toolsStateSaver = Saver<AnchoredDraggableState<CardToolsPosition>, String>(
     save = { it.settledValue.name }, restore = { AnchoredDraggableState(CardToolsPosition.valueOf(it)) })
 
 /** Only the header owns the sheet's native drag node. Tool content owns its own scrolling. */
-@Composable internal fun rememberCardToolsSheet(expandedTop: Float, foldedTop: Float): AnchoredDraggableState<CardToolsPosition> {
-    val state = rememberSaveable(saver = toolsStateSaver) { AnchoredDraggableState(CardToolsPosition.EXPANDED) }
+@Composable internal fun rememberCardToolsSheet(expandedTop: Float, partialTop: Float, foldedTop: Float): AnchoredDraggableState<CardToolsPosition> {
+    val state = rememberSaveable(saver = toolsStateSaver) { AnchoredDraggableState(CardToolsPosition.PARTIAL) }
     SideEffect { state.updateAnchors(DraggableAnchors {
         CardToolsPosition.EXPANDED at expandedTop
+        CardToolsPosition.PARTIAL at partialTop
         CardToolsPosition.COLLAPSED at foldedTop
     }, state.targetValue) }
     return state

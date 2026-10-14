@@ -1,91 +1,107 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards
 
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.animateTo
-import androidx.compose.foundation.gestures.Orientation
-import com.kigtts.next.ui.home.PanelDragIndicator
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.ui.components.ToolButton
 import com.kigtts.next.ui.components.homeCardShape
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
-import androidx.compose.animation.core.tween
 
-/** A native persistent tools sheet; its offset transforms the paper without remeasuring it every frame. */
+/** One connected surface owns the handle, scrollable tools and native tabs. */
 @Composable
 internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expandTools: Boolean,
     clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit,
-    categories: (@Composable (Boolean) -> Unit)? = null) {
+    categories: (@Composable (Boolean, () -> Unit) -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
-    BoxWithConstraints(Modifier.fillMaxSize().imePadding()) {
-    val compactCategories = maxHeight < 360.dp
-    Column(Modifier.fillMaxSize()) {
-    BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clipToBounds().testTag("card-editor")) {
-        val panelHeight = minOf(maxHeight * .58f, 420.dp).coerceAtLeast(minOf(144.dp, maxHeight))
-        val handleHeight = if (maxHeight < 160.dp) 32.dp else 56.dp
-        val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
-        val density = LocalDensity.current
-        val expandedTop = with(density) { (maxHeight - panelHeight).toPx() }
-        val foldedTop = with(density) { (maxHeight - minOf(handleHeight, maxHeight)).toPx() }
-        val sheet = rememberCardToolsSheet(expandedTop, foldedTop)
-        val drag = rememberCardPanelDrag(sheet, Orientation.Vertical, false, enabled)
-        LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
-        val stageHeight = maxHeight
-        Box(Modifier.fillMaxSize().pointerInput(Unit) {
-            detectTapGestures(onTap = { clearSelection() })
-        }.testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
-            preview(Modifier.width(paperWidth).graphicsLayer {
-                val fullHeight = stageHeight.toPx()
-                val top = sheet.offset.takeIf(Float::isFinite)?.coerceIn(0f, fullHeight) ?: expandedTop
-                val available = (top - 24.dp.toPx()).coerceAtLeast(1f)
-                val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
-                scaleX = minOf(1f, available / paperHeight.coerceAtLeast(1f)); scaleY = scaleX
-                translationY = top / 2f - fullHeight / 2f
-            })
-        }
-        // A whole-sheet nested scroll connection would consume the tool list's pre-fling and
-        // edge drags. Bind Foundation's anchored drag solely to this header instead.
-        Surface(Modifier.fillMaxWidth().height(panelHeight).offset {
-            IntOffset(0, (sheet.offset.takeIf(Float::isFinite) ?: expandedTop).roundToInt())
-        }.testTag("card-editor-panel"), shape = homeCardShape(), color = MaterialTheme.colorScheme.surfaceContainer) {
-                Column(Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxWidth().height(handleHeight).then(drag.modifier)
-                        .testTag("card-editor-panel-header"), contentAlignment = Alignment.Center) {
-                        PanelDragIndicator(drag.active(), "card-editor-panel-handle")
-                        val open = sheet.targetValue == CardToolsPosition.EXPANDED
-                        ToolButton(if (open) "收起编辑面板" else "展开编辑面板",
-                            if (open) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            { scope.launch { sheet.animateTo(if (sheet.targetValue == CardToolsPosition.EXPANDED) CardToolsPosition.COLLAPSED else CardToolsPosition.EXPANDED, tween(220)) } },
-                            Modifier.align(Alignment.CenterEnd).padding(end = 12.dp).width(32.dp).testTag("toggle-card-editor-panel"),
-                            shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(8.dp)),
-                            size = 32.dp, enabled = enabled)
-                    }
-                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(toolsScroll)
-                        .testTag("card-editor-tools-scroll")) { tools() }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val wide = maxWidth > maxHeight
+        BoxWithConstraints(Modifier.fillMaxSize().imePadding().clipToBounds().testTag("card-editor")) {
+            val compactTabs = wide || maxHeight < 360.dp
+            val header = if (wide || maxHeight < 240.dp) 44.dp else 56.dp
+            val tabs = if (categories == null) 0.dp else if (compactTabs) 48.dp else 72.dp
+            val axis = if (wide) maxWidth else maxHeight
+            val collapsed = if (wide) header else minOf(header + tabs, axis)
+            val expanded = if (wide) minOf(480.dp, axis * .58f)
+                else minOf(520.dp, maxOf(axis * .72f, collapsed + 64.dp), axis)
+            val partial = (if (wide) minOf(340.dp, axis * .42f) else axis * .50f)
+                .coerceIn(collapsed, expanded)
+            val density = LocalDensity.current
+            val full = with(density) { axis.toPx() }
+            val start = with(density) { (axis - expanded).toPx() }
+            val middle = with(density) { (axis - partial).toPx() }
+            val end = with(density) { (axis - collapsed).toPx() }
+            val sheet = rememberCardToolsSheet(start, middle, end)
+            val drag = rememberCardPanelDrag(sheet, if (wide) Orientation.Horizontal else Orientation.Vertical, false, enabled)
+            LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
+            val openTools = { scope.launch { if (sheet.targetValue == CardToolsPosition.COLLAPSED)
+                sheet.animateTo(CardToolsPosition.PARTIAL, tween(220)) }; Unit }
+            val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
+            val stageHeight = maxHeight
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { clearSelection() } }
+                .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
+                preview(Modifier.width(paperWidth).graphicsLayer {
+                    val offset = sheet.offset.takeIf(Float::isFinite)?.coerceIn(0f, full) ?: middle
+                    val available = (offset - 24.dp.toPx()).coerceAtLeast(1f)
+                    val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
+                    scaleX = if (wide) minOf(1f, available / size.width.coerceAtLeast(1f),
+                        (stageHeight.toPx() - 24.dp.toPx()).coerceAtLeast(1f) / paperHeight)
+                        else minOf(1f, available / paperHeight.coerceAtLeast(1f))
+                    scaleY = scaleX
+                    if (wide) translationX = offset / 2f - full / 2f
+                    else translationY = offset / 2f - full / 2f
+                })
+            }
+            val shape = homeCardShape().let { if (wide) it.copy(topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
+                else it.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)) }
+            // Only the panel's viewport is measured while dragging; the photo stays in its layer.
+            Surface(Modifier.layout { child, constraints ->
+                val offset = (sheet.offset.takeIf(Float::isFinite) ?: middle).roundToInt()
+                val extent = (full - offset).roundToInt().coerceAtLeast(0)
+                val panelConstraints = if (wide) constraints.copy(minWidth = extent, maxWidth = extent)
+                    else constraints.copy(minHeight = extent, maxHeight = extent)
+                val measured = child.measure(panelConstraints)
+                layout(constraints.maxWidth, constraints.maxHeight) {
+                    measured.place(if (wide) offset else 0, if (wide) 0 else offset)
                 }
+            }.testTag("card-editor-panel").semantics { stateDescription = sheet.targetValue.name },
+                shape = shape, color = MaterialTheme.colorScheme.surfaceContainer) {
+                val handle: @Composable (Modifier) -> Unit = { modifier ->
+                    CardEditorPanelHeader(wide, sheet.targetValue != CardToolsPosition.COLLAPSED, enabled, drag,
+                        { scope.launch { sheet.animateTo(if (sheet.targetValue == CardToolsPosition.COLLAPSED)
+                            CardToolsPosition.PARTIAL else CardToolsPosition.COLLAPSED, tween(220)) } }, modifier)
+                }
+                val content: @Composable (Modifier) -> Unit = { modifier ->
+                    Column(modifier.clipToBounds()) {
+                        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(toolsScroll)
+                            .testTag("card-editor-tools-scroll")) { tools() }
+                        categories?.invoke(compactTabs, openTools)
+                    }
+                }
+                if (wide) Row(Modifier.fillMaxSize()) {
+                    handle(Modifier.width(header).fillMaxHeight())
+                    content(Modifier.weight(1f).fillMaxHeight())
+                } else Column(Modifier.fillMaxSize()) {
+                    handle(Modifier.fillMaxWidth().height(header))
+                    content(Modifier.weight(1f).fillMaxWidth())
+                }
+            }
         }
-    }
-    if (categories != null) Surface(color = MaterialTheme.colorScheme.surfaceContainer) { categories(compactCategories) }
-    }
     }
 }

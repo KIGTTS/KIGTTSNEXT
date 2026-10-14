@@ -525,7 +525,7 @@ class PolaroidBrowserUiTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
-    fun mixedPaperFormatsKeepFixedSlotsThroughForwardAndReverseLandscapePaging() = exerciseWideCarousel(true)
+    fun mixedPaperFormatsKeepTheirMainPhotoClearThroughForwardAndReverseLandscapePaging() = exerciseWideCarousel(true)
 
     private fun exerciseWideCarousel(mixedFormats: Boolean) {
         val f = fixture()
@@ -556,8 +556,14 @@ class PolaroidBrowserUiTest {
         }
         val slot = center(f.next.id).x - center(middle.id).x
         listOf(f.first.id, middle.id, f.next.id).forEach { assertEquals(0.0, angle(it), .1) }
-        assertEquals(.84f, scale(f.first.id), .01f); assertEquals(1f, scale(middle.id), .01f); assertEquals(.84f, scale(f.next.id), .01f)
-        assertEquals(slot, center(middle.id).x - center(f.first.id).x, 2f)
+        assertTrue(scale(f.first.id) in .01f.. .841f); assertEquals(1f, scale(middle.id), .01f); assertTrue(scale(f.next.id) in .01f.. .841f)
+        fun edge(id: String, right: Boolean): Float {
+            val paper = coordinates(id)
+            return paper.localToRoot(Offset(if (right) paper.size.width.toFloat() else 0f, 0f)).x
+        }
+        val gap = edge(f.next.id, false) - edge(middle.id, true)
+        assertTrue(gap > 0f)
+        assertEquals(gap, edge(middle.id, false) - edge(f.first.id, true), 2f)
         assertEquals(center(middle.id).y, center(f.first.id).y, 2f)
         assertEquals(center(middle.id).y, center(f.next.id).y, 2f)
         val albums = compose.onNodeWithTag("card-albums").fetchSemanticsNode().boundsInRoot
@@ -590,9 +596,9 @@ class PolaroidBrowserUiTest {
                 assertTrue("Both papers retain visible, unoccluded margins while fading", android.graphics.Color.red(white) >= 220 &&
                     android.graphics.Color.green(white) >= 220 && android.graphics.Color.blue(white) >= 220)
             } }
-            assertEquals("Horizontal spacing must not expand or contract while paging", slot, center(f.next.id).x - center(middle.id).x, 2f)
+            assertEquals("The two photos exchanging focus retain their small edge gap", gap, edge(f.next.id, false) - edge(middle.id, true), 2f)
             assertEquals(center(middle.id).y, center(f.next.id).y, 2f)
-            listOf(middle.id, f.next.id).forEach { assertEquals(0.0, angle(it), .1); assertTrue(scale(it) in .84f..1.001f) }
+            listOf(middle.id, f.next.id).forEach { assertEquals(0.0, angle(it), .1); assertTrue(scale(it) in .01f..1.001f) }
             val left = compose.onNodeWithTag("polaroid/" + middle.id).fetchSemanticsNode().boundsInRoot
             val right = compose.onNodeWithTag("polaroid/" + f.next.id).fetchSemanticsNode().boundsInRoot
             assertTrue("Adjacent carousel papers never overlap", left.right < right.left)
@@ -604,7 +610,7 @@ class PolaroidBrowserUiTest {
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("3 / 3")
         compose.onNodeWithTag("card-album/" + f.nextAlbum).assertIsSelected()
-        assertEquals(1f, scale(f.next.id), .01f); assertEquals(.84f, scale(middle.id), .01f)
+        assertEquals(1f, scale(f.next.id), .01f); assertTrue(scale(middle.id) in .01f.. .841f)
         listOf(.03f, .97f).forEach { edge ->
             val white = paperPixel(capture("wide-settled-front"), f.next.id, edge, .43f)
             assertTrue(android.graphics.Color.red(white) >= 248 && android.graphics.Color.green(white) >= 248 && android.graphics.Color.blue(white) >= 248)
@@ -613,7 +619,7 @@ class PolaroidBrowserUiTest {
         compose.waitForIdle()
         compose.onNodeWithTag("cards-position").assertTextEquals("2 / 3")
         compose.onNodeWithTag("card-album/" + CardRepository.DEFAULT_ALBUM).assertIsSelected()
-        assertEquals(1f, scale(middle.id), .01f); assertEquals(.84f, scale(f.next.id), .01f)
+        assertEquals(1f, scale(middle.id), .01f); assertTrue(scale(f.next.id) in .01f.. .841f)
         assertEquals(slot, center(f.next.id).x - center(middle.id).x, 2f)
         capture("wide-carousel-return-" + mixedFormats)
     }

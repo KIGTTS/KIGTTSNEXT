@@ -23,6 +23,7 @@ import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.*
 import com.kigtts.next.ui.navigation.PageScaffold
+import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.runtime.PluginPaths
 import org.junit.Assert.*
@@ -49,6 +50,49 @@ class CardEditorScrollingUiTest {
             swipe(if (upward) lower else upper, if (upward) upper else lower, durationMillis = 600)
         }
         compose.waitForIdle()
+    }
+
+    @Test fun nativeTabsBelongToTheThreeDetentSheetAndLandscapeMovesItBesideThePaper() {
+        var width by mutableStateOf(400.dp); var height by mutableStateOf(700.dp)
+        var mode by mutableStateOf(CardEditorMode.CROP)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.size(width, height)) {
+                CardEditorPanelScaffold(1f, true, false, {},
+                    preview = { Text("照片", it.height(340.dp).testTag("detent-paper")) },
+                    tools = { repeat(24) { Text("工具 $it", Modifier.fillMaxWidth().height(60.dp)) } },
+                    categories = { compact, open -> CardEditorTabs(mode, { mode = it; open() }, compact) })
+            }
+        } }
+        fun panel() = compose.onNodeWithTag("card-editor-panel")
+        fun state(value: String) = panel().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, value))
+        fun tabs() = compose.onNodeWithTag("card-editor-tabs")
+        state("PARTIAL")
+        tabs().assert(hasAnyAncestor(hasTestTag("card-editor-panel")))
+        assertEquals(panel().getUnclippedBoundsInRoot().bottom.value, tabs().getUnclippedBoundsInRoot().bottom.value, 1f)
+        val partial = panel().getUnclippedBoundsInRoot().top
+        compose.onNodeWithTag("toggle-card-editor-panel").performClick()
+        state("COLLAPSED"); tabs().assertIsDisplayed()
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
+        state("PARTIAL"); assertEquals(CardEditorMode.TEXT, mode)
+        compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
+            down(center); moveBy(Offset(0f, -180f * density), delayMillis = 600); advanceEventTime(300); up()
+        }
+        state("EXPANDED"); assertTrue(panel().getUnclippedBoundsInRoot().top < partial)
+        tabs().assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/previews/editor-connected-portrait.png")
+        compose.runOnIdle { width = 850.dp; height = 400.dp }
+        compose.waitForIdle(); state("EXPANDED")
+        val paper = compose.onNodeWithTag("detent-paper").fetchSemanticsNode().boundsInRoot
+        assertTrue("Landscape reserves a separate left photo region", paper.right < panel().fetchSemanticsNode().boundsInRoot.left)
+        tabs().assertIsDisplayed().assert(hasAnyAncestor(hasTestTag("card-editor-panel")))
+        compose.onRoot().captureRoboImage("build/previews/editor-connected-landscape.png")
+        compose.onNodeWithTag("toggle-card-editor-panel").performClick(); state("COLLAPSED")
+        compose.onNodeWithTag("toggle-card-editor-panel").performClick(); state("PARTIAL")
+        compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
+            down(center); moveBy(Offset(-160f * density, 0f), delayMillis = 600); advanceEventTime(300); up()
+        }
+        state("EXPANDED"); assertEquals(CardEditorMode.TEXT, mode)
+        dragContent(true); assertTrue(position() > 60f)
     }
 
     @Test fun contentDragsMoveRealRowsInBothDirectionsWithoutDraggingOrCollapsingThePanel() {
@@ -86,6 +130,10 @@ class CardEditorScrollingUiTest {
         } }
         val expanded = compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot.top
         val originalPaper = compose.onNodeWithTag("scroll-test-paper").fetchSemanticsNode().boundsInRoot
+        // The connected sheet now resizes its visible viewport during a drag. Read the
+        // detent travel before moving it, not from the already shortened viewport.
+        val travel = compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot.height -
+            compose.onNodeWithTag("card-editor-panel-header").fetchSemanticsNode().boundsInRoot.height
         compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
             down(center); moveTo(center + Offset(0f, 160f), delayMillis = 250)
         }
@@ -94,17 +142,14 @@ class CardEditorScrollingUiTest {
         assertTrue("The header drag must move the actual native sheet before release", during > expanded + 100f)
         val paperDuring = compose.onNodeWithTag("scroll-test-paper").fetchSemanticsNode().boundsInRoot
         assertTrue(paperDuring.center.y > originalPaper.center.y)
-        // The expanded-to-folded travel is 350dp at this fixture's density. The first
-        // sample verifies live motion; cross the actual midpoint before releasing.
-        val travel = compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot.height -
-            compose.onNodeWithTag("card-editor-panel-header").fetchSemanticsNode().boundsInRoot.height
+        // Keep the live motion assertion and then cross the final detent midpoint.
         compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
-            moveBy(Offset(0f, travel * .75f - 160f), delayMillis = 250); up()
+            moveBy(Offset(0f, travel * .9f - 160f), delayMillis = 250); advanceEventTime(300); up()
         }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("展开编辑面板").assertIsDisplayed()
         compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
-            swipe(center, center - Offset(0f, travel * .75f), durationMillis = 600)
+            down(center); moveBy(Offset(0f, -travel * .9f), delayMillis = 600); advanceEventTime(300); up()
         }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("收起编辑面板").assertIsDisplayed()

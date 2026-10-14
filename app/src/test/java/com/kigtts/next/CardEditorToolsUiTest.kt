@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -76,12 +77,19 @@ class CardEditorToolsUiTest {
     @Test fun collapsingAndReopeningTheNativeSheetActuallyResizesVisiblePaperWithoutOccludingIt() {
         val card = PolaroidCard(title = "", frameColor = 0xFFFF00CCL)
         show(card)
+        fun expandFully() {
+            compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
+                down(center); moveBy(Offset(0f, -300f * density), delayMillis = 600); advanceEventTime(300); up()
+            }
+        }
+        expandFully()
         val expanded = assertPaperAboveSheet(card, "card-editor-expanded-paper")
         compose.onNodeWithTag("toggle-card-editor-panel").performTouchInput { click(center) }
         val collapsed = assertPaperAboveSheet(card, "card-editor-collapsed-paper")
         assertTrue("Folding the tools must make the paper visibly larger", collapsed.width > expanded.width * 1.1f)
         assertTrue(collapsed.height > expanded.height * 1.1f)
         compose.onNodeWithTag("toggle-card-editor-panel").performTouchInput { click(center) }
+        expandFully()
         val reopened = assertPaperAboveSheet(card, "card-editor-reopened-paper")
         assertEquals(expanded.width, reopened.width, 3f)
         assertEquals(expanded.height, reopened.height, 3f)
