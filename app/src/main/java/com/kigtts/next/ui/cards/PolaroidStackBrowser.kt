@@ -5,7 +5,6 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.pager.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Collections
@@ -13,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,7 +38,11 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
     selectedAlbumId: String? = null, wideLayout: Boolean? = null, albumChangeRequest: Long = 0L,
     onManage: (PolaroidCard) -> Unit = edit, onManageAlbum: (String) -> Unit = {}) {
     val latestMode = rememberUpdatedState(mode); val switch = rememberUpdatedState(changeMode)
-    val latestColumns = rememberUpdatedState(gridColumns); val columnsChanged = rememberUpdatedState(changeColumns)
+    val minimum = if (wideLayout ?: LocalCardWindowLandscape.current ?: false) 4 else 2
+    val maximum = minimum + 2
+    val columns = gridColumns.coerceIn(minimum, maximum)
+    val latestColumns = rememberUpdatedState(columns); val columnsChanged = rememberUpdatedState(changeColumns)
+    val limits = rememberUpdatedState(minimum to maximum)
     val management = LocalCardManagementGeometry.current
     val managePhoto: (PolaroidCard) -> Unit = { card -> management?.begin(card.id); onManage(card) }
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
@@ -53,7 +55,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                 if (event.changes.count { it.pressed } > 1) {
                     pinching = true
                     scale *= event.calculateZoom()
-                    val target = pinchBrowseScale(latestMode.value, latestColumns.value, scale)
+                    val target = pinchBrowseScale(latestMode.value, latestColumns.value, scale, limits.value.first, limits.value.second)
                     if (!switched && (target.mode != latestMode.value || target.columns != latestColumns.value)) {
                         switched = true
                         haptics.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
@@ -71,7 +73,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
               LocalPolaroidSharedScope provides LocalPolaroidSharedScope.current.takeUnless { target == PolaroidBrowseMode.ALBUMS }) {
             if (target == PolaroidBrowseMode.ALBUMS) PolaroidAlbumOverview(albums, albumCards, selectedAlbumId ?: albumContaining(albums, focusedId)?.id,
                     imageFile, frames, enabled,
-                    choose = { id -> chooseAlbum(id); columnsChanged.value(4); switch.value(PolaroidBrowseMode.GRID) }, manage = onManageAlbum)
+                    choose = { id -> chooseAlbum(id); columnsChanged.value(maximum); switch.value(PolaroidBrowseMode.GRID) }, manage = onManageAlbum)
             else PolaroidAlbumTransition(albumChangeRequest,
                 AlbumBrowseSnapshot(cards, gridCards, focusedId, selectedAlbumId, positionRequest), albums) { scene, current ->
                 val interactive = enabled && current
@@ -81,7 +83,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                         interactive, { if (current) focus(it) }, { if (current) preview(it) }, { if (current) managePhoto(it) },
                         scene.positionRequest, { if (current) onPositioned(it) }, wideLayout, current)
                     target == PolaroidBrowseMode.GRID && scene.gridCards.isNotEmpty() -> PolaroidGallery(scene.gridCards, imageFile, frames, interactive,
-                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, gridColumns, current, scene.focusedId)
+                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, columns, current, scene.focusedId)
                     else -> PolaroidEmpty()
                 }
                 }
@@ -200,26 +202,5 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
         Text((pager.settledPage + 1).toString() + " / " + cards.size,
             Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp).testTag("cards-position"),
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-private fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> File?, frames: List<PolaroidFrameStyle>,
-    enabled: Boolean, preview: (PolaroidCard) -> Unit, edit: (PolaroidCard) -> Unit, columns: Int, registerManagementSource: Boolean, focusedId: String?) {
-    val grid = rememberLazyGridState(initialFirstVisibleItemIndex = cards.indexOfFirst { it.id == focusedId }.coerceAtLeast(0) / columns * columns)
-    LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 4)), Modifier.fillMaxSize().clipToBounds().testTag("cards-grid")
-        .semantics { stateDescription = columns.toString() + " 列" },
-        state = grid,
-        contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 100.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        items(cards, key = { it.id }) { card ->
-            BoxWithConstraints(Modifier.fillMaxWidth().animateItem()) {
-                val frame = frames.firstOrNull { it.id == card.frameStyleId }
-                val height = maxWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
-                val resize = rememberPolaroidResize(card.id, maxWidth, maxWidth, height, coordinateSpace = LocalCardWindowLandscape.current)
-                PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth().polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
-                    .combinedClickable(enabled = enabled, onClick = feedbackClick { preview(card) }, onLongClick = feedbackClick { edit(card) }), frame = frame)
-            }
-        }
     }
 }

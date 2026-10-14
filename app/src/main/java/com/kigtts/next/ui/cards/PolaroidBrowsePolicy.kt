@@ -25,12 +25,13 @@ internal fun pinchBrowseMode(current: PolaroidBrowseMode, zoom: Float): Polaroid
 
 internal data class PolaroidBrowseScale(val mode: PolaroidBrowseMode, val columns: Int)
 
-internal fun pinchBrowseScale(current: PolaroidBrowseMode, columns: Int, zoom: Float): PolaroidBrowseScale = when {
+internal fun pinchBrowseScale(current: PolaroidBrowseMode, columns: Int, zoom: Float,
+    minimum: Int = 2, maximum: Int = 4): PolaroidBrowseScale = when {
     current == PolaroidBrowseMode.STACK && zoom < .84f -> PolaroidBrowseScale(PolaroidBrowseMode.GRID, columns)
-    current == PolaroidBrowseMode.GRID && zoom < .84f && columns >= 4 -> PolaroidBrowseScale(PolaroidBrowseMode.ALBUMS, 4)
+    current == PolaroidBrowseMode.GRID && zoom < .84f && columns >= maximum -> PolaroidBrowseScale(PolaroidBrowseMode.ALBUMS, maximum)
     current == PolaroidBrowseMode.GRID && zoom < .84f -> PolaroidBrowseScale(current, columns + 1)
-    current == PolaroidBrowseMode.GRID && zoom > 1.18f && columns > 2 -> PolaroidBrowseScale(current, columns - 1)
+    current == PolaroidBrowseMode.GRID && zoom > 1.18f && columns > minimum -> PolaroidBrowseScale(current, columns - 1)
     current == PolaroidBrowseMode.GRID && zoom > 1.18f -> PolaroidBrowseScale(PolaroidBrowseMode.STACK, columns)
-    current == PolaroidBrowseMode.ALBUMS && zoom > 1.18f -> PolaroidBrowseScale(PolaroidBrowseMode.GRID, 4)
+    current == PolaroidBrowseMode.ALBUMS && zoom > 1.18f -> PolaroidBrowseScale(PolaroidBrowseMode.GRID, maximum)
     else -> PolaroidBrowseScale(current, columns)
 }

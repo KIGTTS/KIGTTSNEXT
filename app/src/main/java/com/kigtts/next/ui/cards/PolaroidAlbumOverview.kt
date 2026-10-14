@@ -26,7 +26,7 @@ internal fun PolaroidAlbumOverview(albums: List<PolaroidAlbum>, cards: List<Pola
     imageFile: (String) -> File?, frames: List<PolaroidFrameStyle>, enabled: Boolean, choose: (String) -> Unit,
     manage: (String) -> Unit = {}) {
     val byId = remember(cards) { cards.associateBy { it.id } }
-    LazyVerticalGrid(GridCells.Adaptive(152.dp), Modifier.fillMaxSize().testTag("cards-album-overview"),
+    LazyVerticalGrid(GridCells.Adaptive(152.dp), Modifier.fillMaxSize().padding(top = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)).testTag("cards-album-overview"),
         contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 88.dp), horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         items(albums, key = { it.id }) { album ->

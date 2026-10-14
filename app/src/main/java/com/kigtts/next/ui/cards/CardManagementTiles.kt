@@ -21,7 +21,9 @@ import java.io.File
 @Composable internal fun CardManagementPhoto(card: PolaroidCard, selected: Boolean, enabled: Boolean,
     imageFile: (String) -> File?, frame: PolaroidFrameStyle?, select: () -> Unit,
     modifier: Modifier, grip: Modifier, lifted: Boolean, originId: String? = null) {
-    val elevation by animateDpAsState(if (lifted) 10.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "card-sort-elevation")
+    var raised by remember { mutableStateOf(false) }
+    LaunchedEffect(lifted) { raised = lifted }
+    val elevation by animateDpAsState(if (raised) 12.dp else 3.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "card-sort-elevation")
     Surface(feedbackClick(select), modifier.testTag("manage-photo/" + card.id).semantics {
         this.selected = selected; contentDescription = card.title.ifBlank { "拍立得" }
     },

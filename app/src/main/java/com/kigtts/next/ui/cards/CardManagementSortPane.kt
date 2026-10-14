@@ -38,6 +38,7 @@ import com.kigtts.next.ui.components.reorder.*
     }
     val dropped = rememberReorderDrop(drag)
     val currentOrder = rememberUpdatedState(order)
+    val canStartDrag = rememberUpdatedState(enabled)
     LaunchedEffect(drag.settling) { if (enabled && drag.settling && positions != keys && positions.toSet() == keys.toSet()) currentOrder.value(positions) }
     LaunchedEffect(keys, drag.key, busy) {
         if (drag.key == null && !busy) positions = keys
@@ -51,14 +52,14 @@ import com.kigtts.next.ui.components.reorder.*
             if (enabled) Modifier.reorderGrip(id, drag) else Modifier, false)
     }
     BoxWithConstraints(Modifier.fillMaxSize().testTag("card-management-sort").onGloballyPositioned { root = it.positionInRoot() }
-        .then(if (enabled) Modifier.reorderGestures(drag) else Modifier)) {
+        .reorderGestures(drag) { canStartDrag.value }) {
         val grid = rememberLazyGridState()
         val list = rememberLazyListState(initialFirstVisibleItemIndex =
             if (mode == CardManagementMode.STRIP) (keys.indexOfFirst { it == originId } - 1).coerceAtLeast(0)
             else keys.indexOfFirst { it == originId }.coerceAtLeast(0))
         if (mode == CardManagementMode.GRID) {
-            LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 4)), Modifier.fillMaxSize().testTag("card-management-grid"), state = grid,
-                contentPadding = PaddingValues(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 6)), Modifier.fillMaxSize().testTag("card-management-grid"), state = grid,
+                contentPadding = PaddingValues(20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 items(positions, key = { it }) { id -> entry(id, Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = if (drag.key == id) null else MaterialTheme.motionScheme.defaultSpatialSpec())) }
             }
@@ -85,7 +86,7 @@ import com.kigtts.next.ui.components.reorder.*
           CompositionLocalProvider(LocalPolaroidSharedScope provides null) {
             item(id, Modifier.width(with(density) { drag.floatingBounds.width.toDp() })
                 .graphicsLayer { translationX = dropped.value.x; translationY = dropped.value.y }
-                .clearAndSetSemantics { }, Modifier, true)
+                .clearAndSetSemantics { }, Modifier, !drag.settling)
           }
         }
     }

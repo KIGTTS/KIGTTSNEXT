@@ -77,10 +77,11 @@ fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Bool
 }
 
 /** Detect on the stable list container so item placement never interrupts the pointer. */
-fun Modifier.reorderGestures(drag: ReorderDrag) = onGloballyPositioned { drag.origin = it.positionInRoot() }
+fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }) = onGloballyPositioned { drag.origin = it.positionInRoot() }
     .pointerInput(drag) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+            if (!canStart()) return@awaitEachGesture
             val item = drag.hit(down.position) ?: return@awaitEachGesture
             val handle = drag.handles[item.key]?.contains(drag.origin + down.position) == true
             // Long-press cancellation must watch subsequent events, after this down's Main pass.
