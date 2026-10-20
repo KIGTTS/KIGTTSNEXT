@@ -16,10 +16,12 @@ import java.util.concurrent.ConcurrentHashMap
 open class PluginWorkerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var plugin: KigPlugin? = null
+    private var installedDescriptor: PluginDescriptor? = null
     private var quickText:IHostQuickTextBroker?=null
     private var app: IHostAppBroker? = null
     private var stickers: IHostStickerBroker? = null
     private var observingUi: Job? = null
+    private val taskForeground by lazy { PluginTaskForeground(this) }
     private val pages = mutableSetOf<String>()
     private data class Session(val job: Job, val descriptors: List<ParcelFileDescriptor>)
     private val sessions = ConcurrentHashMap<String, Session>()
@@ -54,8 +56,7 @@ open class PluginWorkerService : Service() {
             val loader = DexClassLoader(dex.joinToString(File.pathSeparator) { it.absolutePath },
                 File(paths.storage(pluginId).temporary, "dex").apply { mkdirs() }.absolutePath, libraries, classLoader)
             val instance = loader.loadClass(manifest.entryClass).getDeclaredConstructor().newInstance() as KigPlugin
-            require(instance.descriptor.id == manifest.id && instance.descriptor.apiVersion == manifest.apiVersion &&
-                instance.descriptor.version == manifest.version && instance.descriptor.license == manifest.license)
+            installedDescriptor = packageDescriptor(instance.descriptor, manifest)
             plugin = instance
             try {
                 instance.attach(ScopedEnvironment(this@PluginWorkerService, paths.storage(pluginId), File(directory, "assets"), "network" in manifest.capabilities,
@@ -73,6 +74,15 @@ open class PluginWorkerService : Service() {
                 require("asr-service" !in manifest.capabilities || instance.asr?.info?.role == AsrRole.SERVICE) { "识别服务必须实现 SERVICE 角色" }
             }
             catch (error: Exception) { instance.close(); plugin = null; throw error }
+            scope.launch(Dispatchers.Main) {
+                instance.uiChanges.collect {
+                    val running = synchronized(pages) { pages.toList() }.any { id ->
+                        instance.page(id, PluginContext("", ""))?.blocks?.filterIsInstance<PageBlock.Chat>()?.any { it.running || it.backgroundRunning } == true
+                    }
+                    try { taskForeground.update(running, instance.descriptor.name) }
+                    catch (failure: Exception) { android.util.Log.w("KIGTTS", "Unable to keep active plugin task in foreground", failure) }
+                }
+            }
             snapshot(PluginJson.encodeToString(PluginContext("", "")))
         }
         override fun snapshot(context: String): String {
@@ -81,7 +91,7 @@ open class PluginWorkerService : Service() {
             val decoded = PluginJson.decodeFromString<PluginContext>(context)
             val contributions = instance.contributions(decoded)
             synchronized(pages) { pages.addAll(contributions.drawerEntries.map { it.pageId }); pages.addAll(contributions.settingsEntries.map { it.pageId }) }
-            val snapshot = PluginSnapshot(instance.descriptor, contributions,
+            val snapshot = PluginSnapshot(installedDescriptor ?: instance.descriptor, contributions,
                 synchronized(pages) { pages.mapNotNull { instance.page(it, decoded) } }, instance.tts?.info, instance.asr?.info, instance.localization)
             PluginRegistry(listOf(instance))
             return PluginJson.encodeToString(snapshot).also { require(it.toByteArray().size <= 512 * 1024) }
@@ -143,7 +153,10 @@ open class PluginWorkerService : Service() {
         return pipe[0]
     }
     override fun onBind(intent: Intent) = binder
-    override fun onDestroy() { scope.cancel(); super.onDestroy() }
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        taskForeground.close(); scope.launch { plugin?.close() }; stopSelf()
+    }
+    override fun onDestroy() { taskForeground.close(); scope.cancel(); super.onDestroy() }
 }
 class PluginWorker0 : PluginWorkerService()
 class PluginWorker1 : PluginWorkerService()

@@ -42,7 +42,10 @@ internal fun validateSnapshot(snapshot: PluginSnapshot) {
                 is PageBlock.Chat -> {
                     require(block.messages.size <= 100 && block.messages.map { it.id }.distinct().size == block.messages.size)
                     require(block.sendAction.length in 1..128 && block.stopAction.length in 1..128)
-                    block.messages.forEach { require(it.id.length in 1..128 && it.text.length <= 64_000 && it.reasoning.length <= 64_000) }
+                    require(block.controls.size <= 4 && block.conversationId.length <= 128)
+                    block.controls.forEach { control -> require(control.title.length <= 160 && control.options.size in 1..32); control.options.forEach { require(it.action.length in 1..128 && it.label.length <= 160 && it.value.length <= 512) } }
+                    block.approval?.let { require(it.title.length <= 160 && it.detail.length <= 4000 && it.approveAction.length in 1..128 && it.rejectAction.length in 1..128) }
+                    block.messages.forEach { require(it.id.length in 1..128 && it.text.length <= 64_000 && it.reasoning.length <= 64_000 && it.summary.length <= 2000 && it.detail.length <= 16_000 && it.toolName.length <= 160) }
                 }
                 is PageBlock.Group -> { require(block.title.length <= 160); blocks(block.children, depth + 1) }
                 is PageBlock.Actions -> {

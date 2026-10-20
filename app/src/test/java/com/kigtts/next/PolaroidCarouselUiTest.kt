@@ -76,7 +76,7 @@ class PolaroidCarouselUiTest {
                     val sample = point(index, if (index == 0) .10f else .90f, .4f) - bounds.topLeft
                     val pixel = bitmap.getPixel((sample.x / bounds.width * bitmap.width).toInt(),
                         (sample.y / bounds.height * bitmap.height).toInt())
-                    Color.red(pixel) - Color.green(pixel) > 25
+                    Color.red(pixel) > 245 && Color.green(pixel) < 15 && Color.blue(pixel) < 15
                 } } finally { bitmap.recycle() }
             }
             compose.onNodeWithTag("five-photo-carousel").captureRoboImage("build/previews/five-photo-$name.png")

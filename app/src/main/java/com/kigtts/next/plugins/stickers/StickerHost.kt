@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /** Connection-bound resource grants and atomic edits. Native review alone may approve removals. */
 class StickerHost(val repository:StickerRepository,private val paths:PluginPaths,
-    private val openUi:suspend (StickerUiTarget,String?)->Boolean={_,_->false},private val editingCard:()->String?={null}) {
+    private val openUi:suspend (StickerUiTarget,String?)->Boolean={_,_->false},private val editingCard:()->String?={null}, private val authorize:(String)->Boolean={false}) {
     private data class Plan(val owner:String,val transaction:String,val hash:String,val preview:StickerPreview,
         val snapshot:StickerSnapshot,val frames:List<PolaroidFrameStyle>,val expires:Long,var approved:Boolean=false)
     private val pending=ConcurrentHashMap<String,Plan>()
@@ -127,7 +127,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
     private fun commit(owner:String,token:String):StickerReply {
         completed(owner,token)?.let {return it}
         val plan=owned(owner,token);repository.checkRevision(plan.preview.revision);checkDraft(plan.snapshot,plan.frames)
-        if(plan.preview.requiresConfirmation&&!plan.approved)return StickerReply.Failure(StickerError.CONFIRMATION_REQUIRED,"请打开预览并确认移除",reviewToken=token)
+        if(plan.preview.requiresConfirmation&&!plan.approved&&!authorize(owner))return StickerReply.Failure(StickerError.CONFIRMATION_REQUIRED,"请打开预览并确认移除",reviewToken=token)
         val reply=StickerReply.Applied(plan.preview.revision+1,plan.transaction)
         repository.replace(plan.snapshot,plan.preview.revision,Triple(key(owner,plan.transaction),plan.hash,reply),
             Triple("token/$token",owner+"\n"+(System.currentTimeMillis()+10*60*1000),reply),frames=plan.frames);pending.remove(token);decisions.value++

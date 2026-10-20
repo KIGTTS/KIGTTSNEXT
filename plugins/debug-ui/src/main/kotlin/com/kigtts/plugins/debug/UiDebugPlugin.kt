@@ -81,6 +81,7 @@ class UiDebugPlugin(
         UiSlot.EDITOR_MENU -> "文本菜单"; UiSlot.EDITOR_BOTTOM_START -> "字幕左下"; UiSlot.EDITOR_BOTTOM_END -> "字幕右下"
         UiSlot.LISTENING_BOTTOM_START -> "聆听面板底部左侧"; UiSlot.LISTENING_BOTTOM_END -> "聆听面板底部右侧"
         UiSlot.QUICK_PANEL_START -> "面板标题左侧"; UiSlot.QUICK_PANEL_END -> "面板标题右侧"
+        UiSlot.VOICE_INPUT_RELEASE -> "语音输入释放区"
         UiSlot.TAB_START -> "标签开头"; UiSlot.TAB_END -> "标签末尾"
     }
 }

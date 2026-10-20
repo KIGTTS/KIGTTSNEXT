@@ -32,7 +32,7 @@ class DependencyResolver(private val entries: List<CatalogEntry>, private val in
         val retained = installed.values.filter { it.id !in solution && ordered.any { selected -> it.id in selected.release.dependencies } }
         val downloads = ordered.filter { selected ->
             val old = installed[selected.entry.item.id]
-            selected.entry.item.id == root.item.id || old == null || old.version != selected.release.version || old.apiVersion != device.api ||
+            selected.entry.item.id == root.item.id || old == null || old.version != selected.release.version || old.apiVersion != selected.release.apiVersion ||
                 old.format != selected.release.format || (selected.release.format == PackageFormat.NATIVE && old.versionCode != selected.release.versionCode)
         }
         return DependencyPlan(downloads, explicit, retained, downloads.filter { selected -> installed[selected.entry.item.id]?.let { it.versionCode > selected.release.versionCode } == true }.map { it.entry.item.id })
@@ -58,7 +58,7 @@ class DependencyResolver(private val entries: List<CatalogEntry>, private val in
             .sortedByDescending { SemVersion.parse(it.release.version) }
         require(candidates.map { it.release.expectedPublisher }.distinct().size <= 1) { "相同包 ID 来自不同发布者，请停用冲突源" }
         // Reuse an installed version when it meets every requirement, but expand its declared dependencies if available.
-        val reusable = old?.let { existing -> existing.apiVersion == device.api && runCatching { ranges.all { it.contains(SemVersion.parse(existing.version)) } }.getOrDefault(false) } == true
+        val reusable = old?.let { existing -> existing.apiVersion in device.minimumApi..device.api && runCatching { ranges.all { it.contains(SemVersion.parse(existing.version)) } }.getOrDefault(false) } == true
         val preferred = candidates.sortedBy { if (reusable && it.release.version == old!!.version) 0 else 1 }
         for (candidate in preferred) {
             val answer = search(LinkedHashMap(selected).also { it[unresolved] = candidate }, constraints, expanded)

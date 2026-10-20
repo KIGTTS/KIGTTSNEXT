@@ -20,7 +20,7 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
                 is StickerReply.UiOpened -> null
                 else -> (reply as? StickerReply.Failure)?.message ?: "审核页面尚未打开"
             }
-            ReviewKind.EXTERNAL -> null
+            ReviewKind.EXTERNAL, ReviewKind.TOOL -> null
         }
         return message?.let { PluginOutcome.Message(it) } ?: PluginOutcome.RefreshUi
     }
@@ -37,14 +37,18 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
                 else -> (reply as? StickerReply.Failure)?.message ?: "取消状态尚未确认"
             }
             ReviewKind.EXTERNAL -> "请先在对应页面检查操作状态"
+            ReviewKind.TOOL -> null
         }
         if (message != null) return PluginOutcome.Message(message)
+        if (pending.kind == ReviewKind.TOOL && pending.toolCallId.isNotEmpty()) store.message(pending.conversationId,
+            AgentMessage(role = "tool", toolCallId = pending.toolCallId, content = "{\"status\":\"rejected_by_user\"}"))
         store.setPending(null)
         return PluginOutcome.RefreshUi
     }
     suspend fun resume(): PluginOutcome {
         check(!runner.running)
         val pending = store.pending ?: return PluginOutcome.Message("没有待继续操作")
+        if (pending.kind == ReviewKind.TOOL) { runner.approve(pending); return PluginOutcome.RefreshUi }
         var applied = true
         if (pending.token.isNotEmpty()) {
             val failure = when (pending.kind) {
@@ -54,6 +58,7 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
                 }
                 ReviewKind.STICKERS -> stickerCompletion(pending).let { result -> applied = result.applied; result.failure }
                 ReviewKind.EXTERNAL -> "请先在对应页面完成审核"
+                ReviewKind.TOOL -> null
             }
             if (failure != null) return PluginOutcome.Message(failure)
             if (pending.toolCallId.isNotEmpty()) store.message(pending.conversationId, AgentMessage(role = "tool",

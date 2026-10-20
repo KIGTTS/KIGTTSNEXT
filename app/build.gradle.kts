@@ -77,6 +77,8 @@ dependencies {
     testImplementation(project(":plugins:placeholder-tts"))
     testImplementation(project(":plugins:placeholder-asr"))
     testImplementation(project(":engine-plugins:quick-text-tools"))
+    testImplementation(project(":engine-plugins:cloud-agent"))
+    testImplementation(project(":engine-plugins:lua-runtime"))
     implementation(project(":plugins:debug-ui"))
     testImplementation(project(":plugins:listening-panel"))
     testImplementation(project(":plugins:voice-input"))

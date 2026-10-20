@@ -8,7 +8,7 @@ import kotlinx.serialization.encodeToString
 import java.util.UUID
 
 class CloudAgentPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.8.1")
+    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.9.0")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: AgentStore
     private lateinit var secrets: AgentSecrets
@@ -21,7 +21,7 @@ class CloudAgentPlugin : KigPlugin {
         this.environment = environment
         store = AgentStore(environment.storage)
         secrets = KeystoreAgentSecrets(environment.storage)
-        runner = AgentRunner(store, secrets, HttpsChatTransport(), AgentTools(environment), ::changed)
+        runner = AgentRunner(store, secrets, HttpsChatTransport(), AgentTools(environment) { store.settings.access == AgentAccessMode.FULL }, ::changed)
         reviews = AgentReviewController(environment, store, runner)
     }
     override val contributions = PluginContributions(settingsEntries = listOf(
@@ -36,7 +36,7 @@ class CloudAgentPlugin : KigPlugin {
                 actionId == "open" -> PluginOutcome.OpenPage("chat")
                 actionId == "settings" || actionId == "conversations" -> PluginOutcome.OpenPage(actionId)
                 actionId == "new" -> {
-                    check(!runner.running) { "请先停止当前回答" }; store.create(); PluginOutcome.OpenPage("chat")
+                    store.create(); PluginOutcome.OpenPage("chat")
                 }
                 actionId.startsWith("select/") -> { store.select(actionId.removePrefix("select/")); PluginOutcome.OpenPage("chat") }
                 actionId.startsWith("rename/") -> {
@@ -67,6 +67,26 @@ class CloudAgentPlugin : KigPlugin {
                     val file = environment.storage.file(path); file.parentFile?.mkdirs()
                     file.writeText(PluginJson.encodeToString(conversation), Charsets.UTF_8)
                     PluginOutcome.ExportResource("导出会话", PluginResource(path), "助手会话.json", mimeType = "application/json")
+                }
+                actionId.startsWith("access/") -> {
+                    require(context.inputs["_callerPlugin"] == null) { "请通过会话输入栏切换权限" }
+                    store.updateSettings { it.copy(access = if (actionId == "access/full") AgentAccessMode.FULL else AgentAccessMode.REQUEST_APPROVAL) }
+                    PluginOutcome.RefreshUi
+                }
+                actionId.startsWith("chat-provider/") -> {
+                    val conversation = store.selected() ?: store.create()
+                    val provider = Provider.valueOf(actionId.substringAfter('/'))
+                    store.save(conversation.copy(provider = provider, model = null)); PluginOutcome.RefreshUi
+                }
+                actionId == "chat-model" -> {
+                    val conversation = store.selected() ?: store.create()
+                    val connection = store.connection(conversation)
+                    PluginOutcome.TextInput("模型名称", "save-chat-model", requireNotNull(connection.profiles[connection.provider]).model)
+                }
+                actionId == "save-chat-model" -> {
+                    require(value.trim().length in 1..160)
+                    val conversation = store.selected() ?: store.create()
+                    store.save(conversation.copy(model = value.trim())); PluginOutcome.RefreshUi
                 }
                 actionId.startsWith("provider/") -> {
                     check(!runner.running) { "请先停止当前回答" }

@@ -49,7 +49,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun keepEditor() { if(!editorSavePending.value)discardState.value=false }
     fun discardEditor() { if(editorSavePending.value)return;discardState.value=false;editorState.value=null;back() }
     fun show(entry:MediaEntry,autoPlay:Boolean=true,audioMode:MediaAudioMode?=null) {
-        if(entry.kind!=MediaKind.AUDIO)history.push(state())
+        if(entry.kind!=MediaKind.AUDIO && state().mediaId==null)history.push(state())
         showCurrent(entry,autoPlay,audioMode)
     }
     private fun showCurrent(entry:MediaEntry,autoPlay:Boolean,audioMode:MediaAudioMode?) {

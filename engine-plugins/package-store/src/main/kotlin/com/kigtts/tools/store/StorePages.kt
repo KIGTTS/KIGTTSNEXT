@@ -11,7 +11,7 @@ internal fun storePage(id: String, sources: SourceStore, jobs: StoreJobs, view: 
                 (view.query.isBlank() || (entry.item.name + entry.item.summary + entry.item.tags.joinToString()).contains(view.query, ignoreCase = true)) &&
                 when (view.filter) { "installed" -> entry.item.id in jobs.installed
                     "updates" -> entry.latest(device)?.let { latest -> jobs.installed[entry.item.id]?.let { old ->
-                        old.apiVersion != device.api || SemVersion.parse(latest.version) > SemVersion.parse(old.version) ||
+                        old.apiVersion != latest.apiVersion || SemVersion.parse(latest.version) > SemVersion.parse(old.version) ||
                             (latest.format == PackageFormat.NATIVE && latest.versionCode > old.versionCode)
                     } } == true
                     else -> true }

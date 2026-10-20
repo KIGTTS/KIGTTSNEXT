@@ -30,10 +30,10 @@ private fun carouselRestPose(index: Int, focus: Int, widths: List<Float>, viewpo
     val nearWidth = widths.getOrElse(focus + direction) { width }.coerceAtLeast(1f)
     val nearScale = min(.84f, (available - peek) / nearWidth).coerceAtLeast(.01f)
     val nearOuter = inner + nearWidth * nearScale
-    if (distance == 1) return CarouselPhotoPose(direction * (inner + nearWidth * nearScale / 2f), nearScale, .5f)
+    if (distance == 1) return CarouselPhotoPose(direction * (inner + nearWidth * nearScale / 2f), nearScale, 1f)
     // The second photo peeks beyond the first, regardless of their relative widths.
     val farOuter = nearOuter + peek
     val farScale = min(.66f, min(nearScale * .82f, (farOuter - inner) / width)).coerceAtLeast(.01f)
     return CarouselPhotoPose(direction * (farOuter - width * farScale / 2f + (distance - 2) * peek),
-        farScale, if (distance == 2) .22f else 0f)
+        farScale, if (distance == 2) 1f else 0f)
 }

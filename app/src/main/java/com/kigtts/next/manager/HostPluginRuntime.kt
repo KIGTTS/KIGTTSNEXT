@@ -20,7 +20,7 @@ class HostPluginRuntime private constructor(private val application: Application
     val cards = com.kigtts.next.cards.CardRepository(application, stickers)
     val stickerPlugins = com.kigtts.next.plugins.stickers.StickerHost(stickers, manager.paths,
         { target, id -> ui()?.cardUi?.open(target, id) ?: false },
-        { state()?.editingCardId() })
+        { state()?.editingCardId() }, { owner -> ui()?.agentAccess?.consume(owner) == true })
     val quickTextPlugins=com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,manager.paths,::ui)
     val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, ::ui)
     init {manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin

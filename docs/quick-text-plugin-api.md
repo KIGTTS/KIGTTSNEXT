@@ -1,4 +1,4 @@
-# 快捷文本与 Agent 插件接口（API9 / 协议 1）
+# 快捷文本与 Agent 插件接口（API10，兼容 API9 / 协议 1）
 
 插件清单声明 `quick-text-read` 或 `quick-text-write` 后，可从 `PluginEnvironment.quickTextBroker` 获取绑定到自己的接口；write 同时允许读取。宿主和 UI 共用一个快捷库及媒体仓库，后台可读写，打开原生页面需要宿主 UI 存在。该接口不引入 Agent、LLM 或语音引擎依赖。
 
@@ -111,11 +111,11 @@ node tools/Test-Calculator.mjs
 
 ## 宿主操作与外置 Agent
 
-API9 的 `PluginEnvironment.appBroker` 需声明 app-control，提供能力发现、字幕、朗读/自动朗读、原生导航、已开放设置及明确导出的跨插件动作。先请求 Describe 获取真实目标和操作，不把页面中任何按钮都当成自动化接口。只有目标 `automationActions` 允许 PluginAction；DeliverResource 将本插件资源送到目标 inbox 并打开检查，审核按钮仍由用户操作。
+`PluginEnvironment.appBroker` 需声明 app-control，提供能力发现、字幕、朗读/自动朗读、原生导航、已开放设置及明确导出的跨插件动作。先请求 Describe 获取真实目标和操作，不把页面中任何按钮都当成自动化接口。只有目标 `automationActions` 允许 PluginAction；API10 新增同步 PluginCall，返回实际动作结果。DeliverResource 普通交付仍送到目标 inbox 打开检查；Lua 的 agent-install 交付必须先获得原生批准或完全访问授权。
 
-`tools.cloud-agent-0.8.0.kigplugin` 为独立云端助手，支持 DeepSeek、GLM、Kimi 和自定义兼容服务、多会话管理、聊天气泡、流式回复、取消与工具调用。服务商公开的 reasoning 可选展示，默认关闭；不是请求模型隐藏内部过程。密钥、会话和工作文件均在助手自身目录，主 APK 不包含网络请求/Agent 实现。
+`tools.cloud-agent-0.9.0.kigplugin` 为独立云端助手，支持 DeepSeek、GLM、Kimi 和自定义兼容服务、多会话管理、会话模型切换、聊天气泡、流式回复、取消与工具调用。服务商公开的 reasoning 可选展示，默认关闭时显示简短摘录摘要；不是请求模型隐藏内部过程。密钥、会话和工作文件均在助手自身目录，主 APK 不包含网络请求/Agent 实现。
 
-Agent 可查询、准备和提交快捷库变更，创建 HTML 工具页、批量管理及导入导出。需要确认的批次暂停工具执行，由用户审核后再继续；不绕过版本冲突、资源归属和删除确认。Agent 还可编写 Lua 源草稿，投递独立 runtime.lua 审核；送交成功不等于已安装。实际权限/工具流程见 [云端助手](cloud-agent.md)、[Lua 编辑器](lua-plugins.md) 与 [插件 API9](plugin-api.md)。
+Agent 可查询、准备和提交快捷库变更，使用 create_page 一次创建真实 HTML 页面卡片、批量管理及导入导出。请求批准模式在修改前暂停，批准卡片出现在输入框上方；完全访问模式按原生授权执行，仍校验版本冲突、资源归属和调用结果。Agent 可编写 Lua 多文件项目，经授权投递安装、启用并同步调试，实际结果返回模型。实际权限/工具流程见 [云端助手](cloud-agent.md)、[Lua 编辑器](lua-plugins.md) 与 [插件 API](plugin-api.md)。
 
 `uiChanges` 与快捷库 changes 都是可合并的失效信号，重连后重新查询，不作为完整事件日志。插件界面采用 SettingsEntry 分类入口及宿主 Group/Input/Choice/Toggle/Chat/Files/SourceEditor，按钮和过渡继承设置样式；NONE 可省略图标。
 

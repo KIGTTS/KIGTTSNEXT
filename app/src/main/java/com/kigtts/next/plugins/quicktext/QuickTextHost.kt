@@ -102,7 +102,7 @@ class QuickTextHost(val library:QuickTextLibrary,val media:MediaRepository,val p
         requireQuick(plan.owner==owner,QuickTextError.PERMISSION_DENIED,"预览属于其它插件")
         requireQuick(library.revision.value==plan.preview.revision,QuickTextError.CONFLICT,"快捷文本已更新，请重新预览")
         checkDraft(plan)
-        if(plan.preview.requiresConfirmation&&!plan.approved)return QuickTextReply.Failure(QuickTextError.CONFIRMATION_REQUIRED,"请打开修改预览并确认删除",reviewToken=token)
+        if(plan.preview.requiresConfirmation&&!plan.approved&&ui()?.agentAccess?.consume(owner)!=true)return QuickTextReply.Failure(QuickTextError.CONFIRMATION_REQUIRED,"请打开修改预览并确认删除",reviewToken=token)
         plan.entries.forEach {requireQuick(it.mediaId==null||media.get(it.mediaId)!=null,QuickTextError.NOT_FOUND,"附件已被移除")}
         val reply=QuickTextReply.Applied(library.revision.value+1,plan.transactionId,plan.mapping)
         val selected=ui()?.state?.value?.selectedCategory?.let {name->library.groups().firstOrNull {it.name==name}?.id}

@@ -1,12 +1,20 @@
 {
   "id": "runtime.lua",
   "name": "插件编辑器",
-  "version": "0.8.1",
-  "versionCode": 3,
+  "version": "0.9.0",
+  "versionCode": 4,
   "entryClass": "com.kigtts.engines.lua.LuaRuntimePlugin",
-  "apiVersion": 9,
+  "apiVersion": 10,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "MIT",
-  "capabilities": ["ui", "resources", "app-control", "quick-text-read", "quick-text-write", "stickers-read", "stickers-write"]
+  "capabilities": [
+    "ui",
+    "resources",
+    "app-control",
+    "quick-text-read",
+    "quick-text-write",
+    "stickers-read",
+    "stickers-write"
+  ]
 }

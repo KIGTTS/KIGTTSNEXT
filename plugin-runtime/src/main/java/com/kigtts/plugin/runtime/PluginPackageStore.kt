@@ -77,7 +77,7 @@ class PluginPackageStore(val paths: PluginPaths) {
         clearRuntimeCodeCache(directory)
         val raw = File(directory, MANIFEST).readBytes()
         val manifest = PluginJson.decodeFromString<PackageManifest>(raw.toString(Charsets.UTF_8))
-        require(manifest.id == id && manifest.apiVersion == com.kigtts.plugin.api.PLUGIN_API_VERSION)
+        require(manifest.id == id && manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
         val key = java.security.KeyFactory.getInstance("RSA").generatePublic(
             java.security.spec.X509EncodedKeySpec(File(directory, PUBLIC_KEY).readBytes()))
         require(File(directory, PUBLIC_KEY).readBytes().sha256() == File(paths.packageDirectory(id), "publisher").readText().trim()) { "已安装插件发布者发生变化" }

@@ -1,42 +1,59 @@
 package com.kigtts.next.ui.plugins
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.*
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.*
+import kotlinx.coroutines.launch
 
-/** Generic native chat surface: providers, transport and conversation state all belong to the plugin. */
+/** User scrolling owns the viewport until they explicitly return to the bottom. */
 @Composable
 internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
-    val list = rememberLazyListState()
-    var draft by remember(chat.sendAction) { mutableStateOf("") }
-    var follow by remember { mutableStateOf(true) }
-    LaunchedEffect(list) { snapshotFlow { list.isScrollInProgress }.collect { moving ->
-        if (moving) follow = list.layoutInfo.visibleItemsInfo.lastOrNull()?.index == list.layoutInfo.totalItemsCount - 1
+    val list = remember(chat.conversationId) { LazyListState() }
+    var draft by rememberSaveable(chat.conversationId, chat.sendAction) { mutableStateOf("") }
+    var follow by remember(chat.conversationId) { mutableStateOf(true) }
+    val dragging by list.interactionSource.collectIsDraggedAsState()
+    val scope = rememberCoroutineScope()
+    val rows = remember(chat.messages) { chatRows(chat.messages) }
+    val atBottom by remember(list) { derivedStateOf {
+        val info = list.layoutInfo
+        val last = info.visibleItemsInfo.lastOrNull()
+        info.totalItemsCount == 0 || last != null && last.index == info.totalItemsCount - 1 && last.offset + last.size <= info.viewportEndOffset + 8
     } }
-    LaunchedEffect(chat.messages.lastOrNull()?.id, chat.messages.lastOrNull()?.text, chat.messages.lastOrNull()?.reasoning) {
-        if (follow && chat.messages.isNotEmpty()) list.scrollToItem(chat.messages.size)
+    LaunchedEffect(dragging) { if (dragging) follow = false }
+    LaunchedEffect(chat.messages.lastOrNull(), follow, dragging) {
+        if (follow && !dragging && rows.isNotEmpty()) list.scrollToItem(rows.size)
     }
     Column(Modifier.fillMaxSize().testTag("plugin-chat")) {
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), list, contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item("header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = header) }
-            items(chat.messages, key = { it.id }) { message -> ChatBubble(message) }
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(Modifier.fillMaxSize().testTag("plugin-chat-history"), list, contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item("header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = header) }
+                items(rows, key = { it.first().id }) { messages ->
+                    if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages) else ChatBubble(messages.first())
+                }
+            }
+            androidx.compose.animation.AnimatedVisibility(!follow && !atBottom, Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
+                SmallFloatingActionButton(onClick = feedbackClick {
+                    follow = true; scope.launch { list.animateScrollToItem(rows.size) }
+                }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, "回到底部") }
+            }
         }
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.Bottom,
+        ChatComposerControls(chat, enabled, invoke)
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(draft, { if (it.length <= 16_000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"),
                 placeholder = { Text(chat.placeholder) }, maxLines = 5, shape = MaterialTheme.shapes.large, enabled = enabled)
@@ -49,24 +66,11 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
         }
     }
 }
-
-@Composable
-private fun ChatBubble(message: ChatMessage) {
-    var showReasoning by remember(message.id) { mutableStateOf(false) }
-    val user = message.role == ChatRole.USER
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
-        Surface(Modifier.fillMaxWidth(if (user) .88f else .94f), shape = MaterialTheme.shapes.large,
-            color = if (user) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (message.reasoning.isNotBlank()) {
-                    TextButton(onClick = feedbackClick { showReasoning = !showReasoning }) { Text(if (showReasoning) "收起思考" else "查看思考") }
-                    if (showReasoning) Text(message.reasoning, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                Text(message.text.ifBlank { if (message.state == ChatMessageState.STREAMING) "正在回复…" else "" },
-                    style = if (message.role == ChatRole.TOOL) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge)
-                if (message.state == ChatMessageState.CANCELLED || message.state == ChatMessageState.FAILED)
-                    Text(if (message.state == ChatMessageState.CANCELLED) "已停止" else "回复未完成", style = MaterialTheme.typography.labelSmall)
-            }
-        }
+internal fun chatRows(messages: List<ChatMessage>): List<List<ChatMessage>> {
+    val rows = mutableListOf<MutableList<ChatMessage>>()
+    messages.forEach { message ->
+        if (message.role == ChatRole.TOOL && rows.lastOrNull()?.lastOrNull()?.role == ChatRole.TOOL) rows.last().add(message)
+        else rows.add(mutableListOf(message))
     }
+    return rows
 }

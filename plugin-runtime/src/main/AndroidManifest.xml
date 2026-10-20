@@ -1,16 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <application>
-        <service android:name=".PluginWorker0" android:exported="false" android:process=":plugin0" />
-        <service android:name=".PluginWorker1" android:exported="false" android:process=":plugin1" />
-        <service android:name=".PluginWorker2" android:exported="false" android:process=":plugin2" />
-        <service android:name=".PluginWorker3" android:exported="false" android:process=":plugin3" />
-        <service android:name=".PluginWorker4" android:exported="false" android:process=":plugin4" />
-        <service android:name=".PluginWorker5" android:exported="false" android:process=":plugin5" />
-        <service android:name=".PluginWorker6" android:exported="false" android:process=":plugin6" />
-        <service android:name=".PluginWorker7" android:exported="false" android:process=":plugin7" />
-        <service android:name=".PluginWorker8" android:exported="false" android:process=":plugin8" />
-        <service android:name=".PluginWorker9" android:exported="false" android:process=":plugin9" />
-        <service android:name=".PluginWorker10" android:exported="false" android:process=":plugin10" />
-        <service android:name=".PluginWorker11" android:exported="false" android:process=":plugin11" />
+        <service android:name=".PluginWorker0" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin0" />
+        <service android:name=".PluginWorker1" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin1" />
+        <service android:name=".PluginWorker2" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin2" />
+        <service android:name=".PluginWorker3" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin3" />
+        <service android:name=".PluginWorker4" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin4" />
+        <service android:name=".PluginWorker5" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin5" />
+        <service android:name=".PluginWorker6" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin6" />
+        <service android:name=".PluginWorker7" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin7" />
+        <service android:name=".PluginWorker8" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin8" />
+        <service android:name=".PluginWorker9" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin9" />
+        <service android:name=".PluginWorker10" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin10" />
+        <service android:name=".PluginWorker11" android:exported="false" android:foregroundServiceType="dataSync" android:process=":plugin11" />
     </application>
 </manifest>

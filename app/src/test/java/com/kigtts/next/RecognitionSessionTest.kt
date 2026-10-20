@@ -26,6 +26,23 @@ class RecognitionSessionTest {
         override val asr = engine; override val tts = synthesis
         override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
     }
+    @Test fun emptyRecognitionDoesNotCreateUserFacingNoiseButRealErrorsStillReport() = runTest {
+        var state = AppState(); val messages = mutableListOf<String>()
+        var fail = false
+        val engine = object : AsrEngine {
+            override val info = AsrInfo(role = AsrRole.SERVICE)
+            override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("not batch")
+            override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow<RecognitionEvent> {
+                emit(RecognitionEvent.Started); audio.collect { }; if (fail) error("麦克风处理失败")
+            }
+        }
+        val controller = SpeechCoordinator(this, PluginRegistry(listOf(plugin(engine))), Hardware(), { state }, { state = it(state) }, messages::add, {}, { "test.service" })
+        controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT)); runCurrent(); controller.end(true); advanceUntilIdle()
+        assertTrue(messages.isEmpty()); assertFalse(state.voiceInputActive)
+        fail = true
+        controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT)); runCurrent(); controller.end(true); advanceUntilIdle()
+        assertEquals(listOf("麦克风处理失败"), messages); controller.stopAll()
+    }
     @Test fun quickSubmitAllowsColdInitializationBeforeTheFinalFlushBudget() = runTest {
         var state = AppState(autoPlayback = false)
         val submitted = mutableListOf<String>(); val messages = mutableListOf<String>()

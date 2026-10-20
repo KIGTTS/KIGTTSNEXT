@@ -17,7 +17,7 @@ class AgentRunner(private val store: AgentStore, private val secrets: AgentSecre
     @Synchronized fun send(conversationId: String, text: String) {
         check(!running) { "请先停止当前回答" }; check(store.pending == null) { "请先完成或取消待审核操作" }
         require(text.isNotBlank() && text.length <= 32 * 1024)
-        val settings = store.settings
+        val settings = store.connection(requireNotNull(store.get(conversationId)))
         val profile = requireNotNull(settings.profiles[settings.provider]); completionEndpoint(profile.endpoint)
         check(profile.model.isNotBlank()) { "请在连接设置中填写模型" }
         check(secrets.exists(settings.provider)) { "请先在连接设置中填写密钥" }
@@ -29,12 +29,36 @@ class AgentRunner(private val store: AgentStore, private val secrets: AgentSecre
     @Synchronized fun continueAfterReview(conversationId: String) {
         check(!running)
         store.message(conversationId, AgentMessage(role = "user", content = "我已处理待确认事项，请先查询当前状态，然后继续。不要重复已经完成的操作。"))
-        launch(conversationId, store.settings)
+        launch(conversationId, store.connection(requireNotNull(store.get(conversationId))))
     }
-    private fun launch(id: String, settings: AgentSettings) {
+    @Synchronized fun approve(pending: PendingReview) {
+        check(!running)
+        check(store.settings.toolsEnabled) { "请先开启允许操作软件" }
+        val call = requireNotNull(pending.call)
+        store.setPending(pending.copy(kind = ReviewKind.EXTERNAL, call = null, summary = "操作可能已经执行，请先检查状态后继续"))
+        launch(pending.conversationId, store.connection(requireNotNull(store.get(pending.conversationId))), call)
+    }
+    private fun launch(id: String, settings: AgentSettings, approved: ToolCall? = null) {
         runningConversation = id
         val job = scope.launch(start = CoroutineStart.LAZY) {
-            try { respond(id, settings) }
+            try {
+                if (approved != null) {
+                    val reply = try { tools.execute(approved) } catch (error: Exception) {
+                        if (error is CancellationException) {
+                            store.message(id, AgentMessage(role = "tool", toolCallId = approved.id, content = "{\"status\":\"cancelled_outcome_unknown\"}"))
+                            throw error
+                        }
+                        ToolResult("{\"error\":\"OUTCOME_UNKNOWN\"}", pause = true, summary = "操作状态尚不明确，请检查后继续", reviewKind = ReviewKind.EXTERNAL)
+                    }
+                    store.message(id, AgentMessage(role = "tool", content = reply.content, toolCallId = approved.id))
+                    if (reply.pause) {
+                        store.setPending(PendingReview(id, approved.id, reply.reviewToken.orEmpty(), reply.summary ?: "操作需要进一步确认", kind = reply.reviewKind))
+                        return@launch
+                    }
+                    store.setPending(null)
+                }
+                respond(id, settings)
+            }
             finally { runningConversation = null; active = null; changed() }
         }
         active = job
@@ -73,6 +97,12 @@ class AgentRunner(private val store: AgentStore, private val secrets: AgentSecre
                     }
                     for ((index, call) in message.calls.withIndex()) {
                         currentCoroutineContext().ensureActive()
+                        if (store.settings.access != AgentAccessMode.FULL && tools.requiresApproval(call)) {
+                            store.setPending(PendingReview(id, call.id, "", tools.describe(call), kind = ReviewKind.TOOL, call = call))
+                            message.calls.drop(index).forEach { deferred -> store.message(id, AgentMessage(role = "tool",
+                                content = "{\"status\":\"not_executed_pending_review\"}", toolCallId = deferred.id)) }
+                            changed(); return
+                        }
                         val reply = try { tools.execute(call) }
                         catch (cancelled: CancellationException) { throw cancelled }
                         catch (_: Exception) {

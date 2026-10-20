@@ -21,7 +21,7 @@ class AgentRunnerTest {
         override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
     }
     @Test fun streamsFinalTextWithoutReloadingConversation() = runTest {
-        val env = environment(); val store = AgentStore(env.storage); val conversation = store.create()
+        val env = environment(); val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 val result = StreamAssembler(); result.accept("""{"choices":[{"delta":{"content":"你好"},"finish_reason":"stop"}]}""")
@@ -35,7 +35,7 @@ class AgentRunnerTest {
         assertFalse(runner.running); assertNull(runner.runningConversation)
     }
     @Test fun immediateAnswerDoesNotLeaveUiPermanentlyRunning() {
-        val env = environment(); val store = AgentStore(env.storage); val conversation = store.create()
+        val env = environment(); val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 val result = StreamAssembler(); result.accept("[DONE]"); return result
@@ -47,7 +47,7 @@ class AgentRunnerTest {
         runBlocking { runner.close() }
     }
     @Test fun cancellationKeepsPartialTextAndDoesNotContinueRequests() = runTest {
-        val env = environment(); val store = AgentStore(env.storage); val conversation = store.create(); var calls = 0; var cancelled = false
+        val env = environment(); val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create(); var calls = 0; var cancelled = false
         val transport = object : ChatTransport {
             override fun cancel() { cancelled = true }
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
@@ -70,7 +70,7 @@ class AgentRunnerTest {
                 commits++; return QuickTextReply.Failure(QuickTextError.CONFIRMATION_REQUIRED, "审核", reviewToken = "token")
             }
         }
-        val env = environment(quick); val store = AgentStore(env.storage); val conversation = store.create()
+        val env = environment(quick); val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         var requests = 0
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
@@ -92,7 +92,7 @@ class AgentRunnerTest {
             override val storage = PluginStorage(temporary.root); override val assets = temporary.root; override val appBroker = app
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
         }
-        val store = AgentStore(env.storage); val conversation = store.create()
+        val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 val result = StreamAssembler()
@@ -115,7 +115,7 @@ class AgentRunnerTest {
             override val storage = PluginStorage(temporary.root); override val assets = temporary.root; override val appBroker = app
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
         }
-        val store = AgentStore(env.storage); val conversation = store.create()
+        val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 requests++; val result = StreamAssembler()
@@ -166,7 +166,7 @@ class AgentRunnerTest {
             }
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
         }
-        val store = AgentStore(env.storage); val conversation = store.create()
+        val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 requests++; val result = StreamAssembler()

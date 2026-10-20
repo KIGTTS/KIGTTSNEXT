@@ -7,7 +7,7 @@ enum class UiSlot {
     HEADER_START, HEADER_END,
     EDITOR_TOP_START, EDITOR_TOP_END, EDITOR_MENU, EDITOR_BOTTOM_START, EDITOR_BOTTOM_END,
     LISTENING_BOTTOM_START, LISTENING_BOTTOM_END,
-    QUICK_PANEL_START, QUICK_PANEL_END, TAB_START, TAB_END,
+    QUICK_PANEL_START, QUICK_PANEL_END, TAB_START, TAB_END, VOICE_INPUT_RELEASE,
 }
 
 @Serializable
@@ -82,7 +82,15 @@ sealed interface PageBlock {
         val secret: Boolean = false, val multiline: Boolean = false, val icon: PluginIcon = PluginIcon.EDIT) : PageBlock
     @Serializable
     data class Chat(val messages: List<ChatMessage>, val sendAction: String, val stopAction: String,
-        val running: Boolean = false, val placeholder: String = "发送消息") : PageBlock
+        val running: Boolean = false, val placeholder: String = "发送消息",
+        val conversationId: String = "", val controls: List<ChatControl> = emptyList(), val approval: ChatApproval? = null,
+        val backgroundRunning: Boolean = false) : PageBlock {
+        constructor(messages: List<ChatMessage>, sendAction: String, stopAction: String, running: Boolean = false, placeholder: String = "发送消息")
+            : this(messages, sendAction, stopAction, running, placeholder, "", emptyList(), null, false)
+        fun copy(messages: List<ChatMessage> = this.messages, sendAction: String = this.sendAction, stopAction: String = this.stopAction,
+            running: Boolean = this.running, placeholder: String = this.placeholder): Chat =
+            Chat(messages, sendAction, stopAction, running, placeholder, conversationId, controls, approval, backgroundRunning)
+    }
     @Serializable
     data class Text(val text: String, val heading: Boolean = false) : PageBlock
     @Serializable

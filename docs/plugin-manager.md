@@ -43,10 +43,10 @@ Debug 管理器额外提供 `content://com.kigtts.manager.control`，要求 Andr
 
 2026-10-12 手机已更新 API8 Release 和六个 0.7.0/API8 引擎/服务包，发布者、原启停状态和模型保留；已启用插件均加载成功，Piper 与系统保底 PCM 自检、复用及空闲策略通过。统一合成生命周期见 [接口说明](tts-lifecycle.md)。合成服务 0.7.3、识别服务 0.7.1 为页面整理版，API8 不变；管理器桥仍为1，无需重装管理器或测试 APK。
 
-## 当前 API9 插件
+## 当前 API10 宿主与兼容插件
 
-外置包统一使用 API9，管理桥仍为 1。引擎、服务、商店与原生构建为 0.8.0；云端助手和 Lua 编辑器的相册支持更新为 0.8.1／versionCode 3。主程序有 12 个外置工作进程槽；Lua、云端助手、商店与原生构建均为独立可选包。系统 TTS 已并入语音合成服务作为内置保底，不再分发独立系统包；自检应调用 service.speech-synthesis。
+宿主 SDK 为 API10，兼容已验签的 API9 包，管理桥仍为 1。云端助手、Lua 编辑器与商店为 0.9.0/API10；原有引擎、语音服务与原生构建可继续使用 0.8.0/API9，无需为升级宿主重新安装模型。工作进程按已验签清单绑定描述符版本，兼容旧 Kotlin 默认构造器，同时校验 ID、版本、许可及支持范围。主程序有 12 个外置工作进程槽；Lua、云端助手、商店与原生构建均为独立可选包。系统 TTS 已并入语音合成服务作为内置保底，不再分发独立系统包；自检应调用 service.speech-synthesis。
 
-主页直接进入设置，插件按 SettingsEntry 归入音频、内容、扩展或自定义分类；管理器的 navigate 仍通过正常页面栈打开对应页面。商店下载后的原生包继续走宿主验签与审核，Lua/源码交付也不能绕过对应编辑器确认。原生与 Lua 模板、源目录 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
+主页直接进入设置，插件按 SettingsEntry 归入音频、内容、扩展或自定义分类；管理器的 navigate 仍通过正常页面栈打开对应页面。商店下载后的原生包继续走宿主验签与审核。Agent 可在原生批准或完全访问授权下安装、启用和调试 Lua；授权不能由插件转发参数自行赋予。原生与 Lua 模板、源目录 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 
-API9 当前构建、升级安装、设备状态及功能验收见 [Release 验证记录](release-testing.md)。前面的 API6/7/8 手机结果保留为历史，不替代本轮验证；本页不复制不断变化的测试总数。
+当前构建、升级安装、设备状态及功能验收见 [Release 验证记录](release-testing.md)。前面的 API6/7/8 手机结果保留为历史，不替代本轮验证；本页不复制不断变化的测试总数。

@@ -54,3 +54,9 @@ flowchart LR
 配置依据 [Sherpa v1.12.38 官方 Kotlin 接口](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.38/sherpa-onnx/kotlin-api/OnlineRecognizer.kt)；[特征提取器逐步移出已处理帧](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.38/sherpa-onnx/csrc/features.cc)，[reset 保留解码上下文](https://github.com/k2-fsa/sherpa-onnx/blob/v1.12.38/sherpa-onnx/csrc/online-recognizer-transducer-impl.h)。本地与模拟后端测试不代替真实麦克风、跨进程、浮窗和连续发声检查；当前安装与设备结果统一记录在 [Release 验证记录](release-testing.md)。
 
 服务设置通过 API9 SettingsEntry 加入“音频”卡片，共用设置的分组、圆角和按压反馈；页面预加载，重进不重放全部条目入场动画。正式自动化入口为 listen、close、input、continuous，供已授权 AppBroker/Agent 调用；引擎选择、资源导入或确认按钮不会因此全部开放。UI 失效可刷新当前快照，不重启识别引擎。
+
+## 语音输入释放区（API 10）
+
+释放按钮是围绕发送区的同心弧形胶囊，选中时长度和端部圆角共用无回弹进度连续变化。端部用与内外圆弧相切的真实圆角，滑动命中区固定，不随外形动画反复切换选中项。图标与每个字沿胶囊中心弧放置，分别按所在位置的切线旋转，长标签按可用弧长省略。自动朗读开启时提供取消、持续识别；关闭时额外提供发送并朗读。横屏以竖屏逆时针90度映射，文字与图标保持可读。持续识别时主界面入口显示「长按停止识别」，长按直接停止。没有识别到文字时静默结束，权限、引擎、录音和真正失败仍明确提示。
+
+插件通过 `UiAction(slot=VOICE_INPUT_RELEASE)` 接入最多五个额外释放按钮，支持 `buttonStyle=ICON` 或 `ICON_TEXT`，排序沿 action.order。滑动释放或点击都派发给该插件 action，当前识别文字由 `context.inputs["voiceText"]` 传入；宿主先关闭本次输入，插件决定后续处理。屏幕较窄时收起文字保留图标及完整无障碍名称。

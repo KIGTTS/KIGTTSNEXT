@@ -16,6 +16,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 if ("app-control" !in capabilities) return AppReply.Failure("PERMISSION_DENIED", "插件没有应用控制权限")
                 return try {
                     if (command is AppCommand.DeliverResource) return deliver(owner, command)
+                    if (command is AppCommand.PluginCall) return call(owner, command)
                     withContext(Dispatchers.Main) { perform(owner, command) }
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (error: IllegalArgumentException) { AppReply.Failure("INVALID", error.message ?: "参数不合法") }
@@ -81,12 +82,20 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 model.invoke(command.pluginId, command.actionId, command.inputs.filterKeys { !it.startsWith('_') } + ("_callerPlugin" to owner))
                 return data { put("accepted", true); put("completed", false) }
             }
-            AppCommand.Describe, is AppCommand.DeliverResource -> error("已单独处理")
+            AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall -> error("已单独处理")
         }
         return data { put("accepted", true) }
     }
     private fun authorizedTarget(owner: String, id: String, action: String): KigPlugin? = manager.registry.plugin(id)?.takeIf {
         id != owner && manager.registry.available(it) && action in it.contributions.automationActions
+    }
+    private suspend fun call(owner: String, command: AppCommand.PluginCall): AppReply {
+        val target = authorizedTarget(owner, command.pluginId, command.actionId)
+            ?: return AppReply.Failure("PERMISSION_DENIED", "插件没有开放此操作")
+        val granted = withContext(Dispatchers.Main) { ui()?.agentAccess?.consume(owner) == true }
+        val inputs = command.inputs.filterKeys { !it.startsWith('_') } + mapOf("_callerPlugin" to owner, "_agentApproved" to granted.toString())
+        val result = target.execute(command.actionId, withContext(Dispatchers.Main) { ui()?.context() ?: PluginContext("", "") }.copy(inputs = inputs))
+        return data { put("completed", true); put("outcome", PluginJson.encodeToJsonElement(PluginOutcome.serializer(), result)) }
     }
     private suspend fun deliver(owner: String, command: AppCommand.DeliverResource): AppReply {
         require(command.source.pluginId == null || command.source.pluginId == owner) { "资源不属于调用插件" }
@@ -99,6 +108,15 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
         if (!canReceive) return AppReply.Failure("BUSY", "请先打开 KIGTTS，并等待目标插件完成当前操作")
         val relative = withContext(Dispatchers.IO) {
             ScopedResourceDelivery.copy(manager.paths.storage(owner), manager.paths.storage(command.pluginId), command.source.path)
+        }
+        if (command.actionId == "agent-install") {
+            val allowed = withContext(Dispatchers.Main) { ui()?.agentAccess?.consume(owner) == true }
+            if (!allowed) return AppReply.Failure("APPROVAL_REQUIRED", "安装需要用户批准或完全访问")
+            val target = authorizedTarget(owner, command.pluginId, command.actionId)
+                ?: return AppReply.Failure("PERMISSION_DENIED", "安装入口已停用")
+            val result = target.execute(command.actionId, PluginContext("", "", inputs = mapOf("resourcePath" to relative,
+                "_callerPlugin" to owner, "_agentApproved" to "true")))
+            return data { put("completed", true); put("outcome", PluginJson.encodeToJsonElement(PluginOutcome.serializer(), result)) }
         }
         return withContext(Dispatchers.Main) {
             val model = ui() ?: return@withContext AppReply.Failure("HOST_UNAVAILABLE", "主界面已关闭")

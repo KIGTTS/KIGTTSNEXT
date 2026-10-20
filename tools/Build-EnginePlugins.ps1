@@ -13,6 +13,8 @@ if (-not $SkipBuild) {
     if ($LASTEXITCODE -ne 0) { throw 'Plugin compilation failed' }
 }
 $utf8 = [Text.UTF8Encoding]::new($false)
+$sdkApi = [int]([regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot 'plugin-api/src/main/kotlin/com/kigtts/plugin/api/Plugin.kt')), 'const val PLUGIN_API_VERSION = (\d+)').Groups[1].Value)
+if ($sdkApi -le 0) { throw 'Plugin SDK version missing' }
 if (-not $SigningKey) { $SigningKey = Join-Path $projectRoot '.tools/plugin-signing/private.der' }
 $SigningKey = [IO.Path]::GetFullPath($SigningKey)
 $rsa = [Security.Cryptography.RSA]::Create(3072)
@@ -52,6 +54,8 @@ function Expand-PluginAar([string]$Aar, [string]$Payload, [string]$Scratch, [str
 foreach ($module in $Modules) {
     $moduleRoot = Join-Path $projectRoot "engine-plugins/$module"
     $spec = Get-Content -LiteralPath (Join-Path $moduleRoot 'plugin-spec.json') -Raw -Encoding utf8 | ConvertFrom-Json -AsHashtable
+    # Every module is compiled against this SDK; do not label fresh bytecode with an older API.
+    $spec.apiVersion = $sdkApi
     $scratch = [IO.Path]::GetFullPath((Join-Path $WorkDirectory "$module/$([Guid]::NewGuid())"))
     $nativeAbi = if ($module -eq 'piper-tts') { 'arm64-v8a' } else { '' }
     $payload = Join-Path $scratch 'payload'

@@ -55,7 +55,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val pressed by source.collectIsPressedAsState()
     val action = { if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT) else model.closePanel() }
     val click = feedbackClick(action)
-    val hold = { longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
     val sideSize=(48f-16f*progress).dp
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
@@ -77,7 +77,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
             Box(Modifier.width(thickness.coerceAtLeast(2f).dp).heightFrom { 160f * (1f - progress) + length * progress }
                 .testTag("dock-main").clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
                 .clearAndSetSemantics {
-                    contentDescription = if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
+                    contentDescription = if (state.continuousRecognition) "长按停止识别" else if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
                     role = Role.Button
                     onClick { click(); true }
                     if (longPress != null) onLongClick(longPress.action.label) { hold(); true }
@@ -86,7 +86,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
                 contentAlignment = Alignment.Center) {
                 Column(Modifier.graphicsLayer { alpha = 1f - progress }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.AutoMirrored.Filled.TextSnippet, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimary)
-                    Text("快\n捷\n文\n本", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(if (state.continuousRecognition) "长按\n停止\n识别" else "快\n捷\n文\n本", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }

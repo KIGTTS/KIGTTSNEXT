@@ -21,7 +21,7 @@ class ContentPresentationTest {
         app=ApplicationProvider.getApplicationContext()
         listOf("media-presentation","playback","quick-phrases","appearance").forEach { app.getSharedPreferences(it,0).edit().clear().commit() }
     }
-    @Test fun closingNestedPagesRestoresPreviousContentIncludingSelectionAndRichFormatting() {
+    @Test fun replacingMediaUsesOnePageAndCloseRestoresOriginalSubtitleAndFormatting() {
         val model=testAppModel(app)
         val text=TextFieldValue("回到之前的字幕",TextRange(2,5))
         model.text(text.text);model.editText(text)
@@ -30,7 +30,7 @@ class ContentPresentationTest {
         try {
             model.content.show(first,false);model.content.show(second)
             assertEquals(second.id,model.state.value.mediaId)
-            model.content.closeContent();assertEquals(first.id,model.state.value.mediaId);assertFalse(model.state.value.contentAutoPlay)
+            model.content.closeContent();assertNull(model.state.value.mediaId);assertEquals(text,model.state.value.editorValue)
             model.content.closeContent();assertNull(model.state.value.mediaId);assertEquals(text,model.state.value.editorValue)
             val phrase=QuickPhrase("带格式的文字","常用",richText=true,formats=listOf(TextFormatRun(0,3,TextFormat.BOLD)))
             model.content.send(phrase);model.content.show(first);model.content.remove(first.id)

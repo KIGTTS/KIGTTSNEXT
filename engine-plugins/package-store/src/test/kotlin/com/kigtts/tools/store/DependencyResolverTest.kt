@@ -4,6 +4,13 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DependencyResolverTest {
+    @Test fun compatibleApiNineDependencyIsRetainedOnApiTen() {
+        val root = entry("test.root", release(dependencies = mapOf("test.core" to "1.x")))
+        val existing = InstalledPackage("test.core", "1.0.0", 1, true, apiVersion = 9)
+        val plan = DependencyResolver(listOf(root), mapOf(existing.id to existing), StoreDevice(35, setOf("arm64-v8a"), api = 10)).resolve(root, 1)
+        assertEquals(listOf("test.root"), plan.ordered.map { it.entry.item.id })
+        assertTrue(release().copy(apiVersion = 9).compatible(StoreDevice(35, setOf("arm64-v8a"), api = 10)))
+    }
     @Test fun sortsTransitiveDependenciesBeforeRoot() {
         val root = entry("test.root", release(dependencies = mapOf("test.core" to "^1.0.0")))
         val core = entry("test.core", release(dependencies = mapOf("test.base" to "1.x")))

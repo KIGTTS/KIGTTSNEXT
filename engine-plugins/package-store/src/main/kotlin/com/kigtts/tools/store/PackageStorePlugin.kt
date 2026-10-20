@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PackageStorePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "从多个源浏览和管理扩展", "0.8.0")
+    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "从多个源浏览和管理扩展", "0.9.0")
     private lateinit var environment: PluginEnvironment
     private lateinit var sources: SourceStore
     private lateinit var jobs: StoreJobs

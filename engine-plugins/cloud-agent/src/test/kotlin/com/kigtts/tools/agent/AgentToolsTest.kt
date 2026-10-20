@@ -70,7 +70,7 @@ class AgentToolsTest {
         val draft = tools.execute(ToolCall("call", "draft_lua", "{\"manifest\":{\"id\":\"tools.sample\",\"name\":\"示例\",\"version\":\"0.1.0\",\"permissions\":[]},\"source\":\"return {}\"}"))
         assertTrue(draft.content.contains("\"installed\":false")); assertNull(captured)
         val delivered = tools.execute(ToolCall("call2", "deliver_lua", "{\"path\":\"drafts/tools.sample\"}"))
-        assertEquals(AppCommand.DeliverResource("runtime.lua", PluginResource("drafts/tools.sample"), "import"), captured)
+        assertEquals(AppCommand.DeliverResource("runtime.lua", PluginResource("drafts/tools.sample"), "agent-install"), captured)
         assertTrue(delivered.pause)
     }
 }

@@ -99,7 +99,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                     state().voiceInputText.takeIf(String::isNotBlank)?.let { text ->
                         replaceText(text)
                         if (readOnSubmit || state().autoPlayback) finalizedSpeech(text, readOnSubmit)
-                    } ?: message("没有识别到文字")
+                    }
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { if (epoch == generation) message(error.message ?: "语音识别失败") }

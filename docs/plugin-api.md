@@ -1,6 +1,6 @@
-# 插件 API v9
+# 插件 API v10（兼容 v9）
 
-当前 SDK 为 API9，随仓库构建的外置插件统一为 0.8.0。API 主版本必须与宿主匹配；API8 及更早的 DEX 包需由同一发布者重新构建并递增 versionCode，更新保留模型与配置。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
+当前 SDK 为 API10；宿主兼容API9，Agent、Lua和商店更新至0.9.0。新功能包需要API10，现有API9服务可以保留；API8 及更早的 DEX 包需由同一发布者重新构建并递增 versionCode，更新保留模型与配置。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -108,3 +108,12 @@ PluginPage.management 可返回 ManagementList。ManagementItem 以稳定 ID 描
 外置原生 `.kigplugin` 使用 Android DEX 和可选 JNI；Lua `.kiglua` 由可选 `runtime.lua` 插件审核与运行，不是主程序内置脚本执行器。Python 运行时尚未实现。外置 Agent、Lua、商店、原生构建及其依赖不进入主 APK。
 
 运行时有 12 个工作进程槽，每个启用的原生外置插件使用独立普通进程。原生进程共享 UID，属于崩溃隔离；Lua 的库/指令/资源限制也不是操作系统级权限沙盒。模板和包源 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
+
+## API 10：识别扩展、聊天与有回执调用
+
+当前SDK为10，宿主同时加载API9插件。旧聊天构造和复制入口保留；新包按本次编译SDK标记API，不应手工把新字节码标为旧版本。插件商店按兼容范围保留API9前置包。
+
+- `UiSlot.VOICE_INPUT_RELEASE`：围绕发送区的弧形释放按钮，支持图标/图文与voiceText输入。
+- `PageBlock.Chat`：conversationId、controls、approval、backgroundRunning；controls支持MODEL/ACCESS，审批由宿主固定在composer上方。ChatMessage补summary、toolName、detail与icon。
+- `AppCommand.PluginCall`：只调用目标显式automationActions，返回已完成结果；以宿主身份绑定调用者并过滤保留字段，不能传递虚构批准。
+- 生成中的原生聊天快照标记backgroundRunning，切换会话仍保留后台任务通知；结束时释放。

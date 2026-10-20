@@ -26,6 +26,11 @@ internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
                 VoiceReleaseTarget.READ -> model.endVoiceInput(true, read = true)
                 VoiceReleaseTarget.CANCEL -> model.endVoiceInput(false)
                 VoiceReleaseTarget.CONTINUOUS -> model.continueVoiceInput()
+                VoiceReleaseTarget.PLUGIN -> gesture.consumePluginRelease()?.let { id ->
+                    val action = model.registry.actions(com.kigtts.plugin.api.UiSlot.VOICE_INPUT_RELEASE, model.context()).firstOrNull { it.plugin.descriptor.id + "/" + it.action.id == id }
+                    model.endVoiceInput(false)
+                    action?.let { model.invoke(it.plugin.descriptor.id, it.action.id, mapOf("voiceText" to state.voiceInputText)) }
+                }
             }
         }
     }
@@ -50,7 +55,8 @@ internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
               val releases: @Composable () -> Unit = { VoiceInputReleaseZones(gesture, state.autoPlayback,
                     cancel = { model.endVoiceInput(false) }, send = { model.endVoiceInput(true) },
                     read = { model.endVoiceInput(true, read = true) }, continuous = model::continueVoiceInput,
-                    landscape = landscape) }
+                    landscape = landscape, extensions = model.registry.actions(com.kigtts.plugin.api.UiSlot.VOICE_INPUT_RELEASE, model.context()),
+                    extension = { action -> model.endVoiceInput(false); model.invoke(action.plugin.descriptor.id, action.action.id, mapOf("voiceText" to state.voiceInputText)) }) }
               if (landscape) Row(Modifier.fillMaxSize()) {
                   transcript(Modifier.weight(1f).fillMaxHeight())
                   releases()

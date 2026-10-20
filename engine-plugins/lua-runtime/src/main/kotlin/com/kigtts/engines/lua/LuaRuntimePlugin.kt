@@ -10,7 +10,7 @@ import java.io.File
 import java.util.UUID
 
 class LuaRuntimePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.8.1")
+    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.9.0")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: LuaSourceStore
     private lateinit var executor: LuaExecutor
@@ -30,7 +30,7 @@ class LuaRuntimePlugin : KigPlugin {
     override val contributions: PluginContributions get() = synchronized(ui) {
         PluginContributions(actions = ui.values.flatMap { it.contributions.actions },
             drawerEntries = listOf(DrawerEntry("manager", "插件编辑器", "manager", PluginIcon.EDIT)) + ui.values.flatMap { it.contributions.drawerEntries },
-            automationActions = listOf("import"),
+            automationActions = listOf("import", "agent-install", "agent"),
             managedPackages = store.projects().map { ManagedPackage(it.manifest.id, it.manifest.version, "lua", it.enabled) },
             settingsEntries = listOf(SettingsEntry("editor", "插件编辑器", "manager", PluginIcon.EDIT,
                 cardId = "developer", cardTitle = "开发工具", summary = "项目、文件与打包")) + ui.values.flatMap { it.contributions.settingsEntries })
@@ -46,7 +46,43 @@ class LuaRuntimePlugin : KigPlugin {
         catch (budget: LuaBudgetExceeded) { PluginOutcome.Message(budget.message ?: "工具运行超时") }
         catch (failure: Exception) { PluginOutcome.Message(failure.message?.take(250) ?: "操作失败") }
     }
+    private suspend fun agent(context: PluginContext): PluginOutcome {
+        val operation = context.inputs["operation"].orEmpty()
+        if (operation == "list") return PluginOutcome.Dialog("Lua 项目", buildJsonArray {
+            store.projects().forEach { project -> add(buildJsonObject {
+                put("id", project.manifest.id); put("name", project.manifest.name); put("enabled", project.enabled); put("error", project.error)
+            }) }
+        }.toString())
+        val id = requireNotNull(context.inputs["project"])
+        val project = store.project(id)
+        val value: JsonElement = when (operation) {
+            "read" -> buildJsonObject { put("source", store.source(id)); put("enabled", project.enabled) }
+            "test" -> { executor.validate(store.source(id)); executor.call(project, "test", context) }
+            "enable" -> {
+                require(context.inputs["_agentApproved"] == "true") { "启用需要用户批准" }
+                store.verify(project); store.enabled(id, true); refresh(store.project(id), context)
+                buildJsonObject { put("enabled", store.project(id).enabled) }
+            }
+            "run" -> {
+                require(context.inputs["_agentApproved"] == "true") { "运行需要用户批准" }
+                require(project.enabled) { "请先启用项目" }
+                val result = executor.call(project, "execute", context.copy(inputs = mapOf("value" to context.inputs["input"].orEmpty())), requireNotNull(context.inputs["action"]))
+                refresh(project, context); result
+            }
+            else -> error("未知Lua调试操作")
+        }
+        return PluginOutcome.Dialog("Lua 结果", value.toString().take(16000))
+    }
     private suspend fun perform(actionId: String, context: PluginContext): PluginOutcome {
+        if (actionId == "agent-install") {
+            require(context.inputs["_agentApproved"] == "true") { "安装需要用户批准" }
+            val pending = store.stage(environment.storage.file(requireNotNull(context.inputs["resourcePath"])))
+            executor.validate(pending.directory.resolve("main.lua").readText(Charsets.UTF_8))
+            val project = store.confirm(pending)
+            refresh(project, context)
+            return PluginOutcome.Dialog("安装结果", "{\"installed\":true,\"enabled\":${store.project(project.manifest.id).enabled},\"id\":\"${project.manifest.id}\"}")
+        }
+        if (actionId == "agent") return agent(context)
         val (action, id) = actionId.substringBefore('/') to actionId.substringAfter('/', "")
         return when (action) {
             "choose" -> PluginOutcome.ImportResource("导入 Lua 工具", "imports", "import", zip = true, mimeTypes = listOf("application/zip", "application/octet-stream"))

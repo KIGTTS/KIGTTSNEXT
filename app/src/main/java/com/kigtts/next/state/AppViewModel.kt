@@ -44,6 +44,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
+    val agentAccess = com.kigtts.next.plugins.control.AgentAccessPolicy(application)
     private val experiments = application.getSharedPreferences("experiments", 0)
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
     private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
@@ -54,7 +55,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
         { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } }, { id -> !cards.isReadOnly(id) })
     val stickerPlugins = hostRuntime?.stickerPlugins ?: com.kigtts.next.plugins.stickers.StickerHost(stickers, pluginManager.paths,
-        { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() })
+        { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() }, { owner -> agentAccess.consume(owner) })
     init { if (hostRuntime == null) pluginManager.stickerBrokerFactory = stickerPlugins::forPlugin }
     val mediaPlayback = com.kigtts.next.ui.media.MediaPlaybackSessions()
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
@@ -274,6 +275,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         invokeWithResult(pluginId, actionId, inputs, null)
     }
     private fun invokeWithResult(pluginId: String, actionId: String, inputs: Map<String, String>, complete: ((Boolean) -> Unit)?) {
+        agentAccess.userAction(pluginId, inputs)
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }
