@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse, unquote
 
 import requests
@@ -25,17 +26,24 @@ def remote_hash(path):
     for attempt in range(5):
         result = hashlib.sha256()
         size = 0
-        with requests.Session() as public:
-            with public.get(BASE + path + "?view=false&verify=" + str(time.time_ns()), stream=True, timeout=(20, 180)) as response:
-                if response.status_code in (404, 429, 502, 503, 504) and attempt < 4:
-                    time.sleep(2 ** attempt)
-                    continue
-                response.raise_for_status()
-                if urlparse(response.url).scheme != "https":
-                    raise ValueError("Non-HTTPS public download")
-                for block in response.iter_content(1024 * 1024):
-                    result.update(block)
-                    size += len(block)
+        try:
+            with requests.Session() as public:
+                base = BASE if attempt % 2 == 0 else BASE.replace("https://modelscope.cn/", "https://www.modelscope.cn/")
+                with public.get(base + path + "?view=false&verify=" + str(time.time_ns()), stream=True, timeout=(15, 30)) as response:
+                    if response.status_code in (404, 429, 502, 503, 504) and attempt < 4:
+                        time.sleep(2 ** attempt)
+                        continue
+                    response.raise_for_status()
+                    if urlparse(response.url).scheme != "https":
+                        raise ValueError("Non-HTTPS public download")
+                    for block in response.iter_content(1024 * 1024):
+                        result.update(block)
+                        size += len(block)
+        except requests.RequestException:
+            if attempt == 4:
+                raise
+            time.sleep(2 ** attempt)
+            continue
         return result.hexdigest(), size
     raise ValueError("Public download did not become available")
 
@@ -88,21 +96,22 @@ def main():
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                     allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
                     token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android preview artifacts")
-            for name in upload:
-                actual = remote_hash(name)
-                if actual != files[name]:
-                    raise ValueError(f"Public artifact verification failed: {name}")
-                print(f"Verified new artifact: {name}", flush=True)
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                for name, actual in zip(upload, pool.map(remote_hash, upload)):
+                    if actual != files[name]:
+                        raise ValueError(f"Public artifact verification failed: {name}")
+                    print(f"Verified new artifact: {name}", flush=True)
             # Only reference artifacts after their public bytes have been verified.
             api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                 allow_patterns=["index.json", "README.md", "LICENSE"], max_workers=2, use_cache=False,
                 token=token, commit_message="Publish verified official plugin catalog and Android download")
             api.token = None
             token = None
-        for name, expected in files.items():
-            if remote_hash(name) != expected:
-                raise ValueError(f"Anonymous integrity check failed: {name}")
-            print(f"Anonymous SHA-256 OK: {name}", flush=True)
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            for name, actual in zip(files, pool.map(remote_hash, files)):
+                if actual != files[name]:
+                    raise ValueError(f"Anonymous integrity check failed: {name}")
+                print(f"Anonymous SHA-256 OK: {name}", flush=True)
         for name in ("index.json", "README.md", "LICENSE"):
             if remote_hash(name)[0] != digest(folder / name):
                 raise ValueError(f"Anonymous catalog check failed: {name}")
