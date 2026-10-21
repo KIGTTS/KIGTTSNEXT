@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([string]$OutputDirectory = '.tools/official-plugin-source')
+param([string]$OutputDirectory = '.tools/official-plugin-source', [string]$AndroidApk, [switch]$DevelopmentSigned)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $output = [IO.Path]::GetFullPath((Join-Path $projectRoot $OutputDirectory))
@@ -99,4 +99,17 @@ API13 助手新包需要新版主程序；API12、API11 与 API9 已发布包保
 "@
 [IO.File]::WriteAllText((Join-Path $output 'README.md'), $readme.Replace("`r`n", "`n") + "`n", $utf8)
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination (Join-Path $output 'LICENSE') -Force
+if ($AndroidApk) {
+    $apk = (Resolve-Path -LiteralPath $AndroidApk).Path
+    if (-not $apk.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetExtension($apk) -ne '.apk') { throw 'APK must be a workspace build artifact' }
+    $hash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
+    $relative = "android/KIGTTSNEXT-api13-$([DateTime]::UtcNow.ToString('yyyyMMdd'))-$($hash.Substring(0,12)).apk"
+    [IO.Directory]::CreateDirectory((Join-Path $output 'android')) | Out-Null
+    Copy-Item -LiteralPath $apk -Destination (Join-Path $output $relative) -Force
+    $android = [ordered]@{ path = $relative; sha256 = $hash; bytes = (Get-Item -LiteralPath $apk).Length
+        apiVersion = 13; version = '0.1.0-preview'; developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
+    [IO.File]::WriteAllText((Join-Path $output 'android/release.json'), ($android | ConvertTo-Json) + "`n", $utf8)
+    $signing = if ($DevelopmentSigned) { '这是优化且不可调试的Release预览包，使用本地开发测试证书签名；不是正式生产发行证书。覆盖安装前请核对当前软件签名。' } else { '这是预览APK，请核对签名和当前安装版本。' }
+    [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android预览版`n`n[下载API13安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
+}
 Write-Output "Prepared $($packages.Count) signed packages in $output"
