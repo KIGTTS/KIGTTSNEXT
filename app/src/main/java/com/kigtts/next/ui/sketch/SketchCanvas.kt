@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.IntSize
     val density = LocalDensity.current.density
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val input = remember(state) { SketchInput(state) }
+    val scene = remember(state) { SketchScene() }
     val focus = remember { FocusRequester() }
     DisposableEffect(input, enabled) { onDispose { input.release() } }
     LaunchedEffect(initialize, canvasSize) { if (initialize) state.initializeCanvas(canvasSize, background) }
@@ -46,8 +47,10 @@ import androidx.compose.ui.unit.IntSize
                 drawSketchPaper(drawContext.canvas.nativeCanvas, visible, state.background.toInt(), state.pattern,
                     minOf(width, height), transform.scale)
                 drawContext.canvas.saveLayer(visible, Paint())
-                try { state.strokes.forEach { stroke ->
-                    drawPath(strokePath(stroke, width, height).asComposePath(),
+                try {
+                    scene.sync(state.strokes.toList(), width, height)
+                    scene.draw(visible, transform.scale) { stroke, path ->
+                    drawPath(path.asComposePath(),
                         color = if (stroke.erase) Color.Black else Color(stroke.color), alpha = stroke.alpha,
                         blendMode = if (stroke.erase) BlendMode.Clear else BlendMode.SrcOver)
                 } } finally { drawContext.canvas.restore() }

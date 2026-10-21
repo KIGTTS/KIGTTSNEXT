@@ -32,7 +32,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     session: PolaroidCameraSession, sizeChanged: (IntSize) -> Unit, modifier: Modifier = Modifier,
     displayReady: Boolean = session.ready, morphChanged: (Boolean) -> Unit = {},
     options: CameraOptions? = null, rotation: Int = Surface.ROTATION_0, active: Boolean = true,
-    filterStrength: Float = 1f,
+    filterStrength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
     verticalChrome: Boolean = false, headerOverlay: Boolean = false,
     chrome: @Composable BoxScope.(CameraChromeLayout) -> Unit = {},
     streamTransition: CameraStreamTransition? = null,
@@ -41,8 +41,8 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
     val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
-    LaunchedEffect(session, colors) {
-        snapshotFlow { colors.values() }.collect(session::setPreviewFilter)
+    LaunchedEffect(session, colors, lut, filterStrength) {
+        snapshotFlow { colors.values() }.collect { session.setPreviewFilter(it, lut, filterStrength) }
     }
     DisposableEffect(view, session) {
         var pinched = false

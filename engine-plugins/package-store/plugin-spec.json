@@ -1,10 +1,10 @@
 {
   "id": "tools.package-store",
   "name": "插件商店",
-  "version": "0.9.0",
-  "versionCode": 2,
+  "version": "0.9.3",
+  "versionCode": 5,
   "entryClass": "com.kigtts.tools.store.PackageStorePlugin",
-  "apiVersion": 10,
+  "apiVersion": 12,
   "minSdk": 26,
   "runtime": "android-dex",
   "license": "MIT",
@@ -12,5 +12,9 @@
     "ui",
     "network",
     "app-control"
-  ]
+  ],
+  "permissionPurposes": {
+    "network": "获取用户添加的包源清单并通过HTTPS和受限CDN跳转下载已选插件。",
+    "app-control": "核实插件安装状态并将用户确认的安装计划提交宿主审核。"
+  }
 }

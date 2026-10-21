@@ -21,42 +21,6 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 
 @Composable
-internal fun CameraFilters(filter: PhotoFilter, enabled: Boolean, select: (PhotoFilter) -> Unit, vertical: Boolean = false,
-    strength: Float = 1f, changeStrength: (Float) -> Unit = {}) {
-    val item: @Composable (PhotoFilter) -> Unit = { option -> key(option) {
-        val press = rememberImmediateButtonPress(remember { androidx.compose.foundation.interaction.MutableInteractionSource() })
-        LaunchedEffect(enabled) { if (!enabled) press.cancel() }
-        FilledTonalButton(onClick = feedbackClick { press.click(); select(option) },
-            modifier = Modifier.testTag("camera-filter/" + option.name)
-                .then(if (enabled) Modifier.immediateButtonPress(press) else Modifier)
-                .semantics { selected = option == filter },
-            enabled = enabled, interactionSource = press.native, shapes = ButtonDefaults.shapes(),
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = if (option == filter) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-                contentColor = if (option == filter) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant).animateEnabled(enabled)) {
-            Text(option.label, maxLines = 1)
-        }
-    } }
-    Column(Modifier.then(if (vertical) Modifier.verticalScroll(rememberScrollState()) else Modifier.fillMaxWidth())
-        .padding(6.dp).testTag("camera-filters"), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (vertical) Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            PhotoFilter.entries.forEach { item(it) }
-        } else Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            PhotoFilter.entries.forEach { item(it) }
-        }
-        AnimatedVisibility(filter != PhotoFilter.ORIGINAL, enter = fadeIn(), exit = fadeOut()) {
-            Column(Modifier.padding(horizontal = 4.dp)) {
-                Text("强度 ${(strength.coerceIn(0f, 1f) * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
-                Slider(strength.coerceIn(0f, 1f), changeStrength, Modifier.fillMaxWidth().testTag("camera-filter-strength"),
-                    enabled = enabled, valueRange = 0f..1f)
-            }
-        }
-    }
-}
-
-@Composable
 internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry: () -> Unit) {
     AnimatedVisibility(session.error != null, enter = fadeIn(), exit = fadeOut()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -71,7 +35,7 @@ internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry:
 internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean, canFlip: Boolean,
     cancel: () -> Unit, capture: () -> Unit, flip: () -> Unit, vertical: Boolean, locked: Boolean = busy,
     countingDown: Boolean = false, cancelCountdown: () -> Unit = {}, showCancel: Boolean = true,
-    gallery: (() -> Unit)? = null) {
+    gallery: (() -> Unit)? = null, systemCamera: (() -> Unit)? = null) {
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
@@ -81,7 +45,8 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
                 .testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
             colors = tonal,
-            enabled = active && if (gallery != null) !locked else !busy)
+            enabled = active && if (gallery != null) !locked else !busy,
+            onLongClick = if (gallery != null) systemCamera else null)
         ToolButton(if (countingDown) "取消倒计时" else "拍照", when {
             countingDown -> Icons.Default.TimerOff
             busy -> Icons.Default.HourglassEmpty

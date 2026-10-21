@@ -22,6 +22,14 @@ class LuaStickerBrokerTest {
                 else->StickerReply.Snapshot(StickerSnapshot(7))}}
             override fun changes(afterRevision:Long)=emptyFlow<StickerChange>()
         }
+        override val appBroker = object : AppBroker {
+            override suspend fun request(command: AppCommand): AppReply {
+                val operation = command as AppCommand.ManagedCall
+                require(operation.projectId == "example" && operation.channel == "stickers")
+                val reply = stickerBroker.request(PluginJson.decodeFromJsonElement<StickerCommand>(operation.command))
+                return AppReply.Data(buildJsonObject { put("reply", PluginJson.encodeToJsonElement<StickerReply>(reply)) })
+            }
+        }
         override suspend fun download(url:String,relativePath:String,sha256:String?):File=error("Unavailable")
     }
     private fun project(env:PluginEnvironment,body:String,permissions:List<String>):Pair<LuaSourceStore,LuaProject> {

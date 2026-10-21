@@ -29,7 +29,8 @@ private val CardDraftSaver = Saver<PolaroidCard, String>(
 @Composable
 fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId: String, message: (String) -> Unit,
     openLibrary: () -> Unit = {}, openCamera: () -> Unit = {}, cameraImageId: String? = null,
-    cameraOriginalImageId: String? = null, cameraFrameStyleId: String? = null, cameraRequestVersion: Long = 0L) {
+    cameraOriginalImageId: String? = null, cameraFrameStyleId: String? = null, cameraRequestVersion: Long = 0L,
+    cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
@@ -66,7 +67,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     LaunchedEffect(persisted) { if (!dirty) { draft = persisted; baseline = persisted } }
     LaunchedEffect(cameraRequestVersion, cameraImageId) {
         if (cameraRequestVersion != 0L && cameraRequestVersion != handledCameraVersion && cameraImageId != null) {
-            draft = draft.copy(imageId = cameraImageId, originalImageId = cameraOriginalImageId, photoX = .5, photoY = .5, photoZoom = 1.0,
+            draft = draft.copy(imageId = cameraImageId, originalImageId = cameraOriginalImageId, photoX = cameraPhotoX, photoY = cameraPhotoY, photoZoom = cameraPhotoZoom,
                 frameStyleId = cameraFrameStyleId ?: draft.frameStyleId)
             selectedId = null; mode = CardEditorMode.CROP
             handledCameraVersion = cameraRequestVersion

@@ -1,0 +1,5 @@
+Filter reference photograph: Joel Filipe, White apartment building (2016).
+https://unsplash.com/photos/white-modern-cement-building-under-blue-sky-RFDP7_80v5A
+Distributed under the Unsplash License: https://unsplash.com/license
+The photograph was provided by the user for the filter preview selector.
+Built-in film-style color matrices are original KIGTTS presets, not official Fujifilm LUTs.

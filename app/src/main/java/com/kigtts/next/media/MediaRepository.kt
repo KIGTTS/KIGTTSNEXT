@@ -20,6 +20,7 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
     val thumbnails = com.kigtts.next.media.thumbnail.MediaThumbnails(this)
     val htmlFiles = HtmlProjectFiles(this)
     val htmlImports = HtmlProjectImports(context, this)
+    val icons = UiIcons(context, File(root, "ui-icons"))
     internal fun updateHtml(id: String, primary: String): MediaEntry {
         val entry = requireNotNull(get(id));require(entry.kind == MediaKind.HTML && entry.pluginId == null)
         require(scoped(primary).isFile)

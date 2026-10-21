@@ -9,8 +9,9 @@ internal object MotionPaperShaders {
       uniform sampler2D uVideo;uniform sampler2D uBlur;uniform sampler2D uOverlay;
       uniform vec2 uOutputSize;uniform vec4 uPhoto;uniform vec4 uForeground;uniform vec4 uBackdrop;
       uniform vec4 uRow0;uniform vec4 uRow1;uniform vec4 uRow2;uniform vec3 uBias;uniform float uBlurred;uniform float uRadius;
+      """ + com.kigtts.next.media.color.LutShader.GLSL + """
       vec3 filtered(vec4 c){vec4 encoded=vec4(pow(clamp(c.rgb,0.,1.),vec3(1./2.2)),c.a);
-        return pow(clamp(vec3(dot(uRow0,encoded),dot(uRow1,encoded),dot(uRow2,encoded))+uBias,0.,1.),vec3(2.2));}
+        return pow(applyLut(clamp(vec3(dot(uRow0,encoded),dot(uRow1,encoded),dot(uRow2,encoded))+uBias,0.,1.)),vec3(2.2));}
       vec2 uvFor(vec2 point,vec4 rect){vec2 uv=(point-rect.xy)/rect.zw;return vec2(uv.x,1.-uv.y);}
       bool inside(vec2 uv){return uv.x>=0.&&uv.x<=1.&&uv.y>=0.&&uv.y<=1.;}
       void main(){vec2 point=vec2(vUv.x,1.-vUv.y)*uOutputSize;

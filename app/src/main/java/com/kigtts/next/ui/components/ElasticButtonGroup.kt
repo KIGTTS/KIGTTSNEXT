@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,6 +29,7 @@ import kotlin.math.roundToInt
 data class ElasticAction(
     val id: String, val label: String, val icon: ImageVector, val onClick: () -> Unit,
     val iconOnly: Boolean = true, val weight: Float = 1f,
+    val busy: Boolean = false,
 )
 
 /** The first action stays at the outside edge; excess actions remain reachable in a menu. */
@@ -64,7 +66,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
         val hidden = actions.drop(count)
         val allTextFits = !overflow && preferred.sum() + 4f * (actions.size - 1) <= maxWidth.value
         val kept = actions.take(count).let { if (alignEnd) it.reversed() else it }
-        val menuAction = ElasticAction(overflowTag, overflowLabel, Icons.Default.ExpandMore, { more = true })
+        val menuAction = ElasticAction(overflowTag, overflowLabel, if (plain) Icons.Default.MoreHoriz else Icons.Default.ExpandMore, { more = true })
         val shown = if (!overflow) kept else if (alignEnd) listOf(menuAction) + kept else kept + menuAction
         val widths = shown.map { action ->
             if (allTextFits) preferred[actions.indexOf(action)] else 32f
@@ -79,7 +81,8 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 val button = Modifier.testTag(action.id)
                 if (action.iconOnly || !allTextFits) ToolButton(action.label, action.icon, action.onClick, button,
                     sources[index], IconButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
-                    if (plain) compactPlainIconColors() else compactTonalIconColors())
+                    if (plain) compactPlainIconColors() else compactTonalIconColors(), busy = action.busy,
+                    iconSize = if (plain) 24.dp else 16.dp)
                 else PillButton(action.label, action.icon, action.onClick, button, sources[index],
                     ButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
                     if (plain) compactPlainButtonColors() else compactTonalButtonColors())

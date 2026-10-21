@@ -84,7 +84,7 @@ private fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: Corne
     Surface(onClick = feedbackClick(select), interactionSource = source, modifier = modifier.testTag("quick-phrase-" + phrase.id),
         color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = homeCardShape(neighbors, pressed, neighborPressed)) {
         Box(Modifier.fillMaxSize()) {
-        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase.mediaId, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
+        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
         QuickPhraseText(phrase, Modifier.fillMaxHeight().fillMaxWidth(if (phrase.mediaId == null) 1f else .60f)
             .padding(start = 12.dp, end = if (phrase.mediaId == null) 12.dp else 4.dp, top = 12.dp, bottom = 12.dp))
         }

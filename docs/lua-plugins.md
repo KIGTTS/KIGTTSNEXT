@@ -1,6 +1,6 @@
 # 独立插件编辑器与 Lua 工具
 
-插件编辑器是独立的 `runtime.lua` API10/MIT 插件，发布为 `runtime.lua-0.9.0.kigplugin`。
+插件编辑器是独立的 `runtime.lua` API11/MIT 插件，发布为 `runtime.lua-0.9.1.kigplugin`。
 LuaJ 3.0.1 与编辑器实现只存在于外置包，主程序提供原生页面、文件列表和能力接口。
 `.kigplugin` 仍是需要发行者签名的 Android DEX 插件；`.kiglua` 是由此编辑器管理的 Lua 源项目，不是 APK。
 
@@ -150,7 +150,7 @@ local html = host.asset.read("index.html")
 LuaJ 使用 Lua 5.2 语言；保留受限基础、数学、字符串、表和 bit32 功能。
 不加载可访问操作系统/Java的 io、os、luajava、包加载和协程；debug 仅由运行时用于预算检查，对脚本不可见。
 禁用 load/loadfile/dofile、元表访问、pcall/xpcall、字节码 dump 和难以抢占的格式化/模式/大量重复字符串操作。
-字符串 find 仅进行字面搜索。每次最多 250,000 指令、2 秒 CPU 窗口、64 层调用、16 次宿主请求；每次宿主请求最长 5 秒。
+字符串 find 仅进行字面搜索。每次最多 250,000 指令、2 秒 CPU 窗口、64 层调用、16 次宿主请求；每次宿主请求最长125秒，以容纳原生权限审批；等待宿主不计Lua CPU指令预算。
 停止插件会取消执行；无限循环、指数字符串增长、错误或非法 UI 会隔离到对应工具，保持其它工具可用。
 
 这是一套源脚本能力和执行预算限制，**不是操作系统级沙盒，也不提供完整的 JVM 内存配额**。
@@ -158,10 +158,12 @@ LuaJ 使用 Lua 5.2 语言；保留受限基础、数学、字符串、表和 bi
 引用官方 [LuaJ 源码与 Android 说明](https://github.com/luaj/luaj)、[受限环境示例](https://github.com/luaj/luaj/blob/master/examples/jse/SampleSandboxed.java)、[DebugLib 指令回调](https://luaj.org/luaj/3.0/api/org/luaj/vm2/lib/DebugLib.html)。
 
 本轮测试覆盖确认前不运行、远程确认门禁、无限循环/字符串增长/取消、禁库、权限与只读页面、哈希校验、更新数据保留、坏 ZIP/字节码/路径、JSON 类型、文件移动与草稿隔离。
-实体手机测试按用户安排推迟，不声明已在手机安装或验证。
+构建与实体手机的完成情况见[Release验证记录](release-testing.md)。
 
-## Agent 安装与调试（0.9.0 / API 10）
+## Agent 安装与调试（0.9.1 / API11）
 
 `runtime.lua` 另外导出 `agent-install` 资源入口和 `agent` 同步调用入口。Agent 经原生输入栏批准或完全访问授权后，可自动校验、安装并启用草稿；普通导入仍要求检查页确认。`agent` 支持 operation=list/read/test/enable/run，以及 project/action/input 字符串。安装、启用、执行必须有宿主绑定的授权，转发调用不能伪造批准字段。源码权限、模块范围、指令/时间限额不变。
 
 宿主 `AppCommand.PluginCall` 返回 `completed` 与真实 `PluginOutcome`，不把 accepted 当成执行成功，也不自动应用其中的页面导航。Agent 可据此读取 test(ctx) 或 execute(action,ctx) 的实际结果，再修复草稿并更新安装。
+
+项目manifest可用permissionPurposes按能力说明用途；统一插件管理逐项目显示权限，实际调用交宿主核验项目ID、运行时归属与已声明权限，不共用编辑器授权。语法、页面和test预检返回真实phase/line/error，缺权限明确permissionPending并要求授权后再验，不因审批拒绝删除项目。Gomoku真机修复保持已有data，未将用户工程作为官方源公共包发布。

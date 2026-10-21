@@ -59,7 +59,10 @@ private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifie
             { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight((1f - middle) / 2))
         CursorTrackSlot(state.editing, model, progress, Modifier.weight(middle))
         Box(Modifier.weight((1f - middle) / 2), contentAlignment = Alignment.CenterEnd) {
-            val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", "全屏", Icons.Default.Fullscreen, model::enterSubtitleFullscreen, iconOnly = false)
+            val expanded = state.subtitleExpanded || state.forcedFullscreen
+            val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", if (expanded) "退出全屏" else "全屏",
+                if (expanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                { if (expanded) model.exitSubtitleFullscreen() else model.enterSubtitleFullscreen() }, iconOnly = false)
                 else ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
                     if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)
             ElasticButtonGroup(listOf(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,

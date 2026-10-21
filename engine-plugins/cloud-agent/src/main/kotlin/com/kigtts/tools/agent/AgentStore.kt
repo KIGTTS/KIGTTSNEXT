@@ -9,37 +9,63 @@ import java.io.File
 class AgentStore(private val storage: PluginStorage) {
     private val settingsFile = storage.file("config/agent.json")
     private val conversationDirectory = storage.directory("conversations")
-    @Volatile var settings: AgentSettings = read<AgentSettings>(settingsFile) ?: AgentSettings()
+    private val conversationFiles = AgentConversationFiles(conversationDirectory)
+    @Volatile var settings: AgentSettings = (read<AgentSettings>(settingsFile) ?: AgentSettings()).let { it.copy(profiles = AgentSettings().profiles + it.profiles) }
         private set
     @Volatile var pending: PendingReview? = read<PendingReview>(storage.file("config/pending-review.json"))
         private set
+    @Volatile var modelPickerConversation: String? = null
+    @Volatile var modelFilter = ""
+    @Volatile var modelOffset = 0
+    @Volatile var modelStatus: Map<String, String> = emptyMap()
+    private val history = mutableMapOf<String, Int>()
+    @Synchronized fun historyBefore(id: String): Int? = history[id]
+    @Synchronized fun loadEarlier(id: String, before: Int) {
+        require(before in 0..requireNotNull(conversations[id]).messages.size)
+        history[id] = before
+    }
     private val conversations = linkedMapOf<String, Conversation>()
     init {
         conversationDirectory.listFiles { f -> f.extension == "json" }?.sortedBy { it.name }?.forEach { file ->
-            read<Conversation>(file)?.let { saved ->
+            conversationFiles.read(file)?.let { saved ->
                 conversations[saved.id] = saved.copy(messages = saved.messages.map { message ->
-                    if (message.state == MessageState.STREAMING) message.copy(state = MessageState.CANCELLED) else message
+                    if (message.state == MessageState.STREAMING) {
+                        if (message.role == "tool") message.copy(state = MessageState.COMPLETE, content = "{\"status\":\"interrupted_outcome_unknown\"}")
+                        else message.copy(state = MessageState.CANCELLED)
+                    } else message
                 })
             }
         }
     }
     @Synchronized fun updateSettings(change: (AgentSettings) -> AgentSettings) {
-        settings = change(settings); write(settingsFile, settings)
+        val next = change(settings)
+        if (next.provider != settings.provider || next.customProviderId != settings.customProviderId) {
+            // Legacy sessions inherited the settings provider; pin it before editing another connection.
+            conversations.values.toList().filter { it.provider == null }.forEach { old ->
+                save(old.copy(provider = settings.provider, customProviderId = settings.customProviderId,
+                    model = old.model ?: settings.profile().model))
+            }
+        }
+        settings = next; write(settingsFile, settings)
     }
     @Synchronized fun list(): List<Conversation> = conversations.values.sortedByDescending { it.updatedAt }
     @Synchronized fun get(id: String): Conversation? = conversations[id]
     @Synchronized fun selected(): Conversation? = settings.selectedConversation?.let(conversations::get)
     @Synchronized fun create(): Conversation {
         check(conversations.size < 100) { "会话已达上限，请先删除不需要的会话" }
-        val conversation = Conversation(); save(conversation)
+        val connection = settings.configuredConnection()
+        val conversation = Conversation(provider = connection.provider, customProviderId = connection.customProviderId,
+            model = connection.effectiveProfile().model); save(conversation)
         updateSettings { it.copy(selectedConversation = conversation.id) }; return conversation
     }
     @Synchronized fun select(id: String) { require(conversations.containsKey(id)); updateSettings { it.copy(selectedConversation = id) } }
     @Synchronized fun save(conversation: Conversation) {
         require(conversation.id.matches(Regex("[a-zA-Z0-9-]{1,64}")))
-        require(conversation.messages.size <= 1000) { "此会话消息过多，请新建会话" }
-        write(File(conversationDirectory, "${conversation.id}.json"), conversation)
+        conversationFiles.save(conversation)
         conversations[conversation.id] = conversation
+    }
+    @Synchronized fun modify(id: String, change: (Conversation) -> Conversation): Conversation {
+        val updated = change(requireNotNull(conversations[id])); save(updated); return updated
     }
     @Synchronized fun message(id: String, message: AgentMessage, persist: Boolean = true) {
         val conversation = requireNotNull(conversations[id]); val items = conversation.messages.toMutableList()
@@ -49,7 +75,8 @@ class AgentStore(private val storage: PluginStorage) {
         if (persist) save(updated) else conversations[id] = updated
     }
     @Synchronized fun delete(id: String) {
-        conversations.remove(id); File(conversationDirectory, "$id.json").delete()
+        require(id.matches(Regex("[a-zA-Z0-9-]{1,64}")))
+        conversations.remove(id); conversationFiles.delete(id)
         if (settings.selectedConversation == id) updateSettings { it.copy(selectedConversation = list().firstOrNull()?.id) }
         if (pending?.conversationId == id) setPending(null)
     }

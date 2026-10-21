@@ -2,7 +2,7 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -23,18 +23,18 @@ private data class SubtitleFrame(val text: String, val revision: Int, val format
 @Composable
 fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: TextStyle, width: Int, height: Int) {
     val target = SubtitleFrame(text, state.subtitleRevision, state.subtitleFormats, state.subtitlePlaceholder.takeIf { text.isEmpty() }.orEmpty())
-    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-    val spatial = MaterialTheme.motionScheme.fastSpatialSpec<androidx.compose.ui.unit.IntOffset>()
-    AnimatedContent(targetState = target, modifier = Modifier.fillMaxWidth().testTag("subtitle-text-transition"),
+    val effects = tween<Float>(180, easing = FastOutSlowInEasing)
+    AnimatedContent(targetState = target, modifier = Modifier.fillMaxSize().testTag("subtitle-text-transition"),
         contentAlignment = Alignment.Center, label = "subtitle-text",
         transitionSpec = {
-            (fadeIn(effects) + slideInVertically(spatial) { it.coerceAtMost(24) / 2 })
-                .togetherWith(fadeOut(effects) + slideOutVertically(spatial) { -it.coerceAtMost(24) / 2 }).using(null)
+            fadeIn(effects)
+                .togetherWith(fadeOut(effects))
+                .using(null)
         }) { frame ->
-        Box(Modifier.then(if (frame == target) Modifier else Modifier.clearAndSetSemantics {})) {
+        Box(Modifier.fillMaxSize().then(if (frame == target) Modifier else Modifier.clearAndSetSemantics {}), contentAlignment = Alignment.Center) {
             if (frame.text.isEmpty()) {
                 // Fit only the displayed hint; the editable document remains empty.
-                val fitted = style.copy(fontSize = fittingSubtitleFontSize(frame.placeholder, style, width, height).sp)
+                val fitted = animatedSubtitleStyle(style, fittingSubtitleFontSize(frame.placeholder, style, width, height))
                 Box(if (frame.placeholder.isNotEmpty()) Modifier.testTag("subtitle-placeholder") else Modifier) {
                     Text(frame.placeholder, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
                         .subtitleInputGestures(model, frame == target),
@@ -43,19 +43,10 @@ fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: T
                 }
             } else {
                 val formatted = remember(frame.text, frame.formats) { formattedText(frame.text, frame.formats) }
-                val fitted = style.copy(fontSize = fittingSubtitleFontSize(formatted, style, width, height).sp)
+                val fitted = animatedSubtitleStyle(style, fittingSubtitleFontSize(formatted, style, width, height))
                 Text(formatted, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
                     .subtitleInputGestures(model, frame == target), style = fitted)
             }
         }
     }
-}
-
-/** Programmatic changes animate the retained editor without replacing its IME/selection state. */
-@Composable
-fun Modifier.subtitleUpdateMotion(revision: Int): Modifier {
-    val alpha = remember { Animatable(1f) }
-    val spec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-    LaunchedEffect(revision) { alpha.snapTo(.75f); alpha.animateTo(1f, spec) }
-    return graphicsLayer { this.alpha = alpha.value }
 }

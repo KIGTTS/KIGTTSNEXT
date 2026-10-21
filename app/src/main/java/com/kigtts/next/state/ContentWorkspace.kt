@@ -23,7 +23,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     private val state:()->AppState,private val update:((AppState)->AppState)->Unit,private val navigate:(Destination)->Unit,
     private val back:()->Unit,private val setText:(String)->Unit,private val playAudio:(MediaEntry,Boolean)->Unit = { _,_ -> },
     private val stopAudio:()->Unit = {}, private val autoRead:()->Unit = {},
-    private val editorIo:CoroutineDispatcher=Dispatchers.IO) {
+    private val editorIo:CoroutineDispatcher=Dispatchers.IO, private val permissions:com.kigtts.plugin.runtime.PluginPermissions?=null) {
     private val history = ContentHistory()
     private val editorSnapshot=ContentEditorSnapshot(context)
     private val editorCompletion=EditorSaveCompletion()
@@ -61,7 +61,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
             playAudio(entry,autoPlay&&state().autoPlayback);return
         }
         saveSelection(entry.id,autoPlay,audioMode)
-        update { it.copy(mediaId=entry.id,editing=false,mediaEditing=false,quickTextEditing=false,sidePage=null,
+        update { it.copy(mediaId=entry.id,webPermissionEntryId=null,editing=false,mediaEditing=false,quickTextEditing=false,sidePage=null,
             webCanGoBack=false,audioId=null,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1,subtitleFormats=emptyList(),subtitleRevision=it.subtitleRevision+1) }
     }
     fun closeContent() {
@@ -75,7 +75,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val media=repository.get(previous?.media); val audio=repository.get(previous?.audio)
         if(media!=null)saveSelection(media.id,previous?.autoPlay ?: true,previous?.audioMode)
         update { it.copy(editorValue=previous?.text ?: it.editorValue, subtitleFormats=previous?.formats.orEmpty(),
-            mediaId=media?.id,audioId=null,contentAutoPlay=previous?.autoPlay ?: true,contentAudioMode=previous?.audioMode,
+            mediaId=media?.id,webPermissionEntryId=null,audioId=null,contentAutoPlay=previous?.autoPlay ?: true,contentAudioMode=previous?.audioMode,
             forcedFullscreen=previous?.fullscreen ?: false,editing=false,mediaEditing=false,webCanGoBack=false,
             subtitleRevision=it.subtitleRevision+1,contentRevision=it.contentRevision+1) }
         if(audio!=null)playAudio(audio,false)
@@ -84,7 +84,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun send(phrase:QuickPhrase) {
         val entry = repository.get(phrase.mediaId)
         when (phrase.cardType(entry?.kind)) {
-            QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode) } ?: setText(phrase.text)
+            QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode); update { state -> state.copy(webPermissionEntryId=phrase.id) }; preferences.edit { putString("webEntry",phrase.id) } } ?: setText(phrase.text)
             QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay,
                 subtitleFormats=if(phrase.richText)phrase.formats else emptyList()) }
                 if (entry?.kind == MediaKind.AUDIO) playAudio(entry,phrase.autoPlay&&state().autoPlayback) }
@@ -129,6 +129,12 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val id=draft.phraseId ?: UUID.randomUUID().toString()
         val saved=library.savePhrase(QuickPhrase(draft.text,draft.category,id,draft.title,
             if (draft.type == QuickCardType.TEXT) null else draft.mediaId,draft.type,draft.colorMode,draft.color,draft.richText,draft.formats,draft.autoPlay,draft.audioMode,draft.metadata))
+        if(saved && draft.phraseId == null) {
+            val before = com.kigtts.next.media.WebNetworkGate.owner(draft.key)
+            val access = permissions?.access(before,"network")
+            if(access != null && access != com.kigtts.plugin.runtime.PermissionAccess.ASK) permissions?.set(com.kigtts.next.media.WebNetworkGate.owner(id),"network",access)
+            permissions?.clear(before)
+        }
         if(saved)phraseState.value=if(retain)draft.copy(phraseId=id) else null
         return saved
     }
@@ -222,7 +228,7 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     private fun saveSelection(id:String,autoPlay:Boolean,audioMode:MediaAudioMode?) { preferences.edit {
         putString("selected",id);putBoolean("autoPlay",autoPlay);putString("audioMode",audioMode?.name)
     } }
-    fun resetSelection() { preferences.edit { remove("selected");remove("autoPlay");remove("audioMode") } }
+    fun resetSelection() { preferences.edit { remove("selected");remove("autoPlay");remove("audioMode");remove("webEntry") } }
     private fun detach(id:String) {
         history.remove(id);library.detachMedia(id)
         if(state().mediaId==id || state().audioId==id)closeContent()

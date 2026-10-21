@@ -19,7 +19,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         val snapshot:StickerSnapshot,val frames:List<PolaroidFrameStyle>,val expires:Long,var approved:Boolean=false)
     private val pending=ConcurrentHashMap<String,Plan>()
     private val lock=Mutex();private val decisions=MutableStateFlow(0L)
-    fun forPlugin(owner:String,capabilities:Set<String>):StickerBroker {
+    fun forPlugin(owner:String,capabilities:Set<String>,delegatedApproval:()->Boolean={false}):StickerBroker {
         paths.validateId(owner)
         return object:StickerBroker {
             override suspend fun request(command:StickerCommand):StickerReply=withContext(Dispatchers.IO) {lock.withLock {
@@ -36,7 +36,7 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
                             StickerReply.Frames(repository.snapshot.value.revision,styles.drop(command.offset).take(command.limit),styles.size,
                                 (command.offset+command.limit).takeIf {it<styles.size})}
                         is StickerCommand.Prepare->prepare(owner,command)
-                        is StickerCommand.Commit->commit(owner,command.token)
+                        is StickerCommand.Commit->commit(owner,command.token,delegatedApproval())
                         is StickerCommand.Discard->{stickerRequire(completed(owner,command.token)==null,StickerError.CONFLICT,"修改已经完成，不能再丢弃")
                             val plan=owned(owner,command.token);discard(plan);StickerReply.Discarded(command.token)}
                         is StickerCommand.Transaction->repository.receipt(key(owner,command.transactionId))?.second
@@ -124,10 +124,10 @@ class StickerHost(val repository:StickerRepository,private val paths:PluginPaths
         val plan=pending[token] ?: throw StickerFault(StickerError.NOT_FOUND,"预览已失效，请重新准备")
         stickerRequire(plan.owner==owner,StickerError.PERMISSION_DENIED,"预览不属于本插件");return plan
     }
-    private fun commit(owner:String,token:String):StickerReply {
+    private fun commit(owner:String,token:String,delegatedApproval:Boolean=false):StickerReply {
         completed(owner,token)?.let {return it}
         val plan=owned(owner,token);repository.checkRevision(plan.preview.revision);checkDraft(plan.snapshot,plan.frames)
-        if(plan.preview.requiresConfirmation&&!plan.approved&&!authorize(owner))return StickerReply.Failure(StickerError.CONFIRMATION_REQUIRED,"请打开预览并确认移除",reviewToken=token)
+        if(plan.preview.requiresConfirmation&&!plan.approved&&!delegatedApproval&&!authorize(owner))return StickerReply.Failure(StickerError.CONFIRMATION_REQUIRED,"请打开预览并确认移除",reviewToken=token)
         val reply=StickerReply.Applied(plan.preview.revision+1,plan.transaction)
         repository.replace(plan.snapshot,plan.preview.revision,Triple(key(owner,plan.transaction),plan.hash,reply),
             Triple("token/$token",owner+"\n"+(System.currentTimeMillis()+10*60*1000),reply),frames=plan.frames);pending.remove(token);decisions.value++

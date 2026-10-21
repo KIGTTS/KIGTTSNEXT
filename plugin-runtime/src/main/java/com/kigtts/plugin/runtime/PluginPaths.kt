@@ -9,7 +9,8 @@ class PluginPaths(context: Context) {
     val data = File(context.getExternalFilesDir(null) ?: context.filesDir,
         "appdata/Kigtts/plugin/plugindata").apply { mkdirs() }
     fun validateId(id: String) { require(id.matches(Regex("[a-z][a-z0-9.-]{1,79}")) && !id.contains("..")) }
-    fun packageDirectory(id: String): File { validateId(id); return File(packages, id) }
+    fun validatePackageId(id: String) { validateId(id); require(id != HOST_BACKUP_ID) { "插件 ID 由宿主备份功能保留" } }
+    fun packageDirectory(id: String): File { validatePackageId(id); return File(packages, id) }
     fun storage(id: String): PluginStorage { validateId(id); return PluginStorage(File(data, id)) }
     /** Display/export must never recreate data for an uninstalled plugin. */
     fun existingResource(id: String, relativePath: String): File? {
@@ -22,4 +23,5 @@ class PluginPaths(context: Context) {
         require(file != root && file.toPath().startsWith(root.toPath()))
         return file.takeIf { it.isFile }
     }
+    companion object { const val HOST_BACKUP_ID = "host.backup" }
 }

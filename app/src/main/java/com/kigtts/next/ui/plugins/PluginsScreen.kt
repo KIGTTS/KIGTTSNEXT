@@ -33,9 +33,13 @@ fun PluginsScreen(model: AppViewModel) {
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<PendingPackage?>(null) }
     var remove by remember { mutableStateOf<String?>(null) }
+    var managedRemove by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var permission by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var busy by remember { mutableStateOf(false) }
     val state by model.state.collectAsStateWithLifecycle()
     val working = busy || state.busyPlugins.isNotEmpty()
+    val recovery = remember { com.kigtts.next.recovery.CrashRecovery(context) }
+    var safeMode by remember { mutableStateOf(recovery.safeMode()) }
     DisposableEffect(Unit) { onDispose { pending?.file?.delete() } }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -60,11 +64,26 @@ fun PluginsScreen(model: AppViewModel) {
                 "asr" -> model.selectEngine(pieces[1], false)
                 "remove" -> remove = pieces[1]
                 "page" -> model.navigate(Destination.PluginPage(pieces[1], pieces.drop(2).joinToString("/")))
+                "permissions" -> permission = pieces[1] to pieces.getOrNull(2)
+                "managed" -> model.invoke(pieces[1], pieces.drop(2).joinToString("/"), inputs)
+                "managed-remove" -> managedRemove = pieces[1] to pieces[2]
             }
         }) {
+        if (safeMode) {
+            Text("安全模式：检测到重复崩溃，所有外部插件已临时停用，原数据与启用设置保留。", color = MaterialTheme.colorScheme.error)
+            MotionTextButton(enabled = !working, onClick = feedbackClick { scope.launch { busy = true
+                try { recovery.restore(); safeMode = false; model.refreshPlugins() } finally { busy = false }
+            } }) { Text("恢复插件") }
+        }
         Text("拖动手柄或长按排序。条目菜单提供页面、引擎选择和卸载操作。", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (model.pluginManager.status.isEmpty()) Text("尚未安装语音引擎插件")
     }
+    permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }
+    managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text("卸载插件？") }, text = { Text("该Lua插件的代码与本地数据将被删除。") },
+        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick {
+            model.registry.plugin(runtime)?.contributions?.managedPackages?.firstOrNull { it.id == id }?.removeAction?.let { action -> model.invoke(runtime, action) }
+            model.pluginManager.permissions.clear(model.pluginManager.permissionOwner(runtime, id)); managedRemove = null
+        }) { Text("卸载") } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { managedRemove = null }) { Text("取消") } }) }
     pending?.let { candidate ->
         val manifest = candidate.preview.manifest
         MotionAlertDialog(onDismissRequest = { candidate.file.delete(); pending = null }, dismissEnabled = !busy, title = { Text("安装 ${manifest.name}？") },

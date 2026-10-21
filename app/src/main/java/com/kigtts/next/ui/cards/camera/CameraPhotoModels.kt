@@ -5,7 +5,8 @@ import java.io.Closeable
 import java.io.File
 
 enum class PhotoFilter(val label: String) {
-    ORIGINAL("原图"), BW("黑白"), WARM("暖色"), COOL("冷色"), VINTAGE("复古")
+    ORIGINAL("原画"), BW("黑白"), WARM("暖色"), COOL("冷色"), VINTAGE("复古"),
+    FILM_SOFT("柔彩胶片"), FILM_VIVID("鲜明胶片"), FILM_FADE("淡彩胶片"), CUSTOM("自定义 LUT")
 }
 
 /** Import both files before closing; the JPEG returned by CameraX is never edited in place. */

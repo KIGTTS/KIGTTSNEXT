@@ -37,6 +37,9 @@ class SketchState {
         private set
     private var activeStroke: Stroke? = null
     private var previousErasePoint: Offset? = null
+    private var sessionStarted = false
+    fun startSession() { if (!sessionStarted) { viewportZoom = 1f; viewportPan = Offset.Zero; sessionStarted = true } }
+    fun themeBackground(color: Long) { if (background != color) { background = color; revision++ } }
 
     fun pressureWidth(pressure: Float, stylus: Boolean): Float {
         if (!stylus) return penSize

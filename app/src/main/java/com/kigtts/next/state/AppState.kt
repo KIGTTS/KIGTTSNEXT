@@ -21,7 +21,7 @@ sealed interface Destination {
     data class CardEditor(val cardId: String) : Destination
     data class CardPreview(val cardId: String) : Destination
     data object Cards : Destination
-    data class CardCamera(val requestId: String, val cardId: String? = null) : Destination
+    data class CardCamera(val requestId: String, val cardId: String? = null, val systemCamera: Boolean = false) : Destination
     data class StickerReview(val token: String) : Destination
     data class StickerLibrary(val libraryId: String? = null) : Destination
 }
@@ -58,6 +58,7 @@ data class AppState(
     val theme: ThemeSettings = ThemeSettings(),
     val hapticsEnabled: Boolean = true,
     val mediaId: String? = null,
+    val webPermissionEntryId: String? = null,
     val mediaEditing: Boolean = false,
     val webCanGoBack: Boolean = false,
     val webBackRevision: Int = 0,

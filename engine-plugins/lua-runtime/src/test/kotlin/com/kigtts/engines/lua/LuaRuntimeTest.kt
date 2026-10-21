@@ -90,10 +90,10 @@ class LuaRuntimeTest {
     }
     @Test fun grantedAppCommandsUseTypedBrokerAndPresentationIsReadOnly() = runBlocking {
         val commands = mutableListOf<AppCommand>()
-        val environment = environment(object : AppBroker { override suspend fun request(command: AppCommand): AppReply { commands += command; return AppReply.Data(buildJsonObject { put("ok", true) }) } })
+        val environment = environment(object : AppBroker { override suspend fun request(command: AppCommand): AppReply { commands += command; return AppReply.Data(buildJsonObject { put("reply", PluginJson.encodeToJsonElement<AppReply>(AppReply.Data(buildJsonObject { put("ok", true) }))) }) } })
         val (store, project) = installed(environment, "return {execute=function(a,c) return host.app({type='text',text='123'}) end, pages=function(c) return host.app({type='text',text='禁止'}) end}", listOf("app-control"))
         LuaExecutor(environment, store).call(project, "execute", PluginContext("", ""), "hello")
-        assertEquals(listOf(AppCommand.SetText("123")), commands)
+        assertEquals(AppCommand.ManagedCall("example", "app", PluginJson.encodeToJsonElement<AppCommand>(AppCommand.SetText("123")).jsonObject), commands.single())
         try { LuaExecutor(environment, store).call(project, "pages", PluginContext("", "")); fail() } catch (_: Exception) {}
         assertEquals(1, commands.size)
     }

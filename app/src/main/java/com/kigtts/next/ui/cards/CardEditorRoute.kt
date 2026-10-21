@@ -15,6 +15,7 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },
             cameraImageId = photo?.imageId, cameraOriginalImageId = photo?.originalImageId,
-            cameraFrameStyleId = photo?.frameStyleId, cameraRequestVersion = photo?.version ?: 0L)
+            cameraFrameStyleId = photo?.frameStyleId, cameraRequestVersion = photo?.version ?: 0L,
+            cameraPhotoX = photo?.photoX ?: .5, cameraPhotoY = photo?.photoY ?: .5, cameraPhotoZoom = photo?.photoZoom ?: 1.0)
     }
 }

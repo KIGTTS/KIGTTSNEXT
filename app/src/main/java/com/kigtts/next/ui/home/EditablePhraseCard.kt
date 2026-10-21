@@ -24,7 +24,7 @@ fun EditablePhraseCard(phrase: QuickPhrase, edit: () -> Unit, delete: () -> Unit
     Surface(onClick = feedbackClick(edit), modifier = modifier.heightIn(min = QuickPhraseHeight),
         color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = homeCardShape(neighbors), shadowElevation = elevation) {
         Box(propagateMinConstraints = true) {
-        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase.mediaId, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
+        com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
         Row(Modifier.fillMaxWidth().padding(8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Icon(Icons.Default.DragIndicator, "拖动条目 " + phrase.text,

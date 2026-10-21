@@ -69,11 +69,49 @@ class AgentCapabilitiesIntegrationTest {
         assertTrue(result.content, result.content.contains("42"))
         val run = tools.execute(ToolCall("run", "lua", """{"operation":"run","project":"tools.integration","action":"hello","input":""}"""))
         assertTrue(run.content, run.content.contains("需要用户批准"))
-        model.agentAccess.userAction("tools.cloud-agent", mapOf("_agentAccess" to "full"))
+        model.agentAccess.userAction("tools.cloud-agent", mapOf("_agentAccess" to "full", "_agentFullConfirmed" to "true"))
         assertTrue(tools.execute(ToolCall("run2", "lua", """{"operation":"run","project":"tools.integration","action":"hello","input":""}""")).content.contains("done"))
     }
     @Test fun forwardedInputsCannotMintFullAccessOrSingleUseApproval() {
         model.agentAccess.userAction("tools.cloud-agent", mapOf("_callerPlugin" to "another", "_agentAccess" to "full", "_agentApprove" to "true"))
         assertFalse(model.agentAccess.full("tools.cloud-agent")); assertFalse(model.agentAccess.consume("tools.cloud-agent"))
     }
+    @Test fun partialEditKeepsAttachmentAndUsesConflictCheckedReceipt() = runBlocking {
+        val tools = AgentTools(env)
+        tools.execute(ToolCall("existing-page", "create_page", """{"title":"旧标题","text":"原正文","groupId":"","html":"<!doctype html><h1>原页面</h1>"}"""))
+        val original = model.phrases.value.single { it.title == "旧标题" }
+        val read = PluginJson.parseToJsonElement(tools.execute(ToolCall("read", "read_quick_text", """{"id":"${original.id}"}""")).content).jsonObject
+        val revision = read.getValue("revision").jsonPrimitive.long
+        val call = ToolCall("edit-existing", "edit_quick_text", """{"id":"${original.id}","revision":$revision,"patch":{"title":"新标题"}}""")
+        assertTrue(tools.execute(call).content.contains("applied"))
+        val updated = model.phrases.value.single { it.id == original.id }
+        assertEquals(original.mediaId, updated.mediaId); assertEquals("原正文", updated.text); assertEquals("新标题", updated.title)
+        assertTrue(tools.execute(call).content.contains("applied"))
+        val stale = tools.execute(ToolCall("stale", "edit_quick_text", """{"id":"${original.id}","revision":$revision,"patch":{"text":"不能覆盖"}}"""))
+        assertTrue(stale.content, stale.content.contains("CONFLICT")); assertEquals("原正文", model.phrases.value.single { it.id == original.id }.text)
+    }
+    @Test fun pageFileToolsReadAndEditSavedHtmlWithoutReplacingTheCard() = runBlocking {
+        val tools = AgentTools(env)
+        tools.execute(ToolCall("file-page", "create_page", """{"title":"文件编辑","text":"正文","groupId":"","html":"<!doctype html><h1>before</h1>"}"""))
+        val original = model.phrases.value.single { it.title == "文件编辑" }; val mediaId = requireNotNull(original.mediaId)
+        val files = env.quickTextBroker!!.request(QuickTextCommand.Files(mediaId)) as QuickTextReply.Files
+        val read = tools.execute(ToolCall("read-file", "read_page_file", """{"mediaId":"$mediaId","path":"index.html"}"""))
+        assertTrue(read.content, read.content.contains("before"))
+        val write = tools.execute(ToolCall("write-file", "write_page_file", """{"mediaId":"$mediaId","path":"index.html","version":${files.version},"text":"<!doctype html><h1>after</h1>"}"""))
+        assertTrue(write.content, write.content.contains("media")); assertEquals(mediaId, model.phrases.value.single { it.id == original.id }.mediaId)
+        assertTrue(tools.execute(ToolCall("read-again", "read_page_file", """{"mediaId":"$mediaId","path":"index.html"}""")).content.contains("after"))
+    }
+    @Test fun imageToolProducesActualBoundedImageInsteadOfOnlyAFilename() = runBlocking {
+        val file = env.storage.file("workspace/test-source.png"); file.parentFile!!.mkdirs()
+        val bitmap = android.graphics.Bitmap.createBitmap(2400, 1200, android.graphics.Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(android.graphics.Color.CYAN)
+        file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
+        val result = AgentTools(env).execute(ToolCall("image", "send_image", """{"path":"workspace/test-source.png","description":"测试图片"}"""))
+        assertEquals(1, result.images.size)
+        val image = env.storage.file(result.images.single().path); assertTrue(image.isFile); assertTrue(image.length() > 0)
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(image.path, bounds); assertTrue(bounds.outWidth in 1..1536); assertEquals(listOf(0xff, 0xd8), image.readBytes().take(2).map { it.toInt() and 255 })
+        assertTrue(file.exists())
+    }
+
 }

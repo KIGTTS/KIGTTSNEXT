@@ -31,6 +31,7 @@ class SketchPaperUiTest {
         val state = SketchState().apply {
             initializeCanvas(IntSize(786, 1600)); color = 0xFFFF0000L; penSize = 20f
             sample(Offset(-500f, -400f), 1f, false, false, 1f, 786f, 1600f); endStroke()
+            startSession()
             viewportPan = Offset(893f, 1200f)
         }
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {

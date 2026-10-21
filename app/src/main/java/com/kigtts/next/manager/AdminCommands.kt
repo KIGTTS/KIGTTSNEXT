@@ -11,6 +11,26 @@ import java.io.File
 class AdminCommands(private val context: Context, private val host: HostPluginRuntime, private val journal: AdminJournal) {
     private val manager get()=host.manager
     suspend fun run(command:String,args:JSONObject,file:File?):JSONObject = when(command) {
+        "browser-session" -> {
+            val model = requireNotNull(host.ui()) { "请先打开主程序" }; val id = args.getString("id")
+            val installed = manager.status.firstOrNull { it.installed.manifest.id == id }?.installed ?: error("插件未安装")
+            val payload = JSONObject(args.toString()).apply { remove("id"); put("type", "browser-session") }
+            if (payload.optString("operation") == "screenshot") payload.put("destination", "workspace/screenshots/admin-${java.util.UUID.randomUUID()}.png")
+            val request = PluginJson.decodeFromString<AppCommand>(payload.toString())
+            val reply = com.kigtts.next.plugins.control.AppControlHost(manager) { model }.forPlugin(id, installed.manifest.capabilities.toSet()).request(request)
+            val value = reply as? AppReply.Data ?: error((reply as? AppReply.Failure)?.message ?: "浏览器操作失败")
+            JSONObject(value.value.toString())
+        }
+        "browser-capture" -> {
+            val model = requireNotNull(host.ui()) { "请先打开主程序" }
+            val id = args.getString("id")
+            val installed = manager.status.firstOrNull { it.installed.manifest.id == id }?.installed ?: error("插件未安装")
+            val path = "workspace/screenshots/admin-${java.util.UUID.randomUUID()}.png"
+            val reply = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { com.kigtts.next.plugins.control.captureBrowser(model, id, installed.manifest.capabilities.toSet(),
+                AppCommand.BrowserCapture(path, args.optString("mediaId").takeIf(String::isNotBlank), args.optString("pageId").takeIf(String::isNotBlank), args.optInt("width", 960), args.optInt("height", 1280))) }
+            val value = reply as? AppReply.Data ?: error((reply as? AppReply.Failure)?.message ?: "截图失败")
+            JSONObject(value.value.toString()).put("file", manager.paths.storage(id).file(path).absolutePath)
+        }
         "navigate","back" -> adminNavigate(requireNotNull(host.ui()) { "请先打开主程序" },args,command=="back")
         "present" -> host.mutate {
             val model=requireNotNull(host.ui()) { "请先打开主程序" }

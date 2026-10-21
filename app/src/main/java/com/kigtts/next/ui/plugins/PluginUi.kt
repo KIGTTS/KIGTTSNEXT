@@ -28,14 +28,14 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
     val end = slot in listOf(UiSlot.HEADER_END, UiSlot.EDITOR_TOP_END, UiSlot.EDITOR_BOTTOM_END,
         UiSlot.LISTENING_BOTTOM_END, UiSlot.QUICK_PANEL_END, UiSlot.TAB_END)
     if (slot == UiSlot.HEADER_START || slot == UiSlot.HEADER_END) {
-        ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(), { onAction(it) },
-            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON) }, modifier.widthIn(max = 144.dp), plain = true,
+        ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(it.action.symbol), { onAction(it) },
+            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy) }, modifier.widthIn(max = 144.dp), plain = true,
             alignEnd = end, overflowTag = slot.name + "-more")
         return
     }
     if (slot !in listOf(UiSlot.HEADER_START, UiSlot.HEADER_END, UiSlot.TAB_START, UiSlot.TAB_END)) {
-        ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(), { onAction(it) },
-            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON) }, modifier.widthIn(max = 144.dp),
+        ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(it.action.symbol), { onAction(it) },
+            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy) }, modifier.widthIn(max = 144.dp),
             alignEnd = end, overflowTag = slot.name + "-more")
         return
     }
@@ -43,23 +43,27 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, invoke: (String, Map<String, String>) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", invoke: (String, Map<String, String>) -> Unit) {
     RegisterPageLoading(busy)
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
     if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
-        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
-    })
+        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(action.symbol),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
+    }, primaryCount = if (page.blocks.any { it is PageBlock.Chat }) 3 else 2)
     val blocks=page.blocks.filterNot { block ->
         (toolbar && block is PageBlock.Actions) ||
             (block is PageBlock.Text && block.heading && block.text.trim() == page.title.trim())
+    }
+    blocks.filterIsInstance<PageBlock.Browser>().firstOrNull()?.let { block ->
+        if (browser != null) browser(block) else Text("网页容器暂不可用", Modifier.padding(24.dp))
+        return
     }
     blocks.filterIsInstance<PageBlock.SourceEditor>().firstOrNull()?.let { editor ->
         PluginSourceEditorScreen(editor, !busy, invoke)
         return
     }
     blocks.filterIsInstance<PageBlock.Chat>().firstOrNull()?.let { chat ->
-        PluginChatScreen(chat, !busy, invoke) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
+        PluginChatScreen(chat, !busy, invoke, resolve, historyCache, historyKey + chat.conversationId) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
         return
     }
     blocks.filterIsInstance<PageBlock.Files>().firstOrNull()?.let { files ->
@@ -85,10 +89,12 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
         is PageBlock.Notice->"notice/$index"
         is PageBlock.Toggle -> "toggle/"+block.actionId
         is PageBlock.Choice -> "choice/"+block.title
+        is PageBlock.Select -> "select/"+block.title
         is PageBlock.Input -> "input/"+block.actionId
         is PageBlock.Chat -> "chat/"+block.sendAction
         is PageBlock.Files -> "files/"+block.openAction
         is PageBlock.SourceEditor -> "source/"+block.id
+        is PageBlock.Browser -> "browser/$index"
     } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current,animateInitial=false,
         spacing = if (grouped) 2.dp else 12.dp) { block,active ->
         RenderBlock(block, active, invoke, if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE)
@@ -103,7 +109,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
             PageContentMotion(block.text) { Text(it, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=2.dp,animateInitial=false) { action,interactive ->
-            SettingItem(action.label, "", action.icon.takeIf { it != PluginIcon.NONE }?.vector(), settingPosition(block.actions.indexOf(action), block.actions.size),
+            SettingItem(action.label, "", (if(action.icon == PluginIcon.NONE && action.symbol == null) null else action.icon.vector(action.symbol)), settingPosition(block.actions.indexOf(action), block.actions.size),
                 onClick = { invoke(action.id, emptyMap()) }, enabled = interactive, trailing = {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
                 })
@@ -111,16 +117,17 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
         is PageBlock.Group -> SettingsGroup(block.title) {
             PluginBlocks(block.children,enabled,invoke, grouped = true)
         }
-        is PageBlock.Toggle -> ToggleSetting(block.title, block.summary, block.icon.takeIf { it != PluginIcon.NONE }?.vector(), block.checked,
+        is PageBlock.Toggle -> ToggleSetting(block.title, block.summary, (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), block.checked,
             { invoke(block.actionId, mapOf("checked" to it.toString())) }, enabled = enabled, position = position, preserveColorWhenLocked = true)
         is PageBlock.Input -> SettingItem(block.title, if (block.secret) {
             if (block.value.isBlank()) "未设置" else "已设置"
-        } else block.value.lineSequence().firstOrNull().orEmpty().take(120), block.icon.takeIf { it != PluginIcon.NONE }?.vector(), position, enabled = enabled,
+        } else block.value.lineSequence().firstOrNull().orEmpty().take(120), (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position, enabled = enabled,
             onClick = { invoke(block.actionId, emptyMap()) }, trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,null) })
-        is PageBlock.Choice -> SettingItem(block.title, "", block.icon.takeIf { it != PluginIcon.NONE }?.vector(), position) {
+        is PageBlock.Select -> PluginSelect(block, enabled, position, invoke)
+        is PageBlock.Choice -> SettingItem(block.title, "", (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position) {
             ConnectedChoiceGroup(block.title, block.options.map { it.id }, block.selected,
                 { id -> block.options.first { it.id == id }.label }, { invoke(it, emptyMap()) }, enabled = enabled, preserveColorWhenLocked = true)
         }
-        is PageBlock.Chat, is PageBlock.Files, is PageBlock.SourceEditor -> Unit // Full-page content owns its own scroll/IME viewport.
+        is PageBlock.Chat, is PageBlock.Files, is PageBlock.SourceEditor, is PageBlock.Browser -> Unit // Full-page content owns its own scroll/IME viewport.
     }
 }

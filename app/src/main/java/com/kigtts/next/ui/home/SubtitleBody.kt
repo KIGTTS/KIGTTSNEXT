@@ -1,14 +1,11 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -23,8 +20,6 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.media.MediaTransition
-import com.kigtts.next.text.formattedText
-import androidx.compose.ui.text.input.*
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
@@ -52,22 +47,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
         val width = with(density) { maxWidth.roundToPx() }
         val height = with(density) { maxHeight.roundToPx() }
         if (state.editing) {
-            val fittedSize = if (text.isEmpty()) fittingSubtitleFontSize(state.subtitlePlaceholder, style, width, height)
-                else fittingSubtitleFontSize(formattedText(text, state.subtitleFormats), style, width, height)
-            val fitted = style.copy(fontSize = fittedSize.sp)
-            CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
-            BasicTextField(state.editorValue, model::editText,
-            modifier = Modifier.fillMaxWidth().testTag("speech-editor").focusRequester(focus).subtitleUpdateMotion(state.subtitleRevision),
-            textStyle = fitted, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            visualTransformation = VisualTransformation { TransformedText(formattedText(it.text, state.subtitleFormats), OffsetMapping.Identity) },
-            decorationBox = { field ->
-                if (state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty()) Text(state.subtitlePlaceholder,
-                    Modifier.fillMaxWidth().testTag("subtitle-placeholder"),
-                    style = fitted,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                field()
-            })
-            }
+            SubtitleInput(state, model, style, width, height, focus)
         } else SubtitleDisplay(state, model, text, style, width, height)
     }
 }

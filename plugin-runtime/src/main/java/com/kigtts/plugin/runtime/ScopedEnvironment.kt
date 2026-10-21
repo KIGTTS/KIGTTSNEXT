@@ -7,6 +7,7 @@ import com.kigtts.plugin.api.PluginStorage
 import com.kigtts.plugin.api.SpeechBroker
 import com.kigtts.plugin.api.RecognitionBroker
 import com.kigtts.plugin.api.QuickTextBroker
+import com.kigtts.plugin.api.requirePermission
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -32,6 +33,7 @@ internal class ScopedEnvironment(base: Context, override val storage: PluginStor
     }
     override suspend fun download(url: String, relativePath: String, sha256: String?): File = withContext(Dispatchers.IO) {
         require(networkAllowed) { "插件没有声明网络资源能力" }
+        requirePermission("network")
         val destination = storage.file(relativePath)
         require(sha256 == null || sha256.matches(Regex("[a-fA-F0-9]{64}")))
         val temporary = File(storage.temporary, "download-${UUID.randomUUID()}.part")

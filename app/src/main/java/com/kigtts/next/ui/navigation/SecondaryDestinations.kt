@@ -48,7 +48,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         com.kigtts.next.ui.cards.CardEditorRoute(model, destination)
         return
     }
-    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera,
+    val pluginPage = (destination as? Destination.PluginPage)?.let { model.registry.plugin(it.pluginId)?.page(it.pageId, model.context()) }
+    val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
+    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
             when (destination) {
                 Destination.Home -> Unit
@@ -58,6 +60,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics)
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)
                     SettingsCategory.WEB -> WebSettingsScreen()
+                    SettingsCategory.BACKUP_RESTORE -> BackupRestoreScreen(model)
+                    SettingsCategory.CAMERA -> CameraSettingsScreen()
                 }
                 Destination.Plugins -> PluginsScreen(model)
                 is Destination.MediaLibrary -> MediaLibraryScreen(model, destination.target)
@@ -75,7 +79,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context()), destination.pluginId in state.busyPlugins,
-                    resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) }) { action, inputs ->
+                    resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
+                    browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
+                    historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/") { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
                 }
             }

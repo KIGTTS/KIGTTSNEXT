@@ -5,4 +5,6 @@ enum class SettingsCategory(val title: String, val summary: String) {
     FEEDBACK("触感反馈", "点击与长按震动"),
     EXPERIMENTAL("实验性功能", "体验新功能"),
     WEB("网页", "管理网页登录信息"),
+    BACKUP_RESTORE("备份与还原", "导入、导出快捷文本及其它兼容格式"),
+    CAMERA("拍照", "拍立得相机与照片导入"),
 }

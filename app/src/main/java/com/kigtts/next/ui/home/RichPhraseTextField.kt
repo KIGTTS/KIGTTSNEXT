@@ -25,7 +25,8 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
     RegisterPageInput(focused)
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    val transform = remember(draft.formats) { RichTextVisualTransformation(draft.formats) }
+    val base = remember(draft.formats) { RichTextVisualTransformation(draft.formats) }
+    val transform = rememberInputTextMotion(field, MaterialTheme.colorScheme.onSurface, base)
     val menu = Modifier.richTextMenu(enabled, { field.selection }, draft.formats) { range, kind, value ->
         model.content.editPhrase { it.copy(richText = true,
             formats = TextFormatting.apply(it.formats, it.text.length, range.start, range.end, kind, value)) }

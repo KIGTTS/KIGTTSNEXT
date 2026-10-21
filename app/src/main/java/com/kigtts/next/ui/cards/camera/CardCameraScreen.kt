@@ -3,6 +3,8 @@ package com.kigtts.next.ui.cards.camera
 
 import androidx.camera.view.PreviewView
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -22,6 +24,9 @@ import com.kigtts.next.ui.navigation.*
 import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 private data class CameraBoundRequest(val format: PolaroidFormat, val front: Boolean, val rotation: Int, val retry: Int,
     val processing: CameraProcessing, val motion: Boolean)
@@ -29,7 +34,8 @@ private data class CameraBoundRequest(val format: PolaroidFormat, val front: Boo
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
-    initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {}) {
+    initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
+    onSystemCamera: (PolaroidFormat) -> Unit = {}) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -46,6 +52,19 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     var morphing by remember { mutableStateOf(false) }
     var bound by remember { mutableStateOf<CameraBoundRequest?>(null) }
     val scope = rememberCoroutineScope()
+    val lutLibrary = remember(context) { CameraLutLibrary(context) }
+    var customLuts by remember { mutableStateOf(emptyList<CameraLutChoice>()) }
+    var selectedLut by rememberSaveable { mutableStateOf<String?>(null) }
+    val lut = customLuts.firstOrNull { it.id == selectedLut }?.lut.takeIf { filter == PhotoFilter.CUSTOM }
+    LaunchedEffect(lutLibrary) { customLuts = withContext(Dispatchers.IO) { lutLibrary.choices() } }
+    val importLut = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) scope.launch {
+        try {
+            val choice = withContext(Dispatchers.IO) { lutLibrary.import(uri) }
+            customLuts = customLuts.filterNot { it.id == choice.id } + choice
+            selectedLut = choice.id; filter = PhotoFilter.CUSTOM
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (failure: Exception) { message(failure.message ?: "LUT 导入失败") }
+    } }
     val latestMessage = rememberUpdatedState(message)
     val session = remember(context, lifecycleOwner) { PolaroidCameraSession(context, lifecycleOwner, scope) { latestMessage.value(it) } }
     val view = remember(context) { PreviewView(context).apply {
@@ -100,7 +119,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     RegisterCameraShutterKeys(active && granted && !options.settingsVisible) {
         if (session.countingDown) session.cancelCountdown()
         else if (!locked && displayReady && viewport.matchesPhotoRatio)
-            session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength)
+            session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut)
     }
     val leave = {
         if (session.busy) message("照片正在保存，请稍候")
@@ -109,11 +128,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     }
     val header: @Composable () -> Unit = {
         CameraCornerToolbar(active, session.busy, granted && !locked, session.loading || session.busy || morphing,
-            leave, options::showSettings, applyInsets = !granted) {
-            CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
-                options.motion && (session.loading || session.motionAvailable && !session.motionReady),
-                active && granted && !locked, options::setMotion)
-        }
+            leave, options::showSettings, applyInsets = !granted)
     }
     if (!granted) { Box(Modifier.fillMaxSize()) { CameraPermissionPanel(request, pageActive); header() }; return }
     // Configuration is available during startup/morphing; only capture/focus require a fresh streamed frame.
@@ -121,14 +136,21 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val preview = rememberCameraPreviewContent(view, session) { modifier, vertical ->
         CameraPaperPreview(view, format, filter, session, { viewSize = it }, modifier,
             displayReady = displayReady, morphChanged = { morphing = it },
-            options = options, rotation = rotation, active = active, filterStrength = options.filterStrength,
+            options = options, rotation = rotation, active = active, filterStrength = options.filterStrength, lut = lut,
             verticalChrome = vertical, headerOverlay = true, streamTransition = streamTransition, chrome = { layout ->
             CameraOverlayControls(format, formats, filter, interactive, vertical, filtersExpanded,
                 { morphing = true; format = nextCameraFormat(formats, format) },
                 options::showSettings, { filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
-                }, options.filterStrength, options::setFilterStrength, layout, showSettings = false)
+                }, options.filterStrength, options::setFilterStrength, layout, showSettings = false,
+                customLuts = customLuts, selectedLut = selectedLut,
+                selectLut = { selectedLut = it; filter = PhotoFilter.CUSTOM },
+                importLut = { importLut.launch(arrayOf("*/*")) }, motionButton = {
+                    CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
+                        options.motion && (session.loading || session.motionAvailable && !session.motionReady),
+                        active && granted && !locked, options::setMotion)
+                })
             AnimatedVisibility(!filtersExpanded, Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom),
                 enter = fadeIn(), exit = fadeOut()) {
                 CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
@@ -143,10 +165,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val controls: @Composable (Boolean) -> Unit = { vertical ->
         CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
             leave,
-            { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength) },
+            { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut) },
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
-            gallery = { onGallery(format) })
+            gallery = { onGallery(format) }, systemCamera = { onSystemCamera(format) })
     }
     CameraPageLayout(preview, controls, error, header, format.geometry.photoAspectRatio.toFloat())
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable, enabled = interactive,

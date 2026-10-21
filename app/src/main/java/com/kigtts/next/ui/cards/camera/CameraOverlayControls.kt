@@ -28,7 +28,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     cycleFormat: () -> Unit, openSettings: () -> Unit, toggleFilters: () -> Unit, selectFilter: (PhotoFilter) -> Unit,
     flash: CameraFlash = CameraFlash.OFF, flashAvailable: Boolean = false, cycleFlash: () -> Unit = {},
     strength: Float = 1f, changeStrength: (Float) -> Unit = {}, layout: CameraChromeLayout? = null,
-    showSettings: Boolean = true) {
+    showSettings: Boolean = true, customLuts: List<CameraLutChoice> = emptyList(), selectedLut: String? = null,
+    selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null) {
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
@@ -63,8 +64,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
     }
     val items: @Composable () -> Unit = {
-        if (vertical) { filterButton(); settingsButton(); flashButton(); formatButton() }
-        else { formatButton(); flashButton(); settingsButton(); filterButton() }
+        if (vertical) { motionButton?.invoke(); settingsButton(); flashButton(); formatButton() }
+        else { formatButton(); flashButton(); settingsButton(); motionButton?.invoke() }
     }
     val strip = (if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.controls)
         else if (vertical) Modifier.align(Alignment.CenterStart).width(56.dp).fillMaxHeight()
@@ -77,13 +78,14 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
         else Modifier.matchParentSize()) {
     AnimatedVisibility(filtersExpanded,
-        modifier = if (vertical) Modifier.align(Alignment.CenterEnd).widthIn(max = 104.dp).fillMaxHeight()
-            else Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+        modifier = if (vertical) Modifier.align(Alignment.CenterEnd).width(144.dp).fillMaxHeight().padding(bottom = 60.dp)
+            else Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 60.dp),
         enter = fadeIn() + if (vertical) expandHorizontally(expandFrom = Alignment.End) else expandVertically(expandFrom = Alignment.Bottom),
         exit = fadeOut() + if (vertical) shrinkHorizontally(shrinkTowards = Alignment.End) else shrinkVertically(shrinkTowards = Alignment.Bottom)) {
         Surface(color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .92f), shape = MaterialTheme.shapes.large) {
-            CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength)
+            CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength, customLuts, selectedLut, selectLut, importLut)
         }
     }
+    Box(Modifier.align(Alignment.BottomEnd).padding(8.dp).excludeCameraPull()) { filterButton() }
     }
 }

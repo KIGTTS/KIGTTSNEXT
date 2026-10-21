@@ -2,6 +2,7 @@ package com.kigtts.next
 
 import com.kigtts.next.state.Destination
 import com.kigtts.next.ui.settings.settingsCards
+import com.kigtts.next.ui.settings.backupSettingsLinks
 import com.kigtts.plugin.api.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -12,6 +13,16 @@ class SettingsEntriesTest {
         override val descriptor = PluginDescriptor(id, id, "", requires = requirements)
         override val contributions = PluginContributions(settingsEntries = entries, drawerEntries = legacy)
         override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
+    }
+    @Test fun backupCompatibilityPagesLiveInsideNativeBackupAndAllowNoIcon() {
+        val registry = PluginRegistry(listOf(plugin("test.converter", listOf(
+            SettingsEntry("legacy", "旧格式兼容", "import", PluginIcon.NONE, cardId = "backup", summary = "转换并预览导入")))))
+        val cards = settingsCards(registry, PluginContext("", ""))
+        assertTrue(cards.flatMap { it.links }.any { it.destination == Destination.SettingsDetail(com.kigtts.next.state.SettingsCategory.BACKUP_RESTORE) })
+        assertFalse(cards.flatMap { it.links }.any { it.title == "旧格式兼容" })
+        val format = backupSettingsLinks(registry, PluginContext("", "")).single()
+        assertNull(format.icon)
+        assertEquals(Destination.PluginPage("test.converter", "import"), format.destination)
     }
     @Test fun formalServiceEntrySharesNativeAudioCardAndDoesNotDuplicateItsLegacyPage() {
         val registry = PluginRegistry(listOf(plugin("test.recognition", listOf(

@@ -41,7 +41,9 @@ import kotlinx.coroutines.*
             catch (failure: Exception) { if (failure is CancellationException) throw failure; message("无法恢复上次画板，已打开空白画板") }
             ready = true
         }
+        state.startSession()
     }
+    LaunchedEffect(background, ready) { if (ready) state.themeBackground(background.toArgb().toLong() and 0xFFFFFFFFL) }
     LaunchedEffect(state.revision, ready) {
         if (ready && state.documentSize.width > 0) SketchDraftWriter.submit(repository, state.document())
     }

@@ -63,7 +63,8 @@ class CameraPreviewUiTest {
         val ratio = compose.onNodeWithTag("camera-format").fetchSemanticsNode().boundsInRoot
         val settings = compose.onNodeWithTag("camera-settings").fetchSemanticsNode().boundsInRoot
         val toggle = compose.onNodeWithTag("camera-filter-toggle").fetchSemanticsNode().boundsInRoot
-        assertTrue(toggle.bottom < settings.top && settings.bottom < ratio.top)
+        assertTrue(settings.bottom < ratio.top)
+        assertTrue(toggle.center.x > preview.center.x && toggle.center.y > preview.center.y)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：矩形，点按切换").performClick()
         assertEquals(PolaroidFormat.SQUARE, format)
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：方形，点按切换")
@@ -72,7 +73,7 @@ class CameraPreviewUiTest {
         compose.onNodeWithTag("camera-filters").assertExists()
         val original = compose.onNodeWithTag("camera-filter/ORIGINAL").fetchSemanticsNode().boundsInRoot
         val bw = compose.onNodeWithTag("camera-filter/BW").fetchSemanticsNode().boundsInRoot
-        assertTrue(original.bottom <= bw.top)
+        assertTrue(bw.bottom <= original.top)
         assertEquals(preview, compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot)
         compose.onNodeWithTag("camera-filter/BW").performClick().assertIsSelected()
         compose.onNodeWithTag("camera-filter-toggle").performClick()
@@ -97,7 +98,8 @@ class CameraPreviewUiTest {
         val ratio = compose.onNodeWithTag("camera-format").fetchSemanticsNode().boundsInRoot
         val settings = compose.onNodeWithTag("camera-settings").fetchSemanticsNode().boundsInRoot
         val toggle = compose.onNodeWithTag("camera-filter-toggle").fetchSemanticsNode().boundsInRoot
-        assertTrue(ratio.right < settings.left && settings.right < toggle.left)
+        assertTrue(ratio.right < settings.left)
+        assertTrue(toggle.center.x > preview.center.x && toggle.center.y > preview.center.y)
         compose.onNodeWithTag("camera-filters").assertDoesNotExist()
         compose.onNodeWithTag("camera-filter-toggle").performClick()
         val original = compose.onNodeWithTag("camera-filter/ORIGINAL").fetchSemanticsNode().boundsInRoot

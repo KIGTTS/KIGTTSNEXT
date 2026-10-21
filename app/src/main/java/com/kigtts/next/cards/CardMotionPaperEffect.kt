@@ -13,7 +13,8 @@ import com.kigtts.plugin.api.PolaroidFrameStyle
 
 /** Streaming GPU composition: two tiny blur buffers and one immutable paper/lettering/sticker texture. */
 internal class CardMotionPaperEffect(private val card: PolaroidCard, private val frame: PolaroidFrameStyle,
-    private val overlay: Bitmap, private val colorMatrix: FloatArray, private val includeFrame: Boolean) : GlEffect {
+    private val overlay: Bitmap, private val colorMatrix: FloatArray, private val includeFrame: Boolean,
+    private val lut: com.kigtts.next.media.color.CubeLut? = null, private val lutStrength: Float = 1f) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
         require(!useHdr) { "暂不支持 HDR 实况照片" }
         return Program()
@@ -25,6 +26,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             overlay.height.coerceAtLeast(2) / 2 * 2, includeFrame)
         private var overlayTexture = 0; private var xTexture = 0; private var yTexture = 0
         private var xFbo = 0; private var yFbo = 0; private var blurWidth = 1; private var blurHeight = 1
+        private var lutTexture: com.kigtts.next.media.color.GlLutTexture? = null
         init {
             listOf(paper, blur).forEach { it.setBufferAttribute("aPosition", GlUtil.getNormalizedCoordinateBounds(), 4) }
             val names = IntArray(1); GLES20.glGenTextures(1, names, 0); overlayTexture = names[0]
@@ -70,6 +72,17 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             paper.setSamplerTexIdUniform("uVideo", inputTexId, 0)
             paper.setSamplerTexIdUniform("uBlur", if (card.photoBackdrop == PhotoBackdropMode.BLUR) yTexture else inputTexId, 1)
             paper.setSamplerTexIdUniform("uOverlay", overlayTexture, 2)
+            val lutSampler = lutTexture ?: run {
+                val program = IntArray(1); GLES20.glGetIntegerv(GLES20.GL_CURRENT_PROGRAM, program, 0)
+                com.kigtts.next.media.color.GlLutTexture(program[0], 3).also { lutTexture = it }
+            }
+            lutSampler.bind(lut, lutStrength)
+            paper.setSamplerTexIdUniform("uLut", lutSampler.textureId, 3)
+            paper.setFloatsUniform("uLutStrength", floatArrayOf(if (lut == null) 0f else lutStrength))
+            paper.setFloatsUniform("uLutSize", floatArrayOf(lut?.size?.toFloat() ?: 1f))
+            paper.setFloatsUniform("uLutTiles", floatArrayOf(lut?.tiles?.toFloat() ?: 1f))
+            paper.setFloatsUniform("uLutDomainMin", lut?.domainMin ?: floatArrayOf(0f, 0f, 0f))
+            paper.setFloatsUniform("uLutDomainSpan", if (lut == null) floatArrayOf(1f, 1f, 1f) else FloatArray(3) { lut.domainMax[it] - lut.domainMin[it] })
             paper.bindAttributesAndUniforms(); GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4); GlUtil.checkGlError()
         }
         private fun releaseBuffers() {
@@ -77,6 +90,6 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             if (xTexture != 0) GlUtil.deleteTexture(xTexture); if (yTexture != 0) GlUtil.deleteTexture(yTexture)
             xFbo = 0; yFbo = 0; xTexture = 0; yTexture = 0
         }
-        override fun release() { try { releaseBuffers(); if (overlayTexture != 0) GlUtil.deleteTexture(overlayTexture); paper.delete(); blur.delete() } finally { super.release() } }
+        override fun release() { try { releaseBuffers(); lutTexture?.close(); if (overlayTexture != 0) GlUtil.deleteTexture(overlayTexture); paper.delete(); blur.delete() } finally { super.release() } }
     }
 }

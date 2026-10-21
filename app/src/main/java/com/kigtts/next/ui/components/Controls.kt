@@ -3,6 +3,10 @@
 package com.kigtts.next.ui.components
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +39,7 @@ fun PluginIcon.vector(): ImageVector = when (this) {
     PluginIcon.IMAGE -> Icons.Default.Image
     PluginIcon.EXPORT -> Icons.Default.FileUpload
     PluginIcon.NONE -> Icons.Default.Info // Settings/list rows omit this sentinel before rendering.
+    PluginIcon.ROBOT2 -> Robot2Icon
 }
 
 @Composable
@@ -46,13 +51,25 @@ fun ToolButton(
     colors: IconButtonColors = compactTonalIconColors(),
     size: Dp = 32.dp,
     enabled: Boolean = true,
+    busy: Boolean = false,
+    iconSize: Dp = size / 2,
+    onLongClick: (() -> Unit)? = null,
 ) {
+    val animatedIconSize = animateDpAsState(if (busy) size / 2 else iconSize,
+        MaterialTheme.motionScheme.fastSpatialSpec(), label = "tool-icon-size")
     val press=rememberImmediateButtonPress(interactionSource)
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
-    FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(size).widthIn(min = size)
-        .semantics { contentDescription = label },
+    IconActionHint(label, onLongClick != null) {
+    FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.iconLongAction(enabled, onLongClick).then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(size).widthIn(min = size)
+        .semantics { contentDescription = label; if (busy) stateDescription = "正在执行" },
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
-        AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(size / 2)) }
+        Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+            AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
+            AnimatedVisibility(busy, enter = fadeIn(), exit = fadeOut()) {
+                CircularProgressIndicator(Modifier.size(size - 4.dp), strokeWidth = 2.dp)
+            }
+        }
+    }
     }
 }
 

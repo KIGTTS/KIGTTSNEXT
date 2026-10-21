@@ -10,8 +10,9 @@ import java.io.File
 import java.util.UUID
 
 data class CapturedCardPhoto(val cardId: String, val imageId: String, val originalImageId: String,
-    val frameStyleId: String, val version: Long)
+    val frameStyleId: String, val version: Long, val photoX: Double = .5, val photoY: Double = .5, val photoZoom: Double = 1.0)
 data class CardPrintRequest(val requestId: String, val card: PolaroidCard)
+data class CardFrameRequest(val requestId: String, val original: File, val display: File, val motion: CameraMotionClip? = null)
 
 /** Captures are delivered into a retained editor draft or create a new design exactly once. */
 class CardCaptureCoordinator(private val cards: CardRepository, private val stickers: StickerRepository,
@@ -19,8 +20,10 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     private val navigate: (Destination) -> Unit, private val back: () -> Unit, private val message: (String) -> Unit,
     private val selectedAlbum: () -> String = { CardRepository.DEFAULT_ALBUM },
     private val onPrintedCard: (String) -> Unit = {}, private val onPreviewedCard: (String) -> Unit = {},
+    private val useSystemCamera: () -> Boolean = { false },
     private val saveMotion: ((String, CameraMotionClip) -> Unit)? = null) {
     private val photo = MutableStateFlow<CapturedCardPhoto?>(null); val result = photo.asStateFlow()
+    private val framing = MutableStateFlow<CardFrameRequest?>(null); val frameRequest = framing.asStateFlow()
     private val printing = MutableStateFlow<CardPrintRequest?>(null); val printRequest = printing.asStateFlow()
     private val handoff = MutableStateFlow<CardPrintPreviewHandoff?>(null); val printPreviewHandoff = handoff.asStateFlow()
     private val abortedScenes = mutableSetOf<String>()
@@ -30,16 +33,17 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         set(value) { pendingState.value = value }
     private var inFlightFiles = emptySet<String>()
     private var albumRequest: Pair<Destination.CardCamera, String>? = null
-    fun open(cardId: String? = null) {
+    fun open(cardId: String? = null, systemCamera: Boolean = useSystemCamera()) {
         if (pending) { message("照片正在保存，请稍候"); return }
         if (printing.value != null) { message("照片正在打印，请稍候"); return }
         printing.value = null
-        val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId)
+        val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId, systemCamera)
         albumRequest = destination to selectedAlbum()
         navigate(destination)
     }
     /** Navigation owns the scene lifecycle; leaving it never deletes an already saved photo. */
     fun onDestinationChanged(destination: Destination) {
+        framing.value?.takeIf { (destination as? Destination.CardCamera)?.requestId != it.requestId }?.let { cancelFraming(it.requestId) }
         abortedScenes.removeAll { !cameraRetained(it, destination) }
         val aborted = (destination as? Destination.CardCamera)?.requestId
         if (aborted != null && cameraForeground(aborted) && abortedScenes.remove(aborted)) {
@@ -51,6 +55,22 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         }
         val request = printing.value ?: return
         if (!cameraRetained(request.requestId, destination)) printing.value = null
+    }
+    fun prepareFraming(destination: Destination.CardCamera, original: File, display: File, motion: CameraMotionClip? = null): Boolean {
+        if (state().destination != destination || pending || printing.value != null || framing.value != null) return false
+        framing.value = CardFrameRequest(destination.requestId, original, display, motion)
+        return true
+    }
+    fun cancelFraming(requestId: String) {
+        if (pending) return
+        framing.value?.takeIf { it.requestId == requestId }?.let {
+            framing.value = null; it.original.delete(); if (it.display != it.original) it.display.delete(); it.motion?.video?.delete()
+        }
+    }
+    fun confirmFraming(destination: Destination.CardCamera, format: PolaroidFormat, x: Double, y: Double, zoom: Double): Boolean {
+        val frame = framing.value?.takeIf { it.requestId == destination.requestId } ?: return false
+        require(x in 0.0..1.0 && y in 0.0..1.0 && zoom in 1.0..8.0)
+        return captured(destination, frame.original, frame.display, format, print = destination.cardId == null, motion = frame.motion, photoX = x, photoY = y, photoZoom = zoom)
     }
     private fun cameraRetained(requestId: String, destination: Destination): Boolean =
         destination is Destination.CardCamera && destination.requestId == requestId && destination.cardId == null ||
@@ -106,7 +126,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         return true
     }
     fun captured(destination: Destination.CardCamera, original: File, display: File, format: PolaroidFormat,
-        print: Boolean = false, motion: CameraMotionClip? = null): Boolean {
+        print: Boolean = false, motion: CameraMotionClip? = null, photoX: Double = .5, photoY: Double = .5, photoZoom: Double = 1.0): Boolean {
         fun discardFiles() { original.delete(); if (display != original) display.delete(); motion?.video?.delete() }
         if (pending) {
             listOfNotNull(original, display, motion?.video).filterNot { it.canonicalPath in inFlightFiles }.forEach { it.delete() }
@@ -139,7 +159,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                         synchronized(stickers) {
                             val targetAlbum = desiredAlbum.takeIf { id -> cards.albums.value.any { it.id == id } } ?: CardRepository.DEFAULT_ALBUM
                             cards.create(PolaroidCard(title = "", imageId = imported.second.id,
-                                originalImageId = imported.first.id, frameStyleId = frameStyleId), targetAlbum)
+                                originalImageId = imported.first.id, frameStyleId = frameStyleId, photoX = photoX, photoY = photoY, photoZoom = photoZoom), targetAlbum)
                         }
                     }
                     if (state().destination == destination && print) {
@@ -147,7 +167,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                         return@launch
                     }
                 } else photo.value = CapturedCardPhoto(destination.cardId, imported.second.id, imported.first.id,
-                    frameStyleId, (photo.value?.version ?: 0) + 1)
+                    frameStyleId, (photo.value?.version ?: 0) + 1, photoX, photoY, photoZoom)
                 if (state().destination == destination) back()
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) {
@@ -155,6 +175,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                 message("照片未能保存，请重试"); if (state().destination == destination) back()
             }
             finally {
+                if (framing.value?.requestId == destination.requestId) framing.value = null
                 discardFiles(); inFlightFiles = emptySet(); pending = false
                 if (albumRequest?.first == destination) albumRequest = null
             }

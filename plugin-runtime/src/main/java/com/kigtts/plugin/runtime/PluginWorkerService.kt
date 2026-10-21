@@ -63,7 +63,7 @@ open class PluginWorkerService : Service() {
                     if ("speech-service" in manifest.capabilities && broker != null) WorkerSpeechBroker(broker) else null,
                     if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null,
                     if(manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})quickText?.let(::WorkerQuickTextBroker) else null,
-                    if ("app-control" in manifest.capabilities) app?.let(::WorkerAppBroker) else null,
+                    app?.let(::WorkerAppBroker),
                     if (manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickers?.let(::WorkerStickerBroker) else null))
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
                 require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }

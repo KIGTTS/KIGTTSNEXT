@@ -10,7 +10,8 @@ import java.io.File
 /** Process the original resolution in small pixel strips using one mutable bitmap, not two full copies. */
 internal object PhotoFilterWriter {
     const val MAX_PIXELS = 80_000_000L
-    suspend fun write(original: File, output: File, filter: PhotoFilter, strength: Float = 1f): File? {
+    suspend fun write(original: File, output: File, filter: PhotoFilter, strength: Float = 1f,
+        lut: com.kigtts.next.media.color.CubeLut? = null): File? {
         if (filter == PhotoFilter.ORIGINAL || strength <= 0f) return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         original.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -20,7 +21,7 @@ internal object PhotoFilterWriter {
         }) }) { "照片暂时无法读取" }
         val stage = File(output.parentFile, ".${output.name}.tmp")
         try {
-            applyPhotoFilterBands(image, filter, strength)
+            applyPhotoFilterBands(image, filter, strength, lut)
             currentCoroutineContext().ensureActive()
             stage.outputStream().use { require(image.compress(Bitmap.CompressFormat.JPEG, 98, it)) { "照片暂时无法保存" } }
             val sourceExif = original.inputStream().use { ExifInterface(it) }

@@ -14,6 +14,7 @@ import java.lang.ref.WeakReference
 /** The UI and external manager must share exactly one worker owner in the main process. */
 class HostPluginRuntime private constructor(private val application: Application) {
     val manager = PluginManager(application, builtinPlugins(application))
+    val recovery = com.kigtts.next.recovery.CrashRecovery(application)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
     val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)
     val stickers = com.kigtts.next.cards.StickerRepository(application, manager.paths, mediaRepository)
@@ -23,7 +24,7 @@ class HostPluginRuntime private constructor(private val application: Application
         { state()?.editingCardId() }, { owner -> ui()?.agentAccess?.consume(owner) == true })
     val quickTextPlugins=com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,manager.paths,::ui)
     val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, ::ui)
-    init {manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin
+    init {manager.safeMode = recovery::safeMode; manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin
         manager.stickerBrokerFactory = stickerPlugins::forPlugin }
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()
     private val operations = Mutex()

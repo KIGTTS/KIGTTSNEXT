@@ -12,7 +12,7 @@ import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import java.util.zip.ZipEntry
 
-data class LuaManifest(val id: String, val name: String, val version: String, val permissions: Set<String>)
+data class LuaManifest(val id: String, val name: String, val version: String, val permissions: Set<String>, val permissionPurposes: Map<String, String> = emptyMap())
 data class LuaProject(val manifest: LuaManifest, val enabled: Boolean, val hash: String, val error: String = "")
 data class LuaPending(val token: String, val manifest: LuaManifest, val hash: String, val directory: File)
 
@@ -160,7 +160,9 @@ class LuaSourceStore(private val storage: PluginStorage) {
         require(name.length in 1..64 && version.length in 1..32) { "名称或版本无效" }
         val permissions = value["permissions"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty()
         require(PERMISSIONS.containsAll(permissions)) { "申请了不支持的权限" }
-        return LuaManifest(id, name, version, permissions)
+        val purposes = value["permissionPurposes"]?.jsonObject?.mapValues { it.value.jsonPrimitive.content }.orEmpty()
+        require(purposes.size <= permissions.size && purposes.all { (key, text) -> key in permissions && text.length in 1..600 }) { "权限用途声明无效" }
+        return LuaManifest(id, name, version, permissions, purposes)
     }
     private fun safeId(id: String) = id.also { require(ID.matches(id)) { "无效工具 ID" } }
     private fun hash(directory: File): String {
@@ -176,7 +178,7 @@ class LuaSourceStore(private val storage: PluginStorage) {
         val temp = index.resolveSibling("projects.pending.json")
         temp.writeText(JsonArray(records.values.map { record -> buildJsonObject {
             put("manifest", buildJsonObject { put("id", record.manifest.id); put("name", record.manifest.name); put("version", record.manifest.version)
-                put("permissions", JsonArray(record.manifest.permissions.sorted().map(::JsonPrimitive))) })
+                put("permissions", JsonArray(record.manifest.permissions.sorted().map(::JsonPrimitive))); put("permissionPurposes", JsonObject(record.manifest.permissionPurposes.mapValues { JsonPrimitive(it.value) })) })
             put("enabled", record.enabled); put("hash", record.hash); put("error", record.error)
         } }).toString(), Charsets.UTF_8)
         java.nio.file.Files.move(temp.toPath(), index.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)

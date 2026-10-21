@@ -55,7 +55,7 @@ class CameraNativeControlsUiTest {
         assertCircle("camera-zoom-current", minimum); assertCircle("camera-zoom-stop/2", minimum)
         compose.onNodeWithTag("camera-zoom-stop/1").assertDoesNotExist()
         compose.onNodeWithTag("camera-zoom-current").performClick(); assertEquals(1.2f, ratio, .001f)
-        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(3f) }
+        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(cameraZoomPosition(3f, 1.2f..4f)) }
         assertEquals(3f, ratio, .001f)
     }
 }

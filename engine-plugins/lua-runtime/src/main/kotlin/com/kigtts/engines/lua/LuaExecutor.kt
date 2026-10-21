@@ -17,7 +17,8 @@ class LuaBudgetExceeded(message: String) : Error(message)
 class LuaExecutor(private val environment: PluginEnvironment, private val store: LuaSourceStore,
     private val instructionLimit: Int = 250_000, private val durationMillis: Long = 2_000) {
     fun validate(source: String) { compile(source) }
-    suspend fun call(project: LuaProject, method: String, context: PluginContext, action: String? = null): JsonElement = withContext(Dispatchers.Default) {
+    suspend fun call(project: LuaProject, method: String, context: PluginContext, action: String? = null,
+        sourceDirectory: File = store.code(project.manifest.id)): JsonElement = withContext(Dispatchers.Default) {
         val coroutine = currentCoroutineContext()
         val deadline = System.nanoTime() + durationMillis * 1_000_000
         val globals = Globals()
@@ -52,8 +53,8 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
         globals.get("string").set("find", object : VarArgFunction() {
             override fun invoke(args: Varargs): Varargs = find.invoke(LuaValue.varargsOf(arrayOf(args.arg1(), args.arg(2), args.arg(3), LuaValue.TRUE)))
         })
-        globals.set("host", host(project, method == "execute", coroutine, budget, globals))
-        val prototype = compile(store.source(project.manifest.id))
+        globals.set("host", host(project, method == "execute", coroutine, budget, globals, sourceDirectory))
+        val prototype = compile(sourceDirectory.resolve("main.lua").readText(Charsets.UTF_8))
         try {
             val exports = LuaClosure(prototype, globals).call().checktable()
             val function = exports.get(method)
@@ -69,10 +70,10 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
         require(bytes.size in 1..LuaSourceStore.SOURCE_LIMIT && bytes.first() != 27.toByte() && bytes.none { it == 0.toByte() }) { "只允许 UTF-8 源代码" }
         return LuaC.instance.compile(ByteArrayInputStream(bytes), name)
     }
-    private fun host(project: LuaProject, writable: Boolean, coroutine: CoroutineContext, budget: BudgetDebug, globals: Globals): LuaTable {
+    private fun host(project: LuaProject, writable: Boolean, coroutine: CoroutineContext, budget: BudgetDebug, globals: Globals, sourceDirectory: File): LuaTable {
         val permissions = project.manifest.permissions
         val data = store.data(project.manifest.id)
-        val assets = store.code(project.manifest.id).resolve("assets")
+        val assets = sourceDirectory.resolve("assets")
         val modules = mutableMapOf<String, LuaValue>()
         val loading = mutableSetOf<String>()
         fun gate(permission: String) { require(permission in permissions) { "未授予 $permission" }; budget.check() }
@@ -109,10 +110,10 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
             host.set("app", function { args ->
                 gate("app-control")
                 val command = PluginJson.decodeFromJsonElement(AppCommand.serializer(), LuaJson.result(args.arg1()))
-                require(command !is AppCommand.PluginAction && command !is AppCommand.DeliverResource) { "Lua 工具不能调用插件管理操作" }
+                require(command is AppCommand.Describe || command is AppCommand.State || command is AppCommand.Navigate || command is AppCommand.SetText || command is AppCommand.SetAutomaticRead || command is AppCommand.Speak || command is AppCommand.StopSpeech || command is AppCommand.Setting) { "Lua 工具不能调用插件管理操作" }
                 require(writable || command is AppCommand.Describe || command is AppCommand.State) { "页面刷新只能读取数据" }
-                val reply = budget.io { runBlocking(coroutine + Dispatchers.IO) { withTimeout(5_000) { environment.appBroker?.request(command) ?: AppReply.Failure("HOST_UNAVAILABLE", "宿主不支持此操作") } } }
-                LuaJson.toLua(PluginJson.encodeToJsonElement(AppReply.serializer(), reply))
+                val reply = budget.io { runBlocking(coroutine + Dispatchers.IO) { withTimeout(125_000) { managed(project, "app", PluginJson.encodeToJsonElement(AppCommand.serializer(), command).jsonObject) } } }
+                LuaJson.toLua(reply)
             })
             host.set("quick", function { args ->
                 val request = rewriteResources(LuaJson.result(args.arg1())).jsonObject.toMutableMap()
@@ -125,9 +126,8 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
                     request["destination"] = JsonPrimitive(data.file(destination).relativeTo(environment.storage.root).invariantSeparatorsPath)
                 }
                 val command = PluginJson.decodeFromJsonElement(QuickTextCommand.serializer(), JsonObject(request))
-                val reply = budget.io { runBlocking(coroutine + Dispatchers.IO) { withTimeout(5_000) { environment.quickTextBroker?.request(command)
-                    ?: QuickTextReply.Failure(QuickTextError.HOST_UNAVAILABLE, "宿主不支持快捷文本") } } }
-                LuaJson.toLua(PluginJson.encodeToJsonElement(QuickTextReply.serializer(), reply))
+                val reply = budget.io { runBlocking(coroutine + Dispatchers.IO) { withTimeout(125_000) { managed(project, "quick", PluginJson.encodeToJsonElement(QuickTextCommand.serializer(), command).jsonObject) } } }
+                LuaJson.toLua(reply)
             })
             host.set("stickers", function { args ->
                 val request=rewriteResources(LuaJson.result(args.arg1())).jsonObject.toMutableMap()
@@ -144,9 +144,8 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
                     request["destination"]=JsonPrimitive(data.file(destination).relativeTo(environment.storage.root).invariantSeparatorsPath)
                 }
                 val command=PluginJson.decodeFromJsonElement(StickerCommand.serializer(),JsonObject(request))
-                val reply=budget.io {runBlocking(coroutine+Dispatchers.IO) {withTimeout(5_000) {environment.stickerBroker?.request(command)
-                    ?: StickerReply.Failure(StickerError.HOST_UNAVAILABLE,"宿主不支持图库与名片")}}}
-                LuaJson.toLua(PluginJson.encodeToJsonElement(StickerReply.serializer(),reply))
+                val reply=budget.io {runBlocking(coroutine+Dispatchers.IO) {withTimeout(125_000) {managed(project, "stickers", PluginJson.encodeToJsonElement(StickerCommand.serializer(), command).jsonObject)}}}
+                LuaJson.toLua(reply)
             })
             host.set("data", LuaTable().also { functions ->
                 functions.set("read", function { args -> val file = data.file(args.checkjstring(1)); require(file.length() <= 64 * 1024); LuaValue.valueOf(if (file.isFile) file.readText(Charsets.UTF_8) else "") })
@@ -163,6 +162,12 @@ class LuaExecutor(private val environment: PluginEnvironment, private val store:
                 functions.set("read", function { args -> val file = scoped(assets, args.checkjstring(1)); require(file.isFile && file.length() <= 256 * 1024); LuaValue.valueOf(file.readText(Charsets.UTF_8)) })
             })
         }
+    }
+    private suspend fun managed(project: LuaProject, channel: String, command: JsonObject): JsonElement {
+        val reply = environment.appBroker?.request(AppCommand.ManagedCall(project.manifest.id, channel, command))
+            ?: error("PERMISSION_REQUIRED: 宿主未提供项目权限代理")
+        if (reply is AppReply.Failure) error((if (reply.code == "PERMISSION_DENIED") "PERMISSION_REQUIRED: " else "") + reply.message)
+        return (reply as AppReply.Data).value.getValue("reply")
     }
     private fun scoped(root: File, path: String): File {
         require(root.isDirectory && path.isNotEmpty() && !path.startsWith('/') && !path.contains('\\') && !path.contains(':') && !path.contains('\u0000'))

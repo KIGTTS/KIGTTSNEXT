@@ -29,10 +29,18 @@ class AgentPagesTest {
         repeat(50) { store.message(conversation.id, AgentMessage(role = "assistant", content = "文".repeat(70_000), reasoning = "思".repeat(70_000)), persist = false) }
         store.updateSettings { it.copy(showReasoning = true) }
         val runner = AgentRunner(store, secrets, transport, AgentTools(env), {}, TestScope())
-        val pages = listOfNotNull(agentPage("chat", store, runner, secrets), agentPage("settings", store, runner, secrets), agentPage("conversations", store, runner, secrets))
+        val pages = listOfNotNull(agentPage("chat", store, runner, secrets), agentPage("settings", store, runner, secrets), agentPage("connection-settings", store, runner, secrets), agentPage("conversations", store, runner, secrets))
         val encoded = PluginJson.encodeToString(PluginSnapshot(PluginDescriptor("tools.cloud-agent", "助手", "测试"), PluginContributions(), pages))
         assertTrue(encoded.toByteArray(Charsets.UTF_8).size < 512 * 1024)
         assertTrue(encoded.contains("较长内容仅显示结尾"))
         assertTrue(encoded.contains("已设置"))
+        val chatActions = agentPage("chat", store, runner, secrets)!!.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }
+        assertTrue(chatActions.any { it.id == "conversations" && it.label == "历史会话" })
+        assertFalse(chatActions.any { it.id.startsWith("export-conversation") })
+        val old = store.create(); store.select(conversation.id)
+        val rows = agentPage("conversations", store, runner, secrets)!!.management!!.items
+        assertTrue(rows.single { it.id == old.id }.actions.any { it.id == "export-conversation/${old.id}" })
+        val settingsJson = PluginJson.encodeToString(agentPage("settings", store, runner, secrets))
+        assertFalse(settingsJson.contains("import-cards")); assertFalse(settingsJson.contains("export-cards"))
     }
 }

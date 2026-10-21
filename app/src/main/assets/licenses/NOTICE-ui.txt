@@ -1,0 +1,17 @@
+Material Symbols Rounded / robot_2 — Google, Apache-2.0.
+Source: https://github.com/google/material-design-icons
+Original variable font SHA-256: 32e4011709e055596eb8d2dd0f7cb547b47c1d40ac9ecb8fad54f7f7eac202e7
+Bundled font is a static, subsetted derivative. Rebuild instructions: tools/Build-MaterialSymbols.py and docs/ui-icons.md.
+Full Apache-2.0 license: Apache-2.0.txt.
+
+AndroidSVG 1.4 — Paul LeBeau, Apache-2.0.
+Source: https://github.com/BigBadaboom/androidsvg
+Full Apache-2.0 license: Apache-2.0.txt.
+
+commonmark-java 0.24.0 and commonmark extensions — Atlassian and contributors, BSD-2-Clause.
+Source: https://github.com/commonmark/commonmark-java
+Full license: commonmark-BSD-2-Clause.txt.
+
+autolink-java — Robin Stocker, MIT.
+Source: https://github.com/robinst/autolink-java
+Full license: autolink-MIT.txt.

@@ -28,6 +28,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean, leave: () -> Unit) {
     val scope = rememberCoroutineScope(); var importing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }; var framing by remember { mutableStateOf(false) }
+    var selectMain by remember { mutableStateOf(false) }
     fun import(uri: android.net.Uri?, type: QuickCardType) { if (uri == null) return
         scope.launch { importing = true; error = null
             try { model.content.importPhrase(draft.key, type, uri) }
@@ -36,7 +37,8 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     }
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { import(it, QuickCardType.MEDIA) }
     val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { import(it, QuickCardType.AUDIO) }
-    val entry = model.mediaRepository.get(draft.mediaId)
+    val entries by model.mediaRepository.entries.collectAsStateWithLifecycle()
+    val entry = entries.firstOrNull { it.id == draft.mediaId }
     val state by model.state.collectAsStateWithLifecycle()
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -49,10 +51,11 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         QuickCardType.PAGE -> Row {
             MotionTextButton(feedbackClick { leave(); scope.launch { runCatching { model.content.htmlFiles("phrase:" + draft.key) }.onFailure { error=it.message } } }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "创建页面文件" else "管理页面文件") }
-            MotionTextButton(feedbackClick { leave(); model.content.picker("phrase:" + draft.key) }, enabled = enabled,
-                modifier = Modifier.testTag("phrase-choose-page")) { Text("选择页面") }
+            MotionTextButton(feedbackClick { selectMain = true }, enabled = enabled && entry?.kind == MediaKind.HTML && entry.pluginId == null,
+                modifier = Modifier.testTag("phrase-choose-page")) { Text("选择主页面") }
         }
     }
+    if (draft.type == QuickCardType.PAGE) { PhraseIconSettings(draft, model, enabled); PhraseNetworkSettings(draft, model, enabled) }
     MotionColumn(if(draft.type==QuickCardType.TEXT)emptyList() else listOfNotNull(entry),{ resource,_->resource.id },enabled=enabled) { resource,interactive->
         PhraseResourceInfo(resource,interactive,draft.type in setOf(QuickCardType.MEDIA,QuickCardType.PAGE),{ framing=true },
             { model.content.editPhrase { it.copy(mediaId=null,resources=it.resources-it.type) } })
@@ -70,4 +73,5 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         }
     }
     if (framing && entry != null) ThumbnailFramingDialog(entry, model.mediaRepository) { framing = false }
+    if (selectMain && entry?.kind == MediaKind.HTML) PhraseMainPagePicker(model, entry.id) { selectMain = false }
 }

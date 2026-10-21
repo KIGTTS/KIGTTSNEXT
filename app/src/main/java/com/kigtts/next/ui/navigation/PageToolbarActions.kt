@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.iconLongAction
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.MutableTransitionState
@@ -30,9 +31,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.delay
 
 data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val preserveColorWhenLocked:Boolean=false,
-    val checked:Boolean?=null,val click:()->Unit)
+    val checked:Boolean?=null,val longClick:(()->Unit)?=null,val click:()->Unit)
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
+    var primaryCount: State<Int>? by mutableStateOf(null)
     var loading:State<Boolean>? by mutableStateOf(null)
     internal var backGuard: State<() -> Boolean>? by mutableStateOf(null)
     internal val input = PageInputState()
@@ -51,12 +53,14 @@ fun RegisterPageLoading(loading: Boolean) {
 
 /** Each retained page owns its registration. Callback updates never replace the whole scaffold. */
 @Composable
-fun RegisterPageActions(actions:List<ToolbarAction>) {
+fun RegisterPageActions(actions:List<ToolbarAction>, primaryCount: Int = 2) {
     val host=LocalPageToolbarActions.current ?: return
     val source=rememberUpdatedState(actions)
+    val count = rememberUpdatedState(primaryCount.coerceIn(0, 4))
     DisposableEffect(host,source) {
         host.source=source
-        onDispose { if(host.source===source)host.source=null }
+        host.primaryCount = count
+        onDispose { if(host.source===source) { host.source=null; host.primaryCount=null } }
     }
 }
 
@@ -65,7 +69,8 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     var more by remember { mutableStateOf(false) }
     val active=LocalPageActive.current
     LaunchedEffect(active) { if(!active)more=false }
-    val wanted = actions.take(2)
+    val primaryCount = LocalPageToolbarActions.current?.primaryCount?.value ?: 2
+    val wanted = actions.take(primaryCount)
     val retained = remember { mutableStateListOf<ToolbarAction>() }
     SideEffect { wanted.forEach { action ->
         val index = retained.indexOfFirst { it.id == action.id }
@@ -85,15 +90,18 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
             if (action.checked != null) MotionIconToggleButton(action.checked, { action.click() },
                 Modifier.requiredSize(48.dp).testTag(action.id), enabled = active && current != null && action.enabled,
                 transientLock = temporaryLock) { Icon(action.icon, action.label) }
-            else MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { Icon(action.icon,action.label) }
+            else com.kigtts.next.ui.components.IconActionHint(action.label, action.longClick != null) {
+                MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id)
+                    .iconLongAction(active&&current!=null&&action.enabled, action.longClick),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { Icon(action.icon,action.label) }
+            }
         }
     } }
-    AnimatedVisibility(actions.size>2, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
+    AnimatedVisibility(actions.size>primaryCount, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180))) {
     Box(Modifier.excludeCameraPull()) {
         MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert,"更多页面操作") }
         DropdownMenu(more&&active,{ more=false }) {
-            actions.drop(2).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ Icon(action.icon,null) },
+            actions.drop(primaryCount).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ Icon(action.icon,null) },
                 colors=MenuDefaults.itemColors().animateEnabled(action.enabled),
                 enabled=action.enabled,onClick=feedbackClick { more=false;action.click() },modifier=Modifier.testTag(action.id)) }
         }

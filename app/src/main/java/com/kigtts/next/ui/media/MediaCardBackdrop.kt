@@ -74,3 +74,11 @@ internal fun PhraseMediaBackdrop(id: String?, repository: MediaRepository?, modi
     val entries by repository.entries.collectAsStateWithLifecycle()
     MediaCardBackdrop(entries.firstOrNull { it.id == id }, repository, modifier, surface)
 }
+
+@Composable
+internal fun PhraseMediaBackdrop(phrase: com.kigtts.next.state.QuickPhrase, repository: MediaRepository?, modifier: Modifier, surface: Color = MaterialTheme.colorScheme.surfaceContainerLowest) {
+    if (repository == null) return
+    val entry = repository.get(phrase.mediaId)
+    if (entry?.kind in setOf(MediaKind.HTML, MediaKind.WEB)) PhraseWebIcon(phrase, repository, modifier, surface)
+    else PhraseMediaBackdrop(phrase.mediaId, repository, modifier, surface)
+}

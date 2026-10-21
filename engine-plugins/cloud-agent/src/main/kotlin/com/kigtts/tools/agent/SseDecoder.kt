@@ -45,6 +45,7 @@ class StreamAssembler(private val textLimit: Int = 1024 * 1024) {
     var ended = false; private set
     val content get() = text.toString()
     val reasoningContent get() = reasoning.toString()
+    val hasToolCalls get() = calls.isNotEmpty()
     fun accept(payload: String): Boolean {
         if (payload == "[DONE]") { ended = true; return false }
         val root = PluginJson.parseToJsonElement(payload).jsonObject

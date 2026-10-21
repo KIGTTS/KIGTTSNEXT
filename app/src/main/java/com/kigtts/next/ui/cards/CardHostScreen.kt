@@ -18,5 +18,6 @@ fun CardHostScreen(model: AppViewModel) {
         onQuickImage = model::quickImageCard, openCamera = { model.cardCapture.open() },
         requestedCardId = request.cardId.takeIf { active }, requestVersion = if (active) request.version else 0L,
         openRequestedPreview = request.openPreview,
-        onAlbumSelected = model.cardUi::selectAlbum, onPreviewRequestHandled = model.cardUi::previewHandled)
+        onAlbumSelected = model.cardUi::selectAlbum, onPreviewRequestHandled = model.cardUi::previewHandled,
+        openSystemCamera = { model.cardCapture.open(systemCamera = true) })
 }

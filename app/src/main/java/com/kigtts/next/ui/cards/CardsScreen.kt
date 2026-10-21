@@ -20,7 +20,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
     openEditor: (String) -> Unit, message: (String) -> Unit, onQuickImage: (String, String) -> Unit = { _, _ -> },
     openCamera: () -> Unit = {}, requestedCardId: String? = null, requestVersion: Long = 0L,
     onAlbumSelected: (String) -> Unit = {}, onPreviewRequestHandled: (Long) -> Unit = {},
-    openRequestedPreview: Boolean = true) {
+    openRequestedPreview: Boolean = true, openSystemCamera: () -> Unit = openCamera) {
     val context = LocalContext.current
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
@@ -110,6 +110,8 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
         val maximumColumns = minimumColumns + 2
         val columns = minimumColumns + columnLevel.coerceIn(0, 2)
         if (!management.active) RegisterPageActions(buildList {
+            add(ToolbarAction("cards-camera", "拍照，长按使用系统相机", Icons.Default.PhotoCamera, enabled,
+                longClick = openSystemCamera, click = openCamera))
             add(ToolbarAction("cards-browse-mode", if (mode == PolaroidBrowseMode.GRID) "逐张查看" else "宫格查看",
                 if (mode == PolaroidBrowseMode.GRID) Icons.Default.ViewCarousel else Icons.Default.GridView, enabled,
                 click = { mode = if (mode == PolaroidBrowseMode.GRID) PolaroidBrowseMode.STACK else PolaroidBrowseMode.GRID }))

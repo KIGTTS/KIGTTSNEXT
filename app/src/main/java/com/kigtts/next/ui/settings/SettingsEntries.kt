@@ -28,7 +28,9 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
     val native = mapOf(
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
             category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration)),
-        "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language)),
+        "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language),
+            category("camera", SettingsCategory.CAMERA, Icons.Default.PhotoCamera),
+            category("backup", SettingsCategory.BACKUP_RESTORE, Icons.Default.SettingsBackupRestore)),
         "extensions" to listOf(category("experimental", SettingsCategory.EXPERIMENTAL, Icons.Default.Science),
             SettingsLink("plugins", "插件管理", "管理插件", Icons.Default.Extension, Destination.Plugins)),
     )
@@ -39,13 +41,13 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         val formalPages = formal.map { it.pageId }.toSet()
         val legacy = contributions.drawerEntries.filter { it.pageId !in formalPages }.distinctBy { it.pageId }
             .map { SettingsEntry(it.id, it.label, it.pageId, it.icon) }
-        (formal + legacy).map { Feature(plugin.descriptor.id, it) }
+        (formal + legacy).filterNot { it.cardId == "backup" }.map { Feature(plugin.descriptor.id, it) }
     }.sortedWith(compareBy({ it.entry.order }, { it.pluginId }, { it.entry.id }))
     val ids = reserved.keys + features.map { it.entry.cardId }.distinct().filterNot(reserved::containsKey)
     return ids.mapNotNull { id ->
         val entries = features.filter { it.entry.cardId == id }
         val links = native[id].orEmpty() + entries.map { (pluginId, entry) ->
-            SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary, if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE) null else entry.icon.vector(),
+            SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary, if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
                 Destination.PluginPage(pluginId, entry.pageId))
         }
         if (links.isEmpty()) null else {
@@ -54,3 +56,12 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         }
     }
 }
+
+/** Compatibility plugins own their format page, while the host owns the common entrance. */
+internal fun backupSettingsLinks(registry: PluginRegistry, context: PluginContext): List<SettingsLink> =
+    registry.plugins.flatMap { plugin -> plugin.contributions(context).settingsEntries.filter { it.cardId == "backup" }
+        .map { plugin.descriptor.id to it } }
+        .sortedWith(compareBy({ it.second.order }, { it.first }, { it.second.id }))
+        .map { (pluginId, entry) -> SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary,
+            if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
+            Destination.PluginPage(pluginId, entry.pageId)) }

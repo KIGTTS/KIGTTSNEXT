@@ -18,14 +18,35 @@ import androidx.compose.ui.platform.testTag
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.PluginOutcome
+import com.kigtts.plugin.api.PluginJson
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 
 /** Native host UI mediates text/file selection and hardware permission requests. */
 @Composable
 fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextInput>?,
-    import: Pair<String, PluginOutcome.ImportResource>?, dismissInput: () -> Unit, dismissImport: () -> Unit) {
+    import: Pair<String, PluginOutcome.ImportResource>?, dismissInput: () -> Unit, dismissImport: () -> Unit,
+    capture: Pair<String, PluginOutcome.CapturePhoto>? = null, dismissCapture: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    var capturePlugin by rememberSaveable { mutableStateOf<String?>(null) }
+    var captureJson by rememberSaveable { mutableStateOf<String?>(null) }
+    val photos = com.kigtts.next.ui.cards.rememberCardPhotoSources({ selected ->
+        val owner = capturePlugin; val json = captureJson; capturePlugin = null; captureJson = null
+        if (owner == null || json == null) selected.release()
+        else scope.launch {
+            try {
+                val request = PluginJson.decodeFromString<PluginOutcome.CapturePhoto>(json)
+                importPluginResource(context, model, owner, PluginOutcome.ImportResource(request.title, request.directory, request.actionId, mimeTypes = listOf("image/*")), selected.uri)
+            } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+            catch (error: Exception) { model.message(error.message ?: "拍摄照片未能添加") }
+            finally { selected.release() }
+        }
+    }, { message -> capturePlugin = null; captureJson = null; model.message(message) },
+        onCameraCancelled = { capturePlugin = null; captureJson = null })
+    LaunchedEffect(capture) { capture?.let { (owner, request) ->
+        capturePlugin = owner; captureJson = PluginJson.encodeToString(request); photos.camera(); dismissCapture()
+    } }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), model::microphoneResult)
     LaunchedEffect(model) { model.microphoneRequests.collect { permission.launch(Manifest.permission.RECORD_AUDIO) } }
     val overlay = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { model.overlayResult() }

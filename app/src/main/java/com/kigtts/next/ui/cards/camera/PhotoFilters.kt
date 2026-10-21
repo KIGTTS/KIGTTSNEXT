@@ -13,11 +13,15 @@ internal object PhotoFilters {
         return FloatArray(20) { original[it] + (selected[it] - original[it]) * weight }
     }
     private fun preset(filter: PhotoFilter): FloatArray = when (filter) {
-        PhotoFilter.ORIGINAL -> floatArrayOf(1f,0f,0f,0f,0f, 0f,1f,0f,0f,0f, 0f,0f,1f,0f,0f, 0f,0f,0f,1f,0f)
+        PhotoFilter.ORIGINAL, PhotoFilter.CUSTOM -> floatArrayOf(1f,0f,0f,0f,0f, 0f,1f,0f,0f,0f, 0f,0f,1f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.BW -> floatArrayOf(.213f,.715f,.072f,0f,0f, .213f,.715f,.072f,0f,0f, .213f,.715f,.072f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.WARM -> floatArrayOf(1.04f,0f,0f,0f,5f, 0f,1f,0f,0f,1f, 0f,0f,.93f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.COOL -> floatArrayOf(.94f,0f,0f,0f,0f, 0f,1f,0f,0f,1f, 0f,0f,1.05f,0f,4f, 0f,0f,0f,1f,0f)
         PhotoFilter.VINTAGE -> floatArrayOf(.90f,.10f,.03f,0f,9f, .06f,.89f,.03f,0f,4f, .03f,.10f,.77f,0f,4f, 0f,0f,0f,1f,0f)
+        // Original encoded-RGB film looks, not Fujifilm's F-Log camera transforms.
+        PhotoFilter.FILM_SOFT -> floatArrayOf(.91f,.06f,.03f,0f,8f, .02f,.93f,.03f,0f,6f, .04f,.05f,.86f,0f,8f, 0f,0f,0f,1f,0f)
+        PhotoFilter.FILM_VIVID -> floatArrayOf(1.18f,-.06f,-.02f,0f,-8f, -.04f,1.14f,-.02f,0f,-5f, -.02f,-.06f,1.16f,0f,-6f, 0f,0f,0f,1f,0f)
+        PhotoFilter.FILM_FADE -> floatArrayOf(.86f,.08f,.04f,0f,14f, .04f,.86f,.05f,0f,10f, .05f,.07f,.81f,0f,14f, 0f,0f,0f,1f,0f)
     }
     fun matrix(filter: PhotoFilter, strength: Float = 1f) = ColorMatrix(coefficients(filter, strength))
     fun apply(color: Int, values: FloatArray): Int {

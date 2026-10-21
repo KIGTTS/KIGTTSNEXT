@@ -29,6 +29,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     private var config: EGLConfig? = null
     private var placeholder: EGLSurface = EGL14.EGL_NO_SURFACE
     private var program = 0
+    private var lutTexture: com.kigtts.next.media.color.GlLutTexture? = null
     private val positions = floats(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f)
     private val coordinates = floats(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f)
     private var positionLocation = -1; private var coordinateLocation = -1
@@ -56,6 +57,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
             check(placeholder != EGL14.EGL_NO_SURFACE) { "EGL placeholder unavailable" }
             makeCurrent(placeholder)
             program = link(CameraPreviewShader.VERTEX, CameraPreviewShader.FRAGMENT)
+            lutTexture = com.kigtts.next.media.color.GlLutTexture(program)
             positionLocation = GLES20.glGetAttribLocation(program, "aPosition")
             coordinateLocation = GLES20.glGetAttribLocation(program, "aTexCoord")
             matrixLocation = GLES20.glGetUniformLocation(program, "uTextureMatrix")
@@ -102,6 +104,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
         GLES20.glUniform1i(textureLocation, 0); GLES20.glUniformMatrix4fv(matrixLocation, 1, false, transform, 0)
         for (row in 0..3) GLES20.glUniform4fv(rowLocations[row], 1, colors.rows, row * 4)
         GLES20.glUniform4fv(biasLocation, 1, colors.bias, 0)
+        lutTexture?.bind(colors.lut, colors.lutStrength)
         positions.position(0); coordinates.position(0)
         GLES20.glEnableVertexAttribArray(positionLocation); GLES20.glVertexAttribPointer(positionLocation, 2, GLES20.GL_FLOAT, false, 0, positions)
         GLES20.glEnableVertexAttribArray(coordinateLocation); GLES20.glVertexAttribPointer(coordinateLocation, 2, GLES20.GL_FLOAT, false, 0, coordinates)
@@ -126,9 +129,9 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     }
     override fun close() {
         if (context != EGL14.EGL_NO_CONTEXT && placeholder != EGL14.EGL_NO_SURFACE) {
-            runCatching { makeCurrent(placeholder); if (program != 0) GLES20.glDeleteProgram(program) }
+            runCatching { makeCurrent(placeholder); lutTexture?.close(); if (program != 0) GLES20.glDeleteProgram(program) }
         }
-        program = 0
+        program = 0; lutTexture = null
         if (displayInitialized) {
             EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
             if (placeholder != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(display, placeholder)

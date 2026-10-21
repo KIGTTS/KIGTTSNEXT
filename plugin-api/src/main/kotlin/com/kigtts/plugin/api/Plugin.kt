@@ -2,7 +2,7 @@ package com.kigtts.plugin.api
 
 import kotlinx.serialization.Serializable
 
-const val PLUGIN_API_VERSION = 10
+const val PLUGIN_API_VERSION = 13
 const val MIN_PLUGIN_API_VERSION = 9
 
 @Serializable
@@ -82,6 +82,12 @@ sealed interface PluginOutcome {
     data class Dialog(val title: String, val text: String) : PluginOutcome
     @Serializable
     data class Menu(val title: String, val items: List<PageAction>) : PluginOutcome
+    /** A real native confirmation, with actions in the dialog footer rather than a menu body. */
+    @Serializable
+    data class Confirm(val title: String, val text: String, val action: PageAction, val cancelLabel: String = "取消") : PluginOutcome
+    /** User-facing camera capture; the original image is copied into this plugin's directory. */
+    @Serializable
+    data class CapturePhoto(val title: String, val directory: String, val actionId: String) : PluginOutcome
     @Serializable
     data class OpenPage(val pageId: String) : PluginOutcome
     @Serializable

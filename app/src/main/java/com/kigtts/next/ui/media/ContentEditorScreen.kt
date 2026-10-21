@@ -57,7 +57,8 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
         catch (e:IllegalArgumentException) { error=e.message }
     }
     LaunchedEffect(editor.value, editor.formats, title) { model.content.editEditor(value, title, editor.formats, editor.value.selection.end) }
-    val transform = remember(editor.formats) { RichTextVisualTransformation(editor.formats) }
+    val base = remember(editor.formats) { RichTextVisualTransformation(editor.formats) }
+    val transform = com.kigtts.next.ui.components.rememberInputTextMotion(editor.value, MaterialTheme.colorScheme.onSurface, base)
     val menu = Modifier.richTextMenu(active&&!saving, { editor.value.selection }, editor.formats, editor::format)
     fun saveDraft() {
         if (!active || saving) return

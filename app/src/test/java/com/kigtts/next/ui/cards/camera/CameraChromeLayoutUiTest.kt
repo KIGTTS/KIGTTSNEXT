@@ -53,7 +53,7 @@ class CameraChromeLayoutUiTest {
         val zoom = compose.onNodeWithTag("camera-zoom-rail").fetchSemanticsNode().boundsInRoot
         assertTrue(strip.bottom < photo.top); assertTrue(zoom.top > photo.bottom)
         compose.onNodeWithTag("camera-settings").performClick(); assertEquals(1, clicks)
-        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(2f) }
+        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(cameraZoomPosition(2f, 1f..4f)) }
         assertEquals(2f, ratio, .001f)
         assertSame(nativeView, compose.activity.findViewById<View>(nativeView!!.id))
     }

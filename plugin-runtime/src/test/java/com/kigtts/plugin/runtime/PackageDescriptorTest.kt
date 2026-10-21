@@ -8,9 +8,10 @@ class PackageDescriptorTest {
     private val legacy = PackageManifest("test.legacy", "Legacy", "1.0", 1, "test.Legacy", apiVersion = 9, files = emptyMap())
     @Test fun oldDefaultConstructorBindsToItsSignedPackageApi() {
         val runtimeDefault = PluginDescriptor("test.legacy", "Legacy", "test", version = "1.0")
-        assertEquals(10, runtimeDefault.apiVersion)
+        assertEquals(PLUGIN_API_VERSION, runtimeDefault.apiVersion)
         assertEquals(9, packageDescriptor(runtimeDefault, legacy).apiVersion)
         assertEquals(9, packageDescriptor(runtimeDefault.copy(apiVersion = 9), legacy).apiVersion)
+        assertEquals(10, packageDescriptor(runtimeDefault, legacy.copy(apiVersion = 10)).apiVersion)
     }
     @Test fun mismatchedIdentityOrVersionIsStillRejected() {
         val actual = PluginDescriptor("test.legacy", "Legacy", "test", version = "1.0")

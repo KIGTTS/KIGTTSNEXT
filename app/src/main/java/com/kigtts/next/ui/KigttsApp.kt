@@ -24,6 +24,9 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun KigttsApp(model: AppViewModel) {
+    com.kigtts.next.ui.media.WebAndroidPermissionHost()
+    com.kigtts.next.ui.media.RegisterBrowserInspectionRoot()
+    com.kigtts.next.ui.media.PublishWebTheme()
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
@@ -37,11 +40,13 @@ fun KigttsApp(model: AppViewModel) {
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    var pluginConfirmation by remember { mutableStateOf<Pair<String, PluginOutcome.Confirm>?>(null) }
+    var pluginCapture by remember { mutableStateOf<Pair<String, PluginOutcome.CapturePhoto>?>(null) }
     var pluginInput by remember { mutableStateOf<Pair<String, PluginOutcome.TextInput>?>(null) }
     var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
     var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
-    val inputOverlay = dialog != null || pluginMenu != null || pluginInput != null || packageInstall != null
+    val inputOverlay = dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -59,6 +64,8 @@ fun KigttsApp(model: AppViewModel) {
                 is PluginOutcome.Message -> scope.launch { snackbar.showSnackbar(outcome.text) }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                is PluginOutcome.Confirm -> pluginConfirmation = plugin to outcome
+                is PluginOutcome.CapturePhoto -> pluginCapture = plugin to outcome
                 is PluginOutcome.TextInput -> pluginInput = plugin to outcome
                 is PluginOutcome.ImportResource -> pluginImport = plugin to outcome
                 is PluginOutcome.ExportResource -> pluginExport = plugin to outcome
@@ -90,9 +97,11 @@ fun KigttsApp(model: AppViewModel) {
     }
     KigttsTheme(state.theme) {
         ProvideButtonFeedback(state.hapticsEnabled) {
-            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance) {
+            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance,
+                com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
             ProvideIconTextContextMenu {
-            PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null })
+            PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
+                pluginCapture, { pluginCapture = null })
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
@@ -108,6 +117,9 @@ fun KigttsApp(model: AppViewModel) {
                     }
                 }
             com.kigtts.next.ui.cards.PolaroidPrintPreviewHost(model)
+            com.kigtts.next.ui.plugins.PluginPermissionPrompts(model)
+            pluginConfirmation?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginConfirmation(request,
+                { pluginConfirmation = null }, { pluginConfirmation = null; model.invoke(plugin, request.action.id) }) }
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
                 confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
             pluginMenu?.let { (plugin, content) ->

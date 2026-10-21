@@ -160,7 +160,7 @@ class PluginPackageTest {
         assertEquals(base.publisherSha256, service.publisherSha256)
         val example=File(directory,"tools.quick-text-example-0.8.0.kigplugin")
         if(example.isFile) {val tools=store.inspect(example);assertEquals(base.publisherSha256,tools.publisherSha256)
-            assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION,tools.manifest.apiVersion)
+            assertTrue(tools.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
             assertTrue("quick-text-write" in tools.manifest.capabilities);assertFalse("network" in tools.manifest.capabilities)
             assertTrue(tools.manifest.files.keys.contains("assets/calculator.html"))}
         val modules = mapOf("tools.cloud-agent" to "cloud-agent", "runtime.lua" to "lua-runtime",
@@ -173,7 +173,8 @@ class PluginPackageTest {
             assertEquals(id, extension.manifest.id)
             assertEquals(version, extension.manifest.version)
             assertEquals(spec.getValue("versionCode").jsonPrimitive.content.toInt(), extension.manifest.versionCode)
-            assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION, extension.manifest.apiVersion)
+            if (module == "cloud-agent") assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION, extension.manifest.apiVersion)
+            else assertTrue(extension.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
             assertEquals(base.publisherSha256, extension.publisherSha256)
             assertTrue(extension.manifest.files.keys.any { it.startsWith("code/") && it.endsWith(".dex") })
             assertTrue(extension.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })

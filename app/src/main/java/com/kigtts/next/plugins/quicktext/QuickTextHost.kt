@@ -14,7 +14,7 @@ class QuickTextHost(val library:QuickTextLibrary,val media:MediaRepository,val p
     private val operationsLock=kotlinx.coroutines.sync.Mutex()
     private val decisions=MutableStateFlow(0L)
     private val cleanupScope=CoroutineScope(SupervisorJob()+Dispatchers.IO)
-    fun forPlugin(owner:String,capabilities:Set<String>):QuickTextBroker {
+    fun forPlugin(owner:String,capabilities:Set<String>, delegatedApproval: () -> Boolean = { false }):QuickTextBroker {
         paths.validateId(owner)
         return object:QuickTextBroker {
             override suspend fun request(command:QuickTextCommand):QuickTextReply=withContext(Dispatchers.Main) {operationsLock.lock()
@@ -27,7 +27,7 @@ class QuickTextHost(val library:QuickTextLibrary,val media:MediaRepository,val p
                         QuickTextCommand.Describe->QuickTextReply.Features(QuickTextFeatures(operations=operations,writable="quick-text-write" in capabilities,groupIcons=CategoryIcon.entries.map {it.name}))
                         is QuickTextCommand.Query->query(command)
                         is QuickTextCommand.Prepare->prepare(owner,command)
-                        is QuickTextCommand.Commit->commit(owner,command.token)
+                        is QuickTextCommand.Commit->commit(owner,command.token,delegatedApproval())
                         is QuickTextCommand.Discard->{requireQuick(pending[command.token]?.owner==owner,QuickTextError.PERMISSION_DENIED,"预览不属于本插件");reject(command.token);QuickTextReply.Discarded(command.token)}
                         is QuickTextCommand.Transaction->receipt(owner,command.transactionId)?.second ?: pending.values.firstOrNull {it.owner==owner&&it.transactionId==command.transactionId}
                             ?.let {QuickTextReply.Prepared(it.preview,it.mapping)} ?: QuickTextReply.Failure(QuickTextError.NOT_FOUND,"没有此事务")
@@ -97,12 +97,12 @@ class QuickTextHost(val library:QuickTextLibrary,val media:MediaRepository,val p
         val groupChanged=library.groups().firstOrNull {it.name==draft.category}?.let {old->plan.groups.firstOrNull {it.id==old.id}!=old} ?: false
         requireQuick(original?.dto(library.groups(),media.get(original.mediaId))==replacement&&!groupChanged,QuickTextError.BUSY,"该条目或分组正在编辑，请稍后重试")
     }
-    private fun commit(owner:String,token:String):QuickTextReply {
+    private fun commit(owner:String,token:String,delegatedApproval:Boolean=false):QuickTextReply {
         val plan=pending[token] ?: throw QuickTextFault(QuickTextError.NOT_FOUND,"预览已失效，请重新准备")
         requireQuick(plan.owner==owner,QuickTextError.PERMISSION_DENIED,"预览属于其它插件")
         requireQuick(library.revision.value==plan.preview.revision,QuickTextError.CONFLICT,"快捷文本已更新，请重新预览")
         checkDraft(plan)
-        if(plan.preview.requiresConfirmation&&!plan.approved&&ui()?.agentAccess?.consume(owner)!=true)return QuickTextReply.Failure(QuickTextError.CONFIRMATION_REQUIRED,"请打开修改预览并确认删除",reviewToken=token)
+        if(plan.preview.requiresConfirmation&&!plan.approved&&!delegatedApproval&&ui()?.agentAccess?.consume(owner)!=true)return QuickTextReply.Failure(QuickTextError.CONFIRMATION_REQUIRED,"请打开修改预览并确认删除",reviewToken=token)
         plan.entries.forEach {requireQuick(it.mediaId==null||media.get(it.mediaId)!=null,QuickTextError.NOT_FOUND,"附件已被移除")}
         val reply=QuickTextReply.Applied(library.revision.value+1,plan.transactionId,plan.mapping)
         val selected=ui()?.state?.value?.selectedCategory?.let {name->library.groups().firstOrNull {it.name==name}?.id}

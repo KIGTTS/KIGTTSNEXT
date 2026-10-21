@@ -24,12 +24,12 @@ fun LandscapeAppRail(state: AppState, model: AppViewModel, openSettings: () -> U
     Column(Modifier.width(64.dp).fillMaxHeight().testTag("landscape-app-rail"), horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(feedbackClick(openSettings), modifier = Modifier.testTag("open-settings"),
             colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
-        SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
+        SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS 横版 Logo",
                 Modifier.requiredSize(128.dp, 32.dp).graphicsLayer { rotationZ = -90f }, tint = MaterialTheme.colorScheme.onSurface)
         }
-        SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
+        SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
         IconButton(feedbackClick(model::toggleAutoPlayback), modifier=Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
             Icon(if(state.autoPlayback)Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                 if(state.autoPlayback)"关闭自动播放与朗读" else "开启自动播放与朗读")

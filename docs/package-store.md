@@ -1,6 +1,6 @@
 # 插件商店与包源
 
-`tools.package-store` 是独立 MIT 插件，版本 0.8.0，要求 API 9。没有预置或默认信任的真实源。设置中提供「插件商店」与「包源」入口，使用主程序同一套分组、圆角、按钮与页面动效。源管理和浏览视图共用数据模型；可以浏览全部源，也可切到指定源。
+`tools.package-store` 是独立 MIT 插件，版本 0.9.3，要求 API12。默认内置一条魔搭官方源，但不自动信任发布者或安装插件。设置中提供「插件商店」与「包源」入口，使用主程序同一套分组、圆角、按钮与页面动效。源管理和浏览视图共用数据模型；可以浏览全部源，也可切到指定源。
 
 ## 使用流程
 
@@ -35,7 +35,7 @@ Native 清单使用现有 RSA/SHA-256 签名协议。Signed Lua 包新增 `manif
 
 ## 存储与权限
 
-配置、目录、下载、中途文件与已验签 Lua 投递资源全部位于 `appdata/Kigtts/plugin/plugindata/tools.package-store/` 的 `config/catalogs/downloads/tmp/resources`。每次缓存命中会重新检查 byte count 与 SHA；下载失败或取消会清理本插件中途文件，镜像只在下载阶段切换。HTTPS 不自动跟随重定向，不接受帐号嵌入 URL。
+配置、目录、下载、中途文件与已验签 Lua 投递资源全部位于 `appdata/Kigtts/plugin/plugindata/tools.package-store/` 的 `config/catalogs/downloads/tmp/resources`。每次缓存命中会重新检查 byte count 与 SHA；下载失败或取消会清理本插件中途文件，镜像只在下载阶段切换。HTTPS最多显式跟随5次跳转以兼容魔搭LFS/CDN；每次核验HTTPS与无嵌入帐号，不复制Authorization或Cookie，拒绝HTTP降级，最终仍核对大小、SHA-256和签名。
 
 源的 `expectedPublisher` 只用于一致性校验，不能替用户授权某个发布者。主程序对原生包仍再次验签、显示权限、保存用户发布者信任并处理版本替换；Lua 仍由独立运行时显示权限、限制执行资源并人工审核。ASR/语音包等资源以后可增加其它包类型，走对应插件已明确导出的 import 接口；当前目录不会把未知 format 当作可安装代码。
 
@@ -43,4 +43,10 @@ Native 清单使用现有 RSA/SHA-256 签名协议。Signed Lua 包新增 `manif
 
 参考 [VRChat VPM Repos](https://vcc.docs.vrchat.com/vpm/repos/) 的源/包/多个版本关系、[Packages](https://vcc.docs.vrchat.com/vpm/packages/) 的版本范围与传递依赖，以及 [Package Manager](https://vcc.docs.vrchat.com/vpm/) 和 [CLI](https://vcc.docs.vrchat.com/vpm/cli/) 的明确版本选择。KIGTTS 使用自己的 Android/Lua 包格式与源 JSON，不读取 VPM/Unity 包，不修改 Unity 工程；签名发布者校验、存储所有权和安装审核由本程序独立实现，没有复制 VCC 或 MaterialFiles 的实现代码。
 
-本地回归使用模拟 HTTPS 传输与现场生成的 RSA 测试包；无真实源预置、无真实下载或手机安装结果。UI 手势、Android 网络、深链接确认和链安装需连接手机后验证。
+本地回归使用模拟HTTPS传输与现场生成RSA测试包；官方源发布后另做匿名下载与字节/签名核验，实际完成情况见Release验证记录。
+
+## 官方源发布
+
+源地址：`https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Official-Plugins/resolve/master/index.json?view=false`。源码常量为 `OfficialPluginSource`。首次安装/迁移商店补入一次；删除后不反复补回，已有源、缓存和待确认项保留，最多32条。
+
+运行 `tools/Build-OfficialPluginSource.ps1` 从 `distribution/official-packages.json` 的明确列表准备清单、签名包、说明与许可；脚本核对发布者、RSA签名和载荷hash。仅上传输出目录文件，不上传工作区、模型、私钥或用户工程。已发布的版本不可改写；修复增加新版本，并保留旧版下载用于切换。目录/说明MIT不改变GPL插件及依赖许可，README提供对应源码与构建位置。

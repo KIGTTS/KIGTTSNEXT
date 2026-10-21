@@ -17,6 +17,21 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     val paths = PluginPaths(context)
     val packages = PluginPackageStore(paths)
     val registry = PluginRegistry(builtins)
+    val permissions = PluginPermissions(context)
+    @Volatile var automaticPermission: (String, String) -> Boolean = { _, _ -> false }
+    @Volatile var safeMode: () -> Boolean = { false }
+    fun permissionOwner(id: String, project: String? = null): String {
+        val publisher = status.firstOrNull { it.installed.manifest.id == id }?.installed?.publisherSha256.orEmpty()
+        return "${id}:$publisher" + (project?.let { ":$it" } ?: "")
+    }
+    suspend fun requestPermission(id: String, permission: String): Boolean {
+        val installed = status.firstOrNull { it.installed.manifest.id == id }?.installed
+            ?: withContext(Dispatchers.IO) { packages.installed().firstOrNull { it.manifest.id == id } } ?: return false
+        if (permission !in installed.manifest.capabilities || permission !in PluginPermissions.sensitive) return false
+        if (automaticPermission(id, permission)) return true
+        return permissions.request("${id}:${installed.publisherSha256}", permission, installed.manifest.name,
+            installed.manifest.permissionPurposes[permission] ?: "插件未提供具体用途；此权限允许${PluginPermissions.label(permission)}。")
+    }
     private val readiness = TtsReadiness(registry)
     @Volatile var quickTextBrokerFactory:((String,Set<String>)->QuickTextBroker)?=null
     @Volatile var appBrokerFactory: ((String, Set<String>) -> AppBroker)? = null
@@ -52,10 +67,11 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     private suspend fun reloadLocked() {
         val installed = withContext(Dispatchers.IO) { packages.installed() }
         loaded.filterValues { !it.second.alive }.keys.toList().forEach { unload(it) }
-        loaded.keys.filter { id -> installed.none { it.manifest.id == id && it.enabled } }.toList().forEach { unload(it) }
+        loaded.keys.filter { id -> safeMode() || installed.none { it.manifest.id == id && it.enabled } }.toList().forEach { unload(it) }
         val statuses = installed.map { info ->
             var error: String? = null
-            if (info.enabled && info.manifest.id !in loaded) {
+            if (safeMode() && info.enabled) error = "安全模式已临时停用"
+            if (!safeMode() && info.enabled && info.manifest.id !in loaded) {
                 val slot = workerServices.indices.firstOrNull { candidate -> loaded.values.none { it.first == candidate } }
                 if (slot == null) error = "当前最多同时启用 ${workerServices.size} 个外部插件"
                 else {
@@ -65,11 +81,19 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                             if (info.manifest.capabilities.any { it in setOf("speech-service", "asr-service") })
                                 HostSpeechBroker(info.manifest.id, registry, paths, "speech-service" in info.manifest.capabilities, "asr-service" in info.manifest.capabilities) else null,
                             if(info.manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})
-                                quickTextBrokerFactory?.invoke(info.manifest.id,info.manifest.capabilities.toSet())?.let(::HostQuickTextBroker) else null,
-                            if ("app-control" in info.manifest.capabilities) appBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let(::HostAppBroker) else null,
-                            if (info.manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickerBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let(::HostStickerBroker) else null,
+                                quickTextBrokerFactory?.invoke(info.manifest.id,info.manifest.capabilities.toSet())?.let { backend -> HostQuickTextBroker(object : QuickTextBroker {
+                                    override suspend fun request(command: QuickTextCommand): QuickTextReply = if (requestPermission(info.manifest.id, quickTextPermission(command, info.manifest.capabilities.toSet()))) backend.request(command)
+                                        else QuickTextReply.Failure(QuickTextError.PERMISSION_DENIED, "快捷文本权限尚未授权或已禁用")
+                                    override fun changes(afterRevision: Long) = kotlinx.coroutines.flow.flow { if (requestPermission(info.manifest.id, if ("quick-text-read" in info.manifest.capabilities) "quick-text-read" else "quick-text-write")) backend.changes(afterRevision).collect { emit(it) } }
+                                }) } else null,
+                            appBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let(::HostAppBroker),
+                            if (info.manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickerBrokerFactory?.invoke(info.manifest.id, info.manifest.capabilities.toSet())?.let { backend -> HostStickerBroker(object : StickerBroker {
+                                override suspend fun request(command: StickerCommand): StickerReply = if (requestPermission(info.manifest.id, stickerPermission(command, info.manifest.capabilities.toSet()))) backend.request(command)
+                                    else StickerReply.Failure(StickerError.PERMISSION_DENIED, "图库权限尚未授权或已禁用")
+                                override fun changes(afterRevision: Long) = kotlinx.coroutines.flow.flow { if (requestPermission(info.manifest.id, if ("stickers-read" in info.manifest.capabilities) "stickers-read" else "stickers-write")) backend.changes(afterRevision).collect { emit(it) } }
+                            }) } else null,
                             { uiInvalidations.tryEmit(info.manifest.id) })
-                        val proxy = RemotePlugin(connection, connection.connect(info.manifest.id))
+                        val proxy = RemotePlugin(connection, connection.connect(info.manifest.id)) { permission -> requestPermission(info.manifest.id, permission) }
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }
                         loaded[info.manifest.id] = slot to proxy
@@ -101,6 +125,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         reloadLocked()
     }
     suspend fun uninstall(id: String) = mutation.withLock {
+        permissions.clear(permissionOwner(id))
         unload(id)
         withContext(Dispatchers.IO) { packages.uninstall(id) }
         reloadLocked()

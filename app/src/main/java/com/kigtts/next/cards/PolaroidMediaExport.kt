@@ -32,7 +32,7 @@ suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard,
     try {
         val paper = withContext(Dispatchers.IO) { PolaroidRenderer.renderBitmap(stickers, card, options, transparentPhoto = true, maximumHeight = 1080) }
         overlay = paper
-        val effect = CardMotionPaperEffect(card, stickers.frameStyle(card), paper, motion.colorMatrix, includeFrame)
+        val effect = CardMotionPaperEffect(card, stickers.frameStyle(card), paper, motion.colorMatrix, includeFrame, motion.lut, motion.lutStrength)
         transform(stickers, motion, effect, clip)
         return withContext(Dispatchers.IO) {
             val still = PolaroidRenderer.renderBitmap(stickers, card, options)

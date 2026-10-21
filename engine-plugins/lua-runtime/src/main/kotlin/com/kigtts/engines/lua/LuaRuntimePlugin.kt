@@ -10,7 +10,7 @@ import java.io.File
 import java.util.UUID
 
 class LuaRuntimePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.9.0")
+    override val descriptor = PluginDescriptor("runtime.lua", "插件编辑器", "编辑、导入和管理 Lua 工具", "0.9.1")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: LuaSourceStore
     private lateinit var executor: LuaExecutor
@@ -31,7 +31,7 @@ class LuaRuntimePlugin : KigPlugin {
         PluginContributions(actions = ui.values.flatMap { it.contributions.actions },
             drawerEntries = listOf(DrawerEntry("manager", "插件编辑器", "manager", PluginIcon.EDIT)) + ui.values.flatMap { it.contributions.drawerEntries },
             automationActions = listOf("import", "agent-install", "agent"),
-            managedPackages = store.projects().map { ManagedPackage(it.manifest.id, it.manifest.version, "lua", it.enabled) },
+            managedPackages = store.projects().map { ManagedPackage(it.manifest.id, it.manifest.version, "lua", it.enabled, it.manifest.name, it.manifest.permissions, it.manifest.permissionPurposes, "project/${it.manifest.id}", "manage-enable/${it.manifest.id}", "manage-remove/${it.manifest.id}", it.error) },
             settingsEntries = listOf(SettingsEntry("editor", "插件编辑器", "manager", PluginIcon.EDIT,
                 cardId = "developer", cardTitle = "开发工具", summary = "项目、文件与打包")) + ui.values.flatMap { it.contributions.settingsEntries })
     }
@@ -56,8 +56,19 @@ class LuaRuntimePlugin : KigPlugin {
         val id = requireNotNull(context.inputs["project"])
         val project = store.project(id)
         val value: JsonElement = when (operation) {
-            "read" -> buildJsonObject { put("source", store.source(id)); put("enabled", project.enabled) }
-            "test" -> { executor.validate(store.source(id)); executor.call(project, "test", context) }
+            "read" -> buildJsonObject {
+                val source = store.source(id)
+                val offset = context.inputs["offset"]?.toIntOrNull()?.coerceIn(0, source.length) ?: 0
+                val limit = context.inputs["limit"]?.toIntOrNull()?.coerceIn(1, 6000) ?: 6000
+                val end = (offset + limit).coerceAtMost(source.length)
+                put("source", source.substring(offset, end)); put("offset", offset); put("total", source.length)
+                if (end < source.length) put("nextOffset", end)
+                put("enabled", project.enabled); put("error", project.error)
+                put("version", project.manifest.version); put("permissions", JsonArray(project.manifest.permissions.map(::JsonPrimitive)))
+                put("permissionPurposes", JsonObject(project.manifest.permissionPurposes.mapValues { JsonPrimitive(it.value) }))
+            }
+            "test", "validate" -> try { inspectLuaProject(executor, project, store.code(id), context) }
+                catch (failure: LuaInspectionFailure) { luaDiagnostic(failure, "test", id) }
             "enable" -> {
                 require(context.inputs["_agentApproved"] == "true") { "启用需要用户批准" }
                 store.verify(project); store.enabled(id, true); refresh(store.project(id), context)
@@ -66,25 +77,58 @@ class LuaRuntimePlugin : KigPlugin {
             "run" -> {
                 require(context.inputs["_agentApproved"] == "true") { "运行需要用户批准" }
                 require(project.enabled) { "请先启用项目" }
-                val result = executor.call(project, "execute", context.copy(inputs = mapOf("value" to context.inputs["input"].orEmpty())), requireNotNull(context.inputs["action"]))
-                refresh(project, context); result
+                try {
+                    val result = executor.call(project, "execute", context.copy(inputs = mapOf("value" to context.inputs["input"].orEmpty())), requireNotNull(context.inputs["action"]))
+                    LuaUiSchema.outcome(id, result, project.manifest.permissions)
+                    refresh(project, context)
+                    if (!store.project(id).enabled) luaDiagnostic(IllegalStateException(store.project(id).error), "refresh", id) else result
+                } catch (cancel: CancellationException) { throw cancel }
+                catch (failure: Exception) { luaDiagnostic(failure, "execute", id) }
+                catch (failure: LuaBudgetExceeded) { luaDiagnostic(failure, "execute", id) }
             }
             else -> error("未知Lua调试操作")
         }
-        return PluginOutcome.Dialog("Lua 结果", value.toString().take(16000))
+        return luaResultDialog(value)
     }
     private suspend fun perform(actionId: String, context: PluginContext): PluginOutcome {
         if (actionId == "agent-install") {
             require(context.inputs["_agentApproved"] == "true") { "安装需要用户批准" }
             val pending = store.stage(environment.storage.file(requireNotNull(context.inputs["resourcePath"])))
-            executor.validate(pending.directory.resolve("main.lua").readText(Charsets.UTF_8))
+            try { inspectLuaProject(executor, LuaProject(pending.manifest, false, pending.hash), pending.directory, context) }
+            catch (failure: LuaInspectionFailure) {
+                pending.directory.deleteRecursively()
+                return PluginOutcome.Dialog("插件检查失败", JsonObject(luaDiagnostic(failure, "validation", pending.manifest.id) +
+                    ("installed" to JsonPrimitive(false))).toString())
+            }
             val project = store.confirm(pending)
             refresh(project, context)
-            return PluginOutcome.Dialog("安装结果", "{\"installed\":true,\"enabled\":${store.project(project.manifest.id).enabled},\"id\":\"${project.manifest.id}\"}")
+            val installed = store.project(project.manifest.id)
+            return PluginOutcome.Dialog("安装结果", buildJsonObject {
+                put("ok", installed.enabled); put("installed", true); put("enabled", installed.enabled)
+                put("id", installed.manifest.id); put("error", installed.error)
+            }.toString())
         }
         if (actionId == "agent") return agent(context)
         val (action, id) = actionId.substringBefore('/') to actionId.substringAfter('/', "")
         return when (action) {
+            "manage-enable" -> {
+                require(context.inputs["_callerPlugin"] == null)
+                val project = store.project(id); val enabled = context.inputs["checked"]?.toBooleanStrictOrNull() ?: !project.enabled
+                if (enabled) { store.verify(project); store.enabled(id, true); refresh(store.project(id), context) }
+                else { store.enabled(id, false); synchronized(ui) { ui.remove(id) } }
+                PluginOutcome.RefreshUi
+            }
+            "manage-remove" -> {
+                require(context.inputs["_callerPlugin"] == null); store.remove(id); synchronized(ui) { ui.remove(id) }; PluginOutcome.RefreshUi
+            }
+            "permissions" -> {
+                val project = store.project(id)
+                for (permission in project.manifest.permissions) {
+                    val reply = environment.appBroker?.request(AppCommand.Permission(permission, id))
+                    if ((reply as? AppReply.Data)?.value?.get("allowed")?.jsonPrimitive?.booleanOrNull != true) return PluginOutcome.Message("权限尚未授权，可在插件管理中调整")
+                }
+                refresh(project, context); PluginOutcome.RefreshUi
+            }
             "choose" -> PluginOutcome.ImportResource("导入 Lua 工具", "imports", "import", zip = true, mimeTypes = listOf("application/zip", "application/octet-stream"))
             "import" -> review(store.stage(environment.storage.file(requireNotNull(context.inputs["resourcePath"]))))
             "create" -> PluginOutcome.TextInput("工具名称", "create-name")
@@ -178,9 +222,13 @@ class LuaRuntimePlugin : KigPlugin {
                 try {
                     store.verify(project)
                     val result = LuaUiSchema.outcome(module, executor.call(project, "execute", context, command), project.manifest.permissions)
+                    if (result is PluginOutcome.ReplaceEditorText) {
+                        val permission = environment.appBroker?.request(AppCommand.Permission("app-control", module))
+                        require((permission as? AppReply.Data)?.value?.get("allowed")?.jsonPrimitive?.booleanOrNull == true) { "PERMISSION_REQUIRED: app-control" }
+                    }
                     refresh(project, context); result
                 } catch (failure: LuaBudgetExceeded) { fail(module, failure.message.orEmpty()); throw failure }
-                catch (failure: Exception) { if (failure is CancellationException) throw failure; fail(module, failure.message.orEmpty()); throw failure }
+                catch (failure: Exception) { if (failure is CancellationException) throw failure; if (!failure.message.orEmpty().contains("PERMISSION_REQUIRED")) fail(module, failure.message.orEmpty()); throw failure }
             }
             else -> PluginOutcome.Message("未找到操作")
         }
@@ -210,7 +258,14 @@ class LuaRuntimePlugin : KigPlugin {
             synchronized(ui) { ui[project.manifest.id] = Ui(contributions, pages) }
         } catch (cancel: CancellationException) { throw cancel }
         catch (failure: LuaBudgetExceeded) { fail(project.manifest.id, failure.message.orEmpty()) }
-        catch (failure: Exception) { fail(project.manifest.id, failure.message.orEmpty()) }
+        catch (failure: Exception) {
+            if (failure.message.orEmpty().contains("PERMISSION_REQUIRED")) {
+                val module = project.manifest.id
+                val page = PluginPage("module/$module/permissions", project.manifest.name, listOf(PageBlock.Notice("此插件需要权限才能读取数据，授权后可继续。"), PageBlock.Actions(listOf(PageAction("permissions/$module", "继续")))))
+                val entry = SettingsEntry("module/$module/entry", project.manifest.name, page.id)
+                synchronized(ui) { ui[module] = Ui(PluginContributions(settingsEntries = listOf(entry)), listOf(page)) }
+            } else fail(project.manifest.id, failure.message.orEmpty())
+        }
     }
     private fun fail(id: String, message: String) { store.failed(id, message); synchronized(ui) { ui.remove(id) } }
     private fun review(pending: LuaPending): PluginOutcome {

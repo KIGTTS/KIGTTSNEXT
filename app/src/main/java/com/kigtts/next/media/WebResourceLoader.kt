@@ -13,17 +13,21 @@ import androidx.core.net.toUri
 class WebResourceLoader(private val directory: File, private val local: File?, private val network: Boolean,
     private val cookies: WebCookieJar = WebCookies,
     private val connectionFactory: (URL) -> HttpURLConnection = { it.openConnection() as HttpURLConnection },
-    pageOrigin: String? = null) {
+    pageOrigin: String? = null, private val bundledResource: (String) -> WebResourceResponse? = { null },
+    private val authorizeNetwork: (String) -> Boolean = { true }, private val networkGranted: () -> Boolean = { network }) {
     @Volatile private var siteHost: String? = pageOrigin?.let { URI(it).host }
     fun load(url: String, method: String, mainFrame: Boolean = false): WebResourceResponse {
+        bundledResource(url)?.let { return it }
         if (mainFrame) siteHost = runCatching { URI(url).host }.getOrNull()
         if (url.startsWith(WebContentPolicy.ORIGIN + "/content/")) {
             val path = url.toUri().path.orEmpty().removePrefix("/content/")
             val file = local?.let { WebContentPolicy.file(it, path) } ?: return denied()
             val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
-            return WebResourceResponse(mime, if (mime.startsWith("text/")) "UTF-8" else null, file.inputStream())
+            return WebResourceResponse(mime, if (mime.startsWith("text/")) "UTF-8" else null, 200, "OK",
+                mapOf("Content-Security-Policy" to webNetworkCsp(network && networkGranted()), "Permissions-Policy" to "accelerometer=(), gyroscope=(), magnetometer=()"), file.inputStream())
         }
         if (!network || method != "GET" || !WebContentPolicy.https(url)) return denied()
+        if (!authorizeNetwork(url)) return denied()
         return runCatching {
             var address = url; var connection: HttpURLConnection? = null
             for (attempt in 0..5) {
@@ -56,10 +60,17 @@ class WebResourceLoader(private val directory: File, private val local: File?, p
                     // Bound persistent cache; actual requests are freshly fetched, so stale resources cannot cross sessions.
                     var bytes = directory.listFiles().orEmpty().sumOf { it.length() }
                     directory.listFiles().orEmpty().sortedBy { it.lastModified() }.forEach { if (bytes > 128L * 1024 * 1024 && it != destination) { bytes -= it.length(); it.delete() } }
-                    WebResourceResponse(mime, encoding, destination.inputStream())
+                    val headers = request.headerFields.entries.filter { it.key != null && it.key.lowercase() in setOf("access-control-allow-origin", "access-control-allow-credentials", "access-control-expose-headers", "content-language") }
+                        .associate { it.key!! to it.value.joinToString(", ") } + mapOf("Content-Security-Policy" to webNetworkCsp(network && networkGranted()), "Permissions-Policy" to "accelerometer=(), gyroscope=(), magnetometer=()")
+                    WebResourceResponse(mime, encoding, 200, "OK", headers, destination.inputStream())
                 } finally { temporary.delete() }
             } finally { request.disconnect() }
         }.getOrElse { denied() }
     }
+    /** WebView owns non-GET request bodies; permission is checked before allowing its native transport. */
+    fun intercept(url: String, method: String, mainFrame: Boolean = false): WebResourceResponse? =
+        if (method != "GET" && !url.startsWith(WebContentPolicy.ORIGIN) && network && WebContentPolicy.https(url) && authorizeNetwork(url)) null else load(url, method, mainFrame)
     private fun denied() = WebResourceResponse("text/plain", "UTF-8", 403, "Unavailable", emptyMap(), ByteArrayInputStream("资源不可用".toByteArray()))
 }
+
+internal fun webNetworkCsp(allowed: Boolean): String = "connect-src " + (if (allowed) "https: wss:" else "'none'") + "; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action " + (if (allowed) "https:" else "'none'")

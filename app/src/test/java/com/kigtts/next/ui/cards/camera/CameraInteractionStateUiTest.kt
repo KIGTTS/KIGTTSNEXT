@@ -129,7 +129,7 @@ class CameraInteractionStateUiTest {
         assertEquals(.25f, strength, .001f)
         assertFalse(PhotoFilters.coefficients(filter, strength).contentEquals(PhotoFilters.coefficients(filter)))
         compose.onNodeWithTag("camera-filter/ORIGINAL").performClick()
-        compose.onNodeWithTag("camera-filter-strength").assertDoesNotExist()
+        compose.onNodeWithTag("camera-filter-strength").assertIsNotEnabled()
         compose.onNodeWithTag("camera-filter/BW").performClick()
         assertEquals(.25f, strength, .001f)
         compose.runOnIdle { enabled = false }

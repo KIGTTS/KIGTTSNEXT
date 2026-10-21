@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PackageStorePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "从多个源浏览和管理扩展", "0.9.0")
+    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "从多个源浏览和管理扩展", "0.9.3")
     private lateinit var environment: PluginEnvironment
     private lateinit var sources: SourceStore
     private lateinit var jobs: StoreJobs
@@ -25,7 +25,7 @@ class PackageStorePlugin : KigPlugin {
     override suspend fun attach(environment: PluginEnvironment) {
         this.environment = environment
         sources = SourceStore(environment.storage); device = StoreDevice(Build.VERSION.SDK_INT, Build.SUPPORTED_ABIS.toSet())
-        downloader = PackageDownloader(environment.storage, HttpsStoreTransport())
+        downloader = PackageDownloader(environment.storage, HttpsStoreTransport { environment.requirePermission("network") })
         jobs = StoreJobs(environment, sources, device, downloader, ArtifactInspector(environment.storage), ::changed)
         jobs.reloadInstalled() // Host metadata only; no source is contacted until the user refreshes.
     }

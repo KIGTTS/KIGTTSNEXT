@@ -24,6 +24,8 @@ import com.kigtts.next.manager.HostPluginRuntime
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
+    init { com.kigtts.next.ui.components.MaterialSymbols.initialize(application) }
+    val pluginChatHistory = com.kigtts.next.ui.plugins.ChatHistoryCache()
     val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
     val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures + builtinPlugins(application))
@@ -34,7 +36,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val managementOrder = ManagementOrderStore(application)
     fun pluginOrder(ids: List<String>) = managementOrder.ordered("plugins", ids)
     fun reorderPlugins(ids: List<String>) {
-        val current = (pluginManager.status.map { it.installed.manifest.id } + registry.plugins.map { it.descriptor.id }).distinct()
+        val current = (pluginManager.status.map { it.installed.manifest.id } + registry.plugins.map { it.descriptor.id } + registry.plugins.flatMap { runtime -> runtime.contributions.managedPackages.map { "${runtime.descriptor.id}::${it.id}" } }).distinct()
         managementOrder.save("plugins", ids, current)
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
     }
@@ -44,7 +46,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
-    val agentAccess = com.kigtts.next.plugins.control.AgentAccessPolicy(application)
+    val agentAccess = com.kigtts.next.plugins.control.AgentAccessPolicy(application) { pluginManager.permissionOwner(it) }
+    init { pluginManager.automaticPermission = { owner, _ -> agentAccess.full(owner) } }
     private val experiments = application.getSharedPreferences("experiments", 0)
     private val playbackPreferences = application.getSharedPreferences("playback", 0)
     private val presentationPreferences = application.getSharedPreferences("media-presentation", 0)
@@ -66,16 +69,17 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         autoPlayback = playbackPreferences.getBoolean("automatic", true),
         contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
-        mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id))
+        mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id,
+        webPermissionEntryId = presentationPreferences.getString("webEntry", null)))
     val state = mutableState.asStateFlow()
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
         { id -> cardUi.focusCard(id, openPreview = false) }, saveMotion = { imageId, clip ->
-            cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix)
-        })
+            cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix, clip.lut, clip.lutStrength)
+        }, useSystemCamera = { application.getSharedPreferences("polaroid_camera", 0).getBoolean("use-system-camera", false) })
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
-        ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead)
+        ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead, permissions=pluginManager.permissions)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
@@ -275,7 +279,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         invokeWithResult(pluginId, actionId, inputs, null)
     }
     private fun invokeWithResult(pluginId: String, actionId: String, inputs: Map<String, String>, complete: ((Boolean) -> Unit)?) {
-        agentAccess.userAction(pluginId, inputs)
+        try { agentAccess.userAction(pluginId, inputs) }
+        catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }

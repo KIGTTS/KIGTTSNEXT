@@ -39,7 +39,30 @@ abstract class SubtitleMagnifierFactory : AsmClassVisitorFactory<Instrumentation
 
 androidComponents.onVariants {
     it.instrumentation.transformClassesWith(SubtitleMagnifierFactory::class.java,InstrumentationScope.ALL) {}
+    it.instrumentation.transformClassesWith(InputCursorThicknessFactory::class.java,InstrumentationScope.ALL) {}
     it.instrumentation.setAsmFramesComputationMode(FramesComputationMode.COMPUTE_FRAMES_FOR_INSTRUMENTED_METHODS)
+}
+
+/** Foundation 1.9.4 shares this native cursor metric between value- and state-based fields. */
+abstract class InputCursorThicknessFactory : AsmClassVisitorFactory<InstrumentationParameters.None> {
+    override fun isInstrumentable(classData: ClassData) =
+        classData.className == "androidx.compose.foundation.text.TextFieldCursor_androidKt"
+    override fun createClassVisitor(classContext: ClassContext, nextClassVisitor: ClassVisitor): ClassVisitor =
+        object : ClassVisitor(Opcodes.ASM9, nextClassVisitor) {
+            private var matched = false
+            override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<out String>?): MethodVisitor? {
+                val visitor = super.visitMethod(access, name, descriptor, signature, exceptions)
+                if (name != "getDefaultCursorThickness" || descriptor != "()F") return visitor
+                matched = true
+                visitor.visitCode(); visitor.visitLdcInsn(3f); visitor.visitInsn(Opcodes.FRETURN)
+                visitor.visitMaxs(1, 0); visitor.visitEnd()
+                return null
+            }
+            override fun visitEnd() {
+                check(matched) { "Foundation cursor metric changed; update the 3dp cursor bridge before building." }
+                super.visitEnd()
+            }
+        }
 }
 
 android {
@@ -70,6 +93,7 @@ android {
     sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("plugin-test-assets"))
 }
 dependencies {
+    implementation("com.caverock:androidsvg-aar:1.4")
     implementation(project(":plugin-api"))
     implementation(project(":material-color"))
     implementation(project(":plugin-runtime"))
@@ -104,6 +128,11 @@ dependencies {
     implementation("androidx.camera:camera-view:$cameraX")
     implementation("androidx.camera:camera-extensions:$cameraX")
     implementation("com.google.zxing:core:3.5.4")
+    implementation("org.commonmark:commonmark:0.24.0")
+    implementation("org.commonmark:commonmark-ext-gfm-tables:0.24.0")
+    implementation("org.commonmark:commonmark-ext-gfm-strikethrough:0.24.0")
+    implementation("org.commonmark:commonmark-ext-task-list-items:0.24.0")
+    implementation("org.commonmark:commonmark-ext-autolink:0.24.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")

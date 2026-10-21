@@ -13,8 +13,25 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
         manager.paths.validateId(owner)
         return object : AppBroker {
             override suspend fun request(command: AppCommand): AppReply {
+                if (command is AppCommand.Permission) {
+                    val projectId = command.projectId
+                    if (projectId != null) return managedPermission(manager, owner, capabilities, projectId, command.permission, ui()?.agentAccess)
+                    val allowed = manager.requestPermission(owner, command.permission)
+                    return data { put("allowed", allowed) }
+                }
+                if (command is AppCommand.ManagedCall) return managedCall(manager, ui(), owner, capabilities, command)
+                if (command is AppCommand.UiAssets) return try { uiAssets(requireNotNull(ui()), owner, command) }
+                    catch (cancel: CancellationException) { throw cancel }
+                    catch (failure: Exception) { AppReply.Failure("INVALID", failure.message?.take(300) ?: "图标操作失败") }
                 if ("app-control" !in capabilities) return AppReply.Failure("PERMISSION_DENIED", "插件没有应用控制权限")
+                val installedCaller = manager.status.any { it.installed.manifest.id == owner } || withContext(Dispatchers.IO) { manager.packages.installed().any { it.manifest.id == owner } }
+                if (installedCaller && !manager.requestPermission(owner, "app-control"))
+                    return AppReply.Failure("PERMISSION_DENIED", "应用控制权限尚未授权或已禁用")
                 return try {
+                    val readsMedia = command is AppCommand.BrowserCapture && command.mediaId != null || command is AppCommand.BrowserSession && command.operation in setOf("open", "open-subtitle") && command.mediaId != null
+                    if (readsMedia && installedCaller && !manager.requestPermission(owner, "quick-text-read")) return AppReply.Failure("PERMISSION_DENIED", "网页读取权限尚未授权")
+                    if (command is AppCommand.BrowserSession) return withContext(Dispatchers.Main) { sessionBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
+                    if (command is AppCommand.BrowserCapture) return withContext(Dispatchers.Main) { captureBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
                     if (command is AppCommand.DeliverResource) return deliver(owner, command)
                     if (command is AppCommand.PluginCall) return call(owner, command)
                     withContext(Dispatchers.Main) { perform(owner, command) }
@@ -27,7 +44,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
     private fun perform(owner: String, command: AppCommand): AppReply {
         if (command == AppCommand.Describe) return data {
             put("protocol", 1)
-            put("operations", JsonArray(listOf("state", "navigate", "text", "automatic-read", "speak", "stop-speech", "setting", "plugin-action", "deliver-resource").map(::JsonPrimitive)))
+            put("operations", JsonArray(listOf("state", "navigate", "text", "automatic-read", "speak", "stop-speech", "setting", "plugin-action", "deliver-resource", "browser-capture", "browser-session").map(::JsonPrimitive)))
             put("navigation", JsonArray(listOf("home", "settings", "plugins", "quick-text", "media", "sketch", "cards").map(::JsonPrimitive)))
             put("settings", JsonArray(settingKeys.map(::JsonPrimitive)))
             put("plugins", buildJsonArray { manager.registry.plugins.forEach { plugin ->
@@ -82,19 +99,22 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 model.invoke(command.pluginId, command.actionId, command.inputs.filterKeys { !it.startsWith('_') } + ("_callerPlugin" to owner))
                 return data { put("accepted", true); put("completed", false) }
             }
-            AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall -> error("已单独处理")
+            AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall, is AppCommand.BrowserCapture, is AppCommand.BrowserSession, is AppCommand.Permission, is AppCommand.ManagedCall, is AppCommand.UiAssets -> error("已单独处理")
         }
         return data { put("accepted", true) }
     }
     private fun authorizedTarget(owner: String, id: String, action: String): KigPlugin? = manager.registry.plugin(id)?.takeIf {
         id != owner && manager.registry.available(it) && action in it.contributions.automationActions
     }
+    internal suspend fun performManaged(owner: String, command: AppCommand): AppReply = withContext(Dispatchers.Main) { perform(owner, command) }
     private suspend fun call(owner: String, command: AppCommand.PluginCall): AppReply {
         val target = authorizedTarget(owner, command.pluginId, command.actionId)
             ?: return AppReply.Failure("PERMISSION_DENIED", "插件没有开放此操作")
         val granted = withContext(Dispatchers.Main) { ui()?.agentAccess?.consume(owner) == true }
         val inputs = command.inputs.filterKeys { !it.startsWith('_') } + mapOf("_callerPlugin" to owner, "_agentApproved" to granted.toString())
-        val result = target.execute(command.actionId, withContext(Dispatchers.Main) { ui()?.context() ?: PluginContext("", "") }.copy(inputs = inputs))
+        val delegation = command.inputs["project"]?.let { ui()?.agentAccess?.delegate(owner, command.pluginId, it) }
+        val result = try { target.execute(command.actionId, withContext(Dispatchers.Main) { ui()?.context() ?: PluginContext("", "") }.copy(inputs = inputs)) }
+            finally { delegation?.close() }
         return data { put("completed", true); put("outcome", PluginJson.encodeToJsonElement(PluginOutcome.serializer(), result)) }
     }
     private suspend fun deliver(owner: String, command: AppCommand.DeliverResource): AppReply {

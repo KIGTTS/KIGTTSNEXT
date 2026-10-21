@@ -40,6 +40,7 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
         PhraseEditorSection("字幕与标题") {
             RichPhraseTextField(draft, model, enabled)
             OutlinedTextField(title, { value -> title = value.copy(text=value.text.replace('\n',' ')); model.content.editPhrase { it.copy(title = title.text) } },
+                visualTransformation = com.kigtts.next.ui.components.rememberInputTextMotion(title, MaterialTheme.colorScheme.onSurface),
                 interactionSource = titleSource, colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, titleFocused),
                 enabled = enabled, label = { Text("缩略标题（可选）") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("phrase-detail-title").textMenuAnchor { title=title.copy(selection=TextRange(title.selection.end)) })

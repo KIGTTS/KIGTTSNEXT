@@ -1,9 +1,11 @@
 package com.kigtts.next.ui.cards.camera
 
 import java.util.concurrent.atomic.AtomicReference
+import com.kigtts.next.media.color.CubeLut
+import com.kigtts.next.media.color.LutShader
 
 /** ColorMatrix uses byte-domain offsets; OpenGL's encoded camera RGB samples are normalized. */
-internal data class CameraPreviewUniforms(val rows: FloatArray, val bias: FloatArray)
+internal data class CameraPreviewUniforms(val rows: FloatArray, val bias: FloatArray, val lut: CubeLut? = null, val lutStrength: Float = 0f)
 internal fun cameraPreviewUniforms(values: FloatArray): CameraPreviewUniforms {
     require(values.size == 20 && values.all(Float::isFinite)) { "预览颜色参数无效" }
     return CameraPreviewUniforms(FloatArray(16) { values[(it / 4) * 5 + it % 4] },
@@ -13,7 +15,7 @@ internal fun cameraPreviewUniforms(values: FloatArray): CameraPreviewUniforms {
 /** Animation updates a retained shader's uniforms, never the camera session or its surfaces. */
 internal class CameraPreviewColors(initial: FloatArray = PhotoFilters.coefficients(PhotoFilter.ORIGINAL)) {
     private val current = AtomicReference(cameraPreviewUniforms(initial))
-    fun update(values: FloatArray) { current.set(cameraPreviewUniforms(values)) }
+    fun update(values: FloatArray, lut: CubeLut? = null, strength: Float = 1f) { current.set(cameraPreviewUniforms(values).copy(lut = lut, lutStrength = if (lut == null) 0f else strength.coerceIn(0f, 1f))) }
     fun snapshot(): CameraPreviewUniforms = current.get()
 }
 
@@ -35,9 +37,11 @@ internal object CameraPreviewShader {
         uniform vec4 uRow3;
         uniform vec4 uBias;
         varying vec2 vTexCoord;
+        """ + LutShader.GLSL + """
         void main() {
             vec4 source = texture2D(uTexture, vTexCoord);
-            gl_FragColor = clamp(vec4(dot(uRow0, source), dot(uRow1, source),
+            vec4 color = clamp(vec4(dot(uRow0, source), dot(uRow1, source),
                 dot(uRow2, source), dot(uRow3, source)) + uBias, 0.0, 1.0);
+            gl_FragColor = vec4(applyLut(color.rgb), color.a);
         }"""
 }

@@ -1,0 +1,57 @@
+package com.kigtts.next.ui.home
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.state.*
+import com.kigtts.next.text.*
+
+@Composable
+internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyle, width: Int, height: Int, focus: FocusRequester) {
+    val formatted = remember(state.editorText, state.subtitleFormats) { formattedText(state.editorText, state.subtitleFormats) }
+    val measured = if (formatted.isEmpty()) fittingSubtitleFontSize(state.subtitlePlaceholder, style, width, height)
+        else fittingSubtitleFontSize(formatted, style, width, height)
+    val fitted = animatedSubtitleStyle(style, measured, state.editorValue.composition != null)
+    val base = remember(state.subtitleFormats) { RichTextVisualTransformation(state.subtitleFormats) }
+    val motion = rememberSubtitleEditMotion(SubtitleInputFrame(formatted, fitted), state.editorValue)
+    val progress = motion.progress
+    CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
+        BasicTextField(state.editorValue, model::editText,
+            modifier = Modifier.fillMaxSize().testTag("speech-editor").focusRequester(focus),
+            textStyle = fitted, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary), visualTransformation = base,
+            decorationBox = { field ->
+                // The viewport never animates its measured height. Only glyph layers move;
+                // a new line therefore cannot be clipped by the previous line's bounds.
+                Box(Modifier.fillMaxSize().testTag("subtitle-input-viewport"), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxWidth().graphicsLayer {
+                        alpha = .55f + .45f * progress
+                    }) { field() }
+                    AnimatedVisibility(state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty(),
+                        enter = fadeIn(tween(140)), exit = fadeOut(tween(80))) {
+                        Text(state.subtitlePlaceholder, Modifier.fillMaxWidth().testTag("subtitle-placeholder"),
+                            style = fitted, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    motion.ghost?.let { frame ->
+                        Box(Modifier.matchParentSize().clearAndSetSemantics { }.testTag("subtitle-clear-ghost"), contentAlignment = Alignment.Center) {
+                            Text(frame.text, Modifier.fillMaxWidth().wrapContentHeight(unbounded = true).graphicsLayer {
+                                alpha = 1f - progress
+                            }, style = frame.style)
+                        }
+                    }
+                }
+            })
+    }
+}

@@ -1,7 +1,9 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
@@ -14,61 +16,114 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.material3.pulltorefresh.*
+import kotlinx.coroutines.delay
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.channels.Channel
 
 /** User scrolling owns the viewport until they explicitly return to the bottom. */
 @Composable
 internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
-    invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
+    invoke: (String, Map<String, String>) -> Unit, resolve: (PluginResource) -> java.io.File? = { null },
+    historyCache: ChatHistoryCache? = null, historyKey: String = chat.conversationId, header: @Composable ColumnScope.() -> Unit) {
     val list = remember(chat.conversationId) { LazyListState() }
-    var draft by rememberSaveable(chat.conversationId, chat.sendAction) { mutableStateOf("") }
     var follow by remember(chat.conversationId) { mutableStateOf(true) }
     val dragging by list.interactionSource.collectIsDraggedAsState()
-    val scope = rememberCoroutineScope()
-    val rows = remember(chat.messages) { chatRows(chat.messages) }
-    val atBottom by remember(list) { derivedStateOf {
-        val info = list.layoutInfo
-        val last = info.visibleItemsInfo.lastOrNull()
-        info.totalItemsCount == 0 || last != null && last.index == info.totalItemsCount - 1 && last.offset + last.size <= info.viewportEndOffset + 8
-    } }
-    LaunchedEffect(dragging) { if (dragging) follow = false }
-    LaunchedEffect(chat.messages.lastOrNull(), follow, dragging) {
-        if (follow && !dragging && rows.isNotEmpty()) list.scrollToItem(rows.size)
+    val scrollRequests = remember(chat.conversationId) { Channel<ChatScrollRequest>(Channel.CONFLATED) }
+    val cache = historyCache ?: remember { ChatHistoryCache() }
+    val messages = remember(chat.messages, historyKey) { cache.merge(historyKey, chat) }
+    val rows = remember(messages) { chatRows(messages) }
+    val rowCount = rememberUpdatedState(rows.size)
+    val earliest = messages.minOfOrNull { it.position } ?: 0
+    val hasEarlier = chat.historyAction != null && earliest > 0
+    var loadingBefore by remember(chat.conversationId) { mutableStateOf<Int?>(null) }
+    fun loadEarlier() {
+        if (!hasEarlier || loadingBefore != null) return
+        follow = false; cache.retainEarlier(historyKey); loadingBefore = earliest
+        invoke(requireNotNull(chat.historyAction), mapOf("before" to earliest.toString()))
     }
-    Column(Modifier.fillMaxSize().testTag("plugin-chat")) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
+    LaunchedEffect(earliest, loadingBefore, enabled) {
+        if (loadingBefore != null && (earliest < requireNotNull(loadingBefore) || enabled)) { delay(160); loadingBefore = null }
+    }
+    val pull = rememberPullToRefreshState()
+    val snapDistance = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toPx() / 2 }
+    val atBottom by remember(list, snapDistance) { derivedStateOf { chatBottomGap(list.layoutInfo) <= snapDistance } }
+    LaunchedEffect(dragging) { if (dragging) follow = false }
+    // All automatic scrolls use one serial actor. A new stream chunk cannot cancel a
+    // half-finished end alignment or race the user's half-line snap.
+    LaunchedEffect(list, scrollRequests) {
+        for (request in scrollRequests) {
+            if (dragging) continue
+            if (request == ChatScrollRequest.JUMP) follow = true
+            if (request == ChatScrollRequest.SNAP) {
+                if (follow || list.isScrollInProgress || chatBottomGap(list.layoutInfo) > snapDistance) continue
+                follow = true
+            }
+            if (!follow || rowCount.value == 0) continue
+            withFrameNanos { }
+            list.scrollToChatEnd(rowCount.value, animated = request != ChatScrollRequest.UPDATE)
+        }
+    }
+    LaunchedEffect(list, snapDistance) {
+        // Do not key/cancel this collector on isScrollInProgress: our own snap animation
+        // changes that flag and would otherwise repeatedly cancel and restart itself.
+        snapshotFlow { Triple(chatBottomGap(list.layoutInfo), list.isScrollInProgress, dragging) }.collect { (gap, moving, held) ->
+            if (gap <= snapDistance && !moving && !held && !follow) {
+                scrollRequests.trySend(ChatScrollRequest.SNAP)
+            }
+        }
+    }
+    // Only new response content requests a follow scroll. Restoring follow after a user scroll
+    // must not align the last row again (especially a short row or a large tool group).
+    LaunchedEffect(messages.lastOrNull()) {
+        if (follow && !dragging && rows.isNotEmpty()) {
+            scrollRequests.trySend(ChatScrollRequest.UPDATE)
+        }
+    }
+    ChatViewport(Modifier.fillMaxSize().testTag("plugin-chat"), overlay = {
+        androidx.compose.animation.AnimatedVisibility(!follow && !atBottom,
+            Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
+            SmallFloatingActionButton(onClick = feedbackClick {
+                scrollRequests.trySend(ChatScrollRequest.JUMP)
+            }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, "回到底部") }
+        }
+    }, history = {
+        PullToRefreshBox(isRefreshing = loadingBefore != null, onRefresh = ::loadEarlier, state = pull, modifier = Modifier.fillMaxSize(), indicator = {
+            if (hasEarlier || loadingBefore != null) PullToRefreshDefaults.LoadingIndicator(
+                state = pull, isRefreshing = loadingBefore != null,
+                modifier = Modifier.align(Alignment.TopCenter).testTag(if (pull.distanceFraction > 0f || loadingBefore != null) "chat-history-loading" else "chat-history-idle"))
+        }) {
             LazyColumn(Modifier.fillMaxSize().testTag("plugin-chat-history"), list, contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item("header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = header) }
+                item("header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    header()
+                    if (hasEarlier || loadingBefore != null) ChatEarlierButton(false, ::loadEarlier)
+                } }
                 items(rows, key = { it.first().id }) { messages ->
-                    if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages) else ChatBubble(messages.first())
+                    if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages) else ChatBubble(messages.first(), resolve)
                 }
             }
-            androidx.compose.animation.AnimatedVisibility(!follow && !atBottom, Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
-                SmallFloatingActionButton(onClick = feedbackClick {
-                    follow = true; scope.launch { list.animateScrollToItem(rows.size) }
-                }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, "回到底部") }
-            }
+
         }
-        ChatComposerControls(chat, enabled, invoke)
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(draft, { if (it.length <= 16_000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"),
-                placeholder = { Text(chat.placeholder) }, maxLines = 5, shape = MaterialTheme.shapes.large, enabled = enabled)
-            IconButton(onClick = feedbackClick {
-                if (chat.running) invoke(chat.stopAction, emptyMap())
-                else if (draft.isNotBlank()) { val message = draft; draft = ""; follow = true; invoke(chat.sendAction, mapOf("message" to message)) }
-            }, enabled = enabled && (chat.running || draft.isNotBlank()), modifier = Modifier.testTag("plugin-chat-send")) {
-                Icon(if (chat.running) Icons.Default.Stop else Icons.AutoMirrored.Filled.Send, if (chat.running) "停止生成" else "发送")
-            }
-        }
-    }
+    }, composer = {
+        ChatInputBar(chat, enabled, resolve, invoke, historyKey.substringBefore('/')) { follow = true }
+    })
+}
+private enum class ChatScrollRequest { UPDATE, SNAP, JUMP }
+internal fun chatBottomGap(info: LazyListLayoutInfo): Float {
+    if (info.totalItemsCount == 0) return 0f
+    val last = info.visibleItemsInfo.lastOrNull() ?: return Float.POSITIVE_INFINITY
+    if (last.index != info.totalItemsCount - 1) return Float.POSITIVE_INFINITY
+    return (last.offset + last.size + info.afterContentPadding - info.viewportEndOffset).coerceAtLeast(0).toFloat()
 }
 internal fun chatRows(messages: List<ChatMessage>): List<List<ChatMessage>> {
     val rows = mutableListOf<MutableList<ChatMessage>>()
     messages.forEach { message ->
+        if (message.role == ChatRole.ASSISTANT && message.state == ChatMessageState.COMPLETE && message.text.isBlank() &&
+            !message.hasReasoning && !message.thinking && message.reasoning.isBlank() && message.summary.isBlank() && message.images.isEmpty()) return@forEach
         if (message.role == ChatRole.TOOL && rows.lastOrNull()?.lastOrNull()?.role == ChatRole.TOOL) rows.last().add(message)
         else rows.add(mutableListOf(message))
     }

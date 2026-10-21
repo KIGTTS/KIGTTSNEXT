@@ -9,7 +9,8 @@ import java.io.DataOutputStream
 import java.util.UUID
 
 /** Only wire DTOs and file descriptors live in the app process. */
-internal class RemotePlugin(private val connection: WorkerConnection, initial: PluginSnapshot) : KigPlugin {
+internal class RemotePlugin(private val connection: WorkerConnection, initial: PluginSnapshot,
+    private val permit: suspend (String) -> Boolean = { true }) : KigPlugin {
     val generation: String = UUID.randomUUID().toString()
     val alive get() = connection.alive
     @Volatile private var snapshot = initial
@@ -18,6 +19,7 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
     override val contributions get() = snapshot.contributions
     override val voiceManager: VoiceManager? = initial.tts?.takeIf { it.managesVoices }?.let { object : VoiceManager {
         override suspend fun command(command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {
+            check(permit("voice-packs")) { "语音包管理权限未授权" }
             val result = PluginJson.decodeFromString<PluginOutcome>(connection.worker.voiceCommand(PluginJson.encodeToString(command)))
             refresh(PluginContext("", "")); result
         }
@@ -28,18 +30,22 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
         override suspend fun control(command: TtsControl) = withContext(Dispatchers.IO) {
             if (info.supportsControl) connection.worker.ttsControl(PluginJson.encodeToString(command))
         }
-        override fun synthesize(request: TtsRequest) =
-            synthesisPipe({ token -> connection.worker.synthesize(PluginJson.encodeToString(request), token) },
-                { token -> connection.worker.cancel(token) })
+        override fun synthesize(request: TtsRequest) = flow {
+            check(permit(if (info.role == TtsRole.SERVICE) "speech-service" else "tts")) { "语音合成权限未授权" }
+            emitAll(synthesisPipe({ token -> connection.worker.synthesize(PluginJson.encodeToString(request), token) },
+                { token -> connection.worker.cancel(token) }))
+        }
     } }
     override val asr: AsrEngine? = initial.asr?.let { object : AsrEngine {
         override val info get() = requireNotNull(snapshot.asr)
         override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult =
             recognizeEvents(flowOf(audio), config, false).filterIsInstance<RecognitionEvent.Final>().last().result
         override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = recognizeEvents(audio, config, true)
-        private fun recognizeEvents(audio: Flow<PcmAudio>, config: RecognitionConfig, streaming: Boolean) =
-            recognitionPipe(audio, config, streaming, { input, live, settings, token -> connection.worker.recognize(input, live, settings, token) },
-                { token -> connection.worker.cancel(token) })
+        private fun recognizeEvents(audio: Flow<PcmAudio>, config: RecognitionConfig, streaming: Boolean) = flow {
+            check(permit(if (info.role == AsrRole.SERVICE) "asr-service" else if (!streaming) "asr-batch" else if (info.streaming == StreamingKind.SEGMENTED) "asr-segmented" else "asr-incremental")) { "音频识别权限未授权" }
+            emitAll(recognitionPipe(audio, config, streaming, { input, live, settings, token -> connection.worker.recognize(input, live, settings, token) },
+                { token -> connection.worker.cancel(token) }))
+        }
     } }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome = withContext(Dispatchers.IO) {
         val outcome = PluginJson.decodeFromString<PluginOutcome>(connection.worker.execute(actionId, PluginJson.encodeToString(context)))

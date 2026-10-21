@@ -1,6 +1,6 @@
-# 插件 API v10（兼容 v9）
+# 插件 API v12（兼容 v9–11）
 
-当前 SDK 为 API10；宿主兼容API9，Agent、Lua和商店更新至0.9.0。新功能包需要API10，现有API9服务可以保留；API8 及更早的 DEX 包需由同一发布者重新构建并递增 versionCode，更新保留模型与配置。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
+当前 SDK 为 API13；宿主兼容API9–12，Agent为0.9.5/API13、商店为0.9.3/API12，Lua为0.9.1/API11。新助手需要API13，已有兼容服务可以保留；API8 及更早的 DEX 包需由同一发布者重新构建并递增 versionCode，更新保留模型与配置。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -109,11 +109,32 @@ PluginPage.management 可返回 ManagementList。ManagementItem 以稳定 ID 描
 
 运行时有 12 个工作进程槽，每个启用的原生外置插件使用独立普通进程。原生进程共享 UID，属于崩溃隔离；Lua 的库/指令/资源限制也不是操作系统级权限沙盒。模板和包源 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 
-## API 10：识别扩展、聊天与有回执调用
+## API 11：识别扩展、聊天与有回执调用
 
-当前SDK为10，宿主同时加载API9插件。旧聊天构造和复制入口保留；新包按本次编译SDK标记API，不应手工把新字节码标为旧版本。插件商店按兼容范围保留API9前置包。
+这些合同在API11引入，当前SDK为12、宿主支持API9–12插件。旧聊天构造和复制入口保留；新包按本次编译SDK标记API，不应手工把新字节码标为旧版本。插件商店按兼容范围保留旧前置包。
 
 - `UiSlot.VOICE_INPUT_RELEASE`：围绕发送区的弧形释放按钮，支持图标/图文与voiceText输入。
 - `PageBlock.Chat`：conversationId、controls、approval、backgroundRunning；controls支持MODEL/ACCESS，审批由宿主固定在composer上方。ChatMessage补summary、toolName、detail与icon。
 - `AppCommand.PluginCall`：只调用目标显式automationActions，返回已完成结果；以宿主身份绑定调用者并过滤保留字段，不能传递虚构批准。
 - 生成中的原生聊天快照标记backgroundRunning，切换会话仍保留后台任务通知；结束时释放。
+
+## API11 扩展合同
+
+Chat支持图片资源、thinking/hasReasoning、稳定position、持久队列与分页历史。hasReasoning只表示存在供应商公开思考，不把摘录充当summary；无摘要时显示已思考。保留API9/10及API11首版的构造/copy默认桥。提供商、模型、真实元数据驱动的强度在同一原生弹窗；权限位于输入框上方。
+
+`PageBlock.Browser`、主题/安全区、原生振动与真实WebView截图见[网页UI](web-ui.md)。`symbol`离线Material Symbols和手选图标见[UI图标](ui-icons.md)。`AppCommand.UiAssets`提供目录查询、图标导入和受限SVG渲染；`Permission`由宿主逐能力暂停授权，`ManagedCall`仅允许所属Lua运行时转发真实项目。统一管理的ManagedPackage包含权限、用途、启停、编辑/卸载动作和错误。权限及崩溃恢复边界见[插件权限](plugin-permissions.md)。
+
+## API12 增量
+
+`ChatQueuedMessage.steerAction/reorderAction`提供队列内插队与左手柄排序，保留API11四参数构造和copy桥；完整order数组仅在拖放后提交一次。`AppCommand.BrowserSession`提供受调用方身份约束的独立页面状态/操作/等待/截图/关闭，详细字段和权限见网页UI合同。新命令的包必须标记API12，不应下调版本以安装到旧宿主。
+
+## 备份与还原格式插件
+
+宿主设置的“内容 → 备份与还原”提供原生 `.kigcards` 导入、完整导出与导入前修改预览。它不依赖 AI 助手安装。导入不清空原有词条；原生归档解析继续限制资源大小、路径与数量，并检查提交时的修订号。
+
+兼容插件贡献 `SettingsEntry(id="legacy-import", label="旧格式兼容", pageId="formats", icon=PluginIcon.NONE, cardId="backup", summary="支持的格式说明")`，入口会在该页面的“兼容格式”内显示，支持无图标或离线 `symbol`。`cardId="backup"` 为宿主保留位置，不额外生成设置首页卡片。无需新增自定义 JSON 协议。
+
+格式插件通过自己的原生导入页取得用户选择的资源，只在自己的数据目录解析；用 `QuickTextBroker` 转为标准条目与受控媒体，再走 `Prepare`/`OpenUi(REVIEW)`/提交或标准 `.kigcards` 导入。需声明 quick-text-read/write 与具体用途，宿主继续逐能力授权。禁止直接写数据库、复用其它插件的资源归属或把文件中的指令作为用户批准。娃语、kighelper、旧版 KIGTTS 等兼容器作为单独包发布；本次只提供接入位置和标准合同，不包含这些格式解析器。`host.backup` 是原生备份存储身份，不能安装同名插件。
+## API13 增量
+
+新增PluginOutcome.Confirm(title,text,action,cancelLabel)与CapturePhoto(title,directory,actionId)，分别由宿主原生确认窗和系统相机处理；保留API9–12原有数据类构造/copy与序列化字段。使用新结果的包必须声明API13。BrowserSession增加open-subtitle操作值，用于明确标识的大字幕布局模拟，不改旧命令构造。完整主题、安全区、坐标和设备权限合同见WebUiGuide v3与网页UI文档。

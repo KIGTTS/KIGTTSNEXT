@@ -18,17 +18,17 @@ class StoreJobsTest {
         override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
     }
     @Test fun initialLocalCacheIsAvailableWithoutContactingSource() = runTest {
-        val env = environment(); val sources = SourceStore(env.storage)
+        val env = environment(); val sources = SourceStore(env.storage, builtinSources = emptyList())
         val record = sources.confirm(sources.propose("https://example.invalid/source.json").token)
         sources.fetched(record.key, catalog("test.source", entry("test.plugin", release()).item))
         var fetched = 0
         val transport = object : StoreTransport {
             override suspend fun fetch(url: String, destination: File, maximumBytes: Long, progress: (Long) -> Unit) { fetched++ }
         }
-        val jobs = StoreJobs(env, SourceStore(env.storage), testDevice, PackageDownloader(env.storage, transport), ArtifactInspector(env.storage), {}, this)
+        val jobs = StoreJobs(env, SourceStore(env.storage, builtinSources = emptyList()), testDevice, PackageDownloader(env.storage, transport), ArtifactInspector(env.storage), {}, this)
         jobs.reloadInstalled(); advanceUntilIdle()
         assertEquals(0, fetched); assertFalse(jobs.busy)
-        val page = storePage("store", SourceStore(env.storage), jobs, StoreView(), testDevice)!!
+        val page = storePage("store", SourceStore(env.storage, builtinSources = emptyList()), jobs, StoreView(), testDevice)!!
         assertEquals("test.plugin", page.management?.items?.single()?.title)
     }
     @Test fun immediatelyCompletedWorkerDoesNotLeaveUiPermanentlyBusy() {
@@ -36,12 +36,12 @@ class StoreJobsTest {
             override suspend fun fetch(url: String, destination: File, maximumBytes: Long, progress: (Long) -> Unit) = error("unused")
         }
         val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined)
-        val jobs = StoreJobs(env, SourceStore(env.storage), testDevice, PackageDownloader(env.storage, transport), ArtifactInspector(env.storage), {}, scope)
+        val jobs = StoreJobs(env, SourceStore(env.storage, builtinSources = emptyList()), testDevice, PackageDownloader(env.storage, transport), ArtifactInspector(env.storage), {}, scope)
         jobs.reloadInstalled(); assertFalse(jobs.busy)
         kotlinx.coroutines.runBlocking { jobs.close() }
     }
     @Test fun invalidSourceUpdateKeepsPreviousCatalogAndSurfacesError() = runTest {
-        val env = environment(); val sources = SourceStore(env.storage)
+        val env = environment(); val sources = SourceStore(env.storage, builtinSources = emptyList())
         val record = sources.confirm(sources.propose("https://example.invalid/source.json").token)
         sources.fetched(record.key, catalog("test.source", entry("test.plugin", release()).item))
         val transport = object : StoreTransport {
@@ -52,7 +52,7 @@ class StoreJobsTest {
         assertEquals(1, sources.entries().size); assertTrue(sources.source(record.key).error.isNotEmpty()); assertFalse(jobs.busy)
     }
     @Test fun verifiedPreparedPlanDoesNotInstallOrContactBrokerAutomatically() = runTest {
-        val env = environment(); val sources = SourceStore(env.storage); val fixture = signedFixture(temporary.root)
+        val env = environment(); val sources = SourceStore(env.storage, builtinSources = emptyList()); val fixture = signedFixture(temporary.root)
         val record = sources.confirm(sources.propose("https://example.invalid/source.json").token)
         sources.fetched(record.key, catalog("test.source", fixture.entry.item))
         var fetched = 0
