@@ -40,6 +40,9 @@ class CameraPreviewUiTest {
             Box(modifier.testTag("test-preview").background(MaterialTheme.colorScheme.surface)) {
                 CameraOverlayControls(format, formats, filter, true, vertical, filtersExpanded,
                     cycle, {}, { filtersExpanded = !filtersExpanded }, { filter = it })
+                CameraZoomRail(1f, .6f, 8f, true, {}, vertical,
+                    if (vertical) Modifier.align(androidx.compose.ui.Alignment.CenterEnd).size(56.dp, 240.dp)
+                    else Modifier.align(androidx.compose.ui.Alignment.BottomCenter).fillMaxWidth().height(48.dp))
             }
         }, { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical) })
     }
@@ -76,7 +79,7 @@ class CameraPreviewUiTest {
         assertTrue(bw.bottom <= original.top)
         assertEquals(preview, compose.onNodeWithTag("test-preview").fetchSemanticsNode().boundsInRoot)
         compose.onNodeWithTag("camera-filter/BW").performClick().assertIsSelected()
-        compose.onNodeWithTag("camera-filter-toggle").performClick()
+        compose.onNodeWithTag("camera-filter-collapse").performClick()
         compose.onNodeWithTag("camera-filters").assertDoesNotExist()
     }
 

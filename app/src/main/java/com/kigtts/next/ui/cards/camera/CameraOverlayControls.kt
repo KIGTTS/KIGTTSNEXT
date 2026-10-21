@@ -29,7 +29,9 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     flash: CameraFlash = CameraFlash.OFF, flashAvailable: Boolean = false, cycleFlash: () -> Unit = {},
     strength: Float = 1f, changeStrength: (Float) -> Unit = {}, layout: CameraChromeLayout? = null,
     showSettings: Boolean = true, customLuts: List<CameraLutChoice> = emptyList(), selectedLut: String? = null,
-    selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null) {
+    selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null,
+    effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
+    changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}) {
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
@@ -58,7 +60,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             shapes = shape, colors = colors, enabled = enabled)
     }
     val filterButton: @Composable () -> Unit = {
-        ToolButton(if (filtersExpanded) "收起滤镜" else "滤镜", Icons.Default.PhotoFilter, toggleFilters,
+        ToolButton("滤镜", Icons.Default.PhotoFilter, toggleFilters,
             Modifier.testTag("camera-filter-toggle")
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
@@ -77,15 +79,24 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
         horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { items() }
     Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
         else Modifier.matchParentSize()) {
+    // Keep both rails accessible, including while chrome is moving outside the viewfinder.
+    val zoomClearance = if (layout == null) 60f else if (vertical)
+        (layout.photo.right - layout.zoom.left + 8f).coerceAtLeast(8f)
+    else (layout.photo.bottom - layout.zoom.top + 8f).coerceAtLeast(8f)
     AnimatedVisibility(filtersExpanded,
-        modifier = if (vertical) Modifier.align(Alignment.CenterEnd).width(144.dp).fillMaxHeight().padding(bottom = 60.dp)
-            else Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 60.dp),
+        modifier = if (vertical) Modifier.align(Alignment.CenterEnd).width((144f + zoomClearance).dp).fillMaxHeight()
+            else Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
         enter = fadeIn() + if (vertical) expandHorizontally(expandFrom = Alignment.End) else expandVertically(expandFrom = Alignment.Bottom),
         exit = fadeOut() + if (vertical) shrinkHorizontally(shrinkTowards = Alignment.End) else shrinkVertically(shrinkTowards = Alignment.Bottom)) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .92f), shape = MaterialTheme.shapes.large) {
-            CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength, customLuts, selectedLut, selectLut, importLut)
+        Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = androidx.compose.ui.graphics.RectangleShape) {
+            Box(if (vertical) Modifier.padding(end = zoomClearance.dp) else Modifier.padding(bottom = zoomClearance.dp)) {
+                CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength, customLuts, selectedLut, selectLut, importLut,
+                    effects, changeEffects, toggleFilters)
+            }
         }
     }
-    Box(Modifier.align(Alignment.BottomEnd).padding(8.dp).excludeCameraPull()) { filterButton() }
+    if (!filtersExpanded) Box(Modifier.align(Alignment.BottomEnd)
+        .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = if (vertical) 8.dp else zoomClearance.dp)
+        .excludeCameraPull()) { filterButton() }
     }
 }

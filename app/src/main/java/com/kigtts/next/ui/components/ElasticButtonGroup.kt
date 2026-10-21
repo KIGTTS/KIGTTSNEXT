@@ -79,6 +79,9 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 val shape = connectedShape(CornerNeighbors(start = index > 0, end = index < shown.lastIndex),
                     neighborPressed = pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false }, outer = 16.dp)
                 val button = Modifier.testTag(action.id)
+                // A long-press hint can emit a Popup anchor as a second layout node.
+                // Each action must still occupy exactly one slot in this measured strip.
+                Box(propagateMinConstraints = true) {
                 if (action.iconOnly || !allTextFits) ToolButton(action.label, action.icon, action.onClick, button,
                     sources[index], IconButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
                     if (plain) compactPlainIconColors() else compactTonalIconColors(), busy = action.busy,
@@ -86,6 +89,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 else PillButton(action.label, action.icon, action.onClick, button, sources[index],
                     ButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
                     if (plain) compactPlainButtonColors() else compactTonalButtonColors())
+                }
             } }
         }) { children, constraints ->
             // Press values are read only in measure, so spring frames do not recompose the strip.
@@ -93,7 +97,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
             val gap = 4.dp.roundToPx()
             val height = constraints.constrainHeight(32.dp.roundToPx())
             val placeables = children.mapIndexed { index, child ->
-                child.measure(Constraints.fixed((sizes[index] * density.density).roundToInt().coerceAtLeast(0), height))
+                child.measure(Constraints.fixed((sizes.getOrElse(index) { 32f } * density.density).roundToInt().coerceAtLeast(0), height))
             }
             layout(constraints.constrainWidth(placeables.sumOf { it.width } + gap * (placeables.size - 1)), height) {
                 var x = 0

@@ -1,6 +1,12 @@
 [
   {
     "module": "cloud-agent",
+    "file": "tools.cloud-agent-0.9.6.kigplugin",
+    "category": "扩展",
+    "summary": "图片搜索下载与快捷文本图片存取、独立并行会话和图片协议恢复。"
+  },
+  {
+    "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.5.kigplugin",
     "category": "扩展",
     "summary": "自动上下文摘要、三种权限模式、相机附件与稳定流式对话。"

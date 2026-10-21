@@ -5,8 +5,8 @@ import com.kigtts.plugin.api.*
 /** Keep approval tokens bound to their issuing broker, including after process restoration. */
 internal class AgentReviewController(private val environment: PluginEnvironment, private val store: AgentStore,
     private val runner: AgentRunner) {
-    suspend fun open(): PluginOutcome {
-        val pending = store.pending ?: return PluginOutcome.Message("没有待审核操作")
+    suspend fun open(conversationId: String? = null): PluginOutcome {
+        val pending = (if (conversationId != null) store.pendingFor(conversationId) else store.pending) ?: return PluginOutcome.Message("没有待审核操作")
         if (pending.token.isEmpty() || pending.kind == ReviewKind.EXTERNAL)
             return PluginOutcome.Message("请先在对应页面检查并完成审核")
         val message = when (pending.kind) {
@@ -24,8 +24,8 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
         }
         return message?.let { PluginOutcome.Message(it) } ?: PluginOutcome.RefreshUi
     }
-    suspend fun discard(): PluginOutcome {
-        val pending = store.pending ?: return PluginOutcome.RefreshUi
+    suspend fun discard(conversationId: String? = null): PluginOutcome {
+        val pending = (if (conversationId != null) store.pendingFor(conversationId) else store.pending) ?: return PluginOutcome.RefreshUi
         val message = if (pending.token.isEmpty()) null else when (pending.kind) {
             ReviewKind.QUICK_TEXT -> when (val reply = requireNotNull(environment.quickTextBroker).request(QuickTextCommand.Discard(pending.token))) {
                 is QuickTextReply.Discarded -> null
@@ -42,12 +42,12 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
         if (message != null) return PluginOutcome.Message(message)
         if (pending.kind == ReviewKind.TOOL && pending.toolCallId.isNotEmpty()) store.message(pending.conversationId,
             AgentMessage(role = "tool", toolCallId = pending.toolCallId, content = "{\"status\":\"rejected_by_user\"}"))
-        store.setPending(null)
+        store.setPending(null, pending.conversationId)
         return PluginOutcome.RefreshUi
     }
-    suspend fun resume(): PluginOutcome {
-        check(!runner.running)
-        val pending = store.pending ?: return PluginOutcome.Message("没有待继续操作")
+    suspend fun resume(conversationId: String? = null): PluginOutcome {
+        val pending = (if (conversationId != null) store.pendingFor(conversationId) else store.pending) ?: return PluginOutcome.Message("没有待继续操作")
+        check(!runner.isRunning(pending.conversationId))
         if (pending.kind == ReviewKind.TOOL) { runner.approve(pending); return PluginOutcome.RefreshUi }
         var applied = true
         if (pending.token.isNotEmpty()) {
@@ -65,7 +65,7 @@ internal class AgentReviewController(private val environment: PluginEnvironment,
                 content = if (applied) "{\"status\":\"applied_after_user_review\"}" else "{\"status\":\"discarded_after_user_review\"}",
                 toolCallId = pending.toolCallId))
         }
-        store.setPending(null)
+        store.setPending(null, pending.conversationId)
         if (pending.toolCallId.isNotEmpty()) runner.continueAfterReview(pending.conversationId)
         return PluginOutcome.OpenPage("chat")
     }

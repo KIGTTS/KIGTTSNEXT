@@ -14,7 +14,8 @@ import com.kigtts.plugin.api.PolaroidFrameStyle
 /** Streaming GPU composition: two tiny blur buffers and one immutable paper/lettering/sticker texture. */
 internal class CardMotionPaperEffect(private val card: PolaroidCard, private val frame: PolaroidFrameStyle,
     private val overlay: Bitmap, private val colorMatrix: FloatArray, private val includeFrame: Boolean,
-    private val lut: com.kigtts.next.media.color.CubeLut? = null, private val lutStrength: Float = 1f) : GlEffect {
+    private val lut: com.kigtts.next.media.color.CubeLut? = null, private val lutStrength: Float = 1f,
+    private val effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram {
         require(!useHdr) { "暂不支持 HDR 实况照片" }
         return Program()
@@ -51,6 +52,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             paper.setFloatsUniform("uBlurred", floatArrayOf(if (card.photoBackdrop == PhotoBackdropMode.BLUR) 1f else 0f))
             (0..2).forEach { row -> paper.setFloatsUniform("uRow$row", colorMatrix.copyOfRange(row * 5, row * 5 + 4)) }
             paper.setFloatsUniform("uBias", floatArrayOf(colorMatrix[4] / 255f, colorMatrix[9] / 255f, colorMatrix[14] / 255f))
+            paper.setFloatsUniform("uEffects", effects.values())
             val factor = 128f / maxOf(inputWidth, inputHeight)
             blurWidth = (inputWidth * factor).toInt().coerceAtLeast(1); blurHeight = (inputHeight * factor).toInt().coerceAtLeast(1)
             xTexture = GlUtil.createTexture(blurWidth, blurHeight, false); yTexture = GlUtil.createTexture(blurWidth, blurHeight, false)

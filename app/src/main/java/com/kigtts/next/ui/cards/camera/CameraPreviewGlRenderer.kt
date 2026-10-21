@@ -35,6 +35,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     private var positionLocation = -1; private var coordinateLocation = -1
     private var matrixLocation = -1; private var textureLocation = -1
     private var biasLocation = -1; private val rowLocations = IntArray(4)
+    private var effectsLocation = -1
     private var initialized = false
     private var displayInitialized = false
 
@@ -63,6 +64,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
             matrixLocation = GLES20.glGetUniformLocation(program, "uTextureMatrix")
             textureLocation = GLES20.glGetUniformLocation(program, "uTexture")
             biasLocation = GLES20.glGetUniformLocation(program, "uBias")
+            effectsLocation = GLES20.glGetUniformLocation(program, "uEffects")
             for (row in 0..3) rowLocations[row] = GLES20.glGetUniformLocation(program, "uRow$row")
             checkGl(); initialized = true
         } catch (failure: Throwable) { close(); throw failure }
@@ -104,6 +106,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
         GLES20.glUniform1i(textureLocation, 0); GLES20.glUniformMatrix4fv(matrixLocation, 1, false, transform, 0)
         for (row in 0..3) GLES20.glUniform4fv(rowLocations[row], 1, colors.rows, row * 4)
         GLES20.glUniform4fv(biasLocation, 1, colors.bias, 0)
+        GLES20.glUniform4fv(effectsLocation, 1, colors.effects.values(), 0)
         lutTexture?.bind(colors.lut, colors.lutStrength)
         positions.position(0); coordinates.position(0)
         GLES20.glEnableVertexAttribArray(positionLocation); GLES20.glVertexAttribPointer(positionLocation, 2, GLES20.GL_FLOAT, false, 0, positions)

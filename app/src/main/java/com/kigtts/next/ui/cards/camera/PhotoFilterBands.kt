@@ -6,9 +6,11 @@ import kotlinx.coroutines.ensureActive
 
 /** Native Skia applies the preview's color matrix in bounded bands, without allocating a second full photograph. */
 internal suspend fun applyPhotoFilterBands(image: Bitmap, filter: PhotoFilter, strength: Float = 1f,
-    lut: com.kigtts.next.media.color.CubeLut? = null) {
+    lut: com.kigtts.next.media.color.CubeLut? = null, effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
+    com.kigtts.next.media.color.applyPhotoEffects(image, effects)
     if (filter == PhotoFilter.ORIGINAL || strength <= 0f) return
     currentCoroutineContext().ensureActive()
+    val resolvedLut = PhotoFilters.lut(filter, lut)
     require(image.isMutable)
     val height = minOf(32, image.height)
     val source = Bitmap.createBitmap(image.width, height, Bitmap.Config.ARGB_8888)
@@ -29,7 +31,7 @@ internal suspend fun applyPhotoFilterBands(image: Bitmap, filter: PhotoFilter, s
             source.setPixels(pixels, 0, image.width, 0, 0, image.width, rows)
             canvas.drawBitmap(source, 0f, 0f, paint)
             output.getPixels(pixels, 0, image.width, 0, 0, image.width, rows)
-            if (lut != null) for (index in 0 until image.width * rows) pixels[index] = lut.map(pixels[index], strength)
+            if (resolvedLut != null) for (index in 0 until image.width * rows) pixels[index] = resolvedLut.map(pixels[index], strength)
             image.setPixels(pixels, 0, image.width, 0, y, image.width, rows)
             y += rows
         }

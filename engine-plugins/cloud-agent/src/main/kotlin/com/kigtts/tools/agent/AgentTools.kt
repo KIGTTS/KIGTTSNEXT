@@ -17,10 +17,12 @@ class AgentTools(private val environment: PluginEnvironment, private val history
     private val quick = AgentQuickTools(environment)
     private val downloads = AgentDownload(environment)
     private val browser = AgentBrowser(environment)
+    private val imageTools = AgentImageTools(environment)
     val schemas: JsonArray = buildJsonArray {
         add(namedTool("conversation_history", "读取当前正在执行会话的完整历史（包括被上下文窗口省略的旧记录），只读。offset为消息序号，limit最多20；返回nextOffset和total。长任务继续前核对已有回执，不重放未知结果的修改。", emptyList(), "offset" to "integer", "limit" to "integer"))
         add(browserToolSchema)
         quickToolSchemas().forEach { add(it) }; visualToolSchemas().forEach { add(it) }
+        imageToolSchemas().forEach { add(it) }
         add(namedTool("download_resource", "从公开HTTPS下载图片/字体等页面资源到本助手workspace/，最多32MiB，不携带供应商密钥，不执行文件，目标须不存在。返回真实路径/MIME/字节数/SHA-256；可传sha256校验。随后用publish-page打包本地资源，离线可用。尊重用户用途与素材许可。", listOf("url", "path"), "url" to "string", "path" to "string", "sha256" to "string"))
         add(tool("create_page", "创建可用的HTML网页快捷文本。自动发布index.html、关联附件并提交PAGE卡片；html为完整HTML，title为缩略标题，text为字幕，groupId为空时使用当前分组。", "html", stringSchema(), "title" to stringSchema(), "text" to stringSchema(), "groupId" to stringSchema()))
         add(tool("lua", "查询/调试Lua插件。operation=list/read/test/validate/enable/run；project是实际ID，action为运行的脚本action，input为字符串。先list取ID。read返回源码/版本/权限/error，可用offset/limit分页，按nextOffset读完。test/validate返回ok/phase/line/error；报错应读源码定位修复。运行结果outcomeUnknown表示可能已有副作用，先核对状态。修改、启用、执行需授权。", "operation", stringSchema(), "project" to stringSchema(), "action" to stringSchema(), "input" to stringSchema(), "offset" to stringSchema(), "limit" to stringSchema()))
@@ -48,7 +50,8 @@ class AgentTools(private val environment: PluginEnvironment, private val history
             }
             "browser" -> browser.execute(args)
             "download_resource" -> downloads.download(args.string("url"), args.string("path"), args["sha256"]?.jsonPrimitive?.content?.takeIf(String::isNotBlank))
-            "list_quick_text", "read_quick_text", "edit_quick_text", "read_page_file", "write_page_file" -> quick.execute(call, args)
+            "list_quick_text", "read_quick_text", "edit_quick_text", "read_page_file", "write_page_file", "write_quick_image" -> quick.execute(call, args)
+            "image_search", "download_image", "read_quick_image" -> imageTools.execute(call, args)
             "web_ui_guide", "browser_screenshot", "read_image", "send_image", "icon_catalog", "render_svg", "import_icon" -> visual.execute(call, args)
             "create_page" -> pages.create(call.id, args)
             "lua" -> {
@@ -114,7 +117,7 @@ class AgentTools(private val environment: PluginEnvironment, private val history
         catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (error: Exception) { ToolResult(buildJsonObject { put("error", "WEB_UNAVAILABLE"); put("message", error.message?.take(200) ?: "暂时无法联网") }.toString()) }
     fun readOnly(call: ToolCall): Boolean {
-        if (call.name == "conversation_history") return true
+        if (call.name in setOf("conversation_history", "image_search", "download_image", "read_quick_image")) return true
         if (call.name == "browser") return runCatching { PluginJson.parseToJsonElement(call.arguments).jsonObject["operation"]?.jsonPrimitive?.content !in setOf("click", "type", "scroll") }.getOrDefault(false)
         if (call.name in setOf("download_resource", "icon_catalog", "render_svg", "import_icon", "web_ui_guide", "browser_screenshot", "read_image", "send_image", "read_file", "list_files", "read_page_file", "list_quick_text", "read_quick_text", "web_search", "web_fetch")) return true
         val args = runCatching { PluginJson.parseToJsonElement(call.arguments).jsonObject }.getOrNull() ?: return true
@@ -125,7 +128,7 @@ class AgentTools(private val environment: PluginEnvironment, private val history
         val type = args["command"]?.jsonObject?.get("type")?.jsonPrimitive?.content
         return when (call.name) {
             "browser" -> args["operation"]?.jsonPrimitive?.content in setOf("click", "type", "scroll")
-            "create_page", "deliver_lua", "edit_quick_text", "write_page_file" -> true
+            "create_page", "deliver_lua", "edit_quick_text", "write_page_file", "write_quick_image" -> true
             "lua" -> args["operation"]?.jsonPrimitive?.content !in setOf("list", "read", "test", "validate")
             "app" -> type !in setOf("describe", "state", "browser-capture")
             "quick_text" -> type !in setOf("describe", "query", "files", "get-file", "transaction", "prepare", "discard")

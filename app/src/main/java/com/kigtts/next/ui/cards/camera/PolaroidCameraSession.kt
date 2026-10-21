@@ -38,7 +38,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var binding: CameraBinding? = null
     private val previewColors = CameraPreviewColors()
     val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
-    fun setPreviewFilter(values: FloatArray, lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f) { previewColors.update(values, lut, strength) }
+    fun setPreviewFilter(values: FloatArray, lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f, effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) { previewColors.update(values, lut, strength, effects) }
     private var motionBuffer: CameraMotionBuffer? = null
     val motionAvailable: Boolean get() = motionBuffer?.failed == false
     val motionReady: Boolean get() = motionBuffer?.ready == true
@@ -210,20 +210,21 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     }
     fun cancelCountdown(): Boolean = countdown.cancel()
     fun capture(format: PolaroidFormat, filter: PhotoFilter, complete: (PolaroidCameraCapture) -> Unit,
-        delaySeconds: Int = 0, strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null) {
+        delaySeconds: Int = 0, strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
+        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
         if (!ready || busy || countingDown || delaySeconds !in listOf(0, 3, 10)) return
         val current = binding ?: return
         val epoch = generation
         // Freeze manual focus/EV from the initial shutter tap through the eventual exposure.
         focusJob?.cancel(); focusJob = null
         val started = countdown.start(delaySeconds, {
-            if (epoch == generation && binding === current && ready) performCapture(format, filter, complete, strength, lut)
+            if (epoch == generation && binding === current && ready) performCapture(format, filter, complete, strength, PhotoFilters.lut(filter, lut), effects)
             else if (epoch == generation) clearFocus()
         }, { if (epoch == generation) clearFocus() })
         if (!started) clearFocus()
     }
     private fun performCapture(format: PolaroidFormat, filter: PhotoFilter, complete: (PolaroidCameraCapture) -> Unit, strength: Float,
-        lut: com.kigtts.next.media.color.CubeLut?) {
+        lut: com.kigtts.next.media.color.CubeLut?, effects: com.kigtts.next.media.color.PhotoEffects) {
         val camera = binding?.capture ?: return
         if (!ready || busy) return
         busy = true; val epoch = generation
@@ -239,11 +240,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 manual.awaitConfigured()
                 motionTicket = motion?.beginCapture()
                 if (motion != null && motionTicket == null && !motion.failed) message("实况还在准备，本次保存照片")
-                photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength, lut) {
+                photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength, lut, effects) {
                     motionTicket?.let { motion?.exposureStarted(it) }
                 }
                 val clip = motionTicket?.let { ticket -> motion?.finish(ticket,
-                    PhotoFilters.coefficients(requireNotNull(photo).filter, strength), lut.takeIf { photo?.processed != null }, strength) }
+                    PhotoFilters.coefficients(requireNotNull(photo).filter, strength), lut.takeIf { photo?.processed != null }, strength,
+                    if (photo?.processed != null) effects else com.kigtts.next.media.color.PhotoEffects.NONE) }
                 if (clip != null) photo = requireNotNull(photo).withMotion(clip)
                 currentCoroutineContext().ensureActive()
                 if (epoch == generation) {

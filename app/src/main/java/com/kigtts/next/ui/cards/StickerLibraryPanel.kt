@@ -48,8 +48,10 @@ internal fun StickerLibraryPanel(libraries: List<StickerLibrary>, items: List<St
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(contents, key = { it.id }) { item ->
-                Surface(Modifier.animateItem().combinedClickable(enabled = enabled,
-                    onClick = feedbackClick { selectItem(item) }, onLongClick = feedbackClick { itemMenu(item) })
+                val draggable = LocalCardElementDrag.current != null
+                Surface(Modifier.animateItem().cardElementDragSource("sticker/" + item.id, CardLayer(kind = CardLayerKind.IMAGE, imageId = item.imageId, width = .32))
+                    .combinedClickable(enabled = enabled,
+                    onClick = feedbackClick { selectItem(item) }, onLongClick = if (draggable) null else feedbackClick { itemMenu(item) })
                     .testTag("sticker-item/" + item.id), color = MaterialTheme.colorScheme.surfaceContainer,
                     shape = MaterialTheme.shapes.large) {
                     Column(Modifier.padding(10.dp)) {

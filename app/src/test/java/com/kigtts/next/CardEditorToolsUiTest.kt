@@ -56,11 +56,11 @@ class CardEditorToolsUiTest {
 
     private fun paperBounds(card: PolaroidCard): Rect = compose.onNodeWithTag("polaroid/" + card.id).fetchSemanticsNode().boundsInRoot
 
-    private fun assertPaperAboveSheet(card: PolaroidCard, screenshot: String): Rect {
+    private fun assertPaperOverlay(card: PolaroidCard, screenshot: String, covered: Boolean): Rect {
         val paper = paperBounds(card)
         val sheet = compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot
-        assertTrue("Paper must leave room above the real native sheet", paper.bottom < sheet.top)
-        val output = File("build/previews/$screenshot.png").apply { parentFile.mkdirs() }
+        assertEquals("The tools cover the paper only while expanded", covered, paper.bottom > sheet.top)
+        val output = File("build/previews/$screenshot.png").apply { requireNotNull(parentFile).mkdirs() }
         val root = compose.onRoot()
         val window = root.fetchSemanticsNode().boundsInRoot
         root.captureRoboImage(output.absolutePath)
@@ -69,12 +69,13 @@ class CardEditorToolsUiTest {
             val x = ((paper.center.x - window.left) / window.width * image.width).toInt().coerceIn(0, image.width - 1)
             val y = ((paper.bottom - paper.height * .03f - window.top) / window.height * image.height).toInt().coerceIn(0, image.height - 1)
             val pixel = image.getPixel(x, y)
-            assertTrue("The lower paper must really draw rather than be covered by the sheet", Color.red(pixel) > 180 && Color.green(pixel) < 80 && Color.blue(pixel) > 100)
+            assertEquals("The overlay must really paint over the lower paper", !covered,
+                Color.red(pixel) > 180 && Color.green(pixel) < 80 && Color.blue(pixel) > 100)
         } finally { image.recycle() }
         return paper
     }
 
-    @Test fun collapsingAndReopeningTheNativeSheetActuallyResizesVisiblePaperWithoutOccludingIt() {
+    @Test fun collapsingAndReopeningTheNativeOverlayUncoversTheSameStationaryPaper() {
         val card = PolaroidCard(title = "", frameColor = 0xFFFF00CCL)
         show(card)
         fun expandFully() {
@@ -83,14 +84,13 @@ class CardEditorToolsUiTest {
             }
         }
         expandFully()
-        val expanded = assertPaperAboveSheet(card, "card-editor-expanded-paper")
+        val expanded = assertPaperOverlay(card, "card-editor-expanded-paper", true)
         compose.onNodeWithTag("toggle-card-editor-panel").performTouchInput { click(center) }
-        val collapsed = assertPaperAboveSheet(card, "card-editor-collapsed-paper")
-        assertTrue("Folding the tools must make the paper visibly larger", collapsed.width > expanded.width * 1.1f)
-        assertTrue(collapsed.height > expanded.height * 1.1f)
+        val collapsed = assertPaperOverlay(card, "card-editor-collapsed-paper", false)
+        assertEquals("Folding only uncovers the paper", expanded, collapsed)
         compose.onNodeWithTag("toggle-card-editor-panel").performTouchInput { click(center) }
         expandFully()
-        val reopened = assertPaperAboveSheet(card, "card-editor-reopened-paper")
+        val reopened = assertPaperOverlay(card, "card-editor-reopened-paper", true)
         assertEquals(expanded.width, reopened.width, 3f)
         assertEquals(expanded.height, reopened.height, 3f)
     }

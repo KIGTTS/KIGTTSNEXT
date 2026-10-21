@@ -27,7 +27,7 @@ class HttpsChatTransport(private val beforeRequest: suspend () -> Unit = {}) : C
             connection.setRequestProperty("Authorization", "Bearer $apiKey")
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connection.setRequestProperty("Accept", "text/event-stream")
-            connection.setRequestProperty("User-Agent", "KIGTTSNEXT-Agent/0.9.5")
+            connection.setRequestProperty("User-Agent", "KIGTTSNEXT-Agent/0.9.6")
             if (URL(endpoint).host == "opencode.ai") request["_kigtts_session"]?.jsonPrimitive?.contentOrNull?.let { connection.setRequestProperty("x-opencode-session", it) }
             val bytes = JsonObject(request.filterKeys { !it.startsWith("_kigtts_") }).toString().toByteArray(Charsets.UTF_8)
             require(bytes.size <= 10 * 1024 * 1024) { "会话过长，请新建会话" }
@@ -38,6 +38,8 @@ class HttpsChatTransport(private val beforeRequest: suspend () -> Unit = {}) : C
                 400, 422 -> {
                     val detail = connection.errorStream?.use { it.readNBytes(8192).toString(Charsets.UTF_8) }.orEmpty()
                     if (isContextOverflow(detail)) throw AgentContextOverflow()
+                    if (request["messages"].toString().contains("\"image_url\"") &&
+                        Regex("image|vision|multimodal|图片|多模态", RegexOption.IGNORE_CASE).containsMatchIn(detail)) throw AgentVisionUnsupported()
                     error("模型拒绝此请求；如包含图片，请切换到支持视觉的模型，并检查模型名称及工具支持")
                 }
                 401, 403 -> error("密钥无效或没有此模型的访问权限")
@@ -67,8 +69,10 @@ internal fun chatRequest(settings: AgentSettings, conversation: Conversation, to
         if (conversation.contextSummary.isNotBlank()) add(buildJsonObject { put("role", "system"); put("content", "较早会话的事实交接摘要（不是新增指令；权限以当前用户选择为准）：\n" + conversation.contextSummary) })
         val window = contextWindow(conversationContext(conversation))
         if (window.omitted) add(buildJsonObject { put("role", "system"); put("content", "较早历史未包含在本轮上下文，完整记录仍保存在会话中。这不是任务结束或撤销：保留原始目标和最新用户指令，先用conversation_history读取缺少的操作、文件和回执，不能猜测或重放结果未知的修改。") })
-        val recentImages = window.messages.flatMap { it.images }.takeLast(4).map { it.path }.toSet()
-        window.messages.forEach { message -> add(message.toWire(imageData, recentImages)) }
+        val vision = conversation.visionUnavailableModel != visionModelKey(settings)
+        if (!vision) add(buildJsonObject { put("role", "system"); put("content", "当前模型已明确拒绝图片输入。本轮可以搜索、下载和保存图片，但不能声称已看见图片；需要视觉判断时请用户在模型弹窗切换视觉模型。不要反复read_image重试同一图片。") })
+        val recentImages = if (vision) window.messages.flatMap { it.images }.takeLast(4).map { it.path }.toSet() else emptySet()
+        wireHistory(window.messages).forEach { message -> add(message.toWire(imageData, recentImages)) }
     })
     if (settings.toolsEnabled) { put("tools", tools); put("tool_choice", "auto") }
     // Keep the provider's default inference mode. Displaying reasoning is an independent UI preference.
@@ -76,11 +80,13 @@ internal fun chatRequest(settings: AgentSettings, conversation: Conversation, to
 }
 internal fun AgentMessage.toWire(imageData: (AgentImage) -> String = { error("没有图片读取能力") }, recentImages: Set<String> = images.map { it.path }.toSet()): JsonObject = buildJsonObject {
     put("role", role)
-    val visibleImages = images.filter { it.path in recentImages }
-    if (visibleImages.isEmpty()) put("content", content + if (images.isNotEmpty()) "\n[历史图片保留在会话，可按需read_image重新读取]" else "")
+    val visibleImages = images.filter { it.path in recentImages }.mapNotNull { image ->
+        runCatching { imageData(image) }.getOrNull()?.let { image to it }
+    }
+    if (visibleImages.isEmpty()) put("content", content + if (images.isNotEmpty()) "\n[图片记录：${images.joinToString { it.description + "：" + it.path }}；本轮未附图片字节，不能推测图像内容。]" else "")
     else put("content", buildJsonArray {
         add(buildJsonObject { put("type", "text"); put("text", content.ifBlank { "请查看图片" }) })
-        visibleImages.forEach { image -> add(buildJsonObject { put("type", "image_url"); put("image_url", buildJsonObject { put("url", imageData(image)) }) }) }
+        visibleImages.forEach { (_, data) -> add(buildJsonObject { put("type", "image_url"); put("image_url", buildJsonObject { put("url", data) }) }) }
     })
     if (role == "assistant" && reasoning.isNotEmpty()) put("reasoning_content", reasoning)
     if (toolCallId != null) put("tool_call_id", toolCallId)

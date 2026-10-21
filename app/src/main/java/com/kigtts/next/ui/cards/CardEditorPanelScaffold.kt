@@ -15,6 +15,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
@@ -22,12 +24,15 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.homeCardShape
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import com.kigtts.plugin.api.CardLayer
+import java.io.File
 
 /** One connected surface owns the handle, scrollable tools and native tabs. */
 @Composable
 internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expandTools: Boolean,
     clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit,
-    categories: (@Composable (Boolean, () -> Unit) -> Unit)? = null) {
+    categories: (@Composable (Boolean, () -> Unit) -> Unit)? = null,
+    imageFile: (String) -> File? = { null }, insertElement: (CardLayer) -> Unit = {}) {
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -54,13 +59,18 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
             val openTools = { scope.launch { if (sheet.targetValue == CardToolsPosition.COLLAPSED)
                 sheet.animateTo(CardToolsPosition.PARTIAL, tween(220)) }; Unit }
+            val elementDrag = remember { CardEditorElementDrag() }
             val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
             val stageHeight = maxHeight
+            CompositionLocalProvider(LocalCardElementDrag provides elementDrag) {
+            Box(Modifier.fillMaxSize().cardElementDragRoot(elementDrag, enabled, wide,
+                collapse = { scope.launch { sheet.animateTo(CardToolsPosition.COLLAPSED, tween(220)) } }, insert = insertElement)) {
             val photoTop = if (floatingHeader) 64.dp else 0.dp
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { clearSelection() } }
                 .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
                 preview(Modifier.width(paperWidth).graphicsLayer {
-                    val offset = sheet.offset.takeIf(Float::isFinite)?.coerceIn(0f, full) ?: middle
+                    // The tools overlay the paper. Its viewport remains stable while the sheet moves.
+                    val offset = end
                     val available = (offset - 24.dp.toPx()).coerceAtLeast(1f)
                     val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
                     scaleX = if (wide) minOf(1f, available / size.width.coerceAtLeast(1f),
@@ -69,7 +79,7 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                     scaleY = scaleX
                     if (wide) { translationX = offset / 2f - full / 2f; translationY = photoTop.toPx() / 2f }
                     else translationY = offset / 2f - full / 2f
-                })
+                }.onGloballyPositioned { elementDrag.paper = it.boundsInRoot() })
             }
             val shape = homeCardShape().let { if (wide) it.copy(topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
                 else it.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)) }
@@ -97,14 +107,16 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                         categories?.invoke(compactTabs, openTools)
                     }
                 }
-                if (wide) Row(Modifier.fillMaxSize()) {
+                if (wide) Row(Modifier.fillMaxSize().onGloballyPositioned { elementDrag.panel = it.boundsInRoot() }) {
                     handle(Modifier.width(header).fillMaxHeight())
                     content(Modifier.weight(1f).fillMaxHeight())
-                } else Column(Modifier.fillMaxSize()) {
+                } else Column(Modifier.fillMaxSize().onGloballyPositioned { elementDrag.panel = it.boundsInRoot() }) {
                     handle(Modifier.fillMaxWidth().height(header))
                     content(Modifier.weight(1f).fillMaxWidth())
                 }
             }
+            CardEditorElementDragOverlay(elementDrag, imageFile)
+            } }
         }
     }
 }

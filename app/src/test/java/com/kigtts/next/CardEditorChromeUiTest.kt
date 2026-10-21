@@ -72,7 +72,7 @@ class CardEditorChromeUiTest {
             assertEquals("The panel occupies the safe height under transparent chrome", 24f, panel.top.value, 1f)
             assertTrue("Save must stay left of the moving tools: $save / $panel", save.right <= panel.left - 7.dp)
             assertTrue("Photo must clear the floating title: $paper / $bar", paper.top >= barPixels.bottom)
-            assertTrue("Photo must clear the tools: $paper / $panel", paper.right < panelPixels.left)
+            assertTrue("The tools may overlay the paper, which remains inside the safe page", paper.right <= panelPixels.right)
         }
         check()
         val expandedSave = compose.onNodeWithTag("save-card").getUnclippedBoundsInRoot().left

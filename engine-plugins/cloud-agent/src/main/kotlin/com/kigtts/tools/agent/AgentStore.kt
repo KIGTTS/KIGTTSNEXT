@@ -12,8 +12,10 @@ class AgentStore(private val storage: PluginStorage) {
     private val conversationFiles = AgentConversationFiles(conversationDirectory)
     @Volatile var settings: AgentSettings = (read<AgentSettings>(settingsFile) ?: AgentSettings()).let { it.copy(profiles = AgentSettings().profiles + it.profiles) }
         private set
-    @Volatile var pending: PendingReview? = read<PendingReview>(storage.file("config/pending-review.json"))
-        private set
+    private val pendingReviews = (read<Map<String, PendingReview>>(storage.file("config/pending-reviews.json")) ?: emptyMap()).toMutableMap()
+        .apply { read<PendingReview>(storage.file("config/pending-review.json"))?.let { putIfAbsent(it.conversationId, it) } }
+    val pending: PendingReview? @Synchronized get() = settings.selectedConversation?.let(pendingReviews::get)
+    @Synchronized fun pendingFor(id: String): PendingReview? = pendingReviews[id]
     @Volatile var modelPickerConversation: String? = null
     @Volatile var modelFilter = ""
     @Volatile var modelOffset = 0
@@ -78,12 +80,13 @@ class AgentStore(private val storage: PluginStorage) {
         require(id.matches(Regex("[a-zA-Z0-9-]{1,64}")))
         conversations.remove(id); conversationFiles.delete(id)
         if (settings.selectedConversation == id) updateSettings { it.copy(selectedConversation = list().firstOrNull()?.id) }
-        if (pending?.conversationId == id) setPending(null)
+        setPending(null, id)
     }
-    @Synchronized fun setPending(value: PendingReview?) {
-        pending = value
-        val file = storage.file("config/pending-review.json")
-        if (value == null) file.delete() else write(file, value)
+    @Synchronized fun setPending(value: PendingReview?, conversationId: String? = null) {
+        val id = value?.conversationId ?: conversationId ?: settings.selectedConversation ?: return
+        if (value == null) pendingReviews.remove(id) else pendingReviews[id] = value
+        write(storage.file("config/pending-reviews.json"), pendingReviews.toMap())
+        storage.file("config/pending-review.json").delete()
     }
     private inline fun <reified T> read(file: File): T? = runCatching {
         if (file.length() > 16 * 1024 * 1024) null else PluginJson.decodeFromString<T>(file.readText(Charsets.UTF_8))

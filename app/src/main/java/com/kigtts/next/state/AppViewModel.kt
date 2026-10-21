@@ -75,7 +75,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
         { id -> cardUi.focusCard(id, openPreview = false) }, saveMotion = { imageId, clip ->
-            cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix, clip.lut, clip.lutStrength)
+            cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix, clip.lut, clip.lutStrength, clip.effects)
         }, useSystemCamera = { application.getSharedPreferences("polaroid_camera", 0).getBoolean("use-system-camera", false) })
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,

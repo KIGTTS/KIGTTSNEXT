@@ -50,7 +50,8 @@ internal fun cameraChromeLayout(width: Float, height: Float, photo: Size, vertic
         val outsideRight = (window.right + CAMERA_CHROME_GAP).coerceAtMost((width - size - CAMERA_CHROME_EDGE).coerceAtLeast(0f))
         val zoomLeft = move(insideRight, outsideRight, zoomProgress)
         val zoomTop = maxOf(top + photo.height * .05f, headerInset + CAMERA_CHROME_GAP)
-        val zoomBottom = maxOf(zoomTop, window.bottom - photo.height * .05f)
+        val bottomReserve = maxOf(photo.height * .05f, 60f * (1f - zoomProgress.coerceIn(0f, 1f)))
+        val zoomBottom = maxOf(zoomTop, window.bottom - bottomReserve)
         // A compact rail sits close to the shutter. The two camera corner actions retain their own strip.
         val railHeight = minOf(240f, zoomBottom - zoomTop)
         val railTop = zoomTop + (zoomBottom - zoomTop - railHeight) / 2f

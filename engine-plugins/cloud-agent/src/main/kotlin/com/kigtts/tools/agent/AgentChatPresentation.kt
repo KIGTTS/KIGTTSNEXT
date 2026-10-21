@@ -27,12 +27,14 @@ internal fun agentChat(store: AgentStore, runner: AgentRunner): PageBlock.Chat {
         val title = when (tool?.name) {
             "read_file" -> "已读取文件"; "write_file" -> "已写入文件"; "list_files" -> "已查看目录"
             "create_page" -> "创建网页卡片"; "web_search" -> "联网搜索"; "web_fetch" -> "读取网页"
+            "image_search" -> "搜索图片"; "download_image" -> "下载图片"; "read_quick_image" -> "读取快捷文本图片"; "write_quick_image" -> "保存快捷文本图片"
             "deliver_lua" -> "安装 Lua 插件"; "draft_lua" -> "编写 Lua 插件"; "lua" -> "调试 Lua 插件"
             "list_quick_text", "read_quick_text" -> "读取快捷文本"; "edit_quick_text" -> "编辑快捷文本"; "read_page_file" -> "读取页面文件"; "write_page_file" -> "修改页面文件";
             "browser_screenshot" -> "网页截图验收"; "web_ui_guide" -> "读取网页样式规范"; "read_image" -> "读取图片"; "send_image" -> "发送图片";
             "quick_text" -> "管理快捷文本"; "stickers" -> "管理图片与贴纸"; else -> tool?.name ?: "软件操作"
         }
         val icon = when (tool?.name) { "read_file", "list_files" -> PluginIcon.TEXT; "web_search", "web_fetch" -> PluginIcon.INFO
+            "image_search", "download_image", "read_quick_image", "write_quick_image", "read_image", "send_image" -> PluginIcon.IMAGE
             "create_page" -> PluginIcon.ADD; "write_file", "draft_lua" -> PluginIcon.EDIT; else -> PluginIcon.SETTINGS }
         ChatMessage(message.id, when (message.role) { "user" -> if (message.visualInput) ChatRole.ASSISTANT else ChatRole.USER; "tool" -> ChatRole.TOOL; else -> ChatRole.ASSISTANT },
             if (message.visualInput) "" else if (message.role == "tool") message.content.take(10000) else clippedMessage(message.content, 16 * 1024),

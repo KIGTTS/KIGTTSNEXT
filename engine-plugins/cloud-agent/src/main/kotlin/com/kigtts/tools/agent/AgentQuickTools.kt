@@ -13,6 +13,7 @@ internal class AgentQuickTools(private val environment: PluginEnvironment) {
         "edit_quick_text" -> edit(call.id, args)
         "read_page_file" -> readPage(args)
         "write_page_file" -> writePage(args)
+        "write_quick_image" -> writeImage(call.id, args)
         else -> error("未知快捷文本工具")
     }
     private suspend fun query(args: JsonObject, single: Boolean): ToolResult {
@@ -88,6 +89,37 @@ internal class AgentQuickTools(private val environment: PluginEnvironment) {
         val path = "workspace/edits/" + UUID.randomUUID() + ".txt"
         val file = environment.storage.file(path); file.parentFile!!.mkdirs(); file.writeText(text, Charsets.UTF_8)
         return result(broker.request(QuickTextCommand.PutFile(args.string("mediaId"), args.string("path"), PluginResource(path), args.getValue("version").jsonPrimitive.long)))
+    }
+    private suspend fun writeImage(callId: String, args: JsonObject): ToolResult {
+        // Replayed tool callbacks must return the previous mutation before publishing another file.
+        val transaction = "agent-edit-" + UUID.nameUUIDFromBytes(callId.toByteArray())
+        when (val receipt = broker.request(QuickTextCommand.Transaction(transaction))) {
+            is QuickTextReply.Applied -> return result(receipt)
+            is QuickTextReply.Prepared -> return result(broker.request(QuickTextCommand.Commit(receipt.value.token)))
+            is QuickTextReply.Failure -> if (receipt.code != QuickTextError.NOT_FOUND) return result(receipt)
+            else -> error("事务结果不明确")
+        }
+        val read = query(buildJsonObject { put("id", args.string("id")) }, true)
+        val snapshot = PluginJson.parseToJsonElement(read.content).jsonObject
+        if (snapshot["ok"]?.jsonPrimitive?.booleanOrNull != true) return read
+        val revision = args.getValue("revision").jsonPrimitive.long
+        if (snapshot.getValue("revision").jsonPrimitive.long != revision)
+            return result(QuickTextReply.Failure(QuickTextError.CONFLICT, "快捷文本已更新，请重新读取", snapshot.getValue("revision").jsonPrimitive.long))
+        val path = args.string("path"); require(path.startsWith("workspace/") || path.startsWith("imports/"))
+        val source = environment.storage.file(path); require(source.isFile && source.length() in 1..32L*1024*1024)
+        val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeFile(source.path, bounds); require(bounds.outWidth > 0 && bounds.outHeight > 0) { "请选择真实图片文件" }
+        val extension = when (bounds.outMimeType) {
+            "image/png" -> "png"; "image/webp" -> "webp"; "image/jpeg" -> "jpg"
+            "image/gif" -> "gif"; "image/avif" -> "avif"; "image/heif" -> "heif"; "image/heic" -> "heic"; "image/bmp" -> "bmp"
+            else -> source.extension.lowercase().takeIf { it.matches(Regex("[a-z0-9]{1,8}")) } ?: "image"
+        }
+        val owned = "workspace/quick-images/" + UUID.randomUUID() + "." + extension
+        environment.storage.file(owned).apply { parentFile!!.mkdirs(); source.copyTo(this) }
+        val media = broker.request(QuickTextCommand.PublishMedia(SubtitleContent.Image(PluginResource(owned), args["description"]?.jsonPrimitive?.content.orEmpty())))
+        if (media !is QuickTextReply.Media) return result(media)
+        return edit(callId, buildJsonObject { put("id", args.string("id")); put("revision", revision)
+            put("patch", buildJsonObject { put("kind", "MEDIA"); put("mediaId", media.value.id) }) })
     }
     private fun result(reply: QuickTextReply): ToolResult {
         val token = (reply as? QuickTextReply.Failure)?.takeIf { it.code == QuickTextError.CONFIRMATION_REQUIRED }?.reviewToken

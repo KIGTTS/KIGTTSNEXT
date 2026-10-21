@@ -19,7 +19,10 @@ internal fun cameraLevelReading(x: Float, y: Float, z: Float, rotation: Int): Ca
     }
     val flatX = horizontal / length; val flatY = vertical / length
     val nearFlat = hypot(flatX, flatY) < .28f
-    val roll = Math.toDegrees(atan2(horizontal, vertical).toDouble()).toFloat()
+    val angle = Math.toDegrees(atan2(horizontal, vertical).toDouble()).toFloat()
+    // A horizon is an undirected line: 180° is just as level as 0°. This also covers
+    // either landscape grip and devices whose natural display orientation is landscape.
+    val roll = ((angle + 270f) % 180f) - 90f
     return CameraLevelReading(roll, flatX, flatY, nearFlat,
         if (nearFlat) hypot(flatX, flatY) <= .035f else abs(roll) <= 1.5f)
 }

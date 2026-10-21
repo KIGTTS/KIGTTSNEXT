@@ -38,8 +38,8 @@ private val LocalIconHint = staticCompositionLocalOf<IconHint?> { null }
                 return IntOffset(x, y.coerceIn(0, (windowSize.height - popupContentSize.height).coerceAtLeast(0)))
             }
         } }, onDismissRequest = { hint.visible = false }, properties = PopupProperties(focusable = false)) {
-            Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.inverseSurface,
-                contentColor = MaterialTheme.colorScheme.inverseOnSurface, shadowElevation = 4.dp) {
+            Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface, shadowElevation = 4.dp) {
                 Text(label, Modifier.padding(horizontal = 8.dp, vertical = 5.dp), style = MaterialTheme.typography.bodySmall)
             }
         }

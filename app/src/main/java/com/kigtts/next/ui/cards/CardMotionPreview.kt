@@ -41,7 +41,7 @@ import kotlinx.coroutines.*
         value = withContext(Dispatchers.IO) {
             val source = CardMotionRepository(stickers).get(card.imageId) ?: return@withContext null
             val overlay = PolaroidRenderer.renderBitmap(stickers, card, transparentPhoto = true, maximumHeight = 720)
-            CardMotionPreview(source, overlay, CardMotionPaperEffect(card, frame, overlay, source.colorMatrix, true, source.lut, source.lutStrength))
+            CardMotionPreview(source, overlay, CardMotionPaperEffect(card, frame, overlay, source.colorMatrix, true, source.lut, source.lutStrength, source.effects))
         }
     }
     // The bounded single overlay has ordinary Bitmap lifetime. Do not recycle it ahead of an

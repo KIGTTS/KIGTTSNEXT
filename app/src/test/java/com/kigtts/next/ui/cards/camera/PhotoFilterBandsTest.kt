@@ -29,6 +29,7 @@ class PhotoFilterBandsTest {
                 applyPhotoFilterBands(mutable, filter, strength)
                 assertEquals(79, mutable.width); assertEquals(73, mutable.height)
                 val expectedPixels = IntArray(79 * 73).also { expected.getPixels(it, 0, 79, 0, 0, 79, 73) }
+                PhotoFilters.lut(filter)?.let { lut -> for (index in expectedPixels.indices) expectedPixels[index] = lut.map(expectedPixels[index], strength) }
                 val actualPixels = IntArray(79 * 73).also { mutable.getPixels(it, 0, 79, 0, 0, 79, 73) }
                 assertArrayEquals(filter.name + "/" + strength, expectedPixels, actualPixels)
                 assertArrayEquals(sourcePixels, IntArray(79 * 73).also { original.getPixels(it, 0, 79, 0, 0, 79, 73) })

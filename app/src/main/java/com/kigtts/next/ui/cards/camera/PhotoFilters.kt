@@ -5,6 +5,8 @@ import kotlin.math.roundToInt
 
 /** Shared encoded-RGB coefficients for the CameraX GPU preview and full-resolution saved photograph. */
 internal object PhotoFilters {
+    fun lut(filter: PhotoFilter, custom: com.kigtts.next.media.color.CubeLut? = null) =
+        if (filter == PhotoFilter.CUSTOM) custom else CameraLookPresets.lut(filter)
     fun coefficients(filter: PhotoFilter, strength: Float = 1f): FloatArray {
         val selected = preset(filter)
         val weight = strength.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f
@@ -13,7 +15,8 @@ internal object PhotoFilters {
         return FloatArray(20) { original[it] + (selected[it] - original[it]) * weight }
     }
     private fun preset(filter: PhotoFilter): FloatArray = when (filter) {
-        PhotoFilter.ORIGINAL, PhotoFilter.CUSTOM -> floatArrayOf(1f,0f,0f,0f,0f, 0f,1f,0f,0f,0f, 0f,0f,1f,0f,0f, 0f,0f,0f,1f,0f)
+        PhotoFilter.ORIGINAL, PhotoFilter.CUSTOM, PhotoFilter.BLACK_GOLD, PhotoFilter.INK,
+        PhotoFilter.MONSOON, PhotoFilter.KYOTO, PhotoFilter.OLD_ALLEY -> floatArrayOf(1f,0f,0f,0f,0f, 0f,1f,0f,0f,0f, 0f,0f,1f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.BW -> floatArrayOf(.213f,.715f,.072f,0f,0f, .213f,.715f,.072f,0f,0f, .213f,.715f,.072f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.WARM -> floatArrayOf(1.04f,0f,0f,0f,5f, 0f,1f,0f,0f,1f, 0f,0f,.93f,0f,0f, 0f,0f,0f,1f,0f)
         PhotoFilter.COOL -> floatArrayOf(.94f,0f,0f,0f,0f, 0f,1f,0f,0f,1f, 0f,0f,1.05f,0f,4f, 0f,0f,0f,1f,0f)

@@ -8,6 +8,8 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.KigttsTheme
@@ -34,6 +36,9 @@ fun KigttsApp(model: AppViewModel) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val snackbarAvoidance = remember { SnackbarAvoidance() }
+    val toastContext = LocalContext.current.applicationContext
+    var systemToast by remember { mutableStateOf<Toast?>(null) }
+    DisposableEffect(Unit) { onDispose { systemToast?.cancel() } }
     val sketch = model.sketch
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -61,7 +66,11 @@ fun KigttsApp(model: AppViewModel) {
     LaunchedEffect(model) {
         model.events.collect { (plugin, outcome) ->
             when (outcome) {
-                is PluginOutcome.Message -> scope.launch { snackbar.showSnackbar(outcome.text) }
+                is PluginOutcome.Message -> {
+                    systemToast?.cancel()
+                    systemToast = Toast.makeText(toastContext, outcome.text,
+                        if (outcome.text.length > 60) Toast.LENGTH_LONG else Toast.LENGTH_SHORT).also { it.show() }
+                }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
                 is PluginOutcome.Confirm -> pluginConfirmation = plugin to outcome

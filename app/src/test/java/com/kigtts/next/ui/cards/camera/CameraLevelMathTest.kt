@@ -31,4 +31,16 @@ class CameraLevelMathTest {
             floatArrayOf(Float.POSITIVE_INFINITY, 0f, 9.8f), floatArrayOf(Float.MAX_VALUE, Float.MAX_VALUE, 0f)))
             assertNull(cameraLevelReading(xyz[0], xyz[1], xyz[2], Surface.ROTATION_0))
     }
+    @Test fun oppositeLandscapeGripsAndUpsideDownGravityStillHighlightAHorizontalLine() {
+        for (rotation in listOf(Surface.ROTATION_0, Surface.ROTATION_90, Surface.ROTATION_180, Surface.ROTATION_270)) {
+            val gravity = if (rotation == Surface.ROTATION_90 || rotation == Surface.ROTATION_270) 9.8f to 0f else 0f to 9.8f
+            for (direction in listOf(-1f, 1f)) {
+                val reading = requireNotNull(cameraLevelReading(gravity.first * direction, gravity.second * direction, 0f, rotation))
+                assertTrue("rotation=$rotation direction=$direction $reading", reading.aligned)
+                assertEquals(0f, reading.rollDegrees, .001f)
+            }
+        }
+        assertFalse(requireNotNull(cameraLevelReading(9.8f, 0f, 0f, Surface.ROTATION_0)).aligned)
+        assertFalse(requireNotNull(cameraLevelReading(0f, 9.8f, 0f, Surface.ROTATION_90)).aligned)
+    }
 }

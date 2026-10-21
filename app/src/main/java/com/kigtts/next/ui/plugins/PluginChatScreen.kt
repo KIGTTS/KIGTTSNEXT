@@ -30,6 +30,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit, resolve: (PluginResource) -> java.io.File? = { null },
     historyCache: ChatHistoryCache? = null, historyKey: String = chat.conversationId, header: @Composable ColumnScope.() -> Unit) {
     val list = remember(chat.conversationId) { LazyListState() }
+    val dispatch: (String, Map<String, String>) -> Unit = { action, inputs -> invoke(action, inputs + ("_chatConversation" to chat.conversationId)) }
     var follow by remember(chat.conversationId) { mutableStateOf(true) }
     val dragging by list.interactionSource.collectIsDraggedAsState()
     val scrollRequests = remember(chat.conversationId) { Channel<ChatScrollRequest>(Channel.CONFLATED) }
@@ -43,7 +44,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     fun loadEarlier() {
         if (!hasEarlier || loadingBefore != null) return
         follow = false; cache.retainEarlier(historyKey); loadingBefore = earliest
-        invoke(requireNotNull(chat.historyAction), mapOf("before" to earliest.toString()))
+        dispatch(requireNotNull(chat.historyAction), mapOf("before" to earliest.toString()))
     }
     LaunchedEffect(earliest, loadingBefore, enabled) {
         if (loadingBefore != null && (earliest < requireNotNull(loadingBefore) || enabled)) { delay(160); loadingBefore = null }
@@ -109,7 +110,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
 
         }
     }, composer = {
-        ChatInputBar(chat, enabled, resolve, invoke, historyKey.substringBefore('/')) { follow = true }
+        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/')) { follow = true }
     })
 }
 private enum class ChatScrollRequest { UPDATE, SNAP, JUMP }

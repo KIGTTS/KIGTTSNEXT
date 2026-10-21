@@ -5,7 +5,8 @@ import java.io.File
 /** Raw encoded video. Preview/export apply the same matrix as the separately preserved still image. */
 class CameraMotionClip(val video: File, val durationMs: Long, val rotationDegrees: Int,
     val shutterPositionMs: Long, val colorMatrix: FloatArray,
-    val lut: com.kigtts.next.media.color.CubeLut? = null, val lutStrength: Float = 1f)
+    val lut: com.kigtts.next.media.color.CubeLut? = null, val lutStrength: Float = 1f,
+    val effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE)
 
 /** A finalized recording segment; its origin uses Android's monotonic elapsed realtime clock. */
 internal data class CameraMotionPart(val file: File, val startedAtMs: Long, val durationMs: Long)

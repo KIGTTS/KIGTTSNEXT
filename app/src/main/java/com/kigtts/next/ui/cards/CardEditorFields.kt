@@ -29,7 +29,8 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
         else if (mode == CardEditorMode.FRAME) CardFrameTools(card, enabled, change, frameColor, frames)
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton("添加文字", Icons.Default.TextFields, addText, enabled = enabled)
+                PillButton("添加文字", Icons.Default.TextFields, addText,
+                    Modifier.cardElementDragSource("new-text", CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)), enabled = enabled)
                 PillButton("贴纸", Icons.Default.Collections, addSticker, enabled = enabled)
                 PillButton("表情图片", Icons.Default.AddPhotoAlternate, addImage, enabled = enabled)
                 PillButton("二维码", Icons.Default.QrCode2, addQrCode, Modifier.testTag("card-add-qr"), enabled = enabled)

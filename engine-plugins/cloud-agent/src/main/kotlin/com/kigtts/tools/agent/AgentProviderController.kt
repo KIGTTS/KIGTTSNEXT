@@ -39,7 +39,7 @@ internal class AgentProviderController(private val store: AgentStore, private va
             action.startsWith("remove-provider/") -> return PluginOutcome.Menu("删除此供应商配置？", listOf(PageAction("remove-provider-confirm/" + action.substringAfter('/'), "删除配置和密钥", PluginIcon.CLOSE)))
             action.startsWith("remove-provider-confirm/") -> {
                 val id = action.substringAfter('/'); require(store.settings.customProviders.any { it.id == id })
-                check(!runner.running || runner.runningConversation?.let(store::get)?.let(store::connection)?.customProviderId != id) { "请先停止正在使用此供应商的回答" }
+                check(store.list().none { runner.isRunning(it.id) && store.connection(it).customProviderId == id }) { "请先停止正在使用此供应商的回答" }
                 secrets.writeCustom(id, "")
                 store.updateSettings { it.copy(customProviders = it.customProviders.filterNot { custom -> custom.id == id }, provider = if (it.customProviderId == id) Provider.DEEPSEEK else it.provider, customProviderId = it.customProviderId?.takeUnless { selected -> selected == id }) }
                 return PluginOutcome.RefreshUi
@@ -54,7 +54,7 @@ internal class AgentProviderController(private val store: AgentStore, private va
                 return PluginOutcome.TextInput(when (action) { "endpoint" -> "服务地址"; "model" -> "默认模型"; else -> "密钥" }, "save-$action", when (action) { "endpoint" -> profile.endpoint; "model" -> profile.model; else -> "" }, secret = action == "key")
             }
             action in setOf("save-endpoint", "save-model", "save-key") -> {
-                check(!runner.running) { "请先停止当前回答" }
+                check(store.list().none { runner.isRunning(it.id) && store.connection(it).catalogKey() == store.settings.catalogKey() }) { "请先停止正在使用此连接的回答" }
                 when (action) {
                     "save-key" -> secrets.write(store.settings, value)
                     "save-endpoint" -> { completionEndpoint(value.trim()); store.changeProfile { it.copy(endpoint = value.trim(), modelsUpdatedAt = 0) } }
@@ -64,7 +64,7 @@ internal class AgentProviderController(private val store: AgentStore, private va
                 return PluginOutcome.RefreshUi
             }
             action == "chat-models" || action == "models" -> {
-                store.modelPickerConversation = if (action == "chat-models") (store.selected() ?: store.create()).id else null
+                store.modelPickerConversation = if (action == "chat-models") (store.target(context) ?: store.create()).id else null
                 store.modelFilter = ""; store.modelOffset = 0; catalog.refresh(pickerConnection()); return PluginOutcome.OpenPage("models")
             }
             action == "chat-models-refresh" -> { val conversation = store.selected() ?: store.create(); catalog.refresh(store.connection(conversation), true); return PluginOutcome.RefreshUi }

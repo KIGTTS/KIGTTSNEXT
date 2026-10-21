@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
 import android.graphics.Bitmap
@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,16 +53,19 @@ internal fun closestCaptureFormat(width: Int, height: Int): PolaroidFormat = cap
     Column(Modifier.fillMaxSize().safeDrawingPadding().testTag("camera-framing")) {
         TopAppBar(title = { Text("照片构图") }, navigationIcon = {
             IconButton(onClick = feedbackClick(cancel), enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消") }
-        }, actions = { TextButton(onClick = feedbackClick { confirm(current, x, y, zoom) }, enabled = !busy && image != null) { Text("使用照片") } })
+        }, actions = {
+            IconActionHint("使用照片") {
+                IconButton(onClick = feedbackClick { confirm(current, x, y, zoom) },
+                    Modifier.testTag("capture-frame-confirm").iconLongAction(!busy && image != null, null), enabled = !busy && image != null) {
+                    Icon(Icons.Default.Check, "使用照片")
+                }
+            }
+        })
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val landscape = maxWidth > maxHeight
             val choices: @Composable () -> Unit = {
                 captureFrameFormats.forEach { option ->
-                    FilledTonalButton(onClick = feedbackClick { choose(option) }, enabled = !busy,
-                        modifier = Modifier.testTag("capture-format/" + option.name),
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = if (current == option) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)) {
-                        Text(when (option) { PolaroidFormat.MINI -> "Mini"; PolaroidFormat.WIDE -> "Wide"; else -> "Square" })
-                    }
+                    CaptureFormatTab(option, current == option, !busy) { choose(option) }
                 }
             }
             val photo: @Composable (Modifier) -> Unit = { modifier ->
@@ -74,11 +78,14 @@ internal fun closestCaptureFormat(width: Int, height: Int): PolaroidFormat = cap
             }
             if (landscape) Row(Modifier.fillMaxSize()) {
                 photo(Modifier.weight(1f).fillMaxHeight())
-                Column(Modifier.width(132.dp).fillMaxHeight().verticalScroll(rememberScrollState()).padding(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) { choices(); Text("双指调整位置与缩放", style = MaterialTheme.typography.bodySmall) }
+                Column(Modifier.width(144.dp).fillMaxHeight().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) { choices() }
+                    Text("双指调整位置与缩放", style = MaterialTheme.typography.bodySmall)
+                }
             } else Column(Modifier.fillMaxSize()) {
                 photo(Modifier.weight(1f).fillMaxWidth())
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) { choices() }
-                Text("双指调整位置与缩放，原图保持完整", Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp), style = MaterialTheme.typography.bodySmall)
+                Text("双指调整位置与缩放", Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

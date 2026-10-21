@@ -13,6 +13,7 @@ import java.util.UUID
 internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCapture, front: Boolean,
     format: PolaroidFormat, filter: PhotoFilter, message: (String) -> Unit, strength: Float = 1f,
     lut: com.kigtts.next.media.color.CubeLut? = null,
+    effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
     exposureStarted: () -> Unit = {}): PolaroidCameraCapture {
     val directory = File(context.cacheDir, "polaroid-camera")
     val id = UUID.randomUUID().toString()
@@ -23,7 +24,7 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
         capture.captureJpeg(context, original, front, exposureStarted)
         val captured = SystemClock.elapsedRealtime()
         Log.d(CAMERA_LOG_TAG, "JPEG ready after ${captured - started}ms,bytes=${original.length()},resolution=${capture.resolutionInfo?.resolution}")
-        val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(original, processed, filter, strength, lut) } }
+        val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(original, processed, filter, strength, lut, effects) } }
         catch (cancel: CancellationException) { throw cancel }
         catch (_: OutOfMemoryError) { message("原图已保留，本次未应用滤镜"); null }
         catch (_: Exception) { message("原图已保留，本次未应用滤镜"); null }

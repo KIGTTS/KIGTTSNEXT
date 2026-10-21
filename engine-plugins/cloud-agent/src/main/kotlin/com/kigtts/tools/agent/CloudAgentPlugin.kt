@@ -8,7 +8,7 @@ import kotlinx.serialization.encodeToString
 import java.util.UUID
 
 class CloudAgentPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.9.5")
+    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.9.6")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: AgentStore
     private lateinit var secrets: AgentSecrets
@@ -17,16 +17,16 @@ class CloudAgentPlugin : KigPlugin {
     private lateinit var providers: AgentProviderController
     private lateinit var reviews: AgentReviewController
     private val revision = MutableStateFlow(0L)
+    private val uiSignals = AgentUiSignals { revision.update { it + 1 } }
     override val uiChanges = revision.asStateFlow()
-    private fun changed() { revision.update { it + 1 } }
+    private fun changed() { uiSignals.changed() }
     override suspend fun attach(environment: PluginEnvironment) {
         this.environment = environment
         store = AgentStore(environment.storage)
         if (store.settings.access == AgentAccessMode.FULL && !store.settings.fullAccessConfirmed)
             store.updateSettings { it.copy(access = AgentAccessMode.REQUEST_APPROVAL) }
         secrets = KeystoreAgentSecrets(environment.storage)
-        runner = AgentRunner(store, secrets, HttpsChatTransport { environment.requirePermission("network") },
-            AgentTools(environment, historyReader = { runner.runningConversation?.let(store::get) }) { store.settings.access == AgentAccessMode.FULL }, ::changed)
+        runner = ConcurrentAgentRunner(store, secrets, environment, ::changed)
         reviews = AgentReviewController(environment, store, runner)
         catalog = AgentModelCatalog(store, secrets, ::changed, HttpsModelsTransport { environment.requirePermission("network") })
         providers = AgentProviderController(store, secrets, runner, catalog)
@@ -47,7 +47,9 @@ class CloudAgentPlugin : KigPlugin {
                 actionId in setOf("settings", "conversations", "connections", "dialogue-settings", "connection-settings") -> PluginOutcome.OpenPage(actionId)
                 actionId == "chat-menu" -> PluginOutcome.Menu("会话", listOf(PageAction("settings", "助手设置", PluginIcon.SETTINGS)))
                 actionId == "new" -> {
-                    store.create(); PluginOutcome.OpenPage("chat")
+                    val selected = store.selected()
+                    if (selected == null || selected.messages.isNotEmpty() || selected.draftImages.isNotEmpty() || selected.queued.isNotEmpty() || runner.isRunning(selected.id)) store.create()
+                    PluginOutcome.OpenPage("chat")
                 }
                 actionId.startsWith("select/") -> { store.select(actionId.removePrefix("select/")); PluginOutcome.OpenPage("chat") }
                 actionId.startsWith("rename/") -> {
@@ -61,18 +63,18 @@ class CloudAgentPlugin : KigPlugin {
                 }
                 actionId.startsWith("delete/") -> {
                     val id = actionId.removePrefix("delete/")
-                    check(runner.runningConversation != id) { "请先停止此会话的回答" }
+                    check(!runner.isRunning(id)) { "请先停止此会话的回答" }
                     val conversation = requireNotNull(store.get(id)) { "会话不存在" }
                     PluginOutcome.Confirm("删除会话？", "将删除“${conversation.title}”及其本地对话记录，此操作无法撤销。",
                         PageAction("delete-confirm/$id", "删除", PluginIcon.NONE, symbol = "delete"))
                 }
                 actionId.startsWith("delete-confirm/") -> {
                     val id = actionId.removePrefix("delete-confirm/")
-                    check(runner.runningConversation != id) { "请先停止此会话的回答" }
+                    check(!runner.isRunning(id)) { "请先停止此会话的回答" }
                     store.delete(id); PluginOutcome.RefreshUi
                 }
                 actionId == "attach-image" -> {
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     if (context.inputs["source"] == "camera") PluginOutcome.CapturePhoto("拍照", "imports/chat-source", "attach-image-complete/" + conversation.id)
                     else PluginOutcome.ImportResource("添加图片", "imports/chat-source", "attach-image-complete/" + conversation.id, mimeTypes = listOf("image/*"))
                 }
@@ -85,36 +87,36 @@ class CloudAgentPlugin : KigPlugin {
                     PluginOutcome.RefreshUi
                 }
                 actionId == "remove-image" -> {
-                    val conversation = store.selected() ?: store.create(); val path = value
+                    val conversation = store.target(context) ?: store.create(); val path = value
                     store.modify(conversation.id) { current -> current.copy(draftImages = current.draftImages.filterNot { it.path == path }) }; PluginOutcome.RefreshUi
                 }
                 actionId == "queue" || actionId == "steer" -> {
                     require(context.inputs["_callerPlugin"] == null) { "只能由用户发送插队消息" }
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     runner.enqueue(conversation.id, context.inputs["message"].orEmpty(), actionId == "steer"); PluginOutcome.RefreshUi
                 }
                 actionId.startsWith("queue-remove/") || actionId.startsWith("queue-front/") -> {
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     runner.manageQueue(conversation.id, actionId.substringAfter('/'), actionId.startsWith("queue-front/")); PluginOutcome.RefreshUi
                 }
                 actionId.startsWith("queue-steer/") -> {
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     runner.steerQueued(conversation.id, actionId.substringAfter('/')); PluginOutcome.RefreshUi
                 }
                 actionId == "queue-order" -> {
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     runner.reorderQueue(conversation.id, PluginJson.decodeFromString<List<String>>(context.inputs.getValue("order"))); PluginOutcome.RefreshUi
                 }
                 actionId == "load-earlier" -> {
-                    val conversation = store.selected() ?: return PluginOutcome.RefreshUi
+                    val conversation = store.target(context) ?: return PluginOutcome.RefreshUi
                     store.loadEarlier(conversation.id, requireNotNull(context.inputs["before"]).toInt()); PluginOutcome.RefreshUi
                 }
                 actionId == "send" -> {
                     val text = context.inputs["message"] ?: context.inputs["text"] ?: value
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     runner.send(conversation.id, text); PluginOutcome.RefreshUi
                 }
-                actionId == "stop" -> { runner.stop(); PluginOutcome.RefreshUi }
+                actionId == "stop" -> { store.target(context)?.id?.let(runner::stopConversation); PluginOutcome.RefreshUi }
                 actionId.startsWith("export-conversation/") -> {
                     val conversation = store.get(actionId.substringAfter('/')) ?: return PluginOutcome.Message("会话不存在")
                     val path = "exports/conversation-${conversation.id}.json"
@@ -127,17 +129,18 @@ class CloudAgentPlugin : KigPlugin {
                     if (actionId == "access/full") require(store.settings.fullAccessConfirmed || context.inputs["_agentFullConfirmed"] == "true") { "请先确认完全访问警告" }
                     store.updateSettings { it.copy(access = when (actionId) { "access/full" -> AgentAccessMode.FULL; "access/assist" -> AgentAccessMode.ASSISTED; else -> AgentAccessMode.REQUEST_APPROVAL },
                         fullAccessConfirmed = it.fullAccessConfirmed || context.inputs["_agentFullConfirmed"] == "true") }
-                    if (actionId == "access/full" && !runner.running && store.pending?.kind == ReviewKind.TOOL) reviews.resume()
+                    val target = store.target(context)?.id
+                    if (actionId == "access/full" && target?.let(store::pendingFor)?.let { !runner.isRunning(it.conversationId) && it.kind == ReviewKind.TOOL } == true) reviews.resume(target)
                     else PluginOutcome.RefreshUi
                 }
                 actionId == "chat-model" -> {
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     val connection = store.connection(conversation)
                     PluginOutcome.TextInput("模型名称", "save-chat-model", requireNotNull(connection.profiles[connection.provider]).model)
                 }
                 actionId == "save-chat-model" -> {
                     require(value.trim().length in 1..160)
-                    val conversation = store.selected() ?: store.create()
+                    val conversation = store.target(context) ?: store.create()
                     store.modify(conversation.id) { it.copy(model = value.trim()) }; PluginOutcome.RefreshUi
                 }
                 actionId == "reasoning" -> { store.updateSettings { it.copy(showReasoning = !it.showReasoning) }; PluginOutcome.RefreshUi }
@@ -145,9 +148,9 @@ class CloudAgentPlugin : KigPlugin {
                 actionId == "tools" -> {
                     check(!runner.running) { "请先停止当前回答" }; store.updateSettings { it.copy(toolsEnabled = !it.toolsEnabled) }; PluginOutcome.RefreshUi
                 }
-                actionId == "review" -> reviews.open()
-                actionId == "resume" -> reviews.resume()
-                actionId == "discard-review" -> reviews.discard()
+                actionId == "review" -> reviews.open(store.target(context)?.id)
+                actionId == "resume" -> reviews.resume(store.target(context)?.id)
+                actionId == "discard-review" -> reviews.discard(store.target(context)?.id)
                 actionId == "import-cards" -> PluginOutcome.ImportResource("导入快捷文本", "resources/quick-imports", "import-cards-complete")
                 actionId == "import-cards-complete" -> {
                     val broker = requireNotNull(environment.quickTextBroker)
@@ -172,5 +175,5 @@ class CloudAgentPlugin : KigPlugin {
         store.setPending(PendingReview(conversation.id, "", reply.value.token, "导入内容已准备好，请审核"))
         return reviews.open()
     }
-    override suspend fun close() { if (::catalog.isInitialized) catalog.close(); if (::runner.isInitialized) runner.close() }
+    override suspend fun close() { if (::catalog.isInitialized) catalog.close(); if (::runner.isInitialized) runner.close(); uiSignals.close() }
 }

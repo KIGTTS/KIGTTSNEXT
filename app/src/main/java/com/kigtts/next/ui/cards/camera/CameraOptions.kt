@@ -3,6 +3,7 @@ package com.kigtts.next.ui.cards.camera
 import android.content.SharedPreferences
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import com.kigtts.next.media.color.PhotoEffects
 
 internal enum class CameraFlash(val label: String) { OFF("关闭"), AUTO("自动"), ON("开启") }
 internal enum class CameraGrid(val label: String) { OFF("关闭"), THIRDS("三分线"), SQUARE("方格") }
@@ -21,6 +22,12 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     val processing get() = if (motionEnabled) CameraProcessing.STANDARD else selectedProcessing
     val motion get() = motionEnabled
     val filterStrength get() = selectedStrength
+    private var selectedEffects by mutableStateOf(PhotoEffects.from(listOf("vignette", "grain", "aberration", "bloom").map { preferences.getFloat("effect-$it", 0f) }))
+    val effects get() = selectedEffects
+    fun setEffects(value: PhotoEffects) {
+        selectedEffects = value
+        preferences.edit().apply { listOf("vignette", "grain", "aberration", "bloom").zip(value.values().toList()).forEach { (key, amount) -> putFloat("effect-$key", amount) } }.apply()
+    }
     var timerSeconds by mutableIntStateOf(preferences.getInt("timer", 0).takeIf { it in TIMERS } ?: 0); private set
     var settingsVisible by mutableStateOf(false); private set
 

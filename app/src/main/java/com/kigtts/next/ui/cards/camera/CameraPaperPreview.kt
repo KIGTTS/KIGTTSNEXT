@@ -41,8 +41,10 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
     val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
-    LaunchedEffect(session, colors, lut, filterStrength) {
-        snapshotFlow { colors.values() }.collect { session.setPreviewFilter(it, lut, filterStrength) }
+    val resolvedLut = remember(filter, lut) { PhotoFilters.lut(filter, lut) }
+    val effects = options?.effects ?: com.kigtts.next.media.color.PhotoEffects.NONE
+    LaunchedEffect(session, colors, resolvedLut, filterStrength, effects) {
+        snapshotFlow { colors.values() }.collect { session.setPreviewFilter(it, resolvedLut, filterStrength, effects) }
     }
     DisposableEffect(view, session) {
         var pinched = false

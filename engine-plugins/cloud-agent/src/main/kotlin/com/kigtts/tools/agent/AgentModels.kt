@@ -38,7 +38,7 @@ import java.util.UUID
 @Serializable data class Conversation(val id: String = UUID.randomUUID().toString(), val title: String = "新会话",
     val messages: List<AgentMessage> = emptyList(), val provider: Provider? = null, val model: String? = null, val customProviderId: String? = null, val reasoningEffort: String? = null,
     val updatedAt: Long = System.currentTimeMillis(), val draftImages: List<AgentImage> = emptyList(), val queued: List<AgentQueuedMessage> = emptyList(),
-    val contextSummary: String = "", val compactedThroughId: String? = null)
+    val contextSummary: String = "", val compactedThroughId: String? = null, val visionUnavailableModel: String? = null)
 @Serializable enum class ReviewKind { QUICK_TEXT, STICKERS, EXTERNAL, TOOL }
 @Serializable data class PendingReview(val conversationId: String, val toolCallId: String, val token: String,
     val summary: String, val createdAt: Long = System.currentTimeMillis(), val kind: ReviewKind = ReviewKind.QUICK_TEXT,
@@ -65,6 +65,10 @@ internal fun AgentStore.connection(conversation: Conversation): AgentSettings {
     return chosen.copy(profiles = chosen.profiles + (provider to profile.copy(model = conversation.model ?: profile.model, effort = conversation.reasoningEffort ?: profile.effort)))
 }
 internal fun AgentSettings.effectiveProfile(): ProviderProfile = requireNotNull(profiles[provider])
+internal fun AgentStore.target(context: com.kigtts.plugin.api.PluginContext): Conversation? {
+    val id = context.inputs["_chatConversation"]?.takeIf(String::isNotBlank) ?: return selected()
+    return requireNotNull(get(id)) { "此会话已删除，请重新打开会话" }
+}
 internal fun AgentStore.changeProfile(change: (ProviderProfile) -> ProviderProfile) = updateSettings { settings ->
     if (settings.provider == Provider.CUSTOM && settings.customProviderId != null) settings.copy(customProviders = settings.customProviders.map { if (it.id == settings.customProviderId) it.copy(profile = change(it.profile)) else it })
     else settings.copy(profiles = settings.profiles + (settings.provider to change(requireNotNull(settings.profiles[settings.provider]))))

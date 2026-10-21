@@ -8,13 +8,15 @@ import java.util.UUID
 
 data class CardMotionClip(val imageId: String, val video: File, val durationMs: Long, val rotationDegrees: Int,
     val shutterPositionMs: Long, val colorMatrix: FloatArray,
-    val lut: com.kigtts.next.media.color.CubeLut? = null, val lutStrength: Float = 1f)
+    val lut: com.kigtts.next.media.color.CubeLut? = null, val lutStrength: Float = 1f,
+    val effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE)
 
 /** Attach to immutable image IDs: an unsaved camera retake never replaces a saved design's motion. */
 class CardMotionRepository(private val stickers: StickerRepository) {
     private val root = File(stickers.root, "motion")
     @Synchronized fun import(imageId: String, source: File, durationMs: Long, rotationDegrees: Int = 0,
-        shutterPositionMs: Long = 0, colorMatrix: FloatArray = identity(), lut: com.kigtts.next.media.color.CubeLut? = null, lutStrength: Float = 1f): CardMotionClip {
+        shutterPositionMs: Long = 0, colorMatrix: FloatArray = identity(), lut: com.kigtts.next.media.color.CubeLut? = null, lutStrength: Float = 1f,
+        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE): CardMotionClip {
         require(stickers.images.value.any { it.id == imageId }) { "实况照片不存在" }
         require(durationMs in 1..30000 && rotationDegrees in listOf(0, 90, 180, 270) &&
             shutterPositionMs in 0..durationMs && colorMatrix.size == 20 && colorMatrix.all(Float::isFinite)) { "实况参数无效" }
@@ -37,9 +39,10 @@ class CardMotionRepository(private val stickers: StickerRepository) {
                 put("schema", 1); put("imageId", imageId); put("durationMs", durationMs); put("rotationDegrees", rotationDegrees)
                 put("shutterPositionMs", shutterPositionMs); put("colorMatrix", JSONArray(colorMatrix.toList()))
                 put("lut", lut != null); put("lutStrength", lutStrength.coerceIn(0f, 1f))
+                put("effects", JSONArray(effects.values().toList()))
             }.toString(), Charsets.UTF_8)
             check(pending.renameTo(directory)) { "无法完成实况保存" }
-            return CardMotionClip(imageId, File(directory, "motion.mp4"), durationMs, rotationDegrees, shutterPositionMs, colorMatrix.copyOf(), lut, lutStrength)
+            return CardMotionClip(imageId, File(directory, "motion.mp4"), durationMs, rotationDegrees, shutterPositionMs, colorMatrix.copyOf(), lut, lutStrength, effects)
         } finally { pending.deleteRecursively() }
     }
     @Synchronized fun get(imageId: String?): CardMotionClip? {
@@ -54,7 +57,8 @@ class CardMotionRepository(private val stickers: StickerRepository) {
             CardMotionClip(imageId, file, json.getLong("durationMs"), json.getInt("rotationDegrees"),
                 json.getLong("shutterPositionMs"), FloatArray(20) { matrix.getDouble(it).toFloat().also { value -> require(value.isFinite()) } },
                 if (json.optBoolean("lut")) com.kigtts.next.media.color.CubeLut.readBinary(File(directory, "color.lut")) else null,
-                json.optDouble("lutStrength", 1.0).toFloat().coerceIn(0f, 1f))
+                json.optDouble("lutStrength", 1.0).toFloat().coerceIn(0f, 1f),
+                com.kigtts.next.media.color.PhotoEffects.from(List(4) { json.optJSONArray("effects")?.optDouble(it, 0.0)?.toFloat() ?: 0f }))
         }.getOrNull()
     }
     /** Remove only unreferenced attachments; copying a design intentionally shares its source. */

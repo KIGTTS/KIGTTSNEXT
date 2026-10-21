@@ -64,7 +64,12 @@ internal class QuickTextResources(private val host:QuickTextHost,private val own
         QuickTextReply.Files(entry.created,rows,all.size,(command.offset+rows.size).takeIf {it<all.size})
     }
     suspend fun get(command:QuickTextCommand.GetFile):QuickTextReply.Resource=withContext(Dispatchers.IO) {
-        val file=file(entry(command.mediaId),command.path);requireQuick(file.isFile&&file.length()<=MAX_BYTES,message="文件不存在或过大")
+        val media = entry(command.mediaId)
+        val file = if (media.kind == MediaKind.HTML) file(media,command.path) else {
+            requireQuick(command.path.isEmpty(),message="媒体原图请使用空path；不能访问任意文件")
+            host.media.file(media) ?: throw QuickTextFault(QuickTextError.NOT_FOUND,"媒体原文件不存在")
+        }
+        requireQuick(file.isFile&&file.length()<=MAX_BYTES,message="文件不存在或过大")
         val target=host.paths.storage(owner).file(command.destination);copy(file,target)
         QuickTextReply.Resource(PluginResource(command.destination,owner),target.length())
     }

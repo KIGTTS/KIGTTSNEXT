@@ -82,7 +82,8 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
         }
     }
     suspend fun finish(capture: CameraMotionTicket, colorMatrix: FloatArray,
-        lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f): CameraMotionClip? {
+        lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f,
+        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE): CameraMotionClip? {
         val destination = File(directory, "${UUID.randomUUID()}-clip.mp4")
         return try {
             val saved = withTimeout(6_000) { capture.finished.await() }
@@ -91,7 +92,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             require(relevant.isNotEmpty())
             val result = withContext(Dispatchers.IO) { mux(relevant, capture.shutterAtMs, destination) }
             require(result.durationMs > 0 && destination.isFile && destination.length() > 0)
-            CameraMotionClip(destination, result.durationMs, result.rotationDegrees, result.shutterPositionMs, colorMatrix.copyOf(), lut, strength)
+            CameraMotionClip(destination, result.durationMs, result.rotationDegrees, result.shutterPositionMs, colorMatrix.copyOf(), lut, strength, effects)
         } catch (_: TimeoutCancellationException) {
             destination.delete(); currentCoroutineContext().ensureActive()
             message("实况短片未能保存，本次保留照片"); null

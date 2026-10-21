@@ -16,6 +16,22 @@ internal object AgentWebTools {
         val xml = get(url).second
         ToolResult(parseSearch(xml).toString())
     }
+    suspend fun searchImages(query: String): ToolResult = withContext(Dispatchers.IO) {
+        require(query.isNotBlank() && query.length <= 300)
+        val url = "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=8&prop=imageinfo&iiprop=url%7Cextmetadata&iiurlwidth=640&gsrsearch=" + URLEncoder.encode(query + " filetype:bitmap", "UTF-8")
+        val json = PluginJson.parseToJsonElement(get(url).second).jsonObject
+        val pages = json["query"]?.jsonObject?.get("pages")?.jsonObject.orEmpty()
+        ToolResult(buildJsonObject { put("provider", "Wikimedia Commons"); put("query", query)
+            put("images", buildJsonArray { pages.values.take(8).forEach { page ->
+                val item = page.jsonObject; val image = item["imageinfo"]?.jsonArray?.firstOrNull()?.jsonObject ?: return@forEach
+                val metadata = image["extmetadata"]?.jsonObject.orEmpty()
+                fun meta(key: String) = plain(metadata[key]?.jsonObject?.get("value")?.jsonPrimitive?.content.orEmpty()).take(500)
+                add(buildJsonObject { put("title", item["title"]?.jsonPrimitive?.content.orEmpty()); put("url", image["url"]?.jsonPrimitive?.content.orEmpty())
+                    put("thumbnail", image["thumburl"]?.jsonPrimitive?.content.orEmpty()); put("source", image["descriptionurl"]?.jsonPrimitive?.content.orEmpty())
+                    put("artist", meta("Artist")); put("license", meta("LicenseShortName")); put("licenseUrl", meta("LicenseUrl")) })
+            } })
+        }.toString())
+    }
     internal fun parseSearch(xml: String): JsonArray {
         val factory = DocumentBuilderFactory.newInstance()
         listOf("http://apache.org/xml/features/disallow-doctype-decl" to true,
@@ -37,7 +53,9 @@ internal object AgentWebTools {
     }
     suspend fun fetch(url: String): ToolResult = withContext(Dispatchers.IO) {
         val (source, html) = get(url)
-        ToolResult(buildJsonObject { put("url", source); put("text", plain(html).take(16000)) }.toString())
+        ToolResult(buildJsonObject {
+            put("url", source); put("text", plain(html).take(16000)); put("images", htmlImageLinks(source, html))
+        }.toString())
     }
     internal fun plain(html: String): String = html.replace(Regex("(?is)<(script|style|noscript)\\b[^>]*>.*?</\\1>"), " ")
         .replace(Regex("<[^>]+>"), " ").replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"")
@@ -51,11 +69,12 @@ internal object AgentWebTools {
             val connection = URL(url).openConnection() as HttpsURLConnection
             try {
                 connection.instanceFollowRedirects = false; connection.connectTimeout = 10_000; connection.readTimeout = 15_000
-                connection.setRequestProperty("User-Agent", "KIGTTS-Research/1.0")
+                connection.setRequestProperty("User-Agent", "KIGTTSNEXT/0.9.6 (https://github.com/LHT02/KIGTTSNEXT)")
                 if (connection.responseCode in 300..399) {
                     url = uri.resolve(requireNotNull(connection.getHeaderField("Location"))).toString()
                 } else {
                     require(connection.responseCode == 200) { "网页请求失败（${connection.responseCode}）" }
+                    require(!connection.contentType.orEmpty().startsWith("image/", true)) { "这是图片地址，请使用download_image保存，再read_image查看；不要把图片当网页正文读取" }
                     require(connection.contentLengthLong <= 1024 * 1024) { "网页过大" }
                     val bytes = connection.inputStream.use { stream ->
                         val out = java.io.ByteArrayOutputStream(); val buffer = ByteArray(8192)

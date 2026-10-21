@@ -16,7 +16,11 @@ internal fun agentPage(id: String, store: AgentStore, runner: AgentRunner, secre
         "conversations" -> PluginPage(id, "会话", listOf(PageBlock.Actions(listOf(PageAction("new", "新会话", PluginIcon.ADD)))),
             management = ManagementList("conversations", store.list().map { conversation ->
                 ManagementItem(conversation.id, conversation.title,
-                    subtitle = "${conversation.messages.count { it.role == "user" && !it.visualInput }} 条消息", icon = PluginIcon.TEXT,
+                    subtitle = (when {
+                        runner.isRunning(conversation.id) -> "正在执行 · "
+                        store.pendingFor(conversation.id) != null -> "等待处理 · "
+                        else -> ""
+                    }) + "${conversation.messages.count { it.role == "user" && !it.visualInput }} 条消息", icon = PluginIcon.TEXT,
                     selected = settings.selectedConversation == conversation.id, primaryAction = "select/${conversation.id}",
                     actions = listOf(PageAction("export-conversation/${conversation.id}", "导出会话", PluginIcon.EXPORT),
                         PageAction("rename/${conversation.id}", "重命名", PluginIcon.EDIT), PageAction("delete/${conversation.id}", "删除", PluginIcon.CLOSE)))

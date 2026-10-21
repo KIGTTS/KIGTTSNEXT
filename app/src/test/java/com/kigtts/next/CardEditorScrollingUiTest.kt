@@ -82,7 +82,7 @@ class CardEditorScrollingUiTest {
         compose.runOnIdle { width = 850.dp; height = 400.dp }
         compose.waitForIdle(); state("EXPANDED")
         val paper = compose.onNodeWithTag("detent-paper").fetchSemanticsNode().boundsInRoot
-        assertTrue("Landscape reserves a separate left photo region", paper.right < panel().fetchSemanticsNode().boundsInRoot.left)
+        assertTrue("The overlay sheet covers part of the stable landscape paper", paper.right > panel().fetchSemanticsNode().boundsInRoot.left)
         tabs().assertIsDisplayed().assert(hasAnyAncestor(hasTestTag("card-editor-panel")))
         compose.onRoot().captureRoboImage("build/previews/editor-connected-landscape.png")
         compose.onNodeWithTag("toggle-card-editor-panel").performClick(); state("COLLAPSED")
@@ -120,7 +120,7 @@ class CardEditorScrollingUiTest {
         compose.onNodeWithTag("scroll-tool/0").assertIsDisplayed()
     }
 
-    @Test fun onlyTheHeaderCanFoldAndReopenTheSheetAndThePaperFollowsTheActualFinger() {
+    @Test fun onlyTheHeaderCanFoldAndReopenTheSheetAndThePaperStaysStillBehindIt() {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.size(400.dp, 700.dp)) {
                 CardEditorPanelScaffold(1f, true, false, {}, preview = { Text("照片", it.testTag("scroll-test-paper")) },
@@ -140,7 +140,7 @@ class CardEditorScrollingUiTest {
         val during = compose.onNodeWithTag("card-editor-panel").fetchSemanticsNode().boundsInRoot.top
         assertTrue("The header drag must move the actual native sheet before release", during > expanded + 100f)
         val paperDuring = compose.onNodeWithTag("scroll-test-paper").fetchSemanticsNode().boundsInRoot
-        assertTrue(paperDuring.center.y > originalPaper.center.y)
+        assertEquals(originalPaper, paperDuring)
         // Keep the live motion assertion and then cross the final detent midpoint.
         compose.onNodeWithTag("card-editor-panel-header").performTouchInput {
             moveBy(Offset(0f, travel * .9f - 160f), delayMillis = 250); advanceEventTime(300); up()

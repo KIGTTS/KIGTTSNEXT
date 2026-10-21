@@ -146,7 +146,10 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                     selectItem = { addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = it.imageId, width = .32)) },
                     itemMenu = {}, modifier = Modifier.fillMaxWidth().height(240.dp), showLibraryActions = false)
             })
-    }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact) })
+    }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact) },
+        imageFile = stickers::imageFile, insertElement = { layer ->
+            addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false
+        })
     if (active && qrDialog) CardNameDialog("添加二维码", qrPayload, { qrDialog = false }, { text ->
         qrDialog = false; qrPayload = text
         work {

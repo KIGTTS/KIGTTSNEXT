@@ -62,5 +62,6 @@ internal fun AppSnackbarHost(state: SnackbarHostState, avoidance: SnackbarAvoida
         val clearance = animatedClearance.coerceIn(0, constraints.maxHeight)
         val child = measurable.measure(constraints.offset(vertical = -clearance))
         layout(child.width, child.height + clearance) { child.place(0, 0) }
-    }) { data -> Snackbar(data, Modifier.testTag("app-snackbar"), shape=MaterialTheme.shapes.medium) }
+    }) { data -> Snackbar(data, Modifier.testTag("app-snackbar"), shape=MaterialTheme.shapes.medium,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface) }
 }

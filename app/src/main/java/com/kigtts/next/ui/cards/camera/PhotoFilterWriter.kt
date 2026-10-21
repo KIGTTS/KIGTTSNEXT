@@ -11,8 +11,8 @@ import java.io.File
 internal object PhotoFilterWriter {
     const val MAX_PIXELS = 80_000_000L
     suspend fun write(original: File, output: File, filter: PhotoFilter, strength: Float = 1f,
-        lut: com.kigtts.next.media.color.CubeLut? = null): File? {
-        if (filter == PhotoFilter.ORIGINAL || strength <= 0f) return null
+        lut: com.kigtts.next.media.color.CubeLut? = null, effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE): File? {
+        if (!effects.active && (filter == PhotoFilter.ORIGINAL || strength <= 0f)) return null
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         original.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
         require(bounds.outWidth > 0 && bounds.outHeight > 0 && bounds.outWidth.toLong() * bounds.outHeight <= MAX_PIXELS) { "照片尺寸超出支持范围" }
@@ -21,7 +21,7 @@ internal object PhotoFilterWriter {
         }) }) { "照片暂时无法读取" }
         val stage = File(output.parentFile, ".${output.name}.tmp")
         try {
-            applyPhotoFilterBands(image, filter, strength, lut)
+            applyPhotoFilterBands(image, filter, strength, lut, effects)
             currentCoroutineContext().ensureActive()
             stage.outputStream().use { require(image.compress(Bitmap.CompressFormat.JPEG, 98, it)) { "照片暂时无法保存" } }
             val sourceExif = original.inputStream().use { ExifInterface(it) }

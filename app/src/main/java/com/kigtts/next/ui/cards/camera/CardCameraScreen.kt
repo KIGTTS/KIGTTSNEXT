@@ -6,9 +6,6 @@ import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -55,7 +52,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val lutLibrary = remember(context) { CameraLutLibrary(context) }
     var customLuts by remember { mutableStateOf(emptyList<CameraLutChoice>()) }
     var selectedLut by rememberSaveable { mutableStateOf<String?>(null) }
-    val lut = customLuts.firstOrNull { it.id == selectedLut }?.lut.takeIf { filter == PhotoFilter.CUSTOM }
+    val lut = remember(filter, selectedLut, customLuts) { PhotoFilters.lut(filter, customLuts.firstOrNull { it.id == selectedLut }?.lut) }
     LaunchedEffect(lutLibrary) { customLuts = withContext(Dispatchers.IO) { lutLibrary.choices() } }
     val importLut = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) scope.launch {
         try {
@@ -119,7 +116,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     RegisterCameraShutterKeys(active && granted && !options.settingsVisible) {
         if (session.countingDown) session.cancelCountdown()
         else if (!locked && displayReady && viewport.matchesPhotoRatio)
-            session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut)
+            session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut, effects = options.effects)
     }
     val leave = {
         if (session.busy) message("照片正在保存，请稍候")
@@ -150,12 +147,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                     CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
                         options.motion && (session.loading || session.motionAvailable && !session.motionReady),
                         active && granted && !locked, options::setMotion)
-                })
-            AnimatedVisibility(!filtersExpanded, Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom),
-                enter = fadeIn(), exit = fadeOut()) {
-                CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
-                    displayReady && interactive, session::zoomTo, vertical, Modifier.fillMaxSize().excludeCameraPull())
-            }
+                }, effects = options.effects, changeEffects = options::setEffects)
+            CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
+                displayReady && interactive, session::zoomTo, vertical,
+                Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom).excludeCameraPull())
             }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))
@@ -165,7 +160,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val controls: @Composable (Boolean) -> Unit = { vertical ->
         CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
             leave,
-            { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut) },
+            { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut, effects = options.effects) },
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
             gallery = { onGallery(format) }, systemCamera = { onSystemCamera(format) })

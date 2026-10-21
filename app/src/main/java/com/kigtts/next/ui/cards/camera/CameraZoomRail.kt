@@ -58,25 +58,32 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                 { zoom(factor) }, Modifier.testTag("camera-zoom-stop/" + factor.toInt()))
         }
         if (vertical) BoxWithConstraints {
-            val showStops = maxHeight >= (48 * (2 + stops.size)).dp
+            val showStops = maxHeight >= (48 * (2 + stops.size) + 24).dp
             Column(Modifier.padding(horizontal = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             label()
             if (range != null) {
+                Spacer(Modifier.height(12.dp))
                 val state = rememberSliderState(position, valueRange = 0f..1f)
                 state.value = position
                 state.onValueChange = { selected -> state.value = selected; change(selected) }
                 VerticalSlider(state, Modifier.width(48.dp).weight(1f).cameraSliderPressFeedback()
                     .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" }, enabled = enabled,
                     reverseDirection = true)
+                Spacer(Modifier.height(12.dp))
             }
             if (showStops) stops.forEach { stop(it) }
             }
         } else BoxWithConstraints {
-            val showStops = maxWidth >= 300.dp
+            val showStops = maxWidth >= 324.dp
             Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             label()
-            if (range != null) Slider(position, change, Modifier.weight(1f).height(48.dp).cameraSliderPressFeedback()
-                .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" }, enabled = enabled, valueRange = 0f..1f)
+            if (range != null) {
+                // M3's slider thumb expands its hit area beyond the track at both ends.
+                Spacer(Modifier.width(12.dp))
+                Slider(position, change, Modifier.weight(1f).height(48.dp).cameraSliderPressFeedback()
+                    .testTag("camera-zoom-slider").semantics { contentDescription = "变焦" }, enabled = enabled, valueRange = 0f..1f)
+                Spacer(Modifier.width(12.dp))
+            }
             // The slider stays usable even in a narrow rectangular viewfinder.
             if (range == null) Spacer(Modifier.width(8.dp))
             if (showStops) stops.forEach { stop(it) }
