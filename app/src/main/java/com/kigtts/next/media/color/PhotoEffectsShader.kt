@@ -2,7 +2,7 @@ package com.kigtts.next.media.color
 
 /** effectSample returns encoded RGB at normalized photograph coordinates, before color grading. */
 internal object PhotoEffectsShader {
-    const val GLSL = """
+    const val GLSL = FILM_GRAIN_GLSL + """
         uniform vec4 uEffects;
         vec3 effectSample(vec2 uv);
         vec3 applyPhotoEffects(vec2 uv, vec3 source) {
@@ -24,8 +24,7 @@ internal object PhotoEffectsShader {
             color*=1.-.72*uEffects.x*smoothstep(.15,.85,edge);
             if(uEffects.y>.0001) {
                 vec2 cell=floor(uv*2048.);
-                float n=mod(cell.x*13.+cell.y*71.,101.);
-                n=mod(n*n*17.+n*23.,101.)/100.-.5;
+                float n=filmGrain(cell);
                 color+=n*.12*uEffects.y;
             }
             return clamp(color,0.,1.);

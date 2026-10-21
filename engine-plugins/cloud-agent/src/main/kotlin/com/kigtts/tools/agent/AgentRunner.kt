@@ -34,7 +34,7 @@ open class AgentRunner(private val store: AgentStore, private val secrets: Agent
     }
     @Synchronized open fun continueAfterReview(conversationId: String) {
         check(!running)
-        store.message(conversationId, AgentMessage(role = "user", content = "我已处理待确认事项，请先查询当前状态，然后继续。不要重复已经完成的操作。"))
+        store.message(conversationId, AgentMessage(role = "user", content = "继续任务：先查看上次工具错误、查询当前状态和原事务回执，然后纠错并继续。不要重复已经完成的操作。"))
         launch(conversationId, store.connection(requireNotNull(store.get(conversationId))))
     }
     @Synchronized open fun approve(pending: PendingReview) {
@@ -49,13 +49,13 @@ open class AgentRunner(private val store: AgentStore, private val secrets: Agent
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 if (approved != null) {
-                    val reply = try { tools.execute(approved) } catch (error: Exception) {
+                    val reply = (try { tools.execute(approved) } catch (error: Exception) {
                         if (error is CancellationException) {
                             store.message(id, AgentMessage(role = "tool", toolCallId = approved.id, content = "{\"status\":\"cancelled_outcome_unknown\"}"))
                             throw error
                         }
-                        ToolResult("{\"error\":\"OUTCOME_UNKNOWN\"}", pause = true, summary = "操作状态尚不明确，请检查后继续", reviewKind = ReviewKind.EXTERNAL)
-                    }
+                        failedTool(approved, error, tools.readOnly(approved))
+                    }).forAccess(store.settings.access)
                     store.message(id, AgentMessage(role = "tool", content = reply.content, toolCallId = approved.id))
                     if (reply.pause) {
                         store.setPending(PendingReview(id, approved.id, reply.reviewToken.orEmpty(), reply.summary ?: "操作需要进一步确认", kind = reply.reviewKind))
@@ -98,7 +98,7 @@ open class AgentRunner(private val store: AgentStore, private val secrets: Agent
                         }
                     }
                     message = message.copy(content = result.content, reasoning = result.reasoningContent,
-                        calls = result.result(), state = MessageState.COMPLETE)
+                        calls = result.result(), state = MessageState.COMPLETE, usage = result.usage)
                     store.message(id, message); changed()
                     publicReasoning.append(message.reasoning).append("\n\n")
                     if (message.calls.isEmpty()) {
@@ -130,15 +130,19 @@ open class AgentRunner(private val store: AgentStore, private val secrets: Agent
                             attachBatchImages(); changed(); return
                         }
                         store.message(id, AgentMessage(role = "tool", toolCallId = call.id, state = MessageState.STREAMING)); changed()
-                        val reply = try { tools.execute(call) }
+                        val reply = (try { tools.execute(call) }
                         catch (cancelled: CancellationException) { throw cancelled }
                         catch (error: Exception) {
-                            if (tools.readOnly(call)) ToolResult(buildJsonObject { put("ok", false); put("error", error.message?.take(1000) ?: "读取未完成") }.toString())
-                            else ToolResult("{\"error\":\"OUTCOME_UNKNOWN\",\"message\":\"不要重试修改操作，请先查询状态\"}",
-                                pause = true, summary = "操作状态尚不明确，请检查后继续", reviewKind = ReviewKind.EXTERNAL)
-                        }
+                            failedTool(call, error, tools.readOnly(call))
+                        }).forAccess(store.settings.access)
                         store.message(id, AgentMessage(role = "tool", content = reply.content, toolCallId = call.id)); changed()
                         batchImages += reply.images
+                        if (reply.reconcile) {
+                            // Let the model inspect receipts before attempting dependent calls from this batch.
+                            message.calls.drop(index + 1).forEach { deferred -> store.message(id, AgentMessage(role = "tool",
+                                content = "{\"status\":\"not_executed_reconcile_first\",\"executed\":false}", toolCallId = deferred.id)) }
+                            break
+                        }
                         if (reply.pause) {
                             val summary = reply.summary ?: if (reply.reviewToken != null) "变更需要你的审核" else "草稿已送交审核，完成后可以继续"
                             store.setPending(PendingReview(id, call.id, reply.reviewToken.orEmpty(), summary,

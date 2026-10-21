@@ -83,6 +83,19 @@ class CategoryInteractionTest {
         assertFalse("不应保存" in model.categories.value)
         assertEquals(model.categories.value, testAppModel(ApplicationProvider.getApplicationContext()).categories.value)
     }
+    @Test fun groupAndWebEntryShareTheSearchableMaterialSymbolPicker() {
+        val model = show(true)
+        compose.onNodeWithTag("category-生活").performClick()
+        compose.onNodeWithTag("category-生活").performTouchInput { click() }
+        compose.onNodeWithTag("category-more-icons").performClick()
+        compose.onNodeWithTag("symbol-search").performTextInput("two_wheeler")
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("symbol/two_wheeler").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("symbol/two_wheeler").performClick()
+        compose.onNodeWithTag("save-category").performClick()
+        compose.waitUntil(5000) { model.quickTexts.categoryIcons.value["生活"]?.name == "symbol:two_wheeler" }
+        assertEquals("symbol:two_wheeler", testAppModel(ApplicationProvider.getApplicationContext()).quickTexts.categoryIcons.value["生活"]?.name)
+    }
+
     @Test fun diagonalGroupDragIsHorizontalOnlyWithSolidElevatedTab() {
         val model = show(true)
         val tabs = compose.onNodeWithTag("category-tabs")

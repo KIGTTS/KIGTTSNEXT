@@ -12,6 +12,8 @@ val snapshot = (broker.request(QuickTextCommand.Query(limit = 50)) as QuickTextR
 
 分组和条目均有持久 UUID。分组改名后 ID 保持不变；UI 仍显示名称和图标。`QuickEntry` 提供正文、可选标题、分组 ID、四类卡片、媒体 ID、颜色、富文本、自动播放和声音策略。富文本使用 UTF-16 选区，包含粗体、斜体、下划线、颜色、字号；字号读取兼容旧范围 75–400，界面工具栏仍只有小/正常/大。
 
+`QuickGroup.icon` 保留原有 `LIST/INFO/PERSON/FAVORITE/HOME/WORK/SCHOOL/TRAVEL/FOOD/HEALTH/SHOPPING/MESSAGE` 字符串，也接受 `symbol:<Material Symbols名称>`，如 `symbol:two_wheeler`。使用 `AppCommand.UiAssets("symbols", query = "wheel")` 查询宿主实际离线图标，不猜名称；未知名称在 Prepare 阶段拒绝，不部分改库。分组和网页条目共用搜索选取器，常用网格包含老版快捷文本和音效板的全部图标选择；改名、重启和导入导出保留实际字符串。
+
 `metadata` 是预留给工具、模板、来源和配置标识的小型字符串映射：最多 32 项，键长 128，单值 UTF-8 4 KiB、总值 16 KiB。人工编辑、保存、系统恢复和导出保持该字段；较大的脚本、媒体和状态文件放插件数据目录。
 
 Query 可按分组查询，每页 0–50 个条目，返回总数、nextOffset、库 revision 和相关媒体描述。第二页传同一 revision，库变化时返回 CONFLICT，避免拼接不同时间的结果。`includeContent=false` 只取标识与其它元数据；极长正文可通过导出文件读取。快照也返回当前显示分组、正在编辑条目（无 UI 时为空）。媒体描述提供类型、所有者、资源版本、主页面、MIME、HTTPS URL、适应/填充、缩略图焦点、实况信息，不暴露手机绝对路径。

@@ -28,7 +28,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val pluginChatHistory = com.kigtts.next.ui.plugins.ChatHistoryCache()
     val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
-    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures + builtinPlugins(application))
+    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures)
     val registry = pluginManager.registry
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)

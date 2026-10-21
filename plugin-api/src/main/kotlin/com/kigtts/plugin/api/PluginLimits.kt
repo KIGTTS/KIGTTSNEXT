@@ -38,6 +38,11 @@ internal fun validateSnapshot(snapshot: PluginSnapshot) {
                     require(block.allowedActions.size <= 32 && block.allowedActions.all { it.length in 1..128 })
                 }
                 is PageBlock.Text -> require(block.text.length <= 16_000)
+                is PageBlock.Markdown -> {
+                    require(block.text.length <= 32_000 && block.images.size <= 128)
+                    block.images.forEach { (key, resource) -> require(key.length in 1..240 && resource.path.length in 1..512) }
+                }
+                is PageBlock.Gallery -> require(block.images.size <= 8 && block.images.all { it.description.length <= 160 && it.resource.path.length in 1..512 })
                 is PageBlock.Notice -> require(block.text.length <= 16_000)
                 is PageBlock.SourceEditor -> require(block.id.length in 1..128 && block.text.length <= 64_000 && block.saveAction.length in 1..128 && block.language.length <= 32)
                 is PageBlock.Files -> {
@@ -79,5 +84,9 @@ internal fun validateSnapshot(snapshot: PluginSnapshot) {
             }
         }
     }
-    snapshot.pages.forEach { require(it.id.length in 1..128 && it.title.length in 1..160); blocks(it.blocks, 0) }
+    snapshot.pages.forEach { page ->
+        require(page.id.length in 1..128 && page.title.length in 1..160)
+        page.management?.items?.forEach { symbol(it.symbol) }
+        blocks(page.blocks, 0)
+    }
 }

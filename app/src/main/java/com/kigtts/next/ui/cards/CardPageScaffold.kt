@@ -20,7 +20,7 @@ import com.kigtts.next.theme.LocalUseCompactControlPalette
 @Composable
 fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modifier,
     backLabel: String = "返回上一页", actions: List<ToolbarAction> = emptyList(),
-    subtitle: String? = "下滑进行拍照", content: @Composable () -> Unit) {
+    subtitle: String? = "下滑进行拍照", avoidKeyboard: Boolean = true, content: @Composable () -> Unit) {
     val host = remember { PageToolbarActions() }
     val chrome = remember { CardPageChromeState() }
     val barState = rememberTopAppBarState()
@@ -28,10 +28,11 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
     val ime = WindowInsets.ime
     val density = LocalDensity.current
     val keyboard by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
-    val forceCompact = chrome.albums?.value == true || host.input.focused || keyboard
+    val forceCompact = chrome.albums?.value == true || host.input.focused || (keyboard && avoidKeyboard)
     val forced = rememberUpdatedState(forceCompact)
+    val keyboardOpen = rememberUpdatedState(keyboard)
     val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState, snapAnimationSpec = tween(220),
-        canScroll = { active.value && !forced.value })
+        canScroll = { active.value && !forced.value && (avoidKeyboard || !keyboardOpen.value) })
     val compact by remember(barState) { derivedStateOf { barState.collapsedFraction >= .5f } }
     val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
@@ -48,7 +49,8 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
             LocalCardPageChrome provides chrome, LocalCardWindowLandscape provides landscape) {
             Scaffold(Modifier.fillMaxSize().then(if (!landscape) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier)
                 .testTag("immersive-page"), containerColor = MaterialTheme.colorScheme.background,
-                contentWindowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
+                contentWindowInsets = (if (avoidKeyboard) WindowInsets.safeDrawing else WindowInsets.systemBars.union(WindowInsets.displayCutout))
+                    .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
                 topBar = {
                     if (landscape) TopAppBar(title = { Column {
                         PageBarTitle(title, true, host.loading?.value == true)

@@ -22,6 +22,7 @@ class AgentStore(private val storage: PluginStorage) {
     @Volatile var modelStatus: Map<String, String> = emptyMap()
     private val history = mutableMapOf<String, Int>()
     @Synchronized fun historyBefore(id: String): Int? = history[id]
+    @Synchronized fun latestHistory(id: String) { history.remove(id) }
     @Synchronized fun loadEarlier(id: String, before: Int) {
         require(before in 0..requireNotNull(conversations[id]).messages.size)
         history[id] = before

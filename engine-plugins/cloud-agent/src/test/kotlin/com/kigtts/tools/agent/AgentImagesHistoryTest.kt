@@ -34,6 +34,17 @@ class AgentImagesHistoryTest {
         val initial = agentChat(store, runner); assertEquals(100, initial.messages.size); assertEquals(140, initial.messages.first().position)
         store.loadEarlier(conversation.id, 140)
         val page = agentChat(store, runner); assertEquals((90..139).toList(), page.messages.filter { it.position < 140 }.map { it.position })
-        assertEquals("load-earlier", page.historyAction); assertEquals(240, page.historyTotal); scope.cancel()
+        assertEquals("load-earlier", page.historyAction); assertEquals(240, page.historyTotal)
+        // Long recent answers previously consumed the snapshot budget and hid every older message.
+        (230 until 240).forEach { store.message(conversation.id, AgentMessage(id = "m$it", role = "assistant", content = "长".repeat(16000)), false) }
+        store.loadEarlier(conversation.id, 90)
+        val longPage = agentChat(store, runner)
+        assertTrue(longPage.messages.isNotEmpty())
+        assertTrue(longPage.messages.first().position < 90)
+        assertTrue(longPage.messages.any { it.position == 89 })
+        store.latestHistory(conversation.id)
+        val latest = agentChat(store, runner)
+        assertEquals(239, latest.messages.last().position)
+        scope.cancel()
     }
 }

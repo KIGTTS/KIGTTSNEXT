@@ -13,19 +13,14 @@ import androidx.compose.ui.unit.dp
 /** Offline Material Symbols Rounded. Glyph outlines become normal tintable Compose vectors. */
 object MaterialSymbols {
     @Volatile private var context: Context? = null
-    fun initialize(value: Context) { context = value.applicationContext }
-    private val names: Map<String, String> by lazy {
-        requireNotNull(context).assets.open("icons/material-symbols.codepoints").bufferedReader(Charsets.UTF_8).useLines { lines ->
-            lines.map { it.trim().split(' ') }.filter { it.size == 2 }.associate { it[0] to String(Character.toChars(it[1].toInt(16))) }
-        }
-    }
+    fun initialize(value: Context) { context = value.applicationContext; com.kigtts.next.icons.MaterialSymbolCatalog.initialize(value) }
     private val font by lazy { Typeface.createFromAsset(requireNotNull(context).assets, "icons/material-symbols-rounded.ttf") }
     private val cache = android.util.LruCache<String, ImageVector>(96)
-    fun search(query: String, offset: Int = 0, limit: Int = 80): List<String> = names.keys.filter { it.contains(query.trim().lowercase()) }.sorted().drop(offset).take(limit)
+    fun search(query: String, offset: Int = 0, limit: Int = 80): List<String> = com.kigtts.next.icons.MaterialSymbolCatalog.search(query, offset, limit)
     @Synchronized fun vector(name: String?): ImageVector? {
         if (context == null || name == null || !name.matches(Regex("[a-z0-9_]{1,80}"))) return null
         cache.get(name)?.let { return it }
-        val glyph = names[name] ?: return null
+        val glyph = com.kigtts.next.icons.MaterialSymbolCatalog.glyph(name) ?: return null
         val path = android.graphics.Path()
         Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = font; textSize = 24f }.getTextPath(glyph, 0, glyph.length, 0f, 24f, path)
         val bounds = android.graphics.RectF(); path.computeBounds(bounds, true)

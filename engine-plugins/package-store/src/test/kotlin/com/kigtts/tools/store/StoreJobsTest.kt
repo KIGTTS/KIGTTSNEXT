@@ -29,7 +29,13 @@ class StoreJobsTest {
         jobs.reloadInstalled(); advanceUntilIdle()
         assertEquals(0, fetched); assertFalse(jobs.busy)
         val page = storePage("store", SourceStore(env.storage, builtinSources = emptyList()), jobs, StoreView(), testDevice)!!
-        assertEquals("test.plugin", page.management?.items?.single()?.title)
+        assertEquals("test.plugin", page.management!!.items.single().title)
+        assertEquals(sources.entries().single().item.summary, page.management!!.items.single().subtitle)
+        assertEquals(ManagementListStyle.CATALOG, page.management!!.style)
+        assertEquals(listOf("search", "library", "store-settings"), page.blocks.filterIsInstance<PageBlock.Actions>().single().actions.map { it.id })
+        assertFalse(page.blocks.any { it is PageBlock.Input })
+        val detail = storePage("package", sources, jobs, StoreView(selected = sources.entries().single()), testDevice)!!
+        assertTrue(detail.blocks.filterIsInstance<PageBlock.Group>().flatMap { it.children }.filterIsInstance<PageBlock.Markdown>().any { it.text == sources.entries().single().item.summary })
     }
     @Test fun immediatelyCompletedWorkerDoesNotLeaveUiPermanentlyBusy() {
         val env = environment(); val transport = object : StoreTransport {

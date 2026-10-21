@@ -11,6 +11,7 @@ class WebNetworkGate(private val permissions: PluginPermissions, private val own
     @Volatile private var once = false
     fun granted(): Boolean = when (permissions.access(owner, "network")) { PermissionAccess.ALLOW -> true; PermissionAccess.DENY -> false; PermissionAccess.ASK -> once }
     @Synchronized fun authorize(url: String): Boolean {
+        if (WebContentPolicy.internal(url)) return true
         if (!active()) return false
         when (permissions.access(owner, "network")) {
             PermissionAccess.DENY -> return false

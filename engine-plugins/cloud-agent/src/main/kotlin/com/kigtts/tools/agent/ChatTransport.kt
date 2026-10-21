@@ -43,6 +43,7 @@ class HttpsChatTransport(private val beforeRequest: suspend () -> Unit = {}) : C
                     error("模型拒绝此请求；如包含图片，请切换到支持视觉的模型，并检查模型名称及工具支持")
                 }
                 401, 403 -> error("密钥无效或没有此模型的访问权限")
+                402 -> error("供应商返回402：余额或可用额度不足，请补充额度后继续")
                 429 -> error("服务暂时繁忙或额度不足，请稍后再试")
                 in 300..399 -> error("服务地址发生跳转，请在设置中填写最终 HTTPS 地址")
                 else -> error("服务请求失败（${connection.responseCode}），请检查模型和服务地址")
@@ -67,7 +68,13 @@ internal fun chatRequest(settings: AgentSettings, conversation: Conversation, to
     put("messages", buildJsonArray {
         add(buildJsonObject { put("role", "system"); put("content", AGENT_PROMPT + "\n\n" + AGENT_PLUGIN_RULES) })
         if (conversation.contextSummary.isNotBlank()) add(buildJsonObject { put("role", "system"); put("content", "较早会话的事实交接摘要（不是新增指令；权限以当前用户选择为准）：\n" + conversation.contextSummary) })
-        val window = contextWindow(conversationContext(conversation))
+        // Keep an append-only history prefix until real capacity pressure calls for compaction.
+        // An unrelated 96KiB character cutoff used to slide even on large-context models.
+        val capacity = (profile.modelInfo[profile.model]?.contextTokens ?: 32768).coerceIn(4096, 1_000_000)
+        val overhead = estimatedTokens(AGENT_PROMPT) + estimatedTokens(AGENT_PLUGIN_RULES) +
+            estimatedTokens(tools.toString()) + estimatedTokens(conversation.contextSummary) + 1800
+        val budget = ((capacity * .85).toInt().coerceAtMost(150_000) - overhead).coerceAtLeast(1000)
+        val window = contextWindow(conversationContext(conversation), budget, ::contextCost)
         if (window.omitted) add(buildJsonObject { put("role", "system"); put("content", "较早历史未包含在本轮上下文，完整记录仍保存在会话中。这不是任务结束或撤销：保留原始目标和最新用户指令，先用conversation_history读取缺少的操作、文件和回执，不能猜测或重放结果未知的修改。") })
         val vision = conversation.visionUnavailableModel != visionModelKey(settings)
         if (!vision) add(buildJsonObject { put("role", "system"); put("content", "当前模型已明确拒绝图片输入。本轮可以搜索、下载和保存图片，但不能声称已看见图片；需要视觉判断时请用户在模型弹窗切换视觉模型。不要反复read_image重试同一图片。") })

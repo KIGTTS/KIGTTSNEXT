@@ -68,6 +68,7 @@ class SketchInput(private val state: SketchState) {
         val temporary = keyboardEraser || sideButton || activeTool == MotionEvent.TOOL_TYPE_ERASER
         state.temporaryErasing = temporary
         val erase = state.tool == SketchTool.ERASER || temporary
+        state.eraserCursor = if (erase && !isUp) Offset(event.getX(index), event.getY(index)) else null
         if (event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN ||
             event.actionMasked == MotionEvent.ACTION_MOVE || isUp) {
             for (history in 0 until event.historySize) {
@@ -97,6 +98,7 @@ class SketchInput(private val state: SketchState) {
     fun release() { cancel(); navigating = false; gestureDistance = 0f; keyboardEraser(false) }
 
     private fun cancel() {
+        state.eraserCursor = null
         if (pointerId != null) { state.strokes.clear(); state.strokes.addAll(snapshot) }
         pointerId = null
         snapshot = emptyList()

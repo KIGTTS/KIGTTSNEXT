@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class QuickPhraseStore(context: Context) {
+    init { com.kigtts.next.icons.MaterialSymbolCatalog.initialize(context) }
     private val preferences = context.getSharedPreferences("quick-phrases", Context.MODE_PRIVATE)
     fun groupIds(categories:List<String>):Map<String,String> {
         val json=runCatching { JSONObject(preferences.getString("category-ids",null) ?: "{}") }.getOrDefault(JSONObject())
@@ -33,7 +34,7 @@ class QuickPhraseStore(context: Context) {
     fun loadCategoryIcons(categories: List<String>): Map<String, CategoryIcon> {
         val json = runCatching { JSONObject(preferences.getString("category-icons", null) ?: "{}") }.getOrDefault(JSONObject())
         return categories.associateWith { category ->
-            CategoryIcon.entries.firstOrNull { it.name == json.optString(category) } ?: CategoryIcon.defaultFor(category)
+            runCatching { CategoryIcon.valueOf(json.optString(category)) }.getOrDefault(CategoryIcon.defaultFor(category))
         }
     }
     fun save(phrases: List<QuickPhrase>, categories: List<String>, icons: Map<String, CategoryIcon> = loadCategoryIcons(categories),

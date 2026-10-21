@@ -36,7 +36,7 @@ internal suspend fun applyPhotoEffects(image: Bitmap, effects: PhotoEffects) {
             val yy = y + row; val uvX = (x + .5f) / width; val uvY = (yy + .5f) / height
             val dx = uvX - .5f; val dy = uvY - .5f; val edge = (dx * dx + dy * dy) * 2f
             val smooth = ((edge - .15f) / .7f).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
-            val n = ((floor(uvX * 2048).toInt() * 13 + floor(uvY * 2048).toInt() * 71) % 101).let { ((it * it * 17 + it * 23) % 101) / 100f - .5f }
+            val n = filmGrain(floor(uvX * 2048).toInt(), floor(uvY * 2048).toInt())
             val original = source[(yy - top) * width + x]
             var color = original and -0x1000000
             for (channel in 0..2) {

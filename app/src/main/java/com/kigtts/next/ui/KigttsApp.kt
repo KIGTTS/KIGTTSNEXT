@@ -105,6 +105,7 @@ fun KigttsApp(model: AppViewModel) {
         }
     }
     KigttsTheme(state.theme) {
+        com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
             CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance,
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
@@ -116,7 +117,7 @@ fun KigttsApp(model: AppViewModel) {
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
-                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).imePadding().trackVoiceInputGesture(model.voiceInputGesture)) {
+                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (state.destination is Destination.CardEditor) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, false) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },

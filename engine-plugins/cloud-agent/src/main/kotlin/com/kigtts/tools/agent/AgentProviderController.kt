@@ -19,7 +19,7 @@ internal class AgentProviderController(private val store: AgentStore, private va
             action.startsWith("provider/") || action.startsWith("chat-provider/") -> {
                 val chat = action.startsWith("chat-"); val parts = action.substringAfter('/').split('/'); val provider = Provider.valueOf(parts[0]); val custom = parts.getOrNull(1)
                 require(custom == null || provider == Provider.CUSTOM && store.settings.customProviders.any { it.id == custom })
-                if (chat) { val conversation = store.selected() ?: store.create(); store.modify(conversation.id) { it.copy(provider = provider, customProviderId = custom, model = null, reasoningEffort = null) }
+                if (chat) { val conversation = store.target(context) ?: store.create(); store.modify(conversation.id) { it.copy(provider = provider, customProviderId = custom, model = null, reasoningEffort = null) }
                     catalog.refresh(store.connection(requireNotNull(store.get(conversation.id))))
                 } else { store.updateSettings { it.copy(provider = provider, customProviderId = custom) }; catalog.refresh(store.settings.configuredConnection()) }
                 return PluginOutcome.RefreshUi
@@ -89,19 +89,25 @@ internal class AgentProviderController(private val store: AgentStore, private va
                 updateModelList(store, settings, list, if (value.trimStart().startsWith('[')) parseModelInfo(value) else emptyMap()); store.modelOffset = 0; return PluginOutcome.RefreshUi
             }
             action.startsWith("effort/") -> {
-                val conversation = store.selected() ?: store.create(); val connection = store.connection(conversation)
+                val conversation = store.target(context) ?: store.create(); val connection = store.connection(conversation)
                 val effort = action.substringAfter('/'); val profile = connection.effectiveProfile()
                 require(effort == "auto" || effort in profile.modelInfo[profile.model]?.reasoningEfforts.orEmpty())
-                store.modify(conversation.id) { it.copy(reasoningEffort = effort.takeUnless { it == "auto" }) }; return PluginOutcome.RefreshUi
+                store.modify(conversation.id) { it.copy(reasoningEffort = effort) }
+                store.rememberEffort(connection, profile.model, effort); return PluginOutcome.RefreshUi
             }
             action.startsWith("model-select/") || action.startsWith("chat-model-select/") -> {
                 val chat = action.startsWith("chat-")
-                val target = if (chat) store.selected() else store.modelPickerConversation?.let(store::get)
+                val target = if (chat) store.target(context) else store.modelPickerConversation?.let(store::get)
                 var settings = target?.let(store::connection) ?: store.settings.configuredConnection()
                 val candidates = listOf(settings) + if (chat) Provider.entries.filter { it != Provider.CUSTOM }.map { store.settings.copy(provider = it, customProviderId = null).configuredConnection() } + store.settings.customProviders.map { store.settings.copy(provider = Provider.CUSTOM, customProviderId = it.id).configuredConnection() } else emptyList()
                 val match = candidates.firstNotNullOfOrNull { candidate -> (listOf(candidate.effectiveProfile().model) + candidate.effectiveProfile().models).firstOrNull { modelAction(candidate, it, chat) == action }?.let { candidate to it } } ?: error("模型列表已变化，请重新选择")
                 settings = match.first; val chosen = match.second
-                if (target != null) { store.modify(target.id) { it.copy(provider = settings.provider, customProviderId = settings.customProviderId, model = chosen, reasoningEffort = null) }; return PluginOutcome.OpenPage("chat") }
+                if (target != null) {
+                    val same = store.connection(target).catalogKey() == settings.catalogKey() && target.model == chosen
+                    store.modify(target.id) { it.copy(provider = settings.provider, customProviderId = settings.customProviderId, model = chosen,
+                        reasoningEffort = if (same) it.reasoningEffort else null) }
+                    return PluginOutcome.OpenPage("chat")
+                }
                 store.updateSettings { current ->
                     if (settings.provider == Provider.CUSTOM && settings.customProviderId != null) current.copy(customProviders = current.customProviders.map { if (it.id == settings.customProviderId) it.copy(profile = it.profile.copy(model = chosen)) else it })
                     else current.copy(profiles = current.profiles + (settings.provider to requireNotNull(current.profiles[settings.provider]).copy(model = chosen)))

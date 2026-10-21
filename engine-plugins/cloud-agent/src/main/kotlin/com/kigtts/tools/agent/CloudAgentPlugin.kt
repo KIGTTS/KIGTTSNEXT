@@ -8,7 +8,7 @@ import kotlinx.serialization.encodeToString
 import java.util.UUID
 
 class CloudAgentPlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.9.6")
+    override val descriptor = PluginDescriptor("tools.cloud-agent", "云端助手", "对话、管理快捷文本与创建小工具", version = "0.9.13")
     private lateinit var environment: PluginEnvironment
     private lateinit var store: AgentStore
     private lateinit var secrets: AgentSecrets
@@ -31,6 +31,8 @@ class CloudAgentPlugin : KigPlugin {
         catalog = AgentModelCatalog(store, secrets, ::changed, HttpsModelsTransport { environment.requirePermission("network") })
         providers = AgentProviderController(store, secrets, runner, catalog)
         catalog.refresh(store.settings.configuredConnection())
+        if (store.settings.access == AgentAccessMode.FULL && store.settings.toolsEnabled)
+            store.list().mapNotNull { store.pendingFor(it.id) }.forEach { reviews.resume(it.conversationId) }
     }
     override val contributions get() = PluginContributions(actions = if (this::runner.isInitialized && (runner.running || store.settings.pinHomeIcon))
         listOf(UiAction("open", "AI 助手", UiSlot.HEADER_END, PluginIcon.ROBOT2, busy = runner.running)) else emptyList(), settingsEntries = listOf(
@@ -109,11 +111,14 @@ class CloudAgentPlugin : KigPlugin {
                 }
                 actionId == "load-earlier" -> {
                     val conversation = store.target(context) ?: return PluginOutcome.RefreshUi
-                    store.loadEarlier(conversation.id, requireNotNull(context.inputs["before"]).toInt()); PluginOutcome.RefreshUi
+                    if (context.inputs["latest"] == "true") store.latestHistory(conversation.id)
+                    else store.loadEarlier(conversation.id, requireNotNull(context.inputs["before"]).toInt())
+                    PluginOutcome.RefreshUi
                 }
                 actionId == "send" -> {
                     val text = context.inputs["message"] ?: context.inputs["text"] ?: value
                     val conversation = store.target(context) ?: store.create()
+                    store.latestHistory(conversation.id)
                     runner.send(conversation.id, text); PluginOutcome.RefreshUi
                 }
                 actionId == "stop" -> { store.target(context)?.id?.let(runner::stopConversation); PluginOutcome.RefreshUi }
@@ -130,7 +135,7 @@ class CloudAgentPlugin : KigPlugin {
                     store.updateSettings { it.copy(access = when (actionId) { "access/full" -> AgentAccessMode.FULL; "access/assist" -> AgentAccessMode.ASSISTED; else -> AgentAccessMode.REQUEST_APPROVAL },
                         fullAccessConfirmed = it.fullAccessConfirmed || context.inputs["_agentFullConfirmed"] == "true") }
                     val target = store.target(context)?.id
-                    if (actionId == "access/full" && target?.let(store::pendingFor)?.let { !runner.isRunning(it.conversationId) && it.kind == ReviewKind.TOOL } == true) reviews.resume(target)
+                    if (actionId == "access/full" && target?.let(store::pendingFor)?.let { !runner.isRunning(it.conversationId) } == true) reviews.resume(target)
                     else PluginOutcome.RefreshUi
                 }
                 actionId == "chat-model" -> {

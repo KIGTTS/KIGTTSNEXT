@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 param([switch]$SkipBuild, [string]$SigningKey,
-    [ValidateSet('sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service', 'quick-text-tools', 'cloud-agent', 'lua-runtime', 'package-store', 'native-builder')]
-    [string[]]$Modules = @('sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service', 'cloud-agent', 'lua-runtime', 'package-store', 'native-builder'),
+    [ValidateSet('sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service', 'quick-text-tools', 'cloud-agent', 'lua-runtime', 'package-store', 'native-builder', 'ui-debug')]
+    [string[]]$Modules = @('sensevoice-asr', 'piper-tts', 'speech-service', 'streaming-asr', 'recognition-service', 'cloud-agent', 'lua-runtime', 'package-store', 'native-builder', 'ui-debug'),
     [string]$WorkDirectory = (Join-Path $env:LOCALAPPDATA 'Temp/KIGTTSNEXT/plugin-package-work'))
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -67,7 +67,7 @@ foreach ($module in $Modules) {
     if ($module -eq 'streaming-asr') {
         $jars += @(Expand-PluginAar (Join-Path $projectRoot 'engine-plugins/sensevoice-asr/libs/sherpa-onnx-1.12.38-noort.aar') $payload $scratch 'sherpa')
     }
-    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(onnxruntime-android|xz-|tts-support|commons-compress|commons-io|commons-codec|commons-lang3|luaj-jse)' })) {
+    foreach ($dependency in @(Get-ChildItem -LiteralPath (Join-Path $moduleRoot 'build/plugin-dependencies') -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(debug-ui|onnxruntime-android|xz-|tts-support|commons-compress|commons-io|commons-codec|commons-lang3|luaj-jse)' })) {
         if ($dependency.Extension -eq '.aar') { $jars += @(Expand-PluginAar $dependency.FullName $payload $scratch $dependency.BaseName $nativeAbi) }
         elseif ($dependency.Extension -eq '.jar') { $jars += $dependency.FullName }
     }

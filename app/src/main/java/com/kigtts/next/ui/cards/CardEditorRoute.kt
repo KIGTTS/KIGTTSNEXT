@@ -10,7 +10,7 @@ import com.kigtts.next.state.Destination
 internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardEditor) {
     val result by model.cardCapture.result.collectAsStateWithLifecycle()
     val photo = result?.takeIf { it.cardId == destination.cardId }
-    CardPageScaffold("编辑拍立得", model::navigateBack, subtitle = null) {
+    CardPageScaffold("编辑拍立得", model::navigateBack, subtitle = null, avoidKeyboard = false) {
         CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },

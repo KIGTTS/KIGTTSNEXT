@@ -29,8 +29,19 @@ class WebNetworkPermissionTest {
                 override fun getResponseCode() = 200; override fun getContentType() = "text/plain; charset=UTF-8"
                 override fun getInputStream() = "external".byteInputStream()
             }
-        }, authorizeNetwork = gate::authorize)
+        }, authorizeNetwork = gate::authorize, networkGranted = gate::granted)
         assertEquals("local", loader.load(WebContentPolicy.ORIGIN + "/content/index.html", "GET").data.bufferedReader().readText()); assertEquals(0, calls)
+        for (path in listOf("/favicon.ico", "/kigtts/missing.css", "/unknown-library.js")) {
+            val missing = loader.load(WebContentPolicy.ORIGIN + path, "GET")
+            assertEquals(404, missing.statusCode); missing.data.close()
+        }
+        assertTrue(gate.authorize(WebContentPolicy.ORIGIN + "/content/local-data.json"))
+        assertTrue(ledger.pending.value.isEmpty()); assertEquals(0, calls)
+        val localCsp = loader.load(WebContentPolicy.ORIGIN + "/content/index.html", "GET").let { response ->
+            response.data.close(); response.responseHeaders.getValue("Content-Security-Policy")
+        }
+        assertTrue(localCsp.contains("connect-src 'self'")); assertFalse(localCsp.contains("https:"))
+        assertFalse(WebContentPolicy.internal("https://appassets.androidplatform.net.example.com/favicon.ico"))
         val request = async(Dispatchers.IO) { loader.load("https://example.com/image.png", "GET").data.bufferedReader().readText() }
         withTimeout(3000) { while (ledger.pending.value.isEmpty()) delay(10) }
         assertEquals(0, calls); assertFalse(request.isCompleted)

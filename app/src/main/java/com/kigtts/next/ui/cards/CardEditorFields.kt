@@ -22,11 +22,12 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
     deleteLayer: () -> Unit, forwardLayer: () -> Unit, mode: CardEditorMode, selectMode: (CardEditorMode) -> Unit,
     frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit, textEditing: Boolean = false,
     updateTextLayer: (CardLayer) -> Unit = {}, finishText: () -> Unit = {},
-    showTabs: Boolean = true, stickerLibrary: @Composable () -> Unit = {}) {
+    showTabs: Boolean = true, stickerLibrary: @Composable () -> Unit = {},
+    designTools: @Composable () -> Unit = {}, captureFields: @Composable () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (showTabs) CardEditorTabs(mode, selectMode)
         if (mode == CardEditorMode.CROP) CardCropTools(card, enabled, change, camera, gallery, frameColor, frames)
-        else if (mode == CardEditorMode.FRAME) CardFrameTools(card, enabled, change, frameColor, frames)
+        else if (mode == CardEditorMode.FRAME) { CardFrameTools(card, enabled, change, frameColor, frames); designTools() }
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton("添加文字", Icons.Default.TextFields, addText,
@@ -62,6 +63,7 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
             OutlinedTextField(card.description, { if (it.length <= 8192) change(card.copy(description = it)) },
                 Modifier.fillMaxWidth().testTag("card-description"), label = { Text("照片说明（可选）") }, enabled = enabled, minLines = 2, maxLines = 4)
         }
+        if (mode == CardEditorMode.TEXT || mode == CardEditorMode.STICKERS) captureFields()
         Spacer(Modifier.height(20.dp))
     }
 }

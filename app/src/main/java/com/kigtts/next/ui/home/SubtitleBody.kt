@@ -24,6 +24,12 @@ import com.kigtts.next.ui.media.MediaTransition
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     val media = model.mediaRepository.get(state.mediaId)
+    // The full-card WebView is already mounted below this column. An invisible AnimatedContent
+    // above AndroidView can own its hit path; leave only a layout spacer for interactive pages.
+    if (media?.kind == com.kigtts.next.media.MediaKind.HTML || media?.kind == com.kigtts.next.media.MediaKind.WEB) {
+        Spacer(modifier)
+        return
+    }
     MediaTransition(media,state,model,modifier.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
         SubtitleText(state,model,Modifier.fillMaxSize())

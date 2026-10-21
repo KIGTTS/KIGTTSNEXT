@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 import kotlin.jvm.internal.DefaultConstructorMarker
 
-@Serializable enum class CardLayerKind { IMAGE, TEXT }
+@Serializable enum class CardLayerKind { IMAGE, TEXT, PHOTO_INFO }
 @Serializable enum class PhotoBackdropMode { GRAY, BLUR }
 /** Decorations use the selected format's paper. Dimensions are fractions of its width. */
 @Serializable data class PolaroidFrameStyle @JvmOverloads constructor(val id:String,val name:String,val version:Long=1,val color:Long?=null,

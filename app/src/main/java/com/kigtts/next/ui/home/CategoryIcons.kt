@@ -19,4 +19,5 @@ internal fun CategoryIcon.vector(): ImageVector = when (this) {
     CategoryIcon.HEALTH -> Icons.Default.MedicalServices
     CategoryIcon.SHOPPING -> Icons.Default.ShoppingBag
     CategoryIcon.MESSAGE -> Icons.AutoMirrored.Filled.Chat
+    else -> com.kigtts.next.ui.components.MaterialSymbols.vector(symbol) ?: Icons.Default.Menu
 }

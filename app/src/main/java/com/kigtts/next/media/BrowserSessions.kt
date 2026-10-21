@@ -43,7 +43,9 @@ internal object BrowserSessions {
     suspend fun run(owner: String, command: AppCommand.BrowserSession, document: BrowserDocument?, output: File?): JSONObject = gate.withLock {
         withContext(Dispatchers.Main) {
             expire()
-            require(command.operation in setOf("open", "open-subtitle", "state", "click", "type", "scroll", "wait", "screenshot", "close"))
+            require(command.operation in setOf("devices", "open", "open-subtitle", "state", "click", "type", "scroll", "wait", "screenshot", "close"))
+            if (command.operation == "devices")
+                return@withContext BrowserSimulation.devices(requireNotNull(BrowserInspector.attachedRoot()).context)
             require(command.text.length <= 16000 && (command.selector?.length ?: 0) <= 500)
             if (command.operation in setOf("open", "open-subtitle")) {
                 require(command.width in 240..2048 && command.height in 240..2048 && command.width.toLong() * command.height <= 3_000_000)
@@ -52,6 +54,7 @@ internal object BrowserSessions {
                 val ready = CompletableDeferred<Unit>(); val diagnostics = mutableListOf<String>()
                 val web = createBrowserView(parent.context, requireNotNull(document).copy(actions = emptyList()),
                     ready = { ready.complete(Unit) }, error = { if (diagnostics.size < 20) diagnostics += it.take(600) })
+                BrowserSimulation.prepare(web)
                 val subtitle = if (command.operation == "open-subtitle") BrowserSubtitleLayout(parent.context, command.width, command.height, web) else null
                 val view = subtitle ?: web
                 view.alpha = 0f; web.isFocusable = false; web.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
@@ -61,6 +64,7 @@ internal object BrowserSessions {
                     view.measure(android.view.View.MeasureSpec.makeMeasureSpec(command.width, android.view.View.MeasureSpec.EXACTLY), android.view.View.MeasureSpec.makeMeasureSpec(command.height, android.view.View.MeasureSpec.EXACTLY))
                     view.layout(0, 0, command.width, command.height); web.loadUrl(document.url)
                     withTimeout(command.timeoutMs.toLong().coerceIn(500, 30000)) { ready.await() }
+                    BrowserSimulation.calibrate(web)
                     subtitle?.applySafeArea()
                     diagnostics += web.awaitBrowserReady(command.waitMs, command.timeoutMs, command.selector)
                     val id = UUID.randomUUID().toString(); sessions[id] = session; scheduleCleanup()
@@ -76,13 +80,16 @@ internal object BrowserSessions {
                     "close" -> { sessions.remove(id); release(session); JSONObject().put("ok", true).put("closed", true) }
                     else -> {
                         when (command.operation) {
-                            "click" -> if (command.selector != null) { val result = web.browserJson(BrowserDriverScripts.action("click", requireNotNull(command.selector), "")); check(result.optBoolean("ok")) { result.optString("error") } }
+                            "click" -> if (command.selector != null) {
+                                val result = web.browserJson(BrowserDriverScripts.action("click", requireNotNull(command.selector), ""))
+                                check(result.optBoolean("ok")) { result.optString("error") }
+                                tap(web, (result.getDouble("x") * web.width).toFloat(), (result.getDouble("y") * web.height).toFloat())
+                            }
                             else {
                                 val x = requireNotNull(command.x); val y = requireNotNull(command.y)
                                 val localX = x - (session.subtitle?.viewport?.left ?: 0); val localY = y - (session.subtitle?.viewport?.top ?: 0)
                                 require(localX.isFinite() && localY.isFinite() && localX >= 0 && localX < web.width && localY >= 0 && localY < web.height) { "坐标在网页取景区域外，不能操作模拟宿主控件" }
-                                val time = android.os.SystemClock.uptimeMillis()
-                                for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) { val event = MotionEvent.obtain(time, time + if (action == MotionEvent.ACTION_UP) 50 else 0, action, localX, localY, 0); try { web.dispatchTouchEvent(event) } finally { event.recycle() } }
+                                tap(web, localX, localY)
                             }
                             "type" -> { val result = web.browserJson(BrowserDriverScripts.action("type", requireNotNull(command.selector), command.text)); check(result.optBoolean("ok")) { result.optString("error") } }
                             "scroll" -> { require(command.deltaY.isFinite() && kotlin.math.abs(command.deltaY) <= 20000); web.browserJson("(()=>{scrollBy(0,${command.deltaY});return '{}';})()") }
@@ -90,10 +97,11 @@ internal object BrowserSessions {
                         if (command.operation != "state") session.diagnostics += web.awaitBrowserReady(command.waitMs, command.timeoutMs, command.selector.takeIf { command.operation == "wait" })
                         val result = state(session).put("ok", true).put("sessionId", id)
                         if (command.operation == "screenshot") {
+                            session.diagnostics += BrowserCanvasCapture.prepare(web)
                             web.awaitBrowserFrame()
                             val bitmap = Bitmap.createBitmap(web.resources.displayMetrics, session.width, session.height, Bitmap.Config.ARGB_8888)
                             try { (session.subtitle ?: web).draw(Canvas(bitmap)); withContext(Dispatchers.IO) { requireNotNull(output).parentFile!!.mkdirs(); output.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) } } }
-                            finally { bitmap.recycle() }
+                            finally { bitmap.recycle(); BrowserCanvasCapture.restore(web) }
                             result.put("width", session.width).put("height", session.height)
                         }
                         result.put("diagnostics", org.json.JSONArray(session.diagnostics.takeLast(20)))
@@ -101,5 +109,15 @@ internal object BrowserSessions {
                 }
             }
         }
+    }
+    private suspend fun tap(web: WebView, x: Float, y: Float) {
+        require(x.isFinite() && y.isFinite() && x >= 0 && x < web.width && y >= 0 && y < web.height) { "目标在可见网页区域之外" }
+        val time = android.os.SystemClock.uptimeMillis()
+        fun dispatch(action: Int) {
+            val event = MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+            try { web.dispatchTouchEvent(event) } finally { event.recycle() }
+        }
+        dispatch(MotionEvent.ACTION_DOWN)
+        try { delay(120) } finally { dispatch(MotionEvent.ACTION_UP) }
     }
 }

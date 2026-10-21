@@ -88,6 +88,11 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         if (draft.layers.size >= 64) { message("一张拍立得最多添加 64 个元素"); return }
         draft = draft.copy(layers = draft.layers + layer); selectedId = layer.id
     }
+    fun putPhotoField(layer: CardLayer) {
+        if (draft.layers.any { it.id == layer.id }) updateLayer(layer)
+        else if (draft.layers.size < 64) draft = draft.copy(layers = draft.layers + layer)
+        else message("一张拍立得最多添加 64 个元素")
+    }
     val photo = rememberCardPhotoSources({ selection ->
         if (busy) { selection.release(); message("正在处理图片，请稍后重试") }
         else work {
@@ -145,7 +150,8 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                     stickers::imageFile, enabled, addLibrary = openLibrary, editLibrary = {},
                     selectItem = { addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = it.imageId, width = .32)) },
                     itemMenu = {}, modifier = Modifier.fillMaxWidth().height(240.dp), showLibraryActions = false)
-            })
+            }, designTools = { CardDesignTools(cards, draft, enabled, { draft = it }, message) },
+            captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) })
     }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact) },
         imageFile = stickers::imageFile, insertElement = { layer ->
             addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false

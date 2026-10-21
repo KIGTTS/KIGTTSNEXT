@@ -9,6 +9,8 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 $homepage = 'https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Official-Plugins'
 $publisher = 'b5927c76c21539ef99352707c215b3ce48f3fed937a6f995d39a3c677a052ab5'
 $config = Get-Content (Join-Path $projectRoot 'distribution/official-packages.json') -Raw -Encoding utf8 | ConvertFrom-Json
+$sdkApi = [int]([regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot 'plugin-api/src/main/kotlin/com/kigtts/plugin/api/Plugin.kt')), 'const val PLUGIN_API_VERSION = (\d+)').Groups[1].Value)
+if ($sdkApi -le 0) { throw 'Missing host SDK version' }
 function Read-ZipBytes($archive, [string]$name) {
     $entry = $archive.GetEntry($name)
     if (-not $entry) { throw "Missing archive entry: $name" }
@@ -46,6 +48,8 @@ foreach ($item in $config) {
         }
         $packages += [ordered]@{ id = $spec.id; name = $spec.name; summary = $item.summary; category = $item.category
             license = $spec.license; homepage = "https://github.com/LHT02/KIGTTSNEXT/tree/main/engine-plugins/$($item.module)"
+            icon = @{ symbol = if ($item.symbol) { $item.symbol } else { 'extension' } }
+            description = if ($item.description) { $item.description } else { $item.summary }
             tags = @('官方'); releases = @($release) }
         $rows += "| $($spec.name) | $($spec.version) | $($spec.apiVersion) | $($spec.license) |"
         Copy-Item -LiteralPath $file -Destination (Join-Path $output $item.file) -Force
@@ -57,7 +61,9 @@ $packages = @($packages | Group-Object { $_.id } | ForEach-Object {
     $package
 })
 $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS 官方插件源'
-    description = '官方签名插件；不含用户数据、密钥或语音模型。'; homepage = $homepage
+    description = '官方签名插件；不含用户数据、密钥或语音模型。'; homepage = 'https://lht02.github.io/KPM/'
+    icon = @{ symbol = 'inventory_2' }; assets = @{}
+    readme = "## KPM 官方插件源`n`n在这里浏览音频服务、AI助手和开发工具。按用途选择插件，并在安装前查看权限、版本和前置依赖。`n`n- 语音模型需另外导入。`n- UI调试为独立可选插件。`n- [源代码与构建说明](https://github.com/LHT02/KIGTTSNEXT)"
     updatedAt = [DateTimeOffset]::UtcNow.ToString('o'); packages = $packages }
 [IO.File]::WriteAllText((Join-Path $output 'index.json'), ($catalog | ConvertTo-Json -Depth 15) + "`n", $utf8)
 $readme = @"
@@ -83,7 +89,9 @@ tags:
 | --- | --- | --- | --- |
 $($rows -join "`n")
 
-API13 助手新包需要新版主程序；API12、API11 与 API9 已发布包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
+API$sdkApi 助手、商店与界面调试新包需要新版主程序；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
+
+网页添加指引与模板：https://lht02.github.io/KPM/
 
 ## 源码与许可证
 
@@ -103,13 +111,13 @@ if ($AndroidApk) {
     $apk = (Resolve-Path -LiteralPath $AndroidApk).Path
     if (-not $apk.StartsWith($projectRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetExtension($apk) -ne '.apk') { throw 'APK must be a workspace build artifact' }
     $hash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
-    $relative = "android/KIGTTSNEXT-api13-$([DateTime]::UtcNow.ToString('yyyyMMdd'))-$($hash.Substring(0,12)).apk"
+    $relative = "android/KIGTTSNEXT-api$sdkApi-$([DateTime]::UtcNow.ToString('yyyyMMdd'))-$($hash.Substring(0,12)).apk"
     [IO.Directory]::CreateDirectory((Join-Path $output 'android')) | Out-Null
     Copy-Item -LiteralPath $apk -Destination (Join-Path $output $relative) -Force
     $android = [ordered]@{ path = $relative; sha256 = $hash; bytes = (Get-Item -LiteralPath $apk).Length
-        apiVersion = 13; version = '0.1.0-preview'; developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
+        apiVersion = $sdkApi; version = '0.1.0-preview'; developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
     [IO.File]::WriteAllText((Join-Path $output 'android/release.json'), ($android | ConvertTo-Json) + "`n", $utf8)
     $signing = if ($DevelopmentSigned) { '这是优化且不可调试的Release预览包，使用本地开发测试证书签名；不是正式生产发行证书。覆盖安装前请核对当前软件签名。' } else { '这是预览APK，请核对签名和当前安装版本。' }
-    [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android预览版`n`n[下载API13安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
+    [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android预览版`n`n[下载API$sdkApi 安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
 }
 Write-Output "Prepared $($packages.Count) signed packages in $output"

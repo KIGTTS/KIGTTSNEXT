@@ -26,6 +26,8 @@ class WebResourceLoader(private val directory: File, private val local: File?, p
             return WebResourceResponse(mime, if (mime.startsWith("text/")) "UTF-8" else null, 200, "OK",
                 mapOf("Content-Security-Policy" to webNetworkCsp(network && networkGranted()), "Permissions-Policy" to "accelerometer=(), gyroscope=(), magnetometer=()"), file.inputStream())
         }
+        // Favicon probes and unknown bundled paths are local misses, never external network requests.
+        if (WebContentPolicy.internal(url)) return WebResourceResponse("text/plain", "UTF-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(byteArrayOf()))
         if (!network || method != "GET" || !WebContentPolicy.https(url)) return denied()
         if (!authorizeNetwork(url)) return denied()
         return runCatching {
@@ -69,8 +71,8 @@ class WebResourceLoader(private val directory: File, private val local: File?, p
     }
     /** WebView owns non-GET request bodies; permission is checked before allowing its native transport. */
     fun intercept(url: String, method: String, mainFrame: Boolean = false): WebResourceResponse? =
-        if (method != "GET" && !url.startsWith(WebContentPolicy.ORIGIN) && network && WebContentPolicy.https(url) && authorizeNetwork(url)) null else load(url, method, mainFrame)
+        if (method != "GET" && !WebContentPolicy.internal(url) && network && WebContentPolicy.https(url) && authorizeNetwork(url)) null else load(url, method, mainFrame)
     private fun denied() = WebResourceResponse("text/plain", "UTF-8", 403, "Unavailable", emptyMap(), ByteArrayInputStream("资源不可用".toByteArray()))
 }
 
-internal fun webNetworkCsp(allowed: Boolean): String = "connect-src " + (if (allowed) "https: wss:" else "'none'") + "; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action " + (if (allowed) "https:" else "'none'")
+internal fun webNetworkCsp(allowed: Boolean): String = "connect-src 'self'" + (if (allowed) " https: wss:" else "") + "; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action " + (if (allowed) "'self' https:" else "'self'")

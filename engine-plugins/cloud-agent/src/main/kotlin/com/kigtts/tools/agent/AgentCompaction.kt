@@ -14,17 +14,18 @@ internal fun estimatedTokens(text: String): Int = text.sumOf { if (it.code >= 0x
 internal fun contextCost(message: AgentMessage) = estimatedTokens(message.content) + estimatedTokens(message.reasoning) +
     message.calls.sumOf { estimatedTokens(it.arguments) + 40 } + message.images.size * 2000 + 32
 internal fun conversationContext(conversation: Conversation): List<AgentMessage> {
-    val through = conversation.compactedThroughId?.let { id -> conversation.messages.indexOfFirst { it.id == id } } ?: -1
-    if (through < 0) return conversation.messages
-    val goals = listOfNotNull(conversation.messages.firstOrNull { it.role == "user" && !it.visualInput },
-        conversation.messages.lastOrNull { it.role == "user" && !it.visualInput })
-    return goals.distinctBy { it.id }.filter { conversation.messages.indexOf(it) <= through } + conversation.messages.drop(through + 1)
+    val messages = historyContext(conversation.messages)
+    val through = conversation.compactedThroughId?.let { id -> messages.indexOfFirst { it.id == id } } ?: -1
+    if (through < 0) return messages
+    val goals = listOfNotNull(messages.firstOrNull { it.role == "user" && !it.visualInput },
+        messages.lastOrNull { it.role == "user" && !it.visualInput })
+    return goals.distinctBy { it.id }.filter { messages.indexOf(it) <= through } + messages.drop(through + 1)
 }
 
 internal data class CompactionSpan(val messages: List<AgentMessage>, val through: String)
 internal fun compactionSpan(conversation: Conversation, retain: Int, inputBudget: Int): CompactionSpan? {
     val previous = conversation.compactedThroughId?.let { id -> conversation.messages.indexOfFirst { it.id == id } } ?: -1
-    val all = conversation.messages.drop(previous + 1).filter { it.state == MessageState.COMPLETE }
+    val all = historyContext(conversation.messages).drop(previous + 1).filter { it.state == MessageState.COMPLETE }
     // Each assistant call and ALL matching results form one indivisible group.
     val groups = mutableListOf<MutableList<AgentMessage>>()
     all.forEach { item ->

@@ -52,10 +52,14 @@ internal object PolaroidRenderer {
         if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         if(options.includeFrame) {
+        if(card.layers.any {it.kind==CardLayerKind.PHOTO_INFO})polaroidCaption(card,geometry,captionWidth,width.toFloat(),
+            if(dark)Color.WHITE else 0xFF202020.toInt(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt()).draw(canvas)
+        else {
         drawText(canvas,card.title,(geometry.titleX*unit).toFloat(),(geometry.titleY*unit).toFloat(),
             (captionWidth*unit).roundToInt(),(geometry.titleSize*unit).toFloat(),if(dark)Color.WHITE else 0xFF202020.toInt(),true)
         drawText(canvas,card.description,(geometry.titleX*unit).toFloat(),(geometry.descriptionY*unit).toFloat(),
             (captionWidth*unit).roundToInt(),(geometry.descriptionSize*unit).toFloat(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt(),false)
+        }
         branding?.let { box ->
             repository.context.getDrawable(R.drawable.logo_horizontal)?.mutate()?.let { logo ->
                 logo.setTint(if(dark) Color.WHITE else 0xFF202020.toInt())
@@ -65,7 +69,7 @@ internal object PolaroidRenderer {
             }
         }
         }
-        if(options.includeStickers)card.layers.forEach {layer->
+        if(options.includeStickers)card.layers.filter {it.kind!=CardLayerKind.PHOTO_INFO}.forEach {layer->
             val x=(layer.x*width).toFloat();val y=(layer.y*height).toFloat();val span=(layer.width*width).toFloat()
             canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)
             canvas.scale(if(layer.flipX)-1f else 1f,if(layer.flipY)-1f else 1f,x,y)
@@ -76,6 +80,7 @@ internal object PolaroidRenderer {
                 CardLayerKind.TEXT->{val text=TextPaint(Paint.ANTI_ALIAS_FLAG).apply {color=layer.color.toInt();textSize=span}
                     val layout=StaticLayout.Builder.obtain(layer.text,0,layer.text.length,text,width).setAlignment(Layout.Alignment.ALIGN_CENTER).setIncludePad(false).setLineSpacing(0f,1.2f).build()
                     canvas.translate(x-width/2f,y-layout.height/2f);layout.draw(canvas)}
+                CardLayerKind.PHOTO_INFO -> Unit // Caption fields belong to paper, not draggable stickers.
             };canvas.restore()
         }
         if(options.includeFrame)return result

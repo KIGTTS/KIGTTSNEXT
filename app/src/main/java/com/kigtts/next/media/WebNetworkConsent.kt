@@ -11,7 +11,7 @@ fun WebView.installNetworkConsent(scope: CoroutineScope, authorize: (String) -> 
     var requesting = false
     WebViewCompat.addWebMessageListener(this, "KigttsNetworkConsent", setOf(WebContentPolicy.ORIGIN)) { view, message, origin, mainFrame, _ ->
         val url = message.data.orEmpty().replaceFirst("wss://", "https://")
-        if (mainFrame && origin.toString() == WebContentPolicy.ORIGIN && url.length <= 4000 && WebContentPolicy.https(url) && !requesting) {
+        if (mainFrame && origin.toString() == WebContentPolicy.ORIGIN && url.length <= 4000 && WebContentPolicy.https(url) && !WebContentPolicy.internal(url) && !requesting) {
             requesting = true
             scope.launch {
                 try { if (withContext(Dispatchers.IO) { authorize(url) }) view.reload() }

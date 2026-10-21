@@ -1,6 +1,8 @@
 package com.kigtts.next.ui.cards
 
 import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.provider.MediaStore
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -30,6 +32,7 @@ internal fun rememberCardPhotoSources(onSelected: (CardPhotoSelection) -> Unit,
     val scope = rememberCoroutineScope()
     var processing by remember { mutableStateOf(false) }
     var captureName by rememberSaveable { mutableStateOf<String?>(null) }
+    var fullCameraSelection by rememberSaveable { mutableStateOf(false) }
     val captures = remember(context) { File(context.cacheDir, "cards/captures") }
     fun captureFile(name: String) = File(captures, name).also {
         require(it.canonicalFile.parentFile == captures.canonicalFile)
@@ -50,10 +53,22 @@ internal fun rememberCardPhotoSources(onSelected: (CardPhotoSelection) -> Unit,
         }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) selected.value(CardPhotoSelection(uri))
+        val fromCamera = fullCameraSelection; fullCameraSelection = false
+        if (uri != null) selected.value(CardPhotoSelection(uri, fromCamera = fromCamera))
+        else if (fromCamera) cancelled.value()
+    }
+    val fullCamera = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        fullCameraSelection = true
+        try { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+        catch (_: ActivityNotFoundException) { fullCameraSelection = false; failure.value("无法打开图片选择器"); cancelled.value() }
     }
     fun launchCamera() {
         try {
+            if (context.getSharedPreferences("polaroid_camera", 0).getBoolean("full-system-camera", true)) {
+                // The ordinary camera activity owns its lens UI. Capture-intent mode is restricted by some OEMs.
+                fullCamera.launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+                return
+            }
             check(captures.mkdirs() || captures.isDirectory)
             val name = UUID.randomUUID().toString() + ".jpg"
             captureName = name

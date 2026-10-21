@@ -12,6 +12,7 @@ import androidx.compose.ui.focus.*
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.drawscope.Stroke as CursorStroke
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.onSizeChanged
@@ -54,6 +55,11 @@ import androidx.compose.ui.unit.IntSize
                         color = if (stroke.erase) Color.Black else Color(stroke.color), alpha = stroke.alpha,
                         blendMode = if (stroke.erase) BlendMode.Clear else BlendMode.SrcOver)
                 } } finally { drawContext.canvas.restore() }
+            }
+            state.eraserCursor?.let { cursor ->
+                val radius = state.eraserSize * density * transform.scale / 2f
+                drawCircle(Color.White.copy(alpha = .9f), radius, cursor, style = CursorStroke(3f * density))
+                drawCircle(Color.Black.copy(alpha = .7f), radius, cursor, style = CursorStroke(density))
             }
         }
     }

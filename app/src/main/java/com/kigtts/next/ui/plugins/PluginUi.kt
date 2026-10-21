@@ -47,9 +47,10 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     RegisterPageLoading(busy)
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
-    if(toolbar)RegisterPageActions(page.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { action ->
+    val actionGroups = page.blocks.filterIsInstance<PageBlock.Actions>()
+    if(toolbar)RegisterPageActions(actionGroups.flatMap { it.actions }.map { action ->
         ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(action.symbol),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
-    }, primaryCount = if (page.blocks.any { it is PageBlock.Chat }) 3 else 2)
+    }, primaryCount = if (page.blocks.any { it is PageBlock.Chat } || actionGroups.firstOrNull()?.actions?.size == 3) 3 else 2)
     val blocks=page.blocks.filterNot { block ->
         (toolbar && block is PageBlock.Actions) ||
             (block is PageBlock.Text && block.heading && block.text.trim() == page.title.trim())
@@ -71,21 +72,24 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         return
     }
     page.management?.let { list ->
-        if (list.usesSettingsLayout()) PluginSettingsList(list, busy, invoke, blocks.isNotEmpty()) { PluginBlocks(blocks,!busy,invoke) }
-        else ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy,invoke) }
+        if (list.style == ManagementListStyle.CATALOG) PluginCatalogList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+        else if (list.usesSettingsLayout()) PluginSettingsList(list, busy, invoke, blocks.isNotEmpty(), resolve) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+        else ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        PluginBlocks(blocks,!busy,invoke)
+        PluginBlocks(blocks,!busy,invoke, resolve = resolve)
     }
 }
 
 @Composable
-internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String, Map<String,String>)->Unit, grouped:Boolean = false) {
+internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String, Map<String,String>)->Unit, grouped:Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }) {
     MotionColumn(blocks,{ block,index->when(block) {
         is PageBlock.Group->"group/"+block.title
         is PageBlock.Actions->"actions/$index"
         is PageBlock.Text->"text/$index"
+        is PageBlock.Markdown -> "markdown/$index"
+        is PageBlock.Gallery -> "gallery/$index"
         is PageBlock.Notice->"notice/$index"
         is PageBlock.Toggle -> "toggle/"+block.actionId
         is PageBlock.Choice -> "choice/"+block.title
@@ -97,14 +101,16 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
         is PageBlock.Browser -> "browser/$index"
     } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current,animateInitial=false,
         spacing = if (grouped) 2.dp else 12.dp) { block,active ->
-        RenderBlock(block, active, invoke, if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE)
+        RenderBlock(block, active, invoke, if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE, resolve)
     }
 }
 
 @Composable
-private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition) {
+private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?) {
     when (block) {
         is PageBlock.Text -> PageContentMotion(block.text) { text -> Text(text, style = if (block.heading) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall) }
+        is PageBlock.Markdown -> PluginMarkdown(block, resolve)
+        is PageBlock.Gallery -> PluginGallery(block, resolve)
         is PageBlock.Notice -> Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = MaterialTheme.shapes.large) {
             PageContentMotion(block.text) { Text(it, Modifier.padding(16.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
@@ -115,7 +121,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
                 })
         }
         is PageBlock.Group -> SettingsGroup(block.title) {
-            PluginBlocks(block.children,enabled,invoke, grouped = true)
+            PluginBlocks(block.children,enabled,invoke, grouped = true, resolve = resolve)
         }
         is PageBlock.Toggle -> ToggleSetting(block.title, block.summary, (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), block.checked,
             { invoke(block.actionId, mapOf("checked" to it.toString())) }, enabled = enabled, position = position, preserveColorWhenLocked = true)

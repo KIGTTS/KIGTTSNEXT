@@ -22,6 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -115,6 +118,14 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     Image(overlay, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
                 }
             }
+            if (card.layers.any { it.kind == CardLayerKind.PHOTO_INFO }) {
+                val caption = remember(card, geometry, captionWidth, canvasWidthPx, ink, captionInk) {
+                    com.kigtts.next.cards.polaroidCaption(card, geometry, captionWidth, canvasWidthPx, ink.toArgb(), captionInk.toArgb())
+                }
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize().semantics { contentDescription = caption.description }.testTag("polaroid-photo-information")) {
+                    drawIntoCanvas { caption.draw(it.nativeCanvas) }
+                }
+            } else {
             Text(card.title, Modifier.offset(x = paperLength(geometry.titleX), y = paperLength(geometry.titleY))
                 .width(paperLength(captionWidth)), color = ink, maxLines = 1,
                 style = MaterialTheme.typography.titleMedium.copy(platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)),
@@ -125,12 +136,13 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 color = captionInk, maxLines = 3,
                 style = MaterialTheme.typography.bodySmall.copy(platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)),
                 fontSize = with(density) { paperLength(geometry.descriptionSize).toSp() }, lineHeight = with(density) { paperLength(geometry.descriptionSize * 1.2).toSp() })
+            }
             branding?.let { logo ->
                 Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS",
                     Modifier.offset(x = paperLength(logo.x), y = paperLength(logo.y))
                         .width(paperLength(logo.width)).height(paperLength(logo.height)).testTag("polaroid-brand-logo"), tint = ink)
             }
-            card.layers.forEach { layer -> key(layer.id) {
+            card.layers.filter { it.kind != CardLayerKind.PHOTO_INFO }.forEach { layer -> key(layer.id) {
                 val density = LocalDensity.current
                 var textControlWidth by remember(layer.id) { mutableStateOf(72.dp) }
                 val layerWidth = width * layer.width.toFloat()

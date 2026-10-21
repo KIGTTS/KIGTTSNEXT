@@ -23,6 +23,8 @@ class SketchState {
     var eraserSize by mutableFloatStateOf(24f)
     var temporaryErasing by mutableStateOf(false)
         internal set
+    var eraserCursor by mutableStateOf<Offset?>(null)
+        internal set
     var documentSize by mutableStateOf(IntSize.Zero)
         private set
     var background by mutableStateOf(0xFFFFFFFFL)

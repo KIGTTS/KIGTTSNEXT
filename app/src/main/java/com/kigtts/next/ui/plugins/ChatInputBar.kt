@@ -23,7 +23,8 @@ import java.io.File
 @Composable internal fun ChatInputBar(chat: PageBlock.Chat, enabled: Boolean, resolve: (PluginResource) -> File?,
     invoke: (String, Map<String, String>) -> Unit, owner: String = "", sent: () -> Unit) {
     var draft by rememberSaveable(chat.conversationId, chat.sendAction) { mutableStateOf("") }
-    val running = chat.running || chat.backgroundRunning
+    // Other conversations may run independently; their activity only affects the header indicator.
+    val running = chat.running
     val canSend = draft.isNotBlank() || chat.draftImages.isNotEmpty()
     fun send(action: String) { val text = draft; draft = ""; sent(); invoke(action, mapOf("message" to text)) }
     Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth().testTag("plugin-chat-composer")) { Column {

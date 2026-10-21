@@ -141,6 +141,11 @@ sealed interface PageBlock {
     }
     @Serializable
     data class Text(val text: String, val heading: Boolean = false) : PageBlock
+    /** Theme-aware native GFM. Images are explicit scoped resources keyed by their Markdown URL. */
+    @Serializable
+    data class Markdown(val text: String, val images: Map<String, PluginResource> = emptyMap()) : PageBlock
+    @Serializable
+    data class Gallery(val images: List<PageImage>) : PageBlock
     @Serializable
     data class Notice(val text: String) : PageBlock
     @Serializable
@@ -148,3 +153,6 @@ sealed interface PageBlock {
     @Serializable
     data class Group(val title: String, val children: List<PageBlock>) : PageBlock
 }
+
+@Serializable
+data class PageImage(val resource: PluginResource, val description: String = "")

@@ -12,6 +12,12 @@ import java.util.UUID
 class CardRepository(private val context:Context,val stickers:StickerRepository) {
     val cards=stickers.cards
     val albums=stickers.albums
+    val designs=stickers.designs
+    fun createPhoto(card:PolaroidCard, facts:FrozenPhotoFacts, albumId:String=DEFAULT_ALBUM):PolaroidCard=synchronized(stickers) {
+        stickerRequire(cards.value.none { it.id==card.id },message="拍立得已存在")
+        designs.freeze(card.id,facts)
+        create(designs.apply(card),albumId)
+    }
     fun cardsInAlbum(albumId:String):List<PolaroidCard> = synchronized(stickers) {
         val value=stickers.snapshot.value;val album=value.albums.firstOrNull {it.id==albumId} ?: return@synchronized emptyList()
         val indexed=value.cards.associateBy {it.id};album.cardIds.mapNotNull {indexed[it]}

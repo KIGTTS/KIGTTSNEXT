@@ -62,7 +62,7 @@ class AgentRunnerTest {
         assertEquals("partial", store.get(conversation.id)!!.messages.last().content)
         assertEquals(MessageState.CANCELLED, store.get(conversation.id)!!.messages.last().state)
     }
-    @Test fun confirmationPausesRemainingToolsAndDoesNotRetryCommit() = runTest {
+    @Test fun fullAccessReturnsHostConfirmationToModelWithoutReplayingOrWaiting() = runTest {
         var commits = 0
         val quick = object : QuickTextBroker {
             override fun changes(afterRevision: Long) = emptyFlow<QuickTextChange>()
@@ -75,15 +75,20 @@ class AgentRunnerTest {
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 requests++; val result = StreamAssembler()
+                if (requests > 1) {
+                    assertTrue(request.toString().contains("HOST_CONFIRMATION_REQUIRED"))
+                    assertTrue(request.toString().contains("not_executed_reconcile_first"))
+                    result.accept("""{"choices":[{"delta":{"content":"宿主仍要求确认，已返回具体限制"},"finish_reason":"stop"}]}"""); result.accept("[DONE]"); return result
+                }
                 result.accept("""{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"quick_text","arguments":"{\"command\":{\"type\":\"commit\",\"token\":\"token\"}}"}},{"index":1,"id":"c2","function":{"name":"quick_text","arguments":"{\"command\":{\"type\":\"commit\",\"token\":\"other\"}}"}}]},"finish_reason":"tool_calls"}]}""")
                 result.accept("[DONE]"); delta(result); return result
             }
         }
         val runner = AgentRunner(store, secrets, transport, AgentTools(env), {}, this)
         runner.send(conversation.id, "change"); advanceUntilIdle()
-        assertEquals(1, commits); assertEquals(1, requests); assertEquals("token", store.pending?.token)
+        assertEquals(1, commits); assertEquals(2, requests); assertNull(store.pending)
         assertEquals(2, store.get(conversation.id)!!.messages.count { it.role == "tool" })
-        assertTrue(store.get(conversation.id)!!.messages.last().content.contains("not_executed_pending_review"))
+        assertTrue(store.get(conversation.id)!!.messages.any { it.content.contains("not_executed_reconcile_first") })
     }
     @Test fun cancellationDuringToolLeavesValidCallResultPairsWithoutRetry() = runTest {
         var attempts = 0
@@ -108,7 +113,7 @@ class AgentRunnerTest {
         assertEquals("c1", messages.last().toolCallId)
         assertTrue(messages.last().content.contains("outcome_unknown"))
     }
-    @Test fun uncertainToolExceptionStopsWithoutReplayingMutation() = runTest {
+    @Test fun fullAccessReturnsUnknownOutcomeForModelReconciliationWithoutReplayingMutation() = runTest {
         var attempts = 0; var requests = 0
         val app = object : AppBroker { override suspend fun request(command: AppCommand): AppReply { attempts++; throw java.io.IOException("connection lost after request") } }
         val env = object : PluginEnvironment {
@@ -119,15 +124,20 @@ class AgentRunnerTest {
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 requests++; val result = StreamAssembler()
+                if (requests > 1) {
+                    assertTrue(request.toString().contains("OUTCOME_UNKNOWN"))
+                    assertTrue(request.toString().contains("connection lost after request"))
+                    result.accept("""{"choices":[{"delta":{"content":"已核对状态，继续执行"},"finish_reason":"stop"}]}"""); result.accept("[DONE]"); return result
+                }
                 result.accept("""{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c1","function":{"name":"app","arguments":"{\"command\":{\"type\":\"text\",\"text\":\"x\"}}"}}]},"finish_reason":"tool_calls"}]}""")
                 result.accept("[DONE]"); return result
             }
         }
         val runner = AgentRunner(store, secrets, transport, AgentTools(env), {}, this)
         runner.send(conversation.id, "update"); advanceUntilIdle()
-        assertEquals(1, attempts); assertEquals(1, requests)
-        assertTrue(store.pending!!.summary.contains("尚不明确"))
-        assertTrue(store.get(conversation.id)!!.messages.last().content.contains("OUTCOME_UNKNOWN"))
+        assertEquals(1, attempts); assertEquals(2, requests)
+        assertNull(store.pending)
+        assertTrue(store.get(conversation.id)!!.messages.any { it.content.contains("OUTCOME_UNKNOWN") })
     }
     @Test fun disabledOperationsRejectUnexpectedProviderToolCalls() = runTest {
         var attempts = 0
@@ -166,7 +176,7 @@ class AgentRunnerTest {
             }
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("disabled")
         }
-        val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.FULL) }; val conversation = store.create()
+        val store = AgentStore(env.storage); store.updateSettings { it.copy(access = AgentAccessMode.REQUEST_APPROVAL) }; val conversation = store.create()
         val transport = object : ChatTransport {
             override suspend fun stream(endpoint: String, apiKey: String, request: JsonObject, delta: suspend (StreamAssembler) -> Unit): StreamAssembler {
                 requests++; val result = StreamAssembler()

@@ -6,10 +6,25 @@ import kotlin.test.*
 
 class UiDebugPluginTest {
     private val context = PluginContext("", "")
+    @Test fun independentInstallationRestoresOnlyItsOwnScopedConfiguration() = runTest {
+        val root = java.nio.file.Files.createTempDirectory("ui-debug").toFile()
+        try {
+            val env = object : PluginEnvironment {
+                override val storage = PluginStorage(root)
+                override val assets = root
+                override suspend fun download(url: String, relativePath: String, sha256: String?): java.io.File = error("No network permission")
+            }
+            val first = UiDebugPlugin(); first.attach(env)
+            first.execute("HEADER_END/add", context); first.execute("HEADER_END/style", context)
+            val second = UiDebugPlugin(); second.attach(env)
+            assertEquals(first.contributions, second.contributions)
+            assertTrue(env.storage.file("config/ui-probes.json").isFile)
+        } finally { root.deleteRecursively() }
+    }
     @Test fun defaultAddsNoDesignExternalButtons() {
         val registry = PluginRegistry(listOf(UiDebugPlugin()))
         assertTrue(UiSlot.entries.all { registry.actions(it).isEmpty() })
-        assertEquals("config", registry.drawerEntries().single().entry.pageId)
+        assertEquals("config", registry.plugins.single().contributions.settingsEntries.single().pageId)
     }
     @Test fun countsAndMenuPresentationRespectRequestedSlotAndPersist() = runTest {
         var saved: Map<UiSlot, Int> = emptyMap()

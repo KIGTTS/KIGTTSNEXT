@@ -123,7 +123,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
                 discovery = !discovery; preferences.edit().putBoolean("face-discovery", discovery).apply()
                 message(if (discovery) "已预留面对面发现，暂不搜索附近设备" else "已关闭面对面发现")
             }))
-        })
+        }, primaryCount = 4)
 
         val body: @Composable () -> Unit = {
             Box(Modifier.fillMaxSize()) {

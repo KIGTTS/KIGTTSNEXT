@@ -17,7 +17,7 @@ import com.kigtts.plugin.api.*
 /** Small declarative settings lists share the native settings components, without a new SDK type.
  * Resource collections and large voice catalogs retain the virtualized management renderer. */
 internal fun ManagementList.usesSettingsLayout() = reorderAction == null && filters.isEmpty() &&
-    items.size in 1..32 && items.all { it.actions.isEmpty() && it.image == null && !it.pinned }
+    items.size in 1..32 && items.all { it.actions.isEmpty() && (it.image == null || it.group.isNotBlank()) && !it.pinned }
 
 internal fun settingPosition(index: Int, count: Int) = when {
     count <= 1 -> SettingPosition.SINGLE
@@ -28,7 +28,7 @@ internal fun settingPosition(index: Int, count: Int) = when {
 
 @Composable
 internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
-    invoke: (String, Map<String, String>) -> Unit, hasHeader: Boolean,
+    invoke: (String, Map<String, String>) -> Unit, hasHeader: Boolean, resolve: (PluginResource) -> java.io.File? = { null },
     header: @Composable ColumnScope.() -> Unit) {
     val enabled = !busy && LocalPageActive.current
     val groups = list.items.groupBy { it.group.ifBlank { "设置" } }.entries.toList()
@@ -39,9 +39,10 @@ internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
             SettingsGroup(group.key) {
                 MotionColumn(group.value, { item, _ -> item.id }, enabled = active, spacing = 2.dp,animateInitial=false) { item, interactive ->
                     val toggle = item.toggle
-                    SettingItem(item.title, item.subtitle, if (item.icon == PluginIcon.NONE) null else item.icon.vector(),
+                    SettingItem(item.title, item.subtitle, if (item.icon == PluginIcon.NONE && item.symbol == null) null else item.icon.vector(item.symbol),
                         settingPosition(group.value.indexOfFirst { it.id == item.id }, group.value.size),
                         modifier = Modifier.testTag("managed-item/" + item.id), enabled = interactive,
+                        leading = if (item.image == null) null else ({ com.kigtts.next.ui.management.ResourceAvatar(item, resolve) }),
                         onClick = item.primaryAction?.let { action -> { invoke(action, emptyMap()) } }, trailing = {
                             if (toggle != null) Switch(toggle.checked,
                                 onCheckedChange = feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },

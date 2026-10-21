@@ -34,6 +34,42 @@ import org.robolectric.annotation.*
 class CardEditorChromeUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun keyboardOnlyLiftsToolsAndDoesNotShrinkOrMovePaper() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        val card = model.cards.create(PolaroidCard(title = "键盘视口"))
+        compose.setContent { Box(Modifier.size(393.dp, 820.dp)) { KigttsApp(model) } }
+        compose.runOnIdle { model.navigate(Destination.CardEditor(card.id)) }
+        fun keyboardInsets(bottom: Int) {
+            compose.runOnIdle {
+                WindowCompat.setDecorFitsSystemWindows(compose.activity.window, false)
+                val density = compose.activity.resources.displayMetrics.density
+                val insets = WindowInsetsCompat.Builder()
+                    .setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(0, (28 * density).toInt(), 0, 0))
+                    .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, (24 * density).toInt()))
+                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, (bottom * density).toInt()))
+                    .setVisible(WindowInsetsCompat.Type.ime(), bottom > 0).build()
+                val root = compose.activity.findViewById<ViewGroup>(android.R.id.content)
+                ViewCompat.dispatchApplyWindowInsets(root.getChildAt(0), insets)
+            }
+            compose.waitForIdle()
+        }
+        keyboardInsets(0)
+        compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
+        compose.onNodeWithTag("card-title").performScrollTo().performClick()
+        val before = compose.onNodeWithTag("polaroid/${card.id}").fetchSemanticsNode().boundsInRoot
+        println("BEFORE bar=" + compose.onNodeWithTag("large-page-bar").getUnclippedBoundsInRoot() + " editor=" + compose.onNodeWithTag("card-editor").getUnclippedBoundsInRoot())
+        compose.onRoot().captureRoboImage("build/previews/editor-ime-before.png")
+        keyboardInsets(300)
+        println("AFTER bar=" + compose.onNodeWithTag("large-page-bar").getUnclippedBoundsInRoot() + " editor=" + compose.onNodeWithTag("card-editor").getUnclippedBoundsInRoot())
+        compose.onRoot().captureRoboImage("build/previews/editor-ime-after.png")
+        val after = compose.onNodeWithTag("polaroid/${card.id}").fetchSemanticsNode().boundsInRoot
+        assertEquals(before.left, after.left, 1f); assertEquals(before.top, after.top, 1f)
+        assertEquals(before.width, after.width, 1f); assertEquals(before.height, after.height, 1f)
+        compose.onNodeWithTag("card-title").performTextReplacement("键盘保留草稿")
+        compose.onNodeWithTag("card-title").assertTextContains("键盘保留草稿")
+    }
+
     @Test fun editorRouteAvoidsTheLiveLandscapePanelAndKeepsItsDraftAcrossRotation() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         app.getSharedPreferences("appearance", 0).edit().clear().putString("mode", ThemeMode.LIGHT.name).commit()

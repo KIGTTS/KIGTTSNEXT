@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 @Composable
-internal fun ResourceAvatar(item: ManagementItem, resolve: (PluginResource) -> File?) {
+internal fun ResourceAvatar(item: ManagementItem, resolve: (PluginResource) -> File?, size: androidx.compose.ui.unit.Dp = 40.dp) {
     val file = item.image?.let { runCatching { resolve(it) }.getOrNull() }
     val version = file?.lastModified()
     val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, file?.path, version) {
@@ -27,11 +27,11 @@ internal fun ResourceAvatar(item: ManagementItem, resolve: (PluginResource) -> F
             if (file == null || !file.isFile || file.length() > 8L * 1024 * 1024) return@withContext null
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(file.path, bounds)
             if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth.toLong() * bounds.outHeight > 32_000_000) return@withContext null
-            BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = maxOf(bounds.outWidth, bounds.outHeight) / 128 + 1 })?.asImageBitmap()
+            BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = maxOf(bounds.outWidth, bounds.outHeight) / 256 + 1 })?.asImageBitmap()
         }.getOrNull() }
     }
-    if (bitmap != null) Image(bitmap!!, "${item.title}头像", Modifier.size(40.dp).clip(MaterialTheme.shapes.small))
-    else Surface(Modifier.size(40.dp), shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(item.icon.vector(), null, tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+    if (bitmap != null) Image(bitmap!!, "${item.title}图标", Modifier.size(size).clip(MaterialTheme.shapes.medium))
+    else Surface(Modifier.size(size), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(item.icon.vector(item.symbol), null, Modifier.size(size * .55f), tint = MaterialTheme.colorScheme.onSecondaryContainer) }
     }
 }

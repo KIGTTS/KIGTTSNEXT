@@ -38,7 +38,7 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = LocalCardWindowLandscape.current ?: (maxWidth > maxHeight)
         val floatingHeader = wide && LocalCardPageChrome.current != null
-        BoxWithConstraints(Modifier.fillMaxSize().imePadding().clipToBounds().testTag("card-editor")) {
+        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds().testTag("card-editor")) {
             val compactTabs = wide || maxHeight < 360.dp
             val header = if (wide || maxHeight < 240.dp) 44.dp else 56.dp
             val tabs = if (categories == null) 0.dp else if (compactTabs) 48.dp else 72.dp
@@ -49,11 +49,17 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             val partial = (if (wide) minOf(340.dp, axis * .42f) else axis * .50f)
                 .coerceIn(collapsed, expanded)
             val density = LocalDensity.current
+            val keyboardOpen = WindowInsets.ime.getBottom(density) > 0
+            val focus = androidx.compose.ui.platform.LocalFocusManager.current
+            val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
             val full = with(density) { axis.toPx() }
             val start = with(density) { (axis - expanded).toPx() }
             val middle = with(density) { (axis - partial).toPx() }
             val end = with(density) { (axis - collapsed).toPx() }
             val sheet = rememberCardToolsSheet(start, middle, end)
+            LaunchedEffect(sheet.targetValue) {
+                if (sheet.targetValue == CardToolsPosition.COLLAPSED) { focus.clearFocus(); keyboard?.hide() }
+            }
             RegisterCardPanelInset { if (wide) full - (sheet.offset.takeIf(Float::isFinite) ?: middle) else 0f }
             val drag = rememberCardPanelDrag(sheet, if (wide) Orientation.Horizontal else Orientation.Vertical, false, enabled)
             LaunchedEffect(expandTools) { if (expandTools) sheet.animateTo(CardToolsPosition.EXPANDED, tween(220)) }
@@ -84,9 +90,12 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
             val shape = homeCardShape().let { if (wide) it.copy(topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
                 else it.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)) }
             // Only the panel's viewport is measured while dragging; the photo stays in its layer.
-            Surface(Modifier.layout { child, constraints ->
-                val offset = (sheet.offset.takeIf(Float::isFinite) ?: middle).roundToInt()
-                val extent = (full - offset).roundToInt().coerceAtLeast(0)
+            Surface(Modifier.imePadding().layout { child, constraints ->
+                val requested = (sheet.offset.takeIf(Float::isFinite) ?: middle).roundToInt()
+                val availableAxis = if (wide) constraints.maxWidth else constraints.maxHeight
+                val offset = if (wide || !keyboardOpen) requested else minOf(requested,
+                    (availableAxis - (header + tabs + 120.dp).roundToPx()).coerceAtLeast(0))
+                val extent = (availableAxis - offset).coerceAtLeast(0)
                 val panelConstraints = if (wide) constraints.copy(minWidth = extent, maxWidth = extent)
                     else constraints.copy(minHeight = extent, maxHeight = extent)
                 val measured = child.measure(panelConstraints)

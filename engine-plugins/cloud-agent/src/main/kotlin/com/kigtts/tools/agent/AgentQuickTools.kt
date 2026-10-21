@@ -57,17 +57,20 @@ internal class AgentQuickTools(private val environment: PluginEnvironment) {
         val snapshot = PluginJson.parseToJsonElement(read.content).jsonObject
         if (snapshot["ok"]?.jsonPrimitive?.booleanOrNull != true) return read
         val revision = snapshot.getValue("revision").jsonPrimitive.long
-        if (revision != args.getValue("revision").jsonPrimitive.long) return result(QuickTextReply.Failure(QuickTextError.CONFLICT, "快捷文本已经变化，请重新read_quick_text后修改", revision))
+        if (revision != toolInput { args.getValue("revision").jsonPrimitive.long }) return result(QuickTextReply.Failure(QuickTextError.CONFLICT, "快捷文本已经变化，请重新read_quick_text后修改", revision))
         val original = snapshot.getValue("entries").jsonArray.single().jsonObject
-        val patch = args.getValue("patch").jsonObject
-        require(patch.isNotEmpty() && patch.keys.all { it in setOf("text", "title", "groupId", "kind", "mediaId", "colorKind", "color", "richText", "formats", "autoPlay", "audioPolicy", "metadata") }) { "patch包含不支持字段" }
+        val patch = toolInput {
+            args.getValue("patch").jsonObject.also { patch ->
+                require(patch.isNotEmpty() && patch.keys.all { it in setOf("text", "title", "groupId", "kind", "mediaId", "colorKind", "color", "richText", "formats", "autoPlay", "audioPolicy", "metadata") }) { "patch包含不支持字段" }
+            }
+        }
         val merged = original.toMutableMap().apply { putAll(patch)
             (patch["metadata"] as? JsonObject)?.let { metadata ->
                 put("metadata", JsonObject(((original["metadata"] as? JsonObject).orEmpty() + metadata).filterValues { it != JsonNull }))
             }
             if (patch["text"] != null && patch["text"] != original["text"] && "formats" !in patch) put("formats", JsonArray(emptyList()))
         }
-        val entry = PluginJson.decodeFromJsonElement<QuickEntry>(JsonObject(merged))
+        val entry = decodeToolCommand<QuickEntry>(JsonObject(merged))
         val prepared = broker.request(QuickTextCommand.Prepare(transaction, revision, listOf(QuickTextEdit.PutEntry(entry))))
         return if (prepared is QuickTextReply.Prepared) result(broker.request(QuickTextCommand.Commit(prepared.value.token))) else result(prepared)
     }

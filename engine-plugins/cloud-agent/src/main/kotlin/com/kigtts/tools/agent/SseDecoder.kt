@@ -43,6 +43,7 @@ class StreamAssembler(private val textLimit: Int = 1024 * 1024) {
     private val text = StringBuilder(); private val reasoning = StringBuilder(); private val calls = sortedMapOf<Int, Call>()
     var finishReason: String? = null; private set
     var ended = false; private set
+    var usage: AgentUsage? = null; private set
     val content get() = text.toString()
     val reasoningContent get() = reasoning.toString()
     val hasToolCalls get() = calls.isNotEmpty()
@@ -50,6 +51,7 @@ class StreamAssembler(private val textLimit: Int = 1024 * 1024) {
         if (payload == "[DONE]") { ended = true; return false }
         val root = PluginJson.parseToJsonElement(payload).jsonObject
         check(root["error"] == null) { "服务中断了回答，请稍后重试" }
+        (root["usage"] as? JsonObject)?.let { usage = parseAgentUsage(it) }
         val choice = root["choices"]?.jsonArray?.firstOrNull { it.jsonObject["index"]?.jsonPrimitive?.intOrNull in listOf(null, 0) }?.jsonObject ?: return true
         choice["finish_reason"]?.takeUnless { it is JsonNull }?.jsonPrimitive?.content?.let { finishReason = it }
         val delta = choice["delta"]?.jsonObject ?: return true

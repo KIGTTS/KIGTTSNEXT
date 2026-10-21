@@ -37,7 +37,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
         Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
             Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (item.image != null || item.icon != PluginIcon.NONE) {
+            if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null) {
                 ResourceAvatar(item, resolve)
                 Spacer(Modifier.width(12.dp))
             }

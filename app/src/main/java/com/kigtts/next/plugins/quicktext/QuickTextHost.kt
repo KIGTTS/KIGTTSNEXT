@@ -24,7 +24,7 @@ class QuickTextHost(val library:QuickTextLibrary,val media:MediaRepository,val p
                     requireQuick("quick-text-write" in capabilities || !write&&"quick-text-read" in capabilities,QuickTextError.PERMISSION_DENIED,"插件未声明所需的快捷文本能力")
                     retire()
                     when(command) {
-                        QuickTextCommand.Describe->QuickTextReply.Features(QuickTextFeatures(operations=operations,writable="quick-text-write" in capabilities,groupIcons=CategoryIcon.entries.map {it.name}))
+                        QuickTextCommand.Describe->QuickTextReply.Features(QuickTextFeatures(operations=operations,writable="quick-text-write" in capabilities,groupIcons=CategoryIcon.entries.map {it.name},features=QuickTextFeatures(operations=emptyList(),writable=false).features + ("group-icon-symbol" to "symbol:<Material Symbols name>; discover via app ui-assets symbols")))
                         is QuickTextCommand.Query->query(command)
                         is QuickTextCommand.Prepare->prepare(owner,command)
                         is QuickTextCommand.Commit->commit(owner,command.token,delegatedApproval())

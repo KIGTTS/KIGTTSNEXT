@@ -36,7 +36,10 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
         if (busy) { selection.release(); message("正在处理图片，请稍后重试"); return }
         startWork({
             val image = stickers.importImage(selection.uri)
-            if (!asSticker) cards.create(PolaroidCard(title = "", imageId = image.id), albumId).id
+            if (!asSticker) {
+                val facts = PolaroidPhotoFacts.enrich(context, PolaroidPhotoFacts.read(stickers.imageFile(image.id), selection.fromCamera), cards.designs.requiredFields())
+                cards.createPhoto(PolaroidCard(title = "", imageId = image.id), facts, albumId).id
+            }
             else {
                 val target = stickers.libraries.value.firstOrNull { it.id == library } ?: stickers.libraries.value.first()
                 stickers.apply(listOf(StickerEdit.PutItem(StickerItem(libraryId = target.id,
@@ -80,6 +83,6 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
             file.delete()
     }
     fun quickSticker(item: StickerItem) = work({ stickers.publishQuickMedia(item.imageId) }) { onQuickImage(it.id, item.name) }
-    fun stickerCard(item: StickerItem) = work({ cards.create(PolaroidCard(title = "", imageId = item.imageId)) }) { openEditor(it.id) }
+    fun stickerCard(item: StickerItem) = work({ cards.createPhoto(PolaroidCard(title = "", imageId = item.imageId), PolaroidPhotoFacts.read(stickers.imageFile(item.imageId), false)) }) { openEditor(it.id) }
     fun edit(edits: List<StickerEdit>) = work({ stickers.apply(edits) }) { message("已保存") }
 }

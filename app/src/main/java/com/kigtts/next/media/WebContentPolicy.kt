@@ -6,6 +6,9 @@ import java.net.URI
 
 object WebContentPolicy {
     const val ORIGIN = "https://appassets.androidplatform.net"
+    fun internal(url: String) = runCatching { URI(url).let {
+        it.scheme == "https" && it.host.equals("appassets.androidplatform.net", true) && it.port in setOf(-1, 443) && it.userInfo == null
+    } }.getOrDefault(false)
     fun https(url: String) = runCatching { URI(url).let { it.scheme == "https" && it.host != null && it.userInfo == null } }.getOrDefault(false)
     fun file(root: File, path: String): File? = runCatching {
         require(path.isNotEmpty() && !path.contains('\\') && !path.contains(':') && !path.startsWith('/'))

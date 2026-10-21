@@ -39,25 +39,3 @@ import kotlinx.coroutines.*
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
     if (symbols) MaterialSymbolPicker({ name -> change(mapOf("icon.symbol" to name)); symbols = false }, { symbols = false })
 }
-
-@Composable private fun MaterialSymbolPicker(select: (String) -> Unit, close: () -> Unit) {
-    var query by remember { mutableStateOf("") }; var offset by remember { mutableIntStateOf(0) }
-    var items by remember { mutableStateOf(emptyList<Pair<String, ImageVector?>>()) }; var more by remember { mutableStateOf(false) }
-    LaunchedEffect(query, offset) {
-        delay(120)
-        val found = withContext(Dispatchers.Default) { MaterialSymbols.search(query, offset, 81).map { it to MaterialSymbols.vector(it) } }
-        more = found.size > 80; items = found.take(80)
-    }
-    MotionAlertDialog(onDismissRequest = close, title = { Text("Material Symbols") }, text = {
-        Column {
-            OutlinedTextField(query, { query = it.take(80); offset = 0 }, singleLine = true, label = { Text("搜索图标英文名") })
-            LazyVerticalGrid(GridCells.Adaptive(72.dp), Modifier.height(320.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
-                items(items, key = { it.first }) { (name, vector) -> TextButton(onClick = feedbackClick { select(name) }) {
-                    Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) { vector?.let { Icon(it, null) }; Text(name, style = MaterialTheme.typography.labelSmall, maxLines = 2) }
-                } }
-            }
-            Row { if (offset > 0) MotionTextButton(onClick = feedbackClick { offset = (offset - 80).coerceAtLeast(0) }) { Text("上一页") }
-                if (more) MotionTextButton(onClick = feedbackClick { offset += 80 }) { Text("下一页") } }
-        }
-    }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text("取消") } })
-}

@@ -1,98 +1,138 @@
 [
   {
     "module": "cloud-agent",
+    "file": "tools.cloud-agent-0.9.13.kigplugin",
+    "category": "扩展",
+    "summary": "多会话AI助手，支持图片、工具执行、长任务与可加载历史。",
+    "symbol": "smart_toy",
+    "description": "## AI 助手\n\n支持多个供应商与模型、图片输入、流式对话和并行会话。\n\n- 可加载更早的会话记录。\n- 按需授权应用工具、网页验收与 Lua 调试。\n- 密钥仅由用户在本机配置。"
+  },
+  {
+    "module": "package-store",
+    "file": "tools.package-store-0.10.0.kigplugin",
+    "category": "扩展",
+    "summary": "浏览插件、查看介绍与预览，管理版本及自动解析前置依赖。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n基于 **KPM** 的插件浏览与安装入口，无推荐排名。支持多个源、版本选择、依赖规划和镜像下载。\n\n源可注册 Material Symbols、校验图片、Markdown 介绍及预览缩略图。"
+  },
+  {
+    "module": "ui-debug",
+    "file": "debug.ui-0.1.0.kigplugin",
+    "category": "开发",
+    "summary": "独立可选的界面探针，用于检查按钮、分组及布局。",
+    "symbol": "bug_report",
+    "description": "## 界面调试\n\n按需安装的界面探针，配置保存在插件自己的目录。主程序不再内建这组测试入口。"
+  },
+  {
+    "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.6.kigplugin",
     "category": "扩展",
-    "summary": "图片搜索下载与快捷文本图片存取、独立并行会话和图片协议恢复。"
+    "summary": "图片搜索下载与快捷文本图片存取、独立并行会话和图片协议恢复。",
+    "symbol": "extension"
   },
   {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.5.kigplugin",
     "category": "扩展",
-    "summary": "自动上下文摘要、三种权限模式、相机附件与稳定流式对话。"
+    "summary": "自动上下文摘要、三种权限模式、相机附件与稳定流式对话。",
+    "symbol": "extension"
   },
   {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.3.kigplugin",
     "category": "扩展",
-    "summary": "多会话助手、持久长任务、队列与后台网页验收。"
+    "summary": "多会话助手、持久长任务、队列与后台网页验收。",
+    "symbol": "extension"
   },
   {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.4.kigplugin",
     "category": "扩展",
-    "summary": "多会话助手、持久长任务、队列与后台网页验收。"
+    "summary": "多会话助手、持久长任务、队列与后台网页验收。",
+    "symbol": "extension"
   },
   {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.2.kigplugin",
     "category": "扩展",
-    "summary": "多会话云端助手、图片输入与受授权的应用工具。"
+    "summary": "多会话云端助手、图片输入与受授权的应用工具。",
+    "symbol": "extension"
   },
   {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.1.kigplugin",
     "category": "扩展",
-    "summary": "多会话云端助手、图片输入与受授权的应用工具。"
+    "summary": "多会话云端助手、图片输入与受授权的应用工具。",
+    "symbol": "extension"
   },
   {
     "module": "lua-runtime",
     "file": "runtime.lua-0.9.1.kigplugin",
     "category": "开发",
-    "summary": "多项目Lua插件编辑、调试、打包和独立权限管理。"
+    "summary": "多项目Lua插件编辑、调试、打包和独立权限管理。",
+    "symbol": "code"
   },
   {
     "module": "package-store",
     "file": "tools.package-store-0.9.3.kigplugin",
     "category": "扩展",
-    "summary": "官方插件源、版本切换、镜像下载与依赖规划。"
+    "summary": "官方插件源、版本切换、镜像下载与依赖规划。",
+    "symbol": "extension"
   },
   {
     "module": "package-store",
     "file": "tools.package-store-0.9.2.kigplugin",
     "category": "扩展",
-    "summary": "插件源、版本切换、镜像下载与依赖规划。"
+    "summary": "插件源、版本切换、镜像下载与依赖规划。",
+    "symbol": "extension"
   },
   {
     "module": "package-store",
     "file": "tools.package-store-0.9.1.kigplugin",
     "category": "扩展",
-    "summary": "插件源、版本切换、镜像下载与依赖规划。"
+    "summary": "插件源、版本切换、镜像下载与依赖规划。",
+    "symbol": "extension"
   },
   {
     "module": "native-builder",
     "file": "tools.native-builder-0.8.0.kigplugin",
     "category": "开发",
-    "summary": "可选原生插件构建扩展，不是Lua项目的必需依赖。"
+    "summary": "可选原生插件构建扩展，不是Lua项目的必需依赖。",
+    "symbol": "build"
   },
   {
     "module": "speech-service",
     "file": "service.speech-synthesis-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "统一语音合成服务，内含系统TTS保底。"
+    "summary": "统一语音合成服务，内含系统TTS保底。",
+    "symbol": "record_voice_over"
   },
   {
     "module": "recognition-service",
     "file": "service.speech-recognition-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "统一管理聆听字幕与语音输入。"
+    "summary": "统一管理聆听字幕与语音输入。",
+    "symbol": "hearing"
   },
   {
     "module": "piper-tts",
     "file": "engine.piper-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "Piper离线语音合成，模型需另行导入，仅arm64设备。"
+    "summary": "Piper离线语音合成，模型需另行导入，仅arm64设备。",
+    "symbol": "voice_chat"
   },
   {
     "module": "streaming-asr",
     "file": "engine.streaming-asr-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "流式语音识别引擎，模型需另行导入。"
+    "summary": "流式语音识别引擎，模型需另行导入。",
+    "symbol": "graphic_eq"
   },
   {
     "module": "sensevoice-asr",
     "file": "engine.sensevoice-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "SenseVoice离线语音识别，模型需另行导入。"
+    "summary": "SenseVoice离线语音识别，模型需另行导入。",
+    "symbol": "mic"
   }
 ]

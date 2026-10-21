@@ -1,6 +1,6 @@
-# 插件 API v12（兼容 v9–11）
+# 插件 API v14（兼容 v9–13）
 
-当前 SDK 为 API13；宿主兼容API9–12，Agent为0.9.5/API13、商店为0.9.3/API12，Lua为0.9.1/API11。新助手需要API13，已有兼容服务可以保留；API8 及更早的 DEX 包需由同一发布者重新构建并递增 versionCode，更新保留模型与配置。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
+当前 SDK 为 API14，宿主接受API9–14签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -138,3 +138,11 @@ Chat支持图片资源、thinking/hasReasoning、稳定position、持久队列�
 ## API13 增量
 
 新增PluginOutcome.Confirm(title,text,action,cancelLabel)与CapturePhoto(title,directory,actionId)，分别由宿主原生确认窗和系统相机处理；保留API9–12原有数据类构造/copy与序列化字段。使用新结果的包必须声明API13。BrowserSession增加open-subtitle操作值，用于明确标识的大字幕布局模拟，不改旧命令构造。完整主题、安全区、坐标和设备权限合同见WebUiGuide v3与网页UI文档。
+
+## API14 展示合同
+
+`ManagementItem.symbol` 可指定 Material Symbols，旧 PluginIcon/图片仍可用。`ManagementList.style=CATALOG` 提供64dp图标与介绍的商店布局；默认STANDARD保持通用管理列表。旧构造与copy入口保留。
+
+`PageBlock.Markdown(text, images)` 渲染GFM文本，图片只能从插件预先准备的本地PluginResource映射读取；不执行HTML或自动下载外图。`PageBlock.Gallery` 提供最多8张预览。源展示资源合同见 [KPM](package-store.md)。
+
+`CardLayerKind.PHOTO_INFO` 表示相纸备注下方的左对齐附加信息，最多8项、imageId为空；不参与贴纸拖动。预览和静态/动态导出共用测量，字段和备注不重叠。读取后编辑卡片时保留这类图层。

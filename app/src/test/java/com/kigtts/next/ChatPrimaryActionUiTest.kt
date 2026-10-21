@@ -20,11 +20,11 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED) @Config(sdk = [35], qualifiers = "zh-rCN-w480dp-h800dp-xhdpi")
 class ChatPrimaryActionUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun onlyOnePrimaryActionChangesBetweenSendStopAndQueueIncludingBackgroundTasks() {
+    @Test fun onlyOnePrimaryActionChangesBetweenSendStopAndQueueInThisConversation() {
         var running by mutableStateOf(false)
         val actions = mutableListOf<String>()
         compose.setContent { KigttsTheme(ThemeSettings()) { Box(Modifier.width(450.dp)) {
-            ChatInputBar(PageBlock.Chat(emptyList(), "send", "stop", backgroundRunning = running, queueAction = "queue"), true,
+            ChatInputBar(PageBlock.Chat(emptyList(), "send", "stop", running = running, backgroundRunning = running, queueAction = "queue"), true,
                 { null }, { action, _ -> actions += action }) {}
         } } }
         compose.onNodeWithTag("plugin-chat-send").assertExists().assertIsNotEnabled()
@@ -40,6 +40,16 @@ class ChatPrimaryActionUiTest {
         compose.runOnIdle { running = false }
         compose.onNodeWithTag("plugin-chat-send").assertExists()
         compose.onNodeWithTag("plugin-chat-stop").assertDoesNotExist()
+    }
+    @Test fun backgroundConversationDoesNotReplaceThisConversationsSendButton() {
+        val actions = mutableListOf<String>()
+        compose.setContent { KigttsTheme(ThemeSettings()) { ChatInputBar(
+            PageBlock.Chat(emptyList(), "send", "stop", backgroundRunning = true, queueAction = "queue"), true,
+            { null }, { action, _ -> actions += action }) {} } }
+        compose.onNodeWithTag("plugin-chat-stop").assertDoesNotExist()
+        compose.onNodeWithTag("plugin-chat-input").performTextInput("当前会话的新任务")
+        compose.onNodeWithTag("plugin-chat-send").performClick()
+        assertEquals(listOf("send"), actions)
     }
     @Test fun imageLongPressCallsCameraExactlyOnceWithoutOpeningThePicker() {
         val inputs = mutableListOf<Map<String, String>>()

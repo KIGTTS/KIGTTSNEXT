@@ -16,6 +16,7 @@ import java.nio.file.StandardCopyOption
 class StickerRepository(val context:Context,val paths:PluginPaths,val media:MediaRepository,
     private val catalogByteLimit:Int=8*1024*1024) {
     val root=File(context.getExternalFilesDir(null) ?: context.filesDir,"appdata/Kigtts/cards").apply {mkdirs()}
+    val designs=PolaroidDesignStore(root)
     private val catalog=File(root,"catalog.json")
     private val receipts=linkedMapOf<String,Pair<String,StickerReply>>()
     private val creationTimes=PolaroidCreationTimes()
@@ -46,7 +47,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
             snapshotJson.optJSONArray("cards")?.let {cards->for(index in 0 until cards.length()) {
                 val card=cards.getJSONObject(index);if(!card.has("frameStyleId"))card.put("frameStyleId","classic")}}
             val stored=PluginJson.decodeFromString<StickerSnapshot>(snapshotJson.toString())
-            val value=PolaroidAlbums.migrate(stored.copy(cards=stored.cards.map {it.normalizeLegacyPaper()}))
+            val value=PolaroidAlbums.migrate(stored.copy(cards=stored.cards.map {designs.normalizeFields(it.normalizeLegacyPaper())}))
             StickerEdits.validate(value)
             val savedFrames=json.optString("frames").takeIf {it.isNotBlank()}?.let {PluginJson.decodeFromString<List<PolaroidFrameStyle>>(it)}.orEmpty()
             // Host style revisions must not turn an otherwise valid user catalog into recovery data.
@@ -75,7 +76,11 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
     @Synchronized fun plan(edits:List<StickerEdit>,expectedRevision:Long?=null):StickerSnapshot {
         expectedRevision?.let {checkRevision(it)}
         val frames=framePlan(edits)
-        return StickerEdits.apply(state.value,edits).also {PolaroidFrames.validate(it,frames)
+        stickerRequire(designs.referencedFrames().all { id -> frames.any { it.id==id } },message="边框仍用于相框预设，请先删除对应预设")
+        return StickerEdits.apply(state.value,edits).also {
+            val remaining = it.images.map { image -> image.id }.toSet()
+            stickerRequire(designs.referencedImages().all { image -> image in remaining }, message="图片仍用于相框预设，请先删除对应预设")
+            PolaroidFrames.validate(it,frames)
             cardPermissions.check(state.value,it,frameState.value,frames)}
     }
     @Synchronized fun framePlan(edits:List<StickerEdit>)=PolaroidFrames.apply(frameState.value,edits)

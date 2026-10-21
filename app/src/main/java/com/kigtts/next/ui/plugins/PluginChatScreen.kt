@@ -4,6 +4,8 @@ package com.kigtts.next.ui.plugins
 import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.stopScroll
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material3.pulltorefresh.*
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.collect
@@ -32,6 +35,17 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     val list = remember(chat.conversationId) { LazyListState() }
     val dispatch: (String, Map<String, String>) -> Unit = { action, inputs -> invoke(action, inputs + ("_chatConversation" to chat.conversationId)) }
     var follow by remember(chat.conversationId) { mutableStateOf(true) }
+    val scope = rememberCoroutineScope()
+    var expansionEpoch by remember(chat.conversationId) { mutableLongStateOf(0L) }
+    var expansionActive by remember(chat.conversationId) { mutableStateOf(false) }
+    val readingInteraction = remember(list, scope) { {
+        follow = false; expansionActive = true; expansionEpoch++
+        scope.launch { list.stopScroll(MutatePriority.UserInput) }
+        Unit
+    } }
+    LaunchedEffect(expansionEpoch) {
+        if (expansionEpoch > 0) { delay(500); expansionActive = false }
+    }
     val dragging by list.interactionSource.collectIsDraggedAsState()
     val scrollRequests = remember(chat.conversationId) { Channel<ChatScrollRequest>(Channel.CONFLATED) }
     val cache = historyCache ?: remember { ChatHistoryCache() }
@@ -41,14 +55,19 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     val earliest = messages.minOfOrNull { it.position } ?: 0
     val hasEarlier = chat.historyAction != null && earliest > 0
     var loadingBefore by remember(chat.conversationId) { mutableStateOf<Int?>(null) }
+    var historyWasBusy by remember(chat.conversationId) { mutableStateOf(false) }
     fun loadEarlier() {
         if (!hasEarlier || loadingBefore != null) return
-        follow = false; cache.retainEarlier(historyKey); loadingBefore = earliest
+        follow = false; cache.retainEarlier(historyKey); historyWasBusy = false; loadingBefore = earliest
         dispatch(requireNotNull(chat.historyAction), mapOf("before" to earliest.toString()))
     }
     LaunchedEffect(earliest, loadingBefore, enabled) {
-        if (loadingBefore != null && (earliest < requireNotNull(loadingBefore) || enabled)) { delay(160); loadingBefore = null }
+        if (loadingBefore != null) {
+            if (!enabled) historyWasBusy = true
+            if (earliest < requireNotNull(loadingBefore) || enabled && historyWasBusy) { delay(160); loadingBefore = null }
+        }
     }
+    LaunchedEffect(loadingBefore) { if (loadingBefore != null) { delay(10000); loadingBefore = null } }
     val pull = rememberPullToRefreshState()
     val snapDistance = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toPx() / 2 }
     val atBottom by remember(list, snapDistance) { derivedStateOf { chatBottomGap(list.layoutInfo) <= snapDistance } }
@@ -58,21 +77,23 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     LaunchedEffect(list, scrollRequests) {
         for (request in scrollRequests) {
             if (dragging) continue
-            if (request == ChatScrollRequest.JUMP) follow = true
+            if (request == ChatScrollRequest.JUMP) { expansionActive = false; follow = true }
             if (request == ChatScrollRequest.SNAP) {
-                if (follow || list.isScrollInProgress || chatBottomGap(list.layoutInfo) > snapDistance) continue
+                if (follow || expansionActive || list.isScrollInProgress || chatBottomGap(list.layoutInfo) > snapDistance) continue
                 follow = true
             }
             if (!follow || rowCount.value == 0) continue
             withFrameNanos { }
+            if (!follow || expansionActive || dragging) continue
             list.scrollToChatEnd(rowCount.value, animated = request != ChatScrollRequest.UPDATE)
         }
     }
     LaunchedEffect(list, snapDistance) {
         // Do not key/cancel this collector on isScrollInProgress: our own snap animation
         // changes that flag and would otherwise repeatedly cancel and restart itself.
-        snapshotFlow { Triple(chatBottomGap(list.layoutInfo), list.isScrollInProgress, dragging) }.collect { (gap, moving, held) ->
-            if (gap <= snapDistance && !moving && !held && !follow) {
+        snapshotFlow { Triple(chatBottomGap(list.layoutInfo), list.isScrollInProgress, dragging) to expansionActive }.collect { (viewport, expanding) ->
+            val (gap, moving, held) = viewport
+            if (gap <= snapDistance && !moving && !held && !expanding && !follow) {
                 scrollRequests.trySend(ChatScrollRequest.SNAP)
             }
         }
@@ -88,6 +109,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
         androidx.compose.animation.AnimatedVisibility(!follow && !atBottom,
             Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
             SmallFloatingActionButton(onClick = feedbackClick {
+                chat.historyAction?.let { dispatch(it, mapOf("latest" to "true")) }
                 scrollRequests.trySend(ChatScrollRequest.JUMP)
             }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, "回到底部") }
         }
@@ -104,13 +126,17 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
                     if (hasEarlier || loadingBefore != null) ChatEarlierButton(false, ::loadEarlier)
                 } }
                 items(rows, key = { it.first().id }) { messages ->
-                    if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages) else ChatBubble(messages.first(), resolve)
+                    Box(Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(180),
+                        fadeOutSpec = androidx.compose.animation.core.tween(100), placementSpec = null)) {
+                        if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages, readingInteraction)
+                        else ChatBubble(messages.first(), resolve, readingInteraction)
+                    }
                 }
             }
 
         }
     }, composer = {
-        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/')) { follow = true }
+        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/')) { expansionActive = false; follow = true }
     })
 }
 private enum class ChatScrollRequest { UPDATE, SNAP, JUMP }

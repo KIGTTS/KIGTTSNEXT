@@ -87,7 +87,7 @@ def main():
             if not args.resume_artifacts:
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                     allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
-                    token=token, commit_message="Add signed API13 assistant and Android preview artifacts")
+                    token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android preview artifacts")
             for name in upload:
                 actual = remote_hash(name)
                 if actual != files[name]:

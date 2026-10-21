@@ -18,3 +18,19 @@
 交互参考官方[ZCode仓库](https://github.com/zai-org/ZCode)与[DeepSeek Harness仓库](https://github.com/deepseek-ai/deepseek-harness)：将会话记录、执行状态、工具回执和UI呈现分开。此处为原生宿主与独立插件的实现，无复制其界面代码，无子代理。
 
 本批按用户要求仅编译和安装，未运行新增自动测试或真机交互验收。
+
+## 0.9.11 本地图像处理
+
+`image_edit`读取助手自己workspace/imports的真实位图，生成新的PNG；支持像素裁剪、90°旋转/镜像、连通种子填色、亮度/对比度/饱和度、边缘连通纯色抠图。抠图是颜色容差算法，不是人物语义分割；不会自动上传照片。单图最多800万像素，先用`resize_image`采样缩放更大的原图。工具附实际结果图片，复杂背景应如实说明限制。
+
+`image_edit(operation=vectorize)`将已有透明图片的alpha轮廓转为单色SVG，保留透明孔洞；不是多色照片矢量重建。`svg_edit`可改viewBox裁剪或调整填色/描边，并通过宿主返回真实PNG预览。SVG拒绝DOCTYPE、实体、脚本、外部图像/样式引用。生成文件都在workspace，指定destination必须不存在；原图始终保留。
+
+示例：先`read_quick_image(mediaId)`复制用户指定图，再`image_edit(path,operation=remove_background,tolerance=24)`，检查返回透明边缘；需要贴纸时把该真实文件交给既有stickers导入接口。无需额外操作审批的本地副本处理，与修改宿主卡片的审核分别处理。
+
+模拟浏览器`devices`读取当前设备的物理像素、逻辑尺寸和DPR；`device=current`、`orientation=portrait/landscape`或显式width/height控制验收尺寸。尺寸为CSS逻辑像素，截图像素与触点坐标需按回执映射。模拟截图对真实WebGL帧读回，不为截图伪造占位画面。原生主界面和模拟注入同一套安全区变量及其兼容别名。
+
+工具参数解码前错误返回`INVALID_ARGUMENTS/executed=false`。完全访问中的结果不明确会返回模型核对原状态/事务，暂停同批依赖操作，不自动重放已有变更。历史查询排除自身回声；需要旧完整源码时使用当前会话的`recover_file(callId,path)`，不能从截断片段拼接或扫描其它会话。API缓存统计只展示供应商真实usage；请求保留稳定前缀，压缩按模型容量预算，不伪造命中率。
+
+## 0.9.12 兼容性补充
+
+分组图标可使用宿主离线Material Symbols目录中的真实名称，通过icon_catalog查询后写入symbol:名称。SVG编辑支持Android解析器，不依赖桌面Xerces扩展；原稿与生成文件分别保留，渲染失败明确返回ok=false、saved=true及具体预览错误，不把仅保存成功当作视觉验收通过。

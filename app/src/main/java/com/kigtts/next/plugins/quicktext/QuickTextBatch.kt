@@ -20,7 +20,7 @@ internal fun planBatch(owner:String,command:QuickTextCommand.Prepare,originalGro
     command.edits.forEach {edit->when(edit) {
         is QuickTextEdit.PutGroup->{val group=edit.group
             requireQuick(group.id.matches(Regex("[a-f0-9-]{36}"))&&group.name.isNotBlank()&&group.name==group.name.trim()&&group.name.length<=80,message="分组名称或标识不合法")
-            requireQuick(CategoryIcon.entries.any {it.name==group.icon}&&groups.none {it.id!=group.id&&it.name==group.name},message="分组图标或名称不合法")
+            requireQuick(CategoryIcon.valid(group.icon)&&groups.none {it.id!=group.id&&it.name==group.name},message="分组图标或名称不合法")
             val at=groups.indexOfFirst {it.id==group.id};if(at<0)groups+=group else groups[at]=group
         }
         is QuickTextEdit.PutEntry->{val item=edit.entry

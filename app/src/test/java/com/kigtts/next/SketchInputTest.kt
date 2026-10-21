@@ -36,6 +36,22 @@ class SketchInputTest {
         state.endStroke()
     }
 
+    @Test fun eraserCursorTracksContactAndClearsOnUpCancelAndRelease() {
+        val state = SketchState().apply { tool = SketchTool.ERASER }
+        val input = SketchInput(state)
+        send(input, MotionEvent.ACTION_DOWN, 40f, 60f)
+        assertEquals(Offset(40f, 60f), state.eraserCursor)
+        send(input, MotionEvent.ACTION_MOVE, 80f, 90f)
+        assertEquals(Offset(80f, 90f), state.eraserCursor)
+        send(input, MotionEvent.ACTION_UP, 80f, 90f)
+        assertNull(state.eraserCursor)
+        send(input, MotionEvent.ACTION_DOWN, 20f, 30f)
+        send(input, MotionEvent.ACTION_CANCEL, 20f, 30f)
+        assertNull(state.eraserCursor)
+        send(input, MotionEvent.ACTION_DOWN, 20f, 30f)
+        input.release(); assertNull(state.eraserCursor)
+    }
+
     @Test fun pressureAndHistoricalSamplesChangeWidthAndAllPenTypesRender() {
         val state = SketchState().apply { penSize = 20f }
         val input = SketchInput(state)

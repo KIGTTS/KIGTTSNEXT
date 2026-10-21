@@ -1,6 +1,8 @@
 package com.kigtts.plugins.debug
 
 import com.kigtts.plugin.api.*
+import kotlinx.serialization.json.*
+import java.io.File
 
 /** UI probes use the public contribution protocol; the host owns their appearance. */
 class UiDebugPlugin(
@@ -12,6 +14,27 @@ class UiDebugPlugin(
     override val descriptor = PluginDescriptor("debug.ui", "界面调试插件", "在指定扩展区域插入指定数量的按钮或菜单项")
     private val counts = UiSlot.entries.associateWith { initialCounts[it]?.coerceIn(0, 20) ?: 0 }.toMutableMap()
     private val styles = UiSlot.entries.associateWith { initialStyles[it] ?: UiButtonStyle.ICON }.toMutableMap()
+    private var configuration: File? = null
+    override suspend fun attach(environment: PluginEnvironment) {
+        val file = environment.storage.file("config/ui-probes.json"); configuration = file
+        if (!file.isFile) return
+        runCatching { PluginJson.parseToJsonElement(file.readText(Charsets.UTF_8)).jsonObject }.getOrNull()?.let { state ->
+            UiSlot.entries.forEach { slot ->
+                counts[slot] = state["counts"]?.jsonObject?.get(slot.name)?.jsonPrimitive?.intOrNull?.coerceIn(0, 20) ?: 0
+                styles[slot] = runCatching { UiButtonStyle.valueOf(state["styles"]?.jsonObject?.get(slot.name)?.jsonPrimitive?.content.orEmpty()) }.getOrDefault(UiButtonStyle.ICON)
+            }
+        }
+    }
+    private fun persist() {
+        val file = configuration ?: return
+        file.parentFile!!.mkdirs()
+        val next = File(file.parentFile, "${file.name}.tmp")
+        next.writeText(buildJsonObject {
+            put("counts", buildJsonObject { counts.forEach { (slot, count) -> put(slot.name, count) } })
+            put("styles", buildJsonObject { styles.forEach { (slot, style) -> put(slot.name, style.name) } })
+        }.toString(), Charsets.UTF_8)
+        java.nio.file.Files.move(next.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+    }
 
     override val contributions: PluginContributions get() = PluginContributions(
         actions = UiSlot.entries.flatMap { slot ->
@@ -20,12 +43,13 @@ class UiDebugPlugin(
                     if (slot == UiSlot.EDITOR_MENU) UiPresentation.MENU_ITEM else UiPresentation.BUTTON, index, styles.getValue(slot))
             }
         },
-        drawerEntries = listOf(DrawerEntry("config", "界面调试", "config", PluginIcon.SETTINGS, settingsPage = true)),
+        settingsEntries = listOf(SettingsEntry("config", "界面调试", "config", PluginIcon.SETTINGS,
+            cardId = "development", cardTitle = "开发与调试", symbol = "bug_report")),
     )
 
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome {
         if (actionId == "reset") {
-            counts.keys.forEach { counts[it] = 0 }; save(counts.toMap())
+            counts.keys.forEach { counts[it] = 0 }; save(counts.toMap()); persist()
             return PluginOutcome.RefreshUi
         }
         val parts = actionId.split("/")
@@ -33,13 +57,13 @@ class UiDebugPlugin(
         if (slot != null && parts.size == 2) {
             if (parts[1] == "style") {
                 styles[slot] = if (styles.getValue(slot) == UiButtonStyle.ICON) UiButtonStyle.ICON_TEXT else UiButtonStyle.ICON
-                saveStyles(styles.toMap())
+                saveStyles(styles.toMap()); persist()
                 return PluginOutcome.RefreshUi
             }
             val delta = when (parts[1]) { "add" -> 1; "remove" -> -1; else -> 0 }
             if (delta != 0) {
                 counts[slot] = (counts.getValue(slot) + delta).coerceIn(0, 20)
-                save(counts.toMap())
+                save(counts.toMap()); persist()
                 return PluginOutcome.RefreshUi
             }
             return PluginOutcome.Menu("调试入口 · " + label(slot), listOf(

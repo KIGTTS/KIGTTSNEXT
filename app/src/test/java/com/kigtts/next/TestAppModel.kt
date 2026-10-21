@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 /** Demo engines and synthetic PCM exist only on the test classpath. */
 fun testAppModel(application: Application) = AppViewModel(application,
-    listOf(PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService(),
+    listOf(testUiDebugPlugin(application), PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService(),
         ListeningPanelPlugin(), VoiceInputPlugin(application.getSharedPreferences("voice-input", 0).getBoolean("enabled", false)) {
             application.getSharedPreferences("voice-input", 0).edit().putBoolean("enabled", it).apply()
         }), object : AudioPlatform {
@@ -28,6 +28,16 @@ fun testAppModel(application: Application) = AppViewModel(application,
             override fun close() {}
         }
     })
+
+/** Only tests inject UI probes. Production discovers the separately installed debug.ui package. */
+private fun testUiDebugPlugin(application: Application): KigPlugin {
+    val debug = application.getSharedPreferences("ui-debug", android.content.Context.MODE_PRIVATE)
+    return com.kigtts.plugins.debug.UiDebugPlugin(
+        UiSlot.entries.associateWith { debug.getInt(it.name, 0) },
+        { counts -> debug.edit().apply { counts.forEach { (slot, count) -> putInt(slot.name, count) } }.apply() },
+        UiSlot.entries.associateWith { if (debug.getBoolean(it.name + "_text", false)) UiButtonStyle.ICON_TEXT else UiButtonStyle.ICON },
+        { styles -> debug.edit().apply { styles.forEach { (slot, style) -> putBoolean(slot.name + "_text", style == UiButtonStyle.ICON_TEXT) } }.apply() })
+}
 
 /** A test-only service facade keeps UI fixtures on the same service-first contract as production. */
 private fun testRecognitionService() = object : KigPlugin {

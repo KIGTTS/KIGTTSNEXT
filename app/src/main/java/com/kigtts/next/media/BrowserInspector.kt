@@ -26,6 +26,7 @@ object BrowserInspector {
             val parent = root.get()?.takeIf { it.isAttachedToWindow } ?: error("请保持KIGTTS在前台以进行网页截图验收")
             val ready = CompletableDeferred<Unit>(); val diagnostics = mutableListOf<String>()
             val web = createBrowserView(context, document, ready = { ready.complete(Unit) }, error = { if (diagnostics.size < 20) diagnostics += it.take(1000) })
+            BrowserSimulation.prepare(web)
             web.alpha = 0f; web.isFocusable = false; web.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             parent.addView(web, 0, ViewGroup.LayoutParams(width, height))
             try {
@@ -33,6 +34,7 @@ object BrowserInspector {
                 web.layout(0, 0, width, height); web.loadUrl(document.url)
                 withTimeout(15_000) {
                     ready.await(); web.applyKigttsTheme()
+                    BrowserSimulation.calibrate(web)
                     // Fonts and page scripts receive a rendering opportunity before the compositor fence.
                     diagnostics += web.awaitBrowserReady()
                     suspendCancellableCoroutine { continuation ->
@@ -45,9 +47,10 @@ object BrowserInspector {
                 // display density. A mismatched Canvas density scales WebView content twice.
                 val bitmap = Bitmap.createBitmap(web.resources.displayMetrics, width, height, Bitmap.Config.ARGB_8888)
                 try {
+                    diagnostics += BrowserCanvasCapture.prepare(web)
                     web.draw(Canvas(bitmap))
                     withContext(Dispatchers.IO) { destination.parentFile!!.mkdirs(); destination.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
-                } finally { bitmap.recycle() }
+                } finally { bitmap.recycle(); BrowserCanvasCapture.restore(web) }
                 BrowserCaptureResult(width, height, diagnostics.toList())
             } finally { parent.removeView(web); web.stopLoading(); web.destroy() }
         } } finally { mutex.unlock() }

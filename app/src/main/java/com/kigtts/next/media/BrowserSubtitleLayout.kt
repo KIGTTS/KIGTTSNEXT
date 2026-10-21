@@ -26,8 +26,8 @@ internal class BrowserSubtitleLayout(context: Context, width: Int, height: Int, 
     fun geometryJson() = JSONObject().put("x", viewport.left).put("y", viewport.top).put("width", viewport.width()).put("height", viewport.height())
         .put("safeTop", safeTop).put("safeBottom", safeBottom).put("simulated", true)
     fun applySafeArea() {
-        // Use actual CSS-to-native ratio, including user display density.
-        web.evaluateJavascript("(()=>{const ratio=(window.visualViewport?.width||innerWidth)/${viewport.width()};const r=document.documentElement;r.style.setProperty('--kigtts-safe-top',(${safeTop}*ratio)+'px');r.style.setProperty('--kigtts-safe-bottom',(${safeBottom}*ratio)+'px');r.style.setProperty('--kigtts-safe-left',(12*${unit}*ratio)+'px');r.style.setProperty('--kigtts-safe-right',(12*${unit}*ratio)+'px');window.dispatchEvent(new Event('resize'));})()", null)
+        web.evaluateJavascript(WebSafeArea.script(safeTop.toInt(), (12 * unit).toInt(), safeBottom.toInt(),
+            (12 * unit).toInt(), viewport.width(), viewport.height()), null)
     }
     private fun color(token: String, fallback: String) = Color.parseColor(WebThemeState.current.colors[token] ?: fallback)
     private fun panel(canvas: Canvas, rect: RectF, token: String) { paint.color = color(token, "#e2eded"); canvas.drawRoundRect(rect, 24 * unit, 24 * unit, paint) }

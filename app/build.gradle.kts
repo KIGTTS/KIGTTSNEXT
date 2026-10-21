@@ -103,7 +103,7 @@ dependencies {
     testImplementation(project(":engine-plugins:quick-text-tools"))
     testImplementation(project(":engine-plugins:cloud-agent"))
     testImplementation(project(":engine-plugins:lua-runtime"))
-    implementation(project(":plugins:debug-ui"))
+    testImplementation(project(":plugins:debug-ui"))
     testImplementation(project(":plugins:listening-panel"))
     testImplementation(project(":plugins:voice-input"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))

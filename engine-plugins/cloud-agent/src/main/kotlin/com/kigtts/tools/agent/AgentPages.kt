@@ -32,11 +32,14 @@ internal fun agentPage(id: String, store: AgentStore, runner: AgentRunner, secre
 }
 internal fun clippedMessage(text: String, limit: Int) = if (text.length <= limit) text else "较长内容仅显示结尾，可导出完整会话\n\n" + text.takeLast(limit)
 /** Snapshots include several pages and must stay below the SDK's 512 KiB Binder budget. */
-internal fun visibleMessages(messages: List<AgentMessage>): List<AgentMessage> {
-    var budget = 40 * 1024
-    val calls = messages.flatMap { it.calls }.associateBy { it.id }
+internal fun visibleMessageCost(message: AgentMessage, calls: Map<String, ToolCall>): Int =
+    message.content.takeLast(16 * 1024).length + message.reasoning.takeLast(8 * 1024).length + message.summary.length +
+        calls[message.toolCallId]?.arguments.orEmpty().take(8000).length + message.images.sumOf { it.path.length + it.description.length } + 128
+internal fun visibleMessages(messages: List<AgentMessage>, maximum: Int = 40 * 1024,
+    calls: Map<String, ToolCall> = messages.flatMap { it.calls }.associateBy { it.id }): List<AgentMessage> {
+    var budget = maximum
     return messages.takeLast(100).asReversed().takeWhile { message ->
-        budget -= message.content.takeLast(16 * 1024).length + message.reasoning.takeLast(8 * 1024).length + message.summary.length + calls[message.toolCallId]?.arguments.orEmpty().take(8000).length + message.images.sumOf { it.path.length + it.description.length } + 128
+        budget -= visibleMessageCost(message, calls)
         budget >= 0
     }.asReversed()
 }

@@ -16,12 +16,7 @@ internal class AgentImages(private val storage: PluginStorage) {
         require(bounds.outWidth > 0 && bounds.outHeight > 0) { "无法读取此图片，请选择PNG、JPEG或WebP图片" }
         var sample = 1; while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1536) sample *= 2
         val bitmap = requireNotNull(BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample }))
-        val orientation = runCatching { android.media.ExifInterface(file).getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, android.media.ExifInterface.ORIENTATION_NORMAL) }.getOrDefault(1)
-        val matrix = android.graphics.Matrix().apply { when (orientation) {
-            2 -> setScale(-1f, 1f); 3 -> setRotate(180f); 4 -> setScale(1f, -1f)
-            5 -> { setRotate(90f); postScale(-1f, 1f) }; 6 -> setRotate(90f); 7 -> { setRotate(-90f); postScale(-1f, 1f) }; 8 -> setRotate(-90f)
-        } }
-        val rotated = if (matrix.isIdentity) bitmap else Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+        val rotated = orientAgentBitmap(bitmap, file)
         val flattened = Bitmap.createBitmap(rotated.width, rotated.height, Bitmap.Config.ARGB_8888)
         android.graphics.Canvas(flattened).apply { drawColor(android.graphics.Color.WHITE); drawBitmap(rotated, 0f, 0f, null) }
         val bytes = ByteArrayOutputStream()

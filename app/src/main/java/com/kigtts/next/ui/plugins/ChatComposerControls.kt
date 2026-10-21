@@ -16,6 +16,7 @@ import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.plugins.control.LocalAgentAccessPolicy
 import com.kigtts.plugin.api.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable internal fun ChatComposerControls(chat: PageBlock.Chat, enabled: Boolean, owner: String = "",
     invoke: (String, Map<String, String>) -> Unit) {
     val authority = LocalAgentAccessPolicy.current
@@ -40,9 +41,14 @@ import com.kigtts.plugin.api.*
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(approval.title, style = MaterialTheme.typography.titleSmall)
                         if (approval.detail.isNotBlank()) Text(approval.detail, style = MaterialTheme.typography.bodySmall, maxLines = 5)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            FilledTonalButton(onClick = feedbackClick { invoke(approval.approveAction, mapOf("_agentApprove" to "true")) }, enabled = enabled) { Text("批准并继续") }
-                            TextButton(onClick = feedbackClick { invoke(approval.rejectAction, emptyMap()) }, enabled = enabled) { Text("拒绝") }
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Button(onClick = feedbackClick { invoke(approval.approveAction, mapOf("_agentApprove" to "true")) }, enabled = enabled,
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp, pressedElevation = 1.dp)) {
+                                Icon(Icons.Default.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("批准并继续")
+                            }
+                            TextButton(onClick = feedbackClick { invoke(approval.rejectAction, emptyMap()) }, enabled = enabled) {
+                                Icon(Icons.Default.Close, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("拒绝")
+                            }
                             approval.reviewAction?.let { action -> TextButton(onClick = feedbackClick { invoke(action, emptyMap()) }, enabled = enabled) { Text("查看详情") } }
                         }
                     }

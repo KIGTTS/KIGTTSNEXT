@@ -52,7 +52,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
                         selected.warning?.let(model::message)
                         delivered = if (selection.fromCamera) model.cardCapture.prepareFraming(destination, selected.photo.original, selected.photo.displayFile, selected.photo.motion)
                         else model.cardCapture.captured(destination, selected.photo.original, selected.photo.displayFile,
-                            selected.photo.format, print = destination.cardId == null, motion = selected.photo.motion)
+                            selected.photo.format, print = destination.cardId == null, motion = selected.photo.motion, fromCamera = false)
                     }
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (failure: Exception) { model.message(failure.message ?: "照片未能导入，请重试") }

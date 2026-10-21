@@ -2,7 +2,6 @@ package com.kigtts.next.manager
 
 import android.app.Application
 import com.kigtts.next.state.AppViewModel
-import com.kigtts.next.state.builtinPlugins
 import com.kigtts.next.state.editingCardId
 import com.kigtts.plugin.runtime.PluginManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +12,7 @@ import java.lang.ref.WeakReference
 
 /** The UI and external manager must share exactly one worker owner in the main process. */
 class HostPluginRuntime private constructor(private val application: Application) {
-    val manager = PluginManager(application, builtinPlugins(application))
+    val manager = PluginManager(application, emptyList())
     val recovery = com.kigtts.next.recovery.CrashRecovery(application)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
     val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)

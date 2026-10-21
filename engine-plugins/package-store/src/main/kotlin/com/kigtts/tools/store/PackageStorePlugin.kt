@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 class PackageStorePlugin : KigPlugin {
-    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "从多个源浏览和管理扩展", "0.9.3")
+    override val descriptor = PluginDescriptor("tools.package-store", "插件商店", "发现让 KIGTTS 更好用的插件", "0.10.0")
     private lateinit var environment: PluginEnvironment
     private lateinit var sources: SourceStore
     private lateinit var jobs: StoreJobs
@@ -25,13 +25,14 @@ class PackageStorePlugin : KigPlugin {
     override suspend fun attach(environment: PluginEnvironment) {
         this.environment = environment
         sources = SourceStore(environment.storage); device = StoreDevice(Build.VERSION.SDK_INT, Build.SUPPORTED_ABIS.toSet())
-        downloader = PackageDownloader(environment.storage, HttpsStoreTransport { environment.requirePermission("network") })
-        jobs = StoreJobs(environment, sources, device, downloader, ArtifactInspector(environment.storage), ::changed)
+        val transport = HttpsStoreTransport { environment.requirePermission("network") }
+        downloader = PackageDownloader(environment.storage, transport)
+        jobs = StoreJobs(environment, sources, device, downloader, ArtifactInspector(environment.storage), ::changed,
+            artwork = CatalogArtworkCache(environment.storage, transport))
         jobs.reloadInstalled() // Host metadata only; no source is contacted until the user refreshes.
     }
     override val contributions = PluginContributions(settingsEntries = listOf(
-        SettingsEntry("store", "插件商店", "store", PluginIcon.MENU, summary = "浏览与安装扩展"),
-        SettingsEntry("sources", "包源", "sources", PluginIcon.SETTINGS, summary = "添加与管理来源", order = 1)),
+        SettingsEntry("store", "插件商店", "store", PluginIcon.NONE, summary = "发现、安装与更新插件", symbol = "storefront")),
         automationActions = listOf("add-source"), sourceAction = "add-source")
     override fun page(pageId: String, context: PluginContext) = storePage(pageId, sources, jobs, view.copy(), device)
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome = actions.withLock {
@@ -47,7 +48,10 @@ class PackageStorePlugin : KigPlugin {
             "source-address" -> propose(value)
             "source-confirm" -> { check(!jobs.busy); val source = sources.confirm(id); jobs.refresh(source.key); PluginOutcome.OpenPage("sources") }
             "source-cancel" -> { sources.cancelCandidate(); PluginOutcome.OpenPage("sources") }
-            "sources" -> PluginOutcome.OpenPage("sources")
+            "sources", "store-settings", "downloads", "library", "updates" -> { jobs.reloadInstalled(); PluginOutcome.OpenPage(prefix) }
+            "manage-plugins" -> { val reply = requireNotNull(environment.appBroker).request(AppCommand.Navigate("plugins")); if (reply is AppReply.Failure) PluginOutcome.Message(reply.message) else PluginOutcome.RefreshUi }
+            "browse" -> { view.offset = 0; PluginOutcome.OpenPage("store") }
+            "category" -> { view.category = if (id == "all") null else sources.entries().map { it.item.category }.first { categoryKey(it) == id }; view.offset = 0; PluginOutcome.RefreshUi }
             "refresh" -> { jobs.refresh(id.ifBlank { null }); PluginOutcome.RefreshUi }
             "source-toggle" -> { check(!jobs.busy); sources.toggle(id); view.offset = 0; PluginOutcome.RefreshUi }
             "source-remove" -> PluginOutcome.Menu("移除此源？", listOf(PageAction("source-remove-confirm/$id", "移除", PluginIcon.CLOSE)))
@@ -55,20 +59,19 @@ class PackageStorePlugin : KigPlugin {
             "sources-reorder" -> { sources.reorder(PluginJson.decodeFromString(requireNotNull(context.inputs["order"]))); PluginOutcome.RefreshUi }
             "browse-source" -> { view.source = id; view.offset = 0; PluginOutcome.OpenPage("store") }
             "source-select" -> PluginOutcome.Menu("来源", listOf(PageAction("source-filter/all", "全部源")) + sources.records().filter { it.enabled }.map { PageAction("source-filter/${it.key}", it.name) })
-            "source-filter" -> { view.source = id.takeUnless { it == "all" }; view.offset = 0; PluginOutcome.RefreshUi }
+            "source-filter" -> { view.source = id.takeUnless { it == "all" }; view.offset = 0; PluginOutcome.OpenPage("store") }
             "search" -> PluginOutcome.TextInput("搜索插件", "search-save", view.query)
             "search-save" -> { require(value.length <= 100); view.query = value; view.offset = 0; PluginOutcome.RefreshUi }
-            "filter" -> { require(id in listOf("all", "installed", "updates")); view.filter = id; view.offset = 0; PluginOutcome.RefreshUi }
-            "next" -> { view.offset += 40; PluginOutcome.RefreshUi }
-            "previous" -> { view.offset = (view.offset - 40).coerceAtLeast(0); PluginOutcome.RefreshUi }
+            "filter" -> { require(id in listOf("all", "installed", "updates")); view.filter = id; view.offset = 0; PluginOutcome.OpenPage(when(id) { "installed" -> "library"; "updates" -> "updates"; else -> "store" }) }
+            "next" -> { view.offset += 12; PluginOutcome.RefreshUi }
+            "previous" -> { view.offset = (view.offset - 12).coerceAtLeast(0); PluginOutcome.RefreshUi }
             "package" -> {
                 val sourceKey = id.substringBefore('/'); val packageId = id.substringAfter('/')
                 view.selected = sources.entries().first { it.source.key == sourceKey && it.item.id == packageId }
                 view.selectedVersion = view.selected!!.latest(device)?.versionCode; PluginOutcome.OpenPage("package")
             }
-            "versions" -> PluginOutcome.Menu("选择版本", requireNotNull(view.selected).item.releases.sortedByDescending { SemVersion.parse(it.version) }
-                .map { PageAction("version/${it.versionCode}", it.version + if (it.compatible(device)) "" else "（不兼容）") })
-            "version" -> { requireNotNull(view.selected).item.releases.single { it.versionCode == id.toInt() }; view.selectedVersion = id.toInt(); PluginOutcome.RefreshUi }
+            "versions", "package-info" -> PluginOutcome.OpenPage(prefix)
+            "version" -> { requireNotNull(view.selected).item.releases.single { it.versionCode == id.toInt() && it.compatible(device) }; view.selectedVersion = id.toInt(); PluginOutcome.OpenPage("package") }
             "prepare" -> {
                 check(awaiting == null) { "请先处理上一份安装计划" }
                 jobs.prepare(requireNotNull(view.selected), requireNotNull(view.selectedVersion)); PluginOutcome.OpenPage("install-plan")

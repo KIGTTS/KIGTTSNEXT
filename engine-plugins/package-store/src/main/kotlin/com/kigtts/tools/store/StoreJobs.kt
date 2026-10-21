@@ -10,7 +10,8 @@ data class PreparedInstall(val plan: DependencyPlan, val artifacts: List<Pair<Pl
 /** Source metadata and packages preload in IO; pages expose stable snapshots without replaying entry animation. */
 class StoreJobs(private val environment: PluginEnvironment, private val sources: SourceStore, private val device: StoreDevice,
     private val downloader: PackageDownloader, private val inspector: ArtifactInspector, private val changed: () -> Unit,
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)) {
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    val artwork: CatalogArtworkCache? = null) {
     @Volatile private var active: Job? = null
     @Volatile var status: String = ""; private set
     @Volatile var error: String = ""; private set
@@ -22,7 +23,11 @@ class StoreJobs(private val environment: PluginEnvironment, private val sources:
         refreshInstalled()
         val records = if (key == null) sources.records().filter { it.enabled } else listOf(sources.source(key))
         records.forEach { source ->
-            try { sources.fetched(source.key, downloader.catalog(source)) }
+            try {
+                val catalog = downloader.catalog(source)
+                sources.fetched(source.key, catalog)
+                artwork?.preload(catalog)
+            }
             catch (cancel: CancellationException) { throw cancel }
             catch (failure: Exception) {
                 currentCoroutineContext().ensureActive()

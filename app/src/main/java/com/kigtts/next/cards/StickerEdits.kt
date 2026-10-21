@@ -20,9 +20,11 @@ internal object StickerEdits {
             stickerRequire(card.frameStyleId.matches(Regex("[a-z][a-z0-9.-]{1,95}"))&&!card.frameStyleId.contains(".."),message="边框标识不合法")
             stickerRequire(card.imageId==null||card.imageId in images,message="拍立得图片不存在")
             stickerRequire(card.originalImageId==null||card.originalImageId in images,message="拍立得原始图片不存在");unique(card.layers.map {it.id})
+            stickerRequire(card.layers.count { it.kind == CardLayerKind.PHOTO_INFO } <= 8,message="附加信息最多8项")
             card.layers.forEach {layer->stickerRequire(layer.x.isFinite()&&layer.y.isFinite()&&layer.width.isFinite()&&layer.rotation.isFinite()&&layer.x in 0.0..1.0&&layer.y in 0.0..1.0&&layer.width in .01..2.0&&layer.rotation in -36000.0..36000.0&&layer.color in 0..0xFFFFFFFFL,message="图层位置或尺寸不合法")
                 when(layer.kind) {CardLayerKind.IMAGE->stickerRequire(layer.imageId in images&&layer.text.toByteArray(Charsets.UTF_8).size<=2048,message="贴纸图片不存在或内容过长")
-                    CardLayerKind.TEXT->stickerRequire(layer.imageId==null&&layer.text.isNotBlank()&&layer.text.length<=2048,message="贴纸文字不合法")}}
+                    CardLayerKind.TEXT->stickerRequire(layer.imageId==null&&layer.text.isNotBlank()&&layer.text.length<=2048,message="贴纸文字不合法")
+                    CardLayerKind.PHOTO_INFO->stickerRequire(layer.imageId==null&&layer.text.length<=2048,message="附加信息不合法")}}
         }
     }
     fun apply(before:StickerSnapshot,edits:List<StickerEdit>):StickerSnapshot {

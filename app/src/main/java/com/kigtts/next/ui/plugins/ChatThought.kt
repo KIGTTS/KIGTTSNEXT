@@ -17,14 +17,14 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.*
 
-@Composable internal fun ChatThought(message: ChatMessage) {
+@Composable internal fun ChatThought(message: ChatMessage, readingInteraction: () -> Unit = {}) {
     val thinking = message.thinking
     val details = message.reasoning.isNotBlank() || message.summary.isNotBlank()
     if (!thinking && !details && !message.hasReasoning) return
     var expanded by remember(message.id) { mutableStateOf(false) }
     Column {
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("chat-thought/" + message.id)
-            .clickable(enabled = details, onClick = feedbackClick { expanded = !expanded }),
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).testTag("chat-thought/" + message.id)
+            .clickable(enabled = details, onClick = feedbackClick { readingInteraction(); expanded = !expanded }),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (thinking) ContainedLoadingIndicator(Modifier.size(28.dp))
             else Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

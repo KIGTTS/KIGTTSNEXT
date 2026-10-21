@@ -70,7 +70,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     fun confirmFraming(destination: Destination.CardCamera, format: PolaroidFormat, x: Double, y: Double, zoom: Double): Boolean {
         val frame = framing.value?.takeIf { it.requestId == destination.requestId } ?: return false
         require(x in 0.0..1.0 && y in 0.0..1.0 && zoom in 1.0..8.0)
-        return captured(destination, frame.original, frame.display, format, print = destination.cardId == null, motion = frame.motion, photoX = x, photoY = y, photoZoom = zoom)
+        return captured(destination, frame.original, frame.display, format, print = destination.cardId == null, motion = frame.motion, fromCamera = false, photoX = x, photoY = y, photoZoom = zoom)
     }
     private fun cameraRetained(requestId: String, destination: Destination): Boolean =
         destination is Destination.CardCamera && destination.requestId == requestId && destination.cardId == null ||
@@ -126,7 +126,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         return true
     }
     fun captured(destination: Destination.CardCamera, original: File, display: File, format: PolaroidFormat,
-        print: Boolean = false, motion: CameraMotionClip? = null, photoX: Double = .5, photoY: Double = .5, photoZoom: Double = 1.0): Boolean {
+        print: Boolean = false, motion: CameraMotionClip? = null, fromCamera: Boolean = true, photoX: Double = .5, photoY: Double = .5, photoZoom: Double = 1.0): Boolean {
         fun discardFiles() { original.delete(); if (display != original) display.delete(); motion?.video?.delete() }
         if (pending) {
             listOfNotNull(original, display, motion?.video).filterNot { it.canonicalPath in inFlightFiles }.forEach { it.delete() }
@@ -155,11 +155,13 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                 val frameStyleId = "instax.${format.name.lowercase()}.classic"
                 if (state().destination != destination) return@launch
                 if (destination.cardId == null) {
+                    val facts = PolaroidPhotoFacts.enrich(stickers.context,
+                        withContext(Dispatchers.IO) { PolaroidPhotoFacts.read(original, fromCamera = fromCamera) }, cards.designs.requiredFields())
                     val card = withContext(Dispatchers.IO) {
                         synchronized(stickers) {
                             val targetAlbum = desiredAlbum.takeIf { id -> cards.albums.value.any { it.id == id } } ?: CardRepository.DEFAULT_ALBUM
-                            cards.create(PolaroidCard(title = "", imageId = imported.second.id,
-                                originalImageId = imported.first.id, frameStyleId = frameStyleId, photoX = photoX, photoY = photoY, photoZoom = photoZoom), targetAlbum)
+                            cards.createPhoto(PolaroidCard(title = "", imageId = imported.second.id,
+                                originalImageId = imported.first.id, frameStyleId = frameStyleId, photoX = photoX, photoY = photoY, photoZoom = photoZoom), facts, targetAlbum)
                         }
                     }
                     if (state().destination == destination && print) {

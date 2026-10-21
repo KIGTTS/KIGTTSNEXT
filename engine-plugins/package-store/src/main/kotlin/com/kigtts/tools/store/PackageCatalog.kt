@@ -12,9 +12,11 @@ import java.net.URI
     val apiVersion: Int = PLUGIN_API_VERSION, val minSdk: Int = 26, val abis: List<String> = emptyList(), val notes: String = "",
     val dependencies: Map<String, String> = emptyMap())
 @Serializable data class CatalogPackage(val id: String, val name: String, val summary: String, val releases: List<PackageRelease>,
-    val category: String = "扩展", val tags: List<String> = emptyList(), val license: String = "MIT", val homepage: String = "")
+    val category: String = "扩展", val tags: List<String> = emptyList(), val license: String = "MIT", val homepage: String = "",
+    val icon: CatalogIcon? = null, val description: String = "", val thumbnails: List<String> = emptyList())
 @Serializable data class PackageCatalog(val schemaVersion: Int = 1, val id: String, val name: String,
-    val packages: List<CatalogPackage>, val description: String = "", val homepage: String = "", val updatedAt: String = "")
+    val packages: List<CatalogPackage>, val description: String = "", val homepage: String = "", val updatedAt: String = "",
+    val icon: CatalogIcon? = null, val readme: String = "", val assets: Map<String, CatalogImage> = emptyMap())
 
 object CatalogCodec {
     const val MAX_BYTES = 4 * 1024 * 1024
@@ -28,6 +30,7 @@ object CatalogCodec {
     fun validate(catalog: PackageCatalog) {
         require(catalog.schemaVersion == 1) { "源目录格式版本不支持" }
         require(ID.matches(catalog.id) && catalog.name.length in 1..80 && catalog.description.length <= 1000)
+        validateArtwork(catalog)
         if (catalog.homepage.isNotEmpty()) https(catalog.homepage)
         require(catalog.packages.size <= 500 && catalog.packages.map { it.id }.distinct().size == catalog.packages.size) { "源内包 ID 重复或数量超过 500" }
         catalog.packages.forEach { item ->

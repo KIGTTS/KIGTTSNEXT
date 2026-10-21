@@ -16,6 +16,8 @@ import org.commonmark.ext.task.list.items.TaskListItemMarker
     MarkdownNodes(blocks, small)
 }
 
+internal val LocalMarkdownImage = staticCompositionLocalOf<(@Composable (String, String) -> Unit)?> { null }
+
 @Composable private fun MarkdownBlocks(parent: Node, small: Boolean, depth: Int = 0) {
     MarkdownNodes(remember(parent) { parent.markdownChildren() }, small, depth)
 }
@@ -29,7 +31,12 @@ import org.commonmark.ext.task.list.items.TaskListItemMarker
     val style = if (small) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge
     val color = MaterialTheme.colorScheme.primary
     when (node) {
-            is Paragraph -> Text(remember(node, color) { markdownInline(node, color) }, style = style)
+            is Paragraph -> {
+                val image = node.firstChild as? Image
+                val renderer = LocalMarkdownImage.current
+                if (image != null && image.next == null && renderer != null) renderer(image.destination, markdownInline(image, color).text)
+                else Text(remember(node, color) { markdownInline(node, color) }, style = style)
+            }
             is Heading -> Text(remember(node, color) { markdownInline(node, color) }, style = when (node.level) {
                 1 -> MaterialTheme.typography.headlineSmall; 2 -> MaterialTheme.typography.titleLarge
                 3 -> MaterialTheme.typography.titleMedium; else -> MaterialTheme.typography.titleSmall

@@ -5,7 +5,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 
 data class ToolResult(val content: String, val reviewToken: String? = null, val pause: Boolean = false,
-    val summary: String? = null, val reviewKind: ReviewKind = ReviewKind.QUICK_TEXT, val transactionId: String? = null, val images: List<AgentImage> = emptyList())
+    val summary: String? = null, val reviewKind: ReviewKind = ReviewKind.QUICK_TEXT, val transactionId: String? = null, val images: List<AgentImage> = emptyList(),
+    val reconcile: Boolean = false)
 
 /** Data contracts are decoded by the SDK, so calls cannot invent owners or bypass host permissions. */
 class AgentTools(private val environment: PluginEnvironment, private val historyReader: () -> Conversation? = { null }, private val fullAccess: () -> Boolean = { false }) {
@@ -18,11 +19,15 @@ class AgentTools(private val environment: PluginEnvironment, private val history
     private val downloads = AgentDownload(environment)
     private val browser = AgentBrowser(environment)
     private val imageTools = AgentImageTools(environment)
+    private val imageEditing = AgentImageEditing(environment)
+    private val vectorEditing = AgentVectorEditing(environment)
+    private val history = AgentHistoryTools(environment.storage, historyReader)
     val schemas: JsonArray = buildJsonArray {
-        add(namedTool("conversation_history", "读取当前正在执行会话的完整历史（包括被上下文窗口省略的旧记录），只读。offset为消息序号，limit最多20；返回nextOffset和total。长任务继续前核对已有回执，不重放未知结果的修改。", emptyList(), "offset" to "integer", "limit" to "integer"))
+        add(namedTool("conversation_history", "只读查询当前执行会话的原始历史，排除历史查询回声。优先query按callId、工具名、路径或关键词定向查找，不从头反复扫描。offset为过滤后结果偏移，limit最多20；返回nextOffset/total和原position。正文/参数截断会标记；旧write_file完整源码可用recover_file恢复，不从截断片段拼接。", emptyList(), "offset" to "integer", "limit" to "integer", "query" to "string"))
+        add(namedTool("recover_file", "从当前会话真实write_file调用恢复完整原始text到workspace/文件，用于错误写入后的恢复。callId从本会话回执或conversation_history查询取得，不能读取其它会话。只恢复原文，不猜测截断内容。", listOf("callId", "path"), "callId" to "string", "path" to "string"))
         add(browserToolSchema)
         quickToolSchemas().forEach { add(it) }; visualToolSchemas().forEach { add(it) }
-        imageToolSchemas().forEach { add(it) }
+        imageToolSchemas().forEach { add(it) }; imageEditingSchemas().forEach { add(it) }; vectorEditingSchemas().forEach { add(it) }
         add(namedTool("download_resource", "从公开HTTPS下载图片/字体等页面资源到本助手workspace/，最多32MiB，不携带供应商密钥，不执行文件，目标须不存在。返回真实路径/MIME/字节数/SHA-256；可传sha256校验。随后用publish-page打包本地资源，离线可用。尊重用户用途与素材许可。", listOf("url", "path"), "url" to "string", "path" to "string", "sha256" to "string"))
         add(tool("create_page", "创建可用的HTML网页快捷文本。自动发布index.html、关联附件并提交PAGE卡片；html为完整HTML，title为缩略标题，text为字幕，groupId为空时使用当前分组。", "html", stringSchema(), "title" to stringSchema(), "text" to stringSchema(), "groupId" to stringSchema()))
         add(tool("lua", "查询/调试Lua插件。operation=list/read/test/validate/enable/run；project是实际ID，action为运行的脚本action，input为字符串。先list取ID。read返回源码/版本/权限/error，可用offset/limit分页，按nextOffset读完。test/validate返回ok/phase/line/error；报错应读源码定位修复。运行结果outcomeUnknown表示可能已有副作用，先核对状态。修改、启用、执行需授权。", "operation", stringSchema(), "project" to stringSchema(), "action" to stringSchema(), "input" to stringSchema(), "offset" to stringSchema(), "limit" to stringSchema()))
@@ -38,20 +43,16 @@ class AgentTools(private val environment: PluginEnvironment, private val history
         add(tool("deliver_lua", "将draft_lua返回的path交给runtime.lua校验并安装启用。请求批准模式先征得用户同意，完全访问则直接安装，必须按completed回执判断结果。", "path", stringSchema()))
     }
     suspend fun execute(call: ToolCall): ToolResult {
-        val args = PluginJson.parseToJsonElement(call.arguments).jsonObject
+        val args = toolInput { PluginJson.parseToJsonElement(call.arguments).jsonObject }
         return when (call.name) {
-            "conversation_history" -> {
-                val conversation = requireNotNull(historyReader()) { "当前无执行中的会话" }
-                val offset = (args["offset"]?.jsonPrimitive?.intOrNull ?: 0).coerceIn(0, conversation.messages.size)
-                val limit = (args["limit"]?.jsonPrimitive?.intOrNull ?: 10).coerceIn(1, 20)
-                val items = conversation.messages.drop(offset).take(limit)
-                ToolResult(buildJsonObject { put("total", conversation.messages.size); put("nextOffset", offset + items.size)
-                    put("messages", PluginJson.encodeToJsonElement(items.map { it.copy(content = it.content.take(12000), reasoning = "") })) }.toString())
-            }
+            "conversation_history" -> history.query(args)
+            "recover_file" -> history.recover(args)
             "browser" -> browser.execute(args)
             "download_resource" -> downloads.download(args.string("url"), args.string("path"), args["sha256"]?.jsonPrimitive?.content?.takeIf(String::isNotBlank))
             "list_quick_text", "read_quick_text", "edit_quick_text", "read_page_file", "write_page_file", "write_quick_image" -> quick.execute(call, args)
             "image_search", "download_image", "read_quick_image" -> imageTools.execute(call, args)
+            "image_edit" -> imageEditing.execute(call, args)
+            "resize_image", "svg_edit" -> vectorEditing.execute(call, args)
             "web_ui_guide", "browser_screenshot", "read_image", "send_image", "icon_catalog", "render_svg", "import_icon" -> visual.execute(call, args)
             "create_page" -> pages.create(call.id, args)
             "lua" -> {
@@ -62,15 +63,15 @@ class AgentTools(private val environment: PluginEnvironment, private val history
             "web_search" -> webResult { environment.requirePermission("network"); AgentWebTools.search(args.string("query")) }
             "web_fetch" -> webResult { environment.requirePermission("network"); AgentWebTools.fetch(args.string("url")) }
             "app" -> {
-                val command = PluginJson.decodeFromJsonElement<AppCommand>(args.getValue("command"))
+                val command = decodeToolCommand<AppCommand>(args.getValue("command"))
                 // Resource installation has its own explicit path and review workflow.
                 require(command !is AppCommand.DeliverResource) { "请使用 deliver_lua 送交脚本审核" }
                 val reply = requireNotNull(environment.appBroker) { "宿主未授予操作能力" }.request(command)
                 ToolResult(PluginJson.encodeToString(reply))
             }
             "quick_text" -> {
-                val command = PluginJson.decodeFromJsonElement<QuickTextCommand>(args.getValue("command"))
-                validateResources(command)
+                val command = decodeToolCommand<QuickTextCommand>(args.getValue("command"))
+                toolInput { validateResources(command) }
                 val reply = requireNotNull(environment.quickTextBroker) { "宿主未授予快捷文本能力" }.request(command)
                 val token = (reply as? QuickTextReply.Failure)?.takeIf { it.code == QuickTextError.CONFIRMATION_REQUIRED }?.reviewToken
                     ?: (command as? QuickTextCommand.Commit)?.token?.takeIf { reply is QuickTextReply.Failure && reply.code == QuickTextError.CONFIRMATION_REQUIRED }
@@ -83,9 +84,13 @@ class AgentTools(private val environment: PluginEnvironment, private val history
                 else result
             }
             "write_file" -> {
-                val path = args.string("path"); require(path.startsWith("workspace/"))
-                val text = args.string("text"); require(text.toByteArray(Charsets.UTF_8).size <= 512 * 1024)
-                val file = environment.storage.file(path); file.parentFile?.mkdirs(); file.writeText(text, Charsets.UTF_8)
+                val path = args.string("path"); val text = args.string("text")
+                val file = toolInput {
+                    require(path.startsWith("workspace/")) { "文件只能写入workspace/，请补齐路径前缀" }
+                    require(text.toByteArray(Charsets.UTF_8).size <= 512 * 1024) { "单个文本文件超过512KiB" }
+                    environment.storage.file(path)
+                }
+                file.parentFile?.mkdirs(); file.writeText(text, Charsets.UTF_8)
                 ToolResult(buildJsonObject { put("resource", PluginJson.encodeToJsonElement(PluginResource(path))); put("bytes", file.length()) }.toString())
             }
             "read_file" -> {
@@ -117,7 +122,7 @@ class AgentTools(private val environment: PluginEnvironment, private val history
         catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
         catch (error: Exception) { ToolResult(buildJsonObject { put("error", "WEB_UNAVAILABLE"); put("message", error.message?.take(200) ?: "暂时无法联网") }.toString()) }
     fun readOnly(call: ToolCall): Boolean {
-        if (call.name in setOf("conversation_history", "image_search", "download_image", "read_quick_image")) return true
+        if (call.name in setOf("conversation_history", "image_search", "download_image", "read_quick_image", "image_edit", "resize_image", "svg_edit")) return true
         if (call.name == "browser") return runCatching { PluginJson.parseToJsonElement(call.arguments).jsonObject["operation"]?.jsonPrimitive?.content !in setOf("click", "type", "scroll") }.getOrDefault(false)
         if (call.name in setOf("download_resource", "icon_catalog", "render_svg", "import_icon", "web_ui_guide", "browser_screenshot", "read_image", "send_image", "read_file", "list_files", "read_page_file", "list_quick_text", "read_quick_text", "web_search", "web_fetch")) return true
         val args = runCatching { PluginJson.parseToJsonElement(call.arguments).jsonObject }.getOrNull() ?: return true
@@ -197,7 +202,7 @@ class AgentTools(private val environment: PluginEnvironment, private val history
         }
     }
 }
-internal fun JsonObject.string(key: String) = getValue(key).jsonPrimitive.content
+internal fun JsonObject.string(key: String) = toolInput { getValue(key).jsonPrimitive.content }
 private fun stringSchema() = buildJsonObject { put("type", "string") }
 private fun objectSchema() = buildJsonObject { put("type", "object") }
 private fun tool(name: String, description: String, required: String, schema: JsonObject, vararg extra: Pair<String, JsonObject>) = buildJsonObject {
