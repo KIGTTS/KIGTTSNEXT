@@ -45,7 +45,9 @@ class ChatPrimaryActionUiTest {
         val inputs = mutableListOf<Map<String, String>>()
         compose.setContent { KigttsTheme(ThemeSettings()) { ChatInputBar(
             PageBlock.Chat(emptyList(), "send", "stop", imageAction = "image"), true, { null }, { _, data -> inputs += data }) {} } }
+        compose.onNodeWithTag("plugin-chat-image").performTouchInput { click() }
+        assertEquals(listOf(emptyMap<String, String>()), inputs)
         compose.onNodeWithTag("plugin-chat-image").performTouchInput { longClick() }
-        assertEquals(listOf(mapOf("source" to "camera")), inputs)
+        assertEquals(listOf(emptyMap<String, String>(), mapOf("source" to "camera")), inputs)
     }
 }

@@ -21,24 +21,30 @@ def digest(path):
 
 
 def remote_hash(path):
-    result = hashlib.sha256()
-    size = 0
     # Fresh public session: no token, authorization header or SDK cookies.
-    with requests.Session() as public:
-        with public.get(BASE + path + "?view=false&verify=" + str(time.time_ns()), stream=True, timeout=(20, 180)) as response:
-            response.raise_for_status()
-            if urlparse(response.url).scheme != "https":
-                raise ValueError("Non-HTTPS public download")
-            for block in response.iter_content(1024 * 1024):
-                result.update(block)
-                size += len(block)
-    return result.hexdigest(), size
+    for attempt in range(5):
+        result = hashlib.sha256()
+        size = 0
+        with requests.Session() as public:
+            with public.get(BASE + path + "?view=false&verify=" + str(time.time_ns()), stream=True, timeout=(20, 180)) as response:
+                if response.status_code in (404, 429, 502, 503, 504) and attempt < 4:
+                    time.sleep(2 ** attempt)
+                    continue
+                response.raise_for_status()
+                if urlparse(response.url).scheme != "https":
+                    raise ValueError("Non-HTTPS public download")
+                for block in response.iter_content(1024 * 1024):
+                    result.update(block)
+                    size += len(block)
+        return result.hexdigest(), size
+    raise ValueError("Public download did not become available")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", default=".tools/official-plugin-source")
     parser.add_argument("--verify-only", action="store_true")
+    parser.add_argument("--resume-artifacts", action="store_true", help="Artifacts already committed; verify them and publish only the catalog")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     folder = (root / args.folder).resolve()
@@ -78,9 +84,10 @@ def main():
             upload = [name for name in files if name not in old_files]
             token = getpass.getpass("ModelScope token (not saved): ")
             api = HubApi(token=token)
-            api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
-                allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
-                token=token, commit_message="Add signed API13 assistant and Android preview artifacts")
+            if not args.resume_artifacts:
+                api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
+                    allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
+                    token=token, commit_message="Add signed API13 assistant and Android preview artifacts")
             for name in upload:
                 actual = remote_hash(name)
                 if actual != files[name]:
