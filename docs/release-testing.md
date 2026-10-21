@@ -413,3 +413,5 @@ https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Official-Plugins/resolve/master/
 ## 2026-10-21 相机边栏与助手0.9.6安装
 
 Release/R8构建通过；本地开发签名APK SHA256：30990eff559b83994a95be6c0bd89b53d1094b9a3798aafdf59c5fad78619f51。已覆盖安装，助手0.9.6/API13已核对原发布者并升级，保留原数据。完整边栏/特效、图片工具、并发会话及新的会话绑定按用户要求未执行本批自动测试或真机交互验收，不能用先前160项相机/编辑测试替代这些新功能的验证。长按插件按钮热修复的原因来自既有崩溃日志，未在设备上重现。
+
+安装后已同步魔搭官方源：助手0.9.6与安卓APK android/KIGTTSNEXT-api13-20261021-30990eff559b.apk，源码提交aed68dd。发布前核对新增附件，更新清单后匿名核对18份附件及index/README/LICENSE的SHA256，全部一致；历史插件版本保持不变。附件完整性核对不代表新功能已经验收。
