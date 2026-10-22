@@ -35,7 +35,7 @@ def digest(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def remote_hash(path):
+def remote_hash(path, revision="master"):
     # Fresh public session: no token, authorization header or SDK cookies.
     for attempt in range(5):
         result = hashlib.sha256()
@@ -43,6 +43,7 @@ def remote_hash(path):
         try:
             with requests.Session() as public:
                 base = BASE if attempt % 2 == 0 else BASE.replace("https://modelscope.cn/", "https://www.modelscope.cn/")
+                base = base.replace("/resolve/master/", f"/resolve/{revision}/")
                 with public.get(base + path + "?view=false&verify=" + str(time.time_ns()), stream=True, timeout=(15, 30)) as response:
                     if response.status_code in (404, 429, 502, 503, 504) and attempt < 4:
                         time.sleep(2 ** attempt)
@@ -136,11 +137,21 @@ def main():
                 if actual != files[name]:
                     raise ValueError(f"Anonymous integrity check failed: {name}")
                 print(f"Anonymous SHA-256 OK: {name}", flush=True)
+        cached = []
         for name in ("index.json", "README.md", "LICENSE"):
             if remote_hash(name)[0] != digest(folder / name):
-                raise ValueError(f"Anonymous catalog check failed: {name}")
+                # Verify the committed public bytes while the mutable branch URL propagates.
+                entries = HubApi().get_dataset_files(REPO, recursive=False)
+                entry = next((item for item in entries if item.get("Path") == name), {})
+                revision = entry.get("Revision", "")
+                if entry.get("Sha256") != digest(folder / name) or len(revision) != 40 or not all(c in "0123456789abcdef" for c in revision):
+                    raise ValueError(f"Published catalog differs: {name}")
+                if remote_hash(name, revision)[0] != digest(folder / name):
+                    raise ValueError(f"Anonymous commit check failed: {name}")
+                cached.append(name)
+                print(f"Anonymous commit SHA-256 OK: {name}; branch cache pending", flush=True)
         report = {"repo": REPO, "verifiedArtifacts": len(verify_files), "retainedArtifacts": len(files) if args.catalog_only else 0,
-                  "catalogOnly": args.catalog_only, "apkSha256": android["sha256"], "time": time.time()}
+                  "catalogOnly": args.catalog_only, "branchCachePending": cached, "apkSha256": android["sha256"], "time": time.time()}
         (root / ".tools/modelscope-verified.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report), flush=True)
     except Exception as error:
