@@ -47,6 +47,8 @@ class PackageVerifier(private val paths: PluginPaths) {
         require(manifest.abis.isEmpty() || manifest.abis.any { it in Build.SUPPORTED_ABIS }) { "插件不支持此设备架构" }
         val payload = entries.filter { !it.isDirectory && it.name !in setOf(MANIFEST, PUBLIC_KEY, SIGNATURE) }
         require(manifest.files.keys == payload.map { it.name }.toSet()) { "文件清单与插件内容不匹配" }
+        manifest.icon?.validate(manifest.files)
+        manifest.icon?.path?.let { require(zip.getEntry(it).size in 1..1_048_576) { "插件图标过大" } }
         require("code/classes.dex" in manifest.files) { "缺少 Android DEX 入口" }
         val keyBytes = read(PUBLIC_KEY, 8192)
         val key = KeyFactory.getInstance("RSA").generatePublic(X509EncodedKeySpec(keyBytes))

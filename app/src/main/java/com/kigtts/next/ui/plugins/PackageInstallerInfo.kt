@@ -6,7 +6,7 @@ import kotlinx.serialization.json.*
 import java.util.zip.ZipFile
 
 internal data class PackageInstallerInfo(val candidate: PendingPackage, val description: String = "",
-    val author: String = "", val symbol: String? = null, val licenseText: String = "") {
+    val author: String = "", val symbol: String? = null, val licenseText: String = "", val image: android.graphics.Bitmap? = null) {
     val manifest get() = candidate.preview.manifest
     val permissions get() = manifest.capabilities.filter { it in PluginPermissions.sensitive || it in devicePermissions }.distinct()
     companion object { private val devicePermissions = setOf("camera", "microphone", "downloads", "motion-sensors") }
@@ -14,10 +14,10 @@ internal data class PackageInstallerInfo(val candidate: PendingPackage, val desc
 
 /** Read bounded, signed presentation assets only; never run a package to show its installer. */
 internal fun installerInfo(candidate: PendingPackage): PackageInstallerInfo = ZipFile(candidate.file).use { zip ->
-    fun read(path: String, limit: Int): String {
-        if (path !in candidate.preview.manifest.files) return ""
-        val entry = zip.getEntry(path) ?: return ""
-        if (entry.size !in 0..limit.toLong()) return ""
+    fun readBytes(path: String, limit: Int): ByteArray? {
+        if (path !in candidate.preview.manifest.files) return null
+        val entry = zip.getEntry(path) ?: return null
+        if (entry.size !in 0..limit.toLong()) return null
         return zip.getInputStream(entry).use { input ->
             val bytes = ByteArray(limit + 1)
             var size = 0
@@ -26,9 +26,10 @@ internal fun installerInfo(candidate: PendingPackage): PackageInstallerInfo = Zi
                 if (count < 0) break
                 size += count
             }
-            if (size <= limit) String(bytes, 0, size, Charsets.UTF_8) else ""
+            if (size <= limit) bytes.copyOf(size) else null
         }
     }
+    fun read(path: String, limit: Int) = readBytes(path, limit)?.toString(Charsets.UTF_8).orEmpty()
     val metadata = runCatching { PluginJson.parseToJsonElement(read("assets/plugin-info.json", 16_384)).jsonObject }.getOrNull()
     fun field(key: String, limit: Int) = (metadata?.get(key) as? JsonPrimitive)?.contentOrNull?.take(limit).orEmpty()
     val licensePaths = candidate.preview.manifest.files.keys.filter { path ->
@@ -44,5 +45,6 @@ internal fun installerInfo(candidate: PendingPackage): PackageInstallerInfo = Zi
         }
     }.joinToString("\n\n────────\n\n")
     PackageInstallerInfo(candidate, field("description", 8000), field("author", 120),
-        field("symbol", 80).takeIf { it.matches(Regex("[a-z][a-z0-9_]{0,79}")) }, license)
+        candidate.preview.manifest.icon?.symbol ?: field("symbol", 80).takeIf { it.matches(Regex("[a-z][a-z0-9_]{0,79}")) }, license,
+        candidate.preview.manifest.icon?.path?.let { path -> readBytes(path, 1_048_576)?.let { packageIconBitmap(path, it) } })
 }

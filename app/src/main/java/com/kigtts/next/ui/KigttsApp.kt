@@ -45,6 +45,8 @@ fun KigttsApp(model: AppViewModel) {
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    var pluginControls by remember { mutableStateOf<Pair<String, PluginOutcome.Controls>?>(null) }
+    var controlsRevision by remember { mutableIntStateOf(0) }
     var pluginConfirmation by remember { mutableStateOf<Pair<String, PluginOutcome.Confirm>?>(null) }
     var pluginCapture by remember { mutableStateOf<Pair<String, PluginOutcome.CapturePhoto>?>(null) }
     var pluginInput by remember { mutableStateOf<Pair<String, PluginOutcome.TextInput>?>(null) }
@@ -55,7 +57,7 @@ fun KigttsApp(model: AppViewModel) {
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
     val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null
+    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -77,6 +79,7 @@ fun KigttsApp(model: AppViewModel) {
                 }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                is PluginOutcome.Controls -> { pluginControls = plugin to outcome; controlsRevision++ }
                 is PluginOutcome.Confirm -> pluginConfirmation = plugin to outcome
                 is PluginOutcome.CapturePhoto -> pluginCapture = plugin to outcome
                 is PluginOutcome.TextInput -> pluginInput = plugin to outcome
@@ -137,6 +140,8 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.PluginPermissionPrompts(model)
             pluginConfirmation?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginConfirmation(request,
                 { pluginConfirmation = null }, { pluginConfirmation = null; model.invoke(plugin, request.action.id) }) }
+            pluginControls?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginControlsDialog(request,
+                { action, value -> model.invokeControl(plugin, action, value) }, { pluginControls = null }, controlsRevision) }
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
                 confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
             pluginMenu?.let { (plugin, content) ->

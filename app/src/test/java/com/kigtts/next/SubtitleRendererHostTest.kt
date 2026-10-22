@@ -3,11 +3,13 @@ package com.kigtts.next
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpSize
 import android.view.ViewGroup
 import android.webkit.WebView
 import androidx.compose.ui.Modifier
@@ -107,9 +109,10 @@ class SubtitleRendererHostTest {
         val model = AppViewModel(app, listOf(plugin))
         model.pluginManager.paths.storage(plugin.descriptor.id).directory("renderer").resolve("index.html")
             .writeText("<!doctype html><html><body>LED</body></html>")
+        val viewport = mutableStateOf(DpSize(360.dp, 500.dp))
         compose.setContent {
             val state = model.state.collectAsState().value
-            MaterialTheme { Box(Modifier.size(360.dp, 500.dp)) { TextEditor(state, model, false, false, Modifier.fillMaxSize()) } }
+            MaterialTheme { Box(Modifier.size(viewport.value.width, viewport.value.height)) { TextEditor(state, model, false, false, Modifier.fillMaxSize()) } }
         }
         invoke(model, plugin)
         fun web(group: ViewGroup): WebView? {
@@ -122,8 +125,14 @@ class SubtitleRendererHostTest {
         }
         val view = compose.runOnIdle { web(compose.activity.window.decorView as ViewGroup)!! }
         val bounds = compose.onNodeWithTag("plugin-subtitle-renderer").getUnclippedBoundsInRoot()
-        assertTrue("Renderer width: $bounds", (bounds.right - bounds.left).value >= 319f)
-        assertTrue("Renderer height: $bounds", (bounds.bottom - bounds.top).value >= 390f)
+        assertEquals(compose.onNodeWithTag("subtitle-card").getUnclippedBoundsInRoot(), bounds)
+        for (size in listOf(DpSize(360.dp, 240.dp), DpSize(300.dp, 600.dp))) {
+            compose.runOnIdle { viewport.value = size }
+            assertEquals("The background must meet all four card edges after resize",
+                compose.onNodeWithTag("subtitle-card").getUnclippedBoundsInRoot(),
+                compose.onNodeWithTag("plugin-subtitle-renderer").getUnclippedBoundsInRoot())
+            assertSame(view, compose.runOnIdle { web(compose.activity.window.decorView as ViewGroup) })
+        }
         // Robolectric does not lay out the AndroidView interop child; verify both Compose's
         // measured viewport and the real WebView's explicit native sizing contract.
         assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, view.layoutParams.width)

@@ -25,6 +25,7 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
     var gesture = 0f
     var parentPreview = 0f
     var overridePosition: Float? = null
+    var drawerPose: SideDrawerPose? = null
 }
 
 /** Retire only after reaching the off-screen endpoint; interrupted/re-entered pages reuse their pose. */
@@ -42,7 +43,9 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     val leavingDirection = if (vertical) -1f else entry.direction
     val controlled = cameraPose != null || drawerPose != null
     val animation = remember(role, vertical, controlled) {
-        val seed = memory.overridePosition ?: (memory.animation.value * (1f - memory.parentPreview) -
+        // A settling gesture can finish between render frames. Read its exact final pose,
+        // rather than replaying an exit spring from the last frame's partly visible position.
+        val seed = memory.drawerPose?.position ?: memory.overridePosition ?: (memory.animation.value * (1f - memory.parentPreview) -
             if(vertical && entry.cameraRequestId != null && role == PageRole.EXITING) memory.gesture else 0f)
         Animatable(seed).also { memory.animation = it }
     }
@@ -60,6 +63,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
         memory.role = role
         memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
         memory.parentPreview = parentPreview
+        memory.drawerPose = drawerPose
         if (!controlled) memory.overridePosition = null
     }
     val currentRole by rememberUpdatedState(role)

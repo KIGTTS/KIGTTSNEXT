@@ -24,7 +24,7 @@ import com.kigtts.next.ui.media.PluginSubtitleRenderer
 import com.kigtts.plugin.api.PluginGesture
 
 @Composable
-fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier, rendererInBackground: Boolean = false) {
     val currentState by rememberUpdatedState(state)
     val media = model.mediaRepository.get(state.mediaId)
     // The full-card WebView is already mounted below this column. An invisible AnimatedContent
@@ -35,12 +35,12 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     }
     MediaTransition(media,state,model,modifier.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
-        SubtitleText(currentState,model,Modifier.fillMaxSize())
+        SubtitleText(currentState,model,Modifier.fillMaxSize(),rendererInBackground)
     }
 }
 
 @Composable
-private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
+private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,rendererInBackground:Boolean) {
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -62,8 +62,9 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
         } else if (renderer != null) {
             val selection = renderer!!
             Box(Modifier.fillMaxSize()) {
-                key(selection) { PluginSubtitleRenderer(selection, text, state.subtitlePlaceholder,
-                    state.subtitleSizePercent, Modifier.fillMaxSize(), onUnavailable = {
+                if (!rendererInBackground) key(selection) { PluginSubtitleRenderer(selection, text, state.subtitlePlaceholder,
+                    state.subtitleSizePercent, Modifier.fillMaxSize(),
+                    onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(selection.owner, it) }, onUnavailable = {
                         model.rendererUnavailable(selection.owner)
                     }) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.

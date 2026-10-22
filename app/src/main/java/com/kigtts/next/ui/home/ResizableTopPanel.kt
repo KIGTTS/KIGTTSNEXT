@@ -19,6 +19,7 @@ fun ResizableTopPanel(
     height: Float, maximum: Float, resize: (Float) -> Unit, modifier: Modifier = Modifier,
     singleLine: Boolean = false, availableHeight: () -> Float = { maximum },
     horizontal: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
     controls: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -51,7 +52,7 @@ fun ResizableTopPanel(
         Surface((if (horizontal) Modifier.fillMaxHeight().widthFrom { current.value } else Modifier.fillMaxWidth().heightFrom { current.value })
             .testTag("listening-card"), color = MaterialTheme.colorScheme.surfaceContainerHigh,
             shape = homeCardShape(if (horizontal) CornerNeighbors(end = true) else CornerNeighbors(below = true))) {
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(Modifier.padding(contentPadding)) {
                 Column(Modifier.weight(1f).fillMaxWidth().clipToBounds(), content = content)
                 if (!singleLine) controls()
             }

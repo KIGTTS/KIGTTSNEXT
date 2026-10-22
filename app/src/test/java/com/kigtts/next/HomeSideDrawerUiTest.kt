@@ -63,4 +63,22 @@ class HomeSideDrawerUiTest {
         compose.onNodeWithTag("drawer-root").performTouchInput { swipe(Offset(2f, height * .4f), Offset(width * .5f, height * .4f), 300) }
         assertNull(opened)
     }
+    @Test fun rendererQuickSwipeUsesExistingQuickTextsWithoutStartingAnotherSidePage() {
+        var quickTexts = 0
+        compose.setContent {
+            val scope = rememberCoroutineScope()
+            val state = remember { HomeSideDrawer(scope, { opened = it }, { opened = null }) }
+            SideEffect { drawer = state }
+            Box(Modifier.size(360.dp, 640.dp).testTag("drawer-root")
+                .homeSideDrawer(state, { quickTexts++ }) { true })
+        }
+        compose.onNodeWithTag("drawer-root").performTouchInput {
+            swipe(Offset(width * .7f, height * .4f), Offset(width * .2f, height * .4f), 200)
+        }
+        compose.runOnIdle { assertEquals(1, quickTexts); assertNull(opened); assertFalse(drawer.active) }
+        compose.onNodeWithTag("drawer-root").performTouchInput {
+            down(Offset(width * .7f, height * .4f)); moveBy(Offset(-width * .3f, 0f), 150); cancel()
+        }
+        compose.runOnIdle { assertEquals(1, quickTexts); assertNull(opened) }
+    }
 }

@@ -14,6 +14,8 @@ data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
 class PluginManager(private val context: Context, private val builtins: List<KigPlugin>) {
+    val applicationContext: Context get() = context.applicationContext
+    @Volatile var onNotificationsUnavailable: (String) -> Unit = {}
     val paths = PluginPaths(context)
     val packages = PluginPackageStore(paths)
     val registry = PluginRegistry(builtins)
@@ -28,7 +30,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val installed = status.firstOrNull { it.installed.manifest.id == id }?.installed
             ?: withContext(Dispatchers.IO) { packages.installed().firstOrNull { it.manifest.id == id } } ?: return false
         if (permission !in installed.manifest.capabilities || permission !in PluginPermissions.sensitive) return false
-        if (automaticPermission(id, permission)) return true
+        if (permission != "notifications" && automaticPermission(id, permission)) return true
         return permissions.request("${id}:${installed.publisherSha256}", permission, installed.manifest.name,
             installed.manifest.permissionPurposes[permission] ?: "插件未提供具体用途；此权限允许${PluginPermissions.label(permission)}。")
     }
@@ -107,6 +109,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         registry.replace(builtins + loaded.values.map { it.second })
     }
     private suspend fun unload(id: String) {
+        onNotificationsUnavailable(id)
         val item = loaded[id] ?: return
         ProviderCatalog(paths).save(item.second)
         item.second.close()

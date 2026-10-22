@@ -30,16 +30,18 @@ fun TextEditor(
     val media=model.mediaRepository.get(state.mediaId)
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
     val horizontal = with(LocalDensity.current) { 12.dp.roundToPx() }
-    Surface(modifier, shape = homeCardShape(neighbors),
+    Surface(modifier.testTag("subtitle-card"), shape = homeCardShape(neighbors),
         color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Box {
+            SubtitleRendererBackdrop(state, model,
+                com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal), Modifier.matchParentSize())
             CompositionLocalProvider(com.kigtts.next.ui.media.LocalMediaSafeArea provides
                 com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal)) {
                 MediaTransition(media,state,model,Modifier.fillMaxSize())
             }
             Column {
                 Box(Modifier.onSizeChanged { top = it.height }.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
-                SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth())
+                SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth(), rendererInBackground = true)
                 if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
                 EditorFooter(state, model, Modifier.onSizeChanged { bottom = it.height })
             }

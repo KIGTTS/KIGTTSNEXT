@@ -68,7 +68,8 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     }
 }
 
-fun cornerActions(slot: UiSlot, model: AppViewModel) = model.registry.actions(slot, model.context()).map { registered ->
+fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null) = model.registry.actions(slot, model.context())
+    .filter { owner == null || it.plugin.descriptor.id == owner }.map { registered ->
     ElasticAction(registered.key, registered.action.label, registered.action.icon.vector(registered.action.symbol),
         { model.invoke(registered) }, iconOnly = registered.action.buttonStyle == UiButtonStyle.ICON, busy = registered.action.busy)
 }

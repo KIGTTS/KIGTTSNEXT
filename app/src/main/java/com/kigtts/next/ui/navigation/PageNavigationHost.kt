@@ -26,11 +26,13 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val latestProgress = rememberUpdatedState(progress)
     val latestState = rememberUpdatedState(state)
     val sideDrawer = remember(model) { HomeSideDrawer(scope, model::openSidePage, model::closeSidePage) }
+    val quickSwipe by model.subtitleRenderer.quickSwipe.collectAsState()
     val camera = navigation.pages.lastOrNull { it.cameraRequestId != null &&
         (it == current || it.depth == current.depth + 1 && it !in navigation.wanted) }
     val parent = camera?.let { navigation.wanted.lastOrNull { page -> page.depth == it.depth - 1 } }
     CompositionLocalProvider(LocalCameraPullState provides pull) {
-    Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer) {
+    Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer,
+        if (quickSwipe) ({ model.openPanel(HomePanel.QUICK_TEXT) }) else null) {
         val value = latestState.value
         value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
             !value.voiceInputActive && value.mediaId == null && !value.forcedFullscreen &&

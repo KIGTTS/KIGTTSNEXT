@@ -46,6 +46,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val feedbackStore = FeedbackSettingsStore(application)
     val quickSort = QuickSortPreference(application)
     internal val subtitleRenderer = SubtitleRendererState()
+    internal val listeningPanel = ListeningPanelState()
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
@@ -166,6 +167,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
         inputs = mapOf("host.subtitleRenderer" to subtitleRenderer.selection.value?.owner.orEmpty(),
+            "host.listeningPanel" to listeningPanel.selection.value?.owner.orEmpty(),
             "host.subtitleFullscreen" to (it.subtitleExpanded || it.forcedFullscreen).toString()),
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
         automaticRead = it.autoPlayback, speechActive = it.speaking,
@@ -324,6 +326,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         quickTexts.remove(phrase.id)
     }
     fun invoke(action: RegisteredAction) = invoke(action.plugin.descriptor.id, action.action.id)
+    private val controlChanges by lazy { PluginControlQueue(viewModelScope) { plugin, action, inputs ->
+        state.first { plugin !in it.busyPlugins }
+        val completed = kotlinx.coroutines.CompletableDeferred<Unit>()
+        invokeWithResult(plugin, action, inputs) { completed.complete(Unit) }
+        completed.await()
+    } }
+    fun invokeControl(pluginId: String, actionId: String, value: String? = null) {
+        controlChanges.submit(pluginId, actionId, value?.let { mapOf("value" to it) } ?: emptyMap())
+    }
     fun invoke(pluginId: String, actionId: String, inputs: Map<String, String> = emptyMap()) {
         invokeWithResult(pluginId, actionId, inputs, null)
     }
@@ -352,6 +363,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                     is PluginOutcome.HostAction -> { check(registry.available(plugin)) { "此插件需要先启用语音识别服务" }; when (outcome.command) {
                         HostCommand.TOGGLE_LISTENING -> toggleListening()
                         HostCommand.CLOSE_LISTENING_PANEL -> closeListeningPanel()
+                        HostCommand.OPEN_LISTENING_PANEL -> update { it.copy(captionsVisible = true) }
                         HostCommand.USE_STREAMING -> streaming(true)
                         HostCommand.USE_BATCH -> streaming(false)
                         HostCommand.VOICE_INPUT -> speech.voiceInput()
@@ -375,6 +387,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                             require(resource.pluginId == null || resource.pluginId == pluginId) { "字幕资源不属于此插件" }
                             subtitleRenderer.select(pluginId, plugin, pluginManager.paths.storage(pluginId).file(resource.path), outcome.mainPage)
                         }
+                        pluginManager.refreshUi(pluginId, context())
+                        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+                    }
+                    is PluginOutcome.SetListeningPanel -> {
+                        listeningPanel.select(plugin, outcome, context())
                         pluginManager.refreshUi(pluginId, context())
                         update { it.copy(pluginRevision = it.pluginRevision + 1) }
                     }
@@ -408,6 +425,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     suspend fun refreshPlugins() {
         pluginManager.reload()
         subtitleRenderer.reconcile(registry)
+        listeningPanel.reconcile(registry)
         pluginManager.refreshContext(context())
         for (key in listOf("tts", "asr")) {
             val current = engineSelection.getString(key, null)

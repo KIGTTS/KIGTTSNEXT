@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -29,7 +30,8 @@ import kotlinx.coroutines.withContext
 /** Offline display only: no native bridge, network, device grants, downloads or editable document. */
 @Composable
 fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, placeholder: String,
-    fontSizePercent: Float, modifier: Modifier = Modifier, onUnavailable: () -> Unit = {}) {
+    fontSizePercent: Float, modifier: Modifier = Modifier, safeArea: MediaSafeArea = MediaSafeArea(),
+    onQuickSwipe: (Boolean) -> Unit = {}, onUnavailable: () -> Unit = {}) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val pageActive = LocalPageActive.current
@@ -53,11 +55,21 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
         reload()
         onDispose { observer.stopWatching(); watcherScope.coroutineContext[kotlinx.coroutines.Job]?.cancel() }
     }
-    val latestUpdate by rememberUpdatedState(SubtitleRendererProtocol.update(text, placeholder, fontSizePercent, rendererSettings))
+    val density = LocalDensity.current.density
+    val latestUpdate by rememberUpdatedState(SubtitleRendererProtocol.update(text, placeholder, fontSizePercent, rendererSettings, safeArea, density))
     val theme = MaterialTheme.colorScheme
     var ready by remember(selection) { mutableStateOf(false) }
     var disposed by remember(selection) { mutableStateOf(false) }
     var failed by remember(selection) { mutableStateOf(false) }
+    val lifecycleState by lifecycle.currentStateFlow.collectAsState()
+    val windowSettings = remember(rendererSettings) { RendererWindowSettings.parse(rendererSettings) }
+    val visible = pageActive && lifecycleState.isAtLeast(Lifecycle.State.STARTED) && ready && !failed
+    SubtitleRendererWindow(windowSettings, visible)
+    val quickSwipeCallback by rememberUpdatedState(onQuickSwipe)
+    DisposableEffect(visible, windowSettings.quickSwipe) {
+        quickSwipeCallback(visible && windowSettings.quickSwipe)
+        onDispose { quickSwipeCallback(false) }
+    }
     fun active() = currentPageActive && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
     fun unavailable() { if (!disposed && !failed) { failed = true; currentUnavailable() } }
     val origin = remember(selection.owner) {

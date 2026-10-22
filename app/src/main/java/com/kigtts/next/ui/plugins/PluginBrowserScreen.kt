@@ -25,23 +25,30 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
     val url = block.url?.also { require(WebContentPolicy.https(it)) } ?: (WebContentPolicy.ORIGIN + "/content/" + Uri.encode(block.mainPage, "/"))
     return BrowserDocument("plugin:$owner:$pageId", url, root, model.pluginManager.paths.storage(owner).file("cache/browser/$pageId"), block.allowNetwork || block.url != null, block.allowedActions)
 }
-@Composable internal fun PluginBrowserScreen(model: AppViewModel, owner: String, pageId: String, block: PageBlock.Browser) {
+@Composable internal fun PluginBrowserScreen(model: AppViewModel, owner: String, pageId: String, block: PageBlock.Browser,
+    contextUpdate: String? = null, transparentBackground: Boolean = false) {
     val context = LocalContext.current; val active = LocalPageActive.current
     val scope = rememberCoroutineScope()
     val currentActive by rememberUpdatedState(active)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val colors = MaterialTheme.colorScheme
+    val latestContext by rememberUpdatedState(contextUpdate)
+    var ready by remember(owner, pageId, block) { mutableStateOf(false) }
     val checked = remember(owner, pageId, block) { runCatching { pluginBrowserDocument(model, owner, pageId, block) } }
     val document = checked.getOrNull()
     if (document == null) { androidx.compose.material3.Text(checked.exceptionOrNull()?.message ?: "网页暂不可用"); return }
     val gate = remember(document) { WebNetworkGate(model.pluginManager.permissions, model.pluginManager.permissionOwner(owner), model.registry.plugin(owner)?.descriptor?.name ?: owner,
         { currentActive }, model.pluginManager.status.firstOrNull { it.installed.manifest.id == owner }?.installed?.manifest?.permissionPurposes?.get("network") ?: "加载此插件网页所需的外部资源。") }
-    val web = remember(document) { createBrowserView(context, document.copy(authorizeNetwork = gate::authorize, networkGranted = gate::granted), ready = {}, error = {}, action = { action, inputs -> if (currentActive) model.invoke(owner, action, inputs) }).apply {
+    val web = remember(document) { createBrowserView(context, document.copy(authorizeNetwork = gate::authorize, networkGranted = gate::granted), ready = { view ->
+        ready = true; latestContext?.let { view.evaluateJavascript(it, null) }
+    }, error = {}, action = { action, inputs -> if (currentActive) model.invoke(owner, action, inputs) }).apply {
+        if (transparentBackground) setBackgroundColor(android.graphics.Color.TRANSPARENT)
         if (document.root != null) { installKigttsHaptics { currentActive }; if (document.network) installNetworkConsent(scope, gate::authorize) }
     } }
     val devices = remember(web) { WebPagePrivileges(web, model.pluginManager.permissions, "plugin:$owner:$pageId",
         model.registry.plugin(owner)?.descriptor?.name ?: owner, scope, { currentActive }, gate::authorize).also { it.install() } }
     LaunchedEffect(web) { web.loadUrl(document.url) }
+    LaunchedEffect(web, ready, contextUpdate) { if (ready) contextUpdate?.let { web.evaluateJavascript(it, null) } }
     LaunchedEffect(colors) { web.applyKigttsTheme() }
     LaunchedEffect(active) { if (active) { web.onResume(); devices.resume() } else { devices.pause(); web.onPause() } }
     DisposableEffect(web, lifecycle) {

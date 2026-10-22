@@ -21,11 +21,14 @@ internal class HomeSideDrawer(private val scope: CoroutineScope, private val ope
     var visible by mutableFloatStateOf(0f); private set
     private var extent = 1f
     private var settling = false
+    private var slideDirection = 1f
     val active get() = page != null
-    val direction get() = if (page == SidePage.SKETCH) -1f else 1f
+    // Retained poses outlive page during the final draw/recomposition handoff.
+    val direction get() = slideDirection
     fun begin(delta: Float, width: Float): Boolean {
         if (active || width <= 0f) return false
         page = if (delta > 0f) SidePage.SKETCH else SidePage.CARDS
+        slideDirection = if (page == SidePage.SKETCH) -1f else 1f
         extent = width; visible = 0f; open(requireNotNull(page)); drag(delta)
         return true
     }
@@ -50,18 +53,21 @@ class SideDrawerPose internal constructor(private val state: HomeSideDrawer, pri
 
 /** Let text selection, media gestures and scrolling children claim first. */
 @Composable
-internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, available: () -> Boolean): Modifier {
+internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, leftAction: (() -> Unit)? = null, available: () -> Boolean): Modifier {
     val latest by rememberUpdatedState(available)
+    val latestLeft by rememberUpdatedState(leftAction)
     return pointerInput(state) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             if (!latest() || state.active || down.position.x < 24 * density || down.position.x > size.width - 24 * density) return@awaitEachGesture
             val velocity = VelocityTracker().apply { addPosition(down.uptimeMillis, down.position) }
-            var dx = 0f; var dy = 0f; var claimed = false; var released = false
+            var dx = 0f; var dy = 0f; var claimed = false; var released = false; var shortcut = false
             try {
                 do {
                     val event = awaitPointerEvent(if (claimed) PointerEventPass.Initial else PointerEventPass.Main)
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                    // Android cancellation synthesizes a consumed final up. It must not commit a shortcut.
+                    if (!change.pressed && change.isConsumed) break
                     if (event.changes.count { it.pressed } > 1) break
                     val delta = change.positionChange()
                     velocity.addPosition(change.uptimeMillis, change.position)
@@ -71,13 +77,17 @@ internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, available: () -> Boo
                         if (abs(dy) > viewConfiguration.touchSlop && abs(dy) >= abs(dx)) break
                         if (abs(dx) > viewConfiguration.touchSlop && abs(dx) > abs(dy) * 1.2f) {
                             if (!latest()) break
-                            claimed = state.begin(dx, size.width.toFloat())
+                            shortcut = dx < 0f && latestLeft != null
+                            claimed = shortcut || state.begin(dx, size.width.toFloat())
                         }
-                    } else state.drag(delta.x)
+                    } else if (shortcut) dx += delta.x else state.drag(delta.x)
                     if (claimed) event.changes.forEach { it.consume() }
                     released = !change.pressed
                 } while (!released)
-            } finally { if (claimed) state.finish(!released, if (released) velocity.calculateVelocity().x else 0f) }
+            } finally {
+                if (shortcut && released && dx < -48 * density) latestLeft?.invoke()
+                else if (claimed && !shortcut) state.finish(!released, if (released) velocity.calculateVelocity().x else 0f)
+            }
         }
     }
 }

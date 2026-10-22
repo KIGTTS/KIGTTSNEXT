@@ -29,11 +29,13 @@ class PluginPackageTest {
         store = PluginPackageStore(paths)
     }
     private fun pack(version: Int = 1, tamper: Boolean = false, badPath: Boolean = false,
-        otherPublisher: Boolean = false, api: Int = com.kigtts.plugin.api.PLUGIN_API_VERSION, capabilities: List<String> = emptyList()): File {
+        otherPublisher: Boolean = false, api: Int = com.kigtts.plugin.api.PLUGIN_API_VERSION, capabilities: List<String> = emptyList(),
+        icon: PackageIcon? = null, artwork: Map<String, ByteArray> = emptyMap()): File {
         val files = linkedMapOf("code/classes.dex" to byteArrayOf(1, 2, 3), "assets/readme.txt" to "test".toByteArray())
         if (badPath) files["../outside"] = byteArrayOf(4)
+        files.putAll(artwork)
         val manifest = PackageManifest("test.engine", "测试引擎", "0.$version", version, "test.Engine", apiVersion = api,
-            files = files.mapValues { it.value.sha256() }, capabilities = capabilities)
+            files = files.mapValues { it.value.sha256() }, capabilities = capabilities, icon = icon)
         val raw = PluginJson.encodeToString(manifest).toByteArray()
         val signing = if (otherPublisher) KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair() else key
         val file = File(paths.packages, ".package-$version-${System.nanoTime()}")
@@ -60,6 +62,25 @@ class PluginPackageTest {
         store.uninstall("test.engine")
         assertFalse(File(paths.data, "test.engine").exists()); assertTrue(store.installed().isEmpty())
         assertEquals("other", paths.storage("other.engine").file("keep").readText())
+    }
+    @Test fun signedIconsSupportSymbolsAndPackageImagesWithoutExecutingThePlugin() {
+        assertEquals("lightbulb", store.inspect(pack(icon = PackageIcon(symbol = "lightbulb"))).manifest.icon!!.symbol)
+        for (extension in listOf("svg", "png", "jpg", "jpeg", "webp")) {
+            val path = "assets/icon.$extension"
+            val input = pack(icon = PackageIcon(path = path), artwork = mapOf(path to "artwork".toByteArray()))
+            val preview = store.inspect(input)
+            assertEquals(path, preview.manifest.icon!!.path)
+            store.install(input, preview.publisherSha256)
+            assertEquals(preview.manifest.icon, store.installed().single().manifest.icon)
+            store.uninstall("test.engine")
+        }
+        for (icon in listOf(PackageIcon(), PackageIcon(symbol = "Light Bulb"), PackageIcon(symbol = "lightbulb", path = "assets/icon.svg"),
+            PackageIcon(path = "https://example.invalid/icon.svg"), PackageIcon(path = "assets/missing.svg"), PackageIcon(path = "code/classes.dex"))) {
+            assertThrows(IllegalArgumentException::class.java) { store.inspect(pack(icon = icon)) }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            store.inspect(pack(icon = PackageIcon(path = "assets/icon.png"), artwork = mapOf("assets/icon.png" to ByteArray(1_048_577))))
+        }
     }
     @Test fun explicitlyReviewedVersionSwitchRetainsDataAndStillRejectsAnotherPublisher() {
         val first = pack(1); val latest = pack(3); val publisher = store.inspect(first).publisherSha256

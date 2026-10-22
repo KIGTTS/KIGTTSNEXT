@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -12,6 +13,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.runtime.PluginPermissions
 
@@ -75,11 +78,13 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
 
 @Composable private fun PackageInstallerIdentity(info: PackageInstallerInfo) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Icon(MaterialSymbols.vector(info.symbol) ?: when {
+        if (info.image != null) Image(info.image.asImageBitmap(), "${info.manifest.name}图标",
+            Modifier.size(48.dp).testTag("installer-package-image"), contentScale = ContentScale.Fit)
+        else Icon(MaterialSymbols.vector(info.symbol) ?: when {
             "speech-service" in info.manifest.capabilities -> Icons.Default.RecordVoiceOver
             "asr-service" in info.manifest.capabilities -> Icons.Default.GraphicEq
             else -> Icons.Default.Extension
-        }, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+        }, null, Modifier.size(48.dp).testTag("installer-package-symbol"), tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(info.manifest.name, style = MaterialTheme.typography.titleLarge)
             Text(listOf(info.author, "v${info.manifest.version}").filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall)

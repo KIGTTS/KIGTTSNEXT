@@ -18,12 +18,20 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
     availableHeight: () -> Float = { maximum }, horizontal: Boolean = false,
     extent: Float = state.captionHeight, resize: (Float) -> Unit = model::captionHeight) {
     var fontBar by remember { mutableStateOf(false) }
+    val custom by model.listeningPanel.selection.collectAsState()
+    val controlsOwner = custom?.takeIf { it.replaceControls }?.owner
     val context = model.context()
-    val left = remember(context, state.pluginRevision) { cornerActions(UiSlot.LISTENING_BOTTOM_START, model) }
-    val right = remember(context, state.pluginRevision) { cornerActions(UiSlot.LISTENING_BOTTOM_END, model) }
+    val left = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_START, model, controlsOwner) }
+    val right = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_END, model, controlsOwner) }
+    LaunchedEffect(controlsOwner) { if (controlsOwner != null) fontBar = false }
     ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions"), singleLine, availableHeight,
         horizontal = horizontal,
+        contentPadding = if (custom != null) PaddingValues(0.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         controls = {
+            if (controlsOwner != null) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+                ElasticButtonGroup(left, Modifier.weight(1f), stableItems = true)
+                ElasticButtonGroup(right, Modifier.weight(1f), alignEnd = true, stableItems = true)
+            } else {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
             val rightWidth = (maxWidth.value - 36f).coerceIn(32f, 68f).dp
             Row(Modifier.fillMaxWidth().height(32.dp).testTag("listening-controls"), verticalAlignment = Alignment.CenterVertically) {
@@ -38,10 +46,14 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
                     overflowTag = "listening-end-more", overflowLabel = "聆听右下更多操作")
             }
             }
+            }
         }) {
-        ListeningCaptionContent(state.transcript, state.captionTextSize, singleLine,
-            Modifier.fillMaxWidth().weight(1f).subtitleZoom(model) {
-                model.setCaptionTextSize(model.state.value.captionTextSize * it)
-            })
+        Box(Modifier.fillMaxWidth().weight(1f)) {
+            if (custom?.replaceContent != true) ListeningCaptionContent(state.transcript, state.captionTextSize, singleLine,
+                Modifier.fillMaxSize().subtitleZoom(model) { model.setCaptionTextSize(model.state.value.captionTextSize * it) })
+            custom?.let { selected -> key(selected.owner, selected.pageId, selected.plugin) {
+                PluginListeningPanel(selected, state, model, Modifier.fillMaxSize())
+            } }
+        }
     }
 }
