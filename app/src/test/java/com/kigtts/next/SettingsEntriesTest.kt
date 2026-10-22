@@ -53,7 +53,7 @@ class SettingsEntriesTest {
         val cards = settingsCards(registry, PluginContext("", ""))
         val appearance = cards.single { it.id == "appearance" }
         assertEquals("外观与交互", appearance.title)
-        assertEquals(listOf("外观", "操作反馈", "其它外观"), appearance.links.map { it.title })
+        assertEquals(listOf("外观", "操作反馈", "悬浮窗", "其它外观"), appearance.links.map { it.title })
         assertEquals("小工具", cards.last().title); assertEquals("计算器", cards.last().links.single().title)
     }
     @Test fun legacyPagesMigrateToExtensionsAndKeepConfigurationReachableWithMissingRequirement() {

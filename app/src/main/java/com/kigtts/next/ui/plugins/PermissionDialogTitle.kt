@@ -31,6 +31,7 @@ internal fun PermissionDialogTitle(prompt: PermissionPrompt) {
 internal fun permissionIcon(permission: String): ImageVector = when (permission) {
     "network" -> Icons.Default.Language
     "notifications" -> Icons.Default.NotificationsActive
+    "overlay" -> Icons.Default.BubbleChart
     "app-control" -> Icons.Default.TouchApp
     "quick-text-read" -> Icons.AutoMirrored.Filled.Article
     "quick-text-write" -> Icons.Default.EditNote

@@ -30,7 +30,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val installed = status.firstOrNull { it.installed.manifest.id == id }?.installed
             ?: withContext(Dispatchers.IO) { packages.installed().firstOrNull { it.manifest.id == id } } ?: return false
         if (permission !in installed.manifest.capabilities || permission !in PluginPermissions.sensitive) return false
-        if (permission != "notifications" && automaticPermission(id, permission)) return true
+        if (permission !in setOf("notifications", "overlay") && automaticPermission(id, permission)) return true
         return permissions.request("${id}:${installed.publisherSha256}", permission, installed.manifest.name,
             installed.manifest.permissionPurposes[permission] ?: "插件未提供具体用途；此权限允许${PluginPermissions.label(permission)}。")
     }

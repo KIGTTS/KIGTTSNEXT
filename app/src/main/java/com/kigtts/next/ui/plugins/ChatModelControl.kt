@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.ui.components.feedbackClick
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,7 +23,7 @@ import com.kigtts.plugin.api.*
     reasoning: ChatControl? = null) {
     var open by remember { mutableStateOf(false) }
     val selected = control.options.firstOrNull { it.action == control.selected }
-    AssistChip(onClick = { open = true }, enabled = enabled, label = { Text(selected?.label ?: "模型") },
+    AssistChip(onClick = feedbackClick { open = true }, enabled = enabled, label = { Text(selected?.label ?: "模型") },
         leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
         modifier = Modifier.testTag("plugin-chat-control/MODEL"))
     if (open) ModelDialog(control, reasoning, enabled, invoke, { open = false }) { action ->
@@ -44,13 +46,13 @@ import com.kigtts.plugin.api.*
                         ModelOptionRow(option, option.action == control.selected, index, models.size, enabled) { choose(option.action) }
                     }
                 }
-            control.options.filter { it.section.isBlank() }.forEach { option -> item(option.action) { TextButton(onClick = { choose(option.action) }) { Text(option.label) } } }
+            control.options.filter { it.section.isBlank() }.forEach { option -> item(option.action) { TextButton(onClick = feedbackClick { choose(option.action) }) { Text(option.label) } } }
         }
         reasoning?.takeIf { it.options.size >= 2 }?.let {
             HorizontalDivider()
             ChatReasoningSlider(it, enabled, invoke)
         }
-    } }, confirmButton = { TextButton(onClick = dismiss) { Text("关闭") } })
+    } }, confirmButton = { TextButton(onClick = feedbackClick(dismiss)) { Text("关闭") } })
 }
 @Composable private fun ModelOptionRow(option: ChatOption, selected: Boolean, index: Int, count: Int,
     enabled: Boolean, choose: () -> Unit) {
@@ -59,7 +61,7 @@ import com.kigtts.plugin.api.*
         topStart = if (index == 0) 20.dp else 4.dp, topEnd = if (index == 0) 20.dp else 4.dp,
         bottomEnd = if (index == count - 1) 20.dp else 4.dp, bottomStart = if (index == count - 1) 20.dp else 4.dp)
     Surface(Modifier.fillMaxWidth().padding(vertical = 2.dp).testTag("chat-model-option/" + option.action), color = color, shape = shape) {
-        Row(Modifier.selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = choose)
+        Row(Modifier.selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = feedbackClick(choose))
             .heightIn(min = 60.dp).padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(option.label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge,

@@ -34,7 +34,7 @@ import java.io.File
             ChatImages(chat.draftImages, resolve) { index -> chat.removeImageAction?.let { invoke(it, mapOf("value" to chat.draftImages[index].source.path)) } }
         }
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            chat.imageAction?.let { action -> IconButton(onClick = { invoke(action, emptyMap()) },
+            chat.imageAction?.let { action -> IconButton(onClick = feedbackClick { invoke(action, emptyMap()) },
                 modifier = Modifier.testTag("plugin-chat-image").iconLongAction(enabled && chat.draftImages.size < 4) { invoke(action, mapOf("source" to "camera")) },
                 enabled = enabled && chat.draftImages.size < 4) { Icon(Icons.Default.AddPhotoAlternate, "添加图片，长按拍照") } }
             OutlinedTextField(draft, { if (it.length <= 16000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"), placeholder = { Text(chat.placeholder) }, maxLines = 5, shape = MaterialTheme.shapes.large, enabled = enabled)

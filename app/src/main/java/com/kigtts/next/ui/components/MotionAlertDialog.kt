@@ -124,7 +124,9 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
 fun dialogFeedbackClick(action: () -> Unit): () -> Unit {
     val actions = LocalDialogActions.current
     val tick = feedbackClick { }
-    return { if (actions?.isClosing?.invoke() != true) { tick(); if (actions == null) action() else actions.close(action) } }
+    return object : ClickFeedbackAction {
+        override fun invoke() { if (actions?.isClosing?.invoke() != true) { tick(); if (actions == null) action() else actions.close(action) } }
+    }
 }
 
 /** Async validation can keep the dialog open on failure and animate only a successful result. */

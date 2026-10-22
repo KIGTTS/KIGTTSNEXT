@@ -27,7 +27,8 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         SettingsLink(id, category.title, category.summary, icon, Destination.SettingsDetail(category))
     val native = mapOf(
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
-            category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration)),
+            category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration),
+            category("overlay", SettingsCategory.OVERLAY, Icons.Default.BubbleChart)),
         "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language),
             category("camera", SettingsCategory.CAMERA, Icons.Default.PhotoCamera),
             category("backup", SettingsCategory.BACKUP_RESTORE, Icons.Default.SettingsBackupRestore)),

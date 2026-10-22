@@ -36,7 +36,7 @@ internal fun PluginControlsDialog(request: PluginOutcome.Controls, onChange: (St
                         var checked by remember { mutableStateOf(control.checked) }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(control.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-                            Switch(checked, { checked = it; onChange(control.actionId, it.toString()) },
+                            Switch(checked, feedbackChange { checked = it; onChange(control.actionId, it.toString()) },
                                 Modifier.semantics { contentDescription = control.title })
                         }
                     }
@@ -77,7 +77,7 @@ private fun ChoiceSetting(control: PluginControl.Choice, change: (String) -> Uni
         if (control.style == PluginChoiceStyle.SEGMENTED && options.size in 2..4) {
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 options.forEachIndexed { index, option ->
-                    SegmentedButton(selected == option.id, {
+                    SegmentedButton(selected == option.id, feedbackClick {
                         selected = option.id; change(option.id)
                     }, shape = SegmentedButtonDefaults.itemShape(index, options.size),
                         modifier = Modifier.semantics { contentDescription = "${control.title}：${option.label}" }) {

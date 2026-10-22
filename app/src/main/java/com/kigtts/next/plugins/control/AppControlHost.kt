@@ -10,11 +10,13 @@ import kotlinx.serialization.json.*
 /** Formal, versioned app operations for user-installed agents. No arbitrary preference/file access. */
 class AppControlHost(private val manager: PluginManager, private val ui: () -> AppViewModel?) {
     private val notifications = com.kigtts.next.notifications.PluginNotifications(manager)
-    init { manager.onNotificationsUnavailable = notifications::cancelAll }
+    private val overlay = com.kigtts.next.overlay.PluginOverlayHost(manager)
+    init { manager.onNotificationsUnavailable = { owner -> notifications.cancelAll(owner); overlay.removeOwner(owner) } }
     fun forPlugin(owner: String, capabilities: Set<String>): AppBroker {
         manager.paths.validateId(owner)
         return object : AppBroker {
             override suspend fun request(command: AppCommand): AppReply {
+                if (command is AppCommand.Overlay) return overlay.request(owner, capabilities, command)
                 if (command is AppCommand.Notifications) return notifications.request(owner, capabilities, command)
                 if (command is AppCommand.Permission) {
                     val projectId = command.projectId
@@ -47,7 +49,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
     private fun perform(owner: String, command: AppCommand): AppReply {
         if (command == AppCommand.Describe) return data {
             put("protocol", 1)
-            put("operations", JsonArray(listOf("state", "navigate", "text", "automatic-read", "speak", "stop-speech", "setting", "plugin-action", "deliver-resource", "browser-capture", "browser-session").map(::JsonPrimitive)))
+            put("operations", JsonArray(listOf("state", "navigate", "text", "automatic-read", "speak", "stop-speech", "setting", "plugin-action", "deliver-resource", "browser-capture", "browser-session", "overlay").map(::JsonPrimitive)))
             put("navigation", JsonArray(listOf("home", "settings", "plugins", "quick-text", "media", "sketch", "cards").map(::JsonPrimitive)))
             put("settings", JsonArray(settingKeys.map(::JsonPrimitive)))
             put("plugins", buildJsonArray { manager.registry.plugins.forEach { plugin ->
@@ -102,7 +104,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 model.invoke(command.pluginId, command.actionId, command.inputs.filterKeys { !it.startsWith('_') } + ("_callerPlugin" to owner))
                 return data { put("accepted", true); put("completed", false) }
             }
-            AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall, is AppCommand.BrowserCapture, is AppCommand.BrowserSession, is AppCommand.Permission, is AppCommand.ManagedCall, is AppCommand.UiAssets, is AppCommand.Notifications -> error("已单独处理")
+            AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall, is AppCommand.BrowserCapture, is AppCommand.BrowserSession, is AppCommand.Permission, is AppCommand.ManagedCall, is AppCommand.UiAssets, is AppCommand.Notifications, is AppCommand.Overlay -> error("已单独处理")
         }
         return data { put("accepted", true) }
     }

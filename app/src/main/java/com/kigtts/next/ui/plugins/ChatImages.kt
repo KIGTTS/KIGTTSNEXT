@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.ui.components.feedbackClick
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -20,8 +22,8 @@ import java.io.File
     var preview by remember { mutableStateOf<ChatImage?>(null) }
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         images.forEachIndexed { index, image -> key(image.source) { Box {
-            ChatImageContent(image, resolve, Modifier.size(96.dp).clickable { preview = image })
-            if (remove != null) IconButton(onClick = { remove(index) }) { Icon(Icons.Default.Close, "移除图片") }
+            ChatImageContent(image, resolve, Modifier.size(96.dp).clickable(onClick = feedbackClick { preview = image }))
+            if (remove != null) IconButton(onClick = feedbackClick { remove(index) }) { Icon(Icons.Default.Close, "移除图片") }
         } } }
     }
     preview?.let { image -> Dialog(onDismissRequest = { preview = null }) {

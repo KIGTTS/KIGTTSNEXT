@@ -124,6 +124,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
             com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
+            com.kigtts.next.overlay.OverlayEntrancePrompt(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->

@@ -20,7 +20,9 @@ fun MotionIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled
     val source = interactionSource ?: remember { MutableInteractionSource() }
     val press = rememberImmediateButtonPress(source)
     LaunchedEffect(enabled) { if (!enabled && !transientLock) press.cancel() }
-    IconButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier),
+    val click = feedbackClick(onClick)
+
+    IconButton(onClick = { press.click(); click() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier),
         enabled = enabled, colors = colors.animateEnabled(enabled), interactionSource = press.native,
         shapes = IconButtonDefaults.shapes(), content = content)
 }
@@ -33,7 +35,8 @@ fun MotionIconToggleButton(checked: Boolean, onCheckedChange: (Boolean) -> Unit,
     val colors = IconButtonDefaults.iconToggleButtonColors().let { colors -> if (transientLock) colors.copy(
         disabledContainerColor = if (checked) colors.checkedContainerColor else colors.containerColor,
         disabledContentColor = if (checked) colors.checkedContentColor else colors.contentColor) else colors }
-    IconToggleButton(checked, feedbackChange { value -> press.click(); onCheckedChange(value) },
+    val change = feedbackChange(onCheckedChange)
+    IconToggleButton(checked, { value -> press.click(); change(value) },
         shapes = IconButtonDefaults.toggleableShapes(),
         modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier),
         enabled = enabled, interactionSource = press.native, colors = colors, content = content)
@@ -44,7 +47,9 @@ fun MotionTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled
     colors: ButtonColors = ButtonDefaults.textButtonColors(), content: @Composable RowScope.() -> Unit) {
     val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
-    TextButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
+    val click = feedbackClick(onClick)
+
+    TextButton(onClick = { press.click(); click() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
         colors = colors.animateEnabled(enabled), interactionSource = press.native, shapes = ButtonDefaults.shapes(), content = content)
 }
 
@@ -57,7 +62,9 @@ fun MotionOutlinedButton(onClick: () -> Unit, modifier: Modifier = Modifier, ena
         (active.brush as SolidColor).value, enabledProgress(enabled)))
     val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
-    OutlinedButton(onClick = { press.click(); onClick() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
+    val click = feedbackClick(onClick)
+
+    OutlinedButton(onClick = { press.click(); click() }, modifier = modifier.then(if(enabled) Modifier.immediateButtonPress(press) else Modifier), enabled = enabled,
         colors = ButtonDefaults.outlinedButtonColors().animateEnabled(enabled), interactionSource = press.native, shapes = ButtonDefaults.shapes(),
         border = border, content = content)
 }

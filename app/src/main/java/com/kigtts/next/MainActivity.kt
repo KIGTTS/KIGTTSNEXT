@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.notificationLink
+import com.kigtts.next.overlay.overlayLink
 import com.kigtts.next.ui.KigttsApp
 import com.kigtts.next.ui.cards.camera.CameraShutterKeys
 import com.kigtts.next.ui.cards.camera.CameraShutterKeyOwner
@@ -21,9 +22,10 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         // starts on Home instead of reopening an editor or project from an old task bundle.
         enableEdgeToEdge()
         setContent { KigttsApp(model) }
-        if (savedInstanceState == null) { model.sourceLink(intent?.data); model.notificationLink(intent) }
+        if (savedInstanceState == null) { model.sourceLink(intent?.data); model.notificationLink(intent); model.overlayLink(intent) }
     }
-    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data); model.notificationLink(intent) }
+    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data); model.notificationLink(intent); model.overlayLink(intent) }
+    override fun onStart() { super.onStart(); com.kigtts.next.overlay.NativeOverlayService.sync(this) }
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
         cameraShutterKeys.dispatch(event) || super.onKeyDown(keyCode, event)
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean =

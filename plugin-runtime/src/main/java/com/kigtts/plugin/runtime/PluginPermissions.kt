@@ -73,10 +73,11 @@ class PluginPermissions(context: Context) {
         return "$owner|$permission"
     }
     companion object {
-        val sensitive = setOf("network", "notifications", "app-control", "quick-text-read", "quick-text-write", "stickers-read", "stickers-write", "tts", "asr-batch", "asr-segmented", "asr-incremental", "speech-service", "asr-service", "voice-packs")
+        val sensitive = setOf("network", "notifications", "overlay", "app-control", "quick-text-read", "quick-text-write", "stickers-read", "stickers-write", "tts", "asr-batch", "asr-segmented", "asr-incremental", "speech-service", "asr-service", "voice-packs")
         fun label(permission: String) = when (permission) {
             "network" -> "访问网络"; "app-control" -> "操作应用"; "quick-text-read" -> "读取快捷文本"
             "notifications" -> "发送通知与实况进度"
+            "overlay" -> "悬浮窗入口与气泡"
             "quick-text-write" -> "修改快捷文本"; "stickers-read" -> "读取拍立得与贴纸"; "stickers-write" -> "管理拍立得与贴纸"
             "tts", "speech-service" -> "合成与播放语音"; "asr-batch", "asr-segmented", "asr-incremental", "asr-service" -> "处理语音识别音频"
             "voice-packs" -> "管理语音包"

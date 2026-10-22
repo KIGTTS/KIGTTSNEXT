@@ -4,6 +4,7 @@ import org.objectweb.asm.*
 plugins {
     id("com.android.application")
     kotlin("android")
+    kotlin("plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
 }
 /** Foundation 1.9.4 has no public per-field magnifier option. Keep its selection/input
