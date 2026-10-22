@@ -49,4 +49,4 @@ Release 启用 R8 与资源收缩。当前构建、签名检查、安装结果�
 
 ## 独立仓库
 
-插件与SDK统一由 [KIGTTS组织](https://github.com/KIGTTS) 管理，一个插件一个仓库，保留各自LICENSE/NOTICE。主程序只固定SDK子模块，不包含外置插件源码。完整映射、许可证和跨仓库测试见[仓库结构](docs/repositories.md)。
+主程序仓库为 [KIGTTS/KIGTTSNEXT](https://github.com/KIGTTS/KIGTTSNEXT)，保持私有。插件与SDK统一由 [KIGTTS组织](https://github.com/KIGTTS) 管理，一个插件一个仓库，保留各自LICENSE/NOTICE。主程序只固定SDK子模块，不包含外置插件源码。完整映射、许可证和跨仓库测试见[仓库结构](docs/repositories.md)。

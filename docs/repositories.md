@@ -1,6 +1,6 @@
 # KIGTTS仓库结构
 
-SDK与外置插件分别独立发布；本仓库负责Android宿主与运行时。主程序默认构建只需初始化`.sdk`，不需要获取引擎、助手或商店源码。
+SDK与外置插件分别独立发布；本仓库负责Android宿主与运行时。主仓库已迁入组织，地址为 [KIGTTS/KIGTTSNEXT](https://github.com/KIGTTS/KIGTTSNEXT)，保留私有可见性及原提交历史。主程序默认构建只需初始化`.sdk`，不需要获取引擎、助手或商店源码。
 
 |组件|仓库|许可|
 |---|---|---|
@@ -38,4 +38,4 @@ git clone https://github.com/KIGTTS/plugin-quick-text-tools ../KIGTTS-Plugins/qu
 
 各插件仓库单独构建前执行`git submodule update --init --recursive`。发布使用仓库Package.ps1与明确的发布者私钥；私钥、模型、供应商令牌、用户素材均不得入库。主仓库tools/Build-EnginePlugins.ps1只委派独立仓库打包并汇总产物；同版本不可覆盖。
 
-KPM网页、私有模板库和Android主仓库的组织迁移独立安排，当前地址/可见性仍保留；不把组织下已发布的插件仓库等同于它们已迁移。
+2026-10-22 主仓库已从LHT02转移至KIGTTS组织，旧地址由GitHub重定向。本地已有克隆应执行`git remote set-url origin https://github.com/KIGTTS/KIGTTSNEXT.git`；SDK子模块继续使用组织下的`plugin-sdk`。KPM网页和私有模板库仍保留当前地址与可见性，单独安排迁移。

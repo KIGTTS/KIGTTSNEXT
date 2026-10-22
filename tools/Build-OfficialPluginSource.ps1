@@ -99,11 +99,11 @@ $($rows -join "`n")
 
 本仓库清单与说明采用 MIT。各插件和第三方依赖分别遵守其包内 assets/licenses 中的 LICENSE/NOTICE；MIT 不改变 GPL 插件或其它依赖的许可。
 
-项目源码与构建脚本：https://github.com/LHT02/KIGTTSNEXT
+项目源码与构建脚本：https://github.com/KIGTTS/KIGTTSNEXT
 
-本次未修改的 0.8.0 引擎/服务对应源码固定于提交 185f8236a74834e8b87420f878cd8ab897b373b4，可直接下载完整源归档：https://github.com/LHT02/KIGTTSNEXT/archive/185f8236a74834e8b87420f878cd8ab897b373b4.zip 。Piper 的 JNI、发音器、固定 eSpeak 源归档及构建配置位于 engine-plugins/piper-tts/native-source；其余依赖的固定版本、源地址及许可见各模块 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的 LFS 文件。
+本次未修改的 0.8.0 引擎/服务对应源码固定于提交 185f8236a74834e8b87420f878cd8ab897b373b4，可直接下载完整源归档：https://github.com/KIGTTS/KIGTTSNEXT/archive/185f8236a74834e8b87420f878cd8ab897b373b4.zip 。Piper 的 JNI、发音器、固定 eSpeak 源归档及构建配置位于 engine-plugins/piper-tts/native-source；其余依赖的固定版本、源地址及许可见各模块 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的 LFS 文件。
 
-源清单格式、依赖和镜像规则：https://github.com/LHT02/KIGTTSNEXT/blob/main/docs/package-store.md
+源清单格式、依赖和镜像规则：https://github.com/KIGTTS/KIGTTSNEXT/blob/main/docs/package-store.md
 
 发布准备：先构建签名 APK 和插件，再运行 tools/Build-OfficialPluginSource.ps1。上传输出目录的文件，避免上传整个工作区、私钥、模型和用户工程。
 "@
