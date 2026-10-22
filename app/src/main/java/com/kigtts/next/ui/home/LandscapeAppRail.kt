@@ -2,8 +2,6 @@ package com.kigtts.next.ui.home
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -30,9 +28,6 @@ fun LandscapeAppRail(state: AppState, model: AppViewModel, openSettings: () -> U
                 Modifier.requiredSize(128.dp, 32.dp).graphicsLayer { rotationZ = -90f }, tint = MaterialTheme.colorScheme.onSurface)
         }
         SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
-        IconButton(feedbackClick(model::toggleAutoPlayback), modifier=Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
-            Icon(if(state.autoPlayback)Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                if(state.autoPlayback)"关闭自动播放与朗读" else "开启自动播放与朗读")
-        }
+        AutomaticReadButton(state, model)
     }
 }

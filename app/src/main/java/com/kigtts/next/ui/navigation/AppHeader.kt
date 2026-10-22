@@ -3,8 +3,6 @@ package com.kigtts.next.ui.navigation
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -44,10 +42,10 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     }
     Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = feedbackClick { if (home) model.toggleAutoPlayback() else model.navigateBack() },
+            if (home) com.kigtts.next.ui.home.AutomaticReadButton(state, model)
+            else IconButton(onClick = feedbackClick(model::navigateBack),
                 modifier=Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
-                Icon(if (home) { if(state.autoPlayback)Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff } else Icons.AutoMirrored.Filled.ArrowBack,
-                    if (home) { if(state.autoPlayback)"关闭自动播放与朗读" else "开启自动播放与朗读" } else "返回上一页")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回上一页")
             }
             if (home) SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)

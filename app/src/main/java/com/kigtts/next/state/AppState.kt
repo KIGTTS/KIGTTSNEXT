@@ -66,7 +66,7 @@ data class AppState(
     val appleLivePhotos: Boolean = false,
     val subtitleFormats: List<com.kigtts.next.text.TextFormatRun> = emptyList(),
     val audioId: String? = null,
-    val autoPlayback: Boolean = true,
+    val autoPlayback: Boolean = false,
     val contentAutoPlay: Boolean = true,
     val contentAudioMode: com.kigtts.next.media.MediaAudioMode? = null,
     val contentRevision: Int = 0,

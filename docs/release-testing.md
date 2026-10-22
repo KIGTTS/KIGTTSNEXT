@@ -466,3 +466,9 @@ Release/R8/Lint成功（7分6秒）。开发测试证书签名APK为8,020,396字
 SDK43项、主程序27项、语音Broker8项、Piper13项、语音合成服务31项、Agent90项共212项定向回归全部通过。包含真实字形居中、退场提示字号、IME/选择、同亮暗模式下的自定色板、原生滑条拖动松手提交、旧包DTO兼容、参数隔离/更新/导出及语音请求的包语言。未重复计入共享tts-support的既有测试。
 
 Release/R8/Lint通过（7分40秒；Lint0错误、110警告、3提示），本地测试签名APK为8,020,396字节，SHA256为4558bf26a159a25c7e0cd1a7d26f07c3869904b62c322d204b8e73e69792f862。cfc8ef16已adb覆盖安装Success，回读base.apk摘要一致。三份插件均inspect核对API21及既有发布者后覆盖升级：服务0.8.1、Piper0.8.1、Agent0.9.15。snapshot确认API21与八个外置插件enabled/loaded均为true且error为空；未导航用户的功能界面，视觉动效和实际朗读由用户继续手动测试。
+
+## 2026-10-23 自动朗读默认值与按钮联动
+
+首次安装自动朗读默认关闭，保留已保存的开启/关闭选择；缺少服务时开启自动朗读使用同一个朗读引导，支持安装、稍后再说及隐藏。横竖屏自动朗读键复用同一组件，与朗读键共享隐藏状态，服务停用时两者隐藏、恢复后重新出现。默认值、偏好跨实例保存、安装引导、实际按钮点击/隐藏/恢复、语音会话等23项定向检查通过。
+
+额外运行横屏主页9项检查，其中8项通过；LandscapeHomeTest.landscapeSettingsOpenDirectlyAndSketchEntersAndReturnsRightRegardlessOfBackGestureEdge在85行的入场位移检查失败。单独重跑、还原修改前生产代码再跑均在同处失败（.tools/api21-landscape-baseline.log），作为既有回归问题保留，未将其计入本轮通过数。Release构建进行中，尚未安装最终包。

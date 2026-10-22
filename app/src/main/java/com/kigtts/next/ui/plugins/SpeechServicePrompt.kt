@@ -27,8 +27,8 @@ internal fun SpeechServicePrompt(status: SpeechServiceStatus?, proceed: () -> Un
             Text(if (missing) "安装语音合成服务？" else "语音合成服务未启用", Modifier.weight(1f))
             Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
         } },
-        text = { Text(if (missing) "朗读文字需要语音合成服务。可前往插件商店安装，也可以继续使用文字字幕。"
-            else "启用语音合成服务后，朗读按钮会重新显示。") },
+        text = { Text(if (missing) "朗读文字需要语音合成服务。可前往插件商店安装，也可以继续使用文字字幕。隐藏朗读按钮时，自动朗读开关也会一起隐藏。"
+            else "启用语音合成服务后，朗读和自动朗读按钮会重新显示。") },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(proceed)) { Text(if (missing) "前往安装" else "管理服务") } },
         dismissButton = { Column {
             MotionTextButton(onClick = dialogFeedbackClick(later)) { Text("稍后再说") }

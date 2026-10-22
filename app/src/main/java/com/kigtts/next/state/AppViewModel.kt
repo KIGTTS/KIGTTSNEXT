@@ -71,7 +71,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         subtitleAppearance = subtitleAppearanceStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
-        autoPlayback = playbackPreferences.getBoolean("automatic", true),
+        autoPlayback = playbackPreferences.getBoolean("automatic", false),
         contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null))))
     val state = mutableState.asStateFlow()
@@ -267,6 +267,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         setAutoPlayback(!state.value.autoPlayback)
     }
     fun setAutoPlayback(enabled: Boolean) {
+        if (enabled && !synthesisGuidance.request()) return
         playbackPreferences.edit { putBoolean("automatic",enabled) }
         update { it.copy(autoPlayback=enabled) }
         if(!enabled) { if(audioSessionDelegate.isInitialized())cardAudio.pause();viewModelScope.launch { speech.stopSpeaking() } }

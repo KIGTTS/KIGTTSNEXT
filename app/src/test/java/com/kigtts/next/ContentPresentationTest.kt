@@ -39,7 +39,9 @@ class ContentPresentationTest {
     }
     @Test fun autoPlaybackIsHostOwnedAndPerCardOptOutSurvivesEditingAndRestart() {
         val model=testAppModel(app)
-        assertTrue(model.state.value.autoPlayback)
+        assertFalse(model.state.value.autoPlayback)
+        model.toggleAutoPlayback();assertTrue(model.state.value.autoPlayback)
+        assertTrue(testAppModel(app).state.value.autoPlayback)
         model.toggleAutoPlayback();assertFalse(model.state.value.autoPlayback)
         assertFalse(testAppModel(app).state.value.autoPlayback)
         val page=model.mediaRepository.html("页面","<p>页面</p>")
