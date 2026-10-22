@@ -472,3 +472,7 @@ Release/R8/Lint通过（7分40秒；Lint0错误、110警告、3提示），本�
 首次安装自动朗读默认关闭，保留已保存的开启/关闭选择；缺少服务时开启自动朗读使用同一个朗读引导，支持安装、稍后再说及隐藏。横竖屏自动朗读键复用同一组件，与朗读键共享隐藏状态，服务停用时两者隐藏、恢复后重新出现。默认值、偏好跨实例保存、安装引导、实际按钮点击/隐藏/恢复、语音会话等23项定向检查通过。
 
 额外运行横屏主页9项检查，其中8项通过；LandscapeHomeTest.landscapeSettingsOpenDirectlyAndSketchEntersAndReturnsRightRegardlessOfBackGestureEdge在85行的入场位移检查失败。单独重跑、还原修改前生产代码再跑均在同处失败（.tools/api21-landscape-baseline.log），作为既有回归问题保留，未将其计入本轮通过数。Release构建进行中，尚未安装最终包。
+
+最终Release/R8/Lint通过（4分37秒，0错误、110警告、3提示）。本地开发测试签名APK为8,020,396字节，SHA256为10bf39fcc019d32d631275b2dcde94ac00ad8538a8e24787a3e0d953c4dd29e9；设备cfc8ef16覆盖安装Success且回读base.apk摘要一致。升级后仅启动主程序恢复桥，未操作用户功能界面；snapshot确认八个插件原启用状态保留、loaded为true、error为空。
+
+官方源保留13款插件的32个版本，连同APK和元数据共34份文件匿名下载大小/SHA256核对通过，index/README/LICENSE与主分支一致，无缓存待传播项。语音合成服务0.8.1、Piper0.8.1、助手0.9.15已入源。KPM快照与离线静态部署包同步新版下载，网页7项回归通过。
