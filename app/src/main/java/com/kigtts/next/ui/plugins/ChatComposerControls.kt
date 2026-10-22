@@ -27,7 +27,7 @@ import com.kigtts.plugin.api.*
                 Text("开启完全访问？", Modifier.weight(1f))
                 Icon(Icons.Default.GppMaybe, null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.error)
             }
-        }, text = { Text("助手将可以修改或删除内容、安装和调试插件，并执行软件已开放的操作，无需逐项批准。请只在信任本次任务时开启。系统相机、麦克风等设备权限仍由系统管理。") },
+        }, text = { Text("助手可以直接修改或删除内容、安装和调试插件，无需逐项批准。请确认你信任当前任务。相机、麦克风等权限仍需另行授权。") },
             confirmButton = { TextButton(onClick = feedbackClick {
                 warning = null; invoke(option.action, mapOf("_agentAccess" to "full", "_agentFullConfirmed" to "true"))
             }) { Text("开启完全访问") } },

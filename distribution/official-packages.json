@@ -1,5 +1,99 @@
 [
   {
+    "category": "扩展",
+    "summary": "和 AI 聊天、看图、找资料，也能协助制作快捷文本与插件。",
+    "description": "## AI 助手\n\n把聊天、查找资料和动手创作放在一起。可以发送图片、切换模型，也可以同时处理多个会话。\n\n- 制作带图片的快捷文本或互动网页。\n- 整理常用内容，让 AI 帮忙完成日常操作。\n- 随时回看历史消息，继续之前的话题。",
+    "tags": [
+      "AI"
+    ],
+    "file": "tools.cloud-agent-0.9.16.kigplugin",
+    "symbol": "robot_2",
+    "module": "cloud-agent",
+    "notes": "优化助手设置与操作提示，权限用途更清楚。"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
+    "file": "tools.package-store-0.11.0.kigplugin",
+    "notes": "在插件条目右侧查看下载进度；新增下载管理，修复安装后仍停留在旧计划的问题，并改进重复添加源的提示。",
+    "module": "package-store"
+  },
+  {
+    "module": "piper-tts",
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.1"
+    },
+    "file": "engine.piper-0.8.2.kigplugin",
+    "category": "音频",
+    "summary": "为日常朗读添加更多声音。",
+    "symbol": "voice_chat",
+    "description": "## Piper 语音引擎\n\n导入喜欢的 Piper 语音包，在语音合成设置中选择声音，调整音量、音色和朗读节奏。需要搭配语音合成服务使用。",
+    "tags": [
+      "语音合成"
+    ],
+    "notes": "更新使用说明，方便查找声音管理与设备兼容信息。"
+  },
+  {
+    "module": "sensevoice-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.0"
+    },
+    "file": "engine.sensevoice-0.8.1.kigplugin",
+    "category": "音频",
+    "summary": "识别语音并转换成文字，适合日常交流与听读。",
+    "symbol": "mic",
+    "description": "## SenseVoice 语音识别\n\n为语音识别服务提供另一种识别方式，将语音转换为文字，方便交流与阅读。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "简化识别设置与资源提示，更清楚地说明录音和连续聆听的使用方式。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.0"
+    },
+    "file": "engine.streaming-asr-0.8.1.kigplugin",
+    "category": "音频",
+    "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n让说话过程中的文字逐步呈现，可搭配语音识别服务用于聆听字幕与连续语音输入。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "优化识别包与语言设置的说明。"
+  },
+  {
+    "module": "lua-runtime",
+    "file": "runtime.lua-0.9.2.kigplugin",
+    "category": "开发",
+    "summary": "管理多个插件项目，编辑文件、调试运行，并打包分享作品。",
+    "symbol": "code",
+    "description": "## 插件编辑器\n\n从一个小工具开始，逐步做成自己的插件。\n\n支持多项目与文件管理、Lua 编辑、运行调试及打包分享，也可以接入 AI 协助创作。",
+    "tags": [
+      "开发工具"
+    ],
+    "notes": "完善权限用途说明。"
+  },
+  {
+    "category": "外观",
+    "summary": "把字幕变成发光灯板，随手调整灯光与灯珠质感。",
+    "symbol": "lightbulb",
+    "description": "## LED 灯珠字幕\n\n点亮灯泡按钮，将输入文字、快捷短语和聆听字幕显示成 LED 灯板。长句平滑滚动，也能一键全屏。\n\n开启后，在缩放按钮左侧调整灯光颜色、灯珠、辉光与滚速。",
+    "tags": [
+      "字幕",
+      "显示样式"
+    ],
+    "file": "display.led-0.1.3.kigplugin",
+    "notes": "支持更大的字幕字号，并改善大字灯珠显示效果。",
+    "module": "led-caption"
+  },
+  {
     "module": "speech-service",
     "file": "service.speech-synthesis-0.8.1.kigplugin",
     "category": "音频",
@@ -9,7 +103,7 @@
     "tags": [
       "语音合成"
     ],
-    "notes": "系统声音跟随设备默认；语速与语音包参数以滑条卡片调整。"
+    "notes": "使用系统默认声音，也可分别调整语音包的音量、音色和节奏。"
   },
   {
     "module": "piper-tts",
@@ -18,9 +112,9 @@
     },
     "file": "engine.piper-0.8.1.kigplugin",
     "category": "音频",
-    "summary": "把文字读成语音，搭配喜欢的音色用于日常朗读。",
+    "summary": "为日常朗读添加更多声音。",
     "symbol": "voice_chat",
-    "description": "## Piper 语音引擎\n\n为语音合成服务提供朗读声音，搭配音色模型使用，可按自己的喜好选择声音。",
+    "description": "## Piper 语音引擎\n\n导入喜欢的 Piper 语音包，在语音合成设置中选择声音，调整音量、音色和朗读节奏。需要搭配语音合成服务使用。",
     "tags": [
       "语音合成"
     ],
@@ -40,9 +134,9 @@
   },
   {
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "tags": [
       "工具"
     ],
@@ -85,16 +179,16 @@
       "格式兼容"
     ],
     "file": "backup.kigusay-0.1.1.kigplugin",
-    "notes": "全新导入导出指引，首次导入先说明所需权限，支持图片、音频和视频。",
+    "notes": "导入前可查看操作指引，支持一并转移图片、音频和视频。",
     "module": "kigusay-backup"
   },
   {
     "module": "package-store",
     "file": "tools.package-store-0.10.2.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "notes": "支持下拉更新来源，刷新进度显示在标题栏，保留列表位置与浏览操作。",
     "tags": [
       "工具"
@@ -104,9 +198,9 @@
     "module": "package-store",
     "file": "tools.package-store-0.10.1.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "notes": "每次进入自动更新目录；详情显示插件图标与可折叠的权限说明。",
     "tags": [
       "工具"
@@ -128,9 +222,9 @@
     "module": "package-store",
     "file": "tools.package-store-0.10.0.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "notes": "加大插件图标并展示简短介绍，完善详情和预览体验。",
     "tags": [
       "工具"
@@ -229,9 +323,9 @@
     "module": "package-store",
     "file": "tools.package-store-0.9.3.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "extension",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "tags": [
       "工具"
     ]
@@ -240,9 +334,9 @@
     "module": "package-store",
     "file": "tools.package-store-0.9.2.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "extension",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "tags": [
       "工具"
     ]
@@ -251,9 +345,9 @@
     "module": "package-store",
     "file": "tools.package-store-0.9.1.kigplugin",
     "category": "扩展",
-    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "extension",
-    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "tags": [
       "工具"
     ]
@@ -278,7 +372,8 @@
     "description": "## 语音合成服务\n\n集中管理朗读声音与语音引擎，按自己的习惯调整朗读体验。支持系统语音与已安装的其它语音引擎。",
     "tags": [
       "语音合成"
-    ]
+    ],
+    "notes": ""
   },
   {
     "module": "recognition-service",
@@ -298,9 +393,9 @@
     },
     "file": "engine.piper-0.8.0.kigplugin",
     "category": "音频",
-    "summary": "把文字读成语音，搭配喜欢的音色用于日常朗读。",
+    "summary": "为日常朗读添加更多声音。",
     "symbol": "voice_chat",
-    "description": "## Piper 语音引擎\n\n为语音合成服务提供朗读声音，搭配音色模型使用，可按自己的喜好选择声音。",
+    "description": "## Piper 语音引擎\n\n导入喜欢的 Piper 语音包，在语音合成设置中选择声音，调整音量、音色和朗读节奏。需要搭配语音合成服务使用。",
     "tags": [
       "语音合成"
     ]

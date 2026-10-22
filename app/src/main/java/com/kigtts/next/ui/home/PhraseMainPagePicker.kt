@@ -41,7 +41,7 @@ import kotlinx.coroutines.*
                     }
                 }) { Icon(if (item.directory) Icons.Default.Folder else if (item.main) Icons.Default.Check else Icons.Default.Html, null); Spacer(Modifier.width(12.dp)); Text(item.name) }
             } }
-            if (items.isEmpty()) Text("此文件夹没有可选的HTML页面")
+            if (items.isEmpty()) Text("这个文件夹中没有网页文件")
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text("取消") } })

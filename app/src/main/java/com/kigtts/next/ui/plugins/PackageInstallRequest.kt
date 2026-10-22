@@ -2,6 +2,7 @@ package com.kigtts.next.ui.plugins
 
 import androidx.compose.runtime.*
 import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.state.Destination
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
 import java.io.File
@@ -60,5 +61,12 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
                 error = failure.message ?: "安装未完成"
             } finally { busy = false }
         }
-    }, dismiss = dismiss)
+    }, dismiss = {
+        dismiss()
+        // Installation is a modal overlay, so the underlying page does not receive a new visit.
+        // Replay only its declared entry action to reconcile the install/cancel result immediately.
+        val page = model.state.value.destination as? Destination.PluginPage
+        if (page?.pluginId == owner) model.registry.plugin(owner)?.page(page.pageId, model.context())
+            ?.onEnterAction?.let { model.invoke(owner, it) }
+    })
 }

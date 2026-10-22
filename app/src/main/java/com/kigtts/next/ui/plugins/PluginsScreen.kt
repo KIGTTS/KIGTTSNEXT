@@ -70,16 +70,16 @@ fun PluginsScreen(model: AppViewModel) {
             }
         }) {
         if (safeMode) {
-            Text("安全模式：检测到重复崩溃，所有外部插件已临时停用，原数据与启用设置保留。", color = MaterialTheme.colorScheme.error)
+            Text("软件多次启动失败，已进入安全模式并暂时停用插件。插件数据和原有设置已保留。", color = MaterialTheme.colorScheme.error)
             MotionTextButton(enabled = !working, onClick = feedbackClick { scope.launch { busy = true
                 try { recovery.restore(); safeMode = false; model.refreshPlugins() } finally { busy = false }
             } }) { Text("恢复插件") }
         }
-        Text("拖动手柄或长按排序。条目菜单提供页面、引擎选择和卸载操作。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (model.pluginManager.status.isEmpty()) Text("尚未安装语音引擎插件")
+        Text("长按或拖动手柄可排序，更多操作请打开条目菜单。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (model.pluginManager.status.isEmpty()) Text("还没有安装插件")
     }
     permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }
-    managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text("卸载插件？") }, text = { Text("该Lua插件的代码与本地数据将被删除。") },
+    managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text("卸载插件？") }, text = { Text("将删除这个 Lua 插件及其保存的数据。") },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick {
             model.registry.plugin(runtime)?.contributions?.managedPackages?.firstOrNull { it.id == id }?.removeAction?.let { action -> model.invoke(runtime, action) }
             model.pluginManager.permissions.clear(model.pluginManager.permissionOwner(runtime, id)); managedRemove = null
@@ -88,7 +88,7 @@ fun PluginsScreen(model: AppViewModel) {
         LocalPackageInstaller(model, candidate) { candidate.file.delete(); pending = null }
     }
     remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
-        text = { Text("该插件的模型、下载、配置和临时文件也会删除。") },
+        text = { Text("将删除这个插件及其保存的数据，包括模型、下载文件和设置。") },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
         dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
 }

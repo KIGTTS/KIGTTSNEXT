@@ -25,7 +25,8 @@ import androidx.compose.animation.core.tween
 @Composable
 internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier, dragGrip: Modifier, reorderable: Boolean, elevated: Boolean,
     enabled: Boolean, resolve: (PluginResource) -> File?, invoke: (String, Map<String, String>) -> Unit,
-    moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp) {
+    moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
+    catalog: Boolean = false, trailingAction: ManagementProgressAction? = null) {
     var menu by remember(item.id) { mutableStateOf(false) }
     val primary = item.primaryAction
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
@@ -38,7 +39,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
             Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
             .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null) {
-                ResourceAvatar(item, resolve)
+                ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
                 Spacer(Modifier.width(12.dp))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -55,6 +56,9 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                     if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
                 }
+            }
+            trailingAction?.let { action ->
+                InlineProgressButton(item.id, action, enabled && !elevated, invoke)
             }
             item.toggle?.let { toggle ->
                 Switch(toggle.checked, enabled = enabled, onCheckedChange = if (elevated) null else feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },

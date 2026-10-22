@@ -113,7 +113,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
 
 @Composable private fun PackageInstallerPermissions(info: PackageInstallerInfo) {
     Text("插件访问权限", style = MaterialTheme.typography.titleSmall)
-    Text("安装不会授予权限。首次使用相关功能时再询问，之后可在插件权限中管理。", style = MaterialTheme.typography.bodySmall)
+    Text("首次使用需要权限的功能时会询问授权，也可随时在插件权限中调整。", style = MaterialTheme.typography.bodySmall)
     if (info.permissions.isEmpty()) Text("此插件未声明额外权限")
     info.permissions.forEach { permission ->
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -131,6 +131,6 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     Text("软件许可协议", style = MaterialTheme.typography.titleSmall)
     Text(info.manifest.license, style = MaterialTheme.typography.titleMedium)
     SelectionContainer {
-        Text(info.licenseText.ifBlank { "此包声明使用 ${info.manifest.license} 许可。安装包未附许可证正文，请向发布者获取完整文本及第三方依赖许可。" })
+        Text(info.licenseText.ifBlank { "此插件使用 ${info.manifest.license} 许可。安装包未附许可全文，请向发布者获取全文和所用组件的许可。" })
     }
 }

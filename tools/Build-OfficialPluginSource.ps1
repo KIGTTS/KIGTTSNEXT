@@ -43,7 +43,7 @@ foreach ($item in $config) {
             bytes = (Get-Item -LiteralPath $file).Length; expectedPublisher = $publisher
             mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
             apiVersion = $spec.apiVersion; minSdk = $spec.minSdk; abis = @($spec.abis)
-            notes = if ($item.notes) { $item.notes } elseif ($spec.apiVersion -ge 11) { "需API$($spec.apiVersion)或更新兼容宿主；更新保留原配置与启停状态。" } else { '兼容API9–13宿主；无需重新导入已有模型。' }
+            notes = if ($item.notes) { $item.notes } else { '暂无更新说明。' }
             dependencies = if ($spec.dependencies) { $spec.dependencies } elseif ($item.dependencies) { $item.dependencies } else { @{} }
             permissions = @($spec.capabilities | Where-Object { $_ -ne 'ui' })
             permissionPurposes = if ($spec.permissionPurposes) { $spec.permissionPurposes } else { @{} }
@@ -79,11 +79,11 @@ tags:
 ---
 # KIGTTS 官方插件源
 
-这是 KIGTTS 插件分发仓库。不是训练数据集，不含个人数据、供应商密钥或语音模型。
+为 KIGTTS 添加朗读、聆听、创作与日常工具。可在软件的插件商店中浏览和安装。
 
 源地址：$homepage/resolve/master/index.json?view=false
 
-在新版 KIGTTS 的插件商店中默认内置。添加源不会自动安装或信任插件；实际安装仍核对大小、SHA-256、包内签名与发布者。用户删除官方源后不会反复补回。
+新版 KIGTTS 已内置这个源。安装前可以查看插件介绍、所需权限和许可证。
 
 发布者 SHA-256：$publisher
 
@@ -91,7 +91,7 @@ tags:
 | --- | --- | --- | --- |
 $($rows -join "`n")
 
-当前主程序使用 API$sdkApi；各包需要的最低兼容接口见上表。商店0.10.3与娃语0.1.1使用API16，LED0.1.2需要API19，助手0.9.15、Piper0.8.1与语音合成服务0.8.1需要API21；其它已发布兼容包仍可使用；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
+当前主程序为 API$sdkApi。插件所需版本见上表，旧版本仍可在商店中选择。系统声音包含在语音合成服务中；其它语音引擎需另行添加语音包。
 
 网页添加指引与模板：https://lht02.github.io/KPM/
 
@@ -101,7 +101,7 @@ $($rows -join "`n")
 
 项目源码与构建脚本：https://github.com/KIGTTS/KIGTTSNEXT
 
-各插件已拆分为 KIGTTS 组织下的独立仓库，源清单的 homepage 指向对应源码与许可证。Piper 0.8.1 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/eeab25968990a0babda8c3e6902137c34b51f44b.zip 。0.8.0 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/0e9aedef9ddde90f1fe92762e53a4a4daf235c65.zip ，包含 native-source 下的 JNI、发音器、固定 eSpeak 源归档及构建配置；其余依赖的固定版本、源地址及许可见各插件 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的子模块与 LFS 文件。
+各插件已拆分为 KIGTTS 组织下的独立仓库，源清单的 homepage 指向对应源码与许可证。Piper 0.8.2 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/61e2befc6b2a87bcc5f15d1f19e0d53064793cf4.zip 。0.8.1 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/eeab25968990a0babda8c3e6902137c34b51f44b.zip 。0.8.0 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/0e9aedef9ddde90f1fe92762e53a4a4daf235c65.zip ，包含 native-source 下的 JNI、发音器、固定 eSpeak 源归档及构建配置；其余依赖的固定版本、源地址及许可见各插件 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的子模块与 LFS 文件。
 
 源清单格式、依赖和镜像规则：https://github.com/KIGTTS/KIGTTSNEXT/blob/main/docs/package-store.md
 
@@ -119,7 +119,7 @@ if ($AndroidApk) {
     $android = [ordered]@{ path = $relative; sha256 = $hash; bytes = (Get-Item -LiteralPath $apk).Length
         apiVersion = $sdkApi; version = '0.1.0-preview'; developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
     [IO.File]::WriteAllText((Join-Path $output 'android/release.json'), ($android | ConvertTo-Json) + "`n", $utf8)
-    $signing = if ($DevelopmentSigned) { '这是优化且不可调试的Release预览包，使用本地开发测试证书签名；不是正式生产发行证书。覆盖安装前请核对当前软件签名。' } else { '这是预览APK，请核对签名和当前安装版本。' }
+    $signing = if ($DevelopmentSigned) { '此预览版使用开发测试证书签名。覆盖安装需要与已装版本的签名一致，请先备份重要内容。' } else { '这是预览APK，请核对签名和当前安装版本。' }
     [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android预览版`n`n[下载API$sdkApi 安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
 }
 Write-Output "Prepared $($packages.Count) signed packages in $output"

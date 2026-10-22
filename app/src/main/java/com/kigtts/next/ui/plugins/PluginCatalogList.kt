@@ -4,8 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -13,6 +14,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.management.ResourceAvatar
+import com.kigtts.next.ui.management.InlineProgressButton
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.*
 import java.io.File
@@ -37,10 +39,31 @@ import java.io.File
                             if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         }
-                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
+                        val action = list.itemActions[item.id]
+                        if (action != null) InlineProgressButton(item.id, action, enabled, invoke)
+                        else Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
+                        if (item.actions.isNotEmpty()) CatalogItemMenu(item, enabled, invoke)
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun CatalogItemMenu(item: ManagementItem, enabled: Boolean, invoke: (String, Map<String, String>) -> Unit) {
+    var open by remember(item.id) { mutableStateOf(false) }
+    Box {
+        TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                contentColor = MaterialTheme.colorScheme.onSurface) { Text("更多操作") } }, state = rememberTooltipState()) {
+            IconButton(onClick = feedbackClick { open = true }, enabled = enabled, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.MoreVert, "更多操作")
+            }
+        }
+        DropdownMenu(open, { open = false }) {
+            item.actions.forEach { action -> DropdownMenuItem(text = { Text(action.label) },
+                onClick = feedbackClick { open = false; invoke(action.id, emptyMap()) }) }
         }
     }
 }

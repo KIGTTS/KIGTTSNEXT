@@ -46,7 +46,7 @@ fun OverlaySettingsScreen() {
     }
     SettingsLayout {
         SettingsGroup("悬浮快捷入口") {
-            ToggleSetting("开启悬浮窗", "在其它页面快速打开大字幕、拍照和常用入口", Icons.Default.BubbleChart,
+            ToggleSetting("开启悬浮窗", "在其它应用上方快速打开大字幕、相机和常用功能", Icons.Default.BubbleChart,
                 state.enabled && Settings.canDrawOverlays(context), { enabled ->
                     if (enabled && !Settings.canDrawOverlays(context)) permissionExplanation = true else enable(enabled)
                 }, position = SettingPosition.FIRST)
@@ -90,7 +90,7 @@ fun OverlaySettingsScreen() {
         if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.title) }, text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("优先小窗打开", Modifier.weight(1f)); Switch(current.smallWindow, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(smallWindow = enabled) else old }) } }) }
-                Text("跟随系统的小窗支持情况", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("需要设备支持小窗", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("显示文字", Modifier.weight(1f)); Switch(current.showLabel, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(showLabel = enabled) else old }) } }) }
                 Row { TextButton(onClick = feedbackClick { store.move(item.id, -1) }, enabled = state.shortcuts.firstOrNull()?.id != item.id) { Text("上移") }
                     TextButton(onClick = feedbackClick { store.move(item.id, 1) }, enabled = state.shortcuts.lastOrNull()?.id != item.id) { Text("下移") } }

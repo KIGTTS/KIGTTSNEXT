@@ -60,13 +60,13 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
     RegisterPageActions(listOfNotNull(
         if (pagesOnly) null else ToolbarAction("import-media","导入图片或视频",Icons.Default.AddPhotoAlternate,!importing) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
         ToolbarAction("import-media-file","导入文件",Icons.Default.FileOpen,!importing) { document.launch(if (pagesOnly) arrayOf("text/html","application/xhtml+xml") else arrayOf("text/html","application/xhtml+xml","image/*","video/*")) },
-        ToolbarAction("create-html","新建 HTML",Icons.Default.Code) { scope.launch { runCatching { model.content.htmlFiles(target) }.onFailure { error=it.message } } },
+        ToolbarAction("create-html","新建网页",Icons.Default.Code) { scope.launch { runCatching { model.content.htmlFiles(target) }.onFailure { error=it.message } } },
         ToolbarAction("add-webpage","添加网页",Icons.Default.Language) { website=true }
     ))
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (shown.isEmpty()) Text(if (pagesOnly) "编写 HTML 或添加网页后即可使用。" else "导入后点击媒体即可使用。Android 动态照片会自动识别。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (shown.isEmpty()) Text(if (pagesOnly) "添加网页地址，或编写自己的网页。" else "导入后点击媒体即可使用。Android 动态照片会自动识别。", color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyVerticalGrid(GridCells.Adaptive(148.dp), modifier = Modifier.weight(1f).testTag("media-library"),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
             items(shown, key = { it.id }) { entry ->

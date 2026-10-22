@@ -83,7 +83,8 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 ManagedItemRow(item, Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(120),
                         placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
-                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) })
+                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) },
+                    catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id])
             }
         }
         val active = drag.key?.let(data::get)

@@ -75,7 +75,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                     WebViewCompat.addWebMessageListener(this, "Kigtts", setOf(WebContentPolicy.ORIGIN)) { _, message, origin, mainFrame, _ ->
                         if(ownsPage())WebContentPolicy.action(entry, message.data.orEmpty(), origin.toString(), mainFrame)?.let { (action, inputs) -> model.invoke(entry.pluginId, action, inputs) }
                     }
-                } else model.message("当前系统 WebView 不支持插件网页按钮，请更新 Android System WebView")
+                } else model.message("网页按钮暂不可用，请更新系统的 Android System WebView")
             }
             if (entry.kind == MediaKind.HTML) installKigttsHaptics { currentActive }
             if (entry.kind == MediaKind.HTML) installNetworkConsent(scope, networkGate::authorize)

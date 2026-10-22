@@ -13,15 +13,15 @@ import androidx.compose.ui.platform.LocalContext
     var system by remember { mutableStateOf(preferences.getBoolean("use-system-camera", false)) }
     var full by remember { mutableStateOf(preferences.getBoolean("full-system-camera", true)) }
     SettingsLayout { SettingsGroup("相机") {
-        ToggleSetting("默认使用系统相机", "关闭时使用内建相机；长按拍照或选图按钮始终可以打开系统相机。", Icons.Default.PhotoCamera, system, {
+        ToggleSetting("默认使用系统相机", "关闭后使用内置相机。长按拍照或选图按钮也能打开系统相机。", Icons.Default.PhotoCamera, system, {
             system = it; preferences.edit().putBoolean("use-system-camera", it).apply()
         })
-        ToggleSetting("完整系统相机", "使用系统相机完整界面与可用镜头；拍摄后返回，选择刚拍摄的照片。关闭后使用直接回传模式。", Icons.Default.PhotoCamera, full, {
+        ToggleSetting("完整系统相机", "使用系统相机的完整功能与镜头，返回后自动导入刚拍的照片。关闭后，拍完即可返回。", Icons.Default.PhotoCamera, full, {
             full = it; preferences.edit().putBoolean("full-system-camera", it).apply()
         })
     }
         SettingsGroup("拍摄信息") {
-            Text("日期、时间、地点和天气固定保存在照片中，不随之后的位置和天气变化。地点与天气首次使用分别申请授权。")
+            Text("记录拍摄时的日期、时间、地点和天气。首次添加地点或天气时会询问授权。")
             TextButton({ context.getSharedPreferences("polaroid-facts", 0).edit().clear().apply() }) { Text("清除地点与天气授权") }
         }
     }
