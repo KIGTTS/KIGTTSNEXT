@@ -1,5 +1,6 @@
 package com.kigtts.next.audio
 
+import com.kigtts.next.io.readUpTo
 import org.json.JSONObject
 import java.io.File
 import java.nio.file.Files
@@ -23,7 +24,7 @@ internal object LegacyPiperPacks {
             return File(pack, name).canonicalFile.takeIf { it.toPath().startsWith(pack.canonicalFile.toPath()) && it.isFile }
         }
         val manifest = file("manifest.json") ?: return@runCatching false
-        val bytes = manifest.inputStream().use { it.readNBytes(65537) }
+        val bytes = manifest.inputStream().use { it.readUpTo(65537) }
         if (bytes.size > 65536) return@runCatching false
         val paths = JSONObject(bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF")).optJSONObject("files") ?: return@runCatching false
         val model = file(paths.optString("model")) ?: return@runCatching false
