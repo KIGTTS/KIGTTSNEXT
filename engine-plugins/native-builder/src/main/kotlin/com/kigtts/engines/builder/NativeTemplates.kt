@@ -1,6 +1,7 @@
 package com.kigtts.engines.builder
 
 import com.kigtts.plugin.api.PluginStorage
+import com.kigtts.plugin.api.PLUGIN_API_VERSION
 import kotlinx.serialization.json.*
 import java.io.File
 import java.util.UUID
@@ -13,7 +14,7 @@ object NativeTemplates {
         val entry = "com.kigtts.user.GeneratedPlugin"
         root.resolve("plugin-spec.json").writeText(buildJsonObject {
             put("id", id); put("name", name); put("version", "0.1.0"); put("versionCode", 1); put("entryClass", entry)
-            put("apiVersion", 9); put("minSdk", 26); put("runtime", "android-dex"); put("license", "MIT"); put("capabilities", JsonArray(listOf(JsonPrimitive("ui"))))
+            put("apiVersion", PLUGIN_API_VERSION); put("minSdk", 26); put("runtime", "android-dex"); put("license", "MIT"); put("capabilities", JsonArray(listOf(JsonPrimitive("ui"))))
         }.toString(), Charsets.UTF_8)
         root.resolve("LICENSE").writeText("""
             MIT License
@@ -38,7 +39,7 @@ object NativeTemplates {
             OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
             SOFTWARE.
         """.trimIndent() + "\n", Charsets.UTF_8)
-        root.resolve("NOTICE.md").writeText("# $name\n\n独立的 KIGTTS API9 示例插件。\n", Charsets.UTF_8)
+        root.resolve("NOTICE.md").writeText("# $name\n\n独立的 KIGTTS API$PLUGIN_API_VERSION 示例插件。\n", Charsets.UTF_8)
         val source = root.resolve("sources/com/kigtts/user/GeneratedPlugin." + if (language == "java") "java" else "kt")
         requireNotNull(source.parentFile).mkdirs()
         val title = JsonPrimitive(name).toString()
@@ -48,7 +49,7 @@ object NativeTemplates {
             import kotlin.coroutines.Continuation;
             import java.util.Collections;
             public final class GeneratedPlugin implements KigPlugin {
-              public PluginDescriptor getDescriptor() { return new PluginDescriptor("$id", $title, "示例插件", "0.1.0", 9, false, "MIT", Collections.emptyList()); }
+              public PluginDescriptor getDescriptor() { return new PluginDescriptor("$id", $title, "示例插件", "0.1.0", $PLUGIN_API_VERSION, false, "MIT", Collections.emptyList()); }
               public PluginContributions getContributions() {
                 return new PluginContributions(Collections.emptyList(), Collections.singletonList(new DrawerEntry("main", $title, "main", PluginIcon.TEXT, false)),
                   Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null);

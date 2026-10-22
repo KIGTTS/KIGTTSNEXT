@@ -1,5 +1,17 @@
 [
   {
+    "module": "package-store",
+    "file": "tools.package-store-0.10.1.kigplugin",
+    "category": "扩展",
+    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "notes": "每次进入自动更新目录；详情显示插件图标与可折叠的权限说明。",
+    "tags": [
+      "工具"
+    ]
+  },
+  {
     "module": "cloud-agent",
     "file": "tools.cloud-agent-0.9.13.kigplugin",
     "category": "扩展",

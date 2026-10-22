@@ -44,6 +44,7 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 
 @Composable
 fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", invoke: (String, Map<String, String>) -> Unit) {
+    PluginPageEntry(page, busy, invoke)
     RegisterPageLoading(busy)
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
@@ -72,12 +73,13 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         return
     }
     page.management?.let { list ->
-        if (list.style == ManagementListStyle.CATALOG) PluginCatalogList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-        else if (list.usesSettingsLayout()) PluginSettingsList(list, busy, invoke, blocks.isNotEmpty(), resolve) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-        else ManagedItemList(list, busy, resolve, invoke) { PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+        if (list.style == ManagementListStyle.CATALOG) PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+        else if (list.usesSettingsLayout()) PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+        else ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
         return
     }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        PluginPageHeader(page.header, resolve)
         PluginBlocks(blocks,!busy,invoke, resolve = resolve)
     }
 }
@@ -120,9 +122,9 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
                 })
         }
-        is PageBlock.Group -> SettingsGroup(block.title) {
+        is PageBlock.Group -> if (block.collapsible) PluginCollapsibleGroup(block) {
             PluginBlocks(block.children,enabled,invoke, grouped = true, resolve = resolve)
-        }
+        } else SettingsGroup(block.title) { PluginBlocks(block.children,enabled,invoke, grouped = true, resolve = resolve) }
         is PageBlock.Toggle -> ToggleSetting(block.title, block.summary, (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), block.checked,
             { invoke(block.actionId, mapOf("checked" to it.toString())) }, enabled = enabled, position = position, preserveColorWhenLocked = true)
         is PageBlock.Input -> SettingItem(block.title, if (block.secret) {
