@@ -43,14 +43,14 @@ foreach ($item in $config) {
             bytes = (Get-Item -LiteralPath $file).Length; expectedPublisher = $publisher
             mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
             apiVersion = $spec.apiVersion; minSdk = $spec.minSdk; abis = @($spec.abis)
-            notes = if ($spec.apiVersion -ge 11) { "需API$($spec.apiVersion)或更新兼容宿主；更新保留原配置与启停状态。" } else { '兼容API9–13宿主；无需重新导入已有模型。' }
+            notes = if ($item.notes) { $item.notes } elseif ($spec.apiVersion -ge 11) { "需API$($spec.apiVersion)或更新兼容宿主；更新保留原配置与启停状态。" } else { '兼容API9–13宿主；无需重新导入已有模型。' }
             dependencies = @{}
         }
         $packages += [ordered]@{ id = $spec.id; name = $spec.name; summary = $item.summary; category = $item.category
             license = $spec.license; homepage = "https://github.com/LHT02/KIGTTSNEXT/tree/main/engine-plugins/$($item.module)"
             icon = @{ symbol = if ($item.symbol) { $item.symbol } else { 'extension' } }
             description = if ($item.description) { $item.description } else { $item.summary }
-            tags = @('官方'); releases = @($release) }
+            tags = @($item.tags); releases = @($release) }
         $rows += "| $($spec.name) | $($spec.version) | $($spec.apiVersion) | $($spec.license) |"
         Copy-Item -LiteralPath $file -Destination (Join-Path $output $item.file) -Force
     } finally { $archive.Dispose() }
@@ -61,9 +61,9 @@ $packages = @($packages | Group-Object { $_.id } | ForEach-Object {
     $package
 })
 $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS 官方插件源'
-    description = '官方签名插件；不含用户数据、密钥或语音模型。'; homepage = 'https://lht02.github.io/KPM/'
+    description = '扩展朗读、聆听和创作体验，让常用工具触手可及。'; homepage = 'https://lht02.github.io/KPM/'
     icon = @{ symbol = 'inventory_2' }; assets = @{}
-    readme = "## KPM 官方插件源`n`n在这里浏览音频服务、AI助手和开发工具。按用途选择插件，并在安装前查看权限、版本和前置依赖。`n`n- 语音模型需另外导入。`n- UI调试为独立可选插件。`n- [源代码与构建说明](https://github.com/LHT02/KIGTTSNEXT)"
+    readme = "## KPM 官方插件源`n`n在这里浏览语音、AI与创作工具，按自己的需要丰富KIGTTS。`n`n- 找到适合日常交流的朗读和聆听工具。`n- 让AI协助整理内容与动手创作。`n- 使用插件编辑器制作并分享自己的小工具。"
     updatedAt = [DateTimeOffset]::UtcNow.ToString('o'); packages = $packages }
 [IO.File]::WriteAllText((Join-Path $output 'index.json'), ($catalog | ConvertTo-Json -Depth 15) + "`n", $utf8)
 $readme = @"

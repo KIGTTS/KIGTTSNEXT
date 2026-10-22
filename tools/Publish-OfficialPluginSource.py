@@ -10,10 +10,24 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse, unquote
 
 import requests
+import jsonschema
 from modelscope.hub.api import HubApi
 
 REPO = "LHTSTUDIO/KIGTTS-Official-Plugins"
 BASE = f"https://modelscope.cn/datasets/{REPO}/resolve/master/"
+
+
+def public_catalog():
+    for attempt in range(4):
+        base = BASE if attempt % 2 == 0 else BASE.replace("https://modelscope.cn/", "https://www.modelscope.cn/")
+        try:
+            response = requests.get(base + "index.json?view=false&preflight=" + str(time.time_ns()), timeout=(15, 25))
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException:
+            if attempt == 3:
+                raise
+    raise ValueError("Published catalog unavailable")
 
 
 def digest(path):
@@ -53,12 +67,15 @@ def main():
     parser.add_argument("--folder", default=".tools/official-plugin-source")
     parser.add_argument("--verify-only", action="store_true")
     parser.add_argument("--resume-artifacts", action="store_true", help="Artifacts already committed; verify them and publish only the catalog")
+    parser.add_argument("--catalog-only", action="store_true", help="Update presentation metadata for exactly the existing immutable releases")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     folder = (root / args.folder).resolve()
     if not folder.is_relative_to(root):
         raise ValueError("Prepared folder must stay in the workspace")
     catalog = json.loads((folder / "index.json").read_text(encoding="utf-8"))
+    schema = json.loads((root / "distribution/kpm-catalog.schema.json").read_text(encoding="utf-8"))
+    jsonschema.Draft202012Validator(schema).validate(catalog)
     files = {}
     for package in catalog["packages"]:
         for release in package["releases"]:
@@ -79,20 +96,26 @@ def main():
     token = None
     try:
         if not args.verify_only:
-            previous = requests.get(BASE + "index.json?view=false&preflight=" + str(time.time_ns()), timeout=30)
-            previous.raise_for_status()
+            previous = public_catalog()
             old_files = {}
-            for package in previous.json()["packages"]:
+            for package in previous["packages"]:
                 for release in package["releases"]:
                     name = urlparse(release["mirrors"][0]["url"]).path.rsplit("/", 1)[-1]
                     old_files[name] = (release["sha256"], release["bytes"])
             for name, expected in old_files.items():
                 if files.get(name) != expected:
                     raise ValueError(f"Published immutable release changed or missing: {name}")
+            if args.catalog_only:
+                if set(old_files) != {name for name in files if not name.startswith("android/")}:
+                    raise ValueError("Catalog-only publishing cannot add package versions")
+                if remote_hash("android/release.json") != files["android/release.json"]:
+                    raise ValueError("Catalog-only publishing cannot change Android metadata")
             upload = [name for name in files if name not in old_files]
+            if args.catalog_only:
+                upload = []
             token = getpass.getpass("ModelScope token (not saved): ")
             api = HubApi(token=token)
-            if not args.resume_artifacts:
+            if not args.resume_artifacts and not args.catalog_only:
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                     allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
                     token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android preview artifacts")
@@ -107,15 +130,17 @@ def main():
                 token=token, commit_message="Publish verified official plugin catalog and Android download")
             api.token = None
             token = None
+        verify_files = {} if args.catalog_only else files
         with ThreadPoolExecutor(max_workers=3) as pool:
-            for name, actual in zip(files, pool.map(remote_hash, files)):
+            for name, actual in zip(verify_files, pool.map(remote_hash, verify_files)):
                 if actual != files[name]:
                     raise ValueError(f"Anonymous integrity check failed: {name}")
                 print(f"Anonymous SHA-256 OK: {name}", flush=True)
         for name in ("index.json", "README.md", "LICENSE"):
             if remote_hash(name)[0] != digest(folder / name):
                 raise ValueError(f"Anonymous catalog check failed: {name}")
-        report = {"repo": REPO, "verifiedArtifacts": len(files), "apkSha256": android["sha256"], "time": time.time()}
+        report = {"repo": REPO, "verifiedArtifacts": len(verify_files), "retainedArtifacts": len(files) if args.catalog_only else 0,
+                  "catalogOnly": args.catalog_only, "apkSha256": android["sha256"], "time": time.time()}
         (root / ".tools/modelscope-verified.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         print(json.dumps(report), flush=True)
     except Exception as error:
