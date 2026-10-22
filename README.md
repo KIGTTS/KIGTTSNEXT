@@ -1,6 +1,6 @@
 # KIGTTS NEXT
 
-KIGTTS 的 Android 原生重构续作，采用 Kotlin、Jetpack Compose 和 Material 3 Expressive。仓库保持私有。主程序、通用 SDK 与运行时采用 MIT；原版移植的合成/识别实现保留各自 GPLv3 与第三方许可证，详见插件 LICENSE/NOTICE。
+KIGTTS 的 Android 原生重构续作，采用 Kotlin、Jetpack Compose 和 Material 3 Expressive。主程序、通用 SDK 与运行时采用 MIT；原版移植的合成/识别实现保留各自 GPLv3 与第三方许可证，详见插件 LICENSE/NOTICE。
 
 ## 当前实现
 
@@ -16,13 +16,13 @@ KIGTTS 的 Android 原生重构续作，采用 Kotlin、Jetpack Compose 和 Mate
 - 可选外置插件提供云端 AI 助手、多会话流式聊天、Lua 插件编辑器、带依赖解析的插件商店和 Java/Kotlin 原生构建。主程序提供标准页面与授权接口，不包含这些实现或编译器。
 - 独立插件管理器 APK 可反复安装、更新、调试与监控专用包，减少测试 APK 重装。
 
-Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Expressive 预览 API。当前插件 API 为 **13**，兼容已验签API9–12包；云端助手为 **0.9.5/API13**、商店为 **0.9.3/API12**，Lua编辑器为 **0.9.1/API11**，引擎与语音服务可保留 **0.8.0/API9**。API8 及更早的二进制需同发布者升级。运行时提供 12 个外置插件工作进程槽，各插件资源统一归入 `appdata/Kigtts/plugin/plugindata/<pluginId>/`。独立进程隔离崩溃，原生插件仍以本应用 UID 运行，应安装可信来源。
+Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Expressive 预览 API。当前插件 API 为 **15**，兼容已验签API9–15包。云端助手、商店和编辑器均为独立可选包；引擎与语音服务可保留 **0.8.0/API9**。API8 及更早的二进制需同发布者升级。运行时提供 12 个外置插件工作进程槽，各插件资源统一归入 `appdata/Kigtts/plugin/plugindata/<pluginId>/`。独立进程隔离崩溃，原生插件仍以本应用 UID 运行，应安装可信来源。
 
 ## 开发文档
 
 | 主题 | 文档 |
 | --- | --- |
-| 插件 SDK、设置入口、页面与宿主操作 | [API13](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
+| 插件 SDK、设置入口、页面与宿主操作 | [API15](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
 | 专用包、资源归属、安装与调试 | [插件包](docs/plugin-packages.md)、[独立管理器](docs/plugin-manager.md) |
 | 合成与识别 | [合成生命周期](docs/tts-lifecycle.md)、[识别服务](docs/recognition-service.md)、[流式识别包](docs/streaming-recognition.md) |
 | 媒体、卡片与源码 | [媒体协议](docs/media-content.md)、[快捷卡片](docs/quick-cards.md)、[HTML 文件与编辑器](docs/html-editor.md) |
@@ -30,19 +30,23 @@ Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Ex
 | 可选工具 | [云端助手](docs/cloud-agent.md)、[Lua 编辑器](docs/lua-plugins.md)、[原生构建](docs/native-builder.md)、[插件商店](docs/package-store.md) |
 | 构建、包体与实测记录 | [Release 验证记录](docs/release-testing.md) |
 
-可直接导入的 Kotlin、Java、Lua、多文件工具和 HTML 计算器模板，以及源目录 Schema/签名辅助脚本，放在独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。SDK 尚未发布 Maven 坐标，原生模板使用本仓库的 SDK 源码依赖。
+可直接导入的 Kotlin、Java、Lua、多文件工具和 HTML 计算器模板，以及源目录 Schema/签名辅助脚本，放在独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。SDK 尚未发布 Maven 坐标，原生插件通过独立的 [plugin-sdk](https://github.com/KIGTTS/plugin-sdk) 固定子模块编译。
 
 ## 构建
 
 需要 JDK 17、Android SDK 36 与 PowerShell 7；本机 `local.properties` 设置 `sdk.dir`。源文件使用 UTF-8 无 BOM，每次修改同步保存本地 PROJECT 记录。
 
 ```powershell
+git submodule update --init .sdk
 ./gradlew.bat :app:assembleDebug
 ./gradlew.bat :app:assembleRelease
-pwsh -File tools/Build-EnginePlugins.ps1
 ./gradlew.bat :plugin-api:test :plugin-runtime:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug
 ```
 
-主 APK 位于 `app/build/outputs/apk/`，外置包位于 `build/plugin-packages/`。`Build-EnginePlugins.ps1 -Modules <模块名>` 可单独构建；`quick-text-tools` 是可选接口示例，不在默认包集合中。主 APK 不携带引擎类、模型、编译器或 `.kigplugin` 资产。
+主 APK 位于 `app/build/outputs/apk/`，外置包位于 `build/plugin-packages/`。外置插件在各自仓库独立构建和签名；`Build-EnginePlugins.ps1 -PluginSourceRoot <独立仓库目录> -SigningKey <发布者私钥> -Modules <模块名>` 仅为兼容入口，不再编译本仓库模块。`quick-text-tools` 是可选接口示例，不在默认包集合中。主 APK 不携带引擎类、模型、编译器或 `.kigplugin` 资产。
 
 Release 启用 R8 与资源收缩。当前构建、签名检查、安装结果和手机采样统一记录在 [Release 验证记录](docs/release-testing.md)；其它文档中的 API2/API3/API8 测量均标注为历史结果，不代表 API9 新功能已经完成真机验收。
+
+## 独立仓库
+
+插件与SDK统一由 [KIGTTS组织](https://github.com/KIGTTS) 管理，一个插件一个仓库，保留各自LICENSE/NOTICE。主程序只固定SDK子模块，不包含外置插件源码。完整映射、许可证和跨仓库测试见[仓库结构](docs/repositories.md)。

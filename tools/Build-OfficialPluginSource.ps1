@@ -9,7 +9,7 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 $homepage = 'https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Official-Plugins'
 $publisher = 'b5927c76c21539ef99352707c215b3ce48f3fed937a6f995d39a3c677a052ab5'
 $config = Get-Content (Join-Path $projectRoot 'distribution/official-packages.json') -Raw -Encoding utf8 | ConvertFrom-Json
-$sdkApi = [int]([regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot 'plugin-api/src/main/kotlin/com/kigtts/plugin/api/Plugin.kt')), 'const val PLUGIN_API_VERSION = (\d+)').Groups[1].Value)
+$sdkApi = [int]([regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot '.sdk/plugin-api/src/main/kotlin/com/kigtts/plugin/api/Plugin.kt')), 'const val PLUGIN_API_VERSION = (\d+)').Groups[1].Value)
 if ($sdkApi -le 0) { throw 'Missing host SDK version' }
 function Read-ZipBytes($archive, [string]$name) {
     $entry = $archive.GetEntry($name)
@@ -49,7 +49,7 @@ foreach ($item in $config) {
             permissionPurposes = if ($spec.permissionPurposes) { $spec.permissionPurposes } else { @{} }
         }
         $packages += [ordered]@{ id = $spec.id; name = $spec.name; summary = $item.summary; category = $item.category
-            license = $spec.license; homepage = "https://github.com/LHT02/KIGTTSNEXT/tree/main/engine-plugins/$($item.module)"
+            license = $spec.license; homepage = "https://github.com/KIGTTS/plugin-$($item.module)"
             icon = @{ symbol = if ($item.symbol) { $item.symbol } else { 'extension' } }
             description = if ($item.description) { $item.description } else { $item.summary }
             tags = @($item.tags); releases = @($release) }
@@ -91,7 +91,7 @@ tags:
 | --- | --- | --- | --- |
 $($rows -join "`n")
 
-API$sdkApi 助手、商店与界面调试新包需要新版主程序；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
+当前主程序使用 API$sdkApi；各包需要的最低兼容接口见上表。商店0.10.1使用API15，助手0.9.13与其它API14包继续兼容；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
 
 网页添加指引与模板：https://lht02.github.io/KPM/
 

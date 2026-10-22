@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.plugin.api.PluginJson
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.*
 import org.junit.Assert.*
@@ -165,19 +166,23 @@ class PluginPackageTest {
             assertTrue(tools.manifest.files.keys.contains("assets/calculator.html"))}
         val modules = mapOf("tools.cloud-agent" to "cloud-agent", "runtime.lua" to "lua-runtime",
             "tools.package-store" to "package-store", "tools.native-builder" to "native-builder")
+        val project = requireNotNull(directory.parentFile?.parentFile)
+        val published = PluginJson.parseToJsonElement(File(project, "distribution/official-packages.json").readText()).jsonArray
         for ((id, module) in modules) {
-            val project = requireNotNull(directory.parentFile?.parentFile)
-            val spec = PluginJson.parseToJsonElement(File(project, "engine-plugins/$module/plugin-spec.json").readText()).jsonObject
-            val version = spec.getValue("version").jsonPrimitive.content
-            val extension = store.inspect(File(directory, "$id-$version.kigplugin"))
+          val releases = published.filter { it.jsonObject.getValue("module").jsonPrimitive.content == module }
+          assertTrue("Published package metadata for $module", releases.isNotEmpty())
+          for (release in releases) {
+            val filename = release.jsonObject.getValue("file").jsonPrimitive.content
+            val version = filename.removePrefix("$id-").removeSuffix(".kigplugin")
+            val extension = store.inspect(File(directory, filename))
             assertEquals(id, extension.manifest.id)
             assertEquals(version, extension.manifest.version)
-            assertEquals(spec.getValue("versionCode").jsonPrimitive.content.toInt(), extension.manifest.versionCode)
-            if (module == "cloud-agent") assertEquals(com.kigtts.plugin.api.PLUGIN_API_VERSION, extension.manifest.apiVersion)
-            else assertTrue(extension.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
+            assertTrue(extension.manifest.versionCode > 0)
+            assertTrue(extension.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
             assertEquals(base.publisherSha256, extension.publisherSha256)
             assertTrue(extension.manifest.files.keys.any { it.startsWith("code/") && it.endsWith(".dex") })
             assertTrue(extension.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
+          }
         }
     }
     @Test fun disabledRecognitionProvidersRemainManageableBeforeFirstLoadAndAfterCaching() {

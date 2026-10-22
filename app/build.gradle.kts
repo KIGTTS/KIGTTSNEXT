@@ -91,6 +91,9 @@ android {
     kotlin { jvmToolchain(17) }
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("plugin-test-assets"))
+    if (providers.gradleProperty("pluginIntegration").orNull == "true") {
+        sourceSets.getByName("test").java.srcDir("src/pluginIntegrationTest/java")
+    }
 }
 dependencies {
     implementation("com.caverock:androidsvg-aar:1.4")
@@ -100,10 +103,11 @@ dependencies {
     implementation(project(":manager-protocol"))
     testImplementation(project(":plugins:placeholder-tts"))
     testImplementation(project(":plugins:placeholder-asr"))
-    testImplementation(project(":engine-plugins:quick-text-tools"))
-    testImplementation(project(":engine-plugins:cloud-agent"))
-    testImplementation(project(":engine-plugins:lua-runtime"))
-    testImplementation(project(":plugins:debug-ui"))
+    if (providers.gradleProperty("pluginIntegration").orNull == "true") {
+        testImplementation(project(":engine-plugins:quick-text-tools"))
+        testImplementation(project(":engine-plugins:cloud-agent"))
+        testImplementation(project(":engine-plugins:lua-runtime"))
+    }
     testImplementation(project(":plugins:listening-panel"))
     testImplementation(project(":plugins:voice-input"))
     implementation(platform("androidx.compose:compose-bom:2025.10.01"))
@@ -157,5 +161,10 @@ val copyPluginTestAssets = tasks.register<Sync>("copyPluginTestAssets") {
     from(rootProject.layout.buildDirectory.dir("plugin-packages")) { include("*-0.8.0.kigplugin") }
     into(layout.buildDirectory.dir("plugin-test-assets"))
 }
-tasks.withType<Test>().configureEach {systemProperty("kig.quick.example.assets",rootProject.file("engine-plugins/quick-text-tools/src/main/assets").absolutePath)}
+if (providers.gradleProperty("pluginIntegration").orNull == "true") {
+    tasks.withType<Test>().configureEach {
+        val sources = rootProject.file(providers.gradleProperty("pluginSourceRoot").orNull ?: "../KIGTTS-Plugins")
+        systemProperty("kig.quick.example.assets", sources.resolve("quick-text-tools/src/main/assets").absolutePath)
+    }
+}
 tasks.matching { it.name.contains("AndroidTest") }.configureEach { dependsOn(copyPluginTestAssets) }

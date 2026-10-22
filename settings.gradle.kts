@@ -7,17 +7,21 @@ dependencyResolutionManagement {
 }
 rootProject.name = "KIGTTSNEXT"
 include(":app", ":plugin-api", ":material-color", ":plugins:placeholder-tts", ":plugins:placeholder-asr")
-include(":plugins:debug-ui")
 include(":plugins:listening-panel")
 include(":plugins:voice-input")
-include(":plugin-android-api", ":plugin-runtime", ":engine-plugins:sensevoice-asr")
-include(":engine-plugins:piper-tts", ":engine-plugins:speech-service")
-include(":engine-plugins:streaming-asr")
-include(":engine-plugins:recognition-service")
-include(":engine-plugins:quick-text-tools")
-include(":engine-plugins:tts-support")
+include(":plugin-android-api", ":plugin-runtime")
+project(":plugin-api").projectDir = file(".sdk/plugin-api")
+project(":plugin-android-api").projectDir = file(".sdk/plugin-android-api")
+check(file(".sdk/plugin-api/build.gradle.kts").isFile) { "Initialize the pinned SDK: git submodule update --init .sdk" }
 include(":manager-protocol", ":plugin-manager")
-include(":engine-plugins:cloud-agent", ":engine-plugins:lua-runtime")
-include(":engine-plugins:package-store")
-include(":engine-plugins:native-builder")
-include(":engine-plugins:ui-debug")
+
+// Optional cross-repository tests; a normal application build never configures plugin projects.
+if (providers.gradleProperty("pluginIntegration").orNull == "true") {
+    val sources = file(providers.gradleProperty("pluginSourceRoot").orNull ?: "../KIGTTS-Plugins")
+    listOf("cloud-agent", "lua-runtime", "quick-text-tools").forEach { module ->
+        val directory = sources.resolve(module)
+        check(directory.resolve("build.gradle.kts").isFile) { "Clone KIGTTS/plugin-$module into $directory or set -PpluginSourceRoot" }
+        include(":engine-plugins:$module")
+        project(":engine-plugins:$module").projectDir = directory
+    }
+}
