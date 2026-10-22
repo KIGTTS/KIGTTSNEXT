@@ -154,11 +154,12 @@ class SubtitleInputMotionUiTest {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         val text = "第一行\n第二行\n第三行\n第四行"
         var height by mutableIntStateOf(500)
+        val initialState = model.state.value
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f)) {
                 MaterialTheme {
                     Box(Modifier.width(350.dp).height(500.dp)) {
-                        com.kigtts.next.ui.home.SubtitleDisplay(model.state.value, model, text,
+                        com.kigtts.next.ui.home.SubtitleDisplay(initialState, model, text,
                             androidx.compose.ui.text.TextStyle(fontSize = 72.sp, lineHeight = 1.25.em), 350, height)
                     }
                 }
