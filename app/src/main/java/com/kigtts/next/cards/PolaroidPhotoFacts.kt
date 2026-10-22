@@ -53,42 +53,29 @@ internal object PolaroidPhotoFacts {
         }.getOrDefault(facts)
     }
 
-    suspend fun enrich(context: Context, facts: FrozenPhotoFacts, fields: Set<PhotoTextField>): FrozenPhotoFacts {
+    suspend fun enrich(context: Context, facts: FrozenPhotoFacts, fields: Set<PhotoTextField>,
+        access: PhotoFactsAccess = AndroidPhotoFactsAccess(context), now: Long = System.currentTimeMillis()): FrozenPhotoFacts {
         if (fields.none { it == PhotoTextField.LOCATION || it == PhotoTextField.WEATHER }) return facts
         var result = facts
         // A location obtained now must never be presented as the location of an old photograph.
-        val recent = facts.capturedAt?.let { kotlin.math.abs(System.currentTimeMillis() - it) < 10 * 60 * 1000 } == true
-        if ((result.latitude != null || recent) && result.location == null && PhotoFactsConsent.request(context, "location")) {
-            if (result.latitude == null && WebAndroidPermissions.request(context, listOf(Manifest.permission.ACCESS_COARSE_LOCATION))) {
-                currentLocation(context)?.let { result = result.copy(latitude = it.latitude, longitude = it.longitude) }
+        val recent = facts.capturedAt?.let { now - it in 0..10 * 60 * 1000L } == true
+        if ((result.latitude != null || recent) && result.location == null && access.consent("location")) {
+            if (result.latitude == null && access.locationPermission()) {
+                access.currentLocation()?.let { result = result.copy(latitude = it.latitude, longitude = it.longitude) }
             }
             val lat = result.latitude; val lon = result.longitude
             if (lat != null && lon != null) {
-                val place = withContext(Dispatchers.IO) {
-                    @Suppress("DEPRECATION")
-                    runCatching { Geocoder(context, Locale.getDefault()).getFromLocation(lat, lon, 1)?.firstOrNull()?.let {
-                        listOfNotNull(it.adminArea, it.locality, it.subLocality).distinct().joinToString(" · ").takeIf(String::isNotBlank)
-                    } }.getOrNull()
-                }
+                val place = access.place(lat, lon)
                 result = result.copy(location = place ?: "约 %.2f, %.2f".format(Locale.ROOT, lat, lon))
             }
         }
-        if (PhotoTextField.WEATHER in fields && result.weather == null && result.capturedAt != null && result.latitude != null && result.longitude != null && PhotoFactsConsent.request(context, "weather")) {
-            val weather = withContext(Dispatchers.IO) { runCatching { PhotoWeatherSnapshot.read(result) }.getOrNull() }
+        if (PhotoTextField.WEATHER in fields && result.weather == null && result.capturedAt != null && result.latitude != null && result.longitude != null && access.consent("weather")) {
+            val weather = access.weather(result)
             result = result.copy(weather = weather)
         }
         return result
     }
 
-    @Suppress("MissingPermission")
-    private suspend fun currentLocation(context: Context): Location? = withTimeoutOrNull(6000) {
-        val manager = context.getSystemService(LocationManager::class.java)
-        val provider = listOf(LocationManager.NETWORK_PROVIDER).firstOrNull { runCatching { manager.isProviderEnabled(it) }.getOrDefault(false) } ?: return@withTimeoutOrNull null
-        if (android.os.Build.VERSION.SDK_INT >= 30) suspendCancellableCoroutine { continuation ->
-            val cancel = android.os.CancellationSignal(); continuation.invokeOnCancellation { cancel.cancel() }
-            manager.getCurrentLocation(provider, cancel, context.mainExecutor) { location -> if (continuation.isActive) continuation.resume(location) }
-        } else manager.getLastKnownLocation(provider)?.takeIf { System.currentTimeMillis() - it.time < 120000 }
-    }
 }
 
 /** Open-Meteo model estimate for the capture hour, stored once rather than refreshed on display. */

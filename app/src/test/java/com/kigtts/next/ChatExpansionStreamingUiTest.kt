@@ -42,14 +42,14 @@ class ChatExpansionStreamingUiTest {
         compose.onNodeWithTag("plugin-chat-bottom").assertIsDisplayed().performClick()
         compose.onNodeWithText("流式追加段落 7", substring = true).assertIsDisplayed()
     }
-    @Test fun completedThoughtOnlyBubbleIsMoreCompactThanCollapsedTools() {
+    @Test fun completedThoughtAndToolsUseTheSameCompactTouchableHeight() {
         compose.setContent { KigttsTheme(ThemeSettings()) { Column(Modifier.width(450.dp)) {
             ChatBubble(ChatMessage("thought", ChatRole.ASSISTANT, "", hasReasoning = true, summary = "摘要"))
             ChatToolGroup(listOf(ChatMessage("tool", ChatRole.TOOL, "完成", toolName = "工具")))
         } } }
         val thought = compose.onNodeWithTag("chat-message/thought").fetchSemanticsNode().boundsInRoot.height
         val tools = compose.onNodeWithTag("chat-tools/tool").fetchSemanticsNode().boundsInRoot.height
-        assertTrue("Thought status should be shorter than the tool group", thought < tools)
+        assertEquals("Execution headers share a compact row", thought, tools, 1f)
         assertTrue("Keep a usable 48dp outer target", thought >= 96f)
     }
 }

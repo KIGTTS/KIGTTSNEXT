@@ -3,8 +3,14 @@ package com.kigtts.next.ui.cards.camera
 import android.app.Application
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ContainedLoadingIndicator
+import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,6 +21,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
@@ -29,6 +37,7 @@ import kotlinx.coroutines.isActive
 
 /** Saving, camera suspension and printing stay in the native camera scene until its paper is delivered. */
 @Composable
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera) {
     val request by model.cardCapture.printRequest.collectAsStateWithLifecycle()
     val copying by model.cardCapture.processing.collectAsStateWithLifecycle()
@@ -68,7 +77,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
     val print = current ?: retained
     val active = LocalPageActive.current
     LaunchedEffect(destination.requestId, active) { if (active && destination.systemCamera && !externalStarted) { externalStarted = true; picker.camera() } }
-    RegisterCameraPullGuard(print != null || importing || copying || frame != null)
+    RegisterCameraPullGuard(print != null || importing || copying || picker.processing || frame != null)
     PredictiveBackHandler(active && (importing || copying)) { events ->
         try { events.collect { } } catch (_: CancellationException) { }
     }
@@ -77,6 +86,12 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
             model.cardCapture.cancelFraming(destination.requestId)
             if (destination.systemCamera) model.navigateBack()
         }) { format, x, y, zoom -> model.cardCapture.confirmFraming(destination, format, x, y, zoom) }
+        else if (destination.systemCamera && print == null) Column(Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
+            ContainedLoadingIndicator(Modifier.size(48.dp))
+            Text(if (picker.processing || importing || copying) "正在接收照片" else "正在打开系统相机",
+                style = MaterialTheme.typography.bodyMedium)
+        }
         else if (!destination.systemCamera)
         CardCameraScreen(
             onCapture = { shot -> check(model.cardCapture.captured(destination, shot.original, shot.displayFile,

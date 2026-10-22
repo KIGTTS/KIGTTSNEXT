@@ -145,4 +145,4 @@ Chat支持图片资源、thinking/hasReasoning、稳定position、持久队列�
 
 `PageBlock.Markdown(text, images)` 渲染GFM文本，图片只能从插件预先准备的本地PluginResource映射读取；不执行HTML或自动下载外图。`PageBlock.Gallery` 提供最多8张预览。源展示资源合同见 [KPM](package-store.md)。
 
-`CardLayerKind.PHOTO_INFO` 表示相纸备注下方的左对齐附加信息，最多8项、imageId为空；不参与贴纸拖动。预览和静态/动态导出共用测量，字段和备注不重叠。读取后编辑卡片时保留这类图层。
+`CardLayerKind.PHOTO_INFO` 表示相纸备注下方的左对齐附加信息，最多8项、imageId为空；不参与贴纸拖动。全部字段在备注下方以带图标的单行显示，预览和静态/动态导出共用测量。原生日期/时间/日期时间/地点/天气分别使用每卡唯一的`photo-info.date`、`photo-info.time`、`photo-info.date_time`、`photo-info.location`、`photo-info.weather`图层ID，开关替换同类项；插件可保留这些ID维持字段类型，其他PHOTO_INFO使用通用信息图标。读取后编辑卡片时保留这类图层，不改变SDK14构造或序列化合同。

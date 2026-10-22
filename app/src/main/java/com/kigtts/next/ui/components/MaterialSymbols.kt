@@ -20,13 +20,7 @@ object MaterialSymbols {
     @Synchronized fun vector(name: String?): ImageVector? {
         if (context == null || name == null || !name.matches(Regex("[a-z0-9_]{1,80}"))) return null
         cache.get(name)?.let { return it }
-        val glyph = com.kigtts.next.icons.MaterialSymbolCatalog.glyph(name) ?: return null
-        val path = android.graphics.Path()
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = font; textSize = 24f }.getTextPath(glyph, 0, glyph.length, 0f, 24f, path)
-        val bounds = android.graphics.RectF(); path.computeBounds(bounds, true)
-        if (bounds.isEmpty) return null
-        val scale = minOf(20f / bounds.width(), 20f / bounds.height())
-        path.transform(android.graphics.Matrix().apply { setScale(scale, scale); postTranslate(12f - bounds.centerX() * scale, 12f - bounds.centerY() * scale) })
+        val path = androidPath(name) ?: return null
         val points = path.approximate(.035f); val nodes = mutableListOf<PathNode>()
         var previous = -1f
         for (i in points.indices step 3) {
@@ -38,6 +32,18 @@ object MaterialSymbols {
         nodes += PathNode.Close
         return ImageVector.Builder("MaterialSymbols.$name", 24.dp, 24.dp, 24f, 24f)
             .addPath(nodes, pathFillType = PathFillType.NonZero, fill = SolidColor(Color.Black)).build().also { cache.put(name, it) }
+    }
+    /** Same offline glyph geometry for Canvas captions and Compose controls. */
+    internal fun androidPath(name: String): android.graphics.Path? {
+        if (context == null) return null
+        val glyph = com.kigtts.next.icons.MaterialSymbolCatalog.glyph(name) ?: return null
+        val path = android.graphics.Path()
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = font; textSize = 24f }.getTextPath(glyph, 0, glyph.length, 0f, 24f, path)
+        val bounds = android.graphics.RectF(); path.computeBounds(bounds, true)
+        if (bounds.isEmpty) return null
+        val scale = minOf(20f / bounds.width(), 20f / bounds.height())
+        path.transform(android.graphics.Matrix().apply { setScale(scale, scale); postTranslate(12f - bounds.centerX() * scale, 12f - bounds.centerY() * scale) })
+        return path
     }
 }
 fun com.kigtts.plugin.api.PluginIcon.vector(symbol: String?): ImageVector = MaterialSymbols.vector(symbol) ?: vector()

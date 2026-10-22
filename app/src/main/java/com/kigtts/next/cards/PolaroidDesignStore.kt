@@ -82,17 +82,30 @@ class PolaroidDesignStore(private val root: File) {
     }
     @Synchronized fun fieldLayerId(cardId: String, field: PhotoTextField): String? =
         bindings(json.optJSONObject("bindings")?.optJSONObject(cardId)).entries.firstOrNull { it.value.field == field }?.key
+    @Synchronized fun fieldLayers(card: PolaroidCard, field: PhotoTextField): List<CardLayer> {
+        val bound = bindings(json.optJSONObject("bindings")?.optJSONObject(card.id))
+        return card.layers.filter { it.photoField() == field || bound[it.id]?.let { binding ->
+            binding.field == field && (it.kind == CardLayerKind.PHOTO_INFO || binding.text == it.text)
+        } == true }
+    }
     @Synchronized fun normalizeFields(card: PolaroidCard): PolaroidCard {
         val bound = bindings(json.optJSONObject("bindings")?.optJSONObject(card.id))
-        return card.copy(layers = card.layers.map { layer ->
-            if (layer.kind == CardLayerKind.TEXT && bound[layer.id]?.text == layer.text) layer.copy(kind = CardLayerKind.PHOTO_INFO) else layer
-        })
+        val fields = linkedMapOf<PhotoTextField, CardLayer>()
+        val retained = card.layers.filter { layer ->
+            val field = layer.photoField() ?: bound[layer.id]?.takeIf {
+                layer.kind == CardLayerKind.PHOTO_INFO || layer.kind == CardLayerKind.TEXT && it.text == layer.text
+            }?.field
+            if (field != null) fields[field] = layer.copy(id = field.layerId(), kind = CardLayerKind.PHOTO_INFO)
+            field == null
+        }
+        return card.copy(layers = retained + PhotoTextField.entries.mapNotNull(fields::get))
     }
     @Synchronized fun savePreset(name: String, card: PolaroidCard, makeDefault: Boolean): PolaroidDesignPreset {
         require(name.trim().length in 1..64 && state.value.presets.size < 64) { "请输入预设名称，最多保存64个预设" }
-        val bound = bindings(json.optJSONObject("bindings")?.optJSONObject(card.id)).filter { (id, value) -> card.layers.any { it.id == id && it.text == value.text } }
+        val design = normalizeFields(card)
+        val bound = design.layers.mapNotNull { layer -> layer.photoField()?.let { layer.id to PhotoFieldBinding(it, layer.text) } }.toMap()
         val preset = PolaroidDesignPreset(UUID.randomUUID().toString(), name.trim(),
-            card.copy(id = "preset", title = "", description = "", imageId = null, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0), bound)
+            design.copy(id = "preset", title = "", description = "", imageId = null, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0), bound)
         val next = JSONObject(json.toString()); val list = next.optJSONArray("presets") ?: JSONArray().also { next.put("presets", it) }
         list.put(JSONObject().put("id", preset.id).put("name", preset.name).put("design", PluginJson.encodeToString(preset.design)).put("bindings", bindingJson(bound)))
         if (makeDefault) next.put("default", preset.id)
@@ -114,7 +127,8 @@ class PolaroidDesignStore(private val root: File) {
         val facts = facts(card.id)
         val newBindings = linkedMapOf<String, PhotoFieldBinding>()
         val layers = preset.design.layers.map { layer ->
-            val id = UUID.randomUUID().toString(); val binding = preset.bindings[layer.id]
+            val binding = preset.bindings[layer.id]
+            val id = binding?.field?.layerId() ?: UUID.randomUUID().toString()
             val text = binding?.let { facts.text(it.field) } ?: layer.text
             if (binding != null) newBindings[id] = binding.copy(text = text)
             layer.copy(id = id, text = text, kind = if (binding != null) CardLayerKind.PHOTO_INFO else layer.kind)

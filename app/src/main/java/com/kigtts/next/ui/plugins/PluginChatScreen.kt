@@ -50,7 +50,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     val scrollRequests = remember(chat.conversationId) { Channel<ChatScrollRequest>(Channel.CONFLATED) }
     val cache = historyCache ?: remember { ChatHistoryCache() }
     val messages = remember(chat.messages, historyKey) { cache.merge(historyKey, chat) }
-    val rows = remember(messages) { chatRows(messages) }
+    val rows = remember(messages) { chatTimeline(messages) }
     val rowCount = rememberUpdatedState(rows.size)
     val earliest = messages.minOfOrNull { it.position } ?: 0
     val hasEarlier = chat.historyAction != null && earliest > 0
@@ -125,11 +125,11 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
                     header()
                     if (hasEarlier || loadingBefore != null) ChatEarlierButton(false, ::loadEarlier)
                 } }
-                items(rows, key = { it.first().id }) { messages ->
+                items(rows, key = { it.key }) { row ->
                     Box(Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(180),
                         fadeOutSpec = androidx.compose.animation.core.tween(100), placementSpec = null)) {
-                        if (messages.first().role == ChatRole.TOOL) ChatToolGroup(messages, readingInteraction)
-                        else ChatBubble(messages.first(), resolve, readingInteraction)
+                        if (row.steps.isNotEmpty()) ChatExecutionGroup(row.steps, readingInteraction)
+                        else row.answer?.let { ChatBubble(it, resolve, readingInteraction, showThought = false) }
                     }
                 }
             }
@@ -145,14 +145,4 @@ internal fun chatBottomGap(info: LazyListLayoutInfo): Float {
     val last = info.visibleItemsInfo.lastOrNull() ?: return Float.POSITIVE_INFINITY
     if (last.index != info.totalItemsCount - 1) return Float.POSITIVE_INFINITY
     return (last.offset + last.size + info.afterContentPadding - info.viewportEndOffset).coerceAtLeast(0).toFloat()
-}
-internal fun chatRows(messages: List<ChatMessage>): List<List<ChatMessage>> {
-    val rows = mutableListOf<MutableList<ChatMessage>>()
-    messages.forEach { message ->
-        if (message.role == ChatRole.ASSISTANT && message.state == ChatMessageState.COMPLETE && message.text.isBlank() &&
-            !message.hasReasoning && !message.thinking && message.reasoning.isBlank() && message.summary.isBlank() && message.images.isEmpty()) return@forEach
-        if (message.role == ChatRole.TOOL && rows.lastOrNull()?.lastOrNull()?.role == ChatRole.TOOL) rows.last().add(message)
-        else rows.add(mutableListOf(message))
-    }
-    return rows
 }

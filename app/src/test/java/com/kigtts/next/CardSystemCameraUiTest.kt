@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.Application
 import android.content.Intent
 import android.provider.MediaStore
+import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -21,14 +22,15 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class CardSystemCameraUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun fullCameraDoesNotUseRestrictedCaptureIntentOrLensExtrasAndReturnsToExplicitPicker() {
+    @Test fun fullCameraReturnsItsNewPhotoDirectlyWithoutLaunchingAnyPicker() {
         val app = ApplicationProvider.getApplicationContext<Application>()
-        shadowOf(app).grantPermissions(Manifest.permission.CAMERA)
+        shadowOf(app).grantPermissions(Manifest.permission.CAMERA, SystemCameraPhotos.permission)
         app.getSharedPreferences("polaroid_camera", 0).edit().clear().commit()
         var sources: CardPhotoSources? = null
         var error: String? = null
         var selected = false
-        compose.setContent { sources = rememberCardPhotoSources({ selected = true }, { error = it }) }
+        compose.setContent { sources = rememberCardPhotoSources({ selected = true; assertTrue(it.fromCamera) }, { error = it },
+            receiveSystemPhoto = { _, _, _ -> Uri.parse("content://media/external/images/media/101") }) }
         compose.runOnIdle { sources!!.camera() }
         val camera = shadowOf(compose.activity).nextStartedActivityForResult
         assertNotNull(camera)
@@ -36,9 +38,32 @@ class CardSystemCameraUiTest {
         assertFalse(camera.intent.hasExtra(MediaStore.EXTRA_OUTPUT))
         assertTrue(camera.intent.extras == null || camera.intent.extras!!.isEmpty)
         compose.runOnIdle { compose.activity.activityResultRegistry.dispatchResult(camera.requestCode, Activity.RESULT_CANCELED, Intent()) }
-        val picker = shadowOf(compose.activity).nextStartedActivityForResult
-        assertNotNull("Returning from the full camera must request an explicit photo selection", picker)
-        assertNotEquals(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, picker.intent.action)
-        assertFalse(selected); assertNull(error)
+        compose.waitForIdle()
+        assertNull("System camera must not launch a second photo picker", shadowOf(compose.activity).nextStartedActivityForResult)
+        assertTrue(selected); assertNull(error)
+    }
+    @Test fun cancellingWithoutAnyNewPhotoReturnsToTheCallerWithoutOpeningAPicker() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        shadowOf(app).grantPermissions(Manifest.permission.CAMERA, SystemCameraPhotos.permission)
+        app.getSharedPreferences("polaroid_camera", 0).edit().clear().commit()
+        var sources: CardPhotoSources? = null
+        var cancelled = 0
+        compose.setContent { sources = rememberCardPhotoSources({ fail("No photograph was taken") }, { fail(it) },
+            onCameraCancelled = { cancelled++ }, receiveSystemPhoto = { _, _, _ -> null }) }
+        compose.runOnIdle { sources!!.camera() }
+        val camera = shadowOf(compose.activity).nextStartedActivityForResult
+        compose.runOnIdle { compose.activity.activityResultRegistry.dispatchResult(camera.requestCode, Activity.RESULT_CANCELED, Intent()) }
+        compose.waitForIdle()
+        assertEquals(1, cancelled)
+        assertNull(shadowOf(compose.activity).nextStartedActivityForResult)
+    }
+    @Test fun autoReceiveRejectsOldImagesAndScreenshotsAndAcceptsTheNewDcimPhoto() {
+        val started = 1_700_000_000_000L
+        assertTrue(SystemCameraPhotos.eligible(101, 100, started / 1000, started, started, "DCIM/Camera/"))
+        assertFalse(SystemCameraPhotos.eligible(99, 100, started / 1000, started, started, "DCIM/Camera/"))
+        assertFalse(SystemCameraPhotos.eligible(101, 100, started / 1000 - 100, started, started, "DCIM/Camera/"))
+        assertFalse(SystemCameraPhotos.eligible(101, 100, started / 1000, started - 100000, started, "DCIM/Camera/"))
+        assertFalse(SystemCameraPhotos.eligible(101, 100, started / 1000, started, started, "DCIM/Screenshots/"))
+        assertFalse(SystemCameraPhotos.eligible(101, 100, started / 1000, started, started, "Download/"))
     }
 }
