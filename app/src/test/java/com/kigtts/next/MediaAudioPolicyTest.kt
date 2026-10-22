@@ -37,6 +37,7 @@ class MediaAudioPolicyTest {
         val app=ApplicationProvider.getApplicationContext<Application>()
         listOf("quick-phrases","media-presentation").forEach { app.getSharedPreferences(it,0).edit().clear().commit() }
         val model=testAppModel(app)
+        val initial=model.state.value
         val video=model.mediaRepository.import(Uri.fromFile(File(app.cacheDir,"mode.mp4").apply { writeBytes(byteArrayOf(1)) }),"video/mp4")
         try {
             val first=QuickPhrase("字幕","常用",mediaId=video.id,type=QuickCardType.MEDIA,autoPlay=false,audioMode=MediaAudioMode.FOLLOW_READING)
@@ -48,8 +49,10 @@ class MediaAudioPolicyTest {
             assertFalse(model.state.value.contentAutoPlay);assertEquals(first.audioMode,model.state.value.contentAudioMode)
             val restored=testAppModel(app).state.value
             assertFalse(restored.contentAutoPlay);assertEquals(first.audioMode,restored.contentAudioMode)
+            assertNull(restored.mediaId)
             model.content.show(video,true,MediaAudioMode.AUTOMATIC);model.content.closeContent()
-            assertFalse(model.state.value.contentAutoPlay);assertEquals(first.audioMode,model.state.value.contentAudioMode)
+            assertNull(model.state.value.mediaId)
+            assertEquals(initial.contentAutoPlay,model.state.value.contentAutoPlay);assertEquals(initial.contentAudioMode,model.state.value.contentAudioMode)
         } finally { model.content.remove(video.id) }
     }
 }

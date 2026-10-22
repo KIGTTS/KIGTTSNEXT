@@ -16,15 +16,16 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.text.*
 
 @Composable
 internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyle, width: Int, height: Int, focus: FocusRequester) {
     val formatted = remember(state.editorText, state.subtitleFormats) { formattedText(state.editorText, state.subtitleFormats) }
-    val measured = if (formatted.isEmpty()) fittingSubtitleFontSize(state.subtitlePlaceholder, style, width, height)
-        else fittingSubtitleFontSize(formatted, style, width, height)
-    val fitted = animatedSubtitleStyle(style, measured, state.editorValue.composition != null)
+    val measured = stableSubtitleFontSize(if (formatted.isEmpty()) androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder) else formatted,
+        style, width, height)
+    val fitted = style.copy(fontSize = measured.sp)
     val base = remember(state.subtitleFormats) { RichTextVisualTransformation(state.subtitleFormats) }
     val motion = rememberSubtitleEditMotion(SubtitleInputFrame(formatted, fitted), state.editorValue)
     val progress = motion.progress
@@ -36,9 +37,7 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
                 // The viewport never animates its measured height. Only glyph layers move;
                 // a new line therefore cannot be clipped by the previous line's bounds.
                 Box(Modifier.fillMaxSize().testTag("subtitle-input-viewport"), contentAlignment = Alignment.Center) {
-                    Box(Modifier.fillMaxWidth().graphicsLayer {
-                        alpha = .55f + .45f * progress
-                    }) { field() }
+                    Box(Modifier.fillMaxWidth().testTag("subtitle-input-glyphs")) { field() }
                     AnimatedVisibility(state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty(),
                         enter = fadeIn(tween(140)), exit = fadeOut(tween(80))) {
                         Text(state.subtitlePlaceholder, Modifier.fillMaxWidth().testTag("subtitle-placeholder"),

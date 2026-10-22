@@ -1,6 +1,18 @@
 [
   {
     "module": "package-store",
+    "file": "tools.package-store-0.10.2.kigplugin",
+    "category": "扩展",
+    "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览自己需要的工具，先看介绍与预览，再决定安装什么。\n\n支持添加不同的插件来源、查看历史版本，并在安装时一并准备所需组件。",
+    "notes": "支持下拉更新来源，刷新进度显示在标题栏，保留列表位置与浏览操作。",
+    "tags": [
+      "工具"
+    ]
+  },
+  {
+    "module": "package-store",
     "file": "tools.package-store-0.10.1.kigplugin",
     "category": "扩展",
     "summary": "发现实用插件，查看介绍、选择版本，轻松安装和更新。",
@@ -192,7 +204,9 @@
   },
   {
     "module": "piper-tts",
-    "dependencies": { "service.speech-synthesis": "^0.8.0" },
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.0"
+    },
     "file": "engine.piper-0.8.0.kigplugin",
     "category": "音频",
     "summary": "把文字读成语音，搭配喜欢的音色用于日常朗读。",
@@ -204,7 +218,9 @@
   },
   {
     "module": "streaming-asr",
-    "dependencies": { "service.speech-recognition": "^0.8.0" },
+    "dependencies": {
+      "service.speech-recognition": "^0.8.0"
+    },
     "file": "engine.streaming-asr-0.8.0.kigplugin",
     "category": "音频",
     "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",
@@ -216,7 +232,9 @@
   },
   {
     "module": "sensevoice-asr",
-    "dependencies": { "service.speech-recognition": "^0.8.0" },
+    "dependencies": {
+      "service.speech-recognition": "^0.8.0"
+    },
     "file": "engine.sensevoice-0.8.0.kigplugin",
     "category": "音频",
     "summary": "识别语音并转换成文字，适合日常交流与听读。",

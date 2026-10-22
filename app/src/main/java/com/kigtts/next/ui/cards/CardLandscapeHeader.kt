@@ -23,7 +23,7 @@ internal fun CardLandscapeHeader(title: String, back: () -> Unit, backLabel: Str
                 WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) { content() }
             TopAppBar(title = {
                 Column {
-                    PageBarTitle(title, compact = true, loading = host.loading?.value == true)
+                    PageBarTitle(title, compact = true, loading = host.loading)
                     Text("下滑进行拍照", Modifier.testTag("page-subtitle").cameraPullEntryRegion(),
                         style = MaterialTheme.typography.labelMedium, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)

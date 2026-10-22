@@ -52,7 +52,8 @@ fun KigttsApp(model: AppViewModel) {
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
     var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
     val storeBootstrap by model.storeBootstrap.state.collectAsStateWithLifecycle()
-    val inputOverlay = dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null
+    val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
+    val inputOverlay = dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -116,6 +117,7 @@ fun KigttsApp(model: AppViewModel) {
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
+            com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->

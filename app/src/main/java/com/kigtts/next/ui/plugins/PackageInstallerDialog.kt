@@ -1,0 +1,131 @@
+package com.kigtts.next.ui.plugins
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.ui.components.*
+import com.kigtts.plugin.runtime.PluginPermissions
+
+/** A fixed identity/action area surrounds the internally scrolling review tabs. No grants here. */
+@Composable
+internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy: Boolean, completed: Boolean,
+    error: String?, allowDowngrade: Boolean = false, installedNames: List<String> = emptyList(),
+    install: () -> Unit, dismiss: () -> Unit) {
+    var tab by remember { mutableIntStateOf(0) }
+    MotionAlertDialog(onDismissRequest = dismiss, dismissEnabled = !busy,
+        text = {
+            Column(Modifier.fillMaxWidth().height(480.dp).testTag("package-installer"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                packages?.lastOrNull()?.let { info -> PackageInstallerIdentity(info) }
+                if (completed) {
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Spacer(Modifier.height(8.dp))
+                        Icon(Icons.Default.CheckCircle, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text("插件已安装", style = MaterialTheme.typography.titleLarge)
+                        Text("权限将在使用相关功能时申请", style = MaterialTheme.typography.bodyMedium)
+                        installedNames.forEach { Text(it) }
+                    }
+                } else {
+                    if (packages != null) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("介绍", "权限", "许可").forEachIndexed { index, label ->
+                                TextButton(onClick = feedbackClick { tab = index }, Modifier.weight(1f).height(36.dp),
+                                    colors = ButtonDefaults.textButtonColors(
+                                        containerColor = if (tab == index) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent,
+                                        contentColor = if (tab == index) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)) { Text(label) }
+                            }
+                        }
+                    }
+                    Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("installer-details"),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        if (packages == null && error == null) Text("正在检查安装包…")
+                        error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                        if (installedNames.isNotEmpty()) Text("已安装：${installedNames.joinToString("、")}")
+                        packages.orEmpty().forEach { info ->
+                            if (packages.orEmpty().size > 1) Text(info.manifest.name, style = MaterialTheme.typography.titleMedium)
+                            when (tab) {
+                                0 -> PackageInstallerIntroduction(info) { tab = 1 }
+                                1 -> PackageInstallerPermissions(info)
+                                else -> PackageInstallerLicense(info)
+                            }
+                        }
+                        if (allowDowngrade) Text("此次切换会替换当前版本，保留资源和设置。旧版可能无法读取新版数据。", color = MaterialTheme.colorScheme.error)
+                    }
+                    if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            if (completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text("安装完成") }
+            else Button(onClick = feedbackClick(install), enabled = packages != null && !busy) {
+                Text(if (busy) "正在安装…" else "安装插件")
+            }
+        },
+        dismissButton = { if (!completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = !busy) { Text("取消") } })
+}
+
+@Composable private fun PackageInstallerIdentity(info: PackageInstallerInfo) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Icon(MaterialSymbols.vector(info.symbol) ?: when {
+            "speech-service" in info.manifest.capabilities -> Icons.Default.RecordVoiceOver
+            "asr-service" in info.manifest.capabilities -> Icons.Default.GraphicEq
+            else -> Icons.Default.Extension
+        }, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.primary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(info.manifest.name, style = MaterialTheme.typography.titleLarge)
+            Text(listOf(info.author, "v${info.manifest.version}").filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            Text("插件包 · ${android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current, info.candidate.file.length())}", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable private fun PackageInstallerIntroduction(info: PackageInstallerInfo, permissions: () -> Unit) {
+    Text("关于此插件", style = MaterialTheme.typography.titleSmall)
+    if (info.description.isNotBlank()) ChatRichText(info.description)
+    else Text("安装后可在插件管理中查看和使用${info.manifest.name}。")
+    HorizontalDivider()
+    InstallerInfoRow("软件许可", info.manifest.license)
+    InstallerInfoRow("兼容版本", "支持当前应用与设备")
+    TextButton(onClick = feedbackClick(permissions), contentPadding = PaddingValues(0.dp)) { Text("权限 · ${info.permissions.size} 项  ›") }
+    Text("发布者 SHA-256", style = MaterialTheme.typography.labelMedium)
+    SelectionContainer { Text(info.candidate.preview.publisherSha256, style = MaterialTheme.typography.bodySmall) }
+}
+
+@Composable private fun InstallerInfoRow(label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(label, Modifier.weight(1f)); Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable private fun PackageInstallerPermissions(info: PackageInstallerInfo) {
+    Text("插件访问权限", style = MaterialTheme.typography.titleSmall)
+    Text("安装不会授予权限。首次使用相关功能时再询问，之后可在插件权限中管理。", style = MaterialTheme.typography.bodySmall)
+    if (info.permissions.isEmpty()) Text("此插件未声明额外权限")
+    info.permissions.forEach { permission ->
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Icon(permissionIcon(permission), null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(PluginPermissions.label(permission), style = MaterialTheme.typography.titleSmall)
+                info.manifest.permissionPurposes[permission]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                Text("使用时询问", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable private fun PackageInstallerLicense(info: PackageInstallerInfo) {
+    Text("软件许可协议", style = MaterialTheme.typography.titleSmall)
+    Text(info.manifest.license, style = MaterialTheme.typography.titleMedium)
+    SelectionContainer {
+        Text(info.licenseText.ifBlank { "此包声明使用 ${info.manifest.license} 许可。安装包未附许可证正文，请向发布者获取完整文本及第三方依赖许可。" })
+    }
+}

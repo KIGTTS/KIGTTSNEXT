@@ -85,23 +85,7 @@ fun PluginsScreen(model: AppViewModel) {
             model.pluginManager.permissions.clear(model.pluginManager.permissionOwner(runtime, id)); managedRemove = null
         }) { Text("卸载") } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { managedRemove = null }) { Text("取消") } }) }
     pending?.let { candidate ->
-        val manifest = candidate.preview.manifest
-        MotionAlertDialog(onDismissRequest = { candidate.file.delete(); pending = null }, dismissEnabled = !busy, title = { Text("安装 ${manifest.name}？") },
-            text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("版本 ${manifest.version} · ${manifest.license}")
-                Text("能力：${manifest.capabilities.joinToString("、")}")
-                Text("发布者 SHA-256：${candidate.preview.publisherSha256}", style = MaterialTheme.typography.bodySmall)
-                Text("仅安装可信来源的插件。插件在独立进程中运行，具有本应用的权限。")
-            } }, confirmButton = { val closeDialog = rememberDialogClose(); MotionTextButton(enabled = !busy, onClick = feedbackClick {
-                scope.launch {
-                    busy = true
-                    try {
-                        model.stopSpeech(); model.pluginManager.install(candidate.file, candidate.preview.publisherSha256); model.refreshPlugins()
-                        model.message("插件已安装")
-                    } catch (error: Exception) { model.message(error.message ?: "插件安装失败") }
-                    finally { closeDialog { candidate.file.delete(); pending = null; busy = false } }
-                }
-            }) { Text("安装") } }, dismissButton = { MotionTextButton(enabled = !busy, onClick = dialogFeedbackClick { candidate.file.delete(); pending = null }) { Text("取消") } })
+        LocalPackageInstaller(model, candidate) { candidate.file.delete(); pending = null }
     }
     remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
         text = { Text("该插件的模型、下载、配置和临时文件也会删除。") },

@@ -49,6 +49,7 @@ fun TextEditor(
 
 @Composable
 private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+    val readVisible by model.synthesisGuidance.visible.collectAsState()
     val reveal by animateFloatAsState(if (state.editing) 1f else 0f,
         tween(220, easing = FastOutSlowInEasing), label = "cursor-slot-reveal")
     val progress = reveal.coerceIn(0f, 1f)
@@ -63,9 +64,10 @@ private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifie
             val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", if (expanded) "退出全屏" else "全屏",
                 if (expanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                 { if (expanded) model.exitSubtitleFullscreen() else model.enterSubtitleFullscreen() }, iconOnly = false)
-                else ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
+                else if (readVisible || state.speaking) ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
                     if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)
-            ElasticButtonGroup(listOf(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
+                else null
+            ElasticButtonGroup(listOfNotNull(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
                 overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作")
         }
     }

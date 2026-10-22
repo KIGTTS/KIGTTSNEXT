@@ -53,7 +53,7 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
                 topBar = {
                     if (landscape) TopAppBar(title = { Column {
-                        PageBarTitle(title, true, host.loading?.value == true)
+                        PageBarTitle(title, true, host.loading)
                         subtitle?.let { Text(it, Modifier.testTag("page-subtitle").cameraPullEntryRegion(),
                             style = MaterialTheme.typography.labelMedium, maxLines = 1,
                             overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -62,12 +62,12 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                         windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
                         navigationIcon = { PageBackNavigation(guardedBack, backLabel, "page-back", false) },
                         actions = { PageActionButtons(actions + (host.source?.value ?: emptyList())) })
-                    else LargeFlexibleTopAppBar(title = { PageBarTitle(title, compact, host.loading?.value == true) },
+                    else LargeFlexibleTopAppBar(title = { PageBarTitle(title, compact, host.loading) },
                         modifier = Modifier.testTag("large-page-bar"), subtitle = subtitle?.let { text -> {
                             Text(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)
                         } }, windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
-                        navigationIcon = { PageBackNavigation(guardedBack, backLabel, "page-back", host.loading?.value == true && !compact) },
+                        navigationIcon = { PageBackNavigation(guardedBack, backLabel, "page-back", host.loading && !compact) },
                         actions = { PageActionButtons(actions + (host.source?.value ?: emptyList())) }, scrollBehavior = behavior)
                 }) { insets ->
                 // One content invocation keeps the browser/pager alive when only the chrome rotates.

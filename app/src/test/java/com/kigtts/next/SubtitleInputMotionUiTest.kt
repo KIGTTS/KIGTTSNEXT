@@ -8,6 +8,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.test.*
@@ -131,5 +133,60 @@ class SubtitleInputMotionUiTest {
         compose.mainClock.advanceTimeBy(200); compose.mainClock.autoAdvance = true
         compose.runOnIdle { assertEquals(TextRange(0, 1), model.state.value.editorValue.selection) }
         compose.onNodeWithTag("speech-editor").assertIsFocused()
+    }
+    @Test fun presentingTheSameTextAgainDoesNotStartAnotherFade() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        model.setAutoPlayback(false); model.text("保持清晰的字幕")
+        compose.setContent {
+            val state by model.state.collectAsState()
+            MaterialTheme { SubtitleBody(state, model, Modifier.width(350.dp).height(500.dp)) }
+        }
+        compose.mainClock.autoAdvance = false
+        repeat(6) {
+            compose.runOnIdle { model.text("保持清晰的字幕") }
+            compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+            compose.onAllNodesWithTag("speech-editor", useUnmergedTree = true).assertCountEquals(1)
+        }
+        compose.mainClock.autoAdvance = true
+    }
+    @Test fun viewportReboundsDoNotAlternateTheFittedGlyphSize() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        val text = "第一行\n第二行\n第三行\n第四行"
+        var height by mutableIntStateOf(500)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                MaterialTheme {
+                    Box(Modifier.width(350.dp).height(500.dp)) {
+                        com.kigtts.next.ui.home.SubtitleDisplay(model.state.value, model, text,
+                            androidx.compose.ui.text.TextStyle(fontSize = 72.sp, lineHeight = 1.25.em), 350, height)
+                    }
+                }
+            }
+        }
+        fun glyphSize(): Float {
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithTag("speech-editor").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            return layouts.single().layoutInput.style.fontSize.value
+        }
+        val original = glyphSize()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { height = 170 }
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(16, java.util.concurrent.TimeUnit.MILLISECONDS)
+        compose.mainClock.advanceTimeBy(48); compose.waitForIdle()
+        capture("subtitle-rebound-shrink")
+        val fitted = glyphSize()
+        assertTrue("Smaller viewport must fit the glyphs: $original -> $fitted", fitted < original)
+        for (rebound in listOf(180, 174, 184, 177)) {
+            compose.runOnIdle { height = rebound }
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(16, java.util.concurrent.TimeUnit.MILLISECONDS)
+            compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
+            assertEquals("Spring rebounds must not enlarge the glyphs mid-motion", fitted, glyphSize(), .01f)
+        }
+        compose.runOnIdle { height = 500 }
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(240, java.util.concurrent.TimeUnit.MILLISECONDS)
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        assertEquals(original, glyphSize(), .01f)
+        compose.mainClock.autoAdvance = true
     }
 }

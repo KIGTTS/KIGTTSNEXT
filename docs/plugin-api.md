@@ -1,4 +1,4 @@
-# 插件 API v14（兼容 v9–13）
+# 插件 API v16（兼容 v9–15）
 
 当前 SDK 为 API15，宿主接受API9–15签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
@@ -152,3 +152,7 @@ Chat支持图片资源、thinking/hasReasoning、稳定position、持久队列�
 API15新增以下可选元数据，新编译包必须标API15；API9–14既有包的JVM入口继续保留。
 
 `PluginPage.header`以ManagementItem提供无操作的详情图标、标题与简介，图片优先、Material Symbols回退。`onEnterAction`由支持它的宿主在页面真正可见且动作空闲时每次进入调用一次；快照读取、UI刷新和重组不会触发，插件应快速启动后台任务并合并重复请求。`PageBlock.Group(collapsible=true)`默认折叠，宿主保留展开状态并显示展开箭头，可用initiallyExpanded改变初始值。字段均为可选，保留原JVM构造/copy桥和旧JSON兼容；旧JSON读取仍能使用原字段默认值。
+
+## 页面后台加载与下拉刷新（API16）
+
+PluginPage.loading 仅驱动插件通用标题栏加载环，不锁定按钮；refreshAction为普通页面与管理/商店列表开放顶部下拉与无障碍更新。指示器跟手，松手回收；后台任务完成或失败必须通过uiChanges恢复loading。页面读取保持纯读取，execute快速启动后台任务并合并重复请求，失败保留旧内容。浏览器、聊天、源码编辑器手势由各自页面管理。保留API9–15构造与copy入口，旧JSON两字段默认为false/null；使用新接口的签名包必须标API16。

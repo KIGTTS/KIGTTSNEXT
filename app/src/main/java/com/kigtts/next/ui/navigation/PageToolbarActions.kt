@@ -35,7 +35,8 @@ data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
     var primaryCount: State<Int>? by mutableStateOf(null)
-    var loading:State<Boolean>? by mutableStateOf(null)
+    internal val loadingSources = mutableStateListOf<State<Boolean>>()
+    val loading: Boolean get() = loadingSources.any { it.value }
     internal var backGuard: State<() -> Boolean>? by mutableStateOf(null)
     internal val input = PageInputState()
 }
@@ -46,8 +47,8 @@ fun RegisterPageLoading(loading: Boolean) {
     val host = LocalPageToolbarActions.current ?: return
     val source = rememberUpdatedState(loading)
     DisposableEffect(host, source) {
-        host.loading = source
-        onDispose { if (host.loading === source) host.loading = null }
+        host.loadingSources.add(source)
+        onDispose { host.loadingSources.remove(source) }
     }
 }
 

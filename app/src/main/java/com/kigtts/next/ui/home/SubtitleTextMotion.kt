@@ -5,18 +5,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.unit.sp
-
-/** Size follows layout immediately; only glyph opacity animates, including native IME edits. */
-@Composable
-internal fun animatedSubtitleStyle(style: TextStyle, targetSize: Float, composing: Boolean = false): TextStyle {
-    return style.copy(fontSize = targetSize.sp)
-}
 
 internal data class SubtitleInputFrame(val text: AnnotatedString, val style: TextStyle)
 private class LastSubtitleFrame(var value: SubtitleInputFrame)
 
-/** Fade committed edits inside a stable viewport, keeping one native editor. */
+/** Fade cleared glyphs inside a stable viewport, keeping the active editor fully opaque. */
 @Composable
 internal fun rememberSubtitleEditMotion(frame: SubtitleInputFrame, value: TextFieldValue): SubtitleEditMotion {
     val last = remember { LastSubtitleFrame(frame) }
@@ -37,6 +30,10 @@ internal fun rememberSubtitleEditMotion(frame: SubtitleInputFrame, value: TextFi
             return@LaunchedEffect
         }
         ghost = departing.takeIf { value.text.isEmpty() && before.composition == null && it.text.isNotEmpty() }
+        if (ghost == null) {
+            progress.snapTo(1f)
+            return@LaunchedEffect
+        }
         progress.snapTo(0f)
         progress.animateTo(1f, tween(180, easing = FastOutSlowInEasing))
         ghost = null

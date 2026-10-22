@@ -11,6 +11,17 @@ import java.nio.file.Files
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class StoreBootstrapTest {
+    @Test fun synthesisOnboardingKeepsItsPurposeAndContinuesToSpeechInsteadOfAddingASource() = runTest {
+        val file = candidate(); var ready = false; var speech = 0
+        val controller = StoreBootstrapCoordinator(this, { ready }, { ready }, { file }, { ready = true }, {},
+            { error("must not add a source") }, StandardTestDispatcher(testScheduler))
+        controller.offer(StoreBootstrapPurpose.SYNTHESIS) { speech++ }
+        controller.confirm(); advanceUntilIdle()
+        assertEquals(StoreBootstrapPurpose.SYNTHESIS, controller.state.value!!.purpose)
+        controller.confirm(); advanceUntilIdle(); assertEquals(0, speech)
+        assertEquals(StoreBootstrapPhase.COMPLETED, controller.state.value!!.phase)
+        controller.confirm(); assertEquals(1, speech); assertNull(controller.state.value)
+    }
     private fun candidate() = StoreDownload(Files.createTempFile("store-bootstrap-", ".kigplugin").toFile(), PackagePreview(
         PackageManifest(STORE_ID, "插件商店", "0.10.1", 101, "com.example.Store", files = emptyMap()), STORE_PUBLISHER))
 
@@ -23,7 +34,9 @@ class StoreBootstrapTest {
         controller.confirm(); controller.confirm(); advanceUntilIdle()
         assertEquals(1, fetched); assertFalse(installed); assertEquals(StoreBootstrapPhase.REVIEW, controller.state.value!!.phase)
         controller.confirm(); advanceUntilIdle()
-        assertTrue(installed); assertEquals(1, completed); assertNull(controller.state.value); assertFalse(file.file.exists())
+        assertTrue(installed); assertEquals(0, completed)
+        assertEquals(StoreBootstrapPhase.COMPLETED, controller.state.value!!.phase)
+        controller.confirm(); assertEquals(1, completed); assertNull(controller.state.value); assertFalse(file.file.exists())
     }
     @Test fun disabledStoreIsEnabledWithoutDownloadingAndFailedRestoreCanRetry() = runTest {
         var ready = false; var attempts = 0; var completed = false

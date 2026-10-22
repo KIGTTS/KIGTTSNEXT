@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.Flow
 
 /** Demo engines and synthetic PCM exist only on the test classpath. */
 fun testAppModel(application: Application) = AppViewModel(application,
-    listOf(testUiDebugPlugin(application), PlaceholderTtsPlugin(), PlaceholderAsrPlugin(), testRecognitionService(),
+    listOf(testUiDebugPlugin(application), testSynthesisService(), PlaceholderAsrPlugin(), testRecognitionService(),
         ListeningPanelPlugin(), VoiceInputPlugin(application.getSharedPreferences("voice-input", 0).getBoolean("enabled", false)) {
             application.getSharedPreferences("voice-input", 0).edit().putBoolean("enabled", it).apply()
         }), object : AudioPlatform {
@@ -37,6 +37,16 @@ private fun testUiDebugPlugin(application: Application): KigPlugin {
         { counts -> debug.edit().apply { counts.forEach { (slot, count) -> putInt(slot.name, count) } }.apply() },
         UiSlot.entries.associateWith { if (debug.getBoolean(it.name + "_text", false)) UiButtonStyle.ICON_TEXT else UiButtonStyle.ICON },
         { styles -> debug.edit().apply { styles.forEach { (slot, style) -> putBoolean(slot.name + "_text", style == UiButtonStyle.ICON_TEXT) } }.apply() })
+}
+
+private fun testSynthesisService() = object : KigPlugin {
+    override val descriptor = PluginDescriptor("test.synthesis-service", "测试合成服务", "仅用于界面回归", placeholder = true)
+    private val provider = requireNotNull(PlaceholderTtsPlugin().tts)
+    override val tts = object : TtsEngine {
+        override val info get() = provider.info.copy(role = TtsRole.SERVICE)
+        override fun synthesize(request: TtsRequest) = provider.synthesize(request)
+    }
+    override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
 }
 
 /** A test-only service facade keeps UI fixtures on the same service-first contract as production. */

@@ -68,9 +68,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         autoPlayback = playbackPreferences.getBoolean("automatic", true),
         contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
-        contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
-        mediaId = mediaRepository.get(presentationPreferences.getString("selected", null))?.id,
-        webPermissionEntryId = presentationPreferences.getString("webEntry", null)))
+        contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null))))
     val state = mutableState.asStateFlow()
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
@@ -109,6 +107,20 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         install = { candidate -> stopSpeech(); pluginManager.install(candidate.file, candidate.preview.publisherSha256); refreshPlugins() },
         restore = { pluginManager.enable(com.kigtts.next.plugins.control.STORE_ID, true); refreshPlugins() },
         complete = { sourceLinks.deliver() }) }
+    internal val synthesisGuidance = SpeechServiceGuidance(application, status = {
+        when {
+            registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE && registry.available(it) } -> SpeechServiceStatus.ENABLED
+            pluginManager.status.any { "speech-service" in it.installed.manifest.capabilities } -> SpeechServiceStatus.UNAVAILABLE
+            else -> SpeechServiceStatus.MISSING
+        }
+    }, install = { openSynthesisStore() }, manage = { navigate(Destination.Plugins) })
+    private fun openSynthesisStore() {
+        storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
+            invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to "语音合成服务")) { accepted ->
+                if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "store"))
+            }
+        }
+    }
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
         ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },
         ready = { pluginCatalogReady }, missingStore = { storeBootstrap.offer() }) }
@@ -339,7 +351,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
 
     fun toggleListening() = speech.toggleListening()
-    fun speak() { if (state.value.mediaId == null) speech.speak() else message("请切换到文本后朗读") }
+    fun speak() {
+        if (state.value.mediaId != null) message("请切换到文本后朗读")
+        else if (state.value.speaking || synthesisGuidance.request()) speech.speak()
+    }
     suspend fun refreshPlugins() {
         pluginManager.reload()
         pluginManager.refreshContext(context())
@@ -349,6 +364,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             if (next != current) engineSelection.edit { putString(key, next) }
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
+        synthesisGuidance.refresh()
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
         pluginCatalogReady = true
         sourceLinks.deliver()

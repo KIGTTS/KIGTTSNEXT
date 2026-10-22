@@ -107,6 +107,7 @@ class SubtitlePlaceholderUiTest {
         assertEquals(SUBTITLE_READABLE_MINIMUM, bounded.layoutInput.style.fontSize.value, .01f)
         assertTrue(bounded.size.height > 20)
         compose.runOnIdle { height = 240 }
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
         assertEquals(80f, layout("speech-editor").layoutInput.style.fontSize.value, .01f)
         assertEquals("", model.state.value.editorText)
         assertEquals(percent, model.state.value.subtitleSizePercent, .01f)
@@ -137,6 +138,7 @@ class SubtitlePlaceholderUiTest {
         assertTrue(reduced.size.height <= 76)
         assertEquals(reduced.layoutInput.style.fontSize.value, layout("speech-editor").layoutInput.style.fontSize.value, .01f)
         compose.runOnIdle { height = 320 }
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
         assertEquals(80f, layout("subtitle-placeholder").layoutInput.style.fontSize.value, .01f)
         assertEquals("", compose.onNodeWithTag("speech-editor").fetchSemanticsNode().config[SemanticsProperties.EditableText].text)
         assertEquals("", model.state.value.editorText)
