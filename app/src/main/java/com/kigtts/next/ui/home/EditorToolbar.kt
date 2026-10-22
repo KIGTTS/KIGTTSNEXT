@@ -11,12 +11,11 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import com.kigtts.next.media.*
-import kotlinx.coroutines.launch
 
 @Composable
 fun EditorToolbar(state: AppState, model: AppViewModel) {
-    val scope=rememberCoroutineScope()
     var menu by remember { mutableStateOf(false) }
+    var alignmentDialog by remember { mutableStateOf(false) }
     var fontBar by remember { mutableStateOf(false) }
     val context = model.context()
     val registeredStart = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_START, model) }
@@ -31,11 +30,11 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
             if (expanded) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
                 { fontBar = false }, Modifier.fillMaxWidth(),
                 valueDescription = "单字宽度占屏幕 %.1f%%".format(state.subtitleSizePercent))
-            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作")
+            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作", stableItems = true)
             }
             Spacer(Modifier.weight(.02f))
             ElasticButtonGroup(end, Modifier.weight(.3f), alignEnd = true,
-                overflowTag = "editor-top-end-more", overflowLabel = "字幕右上更多操作")
+                overflowTag = "editor-top-end-more", overflowLabel = "字幕右上更多操作", stableItems = true)
         }
         androidx.activity.compose.BackHandler(menu) { menu = false }
         DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
@@ -44,18 +43,28 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
                 DropdownMenuItem(text = { Text(mode.label) }, leadingIcon = { if (media?.scale == mode) Icon(Icons.Default.Check, null) },
                     onClick = feedbackClick { model.mediaScale(mode); menu = false }, modifier = Modifier.testTag("media-scale-" + mode.name.lowercase()))
             }
-            DropdownMenuItem(text = { Text("选择图片、视频或网页") }, onClick = feedbackClick { menu = false; model.content.picker() })
-            DropdownMenuItem(text = { Text("文本编辑器") }, onClick = feedbackClick { menu = false; model.content.editor() })
-            DropdownMenuItem(text = { Text("页面文件") }, onClick = feedbackClick { menu = false; scope.launch { runCatching { model.content.htmlFiles() }.onFailure { model.message(it.message ?: "打开失败") } } })
-            DropdownMenuItem(text = { Text(if (state.streaming) "✓ 流式识别" else "流式识别") },
-                onClick = feedbackClick { model.streaming(true); menu = false })
-            DropdownMenuItem(text = { Text(if (!state.streaming) "✓ 完整录音识别（最多 8 秒）" else "完整录音识别（最多 8 秒）") },
-                onClick = feedbackClick { model.streaming(false); menu = false })
+            val appearance = state.subtitleAppearance
+            DropdownMenuItem(text = { Text(if (appearance.bold) "关闭粗体" else "打开粗体") },
+                leadingIcon = { Icon(Icons.Default.FormatBold, null) },
+                trailingIcon = { if (appearance.bold) Icon(Icons.Default.Check, null) },
+                onClick = feedbackClick { model.setSubtitleAppearance(appearance.copy(bold = !appearance.bold)); menu = false },
+                modifier = Modifier.testTag("subtitle-bold"))
+            DropdownMenuItem(text = { Text("文本对齐") },
+                leadingIcon = { Icon(Icons.Default.FormatAlignCenter, null) },
+                trailingIcon = { Text(appearance.alignment.label, style = MaterialTheme.typography.labelMedium) },
+                onClick = feedbackClick { menu = false; alignmentDialog = true }, modifier = Modifier.testTag("subtitle-alignment"))
+            DropdownMenuItem(text = { Text(if (appearance.richTextEditing) "关闭富文本编辑" else "开启富文本编辑") },
+                leadingIcon = { Icon(Icons.Default.FormatPaint, null) },
+                trailingIcon = { if (appearance.richTextEditing) Icon(Icons.Default.Check, null) },
+                onClick = feedbackClick { model.setSubtitleAppearance(appearance.copy(richTextEditing = !appearance.richTextEditing)); menu = false },
+                modifier = Modifier.testTag("subtitle-rich-editing"))
             model.registry.actions(UiSlot.EDITOR_MENU, context).forEach { action ->
                 DropdownMenuItem(text = { Text(action.action.label) }, leadingIcon = { Icon(action.action.icon.vector(), null) },
                     onClick = feedbackClick { model.invoke(action); menu = false })
             }
         }
+        if (alignmentDialog) SubtitleAlignmentDialog(state.subtitleAppearance.alignment,
+            { model.setSubtitleAppearance(model.state.value.subtitleAppearance.copy(alignment = it)) }, { alignmentDialog = false })
     }
 }
 

@@ -161,3 +161,9 @@ PluginPage.loading 仅驱动插件通用标题栏加载环，不锁定按钮；r
 ## 本地字幕渲染（API17）
 
 SetSubtitleRenderer(root,mainPage)为当前会话提供本地文字字幕显示，root=null只关闭调用方自身的渲染器。编辑原文和媒体条目保持原逻辑，页面就绪后通过KigttsSubtitle.update传入文字、占位和字号，不反复重载。host.subtitleRenderer为不可伪造的当前渲染器状态输入；工作进程更换或停用后清理，加载失败恢复原生字幕。详细合同见SDK的plugin-api.md。
+
+## 字幕样式与手势（API18）
+
+渲染根的可选 renderer.json（4KiB以内JSON对象）通过文件监听传入同一页面的 settings 字段；字幕与样式更新不重载。TOGGLE_SUBTITLE_FULLSCREEN 切换全屏，host.subtitleFullscreen 提供只读状态。SUBTITLE_STROKE 提供前台文字区的单笔像素点、时长与视口尺寸；双指、点按和长按保留原生处理。SendQuickText 仅按已有ID重新解析并发送，检查读取权限，已删除词条不使用旧文本。完整契约与边界见固定SDK文档。
+
+主程序大字幕菜单仅保留文字外观与插件扩展项：全局粗体默认关闭、九种对齐默认居中、富文本编辑控制原生选择菜单；关闭富文本编辑不会删除词条已有格式。这些偏好独立持久化，不修改快捷文本库。

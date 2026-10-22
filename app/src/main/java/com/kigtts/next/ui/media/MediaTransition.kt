@@ -18,9 +18,10 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 fun MediaTransition(entry:MediaEntry?,state:AppState,model:AppViewModel,modifier:Modifier=Modifier,
     renderFullCardMedia:Boolean=true,empty:@Composable ()->Unit={}) {
     if (!renderFullCardMedia) {
+        val currentEmpty by rememberUpdatedState(empty)
         // Text must track the current viewport, outside AnimatedContent's size lookahead.
         Crossfade(entry, modifier, animationSpec = tween(180), label = "subtitle-foreground-fade") { retained ->
-            RetainedMediaLayer(retained, entry, state, model, false, empty)
+            RetainedMediaLayer(retained, entry, state, model, false, if (retained == null && entry == null) currentEmpty else empty)
         }
         return
     }

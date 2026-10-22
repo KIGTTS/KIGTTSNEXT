@@ -53,7 +53,9 @@ fun KigttsApp(model: AppViewModel) {
     var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
     val storeBootstrap by model.storeBootstrap.state.collectAsStateWithLifecycle()
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
-    val inputOverlay = dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null
+    val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
+    val modalWindows = remember { ModalWindows() }
+    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -109,7 +111,7 @@ fun KigttsApp(model: AppViewModel) {
     KigttsTheme(state.theme) {
         com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
-            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance,
+            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
             ProvideIconTextContextMenu {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
@@ -118,6 +120,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
+            com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->

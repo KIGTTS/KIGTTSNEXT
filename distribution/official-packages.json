@@ -258,6 +258,26 @@
   },
   {
     "module": "led-caption",
+    "file": "display.led-0.1.1.kigplugin",
+    "category": "外观",
+    "summary": "把字幕变成发光灯板，随手调整灯光与灯珠质感。",
+    "symbol": "lightbulb",
+    "description": "## LED 灯珠字幕\n\n点亮灯泡按钮，将输入文字、快捷短语和聆听字幕显示成 LED 灯板。长句平滑滚动，也能一键全屏。\n\n开启后，在缩放按钮左侧调整灯光颜色、灯珠、辉光与滚速。",
+    "notes": "修复显示区域与快捷文本同步；新增样式设置和全屏按钮，切换时保留字幕与工具栏。",
+    "tags": ["字幕", "显示样式"]
+  },
+  {
+    "module": "quick-text-gestures",
+    "file": "input.quick-gestures-0.1.0.kigplugin",
+    "category": "输入",
+    "summary": "画出熟悉的手势，一笔发送常用快捷文本。",
+    "symbol": "gesture",
+    "description": "## 手势触发\n\n为 M、W、Z、闪电、沙漏和折钩选择已有的快捷文本，在大字幕上画出手势即可发送。\n\n每种手势可以单独开启和调整；删除词条后会自动清空绑定。",
+    "notes": "新增六种手势，可绑定现有文字、音频、媒体和网页卡片。",
+    "tags": ["快捷文本", "手势"]
+  },
+  {
+    "module": "led-caption",
     "file": "display.led-0.1.0.kigplugin",
     "category": "外观",
     "summary": "把字幕变成发光灯板，让每句话都有灯珠的质感。",

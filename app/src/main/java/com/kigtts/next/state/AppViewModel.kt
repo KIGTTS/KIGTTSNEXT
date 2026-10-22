@@ -42,6 +42,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     private val themeStore = ThemeSettingsStore(application)
     private val placeholderStore = SubtitlePlaceholderStore(application)
+    private val subtitleAppearanceStore = SubtitleAppearanceStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
     val quickSort = QuickSortPreference(application)
     internal val subtitleRenderer = SubtitleRendererState()
@@ -66,6 +67,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
     private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), subtitlePlaceholder = placeholderStore.load(), hapticsEnabled = feedbackStore.load(),
+        subtitleAppearance = subtitleAppearanceStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         autoPlayback = playbackPreferences.getBoolean("automatic", true),
@@ -119,12 +121,22 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }, install = { openSynthesisStore() }, manage = { navigate(Destination.Plugins) })
     private fun openSynthesisStore() {
+        openSpeechPluginStore("语音合成服务")
+    }
+    private fun openSpeechPluginStore(query: String) {
         storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
-            invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to "语音合成服务")) { accepted ->
+            invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to query)) { accepted ->
                 if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "store"))
             }
         }
     }
+    internal val legacyPiperGuidance = LegacyPiperGuidance(application,
+        hostRuntime?.legacyPiperStartupChecked ?: java.util.concurrent.atomic.AtomicBoolean(false),
+        hasPacks = { LegacyPiperPacks.exists(application.filesDir, pluginManager.paths.data) },
+        missing = { buildSet {
+            if (pluginManager.status.none { "speech-service" in it.installed.manifest.capabilities }) add(MissingPiperComponent.SERVICE)
+            if (pluginManager.status.none { it.installed.manifest.id == "engine.piper" }) add(MissingPiperComponent.ENGINE)
+        } }, install = ::openSpeechPluginStore)
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
         ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },
         ready = { pluginCatalogReady }, missingStore = { storeBootstrap.offer() }) }
@@ -153,7 +165,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         content.onDestinationChanged(state.value.destination)
     }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
-        inputs = mapOf("host.subtitleRenderer" to subtitleRenderer.selection.value?.owner.orEmpty()),
+        inputs = mapOf("host.subtitleRenderer" to subtitleRenderer.selection.value?.owner.orEmpty(),
+            "host.subtitleFullscreen" to (it.subtitleExpanded || it.forcedFullscreen).toString()),
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
         automaticRead = it.autoPlayback, speechActive = it.speaking,
         ttsPluginId = registry.plugin(selectedTtsId.orEmpty())?.takeIf { plugin -> plugin.tts != null }?.descriptor?.id
@@ -283,6 +296,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun setCaptionTextSize(size: Float) { update { it.copy(captionTextSize = size.coerceIn(10f, 64f)) } }
     fun flipSubtitle() { update { it.copy(subtitleFlipped = !it.subtitleFlipped) } }
+    fun setSubtitleAppearance(value: SubtitleAppearance) {
+        subtitleAppearanceStore.save(value); update { it.copy(subtitleAppearance = value) }
+    }
+    fun formatSubtitle(range: TextRange, kind: com.kigtts.next.text.TextFormat, value: Long = 0) {
+        if (!state.value.editing || !state.value.subtitleAppearance.richTextEditing) return
+        update { it.copy(subtitleFormats = com.kigtts.next.text.TextFormatting.apply(it.subtitleFormats,
+            it.editorText.length, range.start, range.end, kind, value)) }
+    }
     fun category(category: String) { update { it.copy(selectedCategory = category) } }
     fun streaming(enabled: Boolean) {
         closeListeningPanel()
@@ -334,7 +355,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         HostCommand.USE_STREAMING -> streaming(true)
                         HostCommand.USE_BATCH -> streaming(false)
                         HostCommand.VOICE_INPUT -> speech.voiceInput()
+                        HostCommand.TOGGLE_SUBTITLE_FULLSCREEN -> if (state.value.subtitleExpanded || state.value.forcedFullscreen)
+                            exitSubtitleFullscreen() else enterSubtitleFullscreen()
                     } }
+                    PluginOutcome.NoAction -> Unit
+                    is PluginOutcome.SendQuickText -> {
+                        check(pluginManager.requestPermission(pluginId, "quick-text-read")) { "需要允许读取快捷文本" }
+                        quickTexts.phrases.value.firstOrNull { it.id == outcome.entryId }?.let(content::send)
+                    }
                     is PluginOutcome.OpenPage -> {
                         if (plugin.page(outcome.pageId, context()) != null) { navigate(Destination.PluginPage(pluginId, outcome.pageId)); accepted = true }
                         else message("插件页面不存在")
@@ -390,6 +418,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         synthesisGuidance.refresh()
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
         pluginCatalogReady = true
+        legacyPiperGuidance.onStartup()
         sourceLinks.deliver()
     }
     fun selectEngine(id: String, tts: Boolean) {

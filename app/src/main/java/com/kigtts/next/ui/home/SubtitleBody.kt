@@ -21,9 +21,11 @@ import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.media.MediaTransition
 import com.kigtts.next.ui.media.PluginSubtitleRenderer
+import com.kigtts.plugin.api.PluginGesture
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+    val currentState by rememberUpdatedState(state)
     val media = model.mediaRepository.get(state.mediaId)
     // The full-card WebView is already mounted below this column. An invisible AnimatedContent
     // above AndroidView can own its hit path; leave only a layout spacer for interactive pages.
@@ -33,7 +35,7 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     }
     MediaTransition(media,state,model,modifier.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
-        SubtitleText(state,model,Modifier.fillMaxSize())
+        SubtitleText(currentState,model,Modifier.fillMaxSize())
     }
 }
 
@@ -44,7 +46,8 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
     val keyboard = LocalSoftwareKeyboardController.current
     val flipped = state.subtitleFlipped && !state.editing
     val style = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = preferredSubtitleFontSize(state.subtitleSizePercent),
-        lineHeight = 1.25.em, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        lineHeight = 1.25.em, fontWeight = if (state.subtitleAppearance.bold) FontWeight.Bold else FontWeight.Normal,
+        textAlign = state.subtitleAppearance.alignment.textAlignment)
     val density = LocalDensity.current
     val text = state.editorText
     LaunchedEffect(state.editing) { if (state.editing) { focus.requestFocus(); keyboard?.show() } }
@@ -64,8 +67,11 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
                         model.rendererUnavailable(selection.owner)
                     }) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.
-                Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))
+                if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
+                    Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))
             }
         } else SubtitleDisplay(state, model, text, style, width, height)
+        if (!state.editing && model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
+            SubtitleStrokeOverlay(model, Modifier.matchParentSize())
     }
 }

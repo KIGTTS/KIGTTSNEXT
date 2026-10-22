@@ -24,6 +24,8 @@ class SubtitleRendererState {
         require(plugin.descriptor.id == owner) { "Renderer owner does not match plugin" }
         val directory = root.canonicalFile
         require(directory.isDirectory && WebContentPolicy.file(directory, mainPage) != null) { "Renderer main page is unavailable" }
+        val current = mutableSelection.value
+        if (current?.owner == owner && current.plugin === plugin && current.root == directory && current.mainPage == mainPage) return
         mutableSelection.value = SubtitleRendererSelection(owner, directory, mainPage, plugin)
     }
 

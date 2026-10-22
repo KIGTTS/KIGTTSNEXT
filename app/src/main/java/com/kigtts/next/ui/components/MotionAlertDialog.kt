@@ -46,6 +46,11 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
     var closing by remember { mutableStateOf(false) }
     val dismiss by rememberUpdatedState(onDismissRequest)
     val keyboard = LocalSoftwareKeyboardController.current
+    val modalWindows = LocalModalWindows.current
+    DisposableEffect(modalWindows) {
+        modalWindows?.enter()
+        onDispose { modalWindows?.leave() }
+    }
     fun close(action: () -> Unit) {
         if (closing) return
         closing = true; keyboard?.hide()

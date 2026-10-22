@@ -68,7 +68,7 @@ private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifie
                     if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)
                 else null
             ElasticButtonGroup(listOfNotNull(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
-                overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作")
+                overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作", stableItems = true)
         }
     }
 }

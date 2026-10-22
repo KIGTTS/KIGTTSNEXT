@@ -2,12 +2,16 @@ package com.kigtts.next.ui.media
 
 import android.graphics.Color
 import android.net.Uri
+import android.os.FileObserver
+import android.view.ViewGroup
 import android.webkit.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -18,6 +22,9 @@ import com.kigtts.next.state.SubtitleRendererSelection
 import com.kigtts.next.ui.navigation.LocalPageActive
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Offline display only: no native bridge, network, device grants, downloads or editable document. */
 @Composable
@@ -28,7 +35,25 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
     val pageActive = LocalPageActive.current
     val currentPageActive by rememberUpdatedState(pageActive)
     val currentUnavailable by rememberUpdatedState(onUnavailable)
-    val latestUpdate by rememberUpdatedState(SubtitleRendererProtocol.update(text, placeholder, fontSizePercent))
+    var rendererSettings by remember(selection) { mutableStateOf("{}") }
+    val scope = rememberCoroutineScope()
+    // Watch atomic replacements too; style changes update the existing page and retain its text.
+    DisposableEffect(selection) {
+        val watcherScope = kotlinx.coroutines.CoroutineScope(scope.coroutineContext + kotlinx.coroutines.SupervisorJob(scope.coroutineContext[kotlinx.coroutines.Job]))
+        fun reload() = watcherScope.launch {
+            rendererSettings = withContext(Dispatchers.IO) { SubtitleRendererSettings.read(selection.root) }
+        }
+        @Suppress("DEPRECATION")
+        val observer = object : FileObserver(selection.root.path, CLOSE_WRITE or MOVED_TO or DELETE) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path == SubtitleRendererSettings.FILE) reload()
+            }
+        }
+        observer.startWatching()
+        reload()
+        onDispose { observer.stopWatching(); watcherScope.coroutineContext[kotlinx.coroutines.Job]?.cancel() }
+    }
+    val latestUpdate by rememberUpdatedState(SubtitleRendererProtocol.update(text, placeholder, fontSizePercent, rendererSettings))
     val theme = MaterialTheme.colorScheme
     var ready by remember(selection) { mutableStateOf(false) }
     var disposed by remember(selection) { mutableStateOf(false) }
@@ -45,6 +70,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
     }.getOrDefault(false)
     val web = remember(selection) {
         WebView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundColor(Color.TRANSPARENT)
             isLongClickable = false
             setOnLongClickListener { true }
@@ -56,6 +82,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
                 mediaPlaybackRequiresUserGesture = true; javaScriptCanOpenWindowsAutomatically = false
                 setSupportMultipleWindows(false); setSupportZoom(false); builtInZoomControls = false
                 displayZoomControls = false; textZoom = 100
+                useWideViewPort = false; loadWithOverviewMode = false
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) = request.deny()
@@ -125,5 +152,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
             web.stopLoading(); web.removeAllViews(); web.destroy()
         }
     }
-    AndroidView(factory = { web }, modifier = modifier.testTag("plugin-subtitle-renderer"))
+    AndroidView(factory = { web }, modifier = modifier.testTag("plugin-subtitle-renderer").semantics {
+        stateDescription = text.ifEmpty { placeholder }
+    })
 }

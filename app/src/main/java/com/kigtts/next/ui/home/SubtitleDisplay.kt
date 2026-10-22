@@ -27,11 +27,12 @@ fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: T
     val currentWidth by rememberUpdatedState(width)
     val currentHeight by rememberUpdatedState(height)
     val currentStyle by rememberUpdatedState(style)
+    val alignment by rememberUpdatedState(state.subtitleAppearance.alignment.boxAlignment)
     val target = SubtitleFrame(text, state.subtitleFormats, state.subtitlePlaceholder.takeIf { text.isEmpty() }.orEmpty())
     val effects = tween<Float>(180, easing = FastOutSlowInEasing)
     Crossfade(targetState = target, modifier = Modifier.fillMaxSize().testTag("subtitle-text-transition"),
         animationSpec = effects, label = "subtitle-text") { frame ->
-        Box(Modifier.fillMaxSize().then(if (frame == target) Modifier else Modifier.clearAndSetSemantics {}), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().then(if (frame == target) Modifier else Modifier.clearAndSetSemantics {}), contentAlignment = alignment) {
             if (frame.text.isEmpty()) {
                 // Fit only the displayed hint; the editable document remains empty.
                 val fitted = currentStyle.copy(fontSize = stableSubtitleFontSize(AnnotatedString(frame.placeholder), currentStyle, currentWidth, currentHeight).sp)

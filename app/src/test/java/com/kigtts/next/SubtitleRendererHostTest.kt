@@ -5,12 +5,18 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.collectAsState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
+import android.view.ViewGroup
+import android.webkit.WebView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.home.SubtitleBody
+import com.kigtts.next.ui.home.TextEditor
 import com.kigtts.next.ui.home.cornerActions
 import com.kigtts.plugin.api.*
 import org.junit.*
@@ -93,5 +99,43 @@ class SubtitleRendererHostTest {
         }
         assertNull(model.subtitleRenderer.selection.value)
         assertEquals("", model.context().inputs["host.subtitleRenderer"])
+    }
+
+    @Test fun rendererFillsTheRealEditorViewportAndKeepsItsViewDuringTextUpdates() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val plugin = Renderer()
+        val model = AppViewModel(app, listOf(plugin))
+        model.pluginManager.paths.storage(plugin.descriptor.id).directory("renderer").resolve("index.html")
+            .writeText("<!doctype html><html><body>LED</body></html>")
+        compose.setContent {
+            val state = model.state.collectAsState().value
+            MaterialTheme { Box(Modifier.size(360.dp, 500.dp)) { TextEditor(state, model, false, false, Modifier.fillMaxSize()) } }
+        }
+        invoke(model, plugin)
+        fun web(group: ViewGroup): WebView? {
+            for (i in 0 until group.childCount) {
+                val child = group.getChildAt(i)
+                if (child is WebView) return child
+                if (child is ViewGroup) web(child)?.let { return it }
+            }
+            return null
+        }
+        val view = compose.runOnIdle { web(compose.activity.window.decorView as ViewGroup)!! }
+        val bounds = compose.onNodeWithTag("plugin-subtitle-renderer").getUnclippedBoundsInRoot()
+        assertTrue("Renderer width: $bounds", (bounds.right - bounds.left).value >= 319f)
+        assertTrue("Renderer height: $bounds", (bounds.bottom - bounds.top).value >= 390f)
+        // Robolectric does not lay out the AndroidView interop child; verify both Compose's
+        // measured viewport and the real WebView's explicit native sizing contract.
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, view.layoutParams.width)
+        assertEquals(ViewGroup.LayoutParams.MATCH_PARENT, view.layoutParams.height)
+        compose.runOnIdle { model.text("新的快捷文本") }
+        compose.onNodeWithTag("plugin-subtitle-renderer").assert(SemanticsMatcher.expectValue(
+            androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "新的快捷文本"))
+        compose.runOnIdle { model.content.send(QuickPhrase("绑定的快捷文本", model.quickTexts.categories.value.first())) }
+        compose.onNodeWithTag("plugin-subtitle-renderer").assert(SemanticsMatcher.expectValue(
+            androidx.compose.ui.semantics.SemanticsProperties.StateDescription, "绑定的快捷文本"))
+        assertSame(view, compose.runOnIdle { web(compose.activity.window.decorView as ViewGroup) })
+        compose.runOnIdle { model.subtitleRenderer.select(plugin.descriptor.id, plugin, model.subtitleRenderer.selection.value!!.root) }
+        assertSame(view, compose.runOnIdle { web(compose.activity.window.decorView as ViewGroup) })
     }
 }

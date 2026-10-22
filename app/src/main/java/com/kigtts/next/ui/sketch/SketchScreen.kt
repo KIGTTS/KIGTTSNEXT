@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.sketch
 
 import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -30,10 +31,13 @@ import kotlinx.coroutines.*
     var busy by remember { mutableStateOf(false) }
     var clear by rememberSaveable { mutableStateOf(false) }
     var album by rememberSaveable { mutableStateOf(false) }
+    val galleryTransition = remember { MutableTransitionState(album) }
+    galleryTransition.targetState = album
+    val galleryOnScreen = galleryTransition.currentState || galleryTransition.targetState
     var paper by rememberSaveable { mutableStateOf(false) }
     var opening by rememberSaveable { mutableStateOf<String?>(null) }
     val enabled = active && ready && !busy
-    SideEffect { chrome?.drawing = !album }
+    SideEffect { chrome?.drawing = !galleryOnScreen }
     DisposableEffect(chrome) { onDispose { chrome?.drawing = true } }
     LaunchedEffect(state, repository) {
         if (!ready) {
@@ -76,23 +80,27 @@ import kotlinx.coroutines.*
         ToolbarAction("sketch-album-open", "画板作品", Icons.Default.Collections, enabled, preserveColorWhenLocked = busy, click = { album = true }),
         ToolbarAction("sketch-reset-view", "显示全部笔迹", Icons.Default.FitScreen, enabled, click = state::resetViewport),
         ToolbarAction("sketch-paper", "画布背景", Icons.Default.GridOn, enabled, click = { paper = true })))
-    RegisterPageBackGuard(active && (busy || album)) { if (!busy) album = false }
-    PredictiveBackHandler(active && (busy || album) && opening == null && !clear) { progress ->
+    RegisterPageBackGuard(active && (busy || galleryOnScreen)) { if (!busy) album = false }
+    PredictiveBackHandler(active && (busy || galleryOnScreen) && opening == null && !clear) { progress ->
         try { progress.collect { }; if (!busy) album = false } catch (_: CancellationException) { }
     }
-    if (album) SketchGalleryScreen(repository, { id ->
-        if (state.strokes.any { !it.erase }) opening = id else openWork(id)
-    }, { album = false }, message)
-    else BoxWithConstraints(Modifier.fillMaxSize().background(background).testTag("sketch-workspace")) {
+    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(background).testTag("sketch-workspace")) {
         val landscape = maxWidth > maxHeight
-        SketchCanvas(state, enabled, ready, background.toArgb().toLong() and 0xFFFFFFFFL)
+        SketchCanvas(state, enabled && !galleryOnScreen, ready, background.toArgb().toLong() and 0xFFFFFFFFL)
         SketchToolbar(state, save, { clear = true },
             Modifier.align(if (landscape) Alignment.CenterEnd else Alignment.BottomCenter)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(if (landscape) PaddingValues(end = 12.dp) else PaddingValues(bottom = 16.dp))
                 .testTag(if (landscape) "sketch-toolbar-vertical" else "sketch-toolbar-horizontal")
                 .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent(PointerEventPass.Final).changes.forEach { it.consume() } } },
-            vertical = landscape, enabled = enabled)
+            vertical = landscape, enabled = enabled && !galleryOnScreen)
+    }
+    SketchGalleryMotion(galleryTransition) {
+        SketchGalleryScreen(repository, { id ->
+            if (state.strokes.any { !it.erase }) opening = id else openWork(id)
+        }, { album = false }, message)
+    }
     }
     if (active && paper) SketchBackgroundDialog(state) { paper = false }
     if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },

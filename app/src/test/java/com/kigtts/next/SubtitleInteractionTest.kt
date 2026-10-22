@@ -55,7 +55,7 @@ class SubtitleInteractionTest {
         ime(300)
         compose.onNodeWithTag("speech-editor").assertIsFocused().performTextInput("继续输入")
         compose.onNodeWithTag("editor-menu").performClick()
-        compose.onNodeWithText("流式识别", substring = true).assertExists()
+        compose.onNodeWithText("打开粗体").assertExists()
         compose.onNodeWithTag("speech-editor").assertIsFocused()
         assertTrue(model.state.value.editing)
         back()
@@ -79,6 +79,20 @@ class SubtitleInteractionTest {
         compose.runOnIdle { assertFalse(model.state.value.editing); assertTrue(model.state.value.subtitleFlipped) }
         compose.onNodeWithTag("editor-font-size").performClick()
         compose.runOnIdle { assertFalse(model.state.value.editing); assertFalse(model.state.value.forcedFullscreen) }
+    }
+
+    @Test fun alignmentPickerDoesNotEndEditingWhenItsWindowTemporarilyHidesTheKeyboard() {
+        val model = show()
+        compose.onNodeWithTag("subtitle-content").performClick(); ime(300)
+        compose.onNodeWithTag("speech-editor").performTextInput("保留输入")
+        compose.onNodeWithTag("editor-menu").performClick()
+        compose.onNodeWithTag("subtitle-alignment").performClick(); ime(0)
+        compose.runOnIdle { assertTrue(model.state.value.editing) }
+        compose.onNodeWithTag("subtitle-align-top_left").performClick(); compose.waitForIdle()
+        compose.runOnIdle {
+            assertTrue(model.state.value.editing); assertEquals("保留输入", model.state.value.editorText)
+            assertEquals(SubtitleAlignment.TOP_LEFT, model.state.value.subtitleAppearance.alignment)
+        }
     }
 
     @Test fun heldFullscreenSurvivesImeDismissalAndPredictiveCancellationThenRestoresPanels() {

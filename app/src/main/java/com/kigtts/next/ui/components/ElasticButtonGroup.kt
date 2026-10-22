@@ -3,6 +3,7 @@ package com.kigtts.next.ui.components
 
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,8 +36,18 @@ data class ElasticAction(
 /** The first action stays at the outside edge; excess actions remain reachable in a menu. */
 @Composable
 fun ElasticButtonGroup(actions: List<ElasticAction>, modifier: Modifier = Modifier, plain: Boolean = false,
-    alignEnd: Boolean = false, overflowTag: String = "actions-more", overflowLabel: String = "更多操作") {
+    alignEnd: Boolean = false, overflowTag: String = "actions-more", overflowLabel: String = "更多操作",
+    stableItems: Boolean = false) {
     val current by rememberUpdatedState(actions)
+    if (stableItems) {
+        // Local subtitle controls update independently. Adding a plugin button must not fade,
+        // disable or reconstruct the menu/flip buttons beside it.
+        Box(modifier, contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart) {
+            ElasticButtonStrip(actions, Modifier.animateContentSize(MaterialTheme.motionScheme.fastSpatialSpec()),
+                plain, alignEnd, overflowTag, overflowLabel)
+        }
+        return
+    }
     AnimatedActionSet(actions, { listOf(it.id, it.label, it.icon, it.iconOnly) }, modifier,
         alignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart) { shown ->
         ElasticButtonStrip(shown.map { action -> action.copy(onClick = { current.firstOrNull { it.id == action.id }?.onClick?.invoke() }) },
@@ -71,7 +82,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
         val widths = shown.map { action ->
             if (allTextFits) preferred[actions.indexOf(action)] else 32f
         }
-        val sources = remember(shown.map { it.id }) { shown.map { MutableInteractionSource() } }
+        val sources = shown.map { action -> key(action.id) { remember { MutableInteractionSource() } } }
         val pressed = sources.map { it.collectIsPressedAsState().value }
         val animatedWidths = rememberBalancedWidthProvider(widths, sources)
         Layout(modifier = Modifier.width((widths.sum() + 4f * (shown.size - 1)).dp).height(32.dp), content = {

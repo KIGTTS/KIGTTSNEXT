@@ -14,6 +14,7 @@ import java.lang.ref.WeakReference
 class HostPluginRuntime private constructor(private val application: Application) {
     val manager = PluginManager(application, emptyList())
     val recovery = com.kigtts.next.recovery.CrashRecovery(application)
+    internal val legacyPiperStartupChecked = java.util.concurrent.atomic.AtomicBoolean(false)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
     val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)
     val stickers = com.kigtts.next.cards.StickerRepository(application, manager.paths, mediaRepository)

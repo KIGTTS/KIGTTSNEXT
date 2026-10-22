@@ -101,7 +101,7 @@ $($rows -join "`n")
 
 项目源码与构建脚本：https://github.com/KIGTTS/KIGTTSNEXT
 
-本次未修改的 0.8.0 引擎/服务对应源码固定于提交 185f8236a74834e8b87420f878cd8ab897b373b4，可直接下载完整源归档：https://github.com/KIGTTS/KIGTTSNEXT/archive/185f8236a74834e8b87420f878cd8ab897b373b4.zip 。Piper 的 JNI、发音器、固定 eSpeak 源归档及构建配置位于 engine-plugins/piper-tts/native-source；其余依赖的固定版本、源地址及许可见各模块 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的 LFS 文件。
+各插件已拆分为 KIGTTS 组织下的独立仓库，源清单的 homepage 指向对应源码与许可证。Piper 0.8.0 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/0e9aedef9ddde90f1fe92762e53a4a4daf235c65.zip ，包含 native-source 下的 JNI、发音器、固定 eSpeak 源归档及构建配置；其余依赖的固定版本、源地址及许可见各插件 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的子模块与 LFS 文件。
 
 源清单格式、依赖和镜像规则：https://github.com/KIGTTS/KIGTTSNEXT/blob/main/docs/package-store.md
 
