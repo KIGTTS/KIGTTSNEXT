@@ -44,7 +44,7 @@ foreach ($item in $config) {
             mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
             apiVersion = $spec.apiVersion; minSdk = $spec.minSdk; abis = @($spec.abis)
             notes = if ($item.notes) { $item.notes } elseif ($spec.apiVersion -ge 11) { "需API$($spec.apiVersion)或更新兼容宿主；更新保留原配置与启停状态。" } else { '兼容API9–13宿主；无需重新导入已有模型。' }
-            dependencies = @{}
+            dependencies = if ($spec.dependencies) { $spec.dependencies } elseif ($item.dependencies) { $item.dependencies } else { @{} }
             permissions = @($spec.capabilities | Where-Object { $_ -ne 'ui' })
             permissionPurposes = if ($spec.permissionPurposes) { $spec.permissionPurposes } else { @{} }
         }

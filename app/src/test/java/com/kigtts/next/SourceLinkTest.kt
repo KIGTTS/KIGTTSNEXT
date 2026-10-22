@@ -59,4 +59,23 @@ class SourceLinkTest {
         assertNull(SourceLinkCoordinator.parse(Uri.parse("kigtts://source/install?url=" + Uri.encode(url))))
         assertNull(SourceLinkCoordinator.parse(Uri.parse("https://source/add?url=" + Uri.encode(url))))
     }
+    @Test fun missingStoreWaitsForStartupAndResumesPersistedLinkAfterInstall() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("pending-package-source", Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+        val catalog = PluginRegistry(emptyList())
+        var started = false; var prompts = 0; var calls = 0
+        val link = Uri.parse("kigtts://source/add?url=" + Uri.encode("https://example.org/plugins.json"))
+        val coordinator = SourceLinkCoordinator(context, catalog, { _, _, _, done -> calls++; done(true) }, {},
+            ready = { started }, missingStore = { prompts++ })
+        coordinator.accept(link); coordinator.deliver()
+        assertEquals(0, prompts)
+        started = true; coordinator.deliver(); coordinator.deliver()
+        assertEquals(1, prompts); assertEquals(0, calls)
+        // Cancelling the installer does not discard the proposal; process restart can resume it.
+        val resumed = SourceLinkCoordinator(context, catalog, { _, _, _, done -> calls++; done(true) }, {}, missingStore = { prompts++ })
+        resumed.deliver(); assertEquals(2, prompts)
+        catalog.replace(registry().plugins); resumed.deliver(); resumed.deliver()
+        assertEquals(1, calls); assertNull(prefs.getString("url", null))
+    }
 }

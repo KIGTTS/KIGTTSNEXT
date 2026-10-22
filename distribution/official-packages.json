@@ -192,6 +192,7 @@
   },
   {
     "module": "piper-tts",
+    "dependencies": { "service.speech-synthesis": "^0.8.0" },
     "file": "engine.piper-0.8.0.kigplugin",
     "category": "音频",
     "summary": "把文字读成语音，搭配喜欢的音色用于日常朗读。",
@@ -203,6 +204,7 @@
   },
   {
     "module": "streaming-asr",
+    "dependencies": { "service.speech-recognition": "^0.8.0" },
     "file": "engine.streaming-asr-0.8.0.kigplugin",
     "category": "音频",
     "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",
@@ -214,6 +216,7 @@
   },
   {
     "module": "sensevoice-asr",
+    "dependencies": { "service.speech-recognition": "^0.8.0" },
     "file": "engine.sensevoice-0.8.0.kigplugin",
     "category": "音频",
     "summary": "识别语音并转换成文字，适合日常交流与听读。",

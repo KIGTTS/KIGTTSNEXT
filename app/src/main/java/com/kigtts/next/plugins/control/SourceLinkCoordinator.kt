@@ -8,7 +8,9 @@ import java.net.URI
 /** A link only proposes a source. Fetching/trust/confirmation remain in a source-manager plugin. */
 internal class SourceLinkCoordinator(context: Context, private val registry: PluginRegistry,
     private val invoke: (String, String, Map<String, String>, (Boolean) -> Unit) -> Unit,
-    private val message: (String) -> Unit, private val available: (String) -> Boolean = { true }) {
+    private val message: (String) -> Unit, private val available: (String) -> Boolean = { true },
+    private val ready: () -> Boolean = { true },
+    private val missingStore: () -> Unit = { message("请先安装插件商店，再添加这个源") }) {
     private val preferences = context.getSharedPreferences("pending-package-source", Context.MODE_PRIVATE)
     private var notified = false
     private var attempted = false
@@ -20,9 +22,9 @@ internal class SourceLinkCoordinator(context: Context, private val registry: Plu
     }
     fun deliver() {
         val url = preferences.getString("url", null) ?: return
-        if (attempted) return
+        if (attempted || !ready()) return
         val plugin = registry.plugins.firstOrNull { registry.available(it) && it.contributions.sourceAction != null }
-        if (plugin == null) { if (!notified) { message("请先安装插件商店，再添加这个源"); notified = true }; return }
+        if (plugin == null) { if (!notified) { notified = true; missingStore() }; return }
         if (!available(plugin.descriptor.id)) return
         attempted = true
         invoke(plugin.descriptor.id, requireNotNull(plugin.contributions.sourceAction), mapOf("url" to url)) { accepted ->

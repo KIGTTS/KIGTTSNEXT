@@ -101,8 +101,17 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
     // Every callback dependency must exist before bootstrap can resume from background I/O.
     private val navigationHistory = ArrayDeque<Destination>()
-    private val sourceLinks by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
-        ::invokeWithResult, ::message) { it !in state.value.busyPlugins } }
+    private var pluginCatalogReady = engineFixtures.isNotEmpty()
+    internal val storeBootstrap: com.kigtts.next.plugins.control.StoreBootstrapCoordinator by lazy { com.kigtts.next.plugins.control.StoreBootstrapCoordinator(viewModelScope,
+        installed = { pluginManager.status.any { it.installed.manifest.id == com.kigtts.next.plugins.control.STORE_ID } },
+        ready = { registry.plugins.any { registry.available(it) && it.contributions.sourceAction != null } },
+        download = { com.kigtts.next.plugins.control.StoreBootstrapDownload(pluginManager.paths.packages, pluginManager.packages::inspect).download() },
+        install = { candidate -> stopSpeech(); pluginManager.install(candidate.file, candidate.preview.publisherSha256); refreshPlugins() },
+        restore = { pluginManager.enable(com.kigtts.next.plugins.control.STORE_ID, true); refreshPlugins() },
+        complete = { sourceLinks.deliver() }) }
+    private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
+        ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },
+        ready = { pluginCatalogReady }, missingStore = { storeBootstrap.offer() }) }
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun observePluginContext() = viewModelScope.launch {
@@ -341,6 +350,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
+        pluginCatalogReady = true
         sourceLinks.deliver()
     }
     fun selectEngine(id: String, tts: Boolean) {
@@ -374,6 +384,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || state.value.recognitionOutput == CaptionOutput.PANEL) viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
         super.onCleared()
+        storeBootstrap.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
         captionOutput.close()
         hostRuntime?.detach(this)
