@@ -280,6 +280,26 @@
             "$ref": "#/$defs/mirror"
           },
           "description": "Ordered fallback downloads, not independent package versions. URL values must be unique."
+        },
+        "permissions": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,79}$"
+          },
+          "description": "Optional signed capabilities excluding ui. Omitted means unknown; [] means none. Does not grant permission."
+        },
+        "permissionPurposes": {
+          "type": "object",
+          "maxProperties": 32,
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 600
+          },
+          "description": "Signed purposes keyed only by declared permissions."
         }
       }
     },

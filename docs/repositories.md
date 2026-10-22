@@ -17,6 +17,8 @@ SDK与外置插件分别独立发布；本仓库负责Android宿主与运行时�
 |recognition-service|[plugin-recognition-service](https://github.com/KIGTTS/plugin-recognition-service)|MIT|
 |ui-debug|[plugin-ui-debug](https://github.com/KIGTTS/plugin-ui-debug)|MIT|
 |quick-text-tools|[plugin-quick-text-tools](https://github.com/KIGTTS/plugin-quick-text-tools)|MIT|
+|kigusay-backup|[plugin-kigusay-backup](https://github.com/KIGTTS/plugin-kigusay-backup)|GPL-3.0-only|
+|led-caption|[plugin-led-caption](https://github.com/KIGTTS/plugin-led-caption)|MIT|
 
 各仓库有独立Gradle入口、固定SDK子模块、源码、测试和LICENSE/NOTICE；Piper、SenseVoice及合成服务保留GPL-3.0-only，MIT SDK不改变它们的许可。首次拆分的来源提交记录在各仓库SOURCE_ORIGIN.md；旧发布包保留原对应源码，不以新源码冒充历史二进制来源。
 

@@ -3,11 +3,21 @@ package com.kigtts.next
 import com.kigtts.next.state.Destination
 import com.kigtts.next.ui.settings.settingsCards
 import com.kigtts.next.ui.settings.backupSettingsLinks
+import com.kigtts.next.ui.settings.backupSettingsCards
 import com.kigtts.plugin.api.*
 import org.junit.Assert.*
 import org.junit.Test
 
 class SettingsEntriesTest {
+    @Test fun eachCompatibilityFormatGetsItsOwnCardAndKeepsBothActionsTogether() {
+        val registry = PluginRegistry(listOf(plugin("backup.kigusay", listOf(
+            SettingsEntry("import", "导入娃语", "import", cardId = "backup", cardTitle = "娃语（Kigusay）", order = 1),
+            SettingsEntry("export", "导出娃语", "export", cardId = "backup", cardTitle = "娃语（Kigusay）", order = 2))),
+            plugin("backup.other", listOf(SettingsEntry("import", "导入其它格式", "import", cardId = "backup", cardTitle = "其它格式")))))
+        val cards = backupSettingsCards(registry, PluginContext("", ""))
+        assertEquals(2, cards.size)
+        assertEquals(listOf("导入娃语", "导出娃语"), cards.single { it.title == "娃语（Kigusay）" }.links.map { it.title })
+    }
     private fun plugin(id: String, entries: List<SettingsEntry> = emptyList(), legacy: List<DrawerEntry> = emptyList(),
         requirements: List<PluginRequirement> = emptyList()) = object : KigPlugin {
         override val descriptor = PluginDescriptor(id, id, "", requires = requirements)
@@ -43,7 +53,7 @@ class SettingsEntriesTest {
         val cards = settingsCards(registry, PluginContext("", ""))
         val appearance = cards.single { it.id == "appearance" }
         assertEquals("外观与交互", appearance.title)
-        assertEquals(listOf("外观", "触感反馈", "其它外观"), appearance.links.map { it.title })
+        assertEquals(listOf("外观", "操作反馈", "其它外观"), appearance.links.map { it.title })
         assertEquals("小工具", cards.last().title); assertEquals("计算器", cards.last().links.single().title)
     }
     @Test fun legacyPagesMigrateToExtensionsAndKeepConfigurationReachableWithMissingRequirement() {

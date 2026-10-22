@@ -2,8 +2,6 @@ package com.kigtts.next.ui.navigation
 
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.platform.LocalConfiguration
-import android.content.res.Configuration
 import com.kigtts.next.state.*
 
 sealed interface PageScene {
@@ -66,11 +64,10 @@ data class PageNavigation(val wanted: List<PageEntry>, val pages: List<PageEntry
 
 @Composable
 fun rememberPageNavigation(state: AppState): PageNavigation {
-    val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
     val directions=rememberSaveable { mutableMapOf<String,Float>() }
     val wanted = remember(state.destination, state.sidePage, state.navigationStack) { pageTrail(state).map { entry ->
         entry.copy(direction=directions.getOrPut(entry.identity) {
-            if(landscape&&entry.scene==PageScene.Side(SidePage.SKETCH))1f else entry.direction
+            entry.direction
         })
     } }
     val retention = remember { PageRetention(wanted) }

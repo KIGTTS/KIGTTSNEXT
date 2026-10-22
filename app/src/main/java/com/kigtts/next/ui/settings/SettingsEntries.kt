@@ -59,9 +59,14 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
 
 /** Compatibility plugins own their format page, while the host owns the common entrance. */
 internal fun backupSettingsLinks(registry: PluginRegistry, context: PluginContext): List<SettingsLink> =
+    backupSettingsCards(registry, context).flatMap { it.links }
+
+internal fun backupSettingsCards(registry: PluginRegistry, context: PluginContext): List<SettingsCard> =
     registry.plugins.flatMap { plugin -> plugin.contributions(context).settingsEntries.filter { it.cardId == "backup" }
         .map { plugin.descriptor.id to it } }
         .sortedWith(compareBy({ it.second.order }, { it.first }, { it.second.id }))
-        .map { (pluginId, entry) -> SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary,
+        .groupBy { (pluginId, entry) -> pluginId to entry.cardTitle.ifBlank { "兼容格式" } }
+        .map { (group, entries) -> SettingsCard("plugin/${group.first}/${group.second}", group.second, "",
+            entries.map { (pluginId, entry) -> SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary,
             if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
-            Destination.PluginPage(pluginId, entry.pageId)) }
+            Destination.PluginPage(pluginId, entry.pageId)) }) }

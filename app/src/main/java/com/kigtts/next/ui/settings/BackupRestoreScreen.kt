@@ -53,7 +53,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
         }
     }
     val state by model.state.collectAsStateWithLifecycle()
-    val links = remember(model.registry, state.pluginRevision) { backupSettingsLinks(model.registry, model.context()) }
+    val formats = remember(model.registry, state.pluginRevision) { backupSettingsCards(model.registry, model.context()) }
     SettingsLayout {
         SettingsGroup("快捷文本", "包含分组、文字和媒体附件；导入前会显示修改预览。") {
             SettingItem("导入快捷文本", "选择 KIGTTS .kigcards 备份", Icons.Default.FileDownload, SettingPosition.FIRST,
@@ -72,11 +72,13 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
                     }
                 })
         }
-        if (links.isNotEmpty()) SettingsGroup("兼容格式", "由对应插件提供格式转换与导入预览。") {
+        LegacyBackupImport(model.legacyImports)
+        formats.forEach { card -> SettingsGroup(card.title) {
+            val links = card.links
             links.forEachIndexed { index, link ->
                 val position = when { links.size == 1 -> SettingPosition.SINGLE; index == 0 -> SettingPosition.FIRST; index == links.lastIndex -> SettingPosition.LAST; else -> SettingPosition.MIDDLE }
                 SettingItem(link.title, link.summary, link.icon, position, enabled = !busy, onClick = { model.navigate(link.destination) })
             }
-        }
+        } }
     }
 }

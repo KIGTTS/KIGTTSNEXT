@@ -28,6 +28,7 @@ fun HomeScreen(
     openDrawer: () -> Unit,
     backProgress: Float = 0f, backEdge: Int = 0,
 ) {
+    QuickSortPrompt(model.quickSort)
     val sections = rememberSaveableStateHolder()
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
         LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)

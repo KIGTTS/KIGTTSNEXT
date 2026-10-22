@@ -62,7 +62,8 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         horizontalAlignment = Alignment.CenterHorizontally) {
         ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.PhotoLibrary,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
-            Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize)
+            Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize,
+            onLongClick = if (!open) ({ model.cardCapture.open() }) else null)
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
             SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
                 revision = state.pluginRevision, visible = open && progress > .001f)

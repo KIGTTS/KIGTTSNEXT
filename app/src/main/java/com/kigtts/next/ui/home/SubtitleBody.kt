@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.media.MediaTransition
+import com.kigtts.next.ui.media.PluginSubtitleRenderer
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
@@ -38,6 +39,7 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
 
 @Composable
 private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
+    val renderer by model.subtitleRenderer.selection.collectAsState()
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val flipped = state.subtitleFlipped && !state.editing
@@ -54,6 +56,16 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier) {
         val height = with(density) { maxHeight.roundToPx() }
         if (state.editing) {
             SubtitleInput(state, model, style, width, height, focus)
+        } else if (renderer != null) {
+            val selection = renderer!!
+            Box(Modifier.fillMaxSize()) {
+                key(selection) { PluginSubtitleRenderer(selection, text, state.subtitlePlaceholder,
+                    state.subtitleSizePercent, Modifier.fillMaxSize(), onUnavailable = {
+                        model.rendererUnavailable(selection.owner)
+                    }) }
+                // Display renderers never own editing/zoom gestures. Keep the native input affordance.
+                Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))
+            }
         } else SubtitleDisplay(state, model, text, style, width, height)
     }
 }

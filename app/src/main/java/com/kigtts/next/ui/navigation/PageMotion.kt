@@ -31,7 +31,7 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
 @Composable
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
     parentPreview: Float, finished: () -> Unit, vertical: Boolean = entry.cameraRequestId != null,
-    cameraPose: CameraPagePose? = null, content: @Composable () -> Unit) {
+    cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) {
     var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
     val memory = remember(entry) { PageMotionMemory(if (mounted) {
         if (role == PageRole.BACKGROUND) if(vertical) .08f else -.08f else 0f
@@ -40,7 +40,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
     val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
     val leavingDirection = if (vertical) -1f else entry.direction
-    val controlled = cameraPose != null
+    val controlled = cameraPose != null || drawerPose != null
     val animation = remember(role, vertical, controlled) {
         val seed = memory.overridePosition ?: (memory.animation.value * (1f - memory.parentPreview) -
             if(vertical && entry.cameraRequestId != null && role == PageRole.EXITING) memory.gesture else 0f)
@@ -66,13 +66,14 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     val currentProgress by rememberUpdatedState(progress)
     val currentPreview by rememberUpdatedState(parentPreview)
     val currentPose by rememberUpdatedState(cameraPose)
+    val currentDrawerPose by rememberUpdatedState(drawerPose)
     val layer = Modifier.fillMaxSize().graphicsLayer {
-        val position = currentPose?.position ?: animation.value * (1f - currentPreview)
-        currentPose?.let { memory.overridePosition = position }
+        val position = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - currentPreview)
+        if (controlled) memory.overridePosition = position
         val departed = if (currentRole == PageRole.EXITING) abs(position).coerceIn(0f, 1f) else 0f
         val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress else if(vertical) 0f else prediction * (1f - departed)
         val gestureDirection = entry.direction
-        val underlay = if (currentRole != PageRole.EXITING) ((if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
+        val underlay = if (currentRole != PageRole.EXITING) ((if (currentDrawerPose != null) abs(position) else if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
         translationX = if(vertical) 0f else size.width * position + 28.dp.toPx() * gesture * gestureDirection
         translationY = if(vertical) size.height * (position - if(entry.cameraRequestId != null && !controlled) gesture else 0f) else 0f
         scaleX = if(vertical) 1f else 1f - .015f * underlay - .06f * gesture
@@ -101,8 +102,8 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
                 content()
                 val shade = MaterialTheme.colorScheme.scrim
                 Box(Modifier.matchParentSize().graphicsLayer {
-                    val position = currentPose?.position ?: animation.value * (1f - currentPreview)
-                    alpha = if (currentRole != PageRole.EXITING) .12f * ((if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
+                    val position = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - currentPreview)
+                    alpha = if (currentRole != PageRole.EXITING) .12f * ((if (currentDrawerPose != null) abs(position) else if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
                 }.background(shade))
             }
         }

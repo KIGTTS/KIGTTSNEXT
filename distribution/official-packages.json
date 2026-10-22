@@ -243,5 +243,29 @@
     "tags": [
       "语音识别"
     ]
+  },
+  {
+    "module": "kigusay-backup",
+    "file": "backup.kigusay-0.1.0.kigplugin",
+    "category": "内容",
+    "summary": "在娃语与 KIGTTS 之间转移常用短语、分组和媒体。",
+    "symbol": "import_export",
+    "description": "## 娃语预设兼容\n\n把娃语预设带到 KIGTTS，也可以将快捷文本导出后继续在娃语使用。\n\n在备份与还原中选择导入或导出，页面会说明两款软件的操作步骤，并在保存前预览转换结果。",
+    "tags": [
+      "备份",
+      "格式兼容"
+    ]
+  },
+  {
+    "module": "led-caption",
+    "file": "display.led-0.1.0.kigplugin",
+    "category": "外观",
+    "summary": "把字幕变成发光灯板，让每句话都有灯珠的质感。",
+    "symbol": "lightbulb",
+    "description": "## LED 灯珠字幕\n\n点亮灯泡按钮，将输入文字、快捷短语和聆听字幕显示成 LED 灯板。灯珠具有发光、暗珠与灯板纹理，长句会平滑滚动，也能横屏展示。\n\n灯泡按钮位于开启聆听的左侧，点击即可切换。",
+    "tags": [
+      "字幕",
+      "显示样式"
+    ]
   }
 ]

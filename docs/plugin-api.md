@@ -156,3 +156,8 @@ API15新增以下可选元数据，新编译包必须标API15；API9–14既有�
 ## 页面后台加载与下拉刷新（API16）
 
 PluginPage.loading 仅驱动插件通用标题栏加载环，不锁定按钮；refreshAction为普通页面与管理/商店列表开放顶部下拉与无障碍更新。指示器跟手，松手回收；后台任务完成或失败必须通过uiChanges恢复loading。页面读取保持纯读取，execute快速启动后台任务并合并重复请求，失败保留旧内容。浏览器、聊天、源码编辑器手势由各自页面管理。保留API9–15构造与copy入口，旧JSON两字段默认为false/null；使用新接口的签名包必须标API16。
+
+
+## 本地字幕渲染（API17）
+
+SetSubtitleRenderer(root,mainPage)为当前会话提供本地文字字幕显示，root=null只关闭调用方自身的渲染器。编辑原文和媒体条目保持原逻辑，页面就绪后通过KigttsSubtitle.update传入文字、占位和字号，不反复重载。host.subtitleRenderer为不可伪造的当前渲染器状态输入；工作进程更换或停用后清理，加载失败恢复原生字幕。详细合同见SDK的plugin-api.md。

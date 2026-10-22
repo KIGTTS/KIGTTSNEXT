@@ -25,6 +25,16 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class AudioCardSessionTest {
+    @Test fun migratedAudioPlaysItsNonDestructiveClipAndRestartKeepsTheRange() {
+        val fixture = AudioPlayerFixture()
+        val session = AudioCardSession { fixture.player }
+        session.start("legacy", Uri.parse("file:///legacy.wav"), startMs = 200, endMs = 800)
+        assertEquals(200L, fixture.item!!.clippingConfiguration.startPositionMs)
+        assertEquals(800L, fixture.item!!.clippingConfiguration.endPositionMs)
+        session.restart()
+        assertEquals(200L, fixture.item!!.clippingConfiguration.startPositionMs)
+        assertEquals(1, fixture.prepares)
+    }
     @Test fun audioUsesTheSharedCaptionAndBackgroundDeletionStopsOnMainWithoutClearingIt() {
         compose.mainClock.autoAdvance=false
         val app=ApplicationProvider.getApplicationContext<Application>()

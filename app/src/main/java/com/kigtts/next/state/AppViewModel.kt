@@ -43,6 +43,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val themeStore = ThemeSettingsStore(application)
     private val placeholderStore = SubtitlePlaceholderStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
+    val quickSort = QuickSortPreference(application)
+    internal val subtitleRenderer = SubtitleRendererState()
     private val phraseStore = QuickPhraseStore(application)
     private val panelStore = HomePanelStore(application)
     private val subtitleSizeStore = SubtitleSizeStore(application)
@@ -80,6 +82,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead, permissions=pluginManager.permissions)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
+    internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, cards, viewModelScope, ::message)
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
     private val appPlugins = hostRuntime?.appPlugins ?: com.kigtts.next.plugins.control.AppControlHost(pluginManager) { this }
@@ -87,6 +90,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { if (state.value.selectedCategory !in categories.value) category(categories.value.firstOrNull() ?: "常用") }
     private val outcomes = Channel<Pair<String, PluginOutcome>>(Channel.BUFFERED)
     val events = outcomes.receiveAsFlow()
+    init { legacyImports.migrateOriginalInstallation() }
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback)
     private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message)
@@ -149,6 +153,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         content.onDestinationChanged(state.value.destination)
     }
     fun context() = state.value.let { PluginContext(it.editorText, it.transcript, it.listening, it.captionsVisible,
+        inputs = mapOf("host.subtitleRenderer" to subtitleRenderer.selection.value?.owner.orEmpty()),
         contentKind = mediaRepository.get(it.mediaId)?.kind?.name ?: "TEXT", contentId = it.mediaId,
         automaticRead = it.autoPlayback, speechActive = it.speaking,
         ttsPluginId = registry.plugin(selectedTtsId.orEmpty())?.takeIf { plugin -> plugin.tts != null }?.descriptor?.id
@@ -239,7 +244,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun playAudioCard(entry: com.kigtts.next.media.MediaEntry, autoPlay: Boolean = state.value.autoPlayback) {
         val file = mediaRepository.file(entry) ?: return message("音频文件已不可用")
-        update { it.copy(audioId = entry.id) }; cardAudio.start(entry.id, android.net.Uri.fromFile(file),autoPlay)
+        val legacy = quickTexts.phrases.value.firstOrNull { it.mediaId == entry.id }?.metadata.orEmpty()
+        update { it.copy(audioId = entry.id) }; cardAudio.start(entry.id, android.net.Uri.fromFile(file), autoPlay,
+            legacy["legacy.trimStartMs"]?.toLongOrNull() ?: 0L, legacy["legacy.trimEndMs"]?.toLongOrNull() ?: 0L)
     }
     fun toggleAutoPlayback() {
         setAutoPlayback(!state.value.autoPlayback)
@@ -309,7 +316,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         viewModelScope.launch {
             var accepted = false
             try {
-                val outcome = plugin.execute(actionId, context().copy(inputs = inputs))
+                val executionContext = context().let { it.copy(inputs = inputs + it.inputs) }
+                val outcome = plugin.execute(actionId, executionContext)
                 if (handleServiceOutcome(outcome, plugin, pluginManager, context(), { speech.closeListening(); speech.stopAll() },
                         ::refreshPlugins, { selectEngine(it, false) }, ::navigate)) return@launch
                 when (outcome) {
@@ -332,6 +340,16 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         else message("插件页面不存在")
                     }
                     is PluginOutcome.ReplaceEditorText -> { text(outcome.text); navigate(Destination.Home) }
+                    is PluginOutcome.SetSubtitleRenderer -> {
+                        val resource = outcome.root
+                        if (resource == null) subtitleRenderer.clear(pluginId)
+                        else {
+                            require(resource.pluginId == null || resource.pluginId == pluginId) { "字幕资源不属于此插件" }
+                            subtitleRenderer.select(pluginId, plugin, pluginManager.paths.storage(pluginId).file(resource.path), outcome.mainPage)
+                        }
+                        pluginManager.refreshUi(pluginId, context())
+                        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+                    }
                     is PluginOutcome.PresentContent -> {
                         val network = when (val media = outcome.content) { is SubtitleContent.Web -> true; is SubtitleContent.Html -> media.allowNetwork; else -> false }
                         check(!network || plugin.descriptor.id in pluginManager.status.filter { "network" in it.installed.manifest.capabilities }.map { it.installed.manifest.id }) { "插件需要声明 network 能力才能加载网络网页" }
@@ -349,6 +367,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
+    internal fun rendererUnavailable(owner: String) {
+        subtitleRenderer.clear(owner)
+        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+    }
 
     fun toggleListening() = speech.toggleListening()
     fun speak() {
@@ -357,6 +379,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     suspend fun refreshPlugins() {
         pluginManager.reload()
+        subtitleRenderer.reconcile(registry)
         pluginManager.refreshContext(context())
         for (key in listOf("tts", "asr")) {
             val current = engineSelection.getString(key, null)

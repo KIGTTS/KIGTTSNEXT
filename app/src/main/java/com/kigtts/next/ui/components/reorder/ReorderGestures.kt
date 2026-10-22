@@ -77,7 +77,7 @@ fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Bool
 }
 
 /** Detect on the stable list container so item placement never interrupts the pointer. */
-fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }) = onGloballyPositioned { drag.origin = it.positionInRoot() }
+fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }, onStart: () -> Boolean = { true }) = onGloballyPositioned { drag.origin = it.positionInRoot() }
     .pointerInput(drag) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -101,6 +101,15 @@ fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true
                 activated
             } else awaitLongPressOrCancellation(down.id)
             if (start != null) {
+                if (!onStart()) {
+                    // A declined first-use prompt must not turn the release into Send.
+                    start.consume()
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        event.changes.forEach { it.consume() }
+                    } while (event.changes.any { it.pressed })
+                    return@awaitEachGesture
+                }
                 drag.begin(item, start.position)
                 drag.drag(initialDelta)
                 var released = false

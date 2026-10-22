@@ -24,11 +24,18 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val latestNavigation = rememberUpdatedState(navigation)
     val latestDrawer = rememberUpdatedState(drawerActive)
     val latestProgress = rememberUpdatedState(progress)
+    val latestState = rememberUpdatedState(state)
+    val sideDrawer = remember(model) { HomeSideDrawer(scope, model::openSidePage, model::closeSidePage) }
     val camera = navigation.pages.lastOrNull { it.cameraRequestId != null &&
         (it == current || it.depth == current.depth + 1 && it !in navigation.wanted) }
     val parent = camera?.let { navigation.wanted.lastOrNull { page -> page.depth == it.depth - 1 } }
     CompositionLocalProvider(LocalCameraPullState provides pull) {
-    Box(Modifier.fillMaxSize().clipToBounds().cameraPullNavigation(pull) {
+    Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer) {
+        val value = latestState.value
+        value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
+            !value.voiceInputActive && value.mediaId == null && !value.forcedFullscreen &&
+            !latestDrawer.value && !latestNavigation.value.outgoingAbove && latestProgress.value == 0f && !pull.active
+    }.cameraPullNavigation(pull) {
         val value = latestNavigation.value; val foreground = value.current
         if (latestDrawer.value || value.outgoingAbove || latestProgress.value > 0f) null
         else if (foreground.isCardsBrowser) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity)
@@ -39,7 +46,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
         navigation.pages.forEach { entry -> key(entry) {
             val foreground = entry == current
             val role = if (foreground) PageRole.FOREGROUND else if (entry in navigation.wanted) PageRole.BACKGROUND else PageRole.EXITING
-            val active = foreground && !navigation.outgoingAbove && !drawerActive
+            val active = foreground && !navigation.outgoingAbove && !drawerActive && !sideDrawer.active
             val cameraPose = if (pull.active && (entry.cameraRequestId == pull.cameraRequestId || entry.identity == pull.parentIdentity))
                 remember(pull, entry) { CameraPagePose(pull, entry.cameraRequestId != null) } else null
             PageMotion(entry, role, active, if (foreground) progress else 0f, edge,
@@ -50,7 +57,9 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                     // registry; reopening the same plugin page must not replay an old save return.
                     if(latestNavigation.value.wanted.none {it.identity==entry.identity})holder.removeState(entry.identity)
                 }, vertical = entry == camera || entry == parent,
-                cameraPose = cameraPose) {
+                cameraPose = cameraPose,
+                drawerPose = if (sideDrawer.active && (entry.scene == PageScene.Home || entry.scene == PageScene.Side(sideDrawer.page!!)))
+                    remember(entry, sideDrawer) { SideDrawerPose(sideDrawer, entry.scene != PageScene.Home) } else null) {
                 holder.SaveableStateProvider(entry.identity) {
                     when (val scene = entry.scene) {
                         PageScene.Home -> home(active)

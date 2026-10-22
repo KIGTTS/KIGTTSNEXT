@@ -138,6 +138,7 @@ dependencies {
     implementation("org.commonmark:commonmark-ext-task-list-items:0.24.0")
     implementation("org.commonmark:commonmark-ext-autolink:0.24.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.16")

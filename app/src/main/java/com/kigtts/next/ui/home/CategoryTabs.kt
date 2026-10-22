@@ -33,6 +33,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         viewportRestore?.let { (index, offset) -> list.requestScrollToItem(index, offset); viewportRestore = null }
     }
     val categoryIcons by model.quickTexts.categoryIcons.collectAsStateWithLifecycle()
+    val quickSorting by model.quickSort.enabled.collectAsStateWithLifecycle()
     val sources = categories.map { category -> key(category) { remember { MutableInteractionSource() } } }
     val pressed = sources.map { it.collectIsPressedAsState().value }
     val feedback = rememberDragFeedback()
@@ -48,6 +49,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         if (model.categories.value != before) feedback.step()
     })
     val drop = rememberReorderDrop(drag)
+    val editingNow by rememberUpdatedState(editing)
     LaunchedEffect(state.selectedCategory,categories,drag.key) {
         if(drag.key!=null)return@LaunchedEffect
         val index=categories.indexOf(state.selectedCategory)
@@ -60,12 +62,13 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
     Row(modifier.fillMaxWidth().height(48.dp).snackbarAnchor(!state.subtitleExpanded || editing).testTag("category-tab-bar"), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
-        LazyRow(Modifier.weight(1f).testTag("category-tabs").then(if (editing) Modifier.reorderGestures(drag) else Modifier),
+        LazyRow(Modifier.weight(1f).testTag("category-tabs").reorderGestures(drag,
+            onStart = { editingNow || model.quickSort.begin() }),
             state = list, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(categories, key = { _, name -> "category/" + name }) { index, category ->
                 val previous = categories.getOrNull(index - 1); val next = categories.getOrNull(index + 1)
                 val semantics = Modifier.semantics {
-                    if (editing) customActions = listOfNotNull(
+                    if (editing || quickSorting == true) customActions = listOfNotNull(
                         previous?.let { CustomAccessibilityAction("向前移动分组") { model.quickTexts.moveCategory(category, it); accessibleFeedback(); true } },
                         next?.let { CustomAccessibilityAction("向后移动分组") { model.quickTexts.moveCategory(category, it); accessibleFeedback(); true } })
                 }
@@ -74,9 +77,9 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
                     CornerNeighbors(start = index > 0, end = index < categories.lastIndex || editing),
                     pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     Modifier.testTag("category-" + category).then(semantics)
-                        .then(if (editing) Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
+                        .then(Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                             placementSpec = if (drag.key == category) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                            .reorderTranslation(category, drag, drop) else Modifier),
+                            .reorderTranslation(category, drag, drop)),
                     icon = {
                         Icon((categoryIcons[category] ?: CategoryIcon.defaultFor(category)).vector(),
                             "分组图标：" + (categoryIcons[category] ?: CategoryIcon.defaultFor(category)).label,
@@ -90,7 +93,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
                                     Modifier.size(16.dp))
                             }
                         } }
-                    }, dragging = editing && drag.key == category)
+                    }, dragging = drag.key == category)
             }
             if (editing) item(key = "add-category") {
                 val source = remember { MutableInteractionSource() }
@@ -100,5 +103,5 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         }
         SlotActions(UiSlot.TAB_END, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
     }
-    if (editing) ReorderAutoScroll(drag, { list.layoutInfo.viewportSize.width.toFloat() }, { list.scrollBy(it) }, horizontal = true)
+    ReorderAutoScroll(drag, { list.layoutInfo.viewportSize.width.toFloat() }, { list.scrollBy(it) }, horizontal = true)
 }
