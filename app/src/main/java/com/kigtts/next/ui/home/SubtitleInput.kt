@@ -28,6 +28,10 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
     val measured = stableSubtitleFontSize(if (formatted.isEmpty()) androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder) else formatted,
         style, width, height)
     val fitted = style.copy(fontSize = measured.sp)
+    // The departing hint belongs to a different paragraph. Never resize it using the
+    // first typed character's metrics while AnimatedVisibility is fading it away.
+    val placeholderStyle = style.copy(fontSize = stableSubtitleFontSize(
+        androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder), style, width, height).sp)
     val base = remember(state.subtitleFormats) { RichTextVisualTransformation(state.subtitleFormats) }
     val motion = rememberSubtitleEditMotion(SubtitleInputFrame(formatted, fitted), state.editorValue)
     val progress = motion.progress
@@ -45,11 +49,11 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
                 // The viewport never animates its measured height. Only glyph layers move;
                 // a new line therefore cannot be clipped by the previous line's bounds.
                 Box(Modifier.fillMaxSize().testTag("subtitle-input-viewport"), contentAlignment = alignment) {
-                    Box(Modifier.fillMaxWidth().testTag("subtitle-input-glyphs")) { field() }
+                    Box(Modifier.fillMaxWidth().testTag("subtitle-input-glyphs"), propagateMinConstraints = true) { field() }
                     AnimatedVisibility(state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty(),
                         enter = fadeIn(tween(140)), exit = fadeOut(tween(80))) {
                         Text(state.subtitlePlaceholder, Modifier.fillMaxWidth().testTag("subtitle-placeholder"),
-                            style = fitted, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            style = placeholderStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     motion.ghost?.let { frame ->
                         Box(Modifier.matchParentSize().clearAndSetSemantics { }.testTag("subtitle-clear-ghost"), contentAlignment = alignment) {

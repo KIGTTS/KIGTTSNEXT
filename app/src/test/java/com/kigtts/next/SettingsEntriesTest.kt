@@ -64,7 +64,7 @@ class SettingsEntriesTest {
             requirements = listOf(PluginRequirement.RECOGNITION_SERVICE))
         val registry = PluginRegistry(listOf(plugin)); assertFalse(registry.available(plugin))
         val links = settingsCards(registry, PluginContext("", "")).single { it.id == "extensions" }.links
-        assertEquals(listOf("实验性功能", "插件管理", "功能", "功能设置"), links.map { it.title })
+        assertEquals(listOf("功能", "功能设置", "插件管理", "实验性功能"), links.map { it.title })
         assertEquals(2, links.count { it.destination is Destination.PluginPage })
     }
     @Test fun featureOrderAndContextChangesAreReflectedWithoutNativeEntriesBeingReplaced() {
@@ -81,5 +81,23 @@ class SettingsEntriesTest {
         assertEquals(listOf("语音包", "语音输入"), normal.map { it.title })
         assertEquals(listOf("语音包", "正在输入"), active.map { it.title })
         assertEquals(normal.map { it.id }, active.map { it.id })
+    }
+    @Test fun actualEngineControlsMoveToAudioWhileReadOnlyAboutPagesStayInPluginManagement() {
+        fun engine(id: String, blocks: List<PageBlock>) = object : KigPlugin {
+            override val descriptor = PluginDescriptor(id, id, "")
+            override val tts = object : TtsEngine { override fun synthesize(request: TtsRequest) = kotlinx.coroutines.flow.emptyFlow<SynthesisEvent>() }
+            override val contributions = PluginContributions(drawerEntries = listOf(DrawerEntry("settings", id, "settings", PluginIcon.SPEAKER)))
+            override fun page(pageId: String, context: PluginContext) = PluginPage(pageId, id, blocks)
+            override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.NoAction
+        }
+        val store = plugin("tools.package-store", listOf(SettingsEntry("store", "插件商店", "store", order = 999)))
+        val registry = PluginRegistry(listOf(engine("test.about", listOf(PageBlock.Text("说明"))),
+            engine("test.engine", listOf(PageBlock.Actions(listOf(PageAction("import", "导入模型"))))), store))
+        val cards = settingsCards(registry, PluginContext("", ""))
+        assertEquals(listOf("test.engine"), cards.single { it.id == "audio" }.links.map { it.title })
+        assertFalse(cards.flatMap { it.links }.any { it.title == "test.about" })
+        assertEquals(listOf("插件商店", "插件管理", "实验性功能"), cards.single { it.id == "extensions" }.links.map { it.title })
+        // Routing hides an entrance, never deletes the engine's actual management page.
+        assertNotNull(registry.plugin("test.about")!!.page("settings", PluginContext("", "")))
     }
 }

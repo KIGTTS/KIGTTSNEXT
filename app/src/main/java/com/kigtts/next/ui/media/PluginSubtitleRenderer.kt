@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.FileObserver
 import android.view.ViewGroup
 import android.webkit.*
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -19,6 +18,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kigtts.next.media.WebContentPolicy
 import com.kigtts.next.media.applyKigttsTheme
+import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.state.SubtitleRendererSelection
 import com.kigtts.next.ui.navigation.LocalPageActive
 import java.io.ByteArrayInputStream
@@ -57,7 +57,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
     }
     val density = LocalDensity.current.density
     val latestUpdate by rememberUpdatedState(SubtitleRendererProtocol.update(text, placeholder, fontSizePercent, rendererSettings, safeArea, density))
-    val theme = MaterialTheme.colorScheme
+    val theme by WebThemeState.themes.collectAsState()
     var ready by remember(selection) { mutableStateOf(false) }
     var disposed by remember(selection) { mutableStateOf(false) }
     var failed by remember(selection) { mutableStateOf(false) }

@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import java.util.Locale
-import kotlin.math.roundToInt
 
 /** Plugins describe values; actual controls, picker and scrolling follow the application's theme. */
 @Composable
@@ -32,7 +31,7 @@ internal fun PluginControlsDialog(request: PluginOutcome.Controls, onChange: (St
             .testTag("plugin-controls"), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             request.controls.take(100).forEach { control -> key(request, revision, control.actionId) {
                 when (control) {
-                    is PluginControl.Slider -> SliderSetting(control) { onChange(control.actionId, it) }
+                    is PluginControl.Slider -> PluginSliderSetting(control) { onChange(control.actionId, it) }
                     is PluginControl.Toggle -> {
                         var checked by remember { mutableStateOf(control.checked) }
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -65,24 +64,6 @@ internal fun PluginControlsDialog(request: PluginOutcome.Controls, onChange: (St
             onChange(control.actionId, value.toString())
         }, { colorPicker = null }, control.title)
     } }
-}
-
-@Composable
-private fun SliderSetting(control: PluginControl.Slider, change: (String) -> Unit) {
-    val min = control.min.takeIf(Float::isFinite) ?: 0f
-    val max = control.max.takeIf { it.isFinite() && it > min } ?: (min + 1f)
-    var value by remember { mutableFloatStateOf(control.value.takeIf(Float::isFinite)?.coerceIn(min, max) ?: min) }
-    Column {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(control.title, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            val label = if (value == value.roundToInt().toFloat()) value.roundToInt().toString()
-                else "%.2f".format(Locale.ROOT, value).trimEnd('0').trimEnd('.')
-            Text(label + control.suffix, style = MaterialTheme.typography.labelLarge)
-        }
-        Slider(value, { value = it; change(it.toString()) }, valueRange = min..max,
-            steps = control.steps.coerceIn(0, 1000), onValueChangeFinished = { change(value.toString()) },
-            modifier = Modifier.fillMaxWidth().semantics { contentDescription = control.title })
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

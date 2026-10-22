@@ -42,6 +42,13 @@ class SubtitleAlignmentUiTest {
             val bounds = compose.onNodeWithTag("subtitle-input-glyphs", useUnmergedTree = true).getUnclippedBoundsInRoot()
             assertEquals(expectedHeight / 2f, (bounds.top.value + bounds.bottom.value) / 2f, 2f)
             assertTrue("A short input must use its natural line height", bounds.height.value < 80f)
+            if (model.state.value.editorText.isNotEmpty()) {
+                val layouts = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithTag("speech-editor").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+                val layout = layouts.single()
+                assertEquals("Text alignment must apply to the full inner width, not a shrink-wrapped field",
+                    175f, bounds.left.value + (layout.getLineLeft(0) + layout.getLineRight(0)) / 2f, 2f)
+            }
         }
         assertCentered(500)
         compose.runOnIdle { height = 220; model.setSubtitleSizePercent(4f) }

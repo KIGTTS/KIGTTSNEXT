@@ -31,7 +31,7 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
     val scope = rememberCoroutineScope()
     val currentActive by rememberUpdatedState(active)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val colors = MaterialTheme.colorScheme
+    val webTheme by WebThemeState.themes.collectAsState()
     val latestContext by rememberUpdatedState(contextUpdate)
     var ready by remember(owner, pageId, block) { mutableStateOf(false) }
     val checked = remember(owner, pageId, block) { runCatching { pluginBrowserDocument(model, owner, pageId, block) } }
@@ -49,7 +49,7 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
         model.registry.plugin(owner)?.descriptor?.name ?: owner, scope, { currentActive }, gate::authorize).also { it.install() } }
     LaunchedEffect(web) { web.loadUrl(document.url) }
     LaunchedEffect(web, ready, contextUpdate) { if (ready) contextUpdate?.let { web.evaluateJavascript(it, null) } }
-    LaunchedEffect(colors) { web.applyKigttsTheme() }
+    LaunchedEffect(webTheme, ready) { if (ready) web.applyKigttsTheme() }
     LaunchedEffect(active) { if (active) { web.onResume(); devices.resume() } else { devices.pause(); web.onPause() } }
     DisposableEffect(web, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) { devices.pause(); web.onPause() } else if (event == Lifecycle.Event.ON_START && currentActive) { web.onResume(); devices.resume() } }

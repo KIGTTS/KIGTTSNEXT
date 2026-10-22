@@ -31,8 +31,8 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language),
             category("camera", SettingsCategory.CAMERA, Icons.Default.PhotoCamera),
             category("backup", SettingsCategory.BACKUP_RESTORE, Icons.Default.SettingsBackupRestore)),
-        "extensions" to listOf(category("experimental", SettingsCategory.EXPERIMENTAL, Icons.Default.Science),
-            SettingsLink("plugins", "插件管理", "管理插件", Icons.Default.Extension, Destination.Plugins)),
+        "extensions" to listOf(SettingsLink("plugins", "插件管理", "管理插件", Icons.Default.Extension, Destination.Plugins),
+            category("experimental", SettingsCategory.EXPERIMENTAL, Icons.Default.Science)),
     )
     data class Feature(val pluginId: String, val entry: SettingsEntry)
     val features = registry?.plugins.orEmpty().flatMap { plugin ->
@@ -41,15 +41,17 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         val formalPages = formal.map { it.pageId }.toSet()
         val legacy = contributions.drawerEntries.filter { it.pageId !in formalPages }.distinctBy { it.pageId }
             .map { SettingsEntry(it.id, it.label, it.pageId, it.icon) }
-        (formal + legacy).filterNot { it.cardId == "backup" }.map { Feature(plugin.descriptor.id, it) }
+        (formal + legacy).filterNot { it.cardId == "backup" }
+            .mapNotNull { routedSettingsEntry(plugin, it, context) }.map { Feature(plugin.descriptor.id, it) }
     }.sortedWith(compareBy({ it.entry.order }, { it.pluginId }, { it.entry.id }))
     val ids = reserved.keys + features.map { it.entry.cardId }.distinct().filterNot(reserved::containsKey)
     return ids.mapNotNull { id ->
         val entries = features.filter { it.entry.cardId == id }
-        val links = native[id].orEmpty() + entries.map { (pluginId, entry) ->
+        val pluginLinks = entries.sortedBy { if (it.pluginId == "tools.package-store") 0 else 1 }.map { (pluginId, entry) ->
             SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary, if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
                 Destination.PluginPage(pluginId, entry.pageId))
         }
+        val links = if (id == "extensions") pluginLinks + native[id].orEmpty() else native[id].orEmpty() + pluginLinks
         if (links.isEmpty()) null else {
             val heading = reserved[id] ?: (entries.first().entry.cardTitle.ifBlank { "扩展" } to "")
             SettingsCard(id, heading.first, heading.second, links)

@@ -35,7 +35,7 @@ Piper 复用 `OrtSession` 与绑定的发音转换器。模型、配置、词典
 
 长文本首段最多 32 个 UTF-16 单元，后续段最多 96 个，优先句末标点、其次词或逗号边界，不拆代理对，不丢失文本。每段一完成即输出 PCM；一次调用只发送一个 Started/Finished。Piper 单次上限仍为 500 字符，合成服务按提供者上限继续拆分更长文本；服务在已输出音频后遇到错误不会回退重读此前文字。
 
-系统 TTS 是合成服务内置保底，不独立分发；它复用 `TextToSpeech` 连接，按请求设置语言、声音和语速。通过 [UtteranceProgressListener](https://developer.android.com/reference/android/speech/tts/UtteranceProgressListener#onAudioAvailable(java.lang.String,%20byte[])) 的音频回调即时传 PCM，支持 8/16 位和 float 转换及帧对齐。不提供回调或格式无法转换的系统引擎，回退读取当前短段的 WAV；不会等待整篇文本生成 WAV。监听按 utterance token 隔离，取消停止本次请求并删除插件临时文件。
+系统 TTS 是合成服务内置保底，不独立分发；它复用 `TextToSpeech` 连接，语言与音色跟随系统默认，仅设置用户统一语速。通过 [UtteranceProgressListener](https://developer.android.com/reference/android/speech/tts/UtteranceProgressListener#onAudioAvailable(java.lang.String,%20byte[])) 的音频回调即时传 PCM，支持 8/16 位和 float 转换及帧对齐。不提供回调或格式无法转换的系统引擎，回退读取当前短段的 WAV；不会等待整篇文本生成 WAV。监听按 utterance token 隔离，取消停止本次请求并删除插件临时文件。
 
 ## 升级与验证边界
 
@@ -47,3 +47,7 @@ Piper 复用 `OrtSession` 与绑定的发音转换器。模型、配置、词典
 
 
 API9 当前构建与设备结果统一见 [Release 验证记录](release-testing.md)。上述 2026-10-12 测量仅代表当时版本和设备，不能据此声称新 Agent/Lua/商店/构建功能已经完成手机验收。
+
+## API21 语音包设置
+
+语音合成服务0.8.1与Piper0.8.1使用API21。服务的声音入口打开语音包页面，语速以原生滑条统一保存；当前语音包在独立卡片显示自身支持的参数，语音条目菜单可打开同组弹窗。Piper音量、音色变化和节奏变化保存在包内元数据，更新包与导出仍保留，切换包不会相互覆盖；语言直接取包配置，不使用服务手选语言。系统声音仅有系统默认声音，说明为系统语音合成，不枚举中英文或覆盖系统语言。

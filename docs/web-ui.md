@@ -11,7 +11,7 @@ API11 的 `PageBlock.Browser` 在原生插件页面中嵌入浏览器，指定�
 <script src="/kigtts/components.js" defer></script>
 ```
 
-`--md-sys-color-*` 使用应用实际调色板，`--kigtts-corner` 跟随圆角设置；`window.KigttsTheme.colors/dark`、根元素 `data-kigtts-theme` 与 `kigtts-theme-change` 事件提供亮暗色变化。共用样式包含 `m3e-button`（tonal/outlined/text）、`m3e-icon-button`、`m3e-card`、`m3e-field`、`m3e-chips`、`m3e-segmented`、`m3e-switch`、`m3e-slider`。它们是网页样式，不是 Android 原生控件。
+`--md-sys-color-*` 使用应用实际调色板，`--kigtts-corner` 跟随圆角设置；`window.KigttsTheme.colors/dark`、根元素 `data-kigtts-theme` 与 `kigtts-theme-change` 事件提供亮暗色与同模式下自定主题色变化。API21传递全部48个M3语义颜色，包括三组fixed角色、各级surface容器、error及inverse角色。背景使用对应on-*前景色；CSS和SVG引用变量自动更新，Canvas/Three.js监听事件重绘或更新材质。不要用系统prefers-color-scheme覆盖应用模式，也不需要联网获取主题。共用样式包含 `m3e-button`（tonal/outlined/text）、`m3e-icon-button`、`m3e-card`、`m3e-field`、`m3e-chips`、`m3e-segmented`、`m3e-switch`、`m3e-slider`。它们是网页样式，不是 Android 原生控件。
 
 图标按钮必须有可访问标签，触控目标至少48px；使用flex/grid、min-width:0和可换行文本，避免固定尺寸画布或滚动陷阱。适配竖屏、横屏、窄屏、放大字体和键盘。页面使用 `--kigtts-safe-top/right/bottom/left` 避让宿主覆盖区，可叠加系统 `env(safe-area-inset-*)`；`100dvh` 提供 `100vh` 回退。画布/视频保持比例，改变尺寸不清空数据。
 

@@ -65,4 +65,20 @@ class HostSpeechBrokerTest {
                 PluginJson.encodeToString(VoiceCommand(VoiceOperation.IMPORT, resourcePath = "../another/voice.zip"))) }.isFailure)
         } finally { broker.close() }
     }
+    @Test fun perPackParameterCommandKeepsItsTargetAndDoesNotUseResourceStaging() {
+        val provider = Plugin("test.audio-parameters")
+        val paths = PluginPaths(ApplicationProvider.getApplicationContext<Context>())
+        val broker = HostSpeechBroker("test.audio-service", PluginRegistry(listOf(provider)), paths)
+        val command = VoiceCommand(VoiceOperation.UPDATE_PARAMETERS, packId = "voice-test", value = """{"volume":0.8}""")
+        var received: VoiceCommand? = null
+        provider.control = { received = it; PluginOutcome.RefreshUi }
+        try {
+            broker.command(provider.descriptor.id, PluginJson.encodeToString(command))
+            assertEquals(command, received)
+            assertNull(received!!.resourcePath)
+            val forbidden = HostSpeechBroker("test.audio-service", PluginRegistry(listOf(provider)), paths, allowTts = false)
+            try { assertTrue(runCatching { forbidden.command(provider.descriptor.id, PluginJson.encodeToString(command)) }.isFailure) }
+            finally { forbidden.close() }
+        } finally { broker.close() }
+    }
 }

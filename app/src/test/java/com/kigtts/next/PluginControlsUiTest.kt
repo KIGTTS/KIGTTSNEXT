@@ -7,6 +7,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.kigtts.next.ui.plugins.PluginControlsDialog
+import com.kigtts.next.ui.plugins.PluginPageScreen
+import androidx.compose.ui.geometry.Offset
 import com.kigtts.plugin.api.*
 import org.junit.*
 import org.junit.Assert.*
@@ -61,5 +63,20 @@ class PluginControlsUiTest {
         compose.onNodeWithText("预设二").performClick()
         assertEquals("preset" to "two", changes.last())
         compose.onNodeWithText("完成").assertIsDisplayed()
+    }
+    @Test fun inlineSliderStaysInteractiveDuringDraggingAndSavesOnlyWhenReleased() {
+        val changes = mutableListOf<Pair<String, Map<String, String>>>()
+        val page = PluginPage("audio", "语音合成", listOf(PageBlock.Group("朗读", listOf(
+            PageBlock.Slider(PluginControl.Slider("语速", "rate", 1f, .25f, 4f, suffix = "×"))))))
+        compose.setContent { MaterialTheme { PluginPageScreen(page) { action, inputs -> changes += action to inputs } } }
+        compose.onNodeWithContentDescription("语速").performTouchInput {
+            down(center); moveBy(Offset(40f, 0f))
+        }
+        compose.runOnIdle { assertTrue("Dragging must not trigger worker busy refreshes", changes.isEmpty()) }
+        compose.onNodeWithContentDescription("语速").performTouchInput { up() }
+        compose.runOnIdle {
+            assertEquals(1, changes.size); assertEquals("rate", changes.single().first)
+            assertTrue(changes.single().second.getValue("value").toFloat() in .25f..4f)
+        }
     }
 }

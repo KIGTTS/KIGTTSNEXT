@@ -91,7 +91,7 @@ tags:
 | --- | --- | --- | --- |
 $($rows -join "`n")
 
-当前主程序使用 API$sdkApi；各包需要的最低兼容接口见上表。商店0.10.3与娃语0.1.1使用API16，LED0.1.2需要API19，助手0.9.14需要API20；其它已发布兼容包仍可使用；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
+当前主程序使用 API$sdkApi；各包需要的最低兼容接口见上表。商店0.10.3与娃语0.1.1使用API16，LED0.1.2需要API19，助手0.9.15、Piper0.8.1与语音合成服务0.8.1需要API21；其它已发布兼容包仍可使用；已发布旧包保留可选版本，旧引擎和语音服务无需重新导入模型。系统 TTS 已包含于语音合成服务，不再提供独立系统 TTS 包。AI 供应商密钥由用户在本机填写；语音模型另行导入。
 
 网页添加指引与模板：https://lht02.github.io/KPM/
 
@@ -101,7 +101,7 @@ $($rows -join "`n")
 
 项目源码与构建脚本：https://github.com/KIGTTS/KIGTTSNEXT
 
-各插件已拆分为 KIGTTS 组织下的独立仓库，源清单的 homepage 指向对应源码与许可证。Piper 0.8.0 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/0e9aedef9ddde90f1fe92762e53a4a4daf235c65.zip ，包含 native-source 下的 JNI、发音器、固定 eSpeak 源归档及构建配置；其余依赖的固定版本、源地址及许可见各插件 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的子模块与 LFS 文件。
+各插件已拆分为 KIGTTS 组织下的独立仓库，源清单的 homepage 指向对应源码与许可证。Piper 0.8.1 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/eeab25968990a0babda8c3e6902137c34b51f44b.zip 。0.8.0 的独立源码归档：https://github.com/KIGTTS/plugin-piper-tts/archive/0e9aedef9ddde90f1fe92762e53a4a4daf235c65.zip ，包含 native-source 下的 JNI、发音器、固定 eSpeak 源归档及构建配置；其余依赖的固定版本、源地址及许可见各插件 NOTICE.md。使用标准 Git 克隆时也请获取仓库声明的子模块与 LFS 文件。
 
 源清单格式、依赖和镜像规则：https://github.com/KIGTTS/KIGTTSNEXT/blob/main/docs/package-store.md
 

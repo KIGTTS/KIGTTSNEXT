@@ -134,6 +134,25 @@ class SubtitleInputMotionUiTest {
         compose.runOnIdle { assertEquals(TextRange(0, 1), model.state.value.editorValue.selection) }
         compose.onNodeWithTag("speech-editor").assertIsFocused()
     }
+    @Test fun departingLongPlaceholderKeepsItsOwnFontSizeWhenTheFirstGlyphIsTyped() {
+        val model = show("")
+        compose.runOnIdle { model.setSubtitlePlaceholder("这是一段需要缩小才能显示的提示文字".repeat(12)) }
+        compose.waitForIdle()
+        fun hintSize(): Float {
+            val layouts = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithTag("subtitle-placeholder", useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            return layouts.single().layoutInput.style.fontSize.value
+        }
+        val before = hintSize()
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("speech-editor").performTextInput("你")
+        compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
+        assertEquals("The fading hint must not jump to the new glyph's larger font", before, hintSize(), .01f)
+        compose.onNodeWithTag("speech-editor").assertIsFocused()
+        compose.mainClock.advanceTimeBy(160); compose.mainClock.autoAdvance = true
+        compose.onNodeWithTag("subtitle-placeholder", useUnmergedTree = true).assertDoesNotExist()
+    }
     @Test fun presentingTheSameTextAgainDoesNotStartAnotherFade() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = testAppModel(app)

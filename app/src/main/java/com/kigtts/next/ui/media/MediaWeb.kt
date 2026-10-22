@@ -89,7 +89,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
     LaunchedEffect(state.webBackRevision) { if (ownsPage()&&lastBack != state.webBackRevision) { lastBack = state.webBackRevision; if (web.canGoBack()) web.goBack(); model.webHistory(web.canGoBack()) } }
     LaunchedEffect(ime, active) { if(ownsPage())model.mediaEditing(ime > 0 && web.hasFocus()) }
     LaunchedEffect(active) { if (active) { web.onResume(); devices[0]?.resume() } else { devices[0]?.pause(); web.onPause() } }
-    LaunchedEffect(androidx.compose.material3.MaterialTheme.colorScheme) { if (ready) web.applyKigttsTheme() }
+    val webTheme by WebThemeState.themes.collectAsStateWithLifecycle()
+    LaunchedEffect(webTheme, ready) { if (ready) web.applyKigttsTheme() }
     LaunchedEffect(LocalMediaSafeArea.current, viewport) { if (ready) applySafeArea(web) }
     DisposableEffect(web, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) { devices[0]?.pause(); web.onPause();

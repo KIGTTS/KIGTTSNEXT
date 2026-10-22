@@ -99,6 +99,7 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
         is PageBlock.Choice -> "choice/"+block.title
         is PageBlock.Select -> "select/"+block.title
         is PageBlock.Input -> "input/"+block.actionId
+        is PageBlock.Slider -> "slider/"+block.control.actionId
         is PageBlock.Chat -> "chat/"+block.sendAction
         is PageBlock.Files -> "files/"+block.openAction
         is PageBlock.SourceEditor -> "source/"+block.id
@@ -112,6 +113,11 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
 @Composable
 private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?) {
     when (block) {
+        is PageBlock.Slider -> Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = groupedSettingShape(position, MaterialTheme.shapes.small)) {
+            PluginSliderSetting(block.control, Modifier.padding(16.dp), enabled, continuous = false) {
+                invoke(block.control.actionId, mapOf("value" to it))
+            }
+        }
         is PageBlock.Text -> PageContentMotion(block.text) { text -> Text(text, style = if (block.heading) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall) }
         is PageBlock.Markdown -> PluginMarkdown(block, resolve)
         is PageBlock.Gallery -> PluginGallery(block, resolve)
