@@ -544,3 +544,9 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - 2026-10-23用户授权更新与测试：手机cfc8ef16覆盖安装LED按钮组Release成功，APK SHA256 20b36b5e8fc81764f2b7049196209f4480cef6b7b88092006b0f1ade88fb1d42。API24管理桥确认13/13启用插件均加载成功、无插件错误。LED0.1.3真机确认独立圆角与间距，圆点切方点后重新打开/读取保存值为square，测试后恢复circle；滚动可达后续滑条，横屏可重新打开并滚动，旋转时弹窗会收起（尚未改善连续性）。测试后恢复自动旋转及原竖屏、LED关闭状态；未清数据、未改AI接口与密钥。真机截图仅保留.tools不发布。
 
 - LED入口真机长按后主进程仍为32672，无进程重启；Tooltip短暂展示未被UI转储捕获，因此仅记长按未崩溃，不声称工具提示外观通过。
+
+## 2026-10-23 KPM 目标插件链接
+- 主程序 SourceLink 5 项、商店 59 项回归通过；Release 构建与 lintRelease 通过。商店 0.11.2 支持 package 参数，未添加源时保留目标直到确认，已添加源直接进入指定详情，不自动安装。
+- 手机 cfc8ef16 已保留数据覆盖安装 API24 Release 与商店 0.11.2；实际发送 Android VIEW 链接进入 display.led 详情。未添加源的确认/重启恢复由单元测试验证，未修改真机源列表。
+- APK build/releases/KIGTTSNEXT-api24-package-links-release-localtest.apk，8090028 字节，SHA256 dc049a71d7c4c112fc79c95ce3ee40f4c51e01fd306e0b80b94b8d273db18110。仍为开发测试签名。
+- KPM 折叠列表动效在 390/1365px 亮暗、连续反向、嵌套、键盘及减少动态效果下检查通过；Python 8 项通过。浏览器详情目标切换不残留旧 ID。未在本轮声称 Chrome 真机点击验收。
