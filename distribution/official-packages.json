@@ -19,6 +19,18 @@
     "tags": [
       "工具"
     ],
+    "file": "tools.package-store-0.11.2.kigplugin",
+    "notes": "从网页直接打开对应插件；尚未添加的来源会先请你确认，添加后继续查看插件。",
+    "module": "package-store"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
     "file": "tools.package-store-0.11.1.kigplugin",
     "notes": "详情页可直接获取、安装和查看下载进度；搜索改为聚焦页面，返回即可退出。",
     "module": "package-store"

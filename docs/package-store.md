@@ -97,3 +97,7 @@ KPM（KIGTTS Package Manager）沿用目录schemaVersion=1，以下展示字段�
 重复源链接直接展示已有来源并说明“已经添加过了”，保持原来的启用状态；相同来源使用另一个地址时提示在插件来源中查看。
 
 API23 的 `ManagementList.itemActions` 提供每行 `ManagementProgressAction(label, action, progress, running)`；进度为0–1或空值。旧插件的ManagementList构造和copy签名保留。
+
+## 网页插件详情链接
+
+kigtts://source/add?url=<编码后的HTTPS源地址>&package=<插件ID>。package 可选；省略时只添加源。主程序持久化并把 packageId 交给商店；商店先确认未添加的源，再打开该源内的目标插件。已添加源不重复添加，停用源不会自动开启，链接不自动下载或安装。

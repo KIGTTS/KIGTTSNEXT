@@ -13,6 +13,26 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class SourceLinkTest {
+    @Test fun packageTargetPersistsAcrossRestartAndOldSameSourceReplyCannotEraseIt() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("pending-package-source", Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+        val url = "https://example.org/packages.json"
+        val callbacks = mutableListOf<(Boolean) -> Unit>()
+        val inputs = mutableListOf<Map<String, String>>()
+        val coordinator = SourceLinkCoordinator(context, registry(), { _, _, value, done -> inputs += value; callbacks += done }, {})
+        coordinator.accept(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=tools.first"))
+        coordinator.accept(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=tools.second"))
+        assertEquals("tools.second", inputs.last()["packageId"])
+        callbacks.first()(true)
+        assertEquals("tools.second", prefs.getString("package", null))
+        val resumed = SourceLinkCoordinator(context, registry(), { _, _, value, done -> inputs += value; done(true) }, {})
+        resumed.deliver()
+        assertEquals("tools.second", inputs.last()["packageId"])
+        assertNull(prefs.getString("url", null)); assertNull(prefs.getString("package", null))
+        assertNull(SourceLinkCoordinator.parseRequest(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=../file")))
+        assertNull(SourceLinkCoordinator.parseRequest(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=a&package=b")))
+    }
     private fun registry() = PluginRegistry(listOf(object : KigPlugin {
         override val descriptor = PluginDescriptor("test.store", "商店", "test")
         override val contributions = PluginContributions(sourceAction = "add-source")
