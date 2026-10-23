@@ -36,7 +36,8 @@ class PackageInstallerUiTest {
         val installBounds = compose.onNodeWithText("安装插件").getUnclippedBoundsInRoot()
         compose.onNodeWithText("权限").performClick()
         compose.onNodeWithText("在线获取识别结果").assertIsDisplayed()
-        compose.onAllNodes(isToggleable()).assertCountEquals(0)
+        compose.onAllNodes(isToggleable() and hasAnyAncestor(hasTestTag("installer-details"))).assertCountEquals(0)
+        compose.onNodeWithContentDescription("安装详情：权限").assertIsSelected()
         assertEquals(installBounds, compose.onNodeWithText("安装插件").getUnclippedBoundsInRoot())
         compose.onNodeWithText("许可").performClick()
         compose.onNodeWithTag("installer-details").performTouchInput { swipeUp() }

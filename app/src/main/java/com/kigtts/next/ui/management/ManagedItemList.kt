@@ -67,7 +67,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
     Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag) else Modifier)) {
-        LazyColumn(Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        LazyColumn(Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             item("management-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 header()
                 if (list.filters.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -79,12 +79,14 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                     Text(list.emptyText, Modifier.padding(vertical = 16.dp))
                 }
             } }
-            items(order.mapNotNull(data::get), key = { it.id }) { item ->
+            val orderedItems = order.mapNotNull(data::get)
+            itemsIndexed(orderedItems, key = { _, item -> item.id }) { index, item ->
                 ManagedItemRow(item, Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(120),
                         placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
                     Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) },
-                    catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id])
+                    catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
+                    position = managedItemPosition(orderedItems, index))
             }
         }
         val active = drag.key?.let(data::get)

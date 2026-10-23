@@ -43,7 +43,13 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", invoke: (String, Map<String, String>) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, invoke: (String, Map<String, String>) -> Unit) {
+    page?.search?.let { search ->
+        PluginSearchScreen(search, onBack, invoke) {
+            PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, invoke)
+        }
+        return
+    }
     PluginPageEntry(page, busy, invoke)
     RegisterPageLoading(busy || page?.loading == true)
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
@@ -75,11 +81,11 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     PluginPageRefresh(page, busy, invoke) {
         val list = page.management
         when {
-            list?.style == ManagementListStyle.CATALOG -> PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-            list != null && list.usesSettingsLayout() -> PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-            list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+            list?.style == ManagementListStyle.CATALOG -> PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+            list != null && list.usesSettingsLayout() -> PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+            list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             else -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                PluginPageHeader(page.header, resolve)
+                PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke)
                 PluginBlocks(blocks,!busy,invoke, resolve = resolve)
             }
         }

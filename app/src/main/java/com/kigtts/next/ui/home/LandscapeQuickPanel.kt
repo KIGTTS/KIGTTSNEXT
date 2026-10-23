@@ -63,7 +63,8 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.PhotoLibrary,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
             Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize,
-            onLongClick = if (!open) ({ model.cardCapture.open() }) else null)
+            onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
+            iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.Edit, progress))
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
             SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
                 revision = state.pluginRevision, visible = open && progress > .001f)

@@ -54,6 +54,7 @@ fun ToolButton(
     busy: Boolean = false,
     iconSize: Dp = size / 2,
     onLongClick: (() -> Unit)? = null,
+    iconBlend: ToolIconBlend? = null,
 ) {
     val animatedIconSize = animateDpAsState(if (busy) size / 2 else iconSize,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "tool-icon-size")
@@ -64,7 +65,8 @@ fun ToolButton(
         .semantics { contentDescription = label; if (busy) stateDescription = "正在执行" },
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
-            AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
+            if (iconBlend == null) AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
+            else BlendedToolIcon(iconBlend, animatedIconSize.value)
             AnimatedVisibility(busy, enter = fadeIn(), exit = fadeOut()) {
                 CircularProgressIndicator(Modifier.size(size - 4.dp), strokeWidth = 2.dp)
             }

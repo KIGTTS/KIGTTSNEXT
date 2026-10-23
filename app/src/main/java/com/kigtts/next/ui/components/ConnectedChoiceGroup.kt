@@ -15,16 +15,19 @@ import androidx.compose.ui.unit.dp
 /** Stable native ToggleButtons retain press ownership while theme/selection changes. */
 @Composable
 internal fun <T> ConnectedChoiceGroup(title:String,options:List<T>,value:T,label:(T)->String,onSelect:(T)->Unit,
-    modifier:Modifier=Modifier,enabled:Boolean=true,compactLabels:Boolean=false,preserveColorWhenLocked:Boolean=false) {
+    modifier:Modifier=Modifier,enabled:Boolean=true,compactLabels:Boolean=false,preserveColorWhenLocked:Boolean=false,
+    itemRole: Role = Role.RadioButton) {
     val sources=remember(options) { options.map { MutableInteractionSource() } }
     val motions=options.map { option -> key(option) { rememberChoicePressMotion() } }
     val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
         expansion=100f*ButtonGroupDefaults.ExpandedRatio)
-    Row(modifier.fillMaxWidth().selectableGroup(),horizontalArrangement=Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
+    ButtonGroup(modifier.fillMaxWidth().selectableGroup(), expandedRatio = 0f,
+        horizontalArrangement=Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
         options.forEachIndexed { index,option -> key(option) {
-            val defaults=when(index) {
-                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
-                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+            val defaults=when {
+                options.size == 1 -> ToggleButtonDefaults.shapes()
+                index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                index == options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
                 else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
             }
             val selectionProgress by animateFloatAsState(if (value==option) 1f else 0f,tween(160),label="choice-selection-shape")
@@ -32,7 +35,7 @@ internal fun <T> ConnectedChoiceGroup(title:String,options:List<T>,value:T,label
             ToggleButton(checked=value==option,onCheckedChange={ checked -> motions[index].commit { if(checked&&option!=value)onSelect(option) } },
                 modifier=Modifier.weight(weights[index]).then(if(enabled)Modifier.choicePressFeedback(motions[index])else Modifier)
                     .then(if(preserveColorWhenLocked) Modifier else Modifier.enabledContentMotion(enabled)).semantics {
-                    contentDescription="$title：${label(option)}";selected=value==option
+                    contentDescription="$title：${label(option)}";selected=value==option;role=itemRole
                 },enabled=enabled,shapes=ToggleButtonShapes(shape,shape,shape),interactionSource=sources[index],
                 colors=ToggleButtonDefaults.toggleButtonColors().let { if(preserveColorWhenLocked)it.keepColorsWhenLocked(value==option)else it },
                 contentPadding=if(compactLabels)PaddingValues(horizontal=8.dp,vertical=8.dp)else ToggleButtonDefaults.ContentPadding) {

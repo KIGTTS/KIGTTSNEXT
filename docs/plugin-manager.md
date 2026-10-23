@@ -58,3 +58,5 @@ API11主程序提供签名管理桥的只读 `browser-capture` 命令：`./tools
 API12增加`browser-session`，传`id`和`operation=open/state/click/type/scroll/wait/screenshot/close`，open指定mediaId/pageId，后续使用返回sessionId。坐标与截图像素一致；权限走正式宿主broker，不自动批准。适用于实际页面运行验收；不是其它应用的截图或点击入口。
 
 API13增加browser-session的open-subtitle操作，返回包含安全区的模拟大字幕布局，使用与普通会话相同的控制与截图流程；模拟不包含用户实时字幕或私有快捷文本。
+
+2026-10-23：运行时工作进程槽由12扩至100；这里只预先声明可分配服务，实际绑定已启用插件时才启动进程，模型仍按需加载。100槽Manifest/服务检查已通过；实际内存与后台进程数量受Android系统限制，不代表100个大型模型能同时常驻。前述12槽是历史版本记录。

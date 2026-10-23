@@ -27,7 +27,7 @@ class PluginManagementUiTest {
         model.navigate(Destination.Plugins)
         compose.setContent { KigttsApp(model) }
         compose.onNodeWithContentDescription("安装插件").assertIsDisplayed()
-        compose.onNodeWithText("尚未安装语音引擎插件").assertIsDisplayed()
+        compose.onNodeWithText("还没有安装插件").assertIsDisplayed()
         compose.onNodeWithText("聆听占位插件").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/plugin-manager-external-packages.png")
     }
@@ -72,8 +72,9 @@ class PluginManagementUiTest {
         val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>(), listOf(plugin))
         model.navigate(Destination.PluginPage("test.library", "packs"))
         compose.setContent { KigttsApp(model) }
-        compose.onNodeWithTag("managed-more/piper").performClick()
-        compose.onNodeWithText("下移").performClick()
+        val move = compose.onNodeWithTag("managed-grip/piper", useUnmergedTree = true).fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].single { it.label == "下移" }
+        compose.runOnIdle { move.action() }
         compose.waitForIdle()
         assertEquals(listOf("other", "piper"), received)
         val first = compose.onNodeWithTag("managed-item/other").getUnclippedBoundsInRoot()

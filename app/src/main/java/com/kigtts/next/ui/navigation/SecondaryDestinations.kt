@@ -49,6 +49,12 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         return
     }
     val pluginPage = (destination as? Destination.PluginPage)?.let { model.registry.plugin(it.pluginId)?.page(it.pageId, model.context()) }
+    if (destination is Destination.PluginPage && pluginPage?.search != null) {
+        PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
+            resolve = { model.pluginManager.paths.existingResource(it.pluginId ?: destination.pluginId, it.path) },
+            onBack = model::navigateBack) { action, inputs -> model.invoke(destination.pluginId, action, inputs) }
+        return
+    }
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {

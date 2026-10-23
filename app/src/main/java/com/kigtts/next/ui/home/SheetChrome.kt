@@ -67,7 +67,8 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                     4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoLibrary,
                         { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
                         Modifier.width(width).testTag("dock-end"), sources[4], shapes, size = sideSize,
-                        onLongClick = if (!open) ({ model.cardCapture.open() }) else null)
+                        onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
+                        iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.ExpandMore, progress))
                 }
                 if (index < 4) Spacer(Modifier.width((when (index) { 0 -> a; 3 -> b; else -> 1f } * 6f).dp))
             } }

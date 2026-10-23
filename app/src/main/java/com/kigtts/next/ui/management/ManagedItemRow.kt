@@ -1,87 +1,52 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.management
 
-import com.kigtts.next.ui.components.MotionIconButton
-
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.unit.*
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.settings.SettingPosition
 import com.kigtts.plugin.api.*
 import java.io.File
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 
 @Composable
 internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier, dragGrip: Modifier, reorderable: Boolean, elevated: Boolean,
     enabled: Boolean, resolve: (PluginResource) -> File?, invoke: (String, Map<String, String>) -> Unit,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
-    catalog: Boolean = false, trailingAction: ManagementProgressAction? = null) {
-    var menu by remember(item.id) { mutableStateOf(false) }
+    catalog: Boolean = false, trailingAction: ManagementProgressAction? = null,
+    position: SettingPosition = SettingPosition.SINGLE) {
     val primary = item.primaryAction
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         tween(180), label = "managed-selection-color")
-    BackHandler(menu) { menu = false }
-    Surface(modifier.testTag("managed-item/" + item.id), shape = MaterialTheme.shapes.medium,
-        color = color,
-        shadowElevation = shadowElevation) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
-            Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
-            .padding(start = 12.dp, end = 4.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null) {
-                ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
-                Spacer(Modifier.width(12.dp))
+    Surface(modifier.testTag("managed-item/" + item.id), shape = managedItemShape(position, elevated),
+        color = color, shadowElevation = shadowElevation) {
+        Column {
+            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
+                Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
+                .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
+                    ResourceAvatar(item, resolve, if (catalog || item.image != null) 64.dp else 40.dp)
+                ManagedItemHeading(item, Modifier.weight(1f))
+                trailingAction?.let { InlineProgressButton(item.id, it, enabled && !elevated, invoke) }
+                ManagedItemControl(item, enabled && !elevated, invoke)
+                if (reorderable) Box(dragGrip.size(40.dp).testTag("managed-grip/" + item.id).semantics {
+                    contentDescription = "拖动排序"
+                    customActions = listOf(CustomAccessibilityAction("上移") { moveAccessible(-1); true },
+                        CustomAccessibilityAction("下移") { moveAccessible(1); true })
+                }, contentAlignment = Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(24.dp)) }
             }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 2)
-                    AnimatedVisibility(item.pinned, enter=fadeIn(tween(160))+expandHorizontally(tween(180)),exit=fadeOut(tween(120))+shrinkHorizontally(tween(180))) {
-                        Icon(Icons.Default.PushPin, "已置顶", Modifier.size(16.dp))
-                    }
-                    AnimatedVisibility(item.selected, enter=fadeIn(tween(160))+expandHorizontally(tween(180)),exit=fadeOut(tween(120))+shrinkHorizontally(tween(180))) {
-                        Icon(Icons.Default.CheckCircle, "当前选用", Modifier.size(16.dp))
-                    }
-                }
-                PageContentMotion(item.subtitle) { subtitle ->
-                    if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-                }
-            }
-            trailingAction?.let { action ->
-                InlineProgressButton(item.id, action, enabled && !elevated, invoke)
-            }
-            item.toggle?.let { toggle ->
-                Switch(toggle.checked, enabled = enabled, onCheckedChange = if (elevated) null else feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },
-                    colors = SwitchDefaults.colors().keepColorsWhenLocked(),
-                    modifier = Modifier.testTag("managed-toggle/" + item.id))
-            }
-            if (reorderable) Box(dragGrip.size(32.dp).testTag("managed-grip/" + item.id), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(20.dp))
-            }
-            if (item.actions.isNotEmpty() || reorderable) Box {
-                MotionIconButton(onClick = feedbackClick { menu = true }, enabled = enabled, colors = IconButtonDefaults.iconButtonColors().keepColorsWhenLocked(), modifier = Modifier.size(32.dp).testTag("managed-more/" + item.id)) {
-                    Icon(Icons.Default.MoreVert, "条目操作", Modifier.size(20.dp))
-                }
-                DropdownMenu(menu && enabled, { menu = false }, properties = PopupProperties(focusable = false)) {
-                    item.actions.forEach { action -> DropdownMenuItem(text = { Text(action.label) },
-                        leadingIcon = if (action.icon == PluginIcon.NONE) null else ({ Icon(action.icon.vector(), null) }),
-                        onClick = feedbackClick { menu = false; invoke(action.id, emptyMap()) }) }
-                    if (reorderable) {
-                        DropdownMenuItem(text = { Text("上移") }, onClick = feedbackClick { menu = false; moveAccessible(-1) })
-                        DropdownMenuItem(text = { Text("下移") }, onClick = feedbackClick { menu = false; moveAccessible(1) })
-                    }
-                }
-            }
+            if (item.actions.isNotEmpty()) ManagedItemActions(item, enabled && !elevated, invoke)
         }
     }
 }

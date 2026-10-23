@@ -74,8 +74,9 @@ class ManagedItemListTest {
         } } }
         val bounds = compose.onNodeWithTag("managed-item/p").getUnclippedBoundsInRoot()
         assertEquals(80f, (bounds.bottom - bounds.top).value, 1f)
-        compose.onNodeWithTag("managed-more/p").performClick()
-        compose.onNodeWithText("下移").performClick()
+        val action = compose.onNodeWithTag("managed-grip/p", useUnmergedTree = true).fetchSemanticsNode()
+            .config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].single { it.label == "下移" }
+        compose.runOnIdle { action.action() }
         assertTrue(orders.isEmpty())
     }
 }

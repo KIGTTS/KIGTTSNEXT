@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.management.ResourceAvatar
+import com.kigtts.next.ui.management.InlineProgressButton
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.*
 import java.io.File
@@ -37,7 +38,9 @@ import java.io.File
     }
 }
 
-@Composable internal fun PluginPageHeader(item: ManagementItem?, resolve: (PluginResource) -> File?) {
+@Composable internal fun PluginPageHeader(item: ManagementItem?, resolve: (PluginResource) -> File?,
+    action: ManagementProgressAction? = null, enabled: Boolean = true,
+    invoke: (String, Map<String, String>) -> Unit = { _, _ -> }) {
     if (item == null) return
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("plugin-page-header"),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -47,6 +50,7 @@ import java.io.File
             if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        action?.let { InlineProgressButton(item.id, it, enabled, invoke) }
     }
 }
 

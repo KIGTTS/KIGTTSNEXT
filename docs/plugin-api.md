@@ -1,6 +1,6 @@
-# 插件 API v16（兼容 v9–15）
+# 插件 API v24（兼容 v9–23）
 
-当前 SDK 为 API15，宿主接受API9–15签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
+当前 SDK 为 API24，宿主接受API9–24签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -107,7 +107,7 @@ PluginPage.management 可返回 ManagementList。ManagementItem 以稳定 ID 描
 
 外置原生 `.kigplugin` 使用 Android DEX 和可选 JNI；Lua `.kiglua` 由可选 `runtime.lua` 插件审核与运行，不是主程序内置脚本执行器。Python 运行时尚未实现。外置 Agent、Lua、商店、原生构建及其依赖不进入主 APK。
 
-运行时有 12 个工作进程槽，每个启用的原生外置插件使用独立普通进程。原生进程共享 UID，属于崩溃隔离；Lua 的库/指令/资源限制也不是操作系统级权限沙盒。模板和包源 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
+运行时有 100 个工作进程槽，每个启用的原生外置插件使用独立普通进程。原生进程共享 UID，属于崩溃隔离；Lua 的库/指令/资源限制也不是操作系统级权限沙盒。模板和包源 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 
 ## API 11：识别扩展、聊天与有回执调用
 
@@ -185,3 +185,9 @@ SetSubtitleRenderer(root,mainPage)为当前会话提供本地文字字幕显示�
 MESSAGE 用于完成提醒，PROGRESS 用于持续进度（progress/progressMax/indeterminate），SHORTCUT 用于字幕与软件快捷入口；每类独立系统频道。通知最多3个动作、每插件最多8条；contentAction/actions 可打开本插件pageId、触发本插件actionId、显示phraseId，或 target=home/quick-text/cards/sketch。路由由宿主生成随机令牌并绑定发布者，不能写任意Intent或其它插件ID。停用/卸载清理本插件通知，更新相同id不会反复响铃。
 
 Android16+ PROGRESS 且 ongoing=true 时可设置live=true申请实况展示；最终外观由系统、厂商及用户设置决定，旧版降级为标准进度通知。结束应更新为MESSAGE且ongoing=false、live=false。快捷入口不申请实况。支持symbol设置离线Material Symbol小图标，通知内容跟随系统亮暗色。
+
+## API24 管理条目与单选
+
+ManagementItem.badges为名称旁的简短类型标签（最多4个、每个32字）；selection=ManagementSelection(action, enabled)提供独立单选操作，selected仍为当前选中状态。primaryAction与单选、辅助动作分别路由。开关优先于单选，停用项可以保留详情而禁用选用。辅助actions由宿主排在下方并按可用宽度溢出，插件不提供坐标或样式；Material Symbol与文字动作均保留。相邻同组条目使用相连圆角，手柄保留独立拖动与无障碍移动。旧11/12参数构造器、copy与默认掩码以及旧JSON缺省值兼容；使用新字段的包必须标API24。
+
+API24 PluginPage.headerAction复用ManagementProgressAction，在图标和标题右侧显示获取/进度/安装；与管理列表共用动作和任务状态。PluginPage.search=PluginSearch(query,actionId,placeholder)由宿主渲染聚焦搜索页，输入去抖220ms后以value提交；返回退出当前页面，清除只清空查询，不退出搜索。保留PluginPage旧4/6/8参数构造/copy默认桥，旧JSON默认无搜索和页头动作。

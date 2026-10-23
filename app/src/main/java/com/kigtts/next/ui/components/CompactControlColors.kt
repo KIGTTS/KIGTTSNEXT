@@ -36,13 +36,12 @@ fun compactPlainButtonColors(): ButtonColors {
 
 @Composable
 fun compactTabColors(dragging: Boolean = false): SelectableChipColors {
-    val palette = if (LocalUseCompactControlPalette.current) LocalCompactControlPalette.current else null
-    val container = palette?.container ?: MaterialTheme.colorScheme.secondaryContainer
-    val content = palette?.content ?: MaterialTheme.colorScheme.onSecondaryContainer
-    return if (palette == null && !dragging) FilterChipDefaults.filterChipColors()
-    else FilterChipDefaults.filterChipColors(containerColor = if (dragging) container else Color.Unspecified,
-        labelColor = if (dragging) content else palette?.plainContent ?: Color.Unspecified,
-        iconColor = if (dragging) content else palette?.plainContent ?: Color.Unspecified,
+    val colors = MaterialTheme.colorScheme
+    val container = colors.primaryContainer
+    val content = colors.onPrimaryContainer
+    return FilterChipDefaults.filterChipColors(containerColor = if (dragging) container else Color.Transparent,
+        labelColor = if (dragging) content else colors.onSurfaceVariant,
+        iconColor = if (dragging) content else colors.onSurfaceVariant,
         selectedContainerColor = container, selectedLabelColor = content,
         selectedLeadingIconColor = content, selectedTrailingIconColor = content)
 }

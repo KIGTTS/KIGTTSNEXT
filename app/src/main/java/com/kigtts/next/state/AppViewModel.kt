@@ -245,9 +245,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
     fun editing(editing: Boolean) {
-        val finished=state.value.editing&&!editing
         update { it.copy(editing = editing) }
-        if(finished&&state.value.autoPlayback&&state.value.mediaId==null)autoRead()
+    }
+    fun submitSubtitle() {
+        if(state.value.autoPlayback && state.value.mediaId == null) autoRead()
     }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
     fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false, mediaEditing = false) } }

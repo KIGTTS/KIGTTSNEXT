@@ -75,16 +75,8 @@ private fun ChoiceSetting(control: PluginControl.Choice, change: (String) -> Uni
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(control.title, style = MaterialTheme.typography.bodyLarge)
         if (control.style == PluginChoiceStyle.SEGMENTED && options.size in 2..4) {
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                options.forEachIndexed { index, option ->
-                    SegmentedButton(selected == option.id, feedbackClick {
-                        selected = option.id; change(option.id)
-                    }, shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                        modifier = Modifier.semantics { contentDescription = "${control.title}：${option.label}" }) {
-                        Text(option.label, maxLines = 1)
-                    }
-                }
-            }
+            ConnectedChoiceGroup(control.title, options.map { it.id }, selected,
+                { id -> options.first { it.id == id }.label }, { selected = it; change(it) }, compactLabels = true)
         } else {
             Box {
                 OutlinedButton(onClick = feedbackClick { expanded = true }, modifier = Modifier.fillMaxWidth()

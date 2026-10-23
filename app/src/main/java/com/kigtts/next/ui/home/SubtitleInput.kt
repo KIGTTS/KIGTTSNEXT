@@ -4,6 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.input.key.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,11 +44,18 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
         { model.state.value.editorValue.selection }, state.subtitleFormats, model::formatSubtitle)
     CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
         BasicTextField(state.editorValue, model::editText,
-            modifier = Modifier.fillMaxSize().testTag("speech-editor").focusRequester(focus).then(menu).textMenuAnchor {
+            modifier = Modifier.fillMaxSize().testTag("speech-editor").focusRequester(focus).onPreviewKeyEvent { event ->
+                if (state.autoPlayback && event.key == Key.Enter && !event.isShiftPressed) {
+                    if (event.type == KeyEventType.KeyUp) model.submitSubtitle()
+                    true
+                } else false
+            }.then(menu).textMenuAnchor {
                 val current = model.state.value.editorValue
                 model.editText(current.copy(selection = androidx.compose.ui.text.TextRange(current.selection.end)))
             },
             textStyle = fitted, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary), visualTransformation = base,
+            keyboardOptions = KeyboardOptions(imeAction = if (state.autoPlayback) ImeAction.Send else ImeAction.Default),
+            keyboardActions = KeyboardActions(onSend = { model.submitSubtitle() }),
             decorationBox = { field ->
                 // The viewport never animates its measured height. Only glyph layers move;
                 // a new line therefore cannot be clipped by the previous line's bounds.

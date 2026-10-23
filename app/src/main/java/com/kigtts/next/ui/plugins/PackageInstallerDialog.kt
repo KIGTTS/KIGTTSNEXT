@@ -39,14 +39,9 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                     }
                 } else {
                     if (packages != null) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            listOf("介绍", "权限", "许可").forEachIndexed { index, label ->
-                                TextButton(onClick = feedbackClick { tab = index }, Modifier.weight(1f).height(36.dp),
-                                    colors = ButtonDefaults.textButtonColors(
-                                        containerColor = if (tab == index) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent,
-                                        contentColor = if (tab == index) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)) { Text(label) }
-                            }
-                        }
+                        ConnectedChoiceGroup("安装详情", listOf(0, 1, 2), tab,
+                            { listOf("介绍", "权限", "许可")[it] }, { tab = it }, compactLabels = true,
+                            itemRole = androidx.compose.ui.semantics.Role.Tab)
                     }
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("installer-details"),
                         verticalArrangement = Arrangement.spacedBy(16.dp)) {

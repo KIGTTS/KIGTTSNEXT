@@ -3,7 +3,6 @@ package com.kigtts.next.ui.plugins
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,7 +16,7 @@ import com.kigtts.plugin.api.*
 /** Small declarative settings lists share the native settings components, without a new SDK type.
  * Resource collections and large voice catalogs retain the virtualized management renderer. */
 internal fun ManagementList.usesSettingsLayout() = reorderAction == null && filters.isEmpty() &&
-    items.size in 1..32 && items.all { it.actions.isEmpty() && (it.image == null || it.group.isNotBlank()) && !it.pinned }
+    items.size in 1..32 && items.all { it.actions.isEmpty() && it.badges.isEmpty() && (it.image == null || it.group.isNotBlank()) && !it.pinned }
 
 internal fun settingPosition(index: Int, count: Int) = when {
     count <= 1 -> SettingPosition.SINGLE
@@ -44,17 +43,10 @@ internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
                         modifier = Modifier.testTag("managed-item/" + item.id), enabled = interactive,
                         leading = if (item.image == null) null else ({ com.kigtts.next.ui.management.ResourceAvatar(item, resolve) }),
                         onClick = item.primaryAction?.let { action -> { invoke(action, emptyMap()) } }, trailing = {
-                            if (toggle != null) Switch(toggle.checked,
-                                onCheckedChange = feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) },
-                                enabled = interactive, colors = SwitchDefaults.colors().keepColorsWhenLocked(),
-                                modifier = Modifier.testTag("managed-toggle/" + item.id))
-                            else {
-                                PageContentMotion(item.selected) { selected ->
-                                    if (selected) Icon(Icons.Default.Check, "当前选用", Modifier.size(24.dp))
-                                    else if (item.primaryAction != null)
-                                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
-                                }
-                            }
+                            if (toggle != null || item.selection != null || item.selected)
+                                com.kigtts.next.ui.management.ManagedItemControl(item, interactive, invoke)
+                            else if (item.primaryAction != null)
+                                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
                         })
                 }
             }

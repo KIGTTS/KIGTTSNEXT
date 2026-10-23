@@ -158,15 +158,3 @@ open class PluginWorkerService : Service() {
     }
     override fun onDestroy() { taskForeground.close(); scope.cancel(); super.onDestroy() }
 }
-class PluginWorker0 : PluginWorkerService()
-class PluginWorker1 : PluginWorkerService()
-class PluginWorker2 : PluginWorkerService()
-class PluginWorker3 : PluginWorkerService()
-class PluginWorker4 : PluginWorkerService()
-class PluginWorker5 : PluginWorkerService()
-class PluginWorker6 : PluginWorkerService()
-class PluginWorker7 : PluginWorkerService()
-class PluginWorker8 : PluginWorkerService()
-class PluginWorker9 : PluginWorkerService()
-class PluginWorker10 : PluginWorkerService()
-class PluginWorker11 : PluginWorkerService()
