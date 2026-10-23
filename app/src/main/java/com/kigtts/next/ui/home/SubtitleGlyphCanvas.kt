@@ -35,6 +35,11 @@ internal fun SubtitleGlyphCanvas(motion: SubtitleGlyphMotion, visible: Boolean, 
             translate(next.origin.x, next.origin.y) { drawText(next.layout) }
             return@Canvas
         }
+        if (motion.fadeOnly) {
+            before?.let { drawText(it.layout, topLeft = it.origin, alpha = 1f - progress) }
+            drawText(next.layout, topLeft = next.origin, alpha = progress)
+            return@Canvas
+        }
         val active = layer(next, 1)
         fun glyph(frame: SubtitleGlyphFrame, index: Int, source: GraphicsLayer, pose: SubtitleGlyphPose) {
             if (pose.alpha <= .001f) return

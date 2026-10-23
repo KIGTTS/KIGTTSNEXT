@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 internal data class ManagementPaperGeometry(val source: Rect, val target: Rect, val browser: Rect)
 internal class CardManagementGeometry {
     val sources = mutableMapOf<String, LayoutCoordinates>()
+    val overlayOrder = mutableMapOf<String, Float>()
     var targetId: String? = null
     var target: LayoutCoordinates? = null
     var browser: LayoutCoordinates? = null

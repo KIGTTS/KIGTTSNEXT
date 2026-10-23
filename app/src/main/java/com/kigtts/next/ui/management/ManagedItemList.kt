@@ -8,7 +8,9 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -30,10 +32,11 @@ import kotlin.math.roundToInt
 @Composable
 fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (PluginResource) -> File? = { null },
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit = {}) {
-    val lazy = rememberLazyListState()
+    com.kigtts.next.ui.components.ReadablePage {
+    val columns = if (maxWidth >= 960.dp) 2 else 1
+    val lazy = rememberLazyGridState()
     RegisterPageLoading(busy)
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val padding = with(density) { 16.dp.toPx() }
     val external = list.items.map { it.id }
     var order by remember(list.id) { mutableStateOf(external) }
     val data = list.items.associateBy { it.id }
@@ -41,9 +44,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     val interactive = !busy && com.kigtts.next.ui.navigation.LocalPageActive.current
     val drag = rememberReorderDrag({ lazy.layoutInfo.visibleItemsInfo.mapNotNull { info ->
         (info.key as? String)?.takeIf { it in data }?.let { ReorderTarget(it,
-            Rect(padding, (info.offset + lazy.layoutInfo.beforeContentPadding).toFloat(), lazy.layoutInfo.viewportSize.width.toFloat() - padding,
-                (info.offset + info.size + lazy.layoutInfo.beforeContentPadding).toFloat())) }
-    } }, animateDrop = true, verticalOnly = true) { from, to ->
+            Rect(info.offset.x.toFloat(), (info.offset.y + lazy.layoutInfo.beforeContentPadding).toFloat(), (info.offset.x + info.size.width).toFloat(),
+                (info.offset.y + info.size.height + lazy.layoutInfo.beforeContentPadding).toFloat())) }
+    } }, animateDrop = true, verticalOnly = columns == 1) { from, to ->
         if (data[from]?.group == data[to]?.group) { order = ItemOrder.move(order, from, to); feedback.step() }
     }
     var owned by remember { mutableStateOf(false) }
@@ -67,8 +70,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
     Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag) else Modifier)) {
-        LazyColumn(Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            item("management-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyVerticalGrid(GridCells.Fixed(columns), Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            item("management-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 header()
                 if (list.filters.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(list.filters, key = { it.id }) { filter -> FilterChip(selected = filter.selected,
@@ -86,7 +90,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
                     Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) },
                     catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
-                    position = managedItemPosition(orderedItems, index))
+                    position = if (columns == 1) managedItemPosition(orderedItems, index) else managedItemPosition(orderedItems.filterIndexed { i, _ -> i % columns == index % columns }, index / columns))
             }
         }
         val active = drag.key?.let(data::get)
@@ -95,5 +99,6 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 .height(with(density) { drag.floatingBounds.height.toDp() }).clearAndSetSemantics { testTag = "managed-drag/" + active.id },
             Modifier, list.reorderAction != null, true, true, resolve, { _, _ -> }, {}, shadowElevation = elevation)
         ReorderAutoScroll(drag, { lazy.layoutInfo.viewportSize.height.toFloat() }, { lazy.scrollBy(it) })
+    }
     }
 }

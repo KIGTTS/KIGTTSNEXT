@@ -5,6 +5,8 @@ package com.kigtts.next.ui.home
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -30,9 +32,13 @@ fun HomeScreen(
 ) {
     QuickSortPrompt(model.quickSort)
     val sections = rememberSaveableStateHolder()
+    val renderer by model.subtitleRenderer.selection.collectAsState()
+    val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
+    Box(Modifier.fillMaxSize().then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier)) {
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
         LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
     else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
+    }
 }
 
 @Composable

@@ -12,13 +12,13 @@ import androidx.compose.ui.unit.dp
 
 /** Cursor motion does not invalidate text layout or restart its breathing on every keystroke. */
 @Composable
-internal fun SubtitleCursorMotion(frame: SubtitleGlyphFrame?, offset: Int, color: Color, modifier: Modifier) {
+internal fun SubtitleCursorMotion(frame: SubtitleGlyphFrame?, offset: Int, color: Color, modifier: Modifier, animateMovement: Boolean = true) {
     if (frame == null) return
     val box = frame.layout.getCursorRect(offset.coerceIn(0, frame.layout.layoutInput.text.length)).translate(frame.origin)
     // A new viewport or font is direct manipulation: initialize at the newly
     // measured caret immediately, while ordinary typing keeps its short movement.
-    val position = key(frame.viewport, frame.layout.layoutInput.constraints, frame.layout.layoutInput.style) {
-        animateOffsetAsState(box.topLeft, tween(95, easing = FastOutSlowInEasing), label = "subtitle-caret-position")
+    val position = key(frame.viewport, frame.layout.layoutInput.constraints, frame.layout.layoutInput.style, animateMovement) {
+        animateOffsetAsState(box.topLeft, tween(if (animateMovement) 95 else 0, easing = FastOutSlowInEasing), label = "subtitle-caret-position")
     }
     val breathing = rememberInfiniteTransition(label = "subtitle-caret-breath").animateFloat(.18f, 1f,
         infiniteRepeatable(tween(650, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "subtitle-caret-opacity")

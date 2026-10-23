@@ -52,7 +52,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     selectedLayer: String? = null, editable: Boolean = false, selectLayer: (String?) -> Unit = {},
     updateLayer: (CardLayer) -> Unit = {}, photoEditable: Boolean = false,
     onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null,
-    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null) {
+    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
@@ -70,7 +70,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
     val elevation by animateDpAsState(if (transforming) 10.dp else 3.dp, label = "polaroid-elevation")
     Surface(modifier.sharedPolaroidPhoto(card.id).aspectRatio(geometry.aspectRatio.toFloat()).onSizeChanged { size = it }.testTag("polaroid/" + card.id),
-        shape = RoundedCornerShape(6.dp), color = paper, shadowElevation = elevation) {
+        shape = RoundedCornerShape(6.dp), color = paper, shadowElevation = paperElevation ?: elevation) {
         BoxWithConstraints(Modifier.fillMaxSize().then(if (editable && selectedLayer != null) Modifier.pointerInput(card.id) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)

@@ -7,14 +7,15 @@ import androidx.compose.ui.unit.Dp
 
 /**
  * A rising dock allocates its endpoint immediately, but its drawing mask moves gradually.
- * Retain fixed vertical drawing room behind that mask without changing a page's measured
- * content size, horizontal paging distance, or measuring again on animation frames.
- * The matching Pager contentPadding cancels this room for its page constraints.
+ * Keep drawing room below the viewport while old, larger papers settle into the smaller dock.
+ * The extra room and matching bottom content padding leave the page's origin unchanged.
+ * Negative pager placement is not safe here: LazyLayout's lookahead coordinates omit that
+ * offset when a shared paper first moves into the overlay.
  */
-internal fun Modifier.polaroidPagerDrawingSpace(verticalPadding: Dp): Modifier = layout { child, constraints ->
-    val extra = verticalPadding.roundToPx()
+internal fun Modifier.polaroidPagerDrawingSpace(bottomPadding: Dp): Modifier = layout { child, constraints ->
+    val extra = bottomPadding.roundToPx()
     val width = constraints.maxWidth
     val height = constraints.maxHeight
-    val placed = child.measure(Constraints.fixed(width, height + extra * 2))
-    layout(width, height) { placed.place(0, -extra) }
+    val placed = child.measure(Constraints.fixed(width, height + extra))
+    layout(width, height) { placed.place(0, 0) }
 }

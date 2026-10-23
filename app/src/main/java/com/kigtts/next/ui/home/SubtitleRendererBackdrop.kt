@@ -17,7 +17,8 @@ internal fun SubtitleRendererBackdrop(state: AppState, model: AppViewModel, safe
     if (state.editing || state.mediaId != null) return
     val renderer = selection ?: return
     val flipped = state.subtitleFlipped
-    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(320, easing = FastOutSlowInEasing), label = "renderer-flip")
+    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(if (state.subtitleAppearance.reducedMotion) 0 else 320,
+        easing = FastOutSlowInEasing), label = "renderer-flip")
     val insets = if (flipped) MediaSafeArea(safeArea.bottom, safeArea.left, safeArea.top, safeArea.right) else safeArea
     key(renderer) {
         PluginSubtitleRenderer(renderer, state.editorText, state.subtitlePlaceholder, state.subtitleSizePercent,

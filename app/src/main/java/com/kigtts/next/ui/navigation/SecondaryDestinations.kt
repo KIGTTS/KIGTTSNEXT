@@ -62,7 +62,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision)
                 is Destination.SettingsDetail -> when (destination.category) {
-                    SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder)
+                    SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
+                        state.subtitleAppearance, model::setSubtitleAppearance)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)

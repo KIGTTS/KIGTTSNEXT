@@ -10,7 +10,7 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
     return model.pluginOrder(all).map { id ->
         managed[id]?.let { (runtime, item) ->
             val actions = listOfNotNull(item.manageAction?.let { PageAction("managed/$runtime/$it", "编辑与调试", PluginIcon.EDIT) },
-                PageAction("permissions/$runtime/${item.id}", "权限", PluginIcon.SETTINGS),
+                PageAction("permissions/$runtime/${item.id}", "权限", PluginIcon.SETTINGS, symbol = "shield_locked"),
                 item.removeAction?.let { PageAction("managed-remove/$runtime/${item.id}", "卸载并删除插件数据", PluginIcon.CLOSE) })
             return@map ManagementItem(id, item.name, "v${item.version} · Lua" + if (item.error.isNotBlank()) " · ${item.error}" else if (!item.enabled) " · 已停用" else "",
                 icon = PluginIcon.TEXT, primaryAction = actions.firstOrNull()?.id, actions = actions,
@@ -20,7 +20,7 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val name = installed?.installed?.manifest?.name ?: plugin!!.descriptor.name
         val version = installed?.installed?.manifest?.version ?: plugin!!.descriptor.version
         val actions = mutableListOf<PageAction>()
-        if (installed != null) actions += PageAction("permissions/$id", "权限", PluginIcon.SETTINGS)
+        if (installed != null) actions += PageAction("permissions/$id", "权限", PluginIcon.SETTINGS, symbol = "shield_locked")
         val contribution = plugin?.contributions(model.context())
         contribution?.settingsEntries?.forEach { entry -> actions += PageAction("page/$id/${entry.pageId}", "打开${entry.label}", entry.icon) }
         contribution?.drawerEntries?.filterNot { entry -> contribution.settingsEntries.any { it.pageId == entry.pageId } }

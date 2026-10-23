@@ -2,7 +2,9 @@
 package com.kigtts.next.ui.cards
 
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -10,6 +12,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.semantics.*
@@ -24,11 +28,10 @@ import java.io.File
     var raised by remember { mutableStateOf(false) }
     LaunchedEffect(lifted) { raised = lifted }
     val elevation by animateDpAsState(if (raised) 12.dp else 3.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "card-sort-elevation")
-    Surface(feedbackClick(select), modifier.testTag("manage-photo/" + card.id).semantics {
+    val controls by animateFloatAsState(if (enabled) 1f else 0f, tween(if (enabled) 160 else 80), label = "card-sort-controls")
+    Box(modifier.testTag("manage-photo/" + card.id).semantics {
         this.selected = selected; contentDescription = card.title.ifBlank { "拍立得" }
-    },
-        enabled = enabled, shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = elevation, border = if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
+    }.clickable(enabled = enabled, onClick = feedbackClick(select))) {
         Box {
             val file = card.imageId?.let(imageFile)
             val target = rememberCardImage(file, 512)
@@ -38,10 +41,11 @@ import java.io.File
                     ?.boundsInWindow()?.width?.let { cardImageDecodeSize(it, 1200) } ?: 512 else 512
             }
             val source = rememberCardImage(file, sourceMaximum)
-            PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth(), frame = frame, decodeMaximum = 512, photoOverride = target ?: source)
+            PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth(), frame = frame, decodeMaximum = 512,
+                photoOverride = target ?: source, paperElevation = elevation)
             Icon(Icons.Default.DragIndicator, "拖动照片", Modifier.align(Alignment.TopStart).padding(4.dp).size(28.dp)
-                .testTag("manage-photo-grip/" + card.id).then(grip), tint = MaterialTheme.colorScheme.primary)
-            CardSelectionMark(selected, Modifier.align(Alignment.TopEnd).padding(4.dp))
+                .graphicsLayer { alpha = controls }.testTag("manage-photo-grip/" + card.id).then(grip), tint = MaterialTheme.colorScheme.primary)
+            CardSelectionMark(selected, Modifier.align(Alignment.TopEnd).padding(4.dp).graphicsLayer { alpha = controls })
         }
     }
 }

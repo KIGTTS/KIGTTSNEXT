@@ -35,8 +35,10 @@ internal fun groupedSettingShape(position: SettingPosition, outer: CornerBasedSh
 
 @Composable
 internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
+    com.kigtts.next.ui.components.ReadablePage(840.dp) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp), content = content)
+    }
 }
 
 @Composable

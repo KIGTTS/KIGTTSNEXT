@@ -1,5 +1,30 @@
 [
   {
+    "category": "外观",
+    "summary": "把字幕变成发光灯板，随手调整灯光与灯珠质感。",
+    "symbol": "lightbulb",
+    "description": "## LED 灯珠字幕\n\n点亮灯泡按钮，将输入文字、快捷短语和聆听字幕显示成 LED 灯板。长句平滑滚动，也能一键全屏。\n\n开启后，在缩放按钮左侧调整灯光颜色、灯珠、辉光与滚速。",
+    "tags": [
+      "字幕",
+      "显示样式"
+    ],
+    "file": "display.led-0.1.8.kigplugin",
+    "notes": "最大字号贴近按钮安全区；全屏黑色外围、闲置按钮淡化，改善小字号缩放流畅度。",
+    "module": "led-caption"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
+    "file": "tools.package-store-0.13.0.kigplugin",
+    "notes": "首页保留分类入口和插件列表，滚动自动加载更多，平板使用双列布局。",
+    "module": "package-store"
+  },
+  {
     "category": "扩展",
     "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",

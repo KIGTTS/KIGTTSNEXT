@@ -26,7 +26,9 @@ import com.kigtts.next.ui.components.reorder.*
 @Composable
 fun QuickTextPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel, motion: HomeSheetMotion, modifier: Modifier = Modifier) {
     val singleRow by remember(motion) { derivedStateOf { motion.height <= 192f } }
-    QuickTextContent(state, phrases, categories, model, singleRow, 2, modifier)
+    BoxWithConstraints(modifier) {
+        QuickTextContent(state, phrases, categories, model, singleRow, quickPhraseColumns(maxWidth.value - 16f), Modifier.fillMaxSize())
+    }
 }
 
 @Composable

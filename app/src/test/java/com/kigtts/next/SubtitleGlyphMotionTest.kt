@@ -26,6 +26,35 @@ class SubtitleGlyphMotionTest {
         val layout = measurer.measure(text, TextStyle(fontSize = font.sp, textAlign = TextAlign.Center), constraints = Constraints.fixedWidth(width))
         return subtitleGlyphFrame(layout, IntOffset(0, 120), IntSize(width, 500))
     }
+    @Test fun reducedMotionSnapsTypingAndResizingButKeepsClearAndQuickTextFades() {
+        val motion = SubtitleGlyphMotion()
+        val reduced = SubtitleGlyphPolicy(reducedMotion = true)
+        motion.update(frame("甲"), 1, true, policy = reduced)
+        motion.update(frame("甲乙"), 2, true, policy = reduced)
+        assertFalse(motion.running)
+        motion.update(frame("甲乙", 72, 100), 2, true, policy = reduced)
+        assertFalse(motion.running)
+        motion.update(frame(""), 0, true, policy = reduced)
+        assertTrue(motion.running); assertTrue(motion.fadeOnly)
+        motion.advanceBy(200f)
+        motion.update(frame("快捷文本"), 4, true, policy = reduced.copy(presentationRevision = 1))
+        assertTrue(motion.running); assertTrue(motion.fadeOnly)
+        assertNull(motion.outgoing(0))
+    }
+    @Test fun displayPolicyAnimatesOnlyReflowAndDisablingItSettlesTheSameFrameImmediately() {
+        val motion = SubtitleGlyphMotion()
+        val display = SubtitleGlyphPolicy(layoutChangesOnly = true)
+        motion.update(frame("甲乙"), null, true, policy = display)
+        val text = frame("甲乙丙丁", width = 200)
+        motion.update(text, null, true, policy = display)
+        assertFalse("Presentation fade already owns text changes", motion.running)
+        val narrow = frame("甲乙丙丁", width = 100)
+        motion.update(narrow, null, true, policy = display)
+        assertTrue(motion.running)
+        motion.update(narrow, null, false, policy = display)
+        assertFalse(motion.running)
+        narrow.glyphs.forEachIndexed { index, glyph -> assertEquals(glyph.bounds.topLeft + narrow.origin, motion.pose(index).position) }
+    }
     @Test fun aSecondKeystrokeContinuesFromTheVisiblePositionSizeAndOpacity() {
         val motion = SubtitleGlyphMotion()
         motion.update(frame("甲乙"), 2, true)
@@ -88,6 +117,23 @@ class SubtitleGlyphMotionTest {
         assertEquals(target, hop.incoming(200f, target))
         val larger = target.copy(position = Offset(900f, 250f), size = Size(120f, 150f))
         assertEquals(entering.position.x - target.position.x, hop.incoming(140f, larger).position.x - larger.position.x, .001f)
+    }
+    @Test fun rapidlyReversingResizeFinishesEachGlyphFadeWithoutRestartingOrBlinking() {
+        val motion = SubtitleGlyphMotion()
+        motion.update(frame("甲乙丙丁", width = 200), 4, true)
+        motion.update(frame("甲乙丙丁", width = 100), 4, true)
+        repeat(32) { tick ->
+            motion.advanceBy(16f)
+            val next = frame("甲乙丙丁", width = if (tick % 2 == 0) 200 else 100)
+            motion.update(next, 4, true)
+            if (tick >= 13) next.glyphs.indices.forEach { index ->
+                assertNull("Repeated threshold crossings must not restart departures", motion.outgoing(index))
+                assertEquals("Completed glyphs stay opaque while the divider keeps moving", 1f, motion.pose(index).alpha, .001f)
+            }
+        }
+        motion.advanceBy(250f)
+        motion.update(frame("甲乙丙丁", width = 200), 4, true)
+        assertTrue("A separate resize gesture may animate again", motion.running)
     }
     @Test fun insertingAndRemovingAWholeRowMovesExistingRowsSmoothlyWithoutFadingThem() {
         for ((text, changed) in listOf("甲乙\n丙丁" to "新\n甲乙\n丙丁", "新\n甲乙\n丙丁" to "甲乙\n丙丁")) {

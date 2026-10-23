@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
@@ -19,15 +20,17 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
     extent: Float = state.captionHeight, resize: (Float) -> Unit = model::captionHeight) {
     var fontBar by remember { mutableStateOf(false) }
     val custom by model.listeningPanel.selection.collectAsState()
+    val (idle, controlsAlpha) = rememberPanelIdleChrome(custom?.fadeControlsWhenIdle == true, fontBar)
     val controlsOwner = custom?.takeIf { it.replaceControls }?.owner
     val context = model.context()
     val left = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_START, model, controlsOwner) }
     val right = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_END, model, controlsOwner) }
     LaunchedEffect(controlsOwner) { if (controlsOwner != null) fontBar = false }
-    ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions"), singleLine, availableHeight,
+    ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions").panelIdleWake(idle), singleLine, availableHeight,
         horizontal = horizontal,
         contentPadding = if (custom != null) PaddingValues(0.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         controls = {
+            Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }) {
             if (controlsOwner != null) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
                 ElasticButtonGroup(left, Modifier.weight(1f), stableItems = true)
                 ElasticButtonGroup(right, Modifier.weight(1f), alignEnd = true, stableItems = true)
@@ -44,6 +47,7 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
                 ElasticButtonGroup(listOf(ElasticAction("listening-font-size", "调整聆听字号", Icons.Default.ZoomIn,
                     { fontBar = !fontBar })) + right, if (horizontal) Modifier.width(rightWidth) else Modifier.weight(.3f), alignEnd = true,
                     overflowTag = "listening-end-more", overflowLabel = "聆听右下更多操作")
+            }
             }
             }
             }

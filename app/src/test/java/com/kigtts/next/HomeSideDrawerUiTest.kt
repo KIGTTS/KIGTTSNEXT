@@ -81,4 +81,29 @@ class HomeSideDrawerUiTest {
         }
         compose.runOnIdle { assertEquals(1, quickTexts); assertNull(opened) }
     }
+    @Test fun fullscreenRendererShortcutDoesNotHijackHomeOrOpenAnotherPageToTheRight() {
+        var fullscreen by mutableStateOf(true)
+        var quickTexts = 0
+        compose.setContent {
+            val scope = rememberCoroutineScope()
+            val state = remember { HomeSideDrawer(scope, { opened = it }, { opened = null }) }
+            SideEffect { drawer = state }
+            Box(Modifier.size(360.dp, 640.dp).testTag("drawer-root")
+                .homeSideDrawer(state,
+                    if (fullscreen) ({ fullscreen = false; quickTexts++ }) else null,
+                    pagesEnabled = !fullscreen) { true })
+        }
+        compose.onNodeWithTag("drawer-root").performTouchInput {
+            swipe(Offset(width * .2f, height * .4f), Offset(width * .8f, height * .4f), 200)
+        }
+        compose.runOnIdle { assertNull(opened); assertEquals(0, quickTexts) }
+        compose.onNodeWithTag("drawer-root").performTouchInput {
+            swipe(Offset(width * .7f, height * .4f), Offset(width * .2f, height * .4f), 200)
+        }
+        compose.runOnIdle { assertFalse(fullscreen); assertEquals(1, quickTexts); assertNull(opened) }
+        compose.onNodeWithTag("drawer-root").performTouchInput {
+            swipe(Offset(width * .7f, height * .4f), Offset(width * .2f, height * .4f), 200)
+        }
+        compose.runOnIdle { assertEquals(SidePage.CARDS, opened); assertEquals(1, quickTexts) }
+    }
 }

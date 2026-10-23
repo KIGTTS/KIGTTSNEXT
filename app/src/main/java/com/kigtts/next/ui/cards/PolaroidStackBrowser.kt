@@ -148,9 +148,9 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                     polaroidFormat(card, frames.firstOrNull { it.id == card.frameStyleId }).geometry.aspectRatio.toFloat(), true).value
             } else emptyList()
         }
-        val drawingPadding = 208.dp
+        val drawingPadding = 416.dp
         HorizontalPager(pager, Modifier.fillMaxSize().polaroidPagerDrawingSpace(drawingPadding),
-            contentPadding = PaddingValues(vertical = drawingPadding),
+            contentPadding = PaddingValues(bottom = drawingPadding),
             key = { latestCards.value.getOrNull(it)?.id ?: "pending/card/" + it }, beyondViewportPageCount = if (wide) 3 else 2,
             userScrollEnabled = enabled, pageSpacing = 0.dp) { index ->
             val card = latestCards.value.getOrNull(index) ?: return@HorizontalPager
@@ -185,6 +185,7 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 val foreground = latestCards.value.indexOfFirst { it.id == focusedId }.takeIf { it >= 0 } ?: pager.settledPage
                 // Pager composition bounds preloading. Never blank an already composed paper
                 // based on the last settled focus while a rapid swipe exposes its neighbors.
+                CompositionLocalProvider(LocalPolaroidOverlayOrder provides (1000f - kotlin.math.abs(index - foreground))) {
                 PolaroidCanvas(card, imageFile, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
                     .then(if (wide) Modifier.polaroidShadowFade {
                         carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
@@ -197,6 +198,7 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                         onClick = feedbackClick { if (pager.currentPage == index) preview(card) },
                         onLongClick = feedbackClick { if (pager.currentPage == index) edit(card) }),
                     frame = frame, decodeMaximum = if (index == foreground) 1200 else 256)
+                }
             }
         }
         Text((pager.settledPage + 1).toString() + " / " + cards.size,

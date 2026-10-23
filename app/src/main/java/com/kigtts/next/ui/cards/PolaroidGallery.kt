@@ -28,8 +28,12 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
     registerManagementSource: Boolean, focusedId: String?) {
     val grid = rememberLazyGridState(initialFirstVisibleItemIndex = cards.indexOfFirst { it.id == focusedId }.coerceAtLeast(0) / columns * columns)
     val previous = remember { GridEntranceSnapshot(columns) }
+    val sourceGeometry = LocalCardManagementGeometry.current
+    val arriving = remember { sourceGeometry?.sources?.keys?.toSet().orEmpty() }
     val retained = remember(columns) {
-        previous.visible.takeIf { columns > previous.columns && it.isNotEmpty() }.also { previous.columns = columns }
+        (previous.visible.takeIf { columns > previous.columns && it.isNotEmpty() }
+            ?: arriving.takeIf { it.isNotEmpty() && previous.visible.isEmpty() }?.associateWith { id -> cards.indexOfFirst { it.id == id } })
+            .also { previous.columns = columns }
     }
     val reveal = remember(columns) { Animatable(if (retained == null) 1f else 0f) }
     LaunchedEffect(reveal) { reveal.animateTo(1f, tween(600, easing = LinearEasing)) }

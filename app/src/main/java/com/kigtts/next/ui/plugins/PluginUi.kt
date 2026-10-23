@@ -84,10 +84,10 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
             list?.style == ManagementListStyle.CATALOG -> PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             list != null && list.usesSettingsLayout() -> PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-            else -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            else -> ReadablePage(840.dp) { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke)
                 PluginBlocks(blocks,!busy,invoke, resolve = resolve)
-            }
+            } }
         }
     }
 }

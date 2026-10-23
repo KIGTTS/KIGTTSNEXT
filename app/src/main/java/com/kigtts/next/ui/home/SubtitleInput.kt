@@ -55,11 +55,17 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
     val focused by interactions.collectIsFocusedAsState()
     val windowFocused = LocalWindowInfo.current.isWindowFocused
     val nativeSelection = state.editorValue.composition != null || !state.editorValue.selection.collapsed
-    val motion = rememberSubtitleGlyphMotion(layout, width, height, alignment, state.editorValue.selection.min, !nativeSelection)
+    val reduced = state.subtitleAppearance.reducedMotion
+    // A presentation revision and its measured paragraph must arrive together.
+    val currentLayout = layout?.takeIf { it.layoutInput.text.text == state.editorText }
+    val motion = rememberSubtitleGlyphMotion(currentLayout, width, height, alignment, state.editorValue.selection.min, !nativeSelection,
+        SubtitleGlyphPolicy(reducedMotion = reduced, presentationRevision = state.subtitleRevision))
     // While a new paragraph is being laid out, retain the last drawn frame instead
     // of briefly revealing native text at its destination before animating it.
-    val custom = !nativeSelection &&
-        (layout?.size?.height ?: Int.MAX_VALUE) <= height
+    val measuredCurrentGeometry = currentLayout?.let { it.layoutInput.style.fontSize == fitted.fontSize &&
+        it.layoutInput.constraints.maxWidth == width } == true
+    val custom = !nativeSelection && motion.frame != null &&
+        (!measuredCurrentGeometry || (currentLayout?.size?.height ?: 0) <= height)
     val menu = Modifier.richTextMenu(state.editing && state.subtitleAppearance.richTextEditing,
         { model.state.value.editorValue.selection }, state.subtitleFormats, model::formatSubtitle)
     CompositionLocalProvider(LocalSubtitleMagnifierEnabled provides false) {
@@ -87,8 +93,8 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
                     }, propagateMinConstraints = true) { field() }
                     SubtitleGlyphCanvas(motion, custom, Modifier.matchParentSize().clearAndSetSemantics { })
                     AnimatedVisibility(state.editorText.isEmpty() && state.subtitlePlaceholder.isNotEmpty(),
-                        enter = fadeIn(tween(170)) + slideInVertically(tween(170)) { (it * .12f).toInt() },
-                        exit = fadeOut(tween(150)) + slideOutVertically(tween(150)) { -(it * .12f).toInt() }) {
+                        enter = fadeIn(tween(170)) + if (reduced) EnterTransition.None else slideInVertically(tween(170)) { (it * .12f).toInt() },
+                        exit = fadeOut(tween(150)) + if (reduced) ExitTransition.None else slideOutVertically(tween(150)) { -(it * .12f).toInt() }) {
                         Text(state.subtitlePlaceholder, Modifier.fillMaxWidth().graphicsLayer { alpha = hintOpacity.value }.testTag("subtitle-placeholder"),
                             style = placeholderStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -101,7 +107,7 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
                             SubtitleGlyphFrame(it, Offset(origin.x.toFloat(), origin.y.toFloat()), emptyList(), viewport)
                         }
                         SubtitleCursorMotion(cursorFrame, state.editorValue.selection.end, MaterialTheme.colorScheme.primary,
-                            Modifier.matchParentSize().clearAndSetSemantics { }.testTag("subtitle-caret"))
+                            Modifier.matchParentSize().clearAndSetSemantics { }.testTag("subtitle-caret"), animateMovement = !reduced)
                     }
                 }
             })

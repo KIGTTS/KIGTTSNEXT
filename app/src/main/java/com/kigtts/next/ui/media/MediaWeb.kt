@@ -48,6 +48,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
         WebView(context).apply {
             WebCookies.enable()
             CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
+            settings.disabledActionModeMenuItems = WebSettings.MENU_ITEM_PROCESS_TEXT or WebSettings.MENU_ITEM_WEB_SEARCH or WebSettings.MENU_ITEM_SHARE
             settings.javaScriptEnabled = true; settings.allowFileAccess = false; settings.allowContentAccess = false
             settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             settings.cacheMode = WebSettings.LOAD_NO_CACHE; settings.domStorageEnabled = false

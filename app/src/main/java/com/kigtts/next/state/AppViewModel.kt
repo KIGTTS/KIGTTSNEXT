@@ -387,7 +387,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         if (resource == null) subtitleRenderer.clear(pluginId)
                         else {
                             require(resource.pluginId == null || resource.pluginId == pluginId) { "字幕资源不属于此插件" }
-                            subtitleRenderer.select(pluginId, plugin, pluginManager.paths.storage(pluginId).file(resource.path), outcome.mainPage)
+                            subtitleRenderer.select(pluginId, plugin, pluginManager.paths.storage(pluginId).file(resource.path), outcome.mainPage, outcome.presentation)
                         }
                         pluginManager.refreshUi(pluginId, context())
                         update { it.copy(pluginRevision = it.pluginRevision + 1) }

@@ -1,7 +1,8 @@
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
@@ -13,6 +14,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.ReadablePage
 import com.kigtts.next.ui.management.ResourceAvatar
 import com.kigtts.next.ui.management.InlineProgressButton
 import com.kigtts.next.ui.navigation.LocalPageActive
@@ -23,16 +25,22 @@ import java.io.File
 @Composable internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
     val enabled = !busy && LocalPageActive.current
-    val scroll = key(list.id) { rememberLazyListState() }
-    LazyColumn(Modifier.fillMaxSize().testTag("managed-list/" + list.id), state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item("catalog-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = header) }
-        if (list.items.isEmpty()) item("empty") { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
+    val scroll = key(list.id) { rememberLazyGridState() }
+    CatalogLoadMore(list, scroll, enabled, invoke)
+    ReadablePage {
+    val wide = maxWidth >= 600.dp
+    LazyVerticalGrid(columns = GridCells.Fixed(if (wide) 2 else 1), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
+        state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        item("catalog-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            header(); CatalogShortcuts(list.shortcuts, wide, enabled, invoke); CatalogTabs(list.filters, enabled, invoke)
+        } }
+        if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
-            if (group.isNotBlank()) item("category/$group") { Text(group, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) { Text(group, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(entries, key = { it.id }) { item ->
                 Surface(onClick = feedbackClick { item.primaryAction?.let { invoke(it, emptyMap()) } }, enabled = enabled,
                     shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth().testTag("managed-item/" + item.id)) {
+                    modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)).testTag("managed-item/" + item.id)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         ResourceAvatar(item, resolve, 64.dp)
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -48,6 +56,8 @@ import java.io.File
                 }
             }
         }
+        if (list.loadMore != null) item("catalog-more", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
+    }
     }
 }
 

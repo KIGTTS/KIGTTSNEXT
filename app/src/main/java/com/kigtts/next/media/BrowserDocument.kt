@@ -16,6 +16,7 @@ fun createBrowserView(context: Context, document: BrowserDocument, ready: (WebVi
     error: (String) -> Unit = {}, action: (String, Map<String, String>) -> Unit = { _, _ -> }): WebView = WebView(context).apply {
     WebCookies.enable(); CookieManager.getInstance().setAcceptThirdPartyCookies(this, false)
     settings.apply {
+        disabledActionModeMenuItems = WebSettings.MENU_ITEM_PROCESS_TEXT or WebSettings.MENU_ITEM_WEB_SEARCH or WebSettings.MENU_ITEM_SHARE
         javaScriptEnabled = true; allowFileAccess = false; allowContentAccess = false
         mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW; cacheMode = WebSettings.LOAD_NO_CACHE
         domStorageEnabled = false; mediaPlaybackRequiresUserGesture = true

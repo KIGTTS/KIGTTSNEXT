@@ -8,6 +8,8 @@ data class SubtitleAppearance(
     val bold: Boolean = false,
     val alignment: SubtitleAlignment = SubtitleAlignment.CENTER,
     val richTextEditing: Boolean = false,
+    val reducedMotion: Boolean = false,
+    val displayReflow: Boolean = true,
 )
 
 enum class SubtitleAlignment(val label: String, val row: Int, val column: Int) {
@@ -20,9 +22,11 @@ internal class SubtitleAppearanceStore(context: Context) {
     private val preferences = context.getSharedPreferences("subtitle-appearance", Context.MODE_PRIVATE)
     fun load() = SubtitleAppearance(preferences.getBoolean("bold", false),
         runCatching { SubtitleAlignment.valueOf(preferences.getString("alignment", null).orEmpty()) }.getOrDefault(SubtitleAlignment.CENTER),
-        preferences.getBoolean("rich-text-editing", false))
+        preferences.getBoolean("rich-text-editing", false),
+        preferences.getBoolean("reduced-motion", false), preferences.getBoolean("display-reflow", true))
     fun save(value: SubtitleAppearance) { preferences.edit {
         putBoolean("bold", value.bold); putString("alignment", value.alignment.name)
         putBoolean("rich-text-editing", value.richTextEditing)
+        putBoolean("reduced-motion", value.reducedMotion); putBoolean("display-reflow", value.displayReflow)
     } }
 }

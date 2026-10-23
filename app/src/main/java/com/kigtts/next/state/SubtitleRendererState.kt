@@ -2,6 +2,7 @@ package com.kigtts.next.state
 
 import com.kigtts.next.media.WebContentPolicy
 import com.kigtts.plugin.api.KigPlugin
+import com.kigtts.plugin.api.PanelPresentation
 import com.kigtts.plugin.api.PluginRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,6 +14,7 @@ class SubtitleRendererSelection internal constructor(
     val root: File,
     val mainPage: String,
     internal val plugin: KigPlugin,
+    val presentation: PanelPresentation = PanelPresentation(),
 )
 
 class SubtitleRendererState {
@@ -26,14 +28,14 @@ class SubtitleRendererState {
     }
 
     /** The caller resolves root through this owner's PluginStorage before selecting it. */
-    fun select(owner: String, plugin: KigPlugin, root: File, mainPage: String = "index.html") {
+    fun select(owner: String, plugin: KigPlugin, root: File, mainPage: String = "index.html", presentation: PanelPresentation = PanelPresentation()) {
         require(plugin.descriptor.id == owner) { "Renderer owner does not match plugin" }
         val directory = root.canonicalFile
         require(directory.isDirectory && WebContentPolicy.file(directory, mainPage) != null) { "Renderer main page is unavailable" }
         val current = mutableSelection.value
-        if (current?.owner == owner && current.plugin === plugin && current.root == directory && current.mainPage == mainPage) return
+        if (current?.owner == owner && current.plugin === plugin && current.root == directory && current.mainPage == mainPage && current.presentation == presentation) return
         mutableQuickSwipe.value = false
-        mutableSelection.value = SubtitleRendererSelection(owner, directory, mainPage, plugin)
+        mutableSelection.value = SubtitleRendererSelection(owner, directory, mainPage, plugin, presentation)
     }
 
     /** A plugin can only turn off its own renderer. The host may clear any renderer. */

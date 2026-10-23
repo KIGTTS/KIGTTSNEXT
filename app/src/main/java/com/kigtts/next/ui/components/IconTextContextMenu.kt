@@ -120,7 +120,7 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
     val availableWidth=with(density) { (LocalWindowInfo.current.containerSize.width-left-right-margin*2-shadowPixels*2).coerceAtLeast(1).toDp() }
     val lastItems=remember { arrayOf<List<TextContextMenuItem>>(emptyList()) }
     val components=if(session.visible)session.data.data().components.filterIsInstance<TextContextMenuItem>()
-        .filter { it.key !is TextMenuAnchor&&!isReadAloudItem(it) }.also { lastItems[0]=it } else lastItems[0]
+        .filter { it.key !is TextMenuAnchor && it.key !is ProcessTextKey }.also { lastItems[0]=it } else lastItems[0]
     // A field can move while the provider's full-window root stays still (scroll/app bar).
     // Reposition the native popup on actual geometry changes, not on every animation draw.
     val position = remember(session.owner?.windowBounds,top,bottom,margin,shadowPixels,left,right) {
@@ -162,9 +162,6 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
         }
     }
 }
-
-internal fun isReadAloudItem(item:TextContextMenuItem)=item.key is ProcessTextKey &&
-    item.label.trim().lowercase() in setOf("朗读","朗讀","read aloud","read out loud","speak")
 
 private fun textMenuAction(key: Any, index: Int) = when (key) {
     TextContextMenuKeys.CutKey -> "cut" to Icons.Default.ContentCut

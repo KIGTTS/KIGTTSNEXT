@@ -47,7 +47,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 Text("编辑快捷文本", Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.titleMedium)
             }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane").reorderGestures(drag)) {
-                val columns = if (landscape) ((maxWidth.value + 4f) / 168f).toInt().coerceIn(1, 6) else 2
+                val columns = quickPhraseColumns(maxWidth.value, minimum = if (landscape) 1 else 2)
                 Column(Modifier.fillMaxSize()) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
                         EditablePhraseGrid(phrases.filter { it.category == category }, model,

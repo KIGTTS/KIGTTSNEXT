@@ -75,7 +75,7 @@ fun PluginsScreen(model: AppViewModel) {
                 try { recovery.restore(); safeMode = false; model.refreshPlugins() } finally { busy = false }
             } }) { Text("恢复插件") }
         }
-        Text("拖动手柄可排序，条目下方可查看权限或卸载插件。", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("管理已安装的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (model.pluginManager.status.isEmpty()) Text("还没有安装插件")
     }
     permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }

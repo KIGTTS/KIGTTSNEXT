@@ -46,7 +46,8 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val flipped = state.subtitleFlipped && !state.editing
-    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(320, easing = FastOutSlowInEasing), label = "subtitle-flip")
+    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(if (state.subtitleAppearance.reducedMotion) 0 else 320,
+        easing = FastOutSlowInEasing), label = "subtitle-flip")
     val hintOpacity = animateFloatAsState(if (state.editing) .28f else 1f, tween(180), label = "subtitle-hint-focus")
     val style = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = preferredSubtitleFontSize(state.subtitleSizePercent),
         lineHeight = 1.25.em, fontWeight = if (state.subtitleAppearance.bold) FontWeight.Bold else FontWeight.Normal,

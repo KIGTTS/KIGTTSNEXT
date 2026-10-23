@@ -1,6 +1,6 @@
 # 插件 API v24（兼容 v9–23）
 
-当前 SDK 为 API24，宿主接受API9–24签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
+当前 SDK 为 API25，宿主接受API9–25签名包。助手0.9.13、商店0.10.0及独立界面调试0.1.0需要API14；旧兼容服务保留配置与模型。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -191,3 +191,9 @@ Android16+ PROGRESS 且 ongoing=true 时可设置live=true申请实况展示；�
 ManagementItem.badges为名称旁的简短类型标签（最多4个、每个32字）；selection=ManagementSelection(action, enabled)提供独立单选操作，selected仍为当前选中状态。primaryAction与单选、辅助动作分别路由。开关优先于单选，停用项可以保留详情而禁用选用。辅助actions由宿主排在下方并按可用宽度溢出，插件不提供坐标或样式；Material Symbol与文字动作均保留。相邻同组条目使用相连圆角，手柄保留独立拖动与无障碍移动。旧11/12参数构造器、copy与默认掩码以及旧JSON缺省值兼容；使用新字段的包必须标API24。
 
 API24 PluginPage.headerAction复用ManagementProgressAction，在图标和标题右侧显示获取/进度/安装；与管理列表共用动作和任务状态。PluginPage.search=PluginSearch(query,actionId,placeholder)由宿主渲染聚焦搜索页，输入去抖220ms后以value提交；返回退出当前页面，清除只清空查询，不退出搜索。保留PluginPage旧4/6/8参数构造/copy默认桥，旧JSON默认无搜索和页头动作。
+
+## API25 商店导航和面板展示
+
+`ManagementList.shortcuts` 提供列表上方入口，原有filters呈现为主题Tab；`loadMore=ManagementLoadMore(action)` 在滚动接近列表末尾时调用。每批返回新的动作令牌和完整已加载条目，宿主保留位置；加载结束传null。手机单列、平板双列由宿主按可用宽度控制。
+
+字幕渲染器可通过`SetSubtitleRenderer.presentation=PanelPresentation(fullscreenBackground=0xff000000L, fadeControlsWhenIdle=true)`指定全屏外围ARGB颜色和闲置按钮淡化。`SetListeningPanel.fadeControlsWhenIdle`为聆听上面板提供相同行为。触摸/键盘操作恢复按钮；遵循系统无障碍超时，保留按钮安全区和首击响应。旧构造和copy桥保留，旧请求默认不改变展示。

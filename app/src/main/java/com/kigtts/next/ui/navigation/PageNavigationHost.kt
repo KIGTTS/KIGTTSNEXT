@@ -32,10 +32,11 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val parent = camera?.let { navigation.wanted.lastOrNull { page -> page.depth == it.depth - 1 } }
     CompositionLocalProvider(LocalCameraPullState provides pull) {
     Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer,
-        if (quickSwipe) ({ model.openPanel(HomePanel.QUICK_TEXT) }) else null) {
+        if (quickSwipe && state.forcedFullscreen) ({ model.exitSubtitleFullscreen(); model.openPanel(HomePanel.QUICK_TEXT) }) else null,
+        pagesEnabled = !state.forcedFullscreen) {
         val value = latestState.value
         value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
-            !value.voiceInputActive && value.mediaId == null && !value.forcedFullscreen &&
+            !value.voiceInputActive && value.mediaId == null && (!value.forcedFullscreen || quickSwipe) &&
             !latestDrawer.value && !latestNavigation.value.outgoingAbove && latestProgress.value == 0f && !pull.active
     }.cameraPullNavigation(pull) {
         val value = latestNavigation.value; val foreground = value.current

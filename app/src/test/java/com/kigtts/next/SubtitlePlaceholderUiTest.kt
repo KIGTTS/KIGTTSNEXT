@@ -66,7 +66,7 @@ class SubtitlePlaceholderUiTest {
     }
     @Test fun savingAndCancellingSettingsDialogHaveSeparateEffectsIncludingEmptyHint() {
         var value by mutableStateOf("原提示")
-        compose.setContent { MaterialTheme { AppearanceSettingsScreen(ThemeSettings(), {}, value) { value = it } } }
+        compose.setContent { MaterialTheme { AppearanceSettingsScreen(ThemeSettings(), {}, value, onPlaceholderChange = { value = it }) } }
         fun open() = compose.onNodeWithTag("subtitle-placeholder-setting").performScrollTo().performClick()
         open(); compose.onNodeWithTag("subtitle-placeholder-input").performTextReplacement("未保存")
         compose.onNodeWithTag("subtitle-placeholder-cancel").performClick()

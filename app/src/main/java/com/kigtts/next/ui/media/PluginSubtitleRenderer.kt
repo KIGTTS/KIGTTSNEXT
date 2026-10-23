@@ -88,6 +88,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
             setOnLongClickListener { true }
             isVerticalScrollBarEnabled = false; isHorizontalScrollBarEnabled = false
             settings.apply {
+                disabledActionModeMenuItems = WebSettings.MENU_ITEM_PROCESS_TEXT or WebSettings.MENU_ITEM_WEB_SEARCH or WebSettings.MENU_ITEM_SHARE
                 javaScriptEnabled = true; allowFileAccess = false; allowContentAccess = false
                 mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                 cacheMode = WebSettings.LOAD_NO_CACHE; domStorageEnabled = false; databaseEnabled = false

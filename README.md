@@ -22,7 +22,7 @@ Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Ex
 
 | 主题 | 文档 |
 | --- | --- |
-| 插件 SDK、设置入口、页面与宿主操作 | [API24](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
+| 插件 SDK、设置入口、页面与宿主操作 | [API25](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
 | 专用包、资源归属、安装与调试 | [插件包](docs/plugin-packages.md)、[独立管理器](docs/plugin-manager.md) |
 | 合成与识别 | [合成生命周期](docs/tts-lifecycle.md)、[识别服务](docs/recognition-service.md)、[流式识别包](docs/streaming-recognition.md) |
 | 媒体、卡片与源码 | [媒体协议](docs/media-content.md)、[快捷卡片](docs/quick-cards.md)、[HTML 文件与编辑器](docs/html-editor.md) |
