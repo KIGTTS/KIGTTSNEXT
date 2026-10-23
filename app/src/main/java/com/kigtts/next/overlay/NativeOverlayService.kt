@@ -41,7 +41,8 @@ class NativeOverlayService : Service() {
     private var haptics by mutableStateOf(true)
     private var windowExpanded = false
     private var dragX = 0f; private var dragY = 0f
-    private var idle: Job? = null; private var resize: Job? = null
+    private var idle: Job? = null
+    private var collapseReady = true
     private lateinit var appearance: SharedPreferences
     private lateinit var feedback: SharedPreferences
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
@@ -68,15 +69,17 @@ class NativeOverlayService : Service() {
         dial = OverlayWindow(windowContext, wm) { collapse() }.also { host -> host.content {
             KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
                 OverlayDial(config, layout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
-                    { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) })
+                    { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) }, ::finishCollapse)
             } }
         } }
         place(); interact()
         if (Build.VERSION.SDK_INT >= 31) windowContext.registerComponentCallbacks(windowConfiguration)
         scope.launch { store.settings.collectLatest { next ->
+            val geometryChanged = config.rightEdge != next.rightEdge || config.position != next.position
             config = next
             if (!next.enabled || !Settings.canDrawOverlays(this@NativeOverlayService)) { stopSelf(); return@collectLatest }
-            place(); interact()
+            if (geometryChanged) place(animate = true)
+            interact()
         } }
         scope.launch { hub.bubble.collectLatest { value ->
             bubble?.close(); bubble = null
@@ -110,11 +113,11 @@ class NativeOverlayService : Service() {
         val top = dimension("status_bar_height"); val bottom = dimension("navigation_bar_height")
         return OverlayBounds(0, top, metrics.widthPixels, (metrics.heightPixels - top - bottom).coerceAtLeast(1))
     }
-    private fun place() {
+    private fun place(animate: Boolean = false) {
         val safe = safeBounds()
         layout = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded)
         if (dragX != 0f || dragY != 0f) layout = layout.copy(x = layout.x + dragX.toInt(), y = (layout.y + dragY.toInt()).coerceIn(safe.top, safe.top + (safe.height - layout.height).coerceAtLeast(0)))
-        try { dial?.place(layout.x, layout.y, layout.width, layout.height) }
+        try { dial?.place(layout.x, layout.y, layout.width, layout.height, animate) }
         catch (_: RuntimeException) { store.update { it.copy(enabled = false) }; stopSelf() }
         hub.bubble.value?.let { if (bubble != null) placeBubble() }
     }
@@ -123,25 +126,41 @@ class NativeOverlayService : Service() {
         if (!expanded && config.autoHide && hub.bubble.value == null) idle = scope.launch { delay(3500); hidden = true }
     }
     private fun toggle() { if (expanded) collapse() else {
-        interact(); resize?.cancel(); windowExpanded = true; place(); expanded = true
+        interact(); collapseReady = false; windowExpanded = true; place(); expanded = true
     } }
     private fun collapse() {
         if (!expanded) return
-        expanded = false; resize?.cancel()
-        resize = scope.launch { delay(420); windowExpanded = false; place(); interact() }
+        expanded = false; collapseReady = false
+    }
+    private fun finishCollapse() {
+        if (expanded) return
+        collapseReady = true
+        if (dragX != 0f || dragY != 0f || !windowExpanded) return
+        windowExpanded = false; place(); interact()
     }
     private fun drag(x: Float, y: Float) {
         if (expanded) collapse()
         interact(); dragX += x; dragY += y; place()
     }
     private fun drop() {
-        if (dragX == 0f && dragY == 0f) return
+        if (dragX == 0f && dragY == 0f) {
+            if (collapseReady) finishCollapse()
+            return
+        }
         val safe = safeBounds(); val centerX = layout.x + layout.fabX; val centerY = layout.y + layout.fabY
         dragX = 0f; dragY = 0f
+        // Collapse around the current absolute center before crossing edges. Otherwise the
+        // local anchor flips from the right to the left of the large host in one frame.
+        if (windowExpanded) {
+            windowExpanded = false
+            val compact = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, false)
+            layout = compact.copy(x = (centerX - compact.fabX).toInt(), y = (centerY - compact.fabY).toInt())
+            dial?.place(layout.x, layout.y, layout.width, layout.height)
+        }
         val padding = 40 * windowContext.resources.displayMetrics.density
         val position = ((centerY - safe.top - padding) / (safe.height - 2 * padding).coerceAtLeast(1f)).coerceIn(0f, 1f)
         store.update { it.copy(rightEdge = centerX > safe.left + safe.width / 2f, position = position) }
-        config = store.settings.value; place(); interact()
+        config = store.settings.value; place(animate = true); interact()
     }
     private fun open(item: OverlayShortcut) { collapse(); OverlayLaunch.open(this, item) }
     private fun showBubble(value: OverlayNotice) {

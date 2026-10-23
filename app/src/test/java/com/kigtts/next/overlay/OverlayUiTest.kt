@@ -47,6 +47,21 @@ class OverlayUiTest {
         compose.onNodeWithContentDescription("收起快捷入口").performClick()
         compose.onNodeWithContentDescription("展开快捷入口").assertExists()
     }
+    @Test fun draggingAnEntranceScrollsTheDialWithoutOpeningIt() {
+        var opened: String? = null
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, { opened = it.id }, {})
+        } } }
+        val icon = compose.onNodeWithContentDescription("拍照")
+        val before = icon.fetchSemanticsNode().boundsInRoot
+        icon.performTouchInput {
+            swipe(center, center + androidx.compose.ui.geometry.Offset(0f, 320f), 350)
+        }
+        compose.waitForIdle()
+        val after = compose.onNodeWithContentDescription("拍照").fetchSemanticsNode().boundsInRoot
+        compose.runOnIdle { assertNull(opened); assertNotEquals(before, after) }
+    }
     @Test fun motionButtonsAndDialogActionsTickOnceAndHonorGlobalOff() {
         val ticks = mutableListOf<HapticFeedbackType>(); var enabled by mutableStateOf(true); var actions = 0
         val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }
