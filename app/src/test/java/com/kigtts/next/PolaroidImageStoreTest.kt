@@ -43,8 +43,10 @@ class PolaroidImageStoreTest {
         }
         try {
             val first = requireNotNull(store.load(file, 64))
+            assertSame("A new layout must reuse any cached LOD before its sharper decode", first, store.preview(file, 256))
             assertNotSame(first, store.load(file, 128)); assertEquals(2, count.get())
             file.writeText("changed-source")
+            assertNull("A replaced source must never reuse old pixels", store.preview(file, 256))
             assertNotSame(first, store.load(file, 64)); assertEquals(3, count.get())
             assertTrue(store.memoryBytes <= 512)
             assertFalse(first.isRecycled)

@@ -8,6 +8,19 @@ import java.nio.file.Files
 import java.util.zip.*
 
 class PackageInstallerInfoTest {
+    @Test fun updatePermissionsCompareDeclarationsAndKeepRemovedPermissionsOut() {
+        val file = Files.createTempFile("installer-update", ".zip").toFile()
+        try {
+            val next = PackageManifest("test.plugin", "测试", "2.0", 2, "test.Plugin", files = emptyMap(), capabilities = listOf("ui", "network", "camera"))
+            val previous = next.copy(version = "1.0", versionCode = 1, capabilities = listOf("ui", "network", "microphone"))
+            val info = PackageInstallerInfo(PendingPackage(file, PackagePreview(next, "a".repeat(64))), previous = previous)
+            assertEquals(listOf("camera"), info.addedPermissions)
+            assertEquals(listOf("network"), info.existingPermissions)
+            assertEquals("更新插件", installerLabels(listOf(info)).action)
+            assertEquals("插件已更新", installerLabels(listOf(info)).result)
+            assertEquals("安装并更新", installerLabels(listOf(info, info.copy(previous = null))).action)
+        } finally { file.delete() }
+    }
     @Test fun onlyBoundedManifestListedPresentationAssetsAreReadAndUiIsNotAPermission() {
         val file = Files.createTempFile("installer-info", ".zip").toFile()
         try {

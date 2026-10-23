@@ -12,7 +12,8 @@ internal fun LocalPackageInstaller(model: AppViewModel, candidate: PendingPackag
     var completed by remember(candidate) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(candidate) {
-        try { info = withContext(Dispatchers.IO) { installerInfo(candidate) } }
+        try { info = withContext(Dispatchers.IO) { installerInfo(candidate,
+            model.pluginManager.packages.installed().firstOrNull { it.manifest.id == candidate.preview.manifest.id }?.manifest) } }
         catch (cancel: CancellationException) { throw cancel }
         catch (failure: Exception) { error = failure.message ?: "安装信息无法读取" }
     }

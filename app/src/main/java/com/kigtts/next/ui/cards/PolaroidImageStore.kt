@@ -21,6 +21,13 @@ internal class PolaroidImageStore(maxBytes: Int = 16 * 1024 * 1024,
     val memoryBytes: Int get() = memory.size()
     private fun key(file: File, maximum: Int) = file.absolutePath + "|" + file.lastModified() + "|" + file.length() + "|" + maximum
     fun peek(file: File?, maximum: Int): Bitmap? = file?.let { memory[key(it, maximum)] }
+    fun preview(file: File?, maximum: Int): Bitmap? {
+        if (file == null) return null
+        peek(file, maximum)?.let { return it }
+        val prefix = key(file, maximum).substringBeforeLast('|') + "|"
+        return memory.snapshot().entries.filter { it.key.startsWith(prefix) }
+            .maxByOrNull { it.key.substringAfterLast('|').toIntOrNull() ?: 0 }?.value
+    }
     suspend fun load(file: File, maximum: Int): Bitmap? {
         val key = key(file, maximum)
         val task = synchronized(lock) {
@@ -54,7 +61,7 @@ internal fun rememberCardImage(file: File?, maximum: Int = 384): ImageBitmap? {
     // Keep lower-resolution pixels while a larger decode is pending, but never retain a
     // different file's pixels when a stable card changes its photo.
     var image by remember(file?.path, stamp, bytes) {
-        mutableStateOf(cardImages.peek(file, maximum)?.asImageBitmap())
+        mutableStateOf(cardImages.preview(file, maximum)?.asImageBitmap())
     }
     LaunchedEffect(file?.path, stamp, bytes, maximum) {
         if (file != null) {

@@ -48,12 +48,12 @@ private fun PluginTabStrip(actions: List<RegisteredAction>, invoke: (RegisteredA
                     pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     Modifier.width(32.dp).testTag(action?.key ?: overflowTag)
                         .semantics { contentDescription = action?.action?.label ?: "更多操作" },
-                    icon = { Icon(action?.action?.let { it.icon.vector(it.symbol) } ?: Icons.Default.ExpandMore, null, Modifier.size(16.dp)) }, label = {})
+                    icon = { PluginIconBadge(action?.action?.badge, contained = true) { Icon(action?.action?.let { it.icon.vector(it.symbol) } ?: Icons.Default.ExpandMore, null, Modifier.size(16.dp)) } }, label = {})
             } }
         }
         DropdownMenu(more && overflow && LocalActionInteractivity.current, { more = false }) {
             hidden.forEach { action -> DropdownMenuItem(text = { Text(action.action.label) },
-                leadingIcon = { Icon(action.action.icon.vector(action.action.symbol), null) }, modifier = Modifier.testTag(action.key + "-menu"),
+                leadingIcon = { PluginIconBadge(action.action.badge) { Icon(action.action.icon.vector(action.action.symbol), null) } }, modifier = Modifier.testTag(action.key + "-menu"),
                 onClick = feedbackClick { more = false; invoke(action) }) }
         }
     }

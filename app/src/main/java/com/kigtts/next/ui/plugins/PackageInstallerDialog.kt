@@ -24,6 +24,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     error: String?, allowDowngrade: Boolean = false, installedNames: List<String> = emptyList(),
     install: () -> Unit, dismiss: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
+    val labels = installerLabels(packages.orEmpty())
     MotionAlertDialog(onDismissRequest = dismiss, dismissEnabled = !busy,
         text = {
             Column(Modifier.fillMaxWidth().height(480.dp).testTag("package-installer"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -33,8 +34,8 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                         verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Spacer(Modifier.height(8.dp))
                         Icon(Icons.Default.CheckCircle, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text("插件已安装", style = MaterialTheme.typography.titleLarge)
-                        Text("权限将在使用相关功能时申请", style = MaterialTheme.typography.bodyMedium)
+                        Text(labels.result, style = MaterialTheme.typography.titleLarge)
+                        Text(if (packages.orEmpty().any { it.previous != null }) "新增权限将在使用时申请" else "权限将在使用相关功能时申请", style = MaterialTheme.typography.bodyMedium)
                         installedNames.forEach { Text(it) }
                     }
                 } else {
@@ -63,9 +64,9 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
             }
         },
         confirmButton = {
-            if (completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text("安装完成") }
+            if (completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text(labels.done) }
             else Button(onClick = feedbackClick(install), enabled = packages != null && !busy) {
-                Text(if (busy) "正在安装…" else "安装插件")
+                Text(if (busy) labels.working else labels.action)
             }
         },
         dismissButton = { if (!completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = !busy) { Text("取消") } })
@@ -82,7 +83,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
         }, null, Modifier.size(48.dp).testTag("installer-package-symbol"), tint = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(info.manifest.name, style = MaterialTheme.typography.titleLarge)
-            Text(listOf(info.author, "v${info.manifest.version}").filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
+            Text(listOf(info.author, info.previous?.let { "v${it.version} → v${info.manifest.version}" } ?: "v${info.manifest.version}").filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
             Text("插件包 · ${android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current, info.candidate.file.length())}", style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -103,22 +104,6 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
 @Composable private fun InstallerInfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(label, Modifier.weight(1f)); Text(value, style = MaterialTheme.typography.bodyMedium)
-    }
-}
-
-@Composable private fun PackageInstallerPermissions(info: PackageInstallerInfo) {
-    Text("插件访问权限", style = MaterialTheme.typography.titleSmall)
-    Text("首次使用需要权限的功能时会询问授权，也可随时在插件权限中调整。", style = MaterialTheme.typography.bodySmall)
-    if (info.permissions.isEmpty()) Text("此插件未声明额外权限")
-    info.permissions.forEach { permission ->
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(permissionIcon(permission), null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.primary)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(PluginPermissions.label(permission), style = MaterialTheme.typography.titleSmall)
-                info.manifest.permissionPurposes[permission]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                Text("使用时询问", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
     }
 }
 

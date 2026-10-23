@@ -9,6 +9,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SettingsEntriesTest {
+    @Test fun iconBadgesReachNativeSettingsAndBackupEntries() {
+        val badge = PluginBadge(description = "新增内容", tone = BadgeTone.CAUTION)
+        val registry = PluginRegistry(listOf(plugin("test.badges", listOf(
+            SettingsEntry("notice", "提醒", "page", badge = badge),
+            SettingsEntry("backup", "兼容备份", "page", cardId = "backup", badge = badge)))))
+        assertEquals(badge, settingsCards(registry, PluginContext("", "")).flatMap { it.links }.single { it.id.endsWith("/notice") }.badge)
+        assertEquals(badge, backupSettingsLinks(registry, PluginContext("", "")).single().badge)
+    }
     @Test fun eachCompatibilityFormatGetsItsOwnCardAndKeepsBothActionsTogether() {
         val registry = PluginRegistry(listOf(plugin("backup.kigusay", listOf(
             SettingsEntry("import", "导入娃语", "import", cardId = "backup", cardTitle = "娃语（Kigusay）", order = 1),

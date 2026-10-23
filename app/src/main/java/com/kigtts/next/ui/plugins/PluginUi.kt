@@ -29,13 +29,13 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
         UiSlot.LISTENING_BOTTOM_END, UiSlot.QUICK_PANEL_END, UiSlot.TAB_END)
     if (slot == UiSlot.HEADER_START || slot == UiSlot.HEADER_END) {
         ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(it.action.symbol), { onAction(it) },
-            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy) }, modifier.widthIn(max = 144.dp), plain = true,
+            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy, badge = it.action.badge) }, modifier.widthIn(max = 144.dp), plain = true,
             alignEnd = end, overflowTag = slot.name + "-more")
         return
     }
     if (slot !in listOf(UiSlot.HEADER_START, UiSlot.HEADER_END, UiSlot.TAB_START, UiSlot.TAB_END)) {
         ElasticButtonGroup(actions.map { ElasticAction(it.key, it.action.label, it.action.icon.vector(it.action.symbol), { onAction(it) },
-            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy) }, modifier.widthIn(max = 144.dp),
+            iconOnly = it.action.buttonStyle == UiButtonStyle.ICON, busy = it.action.busy, badge = it.action.badge) }, modifier.widthIn(max = 144.dp),
             alignEnd = end, overflowTag = slot.name + "-more")
         return
     }
@@ -56,7 +56,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
     val toolbar=LocalPageToolbarActions.current!=null
     val actionGroups = page.blocks.filterIsInstance<PageBlock.Actions>()
     if(toolbar)RegisterPageActions(actionGroups.flatMap { it.actions }.map { action ->
-        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(action.symbol),!busy, preserveColorWhenLocked=true) { invoke(action.id,emptyMap()) }
+        ToolbarAction("plugin-page/"+action.id,action.label,action.icon.vector(action.symbol),!busy, preserveColorWhenLocked=true, badge=action.badge) { invoke(action.id,emptyMap()) }
     }, primaryCount = if (page.blocks.any { it is PageBlock.Chat } || actionGroups.firstOrNull()?.actions?.size == 3) 3 else 2)
     val blocks=page.blocks.filterNot { block ->
         (toolbar && block is PageBlock.Actions) ||
@@ -132,7 +132,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
         }
         is PageBlock.Actions -> MotionColumn(block.actions,{ action,_->action.id },enabled=enabled,spacing=2.dp,animateInitial=false) { action,interactive ->
             SettingItem(action.label, "", (if(action.icon == PluginIcon.NONE && action.symbol == null) null else action.icon.vector(action.symbol)), settingPosition(block.actions.indexOf(action), block.actions.size),
-                onClick = { invoke(action.id, emptyMap()) }, enabled = interactive, trailing = {
+                onClick = { invoke(action.id, emptyMap()) }, enabled = interactive, badge = action.badge, trailing = {
                     Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
                 })
         }

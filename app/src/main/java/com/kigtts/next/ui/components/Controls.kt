@@ -55,6 +55,7 @@ fun ToolButton(
     iconSize: Dp = size / 2,
     onLongClick: (() -> Unit)? = null,
     iconBlend: ToolIconBlend? = null,
+    badge: com.kigtts.plugin.api.PluginBadge? = null,
 ) {
     val animatedIconSize = animateDpAsState(if (busy) size / 2 else iconSize,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "tool-icon-size")
@@ -65,8 +66,10 @@ fun ToolButton(
         .semantics { contentDescription = label; if (busy) stateDescription = "正在执行" },
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
+            PluginIconBadge(badge, contained = size < 40.dp) {
             if (iconBlend == null) AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
             else BlendedToolIcon(iconBlend, animatedIconSize.value)
+            }
             AnimatedVisibility(busy, enter = fadeIn(), exit = fadeOut()) {
                 CircularProgressIndicator(Modifier.size(size - 4.dp), strokeWidth = 2.dp)
             }
@@ -82,6 +85,7 @@ fun PillButton(
     shapes: ButtonShapes = expressivePillShapes(),
     colors: ButtonColors = compactTonalButtonColors(),
     enabled: Boolean = true,
+    badge: com.kigtts.plugin.api.PluginBadge? = null,
 ) {
     val press=rememberImmediateButtonPress(interactionSource)
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
@@ -90,7 +94,7 @@ fun PillButton(
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
         AnimatedButtonContent(icon to label) { (image, text) ->
             Row {
-                Icon(image, null, Modifier.size(16.dp))
+                PluginIconBadge(badge, contained = true) { Icon(image, null, Modifier.size(16.dp)) }
                 Spacer(Modifier.width(6.dp))
                 Text(text, maxLines = 1, style = MaterialTheme.typography.labelMedium)
             }

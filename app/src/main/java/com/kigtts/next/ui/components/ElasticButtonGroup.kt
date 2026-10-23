@@ -31,6 +31,7 @@ data class ElasticAction(
     val id: String, val label: String, val icon: ImageVector, val onClick: () -> Unit,
     val iconOnly: Boolean = true, val weight: Float = 1f,
     val busy: Boolean = false,
+    val badge: com.kigtts.plugin.api.PluginBadge? = null,
 )
 
 /** The first action stays at the outside edge; excess actions remain reachable in a menu. */
@@ -96,10 +97,10 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 if (action.iconOnly || !allTextFits) ToolButton(action.label, action.icon, action.onClick, button,
                     sources[index], IconButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
                     if (plain) compactPlainIconColors() else compactTonalIconColors(), busy = action.busy,
-                    iconSize = if (plain) 24.dp else 16.dp)
+                    iconSize = if (plain) 24.dp else 16.dp, badge = action.badge)
                 else PillButton(action.label, action.icon, action.onClick, button, sources[index],
                     ButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
-                    if (plain) compactPlainButtonColors() else compactTonalButtonColors())
+                    if (plain) compactPlainButtonColors() else compactTonalButtonColors(), badge = action.badge)
                 }
             } }
         }) { children, constraints ->
@@ -117,7 +118,7 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
         }
         DropdownMenu(more && overflow && LocalActionInteractivity.current, { more = false }, properties = PopupProperties(focusable = false)) {
             hidden.forEach { action -> DropdownMenuItem(text = { Text(action.label) },
-                leadingIcon = { Icon(action.icon, null) }, modifier = Modifier.testTag(action.id + "-menu"),
+                leadingIcon = { PluginIconBadge(action.badge) { Icon(action.icon, null) } }, modifier = Modifier.testTag(action.id + "-menu"),
                 onClick = feedbackClick { more = false; action.onClick() }) }
         }
     }

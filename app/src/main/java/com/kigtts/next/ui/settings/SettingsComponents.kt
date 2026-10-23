@@ -59,12 +59,16 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit = {},
     enabled: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
+    badge: com.kigtts.plugin.api.PluginBadge? = null,
     content: @Composable ColumnScope.() -> Unit = {}) {
     val shape = groupedSettingShape(position, MaterialTheme.shapes.small)
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (leading != null) leading() else if (icon != null) Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                if (leading != null || icon != null || badge != null) com.kigtts.next.ui.components.PluginIconBadge(badge) {
+                    if (leading != null) leading() else if (icon != null) Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                    else Spacer(Modifier.size(24.dp))
+                }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)
                     if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

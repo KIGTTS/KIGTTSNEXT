@@ -21,6 +21,28 @@ import java.nio.file.Files
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PackageInstallerUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun updatePrioritizesNewPermissionsAndKeepsPreviousPermissionsCollapsed() {
+        val file = Files.createTempFile("installer-update-ui", ".kigplugin").toFile()
+        val manifest = PackageManifest("test.plugin", "测试", "2.0", 2, "test.Plugin", files = emptyMap(),
+            capabilities = listOf("network", "camera"), permissionPurposes = mapOf("network" to "获取图片素材", "camera" to "拍摄新照片"))
+        val info = PackageInstallerInfo(PendingPackage(file, PackagePreview(manifest, "a".repeat(64))),
+            previous = manifest.copy(version = "1.0", versionCode = 1, capabilities = listOf("network")))
+        var complete by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            PackageInstallerDialog(listOf(info), false, complete, null, install = { complete = true }, dismiss = {})
+        } }
+        compose.onNodeWithText("权限").performClick()
+        compose.onNodeWithText("新增权限").assertIsDisplayed()
+        compose.onNodeWithText("拍摄新照片").assertIsDisplayed()
+        compose.onNodeWithText("获取图片素材").assertDoesNotExist()
+        compose.onNodeWithText("已有权限 · 1").performClick()
+        compose.onNodeWithText("获取图片素材").assertExists()
+        compose.onAllNodes(isToggleable() and hasAnyAncestor(hasTestTag("installer-details"))).assertCountEquals(0)
+        compose.onNodeWithText("更新插件").performClick()
+        compose.onNodeWithText("插件已更新").assertIsDisplayed()
+        compose.onNodeWithText("更新完成").assertIsDisplayed()
+        file.delete()
+    }
     @Test fun tabsScrollInternallyWhileActionsStayFixedAndInstallNeverOffersPermissionToggles() {
         val file = Files.createTempFile("installer-ui", ".kigplugin").toFile()
         val info = PackageInstallerInfo(PendingPackage(file, PackagePreview(PackageManifest("example.speech", "语音识别增强", "1.2.0", 12,

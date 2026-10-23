@@ -77,7 +77,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
             val links = card.links
             links.forEachIndexed { index, link ->
                 val position = when { links.size == 1 -> SettingPosition.SINGLE; index == 0 -> SettingPosition.FIRST; index == links.lastIndex -> SettingPosition.LAST; else -> SettingPosition.MIDDLE }
-                SettingItem(link.title, link.summary, link.icon, position, enabled = !busy, onClick = { model.navigate(link.destination) })
+                SettingItem(link.title, link.summary, link.icon, position, enabled = !busy, onClick = { model.navigate(link.destination) }, badge = link.badge)
             }
         } }
     }

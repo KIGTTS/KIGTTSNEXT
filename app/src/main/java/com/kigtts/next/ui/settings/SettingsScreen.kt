@@ -31,7 +31,7 @@ fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null
                         else -> SettingPosition.MIDDLE
                     }
                     SettingItem(link.title, link.summary, link.icon, position,
-                        Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = enabled,
+                        Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = enabled, badge = link.badge,
                         trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
                 }
             }

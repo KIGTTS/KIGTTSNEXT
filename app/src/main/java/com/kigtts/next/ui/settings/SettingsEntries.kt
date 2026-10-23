@@ -11,7 +11,7 @@ import com.kigtts.plugin.api.PluginRegistry
 import com.kigtts.plugin.api.SettingsEntry
 
 internal data class SettingsLink(val id: String, val title: String, val summary: String,
-    val icon: ImageVector?, val destination: Destination)
+    val icon: ImageVector?, val destination: Destination, val badge: com.kigtts.plugin.api.PluginBadge? = null)
 internal data class SettingsCard(val id: String, val title: String, val subtitle: String,
     val links: List<SettingsLink>)
 
@@ -50,7 +50,7 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         val entries = features.filter { it.entry.cardId == id }
         val pluginLinks = entries.sortedBy { if (it.pluginId == "tools.package-store") 0 else 1 }.map { (pluginId, entry) ->
             SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary, if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
-                Destination.PluginPage(pluginId, entry.pageId))
+                Destination.PluginPage(pluginId, entry.pageId), entry.badge)
         }
         val links = if (id == "extensions") pluginLinks + native[id].orEmpty() else native[id].orEmpty() + pluginLinks
         if (links.isEmpty()) null else {
@@ -72,4 +72,4 @@ internal fun backupSettingsCards(registry: PluginRegistry, context: PluginContex
         .map { (group, entries) -> SettingsCard("plugin/${group.first}/${group.second}", group.second, "",
             entries.map { (pluginId, entry) -> SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary,
             if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
-            Destination.PluginPage(pluginId, entry.pageId)) }) }
+            Destination.PluginPage(pluginId, entry.pageId), entry.badge) }) }

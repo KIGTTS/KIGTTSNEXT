@@ -39,7 +39,10 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
                     require(candidate.preview.manifest.versionCode > old.manifest.versionCode || outcome.allowDowngrade && candidate.preview.manifest.versionCode != old.manifest.versionCode) { "版本已安装或需要明确确认切换旧版" }
                 } }
             }
-            candidates = withContext(Dispatchers.IO) { copied.map(::installerInfo) }
+            candidates = withContext(Dispatchers.IO) {
+                val previous = model.pluginManager.packages.installed().associateBy { it.manifest.id }
+                copied.map { installerInfo(it, previous[it.preview.manifest.id]?.manifest) }
+            }
         } catch (cancel: CancellationException) { copied.forEach { it.file.delete() }; throw cancel }
         catch (failure: Exception) { copied.forEach { it.file.delete() }; error = failure.message ?: "安装计划无法读取" }
     }

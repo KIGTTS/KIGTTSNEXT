@@ -31,7 +31,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import kotlinx.coroutines.delay
 
 data class ToolbarAction(val id:String,val label:String,val icon:ImageVector,val enabled:Boolean=true,val preserveColorWhenLocked:Boolean=false,
-    val checked:Boolean?=null,val longClick:(()->Unit)?=null,val click:()->Unit)
+    val checked:Boolean?=null,val longClick:(()->Unit)?=null,val badge:com.kigtts.plugin.api.PluginBadge?=null,val click:()->Unit)
 class PageToolbarActions {
     var source:State<List<ToolbarAction>>? by mutableStateOf(null)
     var primaryCount: State<Int>? by mutableStateOf(null)
@@ -75,7 +75,7 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     val retained = remember { mutableStateListOf<ToolbarAction>() }
     SideEffect { wanted.forEach { action ->
         val index = retained.indexOfFirst { it.id == action.id }
-        if (index < 0) retained.add(action) else if (retained[index].label != action.label || retained[index].icon != action.icon || retained[index].enabled != action.enabled || retained[index].checked != action.checked) retained[index] = action
+        if (index < 0) retained.add(action) else if (retained[index].label != action.label || retained[index].icon != action.icon || retained[index].enabled != action.enabled || retained[index].checked != action.checked || retained[index].badge != action.badge) retained[index] = action
     } }
     retained.toList().forEach { stored -> key(stored.id) {
         val current = wanted.firstOrNull { it.id == stored.id }
@@ -90,10 +90,10 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
             val colors = compactPlainIconColors().let { if(temporaryLock)it.keepColorsWhenLocked() else it }
             if (action.checked != null) MotionIconToggleButton(action.checked, { action.click() },
                 Modifier.requiredSize(48.dp).testTag(action.id), enabled = active && current != null && action.enabled,
-                transientLock = temporaryLock) { Icon(action.icon, action.label) }
+                transientLock = temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon, action.label) } }
             else com.kigtts.next.ui.components.IconActionHint(action.label, action.longClick != null) {
                 MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id)
-                    .iconLongAction(active&&current!=null&&action.enabled, action.longClick),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { Icon(action.icon,action.label) }
+                    .iconLongAction(active&&current!=null&&action.enabled, action.longClick),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon,action.label) } }
             }
         }
     } }
@@ -102,7 +102,7 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     Box(Modifier.excludeCameraPull()) {
         MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert,"更多页面操作") }
         DropdownMenu(more&&active,{ more=false }) {
-            actions.drop(primaryCount).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ Icon(action.icon,null) },
+            actions.drop(primaryCount).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon,null) } },
                 colors=MenuDefaults.itemColors().animateEnabled(action.enabled),
                 enabled=action.enabled,onClick=feedbackClick { more=false;action.click() },modifier=Modifier.testTag(action.id)) }
         }
