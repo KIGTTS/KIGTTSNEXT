@@ -69,7 +69,11 @@ class NativeOverlayService : Service() {
         dial = OverlayWindow(windowContext, wm) { collapse() }.also { host -> host.content {
             KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
                 OverlayDial(config, layout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
-                    { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) }, ::finishCollapse)
+                    { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) }, ::finishCollapse, { id, direction ->
+                        val before = store.settings.value.shortcuts.indexOfFirst { it.id == id }
+                        store.move(id, direction)
+                        before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
+                    })
             } }
         } }
         place(); interact()

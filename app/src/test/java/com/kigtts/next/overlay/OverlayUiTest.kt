@@ -62,6 +62,35 @@ class OverlayUiTest {
         val after = compose.onNodeWithContentDescription("拍照").fetchSemanticsNode().boundsInRoot
         compose.runOnIdle { assertNull(opened); assertNotEquals(before, after) }
     }
+    @Test fun labelVisibilitySwitchDoesNotRemoveEntranceIcons() {
+        var labels by mutableStateOf(true)
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(showLabels = labels), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, {}, {})
+        } } }
+        compose.onNodeWithText("拍照").assertExists()
+        compose.runOnIdle { labels = false }
+        compose.onNodeWithText("拍照").assertDoesNotExist()
+        compose.onNodeWithContentDescription("拍照").assertIsEnabled()
+        compose.runOnIdle { labels = true }
+        compose.onNodeWithText("拍照").assertExists()
+    }
+    @Test fun holdingAnEntranceThenDraggingRequestsReorderInsteadOfOpening() {
+        val moves = mutableListOf<Pair<String, Int>>()
+        var opened: String? = null
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, { opened = it.id }, {}, reorder = { id, direction -> moves += id to direction; true })
+        } } }
+        compose.onNodeWithContentDescription("拍照").performTouchInput {
+            down(center)
+            advanceEventTime(700)
+            moveBy(androidx.compose.ui.geometry.Offset(0f, 40f), 20)
+            moveBy(androidx.compose.ui.geometry.Offset(0f, 220f), 100)
+            up()
+        }
+        compose.runOnIdle { assertNull(opened); assertTrue(moves.contains("camera" to 1)) }
+    }
     @Test fun motionButtonsAndDialogActionsTickOnceAndHonorGlobalOff() {
         val ticks = mutableListOf<HapticFeedbackType>(); var enabled by mutableStateOf(true); var actions = 0
         val native = object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { ticks += hapticFeedbackType } }

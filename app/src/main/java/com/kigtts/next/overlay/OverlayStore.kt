@@ -19,6 +19,7 @@ data class OverlaySettings(
     val enabled: Boolean = false, val autoHide: Boolean = true,
     val rightEdge: Boolean = true, val position: Float = .55f,
     val shortcuts: List<OverlayShortcut> = defaultOverlayShortcuts(),
+    val showLabels: Boolean = true,
 )
 
 fun defaultOverlayShortcuts() = listOf(

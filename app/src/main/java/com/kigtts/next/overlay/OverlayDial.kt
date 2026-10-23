@@ -46,7 +46,7 @@ private class DialShape(private val morph: Morph, private val progress: Float) :
 @Composable
 internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement, expanded: Boolean, hidden: Boolean,
     toggle: () -> Unit, move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit,
-    open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}) {
+    open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}, reorder: (String, Int) -> Boolean = { _, _ -> false }) {
     val density = LocalDensity.current
     val expansion = remember { Animatable(0f) }
     val progress = expansion.value
@@ -62,6 +62,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie12Sided) }
     var first by remember { mutableIntStateOf(0) }
     var drag by remember { mutableFloatStateOf(0f) }
+    var sorting by remember { mutableStateOf<String?>(null) }
     var wheeling by remember { mutableStateOf(false) }
     val wheelOffset by animateFloatAsState(drag, if (wheeling) snap() else MaterialTheme.motionScheme.defaultSpatialSpec(), label = "wheel-settle")
     val stepPx = with(density) { 48.dp.toPx() }
@@ -91,6 +92,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 val x = cx + (dx * progress).dp
                 val targetY = ringCenterY + dy.dp
                 val y = cy + (targetY - cy) * progress
+                val labelLift = (kotlin.math.sign(angle) * ((kotlin.math.abs(angle) - 36f) / 36f).coerceIn(0f, 1f) * 8f * progress).dp
                 Row(Modifier.offset(x = x - 24.dp, y = y - 24.dp)
                     .widthIn(max = 160.dp)
                     .graphicsLayer {
@@ -101,20 +103,22 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                     verticalAlignment = Alignment.CenterVertically) {
                     @Composable fun Label() {
                         Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.widthIn(max = 104.dp)) {
+                            contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.offset(y = labelLift).widthIn(max = 104.dp)) {
                             Text(item.title, Modifier.padding(horizontal = 8.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    if (item.showLabel && settings.rightEdge) { Label(); Spacer(Modifier.width(8.dp)) }
-                    IconActionHint(item.title) {
+                    if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && settings.rightEdge) { Label(); Spacer(Modifier.width(8.dp)) }
+                    IconActionHint(item.title, hasLongAction = true) {
                         FilledTonalIconButton(onClick = feedbackClick { interact(); open(item) }, enabled = expanded && edgeAlpha > .4f,
-                            modifier = Modifier.size(48.dp).iconLongAction(expanded && edgeAlpha > .4f, null).semantics { contentDescription = item.title },
+                            modifier = Modifier.size(48.dp).overlayEntranceReorder(item.id, expanded && edgeAlpha > .4f,
+                                { sorting = it; interact() }, reorder,
+                                { first = wrappedIndex(first - 1, settings.shortcuts.size) }).semantics { contentDescription = item.title },
                             shapes = IconButtonDefaults.shapes(shape = CircleShape, pressedShape = MaterialTheme.shapes.medium)) {
                             Icon(MaterialSymbols.vector(item.symbol) ?: Icons.Default.Extension, null, Modifier.size(24.dp))
                         }
                     }
-                    if (item.showLabel && !settings.rightEdge) { Spacer(Modifier.width(8.dp)); Label() }
+                    if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && !settings.rightEdge) { Spacer(Modifier.width(8.dp)); Label() }
                 }
             }
         }
