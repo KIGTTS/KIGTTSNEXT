@@ -24,11 +24,11 @@ internal fun CardCropTools(card: PolaroidCard, enabled: Boolean, change: (Polaro
             PillButton("换照片", Icons.Default.PhotoLibrary, gallery, Modifier.weight(1f), enabled = enabled)
         }
         Text("相纸规格", style = MaterialTheme.typography.titleSmall)
-        ConnectedChoiceGroup("相纸规格", editablePolaroidFormats, format,
+        ChoiceButtonGroup("相纸规格", editablePolaroidFormats, format,
             { when (it) { PolaroidFormat.MINI -> "Mini"; PolaroidFormat.WIDE -> "Wide"; else -> "Square" } },
             { change(selectPolaroidFormat(card, it, frames)) }, enabled = enabled)
         Text("留白背景", style = MaterialTheme.typography.titleSmall)
-        ConnectedChoiceGroup("留白背景", PhotoBackdropMode.entries, card.photoBackdrop,
+        ChoiceButtonGroup("留白背景", PhotoBackdropMode.entries, card.photoBackdrop,
             { if (it == PhotoBackdropMode.GRAY) "灰色" else "模糊" }, { change(card.copy(photoBackdrop = it)) }, enabled = enabled)
         PillButton("重置照片位置", Icons.Default.RestartAlt, { change(card.copy(photoX = .5, photoY = .5, photoZoom = 1.0)) }, enabled = enabled)
         Text("双指移动和缩放照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -46,7 +46,7 @@ internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (Polar
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val width = maxOf(maxWidth, 104.dp * choices.size)
             Row(Modifier.horizontalScroll(rememberScrollState())) {
-                ConnectedChoiceGroup("边框样式", choices.map { it.id }, card.frameStyleId,
+                ChoiceButtonGroup("边框样式", choices.map { it.id }, card.frameStyleId,
                     { id -> choices.first { it.id == id }.name },
                     { change(card.copy(frameStyleId = it)) }, Modifier.width(width), enabled = enabled)
             }

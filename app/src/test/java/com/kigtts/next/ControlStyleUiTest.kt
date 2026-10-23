@@ -42,7 +42,7 @@ class ControlStyleUiTest {
                 Column(Modifier.width(360.dp).padding(8.dp)) {
                     ElasticTab(true, {}, remember { MutableInteractionSource() }, CornerNeighbors(), false,
                         Modifier.testTag("tab"), icon = { Icon(Icons.Default.Image, null) }, label = { Text("相册") })
-                    ConnectedChoiceGroup("风格", listOf("自动", "手动"), "自动", { it }, {})
+                    ChoiceButtonGroup("风格", listOf("自动", "手动"), "自动", { it }, {})
                 }
             }
         } }

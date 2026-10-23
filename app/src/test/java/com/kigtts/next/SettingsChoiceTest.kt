@@ -29,7 +29,7 @@ import org.robolectric.annotation.*
 @Config(sdk=[35],qualifiers="zh-rCN-w393dp-h852dp-xxhdpi")
 class SettingsChoiceTest {
     @get:Rule val compose=createAndroidComposeRule<ComponentActivity>()
-    @Test fun rapidSelectionsRestoreTheSelectedPillAndWidthsAfterThemeRecomposition() {
+    @Test fun rapidSelectionsRestoreTheSelectedCornersAndWidthsAfterThemeRecomposition() {
         val settings=mutableStateOf(ThemeSettings())
         compose.mainClock.autoAdvance=false
         compose.setContent { KigttsTheme(settings.value) {
@@ -49,9 +49,9 @@ class SettingsChoiceTest {
             val bitmap=BitmapFactory.decodeFile(file)
             val density=compose.activity.resources.displayMetrics.density
             try {
-                val y=(5*density).toInt();val edge=bitmap.getPixel((5*density).toInt(),y)
+                val y=(2*density).toInt();val edge=bitmap.getPixel((2*density).toInt(),y)
                 val center=bitmap.getPixel(bitmap.width/2,y)
-                assertNotEquals("Selected option must return to a pill after release",edge,center)
+                assertNotEquals("Selected option must restore all rounded corners after release",edge,center)
             } finally { bitmap.recycle() }
             val widths=ContrastLevel.entries.map { item ->
                 compose.onNodeWithContentDescription("对比度："+item.label).getUnclippedBoundsInRoot().let { (it.right-it.left).value }
@@ -116,7 +116,7 @@ class SettingsChoiceTest {
         compose.onNodeWithContentDescription("主题模式：亮色").performClick().assertIsSelected()
         dark.assertIsNotSelected()
     }
-    @Test fun pressExpandsTheNativeConnectedButtonAndCompressesItsNeighborWithoutSelecting() {
+    @Test fun pressExpandsTheNativeButtonAndCompressesItsNeighborWithoutSelecting() {
         val value=mutableStateOf(ThemeMode.SYSTEM)
         compose.mainClock.autoAdvance=false
         compose.setContent { MaterialTheme {

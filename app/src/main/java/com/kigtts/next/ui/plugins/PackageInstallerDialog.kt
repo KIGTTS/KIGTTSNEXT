@@ -39,7 +39,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                     }
                 } else {
                     if (packages != null) {
-                        ConnectedChoiceGroup("安装详情", listOf(0, 1, 2), tab,
+                        ChoiceButtonGroup("安装详情", listOf(0, 1, 2), tab,
                             { listOf("介绍", "权限", "许可")[it] }, { tab = it }, compactLabels = true,
                             itemRole = androidx.compose.ui.semantics.Role.Tab)
                     }

@@ -4,7 +4,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import com.kigtts.next.media.WebNetworkGate
 import com.kigtts.next.state.*
-import com.kigtts.next.ui.components.ConnectedChoiceGroup
+import com.kigtts.next.ui.components.ChoiceButtonGroup
 import com.kigtts.plugin.runtime.PermissionAccess
 
 @Composable internal fun PhraseNetworkSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean) {
@@ -12,7 +12,7 @@ import com.kigtts.plugin.runtime.PermissionAccess
     val owner = WebNetworkGate.owner(draft.phraseId ?: draft.key)
     var access by remember(owner) { mutableStateOf(ledger.access(owner, "network")) }
     Text("外部网络", style = MaterialTheme.typography.titleSmall)
-    ConnectedChoiceGroup("外部网络", PermissionAccess.entries, access,
+    ChoiceButtonGroup("外部网络", PermissionAccess.entries, access,
         { when (it) { PermissionAccess.ASK -> "首次询问"; PermissionAccess.ALLOW -> "允许"; PermissionAccess.DENY -> "禁用" } },
         { access = it; ledger.set(owner, "network", it) }, enabled = enabled, compactLabels = true)
     Text("仅对此词条生效。本地页面文件始终可用。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

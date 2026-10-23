@@ -19,7 +19,7 @@ import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.feedbackChange
-import com.kigtts.next.ui.components.ConnectedChoiceGroup
+import com.kigtts.next.ui.components.ChoiceButtonGroup
 import com.kigtts.next.ui.media.ThumbnailFramingDialog
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,7 +68,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         }
         if(resource.kind in setOf(MediaKind.VIDEO,MediaKind.MOTION_PHOTO)) {
             Text("音频播放",style=MaterialTheme.typography.labelLarge)
-            ConnectedChoiceGroup("音频播放",MediaAudioMode.entries,draft.audioMode ?: MediaAudioMode.defaultFor(resource.kind),{ it.label },
+            ChoiceButtonGroup("音频播放",MediaAudioMode.entries,draft.audioMode ?: MediaAudioMode.defaultFor(resource.kind),{ it.label },
                 { mode->model.content.editPhrase { it.copy(audioMode=mode) } },Modifier.testTag("phrase-audio-mode"),enabled=interactive,compactLabels=true)
         }
     }

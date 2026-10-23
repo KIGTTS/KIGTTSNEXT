@@ -10,6 +10,10 @@ import com.kigtts.next.ui.plugins.PluginControlsDialog
 import com.kigtts.next.ui.plugins.PluginPageScreen
 import androidx.compose.ui.geometry.Offset
 import com.kigtts.plugin.api.*
+import com.github.takahirom.roborazzi.captureRoboImage
+import com.kigtts.next.theme.KigttsTheme
+import com.kigtts.next.theme.ThemeMode
+import com.kigtts.next.theme.ThemeSettings
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -21,6 +25,40 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PluginControlsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun ledChoicesKeepSeparateCornersAndGroupSpacingInBothThemes() = ledStyleGroups()
+
+    @Test @Config(qualifiers = "zh-rCN-w852dp-h393dp-xxhdpi")
+    fun ledChoicesKeepSeparateCornersAndGroupSpacingInLandscape() = ledStyleGroups("landscape")
+
+    private fun ledStyleGroups(orientation: String = "portrait") {
+        val mode = mutableStateOf(ThemeMode.LIGHT)
+        val changes = mutableListOf<Pair<String, String?>>()
+        val request = PluginOutcome.Controls("LED 样式", listOf(
+            PluginControl.Choice("灯珠形状", "shape", listOf(PluginControlOption("circle", "圆点"),
+                PluginControlOption("square", "方点")), "circle"),
+            PluginControl.Choice("滚动方向", "direction", listOf(PluginControlOption("left", "向左"),
+                PluginControlOption("right", "向右")), "left"),
+            PluginControl.Choice("文本对齐", "align", listOf(PluginControlOption("start", "居左"),
+                PluginControlOption("center", "居中"), PluginControlOption("end", "居右")), "center")))
+        compose.setContent { KigttsTheme(ThemeSettings(mode = mode.value)) {
+            PluginControlsDialog(request, { action, value -> changes += action to value }, {})
+        } }
+        listOf(ThemeMode.LIGHT, ThemeMode.DARK).forEach { theme ->
+            compose.runOnIdle { mode.value = theme }
+            compose.mainClock.advanceTimeBy(600); compose.waitForIdle()
+            val middle = compose.onNodeWithContentDescription("文本对齐：居中").performScrollTo()
+            val first = compose.onNodeWithContentDescription("文本对齐：居左").getUnclippedBoundsInRoot()
+            val center = middle.getUnclippedBoundsInRoot()
+            val last = compose.onNodeWithContentDescription("文本对齐：居右").getUnclippedBoundsInRoot()
+            assertTrue("Separate standard buttons need a visible gap", (center.left - first.right).value >= 11f)
+            assertTrue((last.left - center.right).value >= 11f)
+            compose.onNodeWithTag("plugin-controls").captureRoboImage("build/previews/led-button-groups-$orientation-${theme.name.lowercase()}.png")
+        }
+        compose.onNodeWithContentDescription("文本对齐：居右").performClick().assertIsSelected()
+        compose.onNodeWithContentDescription("文本对齐：居中").assertIsNotSelected()
+        compose.runOnIdle { assertEquals(listOf("align" to "end"), changes) }
+    }
+
     @Test fun nativePickerSliderAndSegmentedControlsRemainOpenAndResetWithoutClosing() {
         val changes = mutableListOf<Pair<String, String?>>()
         var dismissed = false

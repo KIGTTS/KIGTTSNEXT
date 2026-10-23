@@ -28,7 +28,7 @@ internal fun quickPhraseContentColor(phrase: QuickPhrase): Color = if (phrase.co
 internal fun PhraseAppearanceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean) {
     var picker by remember { mutableStateOf(false) }
     Text("卡片颜色", style = MaterialTheme.typography.titleMedium)
-    ConnectedChoiceGroup("卡片颜色", CardColorMode.entries, draft.colorMode,
+    ChoiceButtonGroup("卡片颜色", CardColorMode.entries, draft.colorMode,
         { when (it) { CardColorMode.DEFAULT -> "默认"; CardColorMode.CUSTOM -> "自定义"; CardColorMode.NONE -> "无颜色" } },
         { if (enabled) { if (it == CardColorMode.CUSTOM) picker = true else model.content.editPhrase { current -> current.copy(colorMode = it) } } },
         Modifier.testTag("phrase-color-mode"),enabled=enabled)

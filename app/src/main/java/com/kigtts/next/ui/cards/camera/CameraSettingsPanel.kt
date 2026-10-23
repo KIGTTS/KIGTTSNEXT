@@ -24,7 +24,7 @@ internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 SettingsGroup("构图") {
                     SettingItem("辅助线", "", Icons.Default.Grid3x3, SettingPosition.FIRST) {
-                        ConnectedChoiceGroup("辅助线", CameraGrid.entries, options.grid, { it.label }, options::setGrid,
+                        ChoiceButtonGroup("辅助线", CameraGrid.entries, options.grid, { it.label }, options::setGrid,
                             enabled = enabled, compactLabels = true)
                     }
                     ToggleSetting("水平仪", "帮助保持画面水平", Icons.Default.Straighten, options.level,
@@ -33,16 +33,16 @@ internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean
                 SettingsGroup("拍摄") {
                     SettingItem("照片处理", "", Icons.Default.AutoAwesome, SettingPosition.FIRST) {
                         val choices = CameraProcessing.entries.filter { it in availableProcessing }
-                        ConnectedChoiceGroup("照片处理", choices, options.processing.takeIf { it in choices } ?: CameraProcessing.STANDARD,
+                        ChoiceButtonGroup("照片处理", choices, options.processing.takeIf { it in choices } ?: CameraProcessing.STANDARD,
                             { it.label }, options::setProcessing, enabled = enabled, compactLabels = true)
                     }
                     SettingItem("闪光灯", if (flashAvailable) "" else "当前镜头不支持闪光灯",
                         Icons.Default.FlashOn, SettingPosition.MIDDLE) {
-                        ConnectedChoiceGroup("闪光灯", CameraFlash.entries, options.flash, { it.label }, options::setFlash,
+                        ChoiceButtonGroup("闪光灯", CameraFlash.entries, options.flash, { it.label }, options::setFlash,
                             enabled = enabled && flashAvailable, compactLabels = true)
                     }
                     SettingItem("倒计时", "", Icons.Default.Timer, SettingPosition.LAST) {
-                        ConnectedChoiceGroup("倒计时", CameraOptions.TIMERS, options.timerSeconds,
+                        ChoiceButtonGroup("倒计时", CameraOptions.TIMERS, options.timerSeconds,
                             { if (it == 0) "关闭" else "$it 秒" }, options::setTimer,
                             enabled = enabled, compactLabels = true)
                     }

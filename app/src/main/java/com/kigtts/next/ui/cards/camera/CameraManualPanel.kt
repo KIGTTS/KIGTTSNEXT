@@ -22,7 +22,7 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
         SettingItem("对焦", capability.reason ?: if (!capability.focusAvailable) "当前镜头不支持手动对焦" else "",
             Icons.Default.CenterFocusStrong, SettingPosition.FIRST) {
             Column {
-                ConnectedChoiceGroup("对焦", listOf(false, true), controller.manualFocus,
+                ChoiceButtonGroup("对焦", listOf(false, true), controller.manualFocus,
                     { if (it) "手动" else "自动" }, controller::focusMode, enabled = enabled && capability.focusAvailable)
                 AnimatedVisibility(controller.manualFocus) {
                     Column {
@@ -36,7 +36,7 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
         SettingItem("快门", capability.reason ?: if (!capability.shutterAvailable) "当前镜头不支持手动快门" else "",
             Icons.Default.ShutterSpeed, SettingPosition.LAST) {
             Column {
-                ConnectedChoiceGroup("快门", listOf(false, true), !controller.automaticExposure,
+                ChoiceButtonGroup("快门", listOf(false, true), !controller.automaticExposure,
                     { if (it) "手动" else "自动" }, controller::setManualShutter, enabled = enabled && capability.shutterAvailable)
                 val range = capability.exposure
                 AnimatedVisibility(!controller.automaticExposure && range != null) {

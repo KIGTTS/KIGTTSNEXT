@@ -8,7 +8,7 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.*
 
 /** Use native M3E topology while a single owner animates selection and press; no keyed native morph. */
-internal class ConnectedChoiceShape(private val defaults: ToggleButtonShapes, private val selected: Float,
+internal class ChoiceButtonShape(private val defaults: ToggleButtonShapes, private val selected: Float,
     private val pressed: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val base = defaults.shape as CornerBasedShape; val checked = defaults.checkedShape as CornerBasedShape

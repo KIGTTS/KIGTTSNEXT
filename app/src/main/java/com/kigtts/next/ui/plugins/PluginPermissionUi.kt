@@ -53,7 +53,7 @@ import com.kigtts.plugin.runtime.*
             permissions.forEach { permission -> key(permission, revision) {
                 Text(PluginPermissions.label(permission), style = MaterialTheme.typography.titleSmall)
                 purposes[permission]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                ConnectedChoiceGroup(PluginPermissions.label(permission), PermissionAccess.entries, manager.permissions.access(owner, permission),
+                ChoiceButtonGroup(PluginPermissions.label(permission), PermissionAccess.entries, manager.permissions.access(owner, permission),
                     { when (it) { PermissionAccess.ASK -> "询问"; PermissionAccess.ALLOW -> "允许"; PermissionAccess.DENY -> "禁用" } },
                     { manager.permissions.set(owner, permission, it); revision++ }, compactLabels = true)
             } }

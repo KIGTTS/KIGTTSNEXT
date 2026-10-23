@@ -75,7 +75,7 @@ private fun ChoiceSetting(control: PluginControl.Choice, change: (String) -> Uni
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(control.title, style = MaterialTheme.typography.bodyLarge)
         if (control.style == PluginChoiceStyle.SEGMENTED && options.size in 2..4) {
-            ConnectedChoiceGroup(control.title, options.map { it.id }, selected,
+            ChoiceButtonGroup(control.title, options.map { it.id }, selected,
                 { id -> options.first { it.id == id }.label }, { selected = it; change(it) }, compactLabels = true)
         } else {
             Box {

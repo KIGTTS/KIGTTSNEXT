@@ -25,7 +25,7 @@ internal fun Modifier.richTextMenu(enabled: Boolean, selection: () -> TextRange,
     }
     sizeRange?.let { range ->
         MotionAlertDialog(onDismissRequest = { sizeRange = null }, title = { Text("字号") }, text = {
-            ConnectedChoiceGroup("字号", listOf(75L,100L,125L),
+            ChoiceButtonGroup("字号", listOf(75L,100L,125L),
                 formats.lastOrNull { it.kind == TextFormat.SIZE && it.start <= range.min && it.end >= range.max }?.value ?: 100L,
                 { when(it) { 75L -> "小";125L -> "大";else -> "正常" } },
                 { if (enabled) apply.value(range, TextFormat.SIZE, it); sizeRange = null }, enabled = enabled)

@@ -147,7 +147,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
             onClick = { invoke(block.actionId, emptyMap()) }, trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,null) })
         is PageBlock.Select -> PluginSelect(block, enabled, position, invoke)
         is PageBlock.Choice -> SettingItem(block.title, "", (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position) {
-            ConnectedChoiceGroup(block.title, block.options.map { it.id }, block.selected,
+            ChoiceButtonGroup(block.title, block.options.map { it.id }, block.selected,
                 { id -> block.options.first { it.id == id }.label }, { invoke(it, emptyMap()) }, enabled = enabled, preserveColorWhenLocked = true)
         }
         is PageBlock.Chat, is PageBlock.Files, is PageBlock.SourceEditor, is PageBlock.Browser -> Unit // Full-page content owns its own scroll/IME viewport.
