@@ -26,6 +26,7 @@ class OverlayStateTest {
     }
     @Test fun nativeOverlayStartsOffAndIdleRetractionStartsOn() {
         assertFalse(store.settings.value.enabled); assertTrue(store.settings.value.autoHide)
+        assertTrue(store.settings.value.preferSmallWindows)
         assertEquals(5, store.settings.value.shortcuts.size)
     }
     @Test fun reorderingIsStableAndDoesNotLoseIndividualWindowPreferences() {
@@ -67,9 +68,33 @@ class OverlayStateTest {
                 assertTrue(p.fabX in 0f..p.width.toFloat()); assertTrue(p.fabY in 0f..p.height.toFloat())
             }
     }
-    @Test fun wheelWrapsAndMirrorsInsteadOfChangingOrderOnOtherEdge() {
-        assertEquals(4, wrappedIndex(-1, 5)); assertEquals(1, wrappedIndex(6, 5)); assertEquals(0, wrappedIndex(1, 0))
+    @Test fun expandCollapseKeepsAbsoluteAnchorAtEveryHeightAndEdge() {
+        val safe = OverlayBounds(0, 138, 1440, 2960)
+        for (right in listOf(false, true)) for (position in listOf(0f, .1f, .5f, .9f, 1f)) {
+            val compact = overlayPlacement(safe, 3.6f, right, position, false)
+            val expanded = overlayPlacement(safe, 3.6f, right, position, true)
+            assertEquals(compact.x + compact.fabX, expanded.x + expanded.fabX, .01f)
+            assertEquals(compact.y + compact.fabY, expanded.y + expanded.fabY, .5f)
+        }
+    }
+    @Test fun wheelHasEndpointsAndResistsOverscrollWithoutReordering() {
+        val start = dragOverlayWheel(OverlayWheelPosition(), 400f, 8, 48f)
+        assertEquals(0, start.first)
+        assertTrue(overlayWheelStretch(start, 8, 48f) in 0f..32f)
+        val end = dragOverlayWheel(OverlayWheelPosition(), -600f, 8, 48f)
+        assertEquals(3, end.first)
+        assertTrue(overlayWheelStretch(end, 8, 48f) in -32f..0f)
+        assertEquals(0, dragOverlayWheel(OverlayWheelPosition(), -600f, 5, 48f).first)
+        assertEquals(0f, overlayWheelStretch(end.copy(drag = 0f), 8, 48f), .01f)
+        assertEquals(1, settleOverlayWheel(OverlayWheelPosition(drag = -30f), 8, 48f).first)
+        assertEquals(3, settleOverlayWheel(end, 8, 48f).first)
         repeat(5) { index -> val a = dialPoint(index, true, 136f); val b = dialPoint(index, false, 136f)
             assertEquals(-a.first, b.first, .01f); assertEquals(a.second, b.second, .01f) }
+    }
+    @Test fun onlyInternalPagesKeepTheForegroundFullscreenHost() {
+        assertFalse(overlayRequestsSmallWindow(true, true, true))
+        assertTrue(overlayRequestsSmallWindow(true, false, true))
+        assertTrue(overlayRequestsSmallWindow(true, true, false))
+        assertFalse(overlayRequestsSmallWindow(false, false, false))
     }
 }

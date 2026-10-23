@@ -16,6 +16,13 @@ internal fun overlayWindowParams() = WindowManager.LayoutParams(80, 80, WindowMa
         WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
         WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED, PixelFormat.TRANSLUCENT).apply {
     windowAnimations = 0
+    softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+    // WindowManager can otherwise animate a resize relocation independently of our morph.
+    runCatching {
+        val flags = WindowManager.LayoutParams::class.java.getField("privateFlags")
+        val noMove = WindowManager.LayoutParams::class.java.getField("PRIVATE_FLAG_NO_MOVE_ANIMATION").getInt(null)
+        flags.setInt(this, flags.getInt(this) or noMove)
+    }
     gravity = Gravity.TOP or Gravity.LEFT; title = "KIGTTS 悬浮快捷入口"
     if (Build.VERSION.SDK_INT >= 30) {
         setFitInsetsTypes(0)
@@ -32,12 +39,15 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
     private val params = overlayWindowParams()
     private var attached = false
     private var settling: ValueAnimator? = null
+    private val resizeGate = OverlayResizeGate()
     init {
         owner.attach(view)
         // Geometry and WindowManager resize arrive through separate frame phases.
         // Do not paint new local FAB coordinates into the old-sized surface.
         view.viewTreeObserver.addOnPreDrawListener {
-            !attached || (view.width == params.width && view.height == params.height)
+            val draw = !attached || resizeGate.canDraw(view.width == params.width && view.height == params.height)
+            if (!draw) view.postInvalidateOnAnimation()
+            draw
         }
     }
     fun content(content: @Composable () -> Unit) = view.setContent(content)
@@ -45,6 +55,7 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         settling?.cancel(); settling = null
         val fromX = params.x; val fromY = params.y
         val canAnimate = animate && attached && params.width == width && params.height == height
+        if (params.width != width || params.height != height) resizeGate.resizing()
         params.width = width; params.height = height
         if (canAnimate && (fromX != x || fromY != y)) {
             settling = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -63,4 +74,16 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         }
     }
     fun close() { settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
+}
+
+/** A ROM can constrain overlay size permanently (IME, rotation, split screen). Never stop drawing forever. */
+internal class OverlayResizeGate {
+    private var frames = 0
+    fun resizing() { frames = 2 }
+    fun canDraw(matches: Boolean): Boolean {
+        if (matches) frames = 0
+        if (frames == 0) return true
+        frames--
+        return false
+    }
 }

@@ -59,10 +59,18 @@ private fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, c
             ReorderTarget(item.key as String, Rect(Offset(item.offset.x.toFloat(), item.offset.y.toFloat()),
                 Size(item.size.width.toFloat(), item.size.height.toFloat())))
         }
-    }, horizontalOnly = singleRow, animateDrop = true, feedback = feedback, move = { from, to ->
+    }, horizontalOnly = singleRow, verticalOnly = !singleRow && columns == 1, animateDrop = true, feedback = feedback, move = { from, to ->
         val before = model.phrases.value
+        val anchorIndex = if (currentRow) row.firstVisibleItemIndex else grid.firstVisibleItemIndex
+        val anchorOffset = if (currentRow) row.firstVisibleItemScrollOffset else grid.firstVisibleItemScrollOffset
         model.quickTexts.movePhrase(from, to)
-        if (model.phrases.value != before) feedback.step()
+        if (model.phrases.value != before) {
+            // Reordering the leading item must not make LazyLayout follow its stable
+            // key to another slot and scroll the whole list beneath the finger.
+            if (currentRow) row.requestScrollToItem(anchorIndex, anchorOffset)
+            else grid.requestScrollToItem(anchorIndex, anchorOffset)
+            feedback.step()
+        }
     })
     val drop = rememberReorderDrop(drag)
     ReorderAutoScroll(drag,

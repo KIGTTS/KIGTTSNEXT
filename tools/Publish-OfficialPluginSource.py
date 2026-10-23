@@ -88,6 +88,15 @@ def main():
             if not local.is_file() or digest(local) != release["sha256"] or local.stat().st_size != release["bytes"]:
                 raise ValueError(f"Prepared artifact failed integrity check: {path}")
             files[path] = (release["sha256"], release["bytes"])
+    for artwork in catalog.get("assets", {}).values():
+        url = artwork["url"]
+        if not url.startswith(BASE):
+            raise ValueError("Unexpected artwork destination")
+        path = unquote(urlparse(url).path.removeprefix(urlparse(BASE).path))
+        local = (folder / path).resolve()
+        if not path.startswith("artwork/") or not local.is_relative_to(folder) or not local.is_file() or digest(local) != artwork["sha256"] or local.stat().st_size != artwork["bytes"]:
+            raise ValueError("Prepared artwork failed integrity check")
+        files[path] = (artwork["sha256"], artwork["bytes"])
     android = json.loads((folder / "android/release.json").read_text(encoding="utf-8"))
     apk = folder / android["path"]
     if not apk.resolve().is_relative_to(folder) or digest(apk) != android["sha256"]:
@@ -107,16 +116,16 @@ def main():
                 if files.get(name) != expected:
                     raise ValueError(f"Published immutable release changed or missing: {name}")
             if args.catalog_only:
-                if set(old_files) != {name for name in files if not name.startswith("android/")}:
+                if set(old_files) != {name for name in files if name.endswith(".kigplugin")}:
                     raise ValueError("Catalog-only publishing cannot add package versions")
                 if remote_hash("android/release.json") != files["android/release.json"]:
                     raise ValueError("Catalog-only publishing cannot change Android metadata")
             upload = [name for name in files if name not in old_files]
             if args.catalog_only:
-                upload = []
+                upload = [name for name in files if name.startswith("artwork/")]
             token = getpass.getpass("ModelScope token (not saved): ")
             api = HubApi(token=token)
-            if not args.resume_artifacts and not args.catalog_only:
+            if not args.resume_artifacts and upload:
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                     allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
                     token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android preview artifacts")

@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.cards.*
 import com.kigtts.next.media.WebAndroidPermissions
 import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -17,7 +18,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class PhotoFactsPermissionTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
-    private class Access(val allowed: Boolean) : PhotoFactsAccess {
+    private open class Access(val allowed: Boolean) : PhotoFactsAccess {
         val calls = mutableListOf<String>()
         override suspend fun consent(kind: String): Boolean { calls += "consent/$kind"; return true }
         override suspend fun locationPermission(): Boolean { calls += "permission"; return allowed }
@@ -53,5 +54,42 @@ class PhotoFactsPermissionTest {
             WebAndroidPermissions.finish(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to false))
             assertFalse(request.await())
         } finally { WebAndroidPermissions.cancel() }
+    }
+
+    @Test fun stalledQueriesFinishTogetherAndUnavailableFieldsStayVisibleAsUnknown() = runTest {
+        val access = object : Access(true) {
+            override suspend fun place(latitude: Double, longitude: Double): String = awaitCancellation()
+            override suspend fun weather(facts: FrozenPhotoFacts): String = awaitCancellation()
+        }
+        val start = testScheduler.currentTime
+        val facts = FrozenPhotoFacts(1, latitude = 22.3, longitude = 114.2)
+        val result = PolaroidPhotoFacts.enrich(app, facts, setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER), access)
+        assertEquals(PhotoFactsWork.TIMEOUT_MS, testScheduler.currentTime - start)
+        assertEquals("未知", result.text(PhotoTextField.LOCATION))
+        assertEquals("未知", result.text(PhotoTextField.WEATHER))
+        assertEquals(facts.capturedAt, result.capturedAt)
+    }
+
+    @Test fun geocoderFailureDoesNotDiscardWeatherOrFreezeCoordinatesAsAPlaceName() = runTest {
+        val access = object : Access(true) {
+            override suspend fun place(latitude: Double, longitude: Double): String = error("offline")
+        }
+        val result = PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(1, latitude = 22.3, longitude = 114.2),
+            setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER), access)
+        assertEquals("未知", result.text(PhotoTextField.LOCATION))
+        assertEquals("晴", result.weather)
+    }
+
+    @Test fun blockingRomCallCannotHoldTheCallerPastItsDeadline() = runBlocking {
+        val release = java.util.concurrent.CountDownLatch(1)
+        val started = System.nanoTime()
+        try {
+            val result = withTimeout(1500) { PhotoFactsWork.run(80) {
+                while (release.count > 0) { try { release.await() } catch (_: InterruptedException) { } }
+                "late result"
+            } }
+            assertNull(result)
+            assertTrue((System.nanoTime() - started) / 1_000_000 < 1000)
+        } finally { release.countDown() }
     }
 }

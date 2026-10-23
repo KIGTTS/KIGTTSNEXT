@@ -55,11 +55,11 @@ private fun PortraitHomeScreen(
             val captionLayout by remember(captionSpace) { derivedStateOf { listeningLayout(captionSpace()) } }
             val showCaptions = !state.subtitleExpanded && !state.quickTextEditing && state.captionsVisible && captionLayout != ListeningLayout.HIDDEN
             val chrome = animateFloatAsState(if (state.subtitleExpanded || state.quickTextEditing) 0f else 1f,
-                MaterialTheme.motionScheme.fastSpatialSpec(), label = "input-chrome-space")
+                androidx.compose.animation.core.tween(220), label = "input-chrome-space")
             val enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) +
-                expandVertically(MaterialTheme.motionScheme.fastSpatialSpec(), expandFrom = Alignment.Top)
+                expandVertically(androidx.compose.animation.core.tween(220), expandFrom = Alignment.Top)
             val exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
-                shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec(), shrinkTowards = Alignment.Top)
+                shrinkVertically(androidx.compose.animation.core.tween(220), shrinkTowards = Alignment.Top)
             Column(Modifier.fillMaxSize()) {
                 AnimatedVisibility(!state.subtitleExpanded && !state.quickTextEditing, enter = enter, exit = exit,
                     modifier = Modifier.testTag("header-transition")) {
@@ -85,17 +85,17 @@ private fun PortraitHomeScreen(
             }
             AnimatedVisibility(!state.subtitleExpanded && !state.quickTextEditing, modifier = Modifier.align(Alignment.BottomCenter),
                 enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) +
-                    slideInVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it },
+                    slideInVertically(androidx.compose.animation.core.tween(220)) { it },
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
-                    slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it }) {
+                    slideOutVertically(androidx.compose.animation.core.tween(220)) { it }) {
                 sections.SaveableStateProvider("quick-text") { HomePanels(state, phrases, categories, model, motion,
                 Modifier.graphicsLayer {
                     translationY = if (state.sidePage == null) motion.height.dp.toPx() * backProgress * .7f else 0f
                 }) }
             }
             AnimatedVisibility(state.quickTextEditing, modifier = Modifier.fillMaxSize(),
-                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 6 },
-                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 6 }) {
+                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(androidx.compose.animation.core.tween(220)) { it / 6 },
+                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(androidx.compose.animation.core.tween(220)) { it / 6 }) {
                 QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(backProgress, backEdge))
             }
         }

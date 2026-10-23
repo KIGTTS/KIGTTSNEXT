@@ -85,6 +85,47 @@ class SubtitlePlaceholderUiTest {
         return layouts.single()
     }
 
+    @Test fun enteringAndLeavingInputBothFadeTheSamePlaceholder() {
+        val model = model()
+        model.setSubtitlePlaceholder("输入文字")
+        model.setSubtitleSizePercent(12f)
+        val window = object : WindowInfo {
+            override val isWindowFocused = true
+            override val containerSize = IntSize(400, 800)
+        }
+        compose.setContent {
+            val state by model.state.collectAsState()
+            CompositionLocalProvider(LocalDensity provides Density(1f), LocalWindowInfo provides window) {
+                MaterialTheme { androidx.compose.material3.Surface(color = androidx.compose.ui.graphics.Color.White) {
+                    SubtitleBody(state, model, Modifier.width(350.dp).height(240.dp))
+                } }
+            }
+        }
+        fun ink(name: String): Long {
+            val path = "build/previews/placeholder-$name.png"
+            compose.onRoot().captureRoboImage(path)
+            val bitmap = requireNotNull(android.graphics.BitmapFactory.decodeFile(path))
+            var total = 0L
+            for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) total += 255 - android.graphics.Color.red(bitmap.getPixel(x, y))
+            bitmap.recycle(); return total
+        }
+        val solid = ink("solid")
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { model.editing(true) }
+        compose.mainClock.advanceTimeBy(64); compose.waitForIdle()
+        val dimming = ink("dimming")
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        val dim = ink("dim")
+        assertTrue("Input opacity must fade, not jump: $solid / $dimming / $dim", solid > dimming && dimming > dim)
+        compose.runOnIdle { model.editing(false) }
+        compose.mainClock.advanceTimeBy(64); compose.waitForIdle()
+        val restoring = ink("restoring")
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        val restored = ink("restored")
+        assertTrue("Display opacity must also fade: $dim / $restoring / $restored", dim < restoring && restoring < restored)
+        assertEquals(solid.toDouble(), restored.toDouble(), solid * .03)
+    }
+
     @Test fun placeholderFitsPanelHeightAndRestoresPreferredSizeWithoutChangingDocument() {
         val model = model()
         var height by mutableIntStateOf(240)

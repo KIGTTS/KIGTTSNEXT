@@ -54,7 +54,7 @@ fun OverlaySettingsScreen() {
                 state.autoHide, { enabled -> store.update { it.copy(autoHide = enabled) } }, position = SettingPosition.MIDDLE)
             ToggleSetting("显示入口文字", "关闭后可长按图标查看名称", Icons.Default.Label,
                 state.showLabels, { enabled -> store.update { it.copy(showLabels = enabled) } }, position = SettingPosition.MIDDLE)
-            ToggleSetting("优先小窗打开", "从悬浮入口打开应用和页面时优先使用小窗", Icons.Default.PictureInPictureAlt,
+            ToggleSetting("优先小窗打开", "在其它应用中使用小窗，KIGTTS 前台保持当前窗口", Icons.Default.PictureInPictureAlt,
                 state.preferSmallWindows, { enabled -> store.update { it.copy(preferSmallWindows = enabled) } }, position = SettingPosition.LAST)
         }
         SettingsGroup("快捷入口", "拖动手柄调整顺序，转动展开的入口列表可查看更多") {

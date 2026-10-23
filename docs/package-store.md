@@ -69,7 +69,7 @@ KPM（KIGTTS Package Manager）沿用目录schemaVersion=1，以下展示字段�
 | --- | --- |
 | 源/包 `icon` | `{ "symbol": "extension", "image": "icon-id" }`；图片优先，symbol回退 |
 | 源 `readme` / 包 `description` | 最多32000字符的Markdown，可含表格/列表/链接；HTML不执行 |
-| 源 `assets` | 素材ID → `{url, sha256, bytes, alt}`，HTTPS的PNG/JPEG/WebP |
+| 源 `assets` | 素材ID → `{url, sha256, bytes, alt}`，HTTPS的PNG/JPEG/WebP或静态SVG |
 | 包 `thumbnails` | 最多8个已注册素材ID |
 
 每图最多2MiB，每源最多128图/16MiB。更新源时预取并校验素材，坏图不阻止有效目录；进入页面不自动连接介绍中的外部图片。Markdown图片以 `![说明](asset:icon-id)` 引用已注册资源。资源不改变包签名、发布者与权限。

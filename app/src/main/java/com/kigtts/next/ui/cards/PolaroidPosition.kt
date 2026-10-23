@@ -16,14 +16,11 @@ internal suspend fun PagerState.positionPolaroid(page: Int) {
     scroll(MutatePriority.PreventUserInput) {
         val destination = page.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
         updateTargetPage(destination)
-        if (abs(destination - currentPage) > 2) {
-            val adjacent = if (destination > currentPage) destination - 1 else destination + 1
-            updateCurrentPage(adjacent, 0f)
-        }
         val pagePixels = layoutInfo.pageSize + layoutInfo.pageSpacing
         val pixels = (destination - currentPage - currentPageOffsetFraction) * pagePixels
+        val duration = (260 + abs(destination - currentPage) * 35).coerceAtMost(480)
         var consumed = 0f
-        animate(0f, pixels, animationSpec = tween(280, easing = FastOutSlowInEasing)) { value, _ ->
+        animate(0f, pixels, animationSpec = tween(duration, easing = FastOutSlowInEasing)) { value, _ ->
             consumed += scrollBy(value - consumed)
         }
         updateCurrentPage(destination, 0f)

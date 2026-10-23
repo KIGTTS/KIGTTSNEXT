@@ -31,13 +31,21 @@ class OverlayServiceTest {
         assertTrue(params.flags and android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0)
         assertTrue(params.flags and android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL != 0)
         assertEquals(80, params.width); assertEquals(80, params.height)
+        assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING, params.softInputMode)
+    }
+    @Test fun constrainedWindowCannotSuspendRenderingForever() {
+        val gate = OverlayResizeGate()
+        gate.resizing()
+        assertFalse(gate.canDraw(false)); assertFalse(gate.canDraw(false))
+        repeat(20) { assertTrue(gate.canDraw(false)) }
+        gate.resizing(); assertTrue(gate.canDraw(true)); assertTrue(gate.canDraw(false))
     }
     @Test fun smallWindowRequestsFreeformModeInsteadOfOnlyBounds() {
         val options = OverlaySmallWindow.options(app)
         assertEquals(5, options.getInt("android.activity.windowingMode"))
         val bounds = options.getParcelable<android.graphics.Rect>("android:activity.launchBounds")
-        assertNotNull(bounds)
-        assertTrue(bounds!!.width() > 0 && bounds.height() > 0)
+        assertNull(bounds)
+        // System freeform policy owns geometry; no custom aspect or DPI override.
     }
     @Test fun enabledServiceOwnsItsCompositionAndCanDestroyRecreateAfterRotation() {
         ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }

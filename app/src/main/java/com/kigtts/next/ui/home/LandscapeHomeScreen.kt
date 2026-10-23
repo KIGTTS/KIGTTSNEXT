@@ -34,9 +34,9 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
             val captionMaximum = (bodyWidth - LandscapePanelGeometry.MAIN_MINIMUM - motion.geometry.maximum - LISTENING_HANDLE_GAP - 8f)
                 .coerceIn(112f, 240f)
             val showCaptions = canListen && !expanded
-            val chrome = animateFloatAsState(if (expanded) 0f else 1f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "landscape-chrome")
-            val enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(MaterialTheme.motionScheme.fastSpatialSpec(), Alignment.Start)
-            val exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(MaterialTheme.motionScheme.fastSpatialSpec(), Alignment.Start)
+            val chrome = animateFloatAsState(if (expanded) 0f else 1f, androidx.compose.animation.core.tween(220), label = "landscape-chrome")
+            val enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(androidx.compose.animation.core.tween(220), Alignment.Start)
+            val exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(androidx.compose.animation.core.tween(220), Alignment.Start)
             Row(Modifier.fillMaxSize()) {
                 AnimatedVisibility(!expanded, enter = enter, exit = exit, modifier = Modifier.testTag("header-transition")) {
                     sections.SaveableStateProvider("header") { LandscapeAppRail(state, model, openDrawer) }
@@ -56,8 +56,8 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
                             CornerNeighbors(start = showCaptions, end = !expanded && motion.visible))
                     }
                     AnimatedVisibility(!expanded,
-                        enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(MaterialTheme.motionScheme.fastSpatialSpec(), Alignment.End),
-                        exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(MaterialTheme.motionScheme.fastSpatialSpec(), Alignment.End)) {
+                        enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(androidx.compose.animation.core.tween(220), Alignment.End),
+                        exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(androidx.compose.animation.core.tween(220), Alignment.End)) {
                         sections.SaveableStateProvider("quick-text") {
                             Row(Modifier.fillMaxHeight()) {
                                 Spacer(Modifier.width(8.dp))
@@ -70,8 +70,8 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
                 }
             }
             AnimatedVisibility(state.quickTextEditing, modifier = Modifier.fillMaxSize(),
-                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 6 },
-                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 6 }) {
+                enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInHorizontally(androidx.compose.animation.core.tween(220)) { it / 6 },
+                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutHorizontally(androidx.compose.animation.core.tween(220)) { it / 6 }) {
                 QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(backProgress, backEdge))
             }
         }

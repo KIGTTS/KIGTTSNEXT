@@ -39,8 +39,10 @@ internal object OverlayLaunch {
                 val info = context.packageManager.resolveActivity(launch, 0)?.activityInfo
                 require(info != null && info.exported && info.enabled) { "应用不可用，请重新选择入口" }; launch
             }
-            val requested = OverlayStore.get(context).settings.value.preferSmallWindows
-            val options = if (requested) OverlaySmallWindow.options(context) else null
+            val internalPage = intent.component?.packageName == context.packageName
+            val requested = overlayRequestsSmallWindow(OverlayStore.get(context).settings.value.preferSmallWindows,
+                internalPage, OverlayHostWindow.fullscreenInForeground)
+            val options = if (requested) OverlaySmallWindow.options(context, intent.component?.packageName ?: context.packageName) else null
             try {
                 context.startActivity(intent, options)
             } catch (failure: RuntimeException) {
@@ -53,6 +55,9 @@ internal object OverlayLaunch {
         }
     }
 }
+
+internal fun overlayRequestsSmallWindow(prefer: Boolean, internalPage: Boolean, fullscreenHost: Boolean) =
+    prefer && !(internalPage && fullscreenHost)
 
 internal fun AppViewModel.overlayLink(intent: Intent?) {
     val item = OverlayLaunch.consume(intent) ?: return

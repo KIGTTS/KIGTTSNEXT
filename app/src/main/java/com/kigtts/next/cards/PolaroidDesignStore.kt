@@ -16,8 +16,8 @@ enum class PhotoTextField(val label: String) { DATE("日期"), TIME("时间"), D
 data class FrozenPhotoFacts(val capturedAt: Long? = null, val zone: String = ZoneId.systemDefault().id,
     val latitude: Double? = null, val longitude: Double? = null, val location: String? = null, val weather: String? = null) {
     fun text(field: PhotoTextField): String = when (field) {
-        PhotoTextField.LOCATION -> location ?: "拍摄地点未知"
-        PhotoTextField.WEATHER -> weather ?: "拍摄天气未知"
+        PhotoTextField.LOCATION -> location?.takeIf(String::isNotBlank) ?: "未知"
+        PhotoTextField.WEATHER -> weather?.takeIf(String::isNotBlank) ?: "未知"
         else -> capturedAt?.let { instant ->
             val pattern = when (field) { PhotoTextField.DATE -> "yyyy.MM.dd"; PhotoTextField.TIME -> "HH:mm"; else -> "yyyy.MM.dd HH:mm" }
             DateTimeFormatter.ofPattern(pattern).format(Instant.ofEpochMilli(instant).atZone(ZoneId.of(zone)))

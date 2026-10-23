@@ -59,19 +59,22 @@ internal object PolaroidPhotoFacts {
         var result = facts
         // A location obtained now must never be presented as the location of an old photograph.
         val recent = facts.capturedAt?.let { now - it in 0..10 * 60 * 1000L } == true
-        if ((result.latitude != null || recent) && result.location == null && access.consent("location")) {
+        val needsPlace = PhotoTextField.LOCATION in fields && result.location.isNullOrBlank()
+        val needsWeather = PhotoTextField.WEATHER in fields && result.weather.isNullOrBlank()
+        val locationAllowed = (needsPlace || needsWeather) && (result.latitude != null || recent) && access.consent("location")
+        if (locationAllowed) {
             if (result.latitude == null && access.locationPermission()) {
-                access.currentLocation()?.let { result = result.copy(latitude = it.latitude, longitude = it.longitude) }
-            }
-            val lat = result.latitude; val lon = result.longitude
-            if (lat != null && lon != null) {
-                val place = access.place(lat, lon)
-                result = result.copy(location = place ?: "约 %.2f, %.2f".format(Locale.ROOT, lat, lon))
+                PhotoFactsWork.bounded { access.currentLocation() }?.let { result = result.copy(latitude = it.latitude, longitude = it.longitude) }
             }
         }
-        if (PhotoTextField.WEATHER in fields && result.weather == null && result.capturedAt != null && result.latitude != null && result.longitude != null && access.consent("weather")) {
-            val weather = access.weather(result)
-            result = result.copy(weather = weather)
+        val lat = result.latitude; val lon = result.longitude
+        if (!locationAllowed || lat == null || lon == null) return result
+        val weatherAllowed = needsWeather && result.capturedAt != null && access.consent("weather")
+        // Both lookups share the same time budget; a slow place name cannot delay weather.
+        result = coroutineScope {
+            val place = async { if (needsPlace) PhotoFactsWork.bounded { access.place(lat, lon) } else result.location }
+            val weather = async { if (weatherAllowed) PhotoFactsWork.bounded { access.weather(result) } else result.weather }
+            result.copy(location = place.await()?.takeIf(String::isNotBlank), weather = weather.await()?.takeIf(String::isNotBlank))
         }
         return result
     }
@@ -88,11 +91,12 @@ internal object PhotoWeatherSnapshot {
         val host = if (old) "https://archive-api.open-meteo.com/v1/archive" else "https://api.open-meteo.com/v1/forecast"
         // Round the disclosure to an approximate location; never transmit photo contents or device identifiers.
         val coordinates = "latitude=%.2f&longitude=%.2f".format(Locale.ROOT, requireNotNull(facts.latitude), requireNotNull(facts.longitude))
-        val connection = URL("$host?$coordinates&hourly=temperature_2m,weather_code&start_date=$date&end_date=$date&timezone=UTC").openConnection().apply { connectTimeout = 4000; readTimeout = 4000 }
-        val bytes = connection.getInputStream().use { input ->
+        val connection = URL("$host?$coordinates&hourly=temperature_2m,weather_code&start_date=$date&end_date=$date&timezone=UTC").openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 1500; connection.readTimeout = 1500
+        val bytes = try { connection.getInputStream().use { input ->
             val buffer = java.io.ByteArrayOutputStream(); val part = ByteArray(8192)
             while (buffer.size() <= 512 * 1024) { val count = input.read(part); if (count < 0) break; buffer.write(part, 0, count) }; buffer.toByteArray()
-        }
+        } } finally { connection.disconnect() }
         require(bytes.size <= 512 * 1024)
         val hourly = JSONObject(bytes.toString(Charsets.UTF_8)).getJSONObject("hourly")
         val times = hourly.getJSONArray("time")

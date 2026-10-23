@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.gestures.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -50,9 +52,9 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
     } }
     LaunchedEffect(state.panel) { if (state.panel != null) retainedPanel.value = state.panel }
     val target = if (state.panel == null) COLLAPSED else geometry.nearest(state.panelHeight.coerceIn(COLLAPSED, maximum))
-    val spring = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val settleMotion = tween<Float>(260, easing = FastOutSlowInEasing)
     LaunchedEffect(target, dragging.value) {
-        if (dragging.value) animation.stop() else animation.animateTo(target, spring)
+        if (dragging.value) animation.stop() else animation.animateTo(target, settleMotion)
     }
     val start = remember(model, maximum) { {
         if (!dragging.value) {
@@ -84,7 +86,7 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
                 else -> nearest
             }
             scope.launch {
-                // Seed the spring at the finger position before returning control to the target.
+                // Continue from the finger without overshooting the subtitle viewport.
                 animation.snapTo(current)
                 dragging.value = false
                 if (anchor == COLLAPSED) model.closePanel() else model.panelHeight(anchor)

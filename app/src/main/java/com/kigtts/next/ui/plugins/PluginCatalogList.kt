@@ -23,7 +23,8 @@ import java.io.File
 @Composable internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
     val enabled = !busy && LocalPageActive.current
-    LazyColumn(Modifier.fillMaxSize().testTag("managed-list/" + list.id), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val scroll = key(list.id) { rememberLazyListState() }
+    LazyColumn(Modifier.fillMaxSize().testTag("managed-list/" + list.id), state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item("catalog-header") { Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = header) }
         if (list.items.isEmpty()) item("empty") { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->

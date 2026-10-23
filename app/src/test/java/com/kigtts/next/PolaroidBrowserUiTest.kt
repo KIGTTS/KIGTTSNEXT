@@ -582,9 +582,9 @@ class PolaroidBrowserUiTest {
             val blue = paperPixel(output, f.first.id, .5f, .4f)
             val green = paperPixel(output, middle.id, .5f, .4f)
             val red = paperPixel(output, f.next.id, .5f, .4f)
-            android.graphics.Color.blue(blue) >= 220 && android.graphics.Color.red(blue) in 90..165 &&
+            android.graphics.Color.blue(blue) >= 220 && android.graphics.Color.red(blue) <= 8 &&
                 android.graphics.Color.green(green) >= 220 && android.graphics.Color.blue(green) <= 8 &&
-                android.graphics.Color.red(red) >= 220 && android.graphics.Color.green(red) in 90..165
+                android.graphics.Color.red(red) >= 220 && android.graphics.Color.green(red) <= 8
         }
         compose.onNodeWithTag("cards-stack").performTouchInput {
             down(center); moveTo(center - Offset(width * .1f, 0f)); moveTo(center - Offset(width * .48f, 0f))

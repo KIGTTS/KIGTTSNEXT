@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.gestures.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -44,9 +46,9 @@ fun rememberLandscapePanel(state: AppState, model: AppViewModel, availableWidth:
     } }
     val columns = remember { derivedStateOf { latestGeometry.columnsAt(width.value) } }
     val visible = remember { derivedStateOf { latestPanel.value != null || width.value > LandscapePanelGeometry.COLLAPSED + 1f } }
-    val spring = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
+    val settleMotion = tween<Float>(260, easing = FastOutSlowInEasing)
     LaunchedEffect(target, dragging.value) {
-        if (dragging.value) animation.stop() else animation.animateTo(target, spring)
+        if (dragging.value) animation.stop() else animation.animateTo(target, settleMotion)
     }
     val start = remember(model) { {
         if (!dragging.value) {

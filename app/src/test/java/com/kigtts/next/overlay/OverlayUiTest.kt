@@ -50,13 +50,14 @@ class OverlayUiTest {
     @Test fun draggingAnEntranceScrollsTheDialWithoutOpeningIt() {
         var opened: String? = null
         compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
-            OverlayDial(OverlaySettings(), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+            OverlayDial(OverlaySettings(shortcuts = defaultOverlayShortcuts() +
+                (1..3).map { OverlayShortcut("extra-$it", "额外入口$it", "extension") }), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
                 {}, { _, _ -> }, {}, {}, { opened = it.id }, {})
         } } }
         val icon = compose.onNodeWithContentDescription("拍照")
         val before = icon.fetchSemanticsNode().boundsInRoot
         icon.performTouchInput {
-            swipe(center, center + androidx.compose.ui.geometry.Offset(0f, 320f), 350)
+            swipe(center, center + androidx.compose.ui.geometry.Offset(0f, -180f), 350)
         }
         compose.waitForIdle()
         val after = compose.onNodeWithContentDescription("拍照").fetchSemanticsNode().boundsInRoot
@@ -90,6 +91,38 @@ class OverlayUiTest {
             up()
         }
         compose.runOnIdle { assertNull(opened); assertTrue(moves.contains("camera" to 1)) }
+    }
+    @Test fun offCenterHoldKeepsGrabPointAndFollowsFingerThroughReorder() {
+        var settings by mutableStateOf(OverlaySettings())
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(settings, OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, {}, {}, reorder = { id, direction ->
+                    val list = settings.shortcuts.toMutableList()
+                    val from = list.indexOfFirst { it.id == id }; val to = from + direction
+                    if (to in list.indices) {
+                        list.add(to, list.removeAt(from)); settings = settings.copy(shortcuts = list); true
+                    } else false
+                })
+        } } }
+        compose.waitForIdle()
+        val icon = compose.onNodeWithContentDescription("拍照")
+        val before = icon.fetchSemanticsNode().boundsInRoot.center
+        compose.mainClock.autoAdvance = false
+        icon.performTouchInput { down(androidx.compose.ui.geometry.Offset(width * .75f, height * .25f)) }
+        compose.mainClock.advanceTimeBy(750)
+        compose.waitForIdle()
+        val held = icon.fetchSemanticsNode().boundsInRoot.center
+        assertEquals(before.x, held.x, 1f); assertEquals(before.y, held.y, 1f)
+        val travel = androidx.compose.ui.geometry.Offset(25f, 180f)
+        icon.performTouchInput { moveBy(travel, 100) }
+        compose.mainClock.advanceTimeBy(48)
+        compose.waitForIdle()
+        val moved = icon.fetchSemanticsNode().boundsInRoot.center
+        assertEquals(before.x + travel.x, moved.x, 2f); assertEquals(before.y + travel.y, moved.y, 2f)
+        compose.runOnIdle { assertEquals(2, settings.shortcuts.indexOfFirst { it.id == "camera" }) }
+        icon.performTouchInput { up() }
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
     }
     @Test fun motionButtonsAndDialogActionsTickOnceAndHonorGlobalOff() {
         val ticks = mutableListOf<HapticFeedbackType>(); var enabled by mutableStateOf(true); var actions = 0

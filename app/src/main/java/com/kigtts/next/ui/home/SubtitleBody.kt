@@ -3,6 +3,7 @@ package com.kigtts.next.ui.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -45,6 +46,8 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val flipped = state.subtitleFlipped && !state.editing
+    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(320, easing = FastOutSlowInEasing), label = "subtitle-flip")
+    val hintOpacity = animateFloatAsState(if (state.editing) .28f else 1f, tween(180), label = "subtitle-hint-focus")
     val style = TextStyle(color = MaterialTheme.colorScheme.onSurface, fontSize = preferredSubtitleFontSize(state.subtitleSizePercent),
         lineHeight = 1.25.em, fontWeight = if (state.subtitleAppearance.bold) FontWeight.Bold else FontWeight.Normal,
         textAlign = state.subtitleAppearance.alignment.textAlignment)
@@ -54,11 +57,11 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
         .semantics { stateDescription = if (flipped) "倒置字幕" else "正向字幕" }
         .subtitleZoom(model) { model.setSubtitleSizePercent(model.state.value.subtitleSizePercent * it) }
-        .graphicsLayer { rotationZ = if (flipped) 180f else 0f }, contentAlignment = Alignment.Center) {
+        .graphicsLayer { rotationZ = rotation.value }, contentAlignment = Alignment.Center) {
         val width = with(density) { maxWidth.roundToPx() }
         val height = with(density) { maxHeight.roundToPx() }
         if (state.editing) {
-            SubtitleInput(state, model, style, width, height, focus)
+            SubtitleInput(state, model, style, width, height, focus, hintOpacity)
         } else if (renderer != null) {
             val selection = renderer!!
             Box(Modifier.fillMaxSize()) {
@@ -71,7 +74,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
                 if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
                     Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))
             }
-        } else SubtitleDisplay(state, model, text, style, width, height)
+        } else SubtitleDisplay(state, model, text, style, width, height, hintOpacity)
         if (!state.editing && model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
             SubtitleStrokeOverlay(model, Modifier.matchParentSize())
     }

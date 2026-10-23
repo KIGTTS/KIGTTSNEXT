@@ -62,9 +62,16 @@ $packages = @($packages | Group-Object { $_.id } | ForEach-Object {
     $package.releases = @($_.Group | ForEach-Object { $_.releases })
     $package
 })
+$sourceIcon = Join-Path $projectRoot 'distribution/assets/kpm-source.svg'
+$iconHash = (Get-FileHash -LiteralPath $sourceIcon -Algorithm SHA256).Hash.ToLowerInvariant()
+$iconPath = "artwork/kpm-source-$($iconHash.Substring(0,12)).svg"
+[IO.Directory]::CreateDirectory((Join-Path $output 'artwork')) | Out-Null
+Copy-Item -LiteralPath $sourceIcon -Destination (Join-Path $output $iconPath) -Force
 $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS 官方插件源'
     description = '扩展朗读、聆听和创作体验，让常用工具触手可及。'; homepage = 'https://kigtts.github.io/KPM/'
-    icon = @{ symbol = 'inventory_2' }; assets = @{}
+    icon = @{ image = 'kpm-source' }; assets = @{ 'kpm-source' = @{
+        url = "$homepage/resolve/master/$iconPath`?view=false"; sha256 = $iconHash
+        bytes = (Get-Item -LiteralPath $sourceIcon).Length; alt = 'KPM 官方插件源' } }
     readme = "## KPM 官方插件源`n`n在这里浏览语音、AI与创作工具，按自己的需要丰富KIGTTS。`n`n- 找到适合日常交流的朗读和聆听工具。`n- 让AI协助整理内容与动手创作。`n- 使用插件编辑器制作并分享自己的小工具。"
     updatedAt = [DateTimeOffset]::UtcNow.ToString('o'); packages = $packages }
 [IO.File]::WriteAllText((Join-Path $output 'index.json'), ($catalog | ConvertTo-Json -Depth 15) + "`n", $utf8)

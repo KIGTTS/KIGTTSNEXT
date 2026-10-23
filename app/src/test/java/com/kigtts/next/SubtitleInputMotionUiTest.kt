@@ -61,6 +61,10 @@ class SubtitleInputMotionUiTest {
         val middle = compose.onNodeWithTag("speech-editor").fetchSemanticsNode().boundsInRoot.height
         capture("subtitle-typing-lines-mid")
         compose.mainClock.advanceTimeBy(300); compose.waitForIdle()
+        val actual = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithTag("speech-editor").performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(actual) }
+        assertEquals("第一行\n第二行", actual.single().layoutInput.text.text)
+        capture("subtitle-typing-lines-settled")
         val end = compose.onNodeWithTag("speech-editor").fetchSemanticsNode().boundsInRoot.height
         assertEquals("The editor must not grow from the previous line's clipping bounds", before, middle, .1f)
         assertEquals(before, end, .1f)
@@ -169,7 +173,7 @@ class SubtitleInputMotionUiTest {
         }
         compose.mainClock.autoAdvance = true
     }
-    @Test fun viewportReboundsDoNotAlternateTheFittedGlyphSize() {
+    @Test fun enlargingViewportRecomputesFontBeforeTheDragStops() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         val text = "第一行\n第二行\n第三行\n第四行"
         var height by mutableIntStateOf(500)
@@ -197,11 +201,13 @@ class SubtitleInputMotionUiTest {
         capture("subtitle-rebound-shrink")
         val fitted = glyphSize()
         assertTrue("Smaller viewport must fit the glyphs: $original -> $fitted", fitted < original)
-        for (rebound in listOf(180, 174, 184, 177)) {
+        var previousSize = fitted
+        for (rebound in listOf(200, 230, 280, 340)) {
             compose.runOnIdle { height = rebound }
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(16, java.util.concurrent.TimeUnit.MILLISECONDS)
             compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
-            assertEquals("Spring rebounds must not enlarge the glyphs mid-motion", fitted, glyphSize(), .01f)
+            assertTrue("Font must grow during continuous panel adjustment", glyphSize() > previousSize)
+            previousSize = glyphSize()
         }
         compose.runOnIdle { height = 500 }
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(240, java.util.concurrent.TimeUnit.MILLISECONDS)

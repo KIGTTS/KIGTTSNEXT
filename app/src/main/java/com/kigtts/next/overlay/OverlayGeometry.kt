@@ -22,4 +22,3 @@ internal fun dialPoint(slot: Int, right: Boolean, radius: Float): Pair<Float, Fl
     val angle = Math.toRadians((slot - 2) * 36.0)
     return (if (right) -1 else 1) * cos(angle).toFloat() * radius to sin(angle).toFloat() * radius
 }
-internal fun wrappedIndex(index: Int, count: Int): Int = if (count == 0) 0 else ((index % count) + count) % count

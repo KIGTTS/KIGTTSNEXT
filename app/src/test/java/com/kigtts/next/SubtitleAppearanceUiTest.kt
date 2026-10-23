@@ -105,7 +105,9 @@ class SubtitleAppearanceUiTest {
         compose.runOnIdle { model.editing(true) }
         fun open() {
             compose.onNodeWithTag("speech-editor").performTouchInput { longClick(center) }
-            compose.onNodeWithTag("text-menu-select-all").performClick()
+            // Native word selection can cover this entire short Chinese phrase already.
+            if (model.state.value.editorValue.selection.length < model.state.value.editorText.length)
+                compose.onNodeWithTag("text-menu-select-all").performClick()
             compose.onNodeWithTag("text-menu-copy").assertIsDisplayed()
         }
         open(); compose.onNodeWithTag("text-menu-bold").assertDoesNotExist()

@@ -121,7 +121,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
                 click = { if (columns < maximumColumns) columnLevel++ else mode = PolaroidBrowseMode.ALBUMS }))
             add(ToolbarAction("face-discovery", "面对面发现", Icons.Default.Radar, active, checked = discovery, click = {
                 discovery = !discovery; preferences.edit().putBoolean("face-discovery", discovery).apply()
-                message(if (discovery) "已预留面对面发现，暂不搜索附近设备" else "已关闭面对面发现")
+                message(if (discovery) "面对面功能尚未开放" else "已关闭面对面发现")
             }))
         }, primaryCount = 4)
 

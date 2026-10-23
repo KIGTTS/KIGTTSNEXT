@@ -3,11 +3,13 @@ package com.kigtts.next
 import android.app.Application
 import android.graphics.BitmapFactory
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.ui.KigttsApp
+import com.kigtts.next.ui.components.LocalMultiWindowMode
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -29,6 +31,30 @@ class CursorTrackMotionTest {
         return IntArray(bitmap.width * bitmap.height).also {
             bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height); bitmap.recycle()
         }
+    }
+    @Test fun smallWindowPlacesTheWideCursorStripAboveTheButtonsAndRestoresInlineInFullscreen() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        model.setAutoPlayback(false)
+        var small by mutableStateOf(true)
+        compose.setContent { CompositionLocalProvider(LocalMultiWindowMode provides small) { KigttsApp(model) } }
+        compose.runOnIdle { model.text("abcdef中文"); model.editing(true) }
+        compose.waitForIdle()
+        val strip = compose.onNodeWithTag("cursor-track").fetchSemanticsNode().boundsInRoot
+        val actions = compose.onNodeWithTag("editor-footer-actions").fetchSemanticsNode().boundsInRoot
+        assertTrue("The cursor track needs its own row above the actions", strip.bottom <= actions.top)
+        assertTrue("The small-window track should span the caption width", strip.width > actions.width * .85f)
+        compose.onNodeWithTag("speech-editor").performTextInputSelection(androidx.compose.ui.text.TextRange(8))
+        // Cross the device's touch slop, then move at least two 12 dp cursor steps.
+        compose.onNodeWithTag("cursor-track").performTouchInput { swipeLeft(startX = centerX, endX = centerX - 180f, durationMillis = 300) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("editor-footer").captureRoboImage("build/previews/cursor-small-window.png")
+        assertTrue("Wide cursor drag: ${model.state.value.editorValue}, strip=$strip, actions=$actions", model.state.value.editorValue.selection.start < 8)
+        compose.runOnIdle { small = false }
+        val inline = compose.onNodeWithTag("cursor-track").fetchSemanticsNode().boundsInRoot
+        val row = compose.onNodeWithTag("editor-footer-actions").fetchSemanticsNode().boundsInRoot
+        assertTrue(inline.center.y in row.top..row.bottom)
+        assertTrue(inline.width < strip.width * .65f)
     }
     @Test fun enteringAndLeavingAnimateTheStripAndSideSpacingWithoutChangingHeightOrSelection() {
         val app = ApplicationProvider.getApplicationContext<Application>()

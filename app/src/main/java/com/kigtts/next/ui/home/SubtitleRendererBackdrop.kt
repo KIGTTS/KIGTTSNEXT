@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.runtime.*
+import androidx.compose.animation.core.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import com.kigtts.next.state.AppState
@@ -16,10 +17,11 @@ internal fun SubtitleRendererBackdrop(state: AppState, model: AppViewModel, safe
     if (state.editing || state.mediaId != null) return
     val renderer = selection ?: return
     val flipped = state.subtitleFlipped
+    val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(320, easing = FastOutSlowInEasing), label = "renderer-flip")
     val insets = if (flipped) MediaSafeArea(safeArea.bottom, safeArea.left, safeArea.top, safeArea.right) else safeArea
     key(renderer) {
         PluginSubtitleRenderer(renderer, state.editorText, state.subtitlePlaceholder, state.subtitleSizePercent,
-            modifier.graphicsLayer { rotationZ = if (flipped) 180f else 0f }, safeArea = insets,
+            modifier.graphicsLayer { rotationZ = rotation.value }, safeArea = insets,
             onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(renderer.owner, it) },
             onUnavailable = { model.rendererUnavailable(renderer.owner) })
     }

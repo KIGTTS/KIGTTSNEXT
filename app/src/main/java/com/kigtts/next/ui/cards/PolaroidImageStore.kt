@@ -50,9 +50,18 @@ private val cardImages = PolaroidImageStore()
 @Composable
 internal fun rememberCardImage(file: File?, maximum: Int = 384): ImageBitmap? {
     val stamp = file?.lastModified(); val bytes = file?.length()
-    val initial = remember(file?.path, stamp, bytes, maximum) { cardImages.peek(file, maximum)?.asImageBitmap() }
-    val image by produceState(initial, file?.path, stamp, bytes, maximum) {
-        value = if (file == null) null else cardImages.load(file, maximum)?.asImageBitmap()
+    // Keep lower-resolution pixels while a larger decode is pending, but never retain a
+    // different file's pixels when a stable card changes its photo.
+    var image by remember(file?.path, stamp, bytes) {
+        mutableStateOf(cardImages.peek(file, maximum)?.asImageBitmap())
+    }
+    LaunchedEffect(file?.path, stamp, bytes, maximum) {
+        if (file != null) {
+            val next = cardImages.peek(file, maximum) ?: withContext(Dispatchers.Main.immediate) {
+                cardImages.load(file, maximum)
+            }
+            if (next != null) image = next.asImageBitmap()
+        }
     }
     return image
 }

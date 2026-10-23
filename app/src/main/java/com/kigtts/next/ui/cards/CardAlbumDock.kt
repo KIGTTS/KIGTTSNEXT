@@ -40,11 +40,11 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
     if (sheet == null) LaunchedEffect(expanded) { state.animateTo(if (expanded) 2 else 0, tween(240)) }
     val stage = state.targetValue
     val railsEnabled = enabled && stage > 0
-    LaunchedEffect(selectedId, albums, stage) {
+    LaunchedEffect(selectedId, stage) {
         val target = albums.indexOfFirst { it.id == selectedId }
         if (stage == 2 && target >= 0) albumScroll.animateScrollToItem(target)
     }
-    LaunchedEffect(selectedId, focusedId, photos, stage) {
+    LaunchedEffect(selectedId, focusedId, stage) {
         val target = photos.indexOfFirst { it.id == focusedId }.coerceAtLeast(0)
         if (expanded && photos.isNotEmpty()) photoScroll.animateScrollToItem(target)
     }

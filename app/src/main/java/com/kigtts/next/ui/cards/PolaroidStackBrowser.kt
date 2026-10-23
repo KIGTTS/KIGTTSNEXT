@@ -125,7 +125,9 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
             wasScrolling = scrolling
         }
     }
-    LaunchedEffect(focusedId, cards, positionRequest) {
+    // Metadata/thumbnail updates must not seize an active finger or cancel its fling.
+    // The stable page key already follows ordinary catalog reordering.
+    LaunchedEffect(focusedId, positionRequest) {
         val target = cards.indexOfFirst { it.id == focusedId }
         if (target >= 0 && (target != pager.settledPage || pager.isScrollInProgress)) {
             val version = ++positionVersion
@@ -163,7 +165,7 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 layout(placed.width, placed.height) {
                     val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                     val distance = relative.absoluteValue
-                    placed.placeWithLayer(0, 0, zIndex = if (wide) -(index - pager.currentPage).absoluteValue.toFloat() else -index.toFloat()) {
+                    placed.placeWithLayer(0, 0, zIndex = if (wide) -distance else -index.toFloat()) {
                         if (wide) {
                             val pose = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth)
                             translationX = pose.x * density - relative * size.width
@@ -181,11 +183,9 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 }
             }, contentAlignment = Alignment.Center) {
                 val foreground = latestCards.value.indexOfFirst { it.id == focusedId }.takeIf { it >= 0 } ?: pager.settledPage
-                // A reorder or explicit album jump can move the stable focus before the old
-                // page settles. Keep that currently painted page's image while it exits.
-                val visibleImages: (String) -> File? = if (index in foreground - (if (wide) 3 else 1)..foreground + (if (wide) 3 else 2) ||
-                    index == pager.currentPage || index == pager.settledPage) imageFile else { _ -> null }
-                PolaroidCanvas(card, visibleImages, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
+                // Pager composition bounds preloading. Never blank an already composed paper
+                // based on the last settled focus while a rapid swipe exposes its neighbors.
+                PolaroidCanvas(card, imageFile, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
                     .then(if (wide) Modifier.polaroidShadowFade {
                         carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
                     }.drawBehind {

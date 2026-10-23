@@ -37,15 +37,8 @@ internal fun CardPhotoFieldTools(cards: CardRepository, card: PolaroidCard, enab
                 }
                 val facts = PolaroidPhotoFacts.enrich(context, existing, setOf(field))
                 withContext(Dispatchers.IO) { cards.designs.freeze(card.id, facts) }
-                val available = when (field) {
-                    PhotoTextField.LOCATION -> facts.location != null
-                    PhotoTextField.WEATHER -> facts.weather != null
-                    else -> facts.capturedAt != null
-                }
-                if (available) {
-                    cards.designs.fieldLayers(card, field).forEach { if (it.id != field.layerId()) remove(it.id) }
-                    put(photoInformationLayer(field, facts.text(field)))
-                } else message("未取得拍摄时的${field.label}，暂未开启")
+                cards.designs.fieldLayers(card, field).forEach { if (it.id != field.layerId()) remove(it.id) }
+                put(photoInformationLayer(field, facts.text(field)))
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { message(error.message ?: "未能取得拍摄信息") }
             finally { busy = false }

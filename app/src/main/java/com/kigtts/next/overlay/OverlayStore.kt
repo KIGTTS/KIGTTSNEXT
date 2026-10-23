@@ -20,7 +20,7 @@ data class OverlaySettings(
     val rightEdge: Boolean = true, val position: Float = .55f,
     val shortcuts: List<OverlayShortcut> = defaultOverlayShortcuts(),
     val showLabels: Boolean = true,
-    val preferSmallWindows: Boolean = shortcuts.any { it.smallWindow },
+    val preferSmallWindows: Boolean = true,
 )
 
 fun defaultOverlayShortcuts() = listOf(
