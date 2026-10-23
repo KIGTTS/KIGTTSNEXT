@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -46,7 +47,12 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
     val management = LocalCardManagementGeometry.current
     val managePhoto: (PolaroidCard) -> Unit = { card -> management?.begin(card.id); onManage(card) }
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
-    Box(modifier.testTag("polaroid-browser").then(if (enabled) Modifier.pointerInput(Unit) {
+    val pinchAnchors = remember { PolaroidPinchAnchors() }
+    val pinchCards = rememberUpdatedState(cards + gridCards)
+    val pinchFocus = rememberUpdatedState(focus)
+    val currentFocus = rememberUpdatedState(focusedId)
+    CompositionLocalProvider(LocalPolaroidPinchAnchors provides pinchAnchors) {
+    Box(modifier.testTag("polaroid-browser").onGloballyPositioned { pinchAnchors.browser = it }.then(if (enabled) Modifier.pointerInput(Unit) {
         awaitEachGesture {
             awaitFirstDown(requireUnconsumed = false)
             var scale = 1f; var pinching = false; var switched = false
@@ -58,6 +64,11 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                     val target = pinchBrowseScale(latestMode.value, latestColumns.value, scale, limits.value.first, limits.value.second)
                     if (!switched && (target.mode != latestMode.value || target.columns != latestColumns.value)) {
                         switched = true
+                        val anchor = pinchAnchors.at(event.calculateCentroid(), latestMode.value, currentFocus.value, target.columns)
+                        anchor?.let { selected ->
+                            pinchCards.value.firstOrNull { it.id == selected.id }?.let(pinchFocus.value)
+                            pinchAnchors.pending = selected.takeIf { target.mode == PolaroidBrowseMode.GRID }
+                        }
                         haptics.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
                         switch.value(target.mode); columnsChanged.value(target.columns)
                     }
@@ -70,6 +81,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
         AnimatedContent(mode, modifier = Modifier.fillMaxSize().polaroidAlbumDrawingClip(), label = "polaroid-browse-mode",
             transitionSpec = { (fadeIn(androidx.compose.animation.core.tween(340)) togetherWith fadeOut(androidx.compose.animation.core.tween(340))).using(null) }) { target ->
           CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && mode == target),
+              LocalPolaroidEntering provides (transition.currentState == EnterExitState.PreEnter),
               LocalPolaroidSharedScope provides LocalPolaroidSharedScope.current.takeUnless { target == PolaroidBrowseMode.ALBUMS }) {
             if (target == PolaroidBrowseMode.ALBUMS) PolaroidAlbumOverview(albums, albumCards, selectedAlbumId ?: albumContaining(albums, focusedId)?.id,
                     imageFile, frames, enabled,
@@ -90,6 +102,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
             }
           }
         }
+    }
     }
 }
 
@@ -170,14 +183,9 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                             val pose = carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth)
                             translationX = pose.x * density - relative * size.width
                             scaleX = pose.scale; scaleY = scaleX
-                            rotationZ = 0f
-                            alpha = 1f
                         } else {
                             translationX = if (relative >= 0f) -relative * size.width * .92f else relative * size.width * .05f
                             scaleX = (1f - distance * .07f).coerceAtLeast(.82f); scaleY = scaleX
-                            rotationZ = (relative * 2.5f).coerceIn(-5f, 5f)
-                            // Overlapping portrait papers stay opaque to avoid ghosting text.
-                            alpha = if (distance <= 2f) 1f else (3f - distance).coerceIn(0f, 1f)
                         }
                     }
                 }
@@ -185,8 +193,14 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 val foreground = latestCards.value.indexOfFirst { it.id == focusedId }.takeIf { it >= 0 } ?: pager.settledPage
                 // Pager composition bounds preloading. Never blank an already composed paper
                 // based on the last settled focus while a rapid swipe exposes its neighbors.
-                CompositionLocalProvider(LocalPolaroidOverlayOrder provides (1000f - kotlin.math.abs(index - foreground))) {
+                CompositionLocalProvider(LocalPolaroidOverlayOrder provides (1000f - kotlin.math.abs(index - foreground)),
+                    LocalPolaroidVisualPose provides {
+                        val relative = index - pager.currentPage - pager.currentPageOffsetFraction
+                        if (wide) PolaroidVisualPose() else PolaroidVisualPose(
+                            (relative * 2.5f).coerceIn(-5f, 5f), (3f - relative.absoluteValue).coerceIn(0f, 1f))
+                    }) {
                 PolaroidCanvas(card, imageFile, Modifier.width(width).polaroidResizeLayer(resize).cardManagementSource(card.id, registerManagementSource)
+                    .polaroidPinchTarget(card.id, PolaroidBrowseMode.STACK, registerManagementSource)
                     .then(if (wide) Modifier.polaroidShadowFade {
                         carouselPhotoPose(index, pager.currentPage + pager.currentPageOffsetFraction, carouselWidths, carouselViewportWidth).alpha
                     }.drawBehind {

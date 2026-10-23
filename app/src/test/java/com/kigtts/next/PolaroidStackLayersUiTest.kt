@@ -31,8 +31,11 @@ import java.io.File
 class PolaroidStackLayersUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun theCurrentPhotoStaysInFrontWhileItsStackBecomesGridOrSortAndBack() {
-        val colors = listOf(Color.GREEN, Color.BLUE, Color.RED, Color.YELLOW, Color.MAGENTA, Color.CYAN)
+    @Test fun theCurrentPhotoStaysInFrontWhileItsStackBecomesGridOrSortAndBack() = checkTransitions(1)
+    @Test fun laterFocusedPhotoRetainsItsBackPapersWhenReturningFromTheGrid() = checkTransitions(4)
+    private fun checkTransitions(focused: Int) {
+        val colors = listOf(Color.GREEN, Color.GREEN, Color.RED, Color.YELLOW, Color.MAGENTA, Color.CYAN)
+            .mapIndexed { index, color -> if (index == focused) Color.BLUE else color }
         val files = colors.mapIndexed { index, color -> File(compose.activity.cacheDir, "stack-layer-$index.png").apply {
             val bitmap = Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).apply { eraseColor(color) }
             outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
@@ -41,28 +44,31 @@ class PolaroidStackLayersUiTest {
         var mode by mutableStateOf(PolaroidBrowseMode.STACK)
         var managing by mutableStateOf(false)
         var ready by mutableStateOf(false)
+        lateinit var geometry: CardManagementGeometry
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
             val cached = files.flatMap { f -> listOf(256, 512, 1024, 1200).map { rememberCardImage(f, it) } }
             SideEffect { ready = cached.all { it != null } }
             Box(Modifier.fillMaxSize().testTag("stack-layer-scene")) {
                 CardManagementTransition(managing, browser = {
-                    PolaroidBrowser(cards, mode, cards[1].id, { files[it.toInt()] }, emptyList(), !managing,
+                    val registry = requireNotNull(LocalCardManagementGeometry.current)
+                    SideEffect { geometry = registry }
+                    PolaroidBrowser(cards, mode, cards[focused].id, { files[it.toInt()] }, emptyList(), !managing,
                         { mode = it }, {}, {}, {}, Modifier.fillMaxSize())
                 }, manager = {
                     CardManagementSortPane(cards.map { it.id }, CardManagementMode.STRIP, 2,
-                        LocalCardManagementActive.current, false, cards[1].id, {}) { id, modifier, grip, lifted ->
-                        CardManagementPhoto(cards.first { it.id == id }, id == cards[1].id, LocalCardManagementActive.current,
-                            { files[it.toInt()] }, null, {}, modifier, grip, lifted, cards[1].id)
+                        LocalCardManagementActive.current, false, cards[focused].id, {}) { id, modifier, grip, lifted ->
+                        CardManagementPhoto(cards.first { it.id == id }, id == cards[focused].id, LocalCardManagementActive.current,
+                            { files[it.toInt()] }, null, {}, modifier, grip, lifted, cards[focused].id)
                     }
                 })
             }
         } }
         compose.waitUntil(8000) { ready }; compose.waitForIdle(); compose.mainClock.autoAdvance = false
         fun capture(name: String): Offset {
-            val nodes = compose.onAllNodesWithTag("polaroid/layer-1", useUnmergedTree = true).fetchSemanticsNodes()
+            val nodes = compose.onAllNodesWithTag("polaroid/layer-$focused", useUnmergedTree = true).fetchSemanticsNodes()
             val coordinates = (if (managing) nodes.last() else nodes.first()).layoutInfo.coordinates
             val center = coordinates.localToRoot(Offset(coordinates.size.width * .5f, coordinates.size.height * .4f))
-            val output = File("build/previews/stack-layers-$name.png").apply { parentFile?.mkdirs() }
+            val output = File("build/previews/stack-layers-$focused-$name.png").apply { parentFile?.mkdirs() }
             compose.onNodeWithTag("stack-layer-scene").captureRoboImage(output.absolutePath)
             val bitmap = requireNotNull(BitmapFactory.decodeFile(output.absolutePath))
             try {
@@ -75,6 +81,8 @@ class PolaroidStackLayersUiTest {
         fun transition(name: String, action: () -> Unit) {
             val start = capture("$name-before")
             var previous = start
+            val neighbor = "layer-${focused + 1}"
+            var angle = geometry.visualPoses.getValue(neighbor).rotation
             compose.runOnIdle(action)
             repeat(26) { frame ->
                 compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
@@ -83,6 +91,10 @@ class PolaroidStackLayersUiTest {
                     if (frame <= 3) assertTrue("First frames cannot teleport: $name/$frame $previous -> $center",
                         (center - previous).getDistance() < 100f)
                     previous = center
+                    val nextAngle = geometry.visualPoses.getValue(neighbor).rotation
+                    if (frame <= 3) assertTrue("Neighbor cannot instantly straighten: $name/$frame $angle -> $nextAngle",
+                        kotlin.math.abs(nextAngle - angle) < 1.5f)
+                    angle = nextAngle
                 }
             }
         }

@@ -13,6 +13,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.plugin.api.*
 import java.io.File
@@ -42,26 +44,47 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
             .collect { previous.visible = it }
     }
     val firstNew = retained?.values?.maxOrNull()?.plus(1) ?: 0
-    LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 6)),
-        Modifier.fillMaxSize().padding(top = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)).testTag("cards-grid")
-            .semantics { stateDescription = "$columns 列" }, state = grid,
-        contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 100.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
-            BoxWithConstraints(Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null,
-                placementSpec = tween(240, easing = FastOutSlowInEasing))) {
-                val frame = frames.firstOrNull { it.id == card.frameStyleId }
-                val height = maxWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
-                val resize = rememberPolaroidResize(card.id, maxWidth, maxWidth, height, coordinateSpace = LocalCardWindowLandscape.current)
-                PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth().polaroidResizeLayer(resize)
-                    .polaroidShadowFade {
-                        if (retained == null || card.id in retained) 1f else {
-                            val delay = ((index - firstNew).coerceAtLeast(0) * 32).coerceAtMost(160)
-                            // Finish making room before newly visible papers fill the extra slots.
-                            FastOutSlowInEasing.transform(((reveal.value * 600f - 240f - delay) / 200f).coerceIn(0f, 1f))
-                        }
-                    }.cardManagementSource(card.id, registerManagementSource)
-                    .combinedClickable(enabled = enabled, onClick = feedbackClick { preview(card) }, onLongClick = feedbackClick { edit(card) }), frame = frame)
+    val anchors = LocalPolaroidPinchAnchors.current
+    val pending = anchors?.pending?.takeIf { it.columns == columns }
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val index = pending?.let { request -> cards.indexOfFirst { it.id == request.id } } ?: -1
+        if (index >= 0 && pending != null) {
+            val card = cards[index]
+            val frame = frames.firstOrNull { it.id == card.frameStyleId }
+            val paperWidth = (maxWidth - 36.dp - 14.dp * (columns - 1)) / columns
+            val paperHeight = paperWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
+            val clearance = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)
+            val offset = with(density) {
+                (paperHeight.toPx() * pending.paperY - maxHeight.toPx() * pending.viewportY + clearance.toPx() + 18.dp.toPx()).roundToInt()
+            }
+            SideEffect {
+                grid.requestScrollToItem(index, offset)
+                if (anchors?.pending === pending) anchors.pending = null
+            }
+        }
+        LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 6)),
+            Modifier.fillMaxSize().padding(top = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)).testTag("cards-grid")
+                .semantics { stateDescription = "$columns 列" }, state = grid,
+            contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 100.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->
+                BoxWithConstraints(Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null,
+                    placementSpec = tween(240, easing = FastOutSlowInEasing))) {
+                    val frame = frames.firstOrNull { it.id == card.frameStyleId }
+                    val height = maxWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
+                    val resize = rememberPolaroidResize(card.id, maxWidth, maxWidth, height, coordinateSpace = LocalCardWindowLandscape.current)
+                    PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth().polaroidResizeLayer(resize)
+                        .polaroidShadowFade {
+                            if (retained == null || card.id in retained) 1f else {
+                                val delay = ((index - firstNew).coerceAtLeast(0) * 32).coerceAtMost(160)
+                                // Finish making room before newly visible papers fill the extra slots.
+                                FastOutSlowInEasing.transform(((reveal.value * 600f - 240f - delay) / 200f).coerceIn(0f, 1f))
+                            }
+                        }.cardManagementSource(card.id, registerManagementSource)
+                        .polaroidPinchTarget(card.id, PolaroidBrowseMode.GRID, registerManagementSource)
+                        .combinedClickable(enabled = enabled, onClick = feedbackClick { preview(card) }, onLongClick = feedbackClick { edit(card) }), frame = frame)
+                }
             }
         }
     }
