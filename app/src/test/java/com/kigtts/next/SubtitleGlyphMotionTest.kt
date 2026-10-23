@@ -50,7 +50,7 @@ class SubtitleGlyphMotionTest {
             assertEquals(glyph.bounds.size, motion.pose(index).size)
         }
     }
-    @Test fun reflowExitsTheViewportBeforeEnteringAndContinuousZoomDoesNotRestartIt() {
+    @Test fun reflowUsesAShortFixedDistanceAndContinuousZoomDoesNotRestartIt() {
         val motion = SubtitleGlyphMotion()
         val initial = frame("甲乙丙丁", width = 200)
         val wrapped = frame("甲乙丙丁", width = 100)
@@ -58,12 +58,16 @@ class SubtitleGlyphMotionTest {
         motion.update(wrapped, 4, true)
         val index = initial.glyphs.indices.first { initial.glyphs[it].line != wrapped.glyphs[it].line }
         assertEquals(initial.glyphs[index].bounds.topLeft + initial.origin, motion.outgoing(index)!!.position)
-        motion.advanceBy(100f)
-        assertTrue(motion.outgoing(index)!!.position.x > wrapped.viewport.width)
+        motion.advanceBy(80f)
+        val outgoing = motion.outgoing(index)!!
+        val startX = initial.glyphs[index].bounds.left + initial.origin.x
+        assertTrue(outgoing.position.x > startX)
+        assertTrue(outgoing.position.x <= startX + 18f)
         assertEquals(0f, motion.pose(index).alpha, 0f)
         motion.advanceBy(40f)
         assertNull(motion.outgoing(index))
-        assertTrue(motion.pose(index).position.x < 0f)
+        val targetX = wrapped.glyphs[index].bounds.left + wrapped.origin.x
+        assertTrue(motion.pose(index).position.x in targetX - 18f..targetX)
         assertTrue(motion.pose(index).alpha > 0f)
         repeat(7) {
             motion.update(frame("甲乙丙丁", font = 39, width = 99 - it), 4, true)
@@ -72,15 +76,54 @@ class SubtitleGlyphMotionTest {
         assertFalse("Continuous layout updates must not starve the line transition", motion.running)
         assertEquals(1f, motion.pose(index).alpha, 0f)
     }
-    @Test fun reverseReflowLeavesLeftAndReentersAtTheRightAtTheNewLineHeight() {
+    @Test fun reverseReflowUsesTheSameDistanceForDifferentFontAndViewportSizes() {
         val start = SubtitleGlyphPose(Offset(20f, 180f), Size(40f, 50f))
         val hop = SubtitleLineHop(start, -1f, 0f)
         val target = start.copy(position = Offset(250f, 90f))
-        assertTrue(hop.outgoing(100f, 320f)!!.position.x < -start.size.width)
-        assertEquals(0f, hop.incoming(100f, 320f, target).alpha, 0f)
-        val entering = hop.incoming(140f, 320f, target)
-        assertTrue(entering.position.x > 320f)
+        assertTrue(hop.outgoing(80f)!!.position.x in 2f..20f)
+        assertEquals(0f, hop.incoming(100f, target).alpha, 0f)
+        val entering = hop.incoming(140f, target)
+        assertTrue(entering.position.x in 250f..268f)
         assertEquals(90f, entering.position.y, 0f)
-        assertEquals(target, hop.incoming(240f, 320f, target))
+        assertEquals(target, hop.incoming(200f, target))
+        val larger = target.copy(position = Offset(900f, 250f), size = Size(120f, 150f))
+        assertEquals(entering.position.x - target.position.x, hop.incoming(140f, larger).position.x - larger.position.x, .001f)
+    }
+    @Test fun insertingAndRemovingAWholeRowMovesExistingRowsSmoothlyWithoutFadingThem() {
+        for ((text, changed) in listOf("甲乙\n丙丁" to "新\n甲乙\n丙丁", "新\n甲乙\n丙丁" to "甲乙\n丙丁")) {
+            val motion = SubtitleGlyphMotion()
+            val before = frame(text)
+            val after = frame(changed)
+            motion.update(before, text.length, true)
+            val oldIndex = before.glyphs.indexOfFirst { it.text == "甲" }
+            val nextIndex = after.glyphs.indexOfFirst { it.text == "甲" }
+            val start = motion.pose(oldIndex).position
+            val end = after.glyphs[nextIndex].bounds.topLeft + after.origin
+            motion.update(after, if (changed.startsWith("新")) 2 else 0, true)
+            assertNull("A complete row must move, not dissolve", motion.outgoing(nextIndex))
+            assertEquals(start, motion.pose(nextIndex).position)
+            motion.advanceBy(64f)
+            val middle = motion.pose(nextIndex)
+            assertEquals(1f, middle.alpha, 0f)
+            assertTrue(middle.position.y > minOf(start.y, end.y) && middle.position.y < maxOf(start.y, end.y))
+            motion.advanceBy(140f)
+            assertEquals(end, motion.pose(nextIndex).position)
+        }
+    }
+    @Test fun addingARowDuringResizeMovesUnaffectedTextWhileApplyingItsFontSizeImmediately() {
+        val motion = SubtitleGlyphMotion()
+        val initial = frame("甲乙丙丁", font = 30, width = 160)
+        val wrapped = frame("甲乙丙丁", font = 48, width = 120).copy(origin = Offset(0f, 80f))
+        motion.update(initial, 4, true)
+        val start = motion.pose(0).position
+        motion.update(wrapped, 4, true)
+        assertEquals(start, motion.pose(0).position)
+        assertEquals(wrapped.glyphs[0].bounds.size, motion.pose(0).size)
+        motion.advanceBy(64f)
+        val middle = motion.pose(0)
+        val end = wrapped.glyphs[0].bounds.topLeft + wrapped.origin
+        assertTrue(middle.position.y in end.y..start.y && middle.position.y != end.y && middle.position.y != start.y)
+        motion.advanceBy(150f)
+        assertEquals(end, motion.pose(0).position)
     }
 }

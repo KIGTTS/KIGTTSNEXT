@@ -195,9 +195,12 @@ class SubtitleInputMotionUiTest {
         }
         val original = glyphSize()
         compose.mainClock.autoAdvance = false
+        fun renderFrames(count: Int) {
+            repeat(count) { compose.mainClock.advanceTimeByFrame(); compose.waitForIdle() }
+        }
         compose.runOnIdle { height = 170 }
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(16, java.util.concurrent.TimeUnit.MILLISECONDS)
-        compose.mainClock.advanceTimeBy(48); compose.waitForIdle()
+        renderFrames(3)
         capture("subtitle-rebound-shrink")
         val fitted = glyphSize()
         assertTrue("Smaller viewport must fit the glyphs: $original -> $fitted", fitted < original)
@@ -205,13 +208,13 @@ class SubtitleInputMotionUiTest {
         for (rebound in listOf(200, 230, 280, 340)) {
             compose.runOnIdle { height = rebound }
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(16, java.util.concurrent.TimeUnit.MILLISECONDS)
-            compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
+            renderFrames(2)
             assertTrue("Font must grow during continuous panel adjustment", glyphSize() > previousSize)
             previousSize = glyphSize()
         }
         compose.runOnIdle { height = 500 }
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(240, java.util.concurrent.TimeUnit.MILLISECONDS)
-        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        renderFrames(15)
         assertEquals(original, glyphSize(), .01f)
         compose.mainClock.autoAdvance = true
     }

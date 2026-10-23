@@ -61,7 +61,9 @@ fun SubtitleDisplay(state: AppState, model: AppViewModel, text: String, style: T
                 }, style = old.style, color = if (old.content.text.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else style.color)
             }
         }
-        val shown = fade.current
+        // Render the live fit in this composition; the fade state only remembers
+        // the outgoing paragraph, so resizing never waits for a second commit.
+        val shown = SubtitleRenderFrame(target, fitted)
         Box(if (shown.content.text.isEmpty() && shown.content.placeholder.isNotEmpty()) Modifier.testTag("subtitle-placeholder") else Modifier) {
             Text(remember(shown.content) { shown.content.paragraph() }, Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).testTag("speech-editor")
                 .subtitleInputGestures(model).graphicsLayer {

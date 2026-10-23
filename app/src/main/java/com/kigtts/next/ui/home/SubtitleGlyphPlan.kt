@@ -47,3 +47,11 @@ internal fun subtitleGlyphFrame(layout: TextLayoutResult, origin: IntOffset, vie
 }
 
 internal fun subtitleGlyphPosition(from: Offset, to: Offset, fraction: Float) = from + (to - from) * fraction
+
+/** Whole rows shifted by an inserted/removed row move together instead of fading every glyph. */
+internal fun subtitleRelocatedRows(before: SubtitleGlyphFrame, next: SubtitleGlyphFrame, moves: List<SubtitleGlyphMove>): Set<Int> {
+    val matched = moves.filter { it.old != null && it.next != null && before.glyphs[it.old].text.any { c -> !c.isWhitespace() } }
+    val destinations = matched.groupBy { before.glyphs[it.old!!].line }.mapValues { (_, items) -> items.map { next.glyphs[it.next!!].line }.toSet() }
+    val origins = matched.groupBy { next.glyphs[it.next!!].line }.mapValues { (_, items) -> items.map { before.glyphs[it.old!!].line }.toSet() }
+    return destinations.filter { (_, lines) -> lines.size == 1 && origins[lines.single()]?.size == 1 }.keys
+}

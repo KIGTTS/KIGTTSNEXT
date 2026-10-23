@@ -19,14 +19,17 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.state.*
 import com.kigtts.next.text.*
@@ -46,6 +49,7 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
         androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder), style, width, height).sp)
     val base = remember(state.subtitleFormats) { RichTextVisualTransformation(state.subtitleFormats) }
     val alignment = state.subtitleAppearance.alignment.boxAlignment
+    val direction = LocalLayoutDirection.current
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     val interactions = remember { MutableInteractionSource() }
     val focused by interactions.collectIsFocusedAsState()
@@ -88,9 +92,17 @@ internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyl
                         Text(state.subtitlePlaceholder, Modifier.fillMaxWidth().graphicsLayer { alpha = hintOpacity.value }.testTag("subtitle-placeholder"),
                             style = placeholderStyle, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (custom && focused && windowFocused && state.editorValue.selection.collapsed)
-                        SubtitleCursorMotion(motion.frame, state.editorValue.selection.end, MaterialTheme.colorScheme.primary,
+                    if (custom && focused && windowFocused && state.editorValue.selection.collapsed) {
+                        // Read the measured paragraph directly, without waiting for
+                        // the glyph animation's SideEffect to commit another frame.
+                        val cursorFrame = layout?.let {
+                            val viewport = IntSize(width, height)
+                            val origin = alignment.align(it.size, viewport, direction)
+                            SubtitleGlyphFrame(it, Offset(origin.x.toFloat(), origin.y.toFloat()), emptyList(), viewport)
+                        }
+                        SubtitleCursorMotion(cursorFrame, state.editorValue.selection.end, MaterialTheme.colorScheme.primary,
                             Modifier.matchParentSize().clearAndSetSemantics { }.testTag("subtitle-caret"))
+                    }
                 }
             })
     }

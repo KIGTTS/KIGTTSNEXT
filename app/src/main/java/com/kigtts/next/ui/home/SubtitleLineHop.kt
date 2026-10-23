@@ -12,19 +12,19 @@ internal data class SubtitleGlyphPose(val position: Offset, val size: Size, val 
         alpha + (target.alpha - alpha) * fraction)
 }
 
-/** Exit beyond the viewport before entering from its opposite edge; never fly diagonally. */
-internal data class SubtitleLineHop(val from: SubtitleGlyphPose, val direction: Float, val started: Float) {
-    private fun fraction(now: Float) = ((now - started) / 240f).coerceIn(0f, 1f)
+/** A short, fixed horizontal fade at each line, independent of screen/font width. */
+internal data class SubtitleLineHop(val from: SubtitleGlyphPose, val direction: Float, val started: Float, val distance: Float = 18f) {
+    private fun fraction(now: Float) = ((now - started) / 200f).coerceIn(0f, 1f)
     fun finished(now: Float) = fraction(now) >= 1f
-    fun outgoing(now: Float, width: Float): SubtitleGlyphPose? {
+    fun outgoing(now: Float): SubtitleGlyphPose? {
         val phase = fraction(now) * 2f
         if (phase >= 1f) return null
-        val edge = if (direction > 0f) width + from.size.width else -from.size.width * 2f
+        val edge = from.position.x + direction * distance
         return from.toward(from.copy(position = Offset(edge, from.position.y), alpha = 0f), FastOutSlowInEasing.transform(phase))
     }
-    fun incoming(now: Float, width: Float, target: SubtitleGlyphPose): SubtitleGlyphPose {
+    fun incoming(now: Float, target: SubtitleGlyphPose): SubtitleGlyphPose {
         val phase = (fraction(now) * 2f - 1f).coerceIn(0f, 1f)
-        val edge = if (direction > 0f) -target.size.width * 2f else width + target.size.width
+        val edge = target.position.x - direction * distance
         return target.copy(position = Offset(edge, target.position.y), alpha = 0f)
             .toward(target, FastOutSlowInEasing.transform(phase))
     }
