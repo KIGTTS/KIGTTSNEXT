@@ -12,7 +12,6 @@ internal data class ManagementPaperGeometry(val source: Rect, val target: Rect, 
 internal class CardManagementGeometry {
     val sources = mutableMapOf<String, LayoutCoordinates>()
     val overlayOrder = mutableMapOf<String, Float>()
-    val visualPoses = mutableMapOf<String, PolaroidVisualPose>()
     var targetId: String? = null
     var target: LayoutCoordinates? = null
     var browser: LayoutCoordinates? = null

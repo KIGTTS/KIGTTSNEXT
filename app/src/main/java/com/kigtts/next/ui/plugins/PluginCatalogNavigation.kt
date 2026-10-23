@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -9,9 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.vector
+import com.kigtts.next.ui.components.ChoiceButtonGroup
+import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.first
 
@@ -23,6 +28,7 @@ import kotlinx.coroutines.flow.first
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { action ->
                     FilledTonalButton(onClick = feedbackClick { invoke(action.id, emptyMap()) }, enabled = enabled,
+                        colors = ButtonDefaults.filledTonalButtonColors().keepColorsWhenLocked(),
                         shapes = ButtonDefaults.shapes(RoundedCornerShape(24.dp), RoundedCornerShape(14.dp)),
                         contentPadding = PaddingValues(16.dp), modifier = Modifier.weight(1f).heightIn(min = 80.dp)
                             .testTag("catalog-shortcut/" + action.id)) {
@@ -41,13 +47,16 @@ import kotlinx.coroutines.flow.first
 @Composable internal fun CatalogTabs(filters: List<ManagementFilter>, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit) {
     if (filters.isEmpty()) return
-    val selected = filters.indexOfFirst { it.selected }.coerceAtLeast(0)
-    PrimaryScrollableTabRow(selectedTabIndex = selected, edgePadding = 0.dp,
-        containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.primary,
-        divider = {}, modifier = Modifier.testTag("catalog-tabs")) {
-        filters.forEach { filter -> Tab(selected = filter.selected, enabled = enabled,
-            onClick = feedbackClick { invoke(filter.action, emptyMap()) }, text = { Text(filter.label) },
-            selectedContentColor = MaterialTheme.colorScheme.primary, unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant) }
+    val selected = filters.firstOrNull { it.selected }?.id ?: filters.first().id
+    BoxWithConstraints(Modifier.fillMaxWidth().testTag("catalog-tabs")) {
+        val width = maxOf(maxWidth, 68.dp * filters.size)
+        Box(Modifier.horizontalScroll(rememberScrollState())) {
+            ChoiceButtonGroup("插件分类", filters.map { it.id }, selected,
+                label = { id -> filters.first { it.id == id }.label },
+                onSelect = { id -> invoke(filters.first { it.id == id }.action, emptyMap()) },
+                modifier = Modifier.width(width), enabled = enabled,
+                preserveColorWhenLocked = true, itemRole = Role.Tab)
+        }
     }
 }
 

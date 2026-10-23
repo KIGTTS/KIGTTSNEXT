@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import com.kigtts.next.media.MediaBitmapDecoder
 import com.kigtts.next.media.thumbnail.ThumbnailMemoryCache
 import kotlinx.coroutines.*
@@ -60,7 +61,7 @@ internal fun rememberCardImage(file: File?, maximum: Int = 384): ImageBitmap? {
             val next = cardImages.peek(file, maximum) ?: withContext(Dispatchers.Main.immediate) {
                 cardImages.load(file, maximum)
             }
-            if (next != null) image = next.asImageBitmap()
+            if (next != null && image?.asAndroidBitmap() !== next) image = next.asImageBitmap()
         }
     }
     return image

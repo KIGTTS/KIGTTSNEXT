@@ -45,4 +45,21 @@ class ResourceArtworkTest {
         bitmap.eraseColor(Color.WHITE); assertFalse(bitmap.isWhiteLineArtwork())
         bitmap.recycle()
     }
+    @Test fun officialSourceSvgCarriesItsOwnCenteredWhitespace() {
+        val file = java.io.File("../distribution/assets/kpm-source.svg")
+        val bitmap = requireNotNull(decodeResourceArtwork(file))
+        try {
+            var left = bitmap.width; var right = 0; var top = bitmap.height; var bottom = 0
+            for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) {
+                if (Color.alpha(bitmap.getPixel(x, y)) > 128) {
+                    left = minOf(left, x); right = maxOf(right, x); top = minOf(top, y); bottom = maxOf(bottom, y)
+                }
+            }
+            assertTrue(bitmap.isWhiteLineArtwork())
+            assertEquals(bitmap.width * .62f, (right - left + 1).toFloat(), 3f)
+            assertEquals(bitmap.height * .62f, (bottom - top + 1).toFloat(), 3f)
+            assertEquals((bitmap.width - 1) / 2f, (left + right) / 2f, 2f)
+            assertEquals((bitmap.height - 1) / 2f, (top + bottom) / 2f, 2f)
+        } finally { bitmap.recycle() }
+    }
 }

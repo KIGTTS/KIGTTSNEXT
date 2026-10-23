@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 internal val LocalPolaroidSharedScope = compositionLocalOf<SharedTransitionScope?> { null }
 internal val LocalPolaroidPhotoVisible = compositionLocalOf { true }
 internal val LocalPolaroidOverlayOrder = compositionLocalOf<Float?> { null }
+internal val LocalPolaroidDecoration = compositionLocalOf { false }
 
 /** One paper moves between browsing and management slots, retaining its image and caption. */
 @Composable internal fun Modifier.sharedPolaroidPhoto(id: String): Modifier {
@@ -24,25 +25,22 @@ internal val LocalPolaroidOverlayOrder = compositionLocalOf<Float?> { null }
     val entering = LocalPolaroidEntering.current
     val sourceOrder = LocalPolaroidOverlayOrder.current
     if (sourceOrder != null) geometry?.overlayOrder?.set(id, sourceOrder)
-    // Shared bounds do not include the pager's parent rotation or opacity. Keep those
-    // inside the shared drawing layer and seed each endpoint from the last drawn pose.
-    val initialPose = remember(id, visible) { geometry?.visualPoses?.get(id) ?: targetPose() }
-    val poseProgress = remember(id, visible) { Animatable(if (initialPose == targetPose()) 1f else 0f) }
+    val decoration = LocalPolaroidDecoration.current
     val opacity = remember(id) { Animatable(if (visible && !entering) 1f else 0f) }
-    LaunchedEffect(poseProgress) { poseProgress.animateTo(1f, tween(340, easing = FastOutSlowInEasing)) }
     LaunchedEffect(visible) { opacity.animateTo(if (visible) 1f else 0f, tween(340)) }
     return with(scope) {
-        val shared = rememberSharedContentState("polaroid/$id")
+        // Neighboring stack papers fade in their own slots. Only the focused paper
+        // travels to the grid/sort endpoint; neighbors never straighten and fly across it.
+        val shared = rememberSharedContentState(if (decoration) "polaroid-decoration/$id" else "polaroid/$id")
         // The pager's z-order is otherwise lost when every photo moves into the common overlay.
         // A source without a laid-out destination must fade, not vanish on the first frame.
         sharedElementWithCallerManagedVisibility(shared, visible,
             zIndexInOverlay = geometry?.overlayOrder?.get(id) ?: sourceOrder ?: 0f,
             boundsTransform = { _, _ -> tween(340, easing = FastOutSlowInEasing) })
             .graphicsLayer {
-                val pose = initialPose.toward(targetPose(), poseProgress.value)
+                val pose = targetPose()
                 rotationZ = pose.rotation
                 alpha = pose.opacity * if (shared.isMatchFound) 1f else opacity.value
-                if (visible) geometry?.visualPoses?.set(id, pose)
             }
             .scalePolaroidToLookahead()
     }

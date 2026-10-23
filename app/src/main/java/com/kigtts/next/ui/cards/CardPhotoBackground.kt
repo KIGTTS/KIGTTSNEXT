@@ -1,23 +1,16 @@
 package com.kigtts.next.ui.cards
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.unit.IntSize
-import com.kigtts.next.ui.media.BlurredBackdrop
 import com.kigtts.plugin.api.*
 
 /** Only two fingers move the photograph; single-finger taps and parent scrolling stay available. */
@@ -28,14 +21,7 @@ internal fun CardPhotoBackground(card: PolaroidCard, image: ImageBitmap?, enable
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     BoxWithConstraints(modifier.background(Color(0xFFB0B0B0)).testTag("card-photo/" + card.id), contentAlignment = Alignment.Center) {
         val width = constraints.maxWidth.toFloat(); val height = constraints.maxHeight.toFloat()
-        if (image != null && card.photoBackdrop == PhotoBackdropMode.BLUR)
-            BlurredBackdrop(image.asAndroidBitmap(), Modifier.fillMaxSize())
-        if (image != null) Image(image, card.title, Modifier.fillMaxSize().graphicsLayer {
-            scaleX = card.photoZoom.toFloat(); scaleY = card.photoZoom.toFloat()
-            translationX = ((card.photoX - .5) * width).toFloat()
-            translationY = ((card.photoY - .5) * height).toFloat()
-        }, contentScale = ContentScale.Fit)
-        else Icon(Icons.Default.Image, "拍立得照片", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        CardPhotoContent(card, image, width, height)
         if (enabled && image != null) Box(Modifier.matchParentSize().pointerInput(card.id, enabled) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)

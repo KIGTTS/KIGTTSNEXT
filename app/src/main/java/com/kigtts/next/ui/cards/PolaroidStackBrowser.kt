@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
 import kotlin.math.absoluteValue
 
+private data class PolaroidBrowseLayout(val mode: PolaroidBrowseMode, val columns: Int)
+
 @Composable
 internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode, focusedId: String?,
     imageFile: (String) -> File?, frames: List<PolaroidFrameStyle>, enabled: Boolean,
@@ -78,9 +80,14 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
         }
     } else Modifier)) {
         val pageVisible = LocalPolaroidPhotoVisible.current
-        AnimatedContent(mode, modifier = Modifier.fillMaxSize().polaroidAlbumDrawingClip(), label = "polaroid-browse-mode",
-            transitionSpec = { (fadeIn(androidx.compose.animation.core.tween(340)) togetherWith fadeOut(androidx.compose.animation.core.tween(340))).using(null) }) { target ->
-          CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && mode == target),
+        // Keep the outgoing grid's measurements and scroll position intact. Changing
+        // GridCells in place snaps its sizes before LazyGrid's placement animation starts.
+        val layout = PolaroidBrowseLayout(mode, if (mode == PolaroidBrowseMode.GRID) columns else 0)
+        AnimatedContent(layout, modifier = Modifier.fillMaxSize().polaroidAlbumDrawingClip(), label = "polaroid-browse-mode",
+            transitionSpec = { (fadeIn(androidx.compose.animation.core.tween(340)) togetherWith fadeOut(androidx.compose.animation.core.tween(340))).using(null) }) { targetLayout ->
+          val target = targetLayout.mode
+          val activeLayout = targetLayout == layout
+          CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && activeLayout),
               LocalPolaroidEntering provides (transition.currentState == EnterExitState.PreEnter),
               LocalPolaroidSharedScope provides LocalPolaroidSharedScope.current.takeUnless { target == PolaroidBrowseMode.ALBUMS }) {
             if (target == PolaroidBrowseMode.ALBUMS) PolaroidAlbumOverview(albums, albumCards, selectedAlbumId ?: albumContaining(albums, focusedId)?.id,
@@ -88,14 +95,15 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                     choose = { id -> chooseAlbum(id); columnsChanged.value(maximum); switch.value(PolaroidBrowseMode.GRID) }, manage = onManageAlbum)
             else PolaroidAlbumTransition(albumChangeRequest,
                 AlbumBrowseSnapshot(cards, gridCards, focusedId, selectedAlbumId, positionRequest), albums) { scene, current ->
-                val interactive = enabled && current
-                CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && mode == target && current)) {
+                val active = current && activeLayout
+                val interactive = enabled && active
+                CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && active)) {
                 when {
                     target == PolaroidBrowseMode.STACK && scene.cards.isNotEmpty() -> PolaroidStack(scene.cards, scene.focusedId, imageFile, frames,
                         interactive, { if (current) focus(it) }, { if (current) preview(it) }, { if (current) managePhoto(it) },
-                        scene.positionRequest, { if (current) onPositioned(it) }, wideLayout, current)
+                        scene.positionRequest, { if (current) onPositioned(it) }, wideLayout, active)
                     target == PolaroidBrowseMode.GRID && scene.gridCards.isNotEmpty() -> PolaroidGallery(scene.gridCards, imageFile, frames, interactive,
-                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, columns, current, scene.focusedId)
+                        { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, targetLayout.columns, active, scene.focusedId)
                     else -> PolaroidEmpty()
                 }
                 }
@@ -194,6 +202,7 @@ private fun PolaroidStack(cards: List<PolaroidCard>, focusedId: String?, imageFi
                 // Pager composition bounds preloading. Never blank an already composed paper
                 // based on the last settled focus while a rapid swipe exposes its neighbors.
                 CompositionLocalProvider(LocalPolaroidOverlayOrder provides (1000f - kotlin.math.abs(index - foreground)),
+                    LocalPolaroidDecoration provides (index != foreground),
                     LocalPolaroidVisualPose provides {
                         val relative = index - pager.currentPage - pager.currentPageOffsetFraction
                         if (wide) PolaroidVisualPose() else PolaroidVisualPose(

@@ -44,14 +44,11 @@ class PolaroidStackLayersUiTest {
         var mode by mutableStateOf(PolaroidBrowseMode.STACK)
         var managing by mutableStateOf(false)
         var ready by mutableStateOf(false)
-        lateinit var geometry: CardManagementGeometry
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
             val cached = files.flatMap { f -> listOf(256, 512, 1024, 1200).map { rememberCardImage(f, it) } }
             SideEffect { ready = cached.all { it != null } }
             Box(Modifier.fillMaxSize().testTag("stack-layer-scene")) {
                 CardManagementTransition(managing, browser = {
-                    val registry = requireNotNull(LocalCardManagementGeometry.current)
-                    SideEffect { geometry = registry }
                     PolaroidBrowser(cards, mode, cards[focused].id, { files[it.toInt()] }, emptyList(), !managing,
                         { mode = it }, {}, {}, {}, Modifier.fillMaxSize())
                 }, manager = {
@@ -82,7 +79,13 @@ class PolaroidStackLayersUiTest {
             val start = capture("$name-before")
             var previous = start
             val neighbor = "layer-${focused + 1}"
-            var angle = geometry.visualPoses.getValue(neighbor).rotation
+            fun decorationCorners(): Pair<Offset, Offset>? {
+                val nodes = compose.onAllNodes(hasTestTag("polaroid/$neighbor") and hasAnyAncestor(hasTestTag("cards-stack")),
+                    useUnmergedTree = true).fetchSemanticsNodes()
+                val c = nodes.firstOrNull()?.layoutInfo?.coordinates ?: return null
+                return c.localToRoot(Offset.Zero) to c.localToRoot(Offset(c.size.width.toFloat(), 0f))
+            }
+            val corners = if (mode == PolaroidBrowseMode.STACK) decorationCorners() else null
             compose.runOnIdle(action)
             repeat(26) { frame ->
                 compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
@@ -91,10 +94,11 @@ class PolaroidStackLayersUiTest {
                     if (frame <= 3) assertTrue("First frames cannot teleport: $name/$frame $previous -> $center",
                         (center - previous).getDistance() < 100f)
                     previous = center
-                    val nextAngle = geometry.visualPoses.getValue(neighbor).rotation
-                    if (frame <= 3) assertTrue("Neighbor cannot instantly straighten: $name/$frame $angle -> $nextAngle",
-                        kotlin.math.abs(nextAngle - angle) < 1.5f)
-                    angle = nextAngle
+                    if (frame <= 3 && corners != null && name in listOf("to-grid", "to-sort")) {
+                        val next = requireNotNull(decorationCorners())
+                        assertTrue("Outgoing decoration fades in place, including its angle: $name/$frame",
+                            (next.first - corners.first).getDistance() < 3f && (next.second - corners.second).getDistance() < 3f)
+                    }
                 }
             }
         }
