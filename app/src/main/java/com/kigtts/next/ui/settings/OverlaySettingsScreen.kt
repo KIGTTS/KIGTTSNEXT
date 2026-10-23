@@ -53,12 +53,14 @@ fun OverlaySettingsScreen() {
             ToggleSetting("自动贴边收起", "闲置时收起并淡化，点按展开，拖动调整位置", Icons.Default.Dock,
                 state.autoHide, { enabled -> store.update { it.copy(autoHide = enabled) } }, position = SettingPosition.MIDDLE)
             ToggleSetting("显示入口文字", "关闭后可长按图标查看名称", Icons.Default.Label,
-                state.showLabels, { enabled -> store.update { it.copy(showLabels = enabled) } }, position = SettingPosition.LAST)
+                state.showLabels, { enabled -> store.update { it.copy(showLabels = enabled) } }, position = SettingPosition.MIDDLE)
+            ToggleSetting("优先小窗打开", "从悬浮入口打开应用和页面时优先使用小窗", Icons.Default.PictureInPictureAlt,
+                state.preferSmallWindows, { enabled -> store.update { it.copy(preferSmallWindows = enabled) } }, position = SettingPosition.LAST)
         }
         SettingsGroup("快捷入口", "拖动手柄调整顺序，转动展开的入口列表可查看更多") {
             state.shortcuts.forEachIndexed { index, item ->
                 val threshold = with(LocalDensity.current) { 64.dp.toPx() }
-                SettingItem(item.title, if (item.smallWindow) "优先小窗打开" else "", MaterialSymbols.vector(item.symbol) ?: Icons.Default.Extension,
+                SettingItem(item.title, "", MaterialSymbols.vector(item.symbol) ?: Icons.Default.Extension,
                     if (state.shortcuts.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == state.shortcuts.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
                     onClick = { editing = item }, trailing = {
                         Icon(Icons.Default.DragIndicator, "拖动排序${item.title}", Modifier.size(40.dp)
@@ -91,8 +93,6 @@ fun OverlaySettingsScreen() {
         val current = state.shortcuts.firstOrNull { it.id == item.id }
         if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.title) }, text = {
             Column {
-                Row(verticalAlignment = Alignment.CenterVertically) { Text("优先小窗打开", Modifier.weight(1f)); Switch(current.smallWindow, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(smallWindow = enabled) else old }) } }) }
-                Text("需要设备支持小窗", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("显示文字", Modifier.weight(1f)); Switch(current.showLabel, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(showLabel = enabled) else old }) } }) }
                 Row { TextButton(onClick = feedbackClick { store.move(item.id, -1) }, enabled = state.shortcuts.firstOrNull()?.id != item.id) { Text("上移") }
                     TextButton(onClick = feedbackClick { store.move(item.id, 1) }, enabled = state.shortcuts.lastOrNull()?.id != item.id) { Text("下移") } }

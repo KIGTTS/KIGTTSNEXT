@@ -1,12 +1,10 @@
 package com.kigtts.next.overlay
 
-import android.app.ActivityOptions
 import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Rect
 import android.os.SystemClock
 import android.widget.Toast
 import com.kigtts.next.MainActivity
@@ -41,14 +39,15 @@ internal object OverlayLaunch {
                 val info = context.packageManager.resolveActivity(launch, 0)?.activityInfo
                 require(info != null && info.exported && info.enabled) { "应用不可用，请重新选择入口" }; launch
             }
-            val freeform = item.smallWindow && context.packageManager.hasSystemFeature(PackageManager.FEATURE_FREEFORM_WINDOW_MANAGEMENT)
-            val options = if (freeform) ActivityOptions.makeBasic().apply {
-                val metrics = context.resources.displayMetrics
-                setLaunchBounds(Rect((metrics.widthPixels * .1f).toInt(), (metrics.heightPixels * .12f).toInt(),
-                    (metrics.widthPixels * .9f).toInt(), (metrics.heightPixels * .88f).toInt()))
-            }.toBundle() else null
-            context.startActivity(intent, options)
-            if (item.smallWindow && !freeform) Toast.makeText(context, "系统未开放小窗，已正常打开", Toast.LENGTH_SHORT).show()
+            val requested = OverlayStore.get(context).settings.value.preferSmallWindows
+            val options = if (requested) OverlaySmallWindow.options(context) else null
+            try {
+                context.startActivity(intent, options)
+            } catch (failure: RuntimeException) {
+                if (!requested) throw failure
+                context.startActivity(intent)
+                Toast.makeText(context, "小窗未能打开，已正常打开", Toast.LENGTH_SHORT).show()
+            }
         } catch (failure: Exception) {
             Toast.makeText(context, failure.message?.take(80) ?: "暂时无法打开入口", Toast.LENGTH_SHORT).show()
         }

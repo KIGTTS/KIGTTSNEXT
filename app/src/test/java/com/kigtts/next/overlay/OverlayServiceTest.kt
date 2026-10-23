@@ -32,6 +32,13 @@ class OverlayServiceTest {
         assertTrue(params.flags and android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL != 0)
         assertEquals(80, params.width); assertEquals(80, params.height)
     }
+    @Test fun smallWindowRequestsFreeformModeInsteadOfOnlyBounds() {
+        val options = OverlaySmallWindow.options(app)
+        assertEquals(5, options.getInt("android.activity.windowingMode"))
+        val bounds = options.getParcelable<android.graphics.Rect>("android:activity.launchBounds")
+        assertNotNull(bounds)
+        assertTrue(bounds!!.width() > 0 && bounds.height() > 0)
+    }
     @Test fun enabledServiceOwnsItsCompositionAndCanDestroyRecreateAfterRotation() {
         ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
         val controller = Robolectric.buildService(NativeOverlayService::class.java).create()

@@ -16,6 +16,14 @@ class OverlayStateTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val store = OverlayStore.get(context)
     @Before fun reset() { store.update { OverlaySettings() } }
+    @Test fun smallWindowMasterSwitchOverridesOldIndividualPreferences() {
+        val legacy = OverlaySettings(shortcuts = listOf(OverlayShortcut("camera", "拍照", "photo_camera", smallWindow = true)))
+        assertTrue(legacy.preferSmallWindows)
+        store.update { legacy.copy(preferSmallWindows = false) }
+        assertFalse(store.settings.value.preferSmallWindows)
+        assertTrue(store.settings.value.shortcuts.single().smallWindow)
+        assertTrue(context.getSharedPreferences("native-overlay", 0).getString("settings", "")!!.contains("\"preferSmallWindows\":false"))
+    }
     @Test fun nativeOverlayStartsOffAndIdleRetractionStartsOn() {
         assertFalse(store.settings.value.enabled); assertTrue(store.settings.value.autoHide)
         assertEquals(5, store.settings.value.shortcuts.size)
