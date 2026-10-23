@@ -74,7 +74,7 @@ KPM（KIGTTS Package Manager）沿用目录schemaVersion=1，以下展示字段�
 
 每图最多2MiB，每源最多128图/16MiB。更新源时预取并校验素材，坏图不阻止有效目录；进入页面不自动连接介绍中的外部图片。Markdown图片以 `![说明](asset:icon-id)` 引用已注册资源。资源不改变包签名、发布者与权限。
 
-网页指引和独立GitHub Pages模板：[LHT02/KPM](https://github.com/LHT02/KPM)。网页从同一目录生成，提供浏览、Markdown介绍、二维码、复制源与 `kigtts://source/add?url=` 唤起。唤起后仍由软件确认，源链接不直接安装包。页面无需服务器或账户，不复制Poiyomi的代码或美术资源。
+网页指引和独立GitHub Pages模板：[KIGTTS/KPM](https://github.com/KIGTTS/KPM)。网页从同一目录生成，提供浏览、Markdown介绍、二维码、复制源与 `kigtts://source/add?url=` 唤起。唤起后仍由软件确认，源链接不直接安装包。页面无需服务器或账户，不复制Poiyomi的代码或美术资源。
 
 `debug.ui` 已拆为独立可选包，主程序生产依赖不再包含UI调试类；配置位于它自己的插件目录。
 

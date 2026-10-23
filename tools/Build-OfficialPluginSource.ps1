@@ -63,7 +63,7 @@ $packages = @($packages | Group-Object { $_.id } | ForEach-Object {
     $package
 })
 $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS 官方插件源'
-    description = '扩展朗读、聆听和创作体验，让常用工具触手可及。'; homepage = 'https://lht02.github.io/KPM/'
+    description = '扩展朗读、聆听和创作体验，让常用工具触手可及。'; homepage = 'https://kigtts.github.io/KPM/'
     icon = @{ symbol = 'inventory_2' }; assets = @{}
     readme = "## KPM 官方插件源`n`n在这里浏览语音、AI与创作工具，按自己的需要丰富KIGTTS。`n`n- 找到适合日常交流的朗读和聆听工具。`n- 让AI协助整理内容与动手创作。`n- 使用插件编辑器制作并分享自己的小工具。"
     updatedAt = [DateTimeOffset]::UtcNow.ToString('o'); packages = $packages }
@@ -93,7 +93,7 @@ $($rows -join "`n")
 
 当前主程序为 API$sdkApi。插件所需版本见上表，旧版本仍可在商店中选择。系统声音包含在语音合成服务中；其它语音引擎需另行添加语音包。
 
-网页添加指引与模板：https://lht02.github.io/KPM/
+网页添加指引与模板：https://kigtts.github.io/KPM/
 
 ## 源码与许可证
 
