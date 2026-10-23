@@ -550,3 +550,5 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - 手机 cfc8ef16 已保留数据覆盖安装 API24 Release 与商店 0.11.2；实际发送 Android VIEW 链接进入 display.led 详情。未添加源的确认/重启恢复由单元测试验证，未修改真机源列表。
 - APK build/releases/KIGTTSNEXT-api24-package-links-release-localtest.apk，8090028 字节，SHA256 dc049a71d7c4c112fc79c95ce3ee40f4c51e01fd306e0b80b94b8d273db18110。仍为开发测试签名。
 - KPM 折叠列表动效在 390/1365px 亮暗、连续反向、嵌套、键盘及减少动态效果下检查通过；Python 8 项通过。浏览器详情目标切换不残留旧 ID。未在本轮声称 Chrome 真机点击验收。
+## 2026-10-23 悬浮窗修复交付
+- 20 项 overlay 回归全过，最终 assembleRelease 成功；开发测试签名校验通过。APK：D:\KIGTTSNEXT\build\releases\KIGTTSNEXT-api24-overlay-fab-release-localtest.apk，8090084 字节，SHA256 3239de0b530fc664fa942c9b8bd19cb2208d34d11a4f982d67109d54477a18d3。代码提交 bc9fdb1（含 01d6e2a、c884873），未覆盖安装、未声明小米实际小窗成功。
