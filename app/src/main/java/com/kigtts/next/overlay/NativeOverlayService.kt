@@ -19,6 +19,8 @@ import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.ProvideButtonFeedback
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Native application feature. Its tiny collapsed window never captures the rest of the display. */
 class NativeOverlayService : Service() {
@@ -78,12 +80,17 @@ class NativeOverlayService : Service() {
         } }
         place(); interact()
         if (Build.VERSION.SDK_INT >= 31) windowContext.registerComponentCallbacks(windowConfiguration)
-        scope.launch { store.settings.collectLatest { next ->
+        val apps = MutableStateFlow(config.shortcuts.filter { it.component != null }.map { it.id }.toSet())
+        scope.launch { combine(store.settings, hub.candidates, apps) { saved, candidates, installedApps ->
+            saved.copy(shortcuts = resolveOverlayShortcuts(saved.shortcuts, candidates, installedApps))
+        }.collectLatest { next ->
             val geometryChanged = config.rightEdge != next.rightEdge || config.position != next.position
+            val behaviorChanged = config.copy(shortcuts = emptyList()) != next.copy(shortcuts = emptyList()) ||
+                config.shortcuts.map { it.id } != next.shortcuts.map { it.id }
             config = next
             if (!next.enabled || !Settings.canDrawOverlays(this@NativeOverlayService)) { stopSelf(); return@collectLatest }
             if (geometryChanged) place(animate = true)
-            interact()
+            if (behaviorChanged) interact()
         } }
         scope.launch { hub.bubble.collectLatest { value ->
             bubble?.close(); bubble = null
@@ -92,6 +99,9 @@ class NativeOverlayService : Service() {
             }
         } }
         scope.launch { while (isActive) {
+            val runtime = com.kigtts.next.manager.HostPluginRuntime.get(application)
+            refreshOverlayPlugins(this@NativeOverlayService, runtime.manager)
+            apps.value = availableOverlayApps(this@NativeOverlayService, store.settings.value.shortcuts)
             delay(2000)
             if (!Settings.canDrawOverlays(this@NativeOverlayService)) { store.update { it.copy(enabled = false) }; stopSelf(); break }
             hub.bubble.value?.takeUnless(::validNotice)?.let { hub.clear(it.owner) }

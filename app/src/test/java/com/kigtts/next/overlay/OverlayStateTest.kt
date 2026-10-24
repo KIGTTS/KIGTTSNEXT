@@ -27,12 +27,12 @@ class OverlayStateTest {
     @Test fun nativeOverlayStartsOffAndIdleRetractionStartsOn() {
         assertFalse(store.settings.value.enabled); assertTrue(store.settings.value.autoHide)
         assertTrue(store.settings.value.preferSmallWindows)
-        assertEquals(5, store.settings.value.shortcuts.size)
+        assertEquals(4, store.settings.value.shortcuts.size)
     }
     @Test fun reorderingIsStableAndDoesNotLoseIndividualWindowPreferences() {
         store.update { it.copy(shortcuts = it.shortcuts.map { item -> item.copy(smallWindow = item.id == "camera") }) }
         store.move("camera", 1); store.move("home", -99); store.move("missing", 1)
-        assertEquals(listOf("home", "cards", "camera", "sketch", "quick-text"), store.settings.value.shortcuts.map { it.id })
+        assertEquals(listOf("home", "cards", "camera", "sketch"), store.settings.value.shortcuts.map { it.id })
         assertTrue(store.settings.value.shortcuts.single { it.id == "camera" }.smallWindow)
         assertTrue(context.getSharedPreferences("native-overlay", 0).getString("settings", "")!!.contains("smallWindow"))
     }
@@ -50,7 +50,7 @@ class OverlayStateTest {
         val hub = OverlayHub.get(context)
         val item = OverlayShortcut("plugin:reject:x", "入口", "extension", owner = "reject", action = "open")
         hub.register(item); hub.requestAdd(item); hub.answer(item.id, false)
-        assertTrue(hub.requests.value.none { it.id == item.id }); assertEquals(5, store.settings.value.shortcuts.size)
+        assertTrue(hub.requests.value.none { it.id == item.id }); assertEquals(4, store.settings.value.shortcuts.size)
         hub.requestAdd(item); hub.removeOwner("reject"); assertTrue(hub.requests.value.none { it.id == item.id })
     }
     @Test fun exportedActivityCannotForgeAnOverlayActionAndHostRoutesAreOneUse() {

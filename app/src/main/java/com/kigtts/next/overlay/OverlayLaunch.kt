@@ -32,6 +32,7 @@ internal object OverlayLaunch {
     }
     fun open(context: Context, item: OverlayShortcut) {
         try {
+            require(item.enabled) { "这个入口暂时不可用" }
             val intent = if (item.component == null) intent(context, item) else {
                 val component = requireNotNull(ComponentName.unflattenFromString(item.component))
                 val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(component)
@@ -74,11 +75,14 @@ internal fun AppViewModel.overlayLink(intent: Intent?) {
                 if (plugin.page(page, context()) != null) navigate(Destination.PluginPage(item.owner, page)) else message("这个页面已不存在")
             } else item.action?.let { invoke(item.owner, it) }
         } else when (item.target) {
-            "home" -> navigate(Destination.Home)
+            "home" -> { closeSidePage(); navigate(Destination.Home) }
             "camera" -> { openSidePage(SidePage.CARDS); cardCapture.open() }
             "cards" -> openSidePage(SidePage.CARDS)
             "sketch" -> openSidePage(SidePage.SKETCH)
             "quick-text" -> { navigate(Destination.Home); openPanel(HomePanel.QUICK_TEXT) }
+            "listen" -> toggleListening()
+            "speak" -> speak()
+            "settings" -> navigate(Destination.Settings)
             "overlay-settings" -> navigate(Destination.SettingsDetail(SettingsCategory.OVERLAY))
         }
     }

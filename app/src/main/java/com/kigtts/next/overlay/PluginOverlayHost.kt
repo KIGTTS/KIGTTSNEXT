@@ -23,10 +23,11 @@ internal class PluginOverlayHost(private val manager: PluginManager) {
                 when (command.operation) {
                     "register", "request-add" -> {
                         val item = requireNotNull(command.shortcut); require(item.id.matches(Regex("[a-zA-Z0-9_-]{1,64}")))
-                        require(item.label.isNotBlank() && item.label.length <= 30); symbol(item.symbol); destination(item.actionId, item.pageId)
+                        require(item.label.isNotBlank() && item.label.length <= 30 && item.category.length <= 40); symbol(item.symbol); destination(item.actionId, item.pageId)
                         val entry = OverlayShortcut("plugin:$owner:${item.id}", item.label, item.symbol,
                             target = item.pageId?.let { "page:$it" } ?: "action", owner = owner,
-                            publisher = installed.publisherSha256, action = item.actionId, showLabel = item.showLabel)
+                            publisher = installed.publisherSha256, action = item.actionId, showLabel = item.showLabel,
+                            category = item.category.ifBlank { installed.manifest.name }, badge = item.badge?.toOverlayBadge())
                         hub.register(entry)
                         val waiting = command.operation == "request-add" && hub.requestAdd(entry)
                         data { put("registered", true); put("pendingUserConfirmation", waiting); put("added", false) }

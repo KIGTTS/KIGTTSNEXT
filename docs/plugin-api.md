@@ -197,3 +197,10 @@ API24 PluginPage.headerAction复用ManagementProgressAction，在图标和标题
 `ManagementList.shortcuts` 提供列表上方入口，原有filters呈现为主题Tab；`loadMore=ManagementLoadMore(action)` 在滚动接近列表末尾时调用。每批返回新的动作令牌和完整已加载条目，宿主保留位置；加载结束传null。手机单列、平板双列由宿主按可用宽度控制。
 
 字幕渲染器可通过`SetSubtitleRenderer.presentation=PanelPresentation(fullscreenBackground=0xff000000L, fadeControlsWhenIdle=true)`指定全屏外围ARGB颜色和闲置按钮淡化。`SetListeningPanel.fadeControlsWhenIdle`为聆听上面板提供相同行为。触摸/键盘操作恢复按钮；遵循系统无障碍超时，保留按钮安全区和首击响应。旧构造和copy桥保留，旧请求默认不改变展示。
+
+
+## API26 字幕手势避让与悬浮入口状态
+
+`PanelPresentation.blockHomeSideSwipes=true` 保留字幕表面的横向手势，不影响区域外的侧滑导航。网页与启用的 `SUBTITLE_STROKE` 自动避让；关闭插件或移除表面后释放。无需插件自行消费整页事件，点按、长按与双指缩放仍按现有合同处理。
+
+`OverlayEntrance.category` 指定手动选择入口的分类，`badge` 复用通用 `PluginBadge`（主题/警告/黄色、圆点/数字、99+）。同ID再次注册更新状态；注册不等于添加，仍由用户选择或确认。宿主同时把插件设置/抽屉页和顶栏动作列入候选。保存入口在停用或卸载后置灰，重新启用时必须匹配原发布者。两个新字段组保留旧构造、copy/default 与 JSON 缺省行为。

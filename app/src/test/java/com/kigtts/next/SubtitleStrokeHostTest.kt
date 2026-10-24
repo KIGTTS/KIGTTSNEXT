@@ -4,7 +4,8 @@ import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.*
+import com.kigtts.next.ui.navigation.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.*
@@ -38,9 +39,18 @@ class SubtitleStrokeHostTest {
         val plugin = StrokePlugin()
         val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>(), listOf(plugin))
         model.setAutoPlayback(false); model.text("保持原文")
-        compose.setContent { MaterialTheme { SubtitleBody(model.state.collectAsState().value, model, Modifier.fillMaxSize()) } }
+        var drawers = 0
+        compose.setContent { MaterialTheme {
+            val sideDrawer = rememberCoroutineScope().let { scope -> remember(scope) { HomeSideDrawer(scope, { drawers++ }, {}) } }
+            val exclusions = remember { HomeSwipeExclusions() }
+            CompositionLocalProvider(LocalHomeSwipeExclusions provides exclusions) {
+                Box(Modifier.fillMaxSize().homeSideDrawer(sideDrawer) { true }) {
+                    SubtitleBody(model.state.collectAsState().value, model, Modifier.fillMaxSize())
+                }
+            }
+        } }
         compose.onNodeWithTag("subtitle-renderer-input").performTouchInput {
-            val path = listOf(Offset(width * .2f, height * .8f), Offset(width * .2f, height * .2f),
+            val path = listOf(Offset(width * .2f, height * .8f), Offset(width * .8f, height * .8f), Offset(width * .2f, height * .2f),
                 Offset(width * .5f, height * .65f), Offset(width * .8f, height * .2f), Offset(width * .8f, height * .8f))
             down(path[0]); path.zipWithNext().forEach { (a, b) -> (1..10).forEach { step ->
                 advanceEventTime(20); moveTo(a + (b - a) * (step / 10f))
@@ -51,7 +61,7 @@ class SubtitleStrokeHostTest {
             val input = plugin.strokes.single().inputs
             assertTrue(JSONArray(input.getValue("gesture.points")).length() in 8..512)
             assertTrue(input.getValue("gesture.durationMs").toLong() in 120..5000)
-            assertEquals("保持原文", model.state.value.editorText); assertFalse(model.state.value.editing)
+            assertEquals("保持原文", model.state.value.editorText); assertFalse(model.state.value.editing); assertEquals(0, drawers)
         }
         val before = model.state.value.subtitleSizePercent
         compose.onNodeWithTag("subtitle-renderer-input").performTouchInput {

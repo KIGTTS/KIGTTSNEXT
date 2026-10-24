@@ -14,12 +14,26 @@ internal class OverlayHub private constructor(context: Context) {
     private val store = OverlayStore.get(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val entries = MutableStateFlow<List<OverlayShortcut>>(emptyList()); val candidates = entries.asStateFlow()
+    private var discovered = emptyList<OverlayShortcut>()
+    private var registered = emptyList<OverlayShortcut>()
+    private var activePublishers: Map<String, String>? = null
     private val pending = MutableStateFlow<List<OverlayShortcut>>(emptyList()); val requests = pending.asStateFlow()
     private val notice = MutableStateFlow<OverlayNotice?>(null); val bubble = notice.asStateFlow()
     private var expiry: Job? = null
     fun register(entry: OverlayShortcut) {
-        require(entries.value.count { it.owner == entry.owner && it.id != entry.id } < 12) { "每个插件最多注册12个入口" }
-        entries.value = entries.value.filterNot { it.id == entry.id } + entry
+        require(registered.count { it.owner == entry.owner && it.id != entry.id } < 100) { "每个插件最多注册100个入口" }
+        registered = registered.filterNot { it.id == entry.id } + entry
+        publish()
+    }
+    fun discovered(entries: List<OverlayShortcut>, publishers: Map<String, String>) {
+        discovered = entries; activePublishers = publishers; publish()
+    }
+    private fun publish() {
+        val manual = registered.map { item ->
+            if (activePublishers == null || activePublishers?.get(item.owner) == item.publisher) item
+            else item.copy(enabled = false, badge = null)
+        }
+        entries.value = (manual + discovered).distinctBy { it.id }
     }
     fun requestAdd(entry: OverlayShortcut): Boolean {
         if (store.settings.value.shortcuts.any { it.id == entry.id && it.publisher == entry.publisher }) return false
@@ -39,7 +53,8 @@ internal class OverlayHub private constructor(context: Context) {
     }
     fun clear(owner: String) { if (notice.value?.owner == owner) { expiry?.cancel(); notice.value = null } }
     fun removeOwner(owner: String) {
-        entries.value = entries.value.filterNot { it.owner == owner }
+        registered = registered.filterNot { it.owner == owner }
+        discovered = discovered.filterNot { it.owner == owner }; publish()
         pending.value = pending.value.filterNot { it.owner == owner }; clear(owner)
         // Keep the installed shortcut visible so users can see what became unavailable.
         store.update { state -> state.copy(shortcuts = state.shortcuts.map { item ->

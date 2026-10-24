@@ -28,12 +28,24 @@ data class OverlaySettings(
 )
 
 fun defaultOverlayShortcuts() = listOf(
-    OverlayShortcut("home", "大字幕", "subtitles"),
+    OverlayShortcut("home", "字幕板", "subtitles"),
     OverlayShortcut("camera", "拍照", "photo_camera", "camera"),
     OverlayShortcut("cards", "拍立得", "photo_library", "cards"),
     OverlayShortcut("sketch", "画板", "draw", "sketch"),
-    OverlayShortcut("quick-text", "快捷文本", "view_agenda", "quick-text"),
 )
+
+/** Collapse the two legacy routes in their first saved position, retaining every other entry. */
+internal fun normalizeOverlayShortcuts(items: List<OverlayShortcut>): List<OverlayShortcut> {
+    var subtitleSeen = false
+    return items.mapNotNull { item ->
+        if (item.owner == null && item.component == null && item.id in setOf("home", "quick-text")) {
+            if (subtitleSeen) null else {
+                subtitleSeen = true
+                item.copy(id = "home", title = "字幕板", symbol = "subtitles", target = "home")
+            }
+        } else item
+    }.distinctBy(OverlayShortcut::id).take(100)
+}
 
 /** One process-wide observable store. No activity or worker is retained by the overlay. */
 class OverlayStore private constructor(context: Context) {
@@ -45,9 +57,9 @@ class OverlayStore private constructor(context: Context) {
     private fun read(): OverlaySettings = runCatching {
         json.decodeFromString<OverlaySettings>(prefs.getString("settings", null) ?: "{}")
     }.getOrDefault(OverlaySettings()).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f,
-        shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(100)) }
+        shortcuts = normalizeOverlayShortcuts(it.shortcuts)) }
     @Synchronized fun update(block: (OverlaySettings) -> OverlaySettings) {
-        val next = block(mutable.value).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f, shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(100)) }
+        val next = block(mutable.value).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f, shortcuts = normalizeOverlayShortcuts(it.shortcuts)) }
         if (next == mutable.value) return
         prefs.edit().putString("settings", json.encodeToString(next)).apply()
         mutable.value = next
@@ -59,6 +71,10 @@ class OverlayStore private constructor(context: Context) {
             if (target != from) items.add(target, items.removeAt(from))
         }
         state.copy(shortcuts = items)
+    }
+    fun order(ids: List<String>) = update { state ->
+        if (ids.size != state.shortcuts.size || ids.toSet() != state.shortcuts.map { it.id }.toSet()) state
+        else state.copy(shortcuts = ids.map(state.shortcuts.associateBy { it.id }::getValue))
     }
     companion object {
         @Volatile private var instance: OverlayStore? = null

@@ -7,6 +7,9 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import com.kigtts.next.state.SidePage
@@ -55,13 +58,16 @@ class SideDrawerPose internal constructor(private val state: HomeSideDrawer, pri
 @Composable
 internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, leftAction: (() -> Unit)? = null,
     pagesEnabled: Boolean = true, available: () -> Boolean): Modifier {
+    val exclusions = LocalHomeSwipeExclusions.current
+    val origin = remember { arrayOf(Offset.Zero) }
     val latest by rememberUpdatedState(available)
     val latestLeft by rememberUpdatedState(leftAction)
     val latestPagesEnabled by rememberUpdatedState(pagesEnabled)
-    return pointerInput(state) {
+    return onGloballyPositioned { origin[0] = it.positionInRoot() }.pointerInput(state, exclusions) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
-            if (!latest() || state.active || down.position.x < 24 * density || down.position.x > size.width - 24 * density) return@awaitEachGesture
+            if (!latest() || state.active || exclusions?.contains(origin[0] + down.position) == true ||
+                down.position.x < 24 * density || down.position.x > size.width - 24 * density) return@awaitEachGesture
             val velocity = VelocityTracker().apply { addPosition(down.uptimeMillis, down.position) }
             var dx = 0f; var dy = 0f; var claimed = false; var released = false; var shortcut = false
             try {

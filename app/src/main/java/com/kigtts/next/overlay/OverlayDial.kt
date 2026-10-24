@@ -2,7 +2,6 @@
 package com.kigtts.next.overlay
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -17,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.translate
@@ -32,9 +30,6 @@ import androidx.compose.ui.unit.*
 import androidx.graphics.shapes.Morph
 import com.kigtts.next.R
 import com.kigtts.next.ui.components.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import android.graphics.BitmapFactory
 import kotlin.math.roundToInt
 
 /** Uses the actual M3E shape catalog, not an approximated star or polygon. */
@@ -158,21 +153,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                                 { wheel = wheel.copy(first = (wheel.first - 1).coerceAtLeast(0)) }, { sortCenter = it })
                                 .semantics { contentDescription = item.title; if (edgeAlpha <= .4f && !held) hideFromAccessibility() },
                             shapes = IconButtonDefaults.shapes(shape = CircleShape, pressedShape = MaterialTheme.shapes.medium)) {
-                            val appIcon by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, item.iconPath) {
-                                value = withContext(Dispatchers.IO) { item.iconPath?.let { path -> runCatching { BitmapFactory.decodeFile(path)?.asImageBitmap() }.getOrNull() } }
-                            }
-                            Box {
-                                if (appIcon != null) Image(appIcon!!, item.title, Modifier.size(24.dp))
-                                else Icon(MaterialSymbols.vector(item.symbol) ?: Icons.Default.Extension, null, Modifier.size(24.dp))
-                                item.badge?.takeIf { it.count > 0 || it.kind == "dot" }?.let { badge ->
-                                    val label = if (badge.kind == "number") badge.count.coerceIn(0, 99).let { if (badge.count > 99) "99+" else it.toString() } else null
-                                    Surface(shape = CircleShape, color = if (badge.tone == "warning") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.align(Alignment.TopEnd).size(if (label == null) 8.dp else 18.dp)) {
-                                        if (label != null) Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary,
-                                            modifier = Modifier.padding(horizontal = 2.dp), maxLines = 1)
-                                    }
-                                }
-                            }
+                            OverlayShortcutIcon(item)
                         }
                     }
                     if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && !settings.rightEdge) { Spacer(Modifier.width(8.dp)); Label() }

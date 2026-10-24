@@ -23,18 +23,23 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.media.MediaTransition
 import com.kigtts.next.ui.media.PluginSubtitleRenderer
 import com.kigtts.plugin.api.PluginGesture
+import com.kigtts.next.ui.navigation.excludeHomeSideSwipes
 
 @Composable
 fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier, rendererInBackground: Boolean = false) {
     val currentState by rememberUpdatedState(state)
+    val renderer by model.subtitleRenderer.selection.collectAsState()
     val media = model.mediaRepository.get(state.mediaId)
+    val ownsSwipes = !state.editing && (media != null || renderer?.presentation?.blockHomeSideSwipes == true ||
+        model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
+    val surface = modifier.excludeHomeSideSwipes(ownsSwipes)
     // The full-card WebView is already mounted below this column. An invisible AnimatedContent
     // above AndroidView can own its hit path; leave only a layout spacer for interactive pages.
     if (media?.kind == com.kigtts.next.media.MediaKind.HTML || media?.kind == com.kigtts.next.media.MediaKind.WEB) {
-        Spacer(modifier)
+        Spacer(surface)
         return
     }
-    MediaTransition(media,state,model,modifier.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
+    MediaTransition(media,state,model,surface.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
         SubtitleText(currentState,model,Modifier.fillMaxSize(),rendererInBackground)
     }

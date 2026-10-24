@@ -56,7 +56,7 @@ class PluginOverlayTest {
         assertTrue(host.request(item.manifest.id, setOf("overlay"), command) is AppReply.Data)
         val hub = OverlayHub.get(app); val request = hub.requests.value.single()
         assertEquals(item.manifest.id, request.owner); assertEquals(item.publisherSha256, request.publisher)
-        assertEquals(5, OverlayStore.get(app).settings.value.shortcuts.size)
+        assertEquals(4, OverlayStore.get(app).settings.value.shortcuts.size)
         hub.answer(request.id, true)
         assertEquals(request, OverlayStore.get(app).settings.value.shortcuts.last())
         assertFalse(OverlayStore.get(app).settings.value.enabled)
