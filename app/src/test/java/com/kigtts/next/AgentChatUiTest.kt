@@ -100,4 +100,18 @@ class AgentChatUiTest {
         compose.mainClock.advanceTimeBy(500)
         compose.onRoot().captureRoboImage("build/previews/agent-composer-approval.png")
     }
+    @Test fun assistantOptionMessageRendersChoicesAndDispatchesSelection() {
+        val invoked = mutableListOf<Pair<String, Map<String, String>>>()
+        val message = ChatMessage("question", ChatRole.ASSISTANT, "请选择运行方式",
+            options = listOf(ChatOption("option/question/0", "预览", "preview")))
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.size(450.dp, 720.dp)) {
+                PluginChatScreen(PageBlock.Chat(listOf(message), "send", "stop", conversationId = "choice"), true,
+                    { action, inputs -> invoked += action to inputs }) {}
+            }
+        } }
+        compose.onNodeWithText("预览").assertIsDisplayed().performClick()
+        assertEquals("option/question/0", invoked.single().first)
+        assertEquals("preview", invoked.single().second["value"])
+    }
 }

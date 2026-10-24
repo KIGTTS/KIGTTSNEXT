@@ -22,6 +22,7 @@ internal fun chatTimeline(messages: List<ChatMessage>): List<ChatTimelineRow> = 
             if (message.role == ChatRole.ASSISTANT && (message.thinking || message.hasReasoning || message.reasoning.isNotBlank() || message.summary.isNotBlank()))
                 step(ChatExecutionStep(message, true))
             val show = message.role != ChatRole.ASSISTANT || message.text.isNotBlank() || message.images.isNotEmpty() ||
+                message.options.isNotEmpty() ||
                 message.state == ChatMessageState.FAILED || message.state == ChatMessageState.CANCELLED ||
                 message.state == ChatMessageState.STREAMING && !message.thinking && !message.hasReasoning && message.reasoning.isBlank()
             if (show) { flush(); add(ChatTimelineRow("answer/" + message.id, answer = message)) }

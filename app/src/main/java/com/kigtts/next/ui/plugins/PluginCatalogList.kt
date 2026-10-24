@@ -24,21 +24,26 @@ import java.io.File
 /** Catalog entries show artwork and useful descriptions without rankings or recommendation sections. */
 @Composable internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
-    val enabled = !busy && LocalPageActive.current
+    // Keep the catalog controls visually stable while a page request is in flight;
+    // actions are gated below, so the tab group does not flash into a disabled state.
+    val active = LocalPageActive.current
+    val canInvoke = active && !busy
     val scroll = key(list.id) { rememberLazyGridState() }
-    CatalogLoadMore(list, scroll, enabled, invoke)
+    CatalogLoadMore(list, scroll, canInvoke, invoke)
     ReadablePage {
     val wide = maxWidth >= 600.dp
     LazyVerticalGrid(columns = GridCells.Fixed(if (wide) 2 else 1), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
         state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         item("catalog-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            header(); CatalogShortcuts(list.shortcuts, wide, enabled, invoke); CatalogTabs(list.filters, enabled, invoke)
+            header()
+            CatalogShortcuts(list.shortcuts, wide, active, { action, inputs -> if (canInvoke) invoke(action, inputs) })
+            CatalogTabs(list.filters, active, { action, inputs -> if (canInvoke) invoke(action, inputs) })
         } }
         if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
             if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) { Text(group, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(entries, key = { it.id }) { item ->
-                Surface(onClick = feedbackClick { item.primaryAction?.let { invoke(it, emptyMap()) } }, enabled = enabled,
+                Surface(onClick = feedbackClick { if (canInvoke) item.primaryAction?.let { invoke(it, emptyMap()) } }, enabled = active,
                     shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,
                     modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)).testTag("managed-item/" + item.id)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -49,9 +54,9 @@ import java.io.File
                                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
                         }
                         val action = list.itemActions[item.id]
-                        if (action != null) InlineProgressButton(item.id, action, enabled, invoke)
+                        if (action != null) InlineProgressButton(item.id, action, active, { actionId, inputs -> if (canInvoke) invoke(actionId, inputs) })
                         else Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
-                        if (item.actions.isNotEmpty()) CatalogItemMenu(item, enabled, invoke)
+                        if (item.actions.isNotEmpty()) CatalogItemMenu(item, active, { actionId, inputs -> if (canInvoke) invoke(actionId, inputs) })
                     }
                 }
             }

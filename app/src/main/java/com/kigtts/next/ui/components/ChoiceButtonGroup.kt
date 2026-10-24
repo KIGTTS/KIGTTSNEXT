@@ -16,24 +16,25 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T)->String,onSelect:(T)->Unit,
     modifier:Modifier=Modifier,enabled:Boolean=true,compactLabels:Boolean=false,preserveColorWhenLocked:Boolean=false,
-    itemRole: Role = Role.RadioButton) {
+    itemRole: Role = Role.RadioButton, fitContent: Boolean = false, icon: (@Composable (T) -> Unit)? = null) {
     val sources=remember(options) { options.map { MutableInteractionSource() } }
     val motions=options.map { option -> key(option) { rememberChoicePressMotion() } }
     val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
         expansion=100f*ButtonGroupDefaults.ExpandedRatio)
-    ButtonGroup(modifier.fillMaxWidth().selectableGroup(), expandedRatio = 0f,
+    ButtonGroup(modifier.then(if (fitContent) Modifier.wrapContentWidth() else Modifier.fillMaxWidth()).selectableGroup(), expandedRatio = 0f,
         horizontalArrangement=ButtonGroupDefaults.HorizontalArrangement) {
         options.forEachIndexed { index,option -> key(option) {
             val defaults=ToggleButtonDefaults.shapes()
             val selectionProgress by animateFloatAsState(if (value==option) 1f else 0f,tween(160),label="choice-selection-shape")
             val shape=ChoiceButtonShape(defaults,selectionProgress,motions[index].progress.value)
             ToggleButton(checked=value==option,onCheckedChange={ checked -> motions[index].commit { if(checked&&option!=value)onSelect(option) } },
-                modifier=Modifier.weight(weights[index]).then(if(enabled)Modifier.choicePressFeedback(motions[index])else Modifier)
+                modifier=Modifier.then(if (fitContent) Modifier else Modifier.weight(weights[index])).then(if(enabled)Modifier.choicePressFeedback(motions[index])else Modifier)
                     .then(if(preserveColorWhenLocked) Modifier else Modifier.enabledContentMotion(enabled)).semantics {
                     contentDescription="$title：${label(option)}";selected=value==option;role=itemRole
                 },enabled=enabled,shapes=ToggleButtonShapes(shape,shape,shape),interactionSource=sources[index],
                 colors=ToggleButtonDefaults.toggleButtonColors().let { if(preserveColorWhenLocked)it.keepColorsWhenLocked(value==option)else it },
                 contentPadding=if(compactLabels)PaddingValues(horizontal=8.dp,vertical=8.dp)else ToggleButtonDefaults.ContentPadding) {
+                icon?.invoke(option)
                 Text(label(option),maxLines=if(compactLabels)2 else 1,
                     textAlign=androidx.compose.ui.text.style.TextAlign.Center,
                     fontSize=if(compactLabels)12.sp else androidx.compose.ui.unit.TextUnit.Unspecified)

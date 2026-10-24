@@ -129,7 +129,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
                     Box(Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(180),
                         fadeOutSpec = androidx.compose.animation.core.tween(100), placementSpec = null)) {
                         if (row.steps.isNotEmpty()) ChatExecutionGroup(row.steps, readingInteraction)
-                        else row.answer?.let { ChatBubble(it, resolve, readingInteraction, showThought = false) }
+                        else row.answer?.let { ChatBubble(it, resolve, readingInteraction, showThought = false, invoke = dispatch) }
                     }
                 }
             }
