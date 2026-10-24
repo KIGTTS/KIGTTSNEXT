@@ -128,7 +128,7 @@ def main():
             if not args.resume_artifacts and upload:
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
                     allow_patterns=upload, ignore_patterns=["*.tmp"], max_workers=2, use_cache=False,
-                    token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android preview artifacts")
+                    token=token, commit_message=f"Add signed API{android['apiVersion']} plugins and Android artifacts")
             with ThreadPoolExecutor(max_workers=3) as pool:
                 for name, actual in zip(upload, pool.map(remote_hash, upload)):
                     if actual != files[name]:
