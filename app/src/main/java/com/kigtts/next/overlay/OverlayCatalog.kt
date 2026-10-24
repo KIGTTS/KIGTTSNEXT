@@ -32,9 +32,19 @@ internal fun refreshOverlayPlugins(context: Context, manager: PluginManager) {
                 "action", owner = owner, publisher = publisher, action = entry.id, category = plugin.descriptor.name,
                 badge = entry.badge?.toOverlayBadge())
         }
-        pages + actions
+        pages + actions + retainedOverlayActions(OverlayStore.get(context).settings.value.shortcuts, owner, publisher, ui)
+            .filter { retained -> actions.none { it.id == retained.id } }
     }
     OverlayHub.get(context).discovered(entries, publishers)
+}
+
+/** A durable automation action can outlive its conditional toolbar button (for example AI Open). */
+internal fun retainedOverlayActions(saved: List<OverlayShortcut>, owner: String, publisher: String,
+    ui: PluginContributions): List<OverlayShortcut> = saved.filter {
+    it.owner == owner && it.publisher == publisher && it.target == "action" && it.action in ui.automationActions &&
+        it.id == "plugin:$owner:action:${it.action}"
+}.map { entry ->
+    entry.copy(enabled = true, badge = ui.settingsEntries.firstOrNull { it.label == entry.title }?.badge?.toOverlayBadge())
 }
 
 internal fun PluginBadge.toOverlayBadge() = OverlayBadge(if (count == null) "dot" else "number",

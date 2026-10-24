@@ -11,6 +11,15 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class OverlayCatalogTest {
+    @Test fun hidingAToolbarButtonDoesNotDisableItsSavedAutomationShortcut() {
+        val entry = OverlayShortcut("plugin:agent:action:open", "助手", "smart_toy", "action", owner = "agent", publisher = "key", action = "open", enabled = false)
+        val ui = PluginContributions(automationActions = listOf("open"), settingsEntries = listOf(
+            SettingsEntry("assistant", "助手", "chat", badge = PluginBadge(tone = BadgeTone.CAUTION))))
+        val retained = retainedOverlayActions(listOf(entry), "agent", "key", ui).single()
+        assertTrue(retained.enabled); assertEquals("caution", retained.badge?.tone)
+        assertTrue(retainedOverlayActions(listOf(entry), "agent", "new-key", ui).isEmpty())
+        assertTrue(retainedOverlayActions(listOf(entry), "agent", "key", PluginContributions()).isEmpty())
+    }
     @Test fun subtitleMigrationKeepsTheFirstSlotAndDoesNotRestoreRemovedEntries() {
         val quick = OverlayShortcut("quick-text", "快捷文本", "view_agenda", "quick-text", showLabel = false)
         val camera = OverlayShortcut("camera", "拍照", "photo_camera", "camera")
