@@ -22,9 +22,9 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         // starts on Home instead of reopening an editor or project from an old task bundle.
         enableEdgeToEdge()
         setContent { KigttsApp(model) }
-        if (savedInstanceState == null) { model.sourceLink(intent?.data); model.notificationLink(intent); model.overlayLink(intent) }
+        if (savedInstanceState == null) { model.sourceLink(intent?.data); model.externalIntent(intent); model.notificationLink(intent); model.overlayLink(intent) }
     }
-    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data); model.notificationLink(intent); model.overlayLink(intent) }
+    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data); model.externalIntent(intent); model.notificationLink(intent); model.overlayLink(intent) }
     override fun onStart() { super.onStart(); com.kigtts.next.overlay.NativeOverlayService.sync(this) }
     override fun onResume() { super.onResume(); com.kigtts.next.overlay.OverlayHostWindow.resume(this) }
     override fun onPause() { com.kigtts.next.overlay.OverlayHostWindow.pause(this); super.onPause() }

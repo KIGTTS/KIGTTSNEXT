@@ -19,10 +19,10 @@ internal class LegacyImportController(private val context: Context, library: Qui
     val preview = prepared.asStateFlow()
     val busy = running.asStateFlow()
     private var staging: File? = null
-    fun prepare(uri: Uri) {
-        if (running.value) return
+    fun prepare(uri: Uri): Job? {
+        if (running.value) return null
         running.value = true
-        scope.launch {
+        return scope.launch {
             try {
                 discard()
                 val directory = File(context.cacheDir, "legacy-import/${UUID.randomUUID()}").also { staging = it }

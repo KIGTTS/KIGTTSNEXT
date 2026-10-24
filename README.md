@@ -1,5 +1,7 @@
 # KIGTTS NEXT
 
+目前仍处于研发阶段，后续更新可能包含不兼容变更。更新前请备份重要内容。
+
 KIGTTS 的 Android 原生重构续作，采用 Kotlin、Jetpack Compose 和 Material 3 Expressive。主程序、通用 SDK 与运行时采用 MIT；原版移植的合成/识别实现保留各自 GPLv3 与第三方许可证，详见插件 LICENSE/NOTICE。
 
 ## 当前实现

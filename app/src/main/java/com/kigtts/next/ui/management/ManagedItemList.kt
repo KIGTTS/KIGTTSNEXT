@@ -37,14 +37,16 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     val lazy = rememberLazyGridState()
     RegisterPageLoading(busy)
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val horizontalPadding = with(density) { 16.dp.toPx() }
     val external = list.items.map { it.id }
     var order by remember(list.id) { mutableStateOf(external) }
     val data = list.items.associateBy { it.id }
     val feedback = rememberDragFeedback()
-    val interactive = !busy && com.kigtts.next.ui.navigation.LocalPageActive.current
+    val pageActive = com.kigtts.next.ui.navigation.LocalPageActive.current
+    val interactive = pageActive && !busy
     val drag = rememberReorderDrag({ lazy.layoutInfo.visibleItemsInfo.mapNotNull { info ->
         (info.key as? String)?.takeIf { it in data }?.let { ReorderTarget(it,
-            Rect(info.offset.x.toFloat(), (info.offset.y + lazy.layoutInfo.beforeContentPadding).toFloat(), (info.offset.x + info.size.width).toFloat(),
+            Rect(info.offset.x + horizontalPadding, (info.offset.y + lazy.layoutInfo.beforeContentPadding).toFloat(), info.offset.x + info.size.width + horizontalPadding,
                 (info.offset.y + info.size.height + lazy.layoutInfo.beforeContentPadding).toFloat())) }
     } }, animateDrop = true, verticalOnly = columns == 1) { from, to ->
         if (data[from]?.group == data[to]?.group) { order = ItemOrder.move(order, from, to); feedback.step() }
@@ -88,16 +90,21 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 ManagedItemRow(item, Modifier.animateItem(fadeInSpec = tween(180), fadeOutSpec = tween(120),
                         placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                         .then(if (drag.key == item.id) Modifier.graphicsLayer { alpha = 0f }.clearAndSetSemantics { } else Modifier),
-                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, interactive, resolve, invoke, { if(interactive)moveAccessible(item.id, it) },
+                    Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, pageActive, resolve,
+                    { action, inputs -> if (interactive) invoke(action, inputs) }, { if(interactive)moveAccessible(item.id, it) },
                     catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
                     position = if (columns == 1) managedItemPosition(orderedItems, index) else managedItemPosition(orderedItems.filterIndexed { i, _ -> i % columns == index % columns }, index / columns))
             }
         }
-        val active = drag.key?.let(data::get)
-        if (active != null) ManagedItemRow(active,
+        val draggedItem = drag.key?.let(data::get)
+        val ordered = order.mapNotNull(data::get)
+        val draggedPosition = ordered.indexOfFirst { it.id == draggedItem?.id }
+        if (draggedItem != null) ManagedItemRow(draggedItem,
             Modifier.offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }.width(with(density) { drag.floatingBounds.width.toDp() })
-                .height(with(density) { drag.floatingBounds.height.toDp() }).clearAndSetSemantics { testTag = "managed-drag/" + active.id },
-            Modifier, list.reorderAction != null, true, true, resolve, { _, _ -> }, {}, shadowElevation = elevation)
+                .height(with(density) { drag.floatingBounds.height.toDp() }).clearAndSetSemantics { testTag = "managed-drag/" + draggedItem.id },
+            Modifier, list.reorderAction != null, true, pageActive, resolve, { _, _ -> }, {}, shadowElevation = elevation,
+            catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[draggedItem.id],
+            position = if (columns == 1 && draggedPosition >= 0) managedItemPosition(ordered, draggedPosition) else com.kigtts.next.ui.settings.SettingPosition.SINGLE)
         ReorderAutoScroll(drag, { lazy.layoutInfo.viewportSize.height.toFloat() }, { lazy.scrollBy(it) })
     }
     }

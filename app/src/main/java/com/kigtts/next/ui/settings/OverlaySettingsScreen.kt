@@ -28,6 +28,10 @@ import com.kigtts.next.ui.components.feedbackChange
 import com.kigtts.next.ui.components.MotionAlertDialog as AlertDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import java.io.File
+import java.security.MessageDigest
 
 @Composable
 fun OverlaySettingsScreen() {
@@ -74,7 +78,7 @@ fun OverlaySettingsScreen() {
                             })
                     })
             }
-            FilledTonalButton(onClick = feedbackClick { add = true }, Modifier.fillMaxWidth(), enabled = state.shortcuts.size < 24) {
+            FilledTonalButton(onClick = feedbackClick { add = true }, Modifier.fillMaxWidth(), enabled = state.shortcuts.size < 100) {
                 Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("添加入口")
             }
         }
@@ -111,7 +115,20 @@ fun OverlaySettingsScreen() {
         context.packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0)
             .filter { it.activityInfo.exported && it.activityInfo.enabled && it.activityInfo.packageName != context.packageName }
             .map { result -> val component = ComponentName(result.activityInfo.packageName, result.activityInfo.name).flattenToString()
-                OverlayShortcut("app:$component", result.loadLabel(context.packageManager).toString(), "apps", component = component)
+                val iconPath = runCatching {
+                    val digest = MessageDigest.getInstance("SHA-256").digest(component.toByteArray()).joinToString("") { "%02x".format(it) }
+                    val directory = File(context.filesDir, "overlay-icon-cache").apply { mkdirs() }
+                    val target = File(directory, "$digest.png")
+                    if (!target.exists()) {
+                        val drawable = result.loadIcon(context.packageManager)
+                        val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+                        Canvas(bitmap).also { canvas -> drawable.setBounds(0, 0, canvas.width, canvas.height); drawable.draw(canvas) }
+                            .let { canvas -> target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } }
+                        bitmap.recycle()
+                    }
+                    target.absolutePath
+                }.getOrNull()
+                OverlayShortcut("app:$component", result.loadLabel(context.packageManager).toString(), "apps", component = component, category = "应用", iconPath = iconPath)
             }.distinctBy { it.id }.sortedBy { it.title.lowercase() }
     } }
     AlertDialog(onDismissRequest = onDismiss, title = { Text("添加入口") }, text = {
@@ -121,11 +138,14 @@ fun OverlaySettingsScreen() {
                 val groups = listOf("KIGTTS" to (defaultOverlayShortcuts() + OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")), "插件" to pluginEntries, "应用" to apps)
                 groups.forEach { (title, entries) ->
                     val visible = entries.filter { it.id !in existing && it.title.contains(query, true) }
-                    if (visible.isNotEmpty()) {
-                        item { Text(title, Modifier.padding(vertical = 12.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
-                        items(visible, key = { it.id }) { entry -> TextButton(onClick = feedbackClick { add(entry) }, modifier = Modifier.fillMaxWidth()) {
-                            Icon(MaterialSymbols.vector(entry.symbol) ?: Icons.Default.Extension, null); Spacer(Modifier.width(12.dp)); Text(entry.title, Modifier.weight(1f))
-                        } }
+                    visible.groupBy { it.category.ifBlank { title } }.forEach { (section, sectionEntries) ->
+                        if (sectionEntries.isNotEmpty()) {
+                            item { Text(section, Modifier.padding(start = 8.dp, top = 12.dp, bottom = 6.dp), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
+                            items(sectionEntries, key = { it.id }) { entry -> TextButton(onClick = feedbackClick { add(entry) }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(MaterialSymbols.vector(entry.symbol) ?: Icons.Default.Extension, null); Spacer(Modifier.width(12.dp)); Text(entry.title, Modifier.weight(1f))
+                                if (!entry.enabled) Text("已停用", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            } }
+                        }
                     }
                 }
             }

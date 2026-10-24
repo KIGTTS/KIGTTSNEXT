@@ -22,7 +22,7 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun BackupRestoreScreen(model: AppViewModel) {
     val resolver = LocalContext.current.contentResolver
-    val backup = remember(model) { QuickTextBackup(model) }
+    val backup = model.quickTextBackup
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var exportPath by rememberSaveable { mutableStateOf<String?>(null) }

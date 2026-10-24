@@ -58,6 +58,8 @@ class ManagedItemListTest {
         val floating = compose.onNodeWithTag("managed-drag/b").getUnclippedBoundsInRoot()
         assertEquals((original.right - original.left).value, (floating.right - floating.left).value, .5f)
         assertEquals((original.bottom - original.top).value, (floating.bottom - floating.top).value, .5f)
+        assertEquals("Picking up a row must preserve its horizontal position", original.left.value, floating.left.value, .5f)
+        assertEquals("Pickup follows the finger without adding content padding", original.top.value + 24f, floating.top.value, .5f)
         assertTrue(commits.isEmpty())
         val target = compose.onNodeWithTag("managed-item/c").getUnclippedBoundsInRoot()
         list.performTouchInput { moveTo(Offset(start.x, ((target.top.value + target.bottom.value) / 2 - root.top.value) * density), 150); up() }

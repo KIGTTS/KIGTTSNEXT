@@ -56,8 +56,9 @@ fun KigttsApp(model: AppViewModel) {
     val storeBootstrap by model.storeBootstrap.state.collectAsStateWithLifecycle()
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
     val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
+    val externalFile by model.externalFiles.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null
+    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -124,6 +125,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
             com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
+            com.kigtts.next.ui.plugins.ExternalFilePrompt(model)
             com.kigtts.next.overlay.OverlayEntrancePrompt(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),

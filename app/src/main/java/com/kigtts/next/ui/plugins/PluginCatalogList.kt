@@ -17,13 +17,15 @@ import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.ReadablePage
 import com.kigtts.next.ui.management.ResourceAvatar
 import com.kigtts.next.ui.management.InlineProgressButton
+import com.kigtts.next.ui.management.ManagedItemHeading
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.*
 import java.io.File
 
 /** Catalog entries show artwork and useful descriptions without rankings or recommendation sections. */
-@Composable internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
-    invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
+@Composable internal fun PluginCatalogPane(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
+    invoke: (String, Map<String, String>) -> Unit, loading: Boolean = false, selectFilter: ((String) -> Unit)? = null,
+    header: @Composable ColumnScope.() -> Unit) {
     // Keep the catalog controls visually stable while a page request is in flight;
     // actions are gated below, so the tab group does not flash into a disabled state.
     val active = LocalPageActive.current
@@ -37,9 +39,13 @@ import java.io.File
         item("catalog-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             header()
             CatalogShortcuts(list.shortcuts, wide, active, { action, inputs -> if (canInvoke) invoke(action, inputs) })
-            CatalogTabs(list.filters, active, { action, inputs -> if (canInvoke) invoke(action, inputs) })
+            CatalogTabs(list.filters, active, { action, inputs ->
+                if (selectFilter != null) list.filters.firstOrNull { it.action == action }?.let { selectFilter(it.id) }
+                else if (canInvoke) invoke(action, inputs)
+            })
         } }
-        if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
+        if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
+        else if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
             if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) { Text(group, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             items(entries, key = { it.id }) { item ->
@@ -48,11 +54,7 @@ import java.io.File
                     modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)).testTag("managed-item/" + item.id)) {
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         ResourceAvatar(item, resolve, 64.dp)
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                        }
+                        ManagedItemHeading(item, Modifier.weight(1f))
                         val action = list.itemActions[item.id]
                         if (action != null) InlineProgressButton(item.id, action, active, { actionId, inputs -> if (canInvoke) invoke(actionId, inputs) })
                         else Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))

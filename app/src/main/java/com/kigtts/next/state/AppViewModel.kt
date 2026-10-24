@@ -85,6 +85,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead, permissions=pluginManager.permissions)
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
+    internal val quickTextBackup by lazy { QuickTextBackup(this) }
     internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, cards, viewModelScope, ::message)
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
@@ -106,7 +107,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
     // Every callback dependency must exist before bootstrap can resume from background I/O.
     private val navigationHistory = ArrayDeque<Destination>()
-    private var pluginCatalogReady = engineFixtures.isNotEmpty()
+    internal var pluginCatalogReady = engineFixtures.isNotEmpty()
     internal val storeBootstrap: com.kigtts.next.plugins.control.StoreBootstrapCoordinator by lazy { com.kigtts.next.plugins.control.StoreBootstrapCoordinator(viewModelScope,
         installed = { pluginManager.status.any { it.installed.manifest.id == com.kigtts.next.plugins.control.STORE_ID } },
         ready = { registry.plugins.any { registry.available(it) && it.contributions.sourceAction != null } },
@@ -124,7 +125,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private fun openSynthesisStore() {
         openSpeechPluginStore("语音合成服务")
     }
-    private fun openSpeechPluginStore(query: String) {
+    internal fun openSpeechPluginStore(query: String) {
         storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
             invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to query)) { accepted ->
                 if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "store"))
@@ -159,6 +160,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     } }
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
+
+    internal val externalFiles by lazy { ExternalFileOpen(this, viewModelScope) }
+    fun externalIntent(intent: android.content.Intent?) = externalFiles.accept(intent)
 
     private fun update(transform: (AppState) -> AppState) {
         mutableState.update(transform)
@@ -438,6 +442,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         synthesisGuidance.refresh()
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
         pluginCatalogReady = true
+        externalFiles.pluginsChanged()
         legacyPiperGuidance.onStartup()
         sourceLinks.deliver()
     }

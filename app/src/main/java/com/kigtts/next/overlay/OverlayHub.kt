@@ -23,7 +23,7 @@ internal class OverlayHub private constructor(context: Context) {
     }
     fun requestAdd(entry: OverlayShortcut): Boolean {
         if (store.settings.value.shortcuts.any { it.id == entry.id && it.publisher == entry.publisher }) return false
-        require(store.settings.value.shortcuts.size < 24) { "快捷入口已满，请先移除一个入口" }
+        require(store.settings.value.shortcuts.size < 100) { "快捷入口已满，请先移除一个入口" }
         require(pending.value.size < 8) { "待确认入口过多" }
         if (pending.value.none { it.id == entry.id }) pending.value += entry
         return true
@@ -41,6 +41,10 @@ internal class OverlayHub private constructor(context: Context) {
     fun removeOwner(owner: String) {
         entries.value = entries.value.filterNot { it.owner == owner }
         pending.value = pending.value.filterNot { it.owner == owner }; clear(owner)
+        // Keep the installed shortcut visible so users can see what became unavailable.
+        store.update { state -> state.copy(shortcuts = state.shortcuts.map { item ->
+            if (item.owner == owner) item.copy(enabled = false) else item
+        }) }
     }
     companion object {
         @Volatile private var instance: OverlayHub? = null

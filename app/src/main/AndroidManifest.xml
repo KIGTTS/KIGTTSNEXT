@@ -43,6 +43,33 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kigtts" android:host="source" android:path="/add" />
             </intent-filter>
+            <!-- File managers deliver legacy exports and voice packs as content:// URIs;
+                 the host classifies the name/MIME and keeps unknown files read-only. -->
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/*" />
+            </intent-filter>
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/*" />
+            </intent-filter>
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:host="*" />
+                <data android:scheme="content" />
+                <data android:pathPattern=".*\\.kigvpk" />
+                <data android:pathPattern=".*\\.kigcards" />
+                <data android:pathPattern=".*\\.kigtpk" />
+                <data android:pathPattern=".*\\.kigspk" />
+                <data android:pathPattern=".*\\.kigcard" />
+                <data android:pathPattern=".*\\.kigconfig" />
+                <data android:pathPattern=".*\\.kigplugin" />
+            </intent-filter>
         </activity>
     </application>
 </manifest>

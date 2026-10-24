@@ -4,15 +4,12 @@ package com.kigtts.next.ui.plugins
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -51,25 +48,13 @@ import kotlinx.coroutines.flow.first
     invoke: (String, Map<String, String>) -> Unit) {
     if (filters.isEmpty()) return
     val selected = filters.firstOrNull { it.selected }?.id ?: filters.first().id
-    val selectedIndex = filters.indexOfFirst { it.id == selected }.coerceAtLeast(0)
-    var dragDistance by remember(filters, selected) { mutableFloatStateOf(0f) }
-    fun switchTab(delta: Int) {
-        filters.getOrNull((selectedIndex + delta).coerceIn(0, filters.lastIndex))?.let { target ->
-            if (target.id != selected) invoke(target.action, emptyMap())
-        }
-    }
     Box(Modifier.fillMaxWidth().testTag("catalog-tabs")) {
         val scroll = rememberScrollState()
-        Box(Modifier.horizontalScroll(scroll).pointerInput(filters, selected) {
-            detectHorizontalDragGestures(
-                onHorizontalDrag = { change, amount -> change.consume(); dragDistance += amount },
-                onDragEnd = { val distance = dragDistance; dragDistance = 0f; if (kotlin.math.abs(distance) > 48f) switchTab(if (distance < 0f) 1 else -1) },
-                onDragCancel = { dragDistance = 0f })
-        }) {
+        Box(Modifier.horizontalScroll(scroll)) {
             ChoiceButtonGroup("插件分类", filters.map { it.id }, selected,
                 label = { id -> filters.first { it.id == id }.label },
                 onSelect = { id -> invoke(filters.first { it.id == id }.action, emptyMap()) },
-                modifier = Modifier.graphicsLayer { translationX = (dragDistance * .12f).coerceIn(-28f, 28f) }, enabled = enabled,
+                modifier = Modifier, enabled = enabled,
                 preserveColorWhenLocked = true, itemRole = Role.Tab, fitContent = true,
                 icon = { id -> filters.first { it.id == id }.symbol?.let { symbol ->
                     Icon(PluginIcon.NONE.vector(symbol), null, Modifier.size(18.dp))

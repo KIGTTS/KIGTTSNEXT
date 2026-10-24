@@ -15,7 +15,7 @@ internal class SourceLinkCoordinator(context: Context, private val registry: Plu
     private var notified = false
     private var attempted = false
     fun accept(uri: Uri?) {
-        if (uri == null) return
+        if (uri == null || uri.scheme != "kigtts" || uri.host != "source") return
         val request = parseRequest(uri) ?: return message("包源链接不合法")
         preferences.edit().putString("url", request.url).putString("package", request.packageId)
             .putString("request", java.util.UUID.randomUUID().toString()).apply()

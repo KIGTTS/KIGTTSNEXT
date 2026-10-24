@@ -12,7 +12,11 @@ data class OverlayShortcut(
     val target: String = "home", val component: String? = null,
     val owner: String? = null, val publisher: String? = null, val action: String? = null,
     val smallWindow: Boolean = false, val showLabel: Boolean = true,
+    val category: String = "KIGTTS", val enabled: Boolean = true, val badge: OverlayBadge? = null,
+    val iconPath: String? = null,
 )
+
+@Serializable data class OverlayBadge(val kind: String = "dot", val tone: String = "primary", val count: Int = 0)
 
 @Serializable
 data class OverlaySettings(
@@ -41,15 +45,19 @@ class OverlayStore private constructor(context: Context) {
     private fun read(): OverlaySettings = runCatching {
         json.decodeFromString<OverlaySettings>(prefs.getString("settings", null) ?: "{}")
     }.getOrDefault(OverlaySettings()).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f,
-        shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(24)) }
+        shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(100)) }
     @Synchronized fun update(block: (OverlaySettings) -> OverlaySettings) {
-        val next = block(mutable.value).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f, shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(24)) }
+        val next = block(mutable.value).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f, shortcuts = it.shortcuts.distinctBy(OverlayShortcut::id).take(100)) }
+        if (next == mutable.value) return
         prefs.edit().putString("settings", json.encodeToString(next)).apply()
         mutable.value = next
     }
     fun move(id: String, delta: Int) = update { state ->
         val items = state.shortcuts.toMutableList(); val from = items.indexOfFirst { it.id == id }
-        if (from >= 0) items.add((from + delta).coerceIn(0, items.lastIndex), items.removeAt(from))
+        if (from >= 0) {
+            val target = (from + delta).coerceIn(0, items.lastIndex)
+            if (target != from) items.add(target, items.removeAt(from))
+        }
         state.copy(shortcuts = items)
     }
     companion object {

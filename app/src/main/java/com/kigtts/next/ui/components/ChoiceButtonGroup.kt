@@ -35,6 +35,7 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
                 colors=ToggleButtonDefaults.toggleButtonColors().let { if(preserveColorWhenLocked)it.keepColorsWhenLocked(value==option)else it },
                 contentPadding=if(compactLabels)PaddingValues(horizontal=8.dp,vertical=8.dp)else ToggleButtonDefaults.ContentPadding) {
                 icon?.invoke(option)
+                if (icon != null) Spacer(Modifier.width(6.dp))
                 Text(label(option),maxLines=if(compactLabels)2 else 1,
                     textAlign=androidx.compose.ui.text.style.TextAlign.Center,
                     fontSize=if(compactLabels)12.sp else androidx.compose.ui.unit.TextUnit.Unspecified)

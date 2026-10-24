@@ -94,6 +94,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
 
 @Composable
 internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String, Map<String,String>)->Unit, grouped:Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }) {
+    val pageActive = com.kigtts.next.ui.navigation.LocalPageActive.current
     MotionColumn(blocks,{ block,index->when(block) {
         is PageBlock.Group->"group/"+block.title
         is PageBlock.Actions->"actions/$index"
@@ -110,9 +111,10 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
         is PageBlock.Files -> "files/"+block.openAction
         is PageBlock.SourceEditor -> "source/"+block.id
         is PageBlock.Browser -> "browser/$index"
-    } },enabled=enabled&&com.kigtts.next.ui.navigation.LocalPageActive.current,animateInitial=false,
+    } },enabled=true,animateInitial=false,
         spacing = if (grouped) 2.dp else 12.dp) { block,active ->
-        RenderBlock(block, active, invoke, if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE, resolve)
+        RenderBlock(block, true, { action, inputs -> if (active && enabled && pageActive) invoke(action, inputs) },
+            if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE, resolve)
     }
 }
 

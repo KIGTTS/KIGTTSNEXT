@@ -88,6 +88,8 @@ tags:
 
 为 KIGTTS 添加朗读、聆听、创作与日常工具。可在软件的插件商店中浏览和安装。
 
+KIGTTS 与配套插件目前仍处于研发阶段，后续更新可能包含不兼容变更。更新前请备份重要内容。
+
 源地址：$homepage/resolve/master/index.json?view=false
 
 新版 KIGTTS 已内置这个源。安装前可以查看插件介绍、所需权限和许可证。
@@ -124,9 +126,9 @@ if ($AndroidApk) {
     [IO.Directory]::CreateDirectory((Join-Path $output 'android')) | Out-Null
     Copy-Item -LiteralPath $apk -Destination (Join-Path $output $relative) -Force
     $android = [ordered]@{ path = $relative; sha256 = $hash; bytes = (Get-Item -LiteralPath $apk).Length
-        apiVersion = $sdkApi; version = '0.1.0-preview'; developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
+        apiVersion = $sdkApi; version = ([regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot 'app/build.gradle.kts')), 'versionName = "([^"]+)"').Groups[1].Value); developmentSigning = [bool]$DevelopmentSigned; sourceCommit = (& git -C $projectRoot rev-parse HEAD) }
     [IO.File]::WriteAllText((Join-Path $output 'android/release.json'), ($android | ConvertTo-Json) + "`n", $utf8)
-    $signing = if ($DevelopmentSigned) { '此预览版使用开发测试证书签名。覆盖安装需要与已装版本的签名一致，请先备份重要内容。' } else { '这是预览APK，请核对签名和当前安装版本。' }
-    [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android预览版`n`n[下载API$sdkApi 安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
+    $signing = if ($DevelopmentSigned) { '当前APK使用开发证书签名，覆盖安装需要与已装版本的签名一致。' } else { '覆盖安装前，请核对签名和当前安装版本。' }
+    [IO.File]::AppendAllText((Join-Path $output 'README.md'), "`n## Android下载`n`n[下载API$sdkApi 安卓APK]($homepage/resolve/master/$relative`?view=false)`n`n$signing`n`nSHA-256：$hash`n`n构建源码提交：$($android.sourceCommit)`n", $utf8)
 }
 Write-Output "Prepared $($packages.Count) signed packages in $output"

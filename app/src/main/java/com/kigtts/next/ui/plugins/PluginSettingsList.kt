@@ -29,7 +29,8 @@ internal fun settingPosition(index: Int, count: Int) = when {
 internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
     invoke: (String, Map<String, String>) -> Unit, hasHeader: Boolean, resolve: (PluginResource) -> java.io.File? = { null },
     header: @Composable ColumnScope.() -> Unit) {
-    val enabled = !busy && LocalPageActive.current
+    val enabled = LocalPageActive.current
+    val invokeWhenReady: (String, Map<String, String>) -> Unit = { action, inputs -> if (enabled && !busy) invoke(action, inputs) }
     val groups = list.items.groupBy { it.group.ifBlank { "设置" } }.entries.toList()
     SettingsLayout {
         if (hasHeader) header()
@@ -42,9 +43,9 @@ internal fun PluginSettingsList(list: ManagementList, busy: Boolean,
                         settingPosition(group.value.indexOfFirst { it.id == item.id }, group.value.size),
                         modifier = Modifier.testTag("managed-item/" + item.id), enabled = interactive,
                         leading = if (item.image == null) null else ({ com.kigtts.next.ui.management.ResourceAvatar(item, resolve) }),
-                        onClick = item.primaryAction?.let { action -> { invoke(action, emptyMap()) } }, trailing = {
+                        onClick = item.primaryAction?.let { action -> { invokeWhenReady(action, emptyMap()) } }, trailing = {
                             if (toggle != null || item.selection != null || item.selected)
-                                com.kigtts.next.ui.management.ManagedItemControl(item, interactive, invoke)
+                                com.kigtts.next.ui.management.ManagedItemControl(item, interactive, invokeWhenReady)
                             else if (item.primaryAction != null)
                                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
                         })

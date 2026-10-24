@@ -3,6 +3,7 @@ package com.kigtts.next.ui.components.reorder
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
@@ -13,7 +14,9 @@ import kotlinx.coroutines.flow.collectLatest
 fun rememberReorderDrop(drag: ReorderDrag): State<Offset> {
     val settling = drag.settling
     val animation = remember(drag.key, settling) { Animatable(drag.floatingBounds.topLeft, Offset.VectorConverter) }
-    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Offset>()
+    // A deterministic drop tween avoids a spring overshoot that looks like a second
+    // vibration and briefly reopens the adjacent rounded corners on release.
+    val spatial = tween<Offset>(180)
     LaunchedEffect(drag.key, drag.settling) {
         val id = drag.key ?: return@LaunchedEffect
         if (drag.settling) {
