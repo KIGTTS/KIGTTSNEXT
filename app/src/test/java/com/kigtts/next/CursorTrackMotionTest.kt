@@ -32,7 +32,7 @@ class CursorTrackMotionTest {
             bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height); bitmap.recycle()
         }
     }
-    @Test fun smallWindowPlacesTheWideCursorStripAboveTheButtonsAndRestoresInlineInFullscreen() {
+    @Test fun smallWindowKeepsTheCursorStripInlineWhileTheOuterSurfaceOwnsSafeArea() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = testAppModel(app)
         model.setAutoPlayback(false)
@@ -42,8 +42,8 @@ class CursorTrackMotionTest {
         compose.waitForIdle()
         val strip = compose.onNodeWithTag("cursor-track").fetchSemanticsNode().boundsInRoot
         val actions = compose.onNodeWithTag("editor-footer-actions").fetchSemanticsNode().boundsInRoot
-        assertTrue("The cursor track needs its own row above the actions", strip.bottom <= actions.top)
-        assertTrue("The small-window track should span the caption width", strip.width > actions.width * .85f)
+        assertTrue("The cursor track stays in the footer row", strip.center.y in actions.top..actions.bottom)
+        assertTrue("The small-window track keeps the inline width", strip.width < actions.width * .65f)
         compose.onNodeWithTag("speech-editor").performTextInputSelection(androidx.compose.ui.text.TextRange(8))
         // Cross the device's touch slop, then move at least two 12 dp cursor steps.
         compose.onNodeWithTag("cursor-track").performTouchInput { swipeLeft(startX = centerX, endX = centerX - 180f, durationMillis = 300) }
@@ -54,7 +54,7 @@ class CursorTrackMotionTest {
         val inline = compose.onNodeWithTag("cursor-track").fetchSemanticsNode().boundsInRoot
         val row = compose.onNodeWithTag("editor-footer-actions").fetchSemanticsNode().boundsInRoot
         assertTrue(inline.center.y in row.top..row.bottom)
-        assertTrue(inline.width < strip.width * .65f)
+        assertEquals(strip.width, inline.width, 1f)
     }
     @Test fun enteringAndLeavingAnimateTheStripAndSideSpacingWithoutChangingHeightOrSelection() {
         val app = ApplicationProvider.getApplicationContext<Application>()

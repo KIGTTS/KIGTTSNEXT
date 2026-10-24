@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -56,21 +55,16 @@ fun TextEditor(
 @Composable
 private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
     val readVisible by model.synthesisGuidance.visible.collectAsState()
-    val separateCursor = rememberMultiWindowMode()
     val reveal by animateFloatAsState(if (state.editing) 1f else 0f,
         tween(220, easing = FastOutSlowInEasing), label = "cursor-slot-reveal")
     val progress = reveal.coerceIn(0f, 1f)
     val middle = .2f + .3f * progress
     Column(modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer")) {
-      if (separateCursor) Box(Modifier.fillMaxWidth().height((40f * progress).dp).clipToBounds()) {
-          CursorTrackSlot(state.editing, model, progress, Modifier.fillMaxWidth().padding(top = 4.dp))
-      }
       Row(Modifier.fillMaxWidth().testTag("editor-footer-actions"), verticalAlignment = Alignment.CenterVertically) {
         val contentOpen = state.mediaId != null || state.audioId != null
         ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)"关闭" else "清空", if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,
             { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model), Modifier.weight((1f - middle) / 2))
-        if (separateCursor) Spacer(Modifier.weight(middle))
-        else CursorTrackSlot(state.editing, model, progress, Modifier.weight(middle))
+        CursorTrackSlot(state.editing, model, progress, Modifier.weight(middle))
         Box(Modifier.weight((1f - middle) / 2), contentAlignment = Alignment.CenterEnd) {
             val expanded = state.subtitleExpanded || state.forcedFullscreen
             val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", if (expanded) "退出全屏" else "全屏",
