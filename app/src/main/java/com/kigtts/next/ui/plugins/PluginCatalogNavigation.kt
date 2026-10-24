@@ -58,7 +58,7 @@ import kotlinx.coroutines.flow.first
             if (target.id != selected) invoke(target.action, emptyMap())
         }
     }
-    BoxWithConstraints(Modifier.fillMaxWidth().testTag("catalog-tabs")) {
+    Box(Modifier.fillMaxWidth().testTag("catalog-tabs")) {
         val scroll = rememberScrollState()
         Box(Modifier.horizontalScroll(scroll).pointerInput(filters, selected) {
             detectHorizontalDragGestures(
