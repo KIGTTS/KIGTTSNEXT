@@ -25,17 +25,23 @@ class CatalogPagingTest {
             PluginCatalogList(ManagementList("category/$selected",
                 listOf(ManagementItem("item$selected", "插件 $selected")),
                 filters = (0..2).map { ManagementFilter("$it", "分类 $it", "select/$it", selected == it, "category") },
+                shortcuts = listOf(PageAction("sources", "来源", PluginIcon.SETTINGS)),
                 style = ManagementListStyle.CATALOG), false, { null }, { action, _ ->
                 calls += action; selected = action.substringAfter('/').toInt()
             }, {})
         } }
         val row = compose.onNodeWithTag("managed-item/item0")
         val before = row.getUnclippedBoundsInRoot()
+        val headerBefore = compose.onNodeWithTag("catalog-fixed-header").getUnclippedBoundsInRoot()
+        val tabsBefore = compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot()
         val list = compose.onNodeWithTag("managed-list/category/0")
         list.performTouchInput { down(Offset(width * .85f, height * .5f)); moveBy(Offset(-width * .4f, 0f), 250) }
         compose.waitForIdle()
         assertTrue("Content follows the finger before release", row.getUnclippedBoundsInRoot().left < before.left)
         assertTrue("No page request before release", calls.isEmpty())
+        assertEquals(headerBefore, compose.onNodeWithTag("catalog-fixed-header").getUnclippedBoundsInRoot())
+        assertEquals(tabsBefore, compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot())
+        compose.onAllNodesWithTag("catalog-shortcut/sources").assertCountEquals(1)
         list.performTouchInput { moveBy(Offset(-width * .3f, 0f), 120); up() }
         compose.waitForIdle()
         assertEquals(listOf("select/1"), calls)

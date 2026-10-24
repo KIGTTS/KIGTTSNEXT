@@ -101,6 +101,7 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
         is PageBlock.Text->"text/$index"
         is PageBlock.Markdown -> "markdown/$index"
         is PageBlock.Gallery -> "gallery/$index"
+        is PageBlock.StrokeGuide -> "stroke/"+block.title
         is PageBlock.Notice->"notice/$index"
         is PageBlock.Toggle -> "toggle/"+block.actionId
         is PageBlock.Choice -> "choice/"+block.title
@@ -121,6 +122,7 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
 @Composable
 private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?) {
     when (block) {
+        is PageBlock.StrokeGuide -> PluginStrokeGuide(block, enabled, invoke, position)
         is PageBlock.Slider -> Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = groupedSettingShape(position, MaterialTheme.shapes.small)) {
             PluginSliderSetting(block.control, Modifier.padding(16.dp), enabled, continuous = false) {
                 invoke(block.control.actionId, mapOf("value" to it))

@@ -4,6 +4,10 @@ import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.*
 
 internal class WorkerRecognitionBroker(private val remote: IHostSpeechBroker) : RecognitionBroker {
+    override suspend fun control(pluginId: String, command: AsrControl): Boolean =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            remote.asrControl(pluginId, PluginJson.encodeToString(command))
+        }
     override fun providers(): List<AsrProvider> = PluginJson.decodeFromString(remote.asrProviders())
     override suspend fun recognize(pluginId: String, audio: PcmAudio, config: RecognitionConfig): RecognitionResult =
         events(pluginId, flowOf(audio), config, false).filterIsInstance<RecognitionEvent.Final>().last().result

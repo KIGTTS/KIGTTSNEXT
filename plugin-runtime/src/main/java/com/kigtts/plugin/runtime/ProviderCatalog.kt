@@ -8,12 +8,12 @@ internal class ProviderCatalog(private val paths: PluginPaths) {
         runCatching {
         plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { info ->
             val file = paths.storage(plugin.descriptor.id).file("config/host/tts-catalog.json").apply { parentFile!!.mkdirs() }
-            file.writeText(PluginJson.encodeToString(TtsProvider(plugin.descriptor.id, plugin.descriptor.name, info)))
+            file.writeText(PluginJson.encodeToString(TtsProvider(plugin.descriptor.id, plugin.descriptor.name, info, settingsPages = plugin.engineSettingsPages())))
         }
         plugin.asr?.info?.takeIf { it.role == AsrRole.PROVIDER }?.let { info ->
             val file = paths.storage(plugin.descriptor.id).file("config/host/asr-catalog.json").apply { parentFile!!.mkdirs() }
             file.writeText(PluginJson.encodeToString(AsrProvider(plugin.descriptor.id, plugin.descriptor.name, info,
-                settingsPages = plugin.contributions.drawerEntries.map { AsrSettingsPage(it.pageId, it.label, it.icon) })))
+                settingsPages = plugin.engineSettingsPages())))
         }
         }
     }

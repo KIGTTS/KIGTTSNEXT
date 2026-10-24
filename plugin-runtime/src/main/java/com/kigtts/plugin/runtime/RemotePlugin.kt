@@ -36,7 +36,10 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
                 { token -> connection.worker.cancel(token) }))
         }
     } }
-    override val asr: AsrEngine? = initial.asr?.let { object : AsrEngine {
+    override val asr: AsrEngine? = initial.asr?.let { object : ControlledAsrEngine {
+        override suspend fun control(command: AsrControl): Boolean = withContext(Dispatchers.IO) {
+            connection.worker.asrControl(PluginJson.encodeToString(command))
+        }
         override val info get() = requireNotNull(snapshot.asr)
         override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult =
             recognizeEvents(flowOf(audio), config, false).filterIsInstance<RecognitionEvent.Final>().last().result

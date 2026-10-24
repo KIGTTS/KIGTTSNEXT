@@ -29,6 +29,45 @@ class QuickSortUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Test fun singleRowKeepsTheGrabbedFirstCardUnderTheFingerAfterSwapping() = verifyLeadingCardDrag(true)
     @Test fun singleColumnKeepsTheGrabbedFirstCardUnderTheFingerAfterSwapping() = verifyLeadingCardDrag(false)
+    @Test fun quickSortingCanMoveAcrossGroupsFromTheGridEdge() = verifyEdgeTransfer(false, 2)
+    @Test fun singleColumnStillAllowsEdgeTransfer() = verifyEdgeTransfer(false, 1)
+    @Test fun horizontalSingleRowKeepsEdgeDragsInsideItsOwnGroup() = verifyEdgeTransfer(true, 1)
+    private fun verifyEdgeTransfer(singleRow: Boolean, columns: Int) {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        listOf("interaction", "quick-phrases", "home-panel").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
+        val model = testAppModel(app)
+        model.quickSort.choose(true)
+        val category = model.categories.value.first()
+        val destination = model.categories.value[1]
+        model.category(category)
+        val phrase = model.phrases.value.first { it.category == category }
+        compose.setContent {
+            val state by model.state.collectAsState(); val phrases by model.phrases.collectAsState(); val categories by model.categories.collectAsState()
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                MaterialTheme { QuickTextContent(state, phrases, categories, model, singleRow, columns, Modifier.width(350.dp).height(500.dp)) }
+            }
+        }
+        val pane = compose.onNodeWithTag("quick-sort-pane")
+        val root = pane.fetchSemanticsNode().boundsInRoot
+        val start = compose.onNodeWithTag("quick-phrase-${phrase.id}").fetchSemanticsNode().boundsInRoot.center - root.topLeft
+        compose.mainClock.autoAdvance = false
+        pane.performTouchInput { down(start); advanceEventTime(700); moveTo(Offset(width - 2f, start.y), 150) }
+        compose.mainClock.advanceTimeBy(700); compose.waitForIdle()
+        if (singleRow) {
+            assertEquals(category, model.state.value.selectedCategory)
+            assertEquals(category, model.phrases.value.single { it.id == phrase.id }.category)
+            compose.onNodeWithTag("phrase-edge-hint").assertDoesNotExist()
+        } else {
+            assertEquals(destination, model.state.value.selectedCategory)
+            assertEquals(destination, model.phrases.value.single { it.id == phrase.id }.category)
+            val held = compose.onNodeWithTag("quick-phrase-${phrase.id}").fetchSemanticsNode().boundsInRoot
+            assertEquals(root.right - 2f, held.center.x, 2f)
+            assertEquals(root.top + start.y, held.center.y, 2f)
+        }
+        pane.performTouchInput { up() }
+        compose.mainClock.autoAdvance = true; compose.waitForIdle()
+        assertEquals("", model.state.value.editorText)
+    }
     private fun verifyLeadingCardDrag(horizontal: Boolean) {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("interaction", "quick-phrases", "home-panel").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }

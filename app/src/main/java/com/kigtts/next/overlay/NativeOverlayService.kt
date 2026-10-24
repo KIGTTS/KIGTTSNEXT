@@ -42,6 +42,7 @@ class NativeOverlayService : Service() {
     private var theme by mutableStateOf(ThemeSettings())
     private var haptics by mutableStateOf(true)
     private var windowExpanded = false
+    private var retraction = 0f
     private var dragX = 0f; private var dragY = 0f
     private var idle: Job? = null
     private var collapseReady = true
@@ -75,6 +76,8 @@ class NativeOverlayService : Service() {
                         val before = store.settings.value.shortcuts.indexOfFirst { it.id == id }
                         store.move(id, direction)
                         before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
+                    }, retracted = { value ->
+                        if (retraction != value) { retraction = value; place() }
                     })
             } }
         } }
@@ -129,7 +132,7 @@ class NativeOverlayService : Service() {
     }
     private fun place(animate: Boolean = false) {
         val safe = safeBounds()
-        layout = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded)
+        layout = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded, retraction)
         if (dragX != 0f || dragY != 0f) layout = layout.copy(x = layout.x + dragX.toInt(), y = (layout.y + dragY.toInt()).coerceIn(safe.top, safe.top + (safe.height - layout.height).coerceAtLeast(0)))
         try { dial?.place(layout.x, layout.y, layout.width, layout.height, animate) }
         catch (_: RuntimeException) { store.update { it.copy(enabled = false) }; stopSelf() }

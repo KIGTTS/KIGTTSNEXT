@@ -13,16 +13,44 @@
   },
   {
     "module": "quick-text-gestures",
+    "file": "input.quick-gestures-0.1.3.kigplugin",
+    "category": "输入",
+    "summary": "画出熟悉的手势，一笔发送常用快捷文本。",
+    "symbol": "gesture",
+    "description": "## 手势触发\n\n为常用手势选择已有的快捷文本，在字幕板上画出手势即可发送。每种手势可以单独开启和调整。",
+    "notes": "手势图标标出起点，点击可查看绘制说明和动画；选择快捷文本更顺手。",
+    "tags": [
+      "快捷文本",
+      "手势"
+    ]
+  },
+  {
+    "module": "quick-text-gestures",
     "file": "input.quick-gestures-0.1.2.kigplugin",
     "category": "输入",
     "summary": "画出熟悉的手势，一笔发送常用快捷文本。",
     "symbol": "gesture",
     "description": "## 手势触发\n\n为常用手势选择已有的快捷文本，在字幕板上画出手势即可发送。每种手势可以单独开启和调整。",
-    "notes": "改用通用快捷文本选择器，改善选择流畅度并修复加载问题。",
+    "notes": "改善字幕板手势与快捷文本选择。",
     "tags": [
       "快捷文本",
       "手势"
     ]
+  },
+  {
+    "module": "cloud-asr",
+    "file": "engine.cloud-asr-0.1.1.kigplugin",
+    "category": "音频",
+    "summary": "连接熟悉的云端服务，把语音转换成文字。",
+    "symbol": "cloud",
+    "description": "## 云端语音识别\n\n添加腾讯云、阿里云、Azure、百度云或讯飞的识别接口，在聆听字幕中选择使用。可以为不同服务分别保存配置。",
+    "notes": "重新整理账户设置，修复配置操作，接入五家云端语音服务。",
+    "tags": [
+      "语音识别"
+    ],
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    }
   },
   {
     "module": "cloud-asr",
@@ -37,6 +65,21 @@
     ],
     "dependencies": {
       "service.speech-recognition": "^0.8.0"
+    }
+  },
+  {
+    "module": "cloud-tts",
+    "file": "engine.cloud-tts-0.1.1.kigplugin",
+    "category": "音频",
+    "summary": "选用云端声音，让文字读出喜欢的音色。",
+    "symbol": "record_voice_over",
+    "description": "## 云端语音合成\n\n连接腾讯云、阿里云、Azure、百度云或讯飞，按需添加喜欢的预设声音。也可使用腾讯云已有的克隆声音与 Azure 自定义声音。添加后的声音会出现在语音包列表，方便选择和管理。",
+    "notes": "按账户管理语音包，分开添加预设与克隆声音，修复声音配置与朗读。",
+    "tags": [
+      "语音合成"
+    ],
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.3"
     }
   },
   {
@@ -193,6 +236,21 @@
   {
     "module": "sensevoice-asr",
     "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
+    "file": "engine.sensevoice-0.8.2.kigplugin",
+    "category": "音频",
+    "summary": "识别语音并转换成文字，适合日常交流与听读。",
+    "symbol": "mic",
+    "description": "## SenseVoice 语音识别\n\n为语音识别服务提供另一种识别方式，将语音转换为文字，方便交流与阅读。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "支持保留模型加载，连续使用时减少等待。"
+  },
+  {
+    "module": "sensevoice-asr",
+    "dependencies": {
       "service.speech-recognition": "^0.8.0"
     },
     "file": "engine.sensevoice-0.8.1.kigplugin",
@@ -204,6 +262,21 @@
       "语音识别"
     ],
     "notes": "简化识别设置与资源提示，更清楚地说明录音和连续聆听的使用方式。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
+    "file": "engine.streaming-asr-0.8.2.kigplugin",
+    "category": "音频",
+    "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n让说话过程中的文字逐步呈现，可搭配语音识别服务用于聆听字幕与连续语音输入。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "支持保留模型加载，结束识别后按设置休眠。"
   },
   {
     "module": "streaming-asr",
@@ -257,6 +330,18 @@
     "file": "display.led-0.1.3.kigplugin",
     "notes": "支持更大的字幕字号，并改善大字灯珠显示效果。",
     "module": "led-caption"
+  },
+  {
+    "module": "speech-service",
+    "file": "service.speech-synthesis-0.8.3.kigplugin",
+    "category": "音频",
+    "summary": "选择喜欢的朗读声音，调整语速，让文字开口说话。",
+    "symbol": "record_voice_over",
+    "description": "## 语音合成服务\n\n集中管理朗读声音与语音引擎，按自己的习惯调整朗读体验。支持系统语音与已安装的其它语音引擎。",
+    "tags": [
+      "语音合成"
+    ],
+    "notes": "在服务中集中管理引擎设置，云端语音包显示实际服务商。"
   },
   {
     "module": "speech-service",
@@ -551,6 +636,18 @@
       "语音合成"
     ],
     "notes": ""
+  },
+  {
+    "module": "recognition-service",
+    "file": "service.speech-recognition-0.8.1.kigplugin",
+    "category": "音频",
+    "summary": "把听到的话变成字幕或输入文字，支持连续聆听。",
+    "symbol": "hearing",
+    "description": "## 语音识别服务\n\n在交流时查看聆听字幕，或直接用语音输入文字。支持持续识别、自动分句与长段内容的连续拼接。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "引擎改为单选，配置入口集中展示，识别加载保留时间可调。"
   },
   {
     "module": "recognition-service",

@@ -90,7 +90,7 @@ class SettingsEntriesTest {
         assertEquals(listOf("语音包", "正在输入"), active.map { it.title })
         assertEquals(normal.map { it.id }, active.map { it.id })
     }
-    @Test fun actualEngineControlsMoveToAudioWhileReadOnlyAboutPagesStayInPluginManagement() {
+    @Test fun engineEntrancesBelongToServicesWhileManagementPagesRemainReachable() {
         fun engine(id: String, blocks: List<PageBlock>) = object : KigPlugin {
             override val descriptor = PluginDescriptor(id, id, "")
             override val tts = object : TtsEngine { override fun synthesize(request: TtsRequest) = kotlinx.coroutines.flow.emptyFlow<SynthesisEvent>() }
@@ -102,7 +102,7 @@ class SettingsEntriesTest {
         val registry = PluginRegistry(listOf(engine("test.about", listOf(PageBlock.Text("说明"))),
             engine("test.engine", listOf(PageBlock.Actions(listOf(PageAction("import", "导入模型"))))), store))
         val cards = settingsCards(registry, PluginContext("", ""))
-        assertEquals(listOf("test.engine"), cards.single { it.id == "audio" }.links.map { it.title })
+        assertFalse(cards.flatMap { it.links }.any { it.title == "test.engine" })
         assertFalse(cards.flatMap { it.links }.any { it.title == "test.about" })
         assertEquals(listOf("插件商店", "插件管理", "实验性功能"), cards.single { it.id == "extensions" }.links.map { it.title })
         // Routing hides an entrance, never deletes the engine's actual management page.

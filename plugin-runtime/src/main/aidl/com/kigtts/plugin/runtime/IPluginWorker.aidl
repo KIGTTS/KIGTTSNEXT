@@ -20,4 +20,5 @@ interface IPluginWorker {
     void observeUi(IPluginUiObserver observer);
     void ttsControl(String command);
     void attachStickerBroker(IHostStickerBroker broker);
+    boolean asrControl(String command);
 }

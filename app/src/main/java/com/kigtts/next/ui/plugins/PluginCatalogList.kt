@@ -24,8 +24,7 @@ import java.io.File
 
 /** Catalog entries show artwork and useful descriptions without rankings or recommendation sections. */
 @Composable internal fun PluginCatalogPane(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
-    invoke: (String, Map<String, String>) -> Unit, loading: Boolean = false, selectFilter: ((String) -> Unit)? = null,
-    header: @Composable ColumnScope.() -> Unit) {
+    invoke: (String, Map<String, String>) -> Unit, loading: Boolean = false) {
     // Keep the catalog controls visually stable while a page request is in flight;
     // actions are gated below, so the tab group does not flash into a disabled state.
     val active = LocalPageActive.current
@@ -36,14 +35,6 @@ import java.io.File
     val wide = maxWidth >= 600.dp
     LazyVerticalGrid(columns = GridCells.Fixed(if (wide) 2 else 1), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
         state = scroll, contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        item("catalog-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            header()
-            CatalogShortcuts(list.shortcuts, wide, active, { action, inputs -> if (canInvoke) invoke(action, inputs) })
-            CatalogTabs(list.filters, active, { action, inputs ->
-                if (selectFilter != null) list.filters.firstOrNull { it.action == action }?.let { selectFilter(it.id) }
-                else if (canInvoke) invoke(action, inputs)
-            })
-        } }
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
         else if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->

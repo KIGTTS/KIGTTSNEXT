@@ -2,7 +2,6 @@
 package com.kigtts.next.overlay
 
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,8 +20,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,7 +47,8 @@ private class DialShape(private val morph: Morph, private val progress: Float) :
 @Composable
 internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement, expanded: Boolean, hidden: Boolean,
     toggle: () -> Unit, move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit,
-    open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}, reorder: (String, Int) -> Boolean = { _, _ -> false }) {
+    open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}, reorder: (String, Int) -> Boolean = { _, _ -> false },
+    retracted: ((Float) -> Unit)? = null) {
     val density = LocalDensity.current
     val hostView = LocalView.current
     val hostLocation = remember { IntArray(2) }
@@ -58,13 +56,13 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val progress = expansion.value
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
     val onCollapsed by rememberUpdatedState(collapsed)
-    val feedback = LocalHapticFeedback.current
     LaunchedEffect(expanded) {
         expansion.animateTo(if (expanded) 1f else 0f, spatial)
         if (!expanded) onCollapsed()
     }
     val effects by animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
     val retraction by animateFloatAsState(if (hidden && !expanded) 1f else 0f, MaterialTheme.motionScheme.slowSpatialSpec(), label = "dial-edge-hide")
+    SideEffect { retracted?.invoke(retraction.coerceIn(0f, 1f)) }
     val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie12Sided) }
     var wheel by remember { mutableStateOf(OverlayWheelPosition()) }
     var sorting by remember { mutableStateOf<String?>(null) }
@@ -84,14 +82,16 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     // Near a cutout or a small freeform window the ring translates to stay within its own safe host.
     val radius = minOf(136f, placement.height / density.density * .35f, placement.width / density.density * .46f, (placement.width / density.density - 176f).coerceAtLeast(48f))
     val ringCenterY = with(density) { (placement.height / 2f).toDp() }
-    val scroll = if (expanded) Modifier.pointerInput(settings.shortcuts.size) {
+    val isExpanded by rememberUpdatedState(expanded)
+    // Keep the ancestor input node alive while the FAB collapses during a drag.
+    val scroll = Modifier.pointerInput(settings.shortcuts.size) {
         detectVerticalDragGestures(onDragStart = {
-            interact(); wheel = wheel.copy(drag = animatedWheelOffset); wheeling = true
+            if (isExpanded) { interact(); wheel = wheel.copy(drag = animatedWheelOffset); wheeling = true }
         }, onVerticalDrag = { change, amount ->
-            change.consume(); wheel = dragOverlayWheel(wheel, amount, settings.shortcuts.size, stepPx)
+            if (isExpanded) { change.consume(); wheel = dragOverlayWheel(wheel, amount, settings.shortcuts.size, stepPx) }
         }, onDragEnd = { wheeling = false; wheel = settleOverlayWheel(wheel, settings.shortcuts.size, stepPx) },
             onDragCancel = { wheeling = false; wheel = wheel.copy(drag = 0f) })
-    } else Modifier
+    }
     // Observe the whole entrance subtree, including gestures starting on a clickable icon.
     // WindowManager moves the surface independently of Compose recomposition. Keep the
     // rendered absolute anchor stable even when one frame still has the previous placement.
@@ -163,8 +163,11 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
         }
         val fabSize = (56f + 8f * progress.coerceIn(0f, 1f)).dp
         Box(Modifier.offset(x = cx - fabSize / 2, y = cy - fabSize / 2).size(fabSize)
-            .graphicsLayer { translationX = (if (settings.rightEdge) 1 else -1) * retraction * 40.dp.toPx(); alpha = 1f - retraction * .48f }
-            .pointerInput(Unit) { detectDragGestures(onDragStart = { feedback.performHapticFeedback(HapticFeedbackType.LongPress); interact() }, onDrag = { change, amount -> change.consume(); move(amount.x, amount.y) }, onDragEnd = drop, onDragCancel = drop) }) {
+            .graphicsLayer {
+                translationX = if (retracted == null) (if (settings.rightEdge) 1 else -1) * retraction * 40.dp.toPx() else 0f
+                alpha = 1f - retraction * .48f
+            }
+            .overlayFabDrag(move, drop, interact)) {
             IconActionHint(if (expanded) "收起快捷入口" else "展开快捷入口", hasLongAction = true) {
                 Surface(onClick = feedbackClick(toggle), modifier = Modifier.fillMaxSize()
                     .iconLongAction(true, configure)

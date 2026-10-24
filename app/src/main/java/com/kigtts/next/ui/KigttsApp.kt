@@ -164,10 +164,13 @@ fun KigttsApp(model: AppViewModel) {
                 )
             }
             quickTextSelector?.let { (plugin, request) ->
+                val categoryIcons by model.quickTexts.categoryIcons.collectAsStateWithLifecycle()
                 com.kigtts.next.ui.home.QuickTextSelectorDialog(
                     request = request,
                     phrases = phrases,
                     categories = categories,
+                    categoryIcons = categoryIcons,
+                    repository = model.mediaRepository,
                     onDismiss = {
                         quickTextSelector = null
                         request.cancelActionId?.let { action ->

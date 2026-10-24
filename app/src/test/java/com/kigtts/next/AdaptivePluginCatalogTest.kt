@@ -45,7 +45,7 @@ class AdaptivePluginCatalogTest {
         val second = compose.onNodeWithTag("managed-item/p1").getUnclippedBoundsInRoot()
         assertTrue(second.top > first.bottom)
         compose.onNodeWithTag("catalog-shortcut/all").assertExists()
-        compose.onNodeWithTag("managed-list/catalog").performScrollToIndex(13)
+        compose.onNodeWithTag("managed-list/catalog").performScrollToIndex(12)
         compose.waitForIdle()
         assertEquals(listOf("more/12"), requests)
         compose.onNodeWithTag("managed-list/catalog").performScrollToNode(hasTestTag("managed-item/p23"))

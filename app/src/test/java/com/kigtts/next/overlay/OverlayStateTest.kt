@@ -77,6 +77,25 @@ class OverlayStateTest {
             assertEquals(compact.y + compact.fabY, expanded.y + expanded.fabY, .5f)
         }
     }
+    @Test fun idleRetractionMovesAndClipsTheInputWindowInsteadOfLeavingAnInvisibleBlocker() {
+        val safe = OverlayBounds(0, 80, 1080, 2200)
+        for (right in listOf(false, true)) {
+            val shown = overlayPlacement(safe, 3f, right, .5f, false)
+            assertEquals(168, shown.width); assertEquals(168, shown.height)
+            val hidden = overlayPlacement(safe, 3f, right, .5f, false, 1f)
+            val opening = overlayPlacement(safe, 3f, right, .5f, true, 1f)
+            assertEquals(hidden.x + hidden.fabX, opening.x + opening.fabX, .1f)
+            assertEquals(84, hidden.width); assertEquals(shown.y, hidden.y)
+            assertEquals(if (right) 1080 else 0, hidden.x + hidden.fabX.toInt())
+            val oldCenter = shown.x + shown.fabX
+            assertFalse(oldCenter >= hidden.x && oldCenter < hidden.x + hidden.width)
+            for (frame in 0..20) {
+                val p = overlayPlacement(safe, 3f, right, .5f, false, frame / 20f)
+                assertTrue(p.width in 84..168)
+                assertEquals(84f, p.fabY, .1f)
+            }
+        }
+    }
     @Test fun wheelHasEndpointsAndResistsOverscrollWithoutReordering() {
         val start = dragOverlayWheel(OverlayWheelPosition(), 400f, 8, 48f)
         assertEquals(0, start.first)

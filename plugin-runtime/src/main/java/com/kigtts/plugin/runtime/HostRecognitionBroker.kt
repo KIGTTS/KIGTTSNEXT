@@ -19,8 +19,10 @@ internal class HostRecognitionBroker(private val owner: String, private val regi
     }
     fun providers(): List<AsrProvider> = registry.plugins.mapNotNull { plugin ->
         plugin.asr?.info?.takeIf { it.role == AsrRole.PROVIDER }?.let { info -> AsrProvider(plugin.descriptor.id, plugin.descriptor.name, info,
-            settingsPages = plugin.contributions.drawerEntries.map { AsrSettingsPage(it.pageId, it.label, it.icon) }) }
+            settingsPages = plugin.engineSettingsPages()) }
     } + ProviderCatalog(paths).disabledAsr(registry.plugins.map { it.descriptor.id }.toSet())
+    suspend fun control(id: String, command: AsrControl): Boolean =
+        (provider(id).asr as? ControlledAsrEngine)?.control(command) ?: false
     fun recognize(id: String, input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor {
         require(config.length <= 4096 && token.length in 1..80 && !sessions.containsKey(token))
         val engine = requireNotNull(provider(id).asr); val parsed = PluginJson.decodeFromString<RecognitionConfig>(config)

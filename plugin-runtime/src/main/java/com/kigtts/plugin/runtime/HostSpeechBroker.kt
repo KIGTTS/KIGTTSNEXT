@@ -23,8 +23,13 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
     }
     override fun providers(): String { check(allowTts); return PluginJson.encodeToString(registry.plugins.mapNotNull { plugin ->
         plugin.tts?.info?.takeIf { it.role == TtsRole.PROVIDER }?.let { TtsProvider(plugin.descriptor.id, plugin.descriptor.name, it,
-            generation = (plugin as? RemotePlugin)?.generation.orEmpty()) }
+            generation = (plugin as? RemotePlugin)?.generation.orEmpty(), settingsPages = plugin.engineSettingsPages()) }
     } + ProviderCatalog(paths).disabled(registry.plugins.map { it.descriptor.id }.toSet())) }
+    override fun asrControl(pluginId: String, command: String): Boolean = runBlocking(Dispatchers.IO) {
+        check(allowAsr) { "插件未获授识别服务能力" }
+        require(command.length <= 8192)
+        recognition.control(pluginId, PluginJson.decodeFromString(command))
+    }
     override fun asrProviders(): String { check(allowAsr); return PluginJson.encodeToString(recognition.providers()) }
     override fun recognizeProvider(pluginId: String, input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor {
         try {

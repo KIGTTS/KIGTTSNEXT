@@ -37,6 +37,10 @@ open class PluginWorkerService : Service() {
                 catch (_: Exception) { /* The UI observer may detach without ending the plugin. */ }
             }
         }
+        override fun asrControl(command: String): Boolean = runBlocking(Dispatchers.IO) {
+            require(command.length <= 8192)
+            (plugin?.asr as? ControlledAsrEngine)?.control(PluginJson.decodeFromString(command)) ?: false
+        }
         override fun ttsControl(command: String) = runBlocking(Dispatchers.IO) {
             require(command.length <= 8192)
             val engine = requireNotNull(plugin?.tts)
