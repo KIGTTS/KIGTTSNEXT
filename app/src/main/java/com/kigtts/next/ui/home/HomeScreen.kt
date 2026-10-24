@@ -49,7 +49,7 @@ private fun PortraitHomeScreen(
     var expandedViewport by remember { mutableFloatStateOf(852f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
         BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal))
-            .navigationBarsPadding()) {
+            .smallWindowSafeArea()) {
             val topMaximum = (maxHeight.value * .4f).coerceAtLeast(112f)
             LaunchedEffect(maxHeight, state.subtitleExpanded) { if (!state.subtitleExpanded) expandedViewport = maxHeight.value }
             val motion = rememberHomeSheet(state, model, expandedViewport)

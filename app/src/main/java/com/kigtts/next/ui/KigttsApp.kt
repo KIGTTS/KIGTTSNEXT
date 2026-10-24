@@ -23,6 +23,7 @@ import com.kigtts.plugin.api.PluginOutcome
 import com.kigtts.next.ui.plugins.PluginRequests
 import com.kigtts.next.ui.plugins.PluginExportRequest
 import kotlinx.coroutines.launch
+import org.json.JSONArray
 
 @Composable
 fun KigttsApp(model: AppViewModel) {
@@ -45,6 +46,7 @@ fun KigttsApp(model: AppViewModel) {
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    var quickTextSelector by remember { mutableStateOf<Pair<String, PluginOutcome.SelectQuickText>?>(null) }
     var pluginControls by remember { mutableStateOf<Pair<String, PluginOutcome.Controls>?>(null) }
     var controlsRevision by remember { mutableIntStateOf(0) }
     var pluginConfirmation by remember { mutableStateOf<Pair<String, PluginOutcome.Confirm>?>(null) }
@@ -58,7 +60,7 @@ fun KigttsApp(model: AppViewModel) {
     val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
     val externalFile by model.externalFiles.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -80,6 +82,7 @@ fun KigttsApp(model: AppViewModel) {
                 }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                is PluginOutcome.SelectQuickText -> quickTextSelector = plugin to outcome
                 is PluginOutcome.Controls -> { pluginControls = plugin to outcome; controlsRevision++ }
                 is PluginOutcome.Confirm -> pluginConfirmation = plugin to outcome
                 is PluginOutcome.CapturePhoto -> pluginCapture = plugin to outcome
@@ -158,6 +161,29 @@ fun KigttsApp(model: AppViewModel) {
                         }
                     },
                     confirmButton = { TextButton(onClick = dialogFeedbackClick { pluginMenu = null }) { Text("关闭") } },
+                )
+            }
+            quickTextSelector?.let { (plugin, request) ->
+                com.kigtts.next.ui.home.QuickTextSelectorDialog(
+                    request = request,
+                    phrases = phrases,
+                    categories = categories,
+                    onDismiss = {
+                        quickTextSelector = null
+                        request.cancelActionId?.let { action ->
+                            scope.launch {
+                                while (plugin in model.state.value.busyPlugins) kotlinx.coroutines.yield()
+                                model.invoke(plugin, action, mapOf("quickTextIds" to "[]"))
+                            }
+                        }
+                    },
+                    onConfirm = { ids ->
+                        quickTextSelector = null
+                        scope.launch {
+                            while (plugin in model.state.value.busyPlugins) kotlinx.coroutines.yield()
+                            model.invoke(plugin, request.actionId, mapOf("quickTextIds" to JSONArray(ids).toString()))
+                        }
+                    },
                 )
             }
             }

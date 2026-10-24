@@ -24,7 +24,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
         BoxWithConstraints(Modifier.fillMaxSize()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
-            .navigationBarsPadding().testTag("landscape-home")) {
+            .smallWindowSafeArea().testTag("landscape-home")) {
             val expanded = state.subtitleExpanded || state.quickTextEditing
             val bodyWidth = maxWidth.value - LandscapePanelGeometry.RAIL - 24f
             // Reserve a minimum listening column first; the caption remains usable at every stop.

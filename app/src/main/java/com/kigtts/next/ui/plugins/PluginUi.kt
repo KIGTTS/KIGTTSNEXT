@@ -146,7 +146,13 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
         is PageBlock.Input -> SettingItem(block.title, if (block.secret) {
             if (block.value.isBlank()) "未设置" else "已设置"
         } else block.value.lineSequence().firstOrNull().orEmpty().take(120), (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position, enabled = enabled,
-            onClick = { invoke(block.actionId, emptyMap()) }, trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,null) })
+            onClick = { invoke(block.actionId, emptyMap()) }, trailing = {
+                block.trailingAction?.let { action ->
+                    IconButton(onClick = feedbackClick { invoke(action.id, emptyMap()) }, enabled = enabled) {
+                        Icon(action.icon.vector(action.symbol), action.label, Modifier.size(24.dp))
+                    }
+                } ?: Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,null)
+            })
         is PageBlock.Select -> PluginSelect(block, enabled, position, invoke)
         is PageBlock.Choice -> SettingItem(block.title, "", (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position) {
             ChoiceButtonGroup(block.title, block.options.map { it.id }, block.selected,

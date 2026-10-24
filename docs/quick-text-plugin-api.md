@@ -122,3 +122,7 @@ Agent 可查询、准备和提交快捷库变更，使用 create_page 一次创�
 `uiChanges` 与快捷库 changes 都是可合并的失效信号，重连后重新查询，不作为完整事件日志。插件界面采用 SettingsEntry 分类入口及宿主 Group/Input/Choice/Toggle/Chat/Files/SourceEditor，按钮和过渡继承设置样式；NONE 可省略图标。
 
 可直接导入的 HTML 计算器、Lua 多文件与原生模板，以及包源 Schema/签名脚本，位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。模板的本地协议/编译验证与手机验收范围分开记录。
+
+## 快捷文本选择器
+
+插件需要用户选择已有快捷文本时，返回 `PluginOutcome.SelectQuickText`，宿主会显示只读选择器。选择器沿用主界面的卡片、圆角、主题色和反馈，分组 Tab 位于卡片列表上方，不提供编辑、删除或排序入口；支持 `QuickTextSelectionMode.SINGLE` 和 `MULTIPLE`，完成后将 JSON 数组写入指定 `actionId` 的 `inputs["quickTextIds"]`。插件应在该 action 中重新校验 ID，已删除的条目不能恢复旧内容。`QuickTextReply.Features.features["quick-text-selector"]` 会声明宿主支持的模式。
