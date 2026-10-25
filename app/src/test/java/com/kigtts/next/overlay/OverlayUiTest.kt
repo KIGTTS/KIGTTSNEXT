@@ -16,6 +16,7 @@ import com.kigtts.next.ui.plugins.PluginControlsDialog
 import com.kigtts.plugin.api.*
 import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.draw.clipToBounds
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -28,6 +29,22 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class OverlayUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun retractedFabKeepsASquareDrawingInsideTheHalfWidthTouchWindow() {
+        var right by mutableStateOf(true)
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            Box(Modifier.size(28.dp, 56.dp).clipToBounds().testTag("half-fab-window")) {
+                OverlayDial(OverlaySettings(rightEdge = right), OverlayPlacement(0, 0, 84, 168, if (right) 84f else 0f, 84f), false, true,
+                    {}, { _, _ -> }, {}, {}, {}, {}, retracted = {})
+            }
+        } }
+        for (edge in listOf(true, false)) {
+            compose.runOnIdle { right = edge }
+            val bounds = compose.onNodeWithContentDescription("展开快捷入口").getUnclippedBoundsInRoot()
+            assertEquals("A clipped FAB must retain its full square, not stretch into an ellipse", 56f, (bounds.right - bounds.left).value, .5f)
+            assertEquals(56f, (bounds.bottom - bounds.top).value, .5f)
+            compose.onNodeWithTag("half-fab-window").captureRoboImage("build/previews/overlay-half-${if (edge) "right" else "left"}.png")
+        }
+    }
     @Test fun lowestVisibleEntranceAcceptsTouchOnRightAndAfterScrollingToTheEnd() = checkLowestEntrance(true)
     @Test fun lowestVisibleEntranceAcceptsTouchOnLeftAndAfterScrollingToTheEnd() = checkLowestEntrance(false)
     private fun checkLowestEntrance(right: Boolean) {

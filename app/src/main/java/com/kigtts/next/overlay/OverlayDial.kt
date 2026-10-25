@@ -163,7 +163,10 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
             }
         }
         val fabSize = (56f + 8f * progress.coerceIn(0f, 1f)).dp
-        Box(Modifier.offset(x = cx - fabSize / 2, y = cy - fabSize / 2).size(fabSize)
+        // The native touch window becomes half-width at the edge. Keep a full-size square
+        // child and clip it at that window; measuring against the narrow host makes an oval.
+        Box(Modifier.offset(x = cx - fabSize / 2, y = cy - fabSize / 2)
+            .wrapContentSize(Alignment.TopStart, unbounded = true).size(fabSize)
             .graphicsLayer {
                 translationX = if (retracted == null) (if (settings.rightEdge) 1 else -1) * retraction * 40.dp.toPx() else 0f
                 alpha = 1f - retraction * .48f

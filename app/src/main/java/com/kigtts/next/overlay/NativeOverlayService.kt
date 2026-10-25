@@ -101,6 +101,9 @@ class NativeOverlayService : Service() {
             bubble?.close(); bubble = null
             if (value != null && validNotice(value)) {
                 hidden = false; showBubble(value); interact()
+            } else {
+                if (value != null) hub.clear(value.owner)
+                armIdle()
             }
         } }
         scope.launch { while (isActive) {
@@ -141,18 +144,24 @@ class NativeOverlayService : Service() {
         hub.bubble.value?.let { if (bubble != null) placeBubble() }
     }
     private fun interact() {
-        idle?.cancel(); hidden = false
-        if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) idle = scope.launch { delay(3500); hidden = true }
+        hidden = false; armIdle()
+    }
+    private fun armIdle() {
+        idle?.cancel(); idle = null
+        if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) idle = scope.launch {
+            delay(3500)
+            if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) hidden = true
+        }
     }
     private fun toggle() { if (expanded) collapse() else {
         dockReturn?.cancel(); dockReturn = null
-        interact(); collapseReady = false
+        collapseReady = false
         val current = dial?.stopAtCurrentPosition(layout) ?: layout
         val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
         windowExpanded = true
         layout = target.aroundCenterOf(current)
         dial?.place(layout.x, layout.y, layout.width, layout.height)
-        expanded = true
+        expanded = true; interact()
         scope.launch { yield(); if (expanded && dragAnchor == null) place(animate = true) }
     } }
     private fun collapse() {
@@ -221,6 +230,7 @@ class NativeOverlayService : Service() {
         dragX = 0f; dragY = 0f; dragAnchor = null
         if (!expanded && collapseReady) windowExpanded = false
         place()
+        if (!expanded) armIdle()
     }
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); resetPlacement() }
     private fun foreground() {

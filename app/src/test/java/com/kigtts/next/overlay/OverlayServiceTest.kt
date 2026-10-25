@@ -19,6 +19,28 @@ import org.robolectric.shadows.ShadowSettings
 class OverlayServiceTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
     @After fun reset() { OverlayStore.get(app).update { OverlaySettings() }; ShadowSettings.setCanDrawOverlays(false) }
+    @Test fun idleHidesByDefaultAndKeepsTheNarrowTouchWindow() {
+        ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
+        val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+        try {
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(5))
+            assertTrue(hidden(controller.get()))
+        } finally { controller.destroy() }
+    }
+    @Test fun anExpiredOrUnavailableNoticeCannotPreventIdleHideForever() {
+        ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
+        OverlayHub.get(app).show(OverlayNotice("unavailable.plugin", "missing", "测试", null, "info", null), 2000)
+        val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+        try {
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(8))
+            assertNull(OverlayHub.get(app).bubble.value)
+            assertTrue("Idle hiding must resume when the notice disappears", hidden(controller.get()))
+        } finally { controller.destroy() }
+    }
+    private fun hidden(service: NativeOverlayService): Boolean {
+        val field = NativeOverlayService::class.java.getDeclaredField("hidden\$delegate").apply { isAccessible = true }
+        return (field.get(service) as androidx.compose.runtime.State<*>).value == true
+    }
     @Test fun deniedPermissionDoesNotStartAServiceOrShowAWindow() {
         ShadowSettings.setCanDrawOverlays(false); OverlayStore.get(app).update { it.copy(enabled = true) }
         assertFalse(NativeOverlayService.sync(app)); assertNull(shadowOf(app).nextStartedService)
