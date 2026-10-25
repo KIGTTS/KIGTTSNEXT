@@ -30,8 +30,7 @@ import com.kigtts.next.ui.components.*
 import kotlin.math.roundToInt
 
 /** Uses the actual M3E shape catalog, not an approximated star or polygon. */
-private class DialShape(private val morph: Morph, private val progress: Float) : Shape {
-    private val bounds = morph.calculateMaxBounds()
+private class DialShape(private val morph: Morph, private val bounds: FloatArray, private val progress: Float) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
         val path = Path()
         fun x(value: Float) = (value - bounds[0]) / (bounds[2] - bounds[0]) * size.width
@@ -64,6 +63,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val retraction by animateFloatAsState(if (hidden && !expanded) 1f else 0f, MaterialTheme.motionScheme.slowSpatialSpec(), label = "dial-edge-hide")
     SideEffect { retracted?.invoke(retraction.coerceIn(0f, 1f)) }
     val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie12Sided) }
+    val morphBounds = remember(morph) { morph.calculateMaxBounds() }
     var wheel by remember { mutableStateOf(OverlayWheelPosition()) }
     var sorting by remember { mutableStateOf<String?>(null) }
     var sortCenter by remember { mutableStateOf<Offset?>(null) }
@@ -118,11 +118,16 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 val x = cx + (dx * progress).dp
                 val targetY = ringCenterY + dy.dp
                 val y = cy + (targetY - cy) * progress
-                val settledX by animateDpAsState(x, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "entrance-x")
-                val settledY by animateDpAsState(y, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "entrance-y")
                 val settling = sorting != null || reorderMotion > .001f
-                val displayedX = if (!settling || wheeling) x else settledX
-                val displayedY = if (!settling || wheeling) y else settledY
+                val displayedX: Dp
+                val displayedY: Dp
+                if (settling && !wheeling) {
+                    val settledX by animateDpAsState(x, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "entrance-x")
+                    val settledY by animateDpAsState(y, MaterialTheme.motionScheme.defaultSpatialSpec(), label = "entrance-y")
+                    displayedX = settledX; displayedY = settledY
+                } else {
+                    displayedX = x; displayedY = y
+                }
                 val pointerDelta = if (held) sortCenter?.let {
                     it - Offset(with(density) { displayedX.toPx() }, with(density) { displayedY.toPx() })
                 } ?: Offset.Zero else Offset.Zero
@@ -177,7 +182,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                     .iconLongAction(true, configure)
                     .semantics { contentDescription = if (expanded) "收起快捷入口" else "展开快捷入口" }
                     .graphicsLayer { rotationZ = progress * 90f },
-                    shape = DialShape(morph, progress.coerceIn(0f, 1f)),
+                    shape = DialShape(morph, morphBounds, progress.coerceIn(0f, 1f)),
                     color = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

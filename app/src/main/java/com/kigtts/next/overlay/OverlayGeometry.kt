@@ -6,6 +6,9 @@ import kotlin.math.*
 internal data class OverlayBounds(val left: Int, val top: Int, val width: Int, val height: Int)
 internal data class OverlayPlacement(val x: Int, val y: Int, val width: Int, val height: Int, val fabX: Float, val fabY: Float)
 
+internal fun OverlayPlacement.sameLocalGeometry(other: OverlayPlacement): Boolean =
+    width == other.width && height == other.height && fabX == other.fabX && fabY == other.fabY
+
 internal fun overlayPlacement(safe: OverlayBounds, density: Float, right: Boolean, position: Float,
     expanded: Boolean, retraction: Float = 0f): OverlayPlacement {
     val unit = density.coerceAtLeast(.1f)

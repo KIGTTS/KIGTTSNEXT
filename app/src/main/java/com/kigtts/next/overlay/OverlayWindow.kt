@@ -30,7 +30,7 @@ internal fun overlayWindowParams() = WindowManager.LayoutParams(80, 80, WindowMa
     }
 }
 
-internal class OverlayWindow(context: Context, private val wm: WindowManager, outside: () -> Unit) {
+internal class OverlayWindow(context: Context, private val wm: WindowManager, outside: () -> Unit, private val failed: () -> Unit = {}) {
     private val owner = OverlayViewOwner()
     private val view = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
@@ -40,6 +40,11 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
     private var attached = false
     private var settling: ValueAnimator? = null
     private val resizeGate = OverlayResizeGate()
+    private val updates = OverlayFrameUpdates({ view.postOnAnimation(it) }) {
+        if (attached) try { wm.updateViewLayout(view, params) }
+        catch (_: RuntimeException) { close(); failed() }
+    }
+    private var target: android.graphics.Rect? = null
     init {
         owner.attach(view)
         // Geometry and WindowManager resize arrive through separate frame phases.
@@ -53,13 +58,17 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
     fun content(content: @Composable () -> Unit) = view.setContent(content)
     fun stopAtCurrentPosition(placement: OverlayPlacement): OverlayPlacement {
         settling?.cancel(); settling = null
+        target = null
         return placement.copy(x = params.x, y = params.y, width = params.width, height = params.height)
     }
-    fun place(x: Int, y: Int, width: Int, height: Int, animate: Boolean = false) {
+    fun place(x: Int, y: Int, width: Int, height: Int, animate: Boolean = false, continuousResize: Boolean = false) {
+        val next = android.graphics.Rect(x, y, x + width, y + height)
+        if (attached && target == next) return
+        target = next
         settling?.cancel(); settling = null
         val fromX = params.x; val fromY = params.y
         val canAnimate = animate && attached && params.width == width && params.height == height
-        if (params.width != width || params.height != height) resizeGate.resizing()
+        if (params.width != width || params.height != height) resizeGate.resizing(continuousResize)
         params.width = width; params.height = height
         if (canAnimate && (fromX != x || fromY != y)) {
             settling = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -68,22 +77,22 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
                     val fraction = it.animatedValue as Float
                     params.x = (fromX + (x - fromX) * fraction).toInt()
                     params.y = (fromY + (y - fromY) * fraction).toInt()
-                    if (attached) wm.updateViewLayout(view, params)
+                    updates.request()
                 }
                 start()
             }
         } else {
             params.x = x; params.y = y
-            if (attached) wm.updateViewLayout(view, params) else { wm.addView(view, params); attached = true }
+            if (attached) updates.request() else { wm.addView(view, params); attached = true }
         }
     }
-    fun close() { settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
+    fun close() { updates.close(); settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
 }
 
 /** A ROM can constrain overlay size permanently (IME, rotation, split screen). Never stop drawing forever. */
 internal class OverlayResizeGate {
     private var frames = 0
-    fun resizing() { frames = 2 }
+    fun resizing(continuous: Boolean = false) { if (!continuous) frames = 2 }
     fun canDraw(matches: Boolean): Boolean {
         if (matches) frames = 0
         if (frames == 0) return true
