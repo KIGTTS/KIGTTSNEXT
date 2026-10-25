@@ -60,13 +60,13 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                 when (index) {
                     0 -> ToolButton(if (open) "编辑快捷文本" else "画板", if (open) Icons.Default.Edit else Icons.Default.Draw,
                         { if (open) editPhrases() else model.openSidePage(SidePage.SKETCH) },
-                        Modifier.width(width).testTag("dock-start"), sources[0], shapes, size = sideSize)
+                        Modifier.width(width).testTag("dock-start").homePreviewRegion("dock-start"), sources[0], shapes, size = sideSize)
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
                     4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoLibrary,
                         { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
-                        Modifier.width(width).testTag("dock-end"), sources[4], shapes, size = sideSize,
+                        Modifier.width(width).testTag("dock-end").homePreviewRegion("dock-end"), sources[4], shapes, size = sideSize,
                         onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
                         iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.ExpandMore, progress))
                 }
@@ -96,7 +96,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
     BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
         val gripWidth by animateDpAsState(if (motion.active) 88.dp else 76.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-grip-width")
         Box(Modifier.width(maxWidth * (1f - progress) + gripWidth * progress).height(height)
-            .testTag("dock-main").clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.primary)
+            .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.primary)
             .clearAndSetSemantics {
                 contentDescription = label; role = Role.Button
                 onClick { click(); true }

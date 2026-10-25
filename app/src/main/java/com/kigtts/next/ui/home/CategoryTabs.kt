@@ -59,7 +59,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
             list.animateScrollToItem(index)
         }
     }
-    Row(modifier.fillMaxWidth().height(48.dp).snackbarAnchor(!state.subtitleExpanded || editing).testTag("category-tab-bar"), verticalAlignment = Alignment.CenterVertically,
+    Row(modifier.fillMaxWidth().height(48.dp).homePreviewRegion("category-bar").snackbarAnchor(!state.subtitleExpanded || editing).testTag("category-tab-bar"), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
         LazyRow(Modifier.weight(1f).testTag("category-tabs").reorderGestures(drag,
@@ -76,7 +76,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
                 ElasticTab(selected, { if (editing && selected) editGroup(category) else model.category(category) }, sources[index],
                     CornerNeighbors(start = index > 0, end = index < categories.lastIndex || editing),
                     pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
-                    Modifier.testTag("category-" + category).then(semantics)
+                    Modifier.testTag("category-" + category).homePreviewRegion((if (selected) "tab-selected/" else "tab/") + category).then(semantics)
                         .then(Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                             placementSpec = if (drag.key == category) null else MaterialTheme.motionScheme.defaultSpatialSpec())
                             .reorderTranslation(category, drag, drop)),

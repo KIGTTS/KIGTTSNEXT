@@ -17,6 +17,7 @@ import com.kigtts.next.R
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
+import com.kigtts.next.ui.home.homePreviewRegion
 
 @Composable
 fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
@@ -53,12 +54,12 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
                 context = model.context(), revision = state.pluginRevision)
         }
         if (home) Icon(painterResource(R.drawable.logo_horizontal), contentDescription = "KIGTTS 横版 Logo",
-            modifier = Modifier.width(128.dp).height(32.dp), tint = MaterialTheme.colorScheme.onSurface)
+            modifier = Modifier.width(128.dp).height(32.dp).homePreviewRegion("header-logo"), tint = MaterialTheme.colorScheme.onSurface)
         else Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             if (home) SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
-            if (home) IconButton(onClick = feedbackClick(openSettings), modifier = Modifier.testTag("open-settings"),
+            if (home) IconButton(onClick = feedbackClick(openSettings), modifier = Modifier.testTag("open-settings").homePreviewRegion("header-end"),
                 colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
         }
     }

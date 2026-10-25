@@ -64,7 +64,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         horizontalAlignment = Alignment.CenterHorizontally) {
         ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.PhotoLibrary,
             { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
-            Modifier.size(sideSize).testTag("dock-start"), shapes = shape, size = sideSize,
+            Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start"), shapes = shape, size = sideSize,
             onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
             iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.Edit, progress))
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
@@ -79,7 +79,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
             val radius by animateFloatAsState(if (pressed && !open) 8f else 24f - 22f * progress,
                 MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-radius")
             Box(Modifier.width(thickness.coerceAtLeast(2f).dp).heightFrom { 160f * (1f - progress) + length * progress }
-                .testTag("dock-main").clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
+                .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
                 .clearAndSetSemantics {
                     contentDescription = if (state.continuousRecognition) "长按停止识别" else if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
                     role = Role.Button
@@ -100,6 +100,6 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         }
         ToolButton(if (open) "收起快捷文本" else "画板", if (open) Icons.Default.ChevronRight else Icons.Default.Draw,
             { if (open) model.closePanel() else model.openSidePage(SidePage.SKETCH) },
-            Modifier.size(sideSize).testTag("dock-end"), shapes = shape, size = sideSize)
+            Modifier.size(sideSize).testTag("dock-end").homePreviewRegion("dock-end"), shapes = shape, size = sideSize)
     }
 }

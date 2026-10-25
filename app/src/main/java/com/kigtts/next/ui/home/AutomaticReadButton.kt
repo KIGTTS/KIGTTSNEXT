@@ -20,7 +20,7 @@ import com.kigtts.next.ui.components.feedbackClick
 internal fun AutomaticReadButton(state: AppState, model: AppViewModel) {
     val visible by model.synthesisGuidance.visible.collectAsStateWithLifecycle()
     if (visible) IconButton(feedbackClick(model::toggleAutoPlayback),
-        Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
+        Modifier.testTag("auto-playback").homePreviewRegion("header-start"), colors = compactPlainIconColors()) {
         Icon(if (state.autoPlayback) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
             if (state.autoPlayback) "关闭自动播放与朗读" else "开启自动播放与朗读")
     }
