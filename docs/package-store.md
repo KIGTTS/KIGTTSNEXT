@@ -108,4 +108,6 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 
 首页按分类展示少量内容，标题右侧“更多”进入完整渐进列表；资源入口提供独立分类与来源管理。预览素材支持任意原始宽高比，assets可同时提供width和height；原生和网页图库保留比例并可放大，SVG预览也按viewBox比例展示。
 
+原生详情支持最多8张横竖混排预览，每张图片按自身比例确定卡片宽高，并支持横向吸附滚动。未填写尺寸时从位图或SVG读取比例；点击任意预览可进入全屏图库连续翻页，关闭后保留查看位置。
+
 官方资源源：https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/index.json?view=false 。源构建、签名与发布脚本见tools/Build-ResourcePackage.py、Build-ResourceSource.py和Publish-ResourceSource.py；具体内容结构见SDK的docs/resource-packages.md。
