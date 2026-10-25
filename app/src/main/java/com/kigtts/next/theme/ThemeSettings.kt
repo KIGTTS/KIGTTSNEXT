@@ -21,6 +21,10 @@ data class ThemeSettings(
     val cornerLevel: CornerLevel = CornerLevel.LARGE,
     val wallpaperEnabled: Boolean = false,
     val mode: ThemeMode = ThemeMode.SYSTEM,
+    val background: String? = null,
+    val backgroundDim: Float = .35f,
+    val font: String? = null,
+    val fontName: String = "系统默认",
 ) {
     val cornerRadius: Float get() = cornerLevel.radius
     val hex: String get() = "#%06X".format(seed and 0xFFFFFF)
@@ -35,10 +39,16 @@ class ThemeSettingsStore(context: Context) {
         cornerLevel = CornerLevel.fromLegacy(preferences.getFloat("radius", CornerLevel.LARGE.radius)),
         wallpaperEnabled = preferences.getBoolean("wallpaper", false),
         mode = ThemeMode.entries.firstOrNull { it.name == preferences.getString("mode", null) } ?: ThemeMode.SYSTEM,
+        background = preferences.getString("background", null),
+        backgroundDim = preferences.getFloat("backgroundDim", .35f).coerceIn(0f, 1f),
+        font = preferences.getString("font", null),
+        fontName = preferences.getString("fontName", "系统默认") ?: "系统默认",
     )
     fun save(settings: ThemeSettings) {
         preferences.edit().putLong("seed", settings.seed).putFloat("contrast", settings.contrast.value)
             .putBoolean("deeperDark", settings.deeperDark).putFloat("radius", settings.cornerRadius)
             .putBoolean("wallpaper", settings.wallpaperEnabled).putString("mode", settings.mode.name).apply()
+        preferences.edit().putString("background", settings.background).putFloat("backgroundDim", settings.backgroundDim.coerceIn(0f, 1f))
+            .putString("font", settings.font).putString("fontName", settings.fontName).apply()
     }
 }

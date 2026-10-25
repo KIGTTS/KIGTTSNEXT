@@ -125,6 +125,7 @@ dependencies {
     implementation("androidx.media3:media3-effect:1.11.1")
     implementation("androidx.media3:media3-transformer:1.11.1")
     implementation("androidx.webkit:webkit:1.16.0")
+    implementation("androidx.browser:browser:1.9.0")
     implementation("androidx.exifinterface:exifinterface:1.4.2")
     val cameraX = "1.6.2"
     implementation("androidx.camera:camera-core:$cameraX")

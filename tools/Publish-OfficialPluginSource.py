@@ -11,7 +11,7 @@ from urllib.parse import urlparse, unquote
 
 import requests
 import jsonschema
-from modelscope.hub.api import HubApi
+from modelscope.hub.api import HubApi, ModelScopeConfig
 
 REPO = "LHTSTUDIO/KIGTTS-Official-Plugins"
 BASE = f"https://modelscope.cn/datasets/{REPO}/resolve/master/"
@@ -123,7 +123,8 @@ def main():
             upload = [name for name in files if name not in old_files]
             if args.catalog_only:
                 upload = [name for name in files if name.startswith("artwork/")]
-            token = getpass.getpass("ModelScope token (not saved): ")
+            if ModelScopeConfig.get_cookies() is None:
+                token = getpass.getpass("ModelScope token (not saved): ")
             api = HubApi(token=token)
             if not args.resume_artifacts and upload:
                 api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),

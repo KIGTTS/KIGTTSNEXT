@@ -41,7 +41,7 @@ Native 清单使用现有 RSA/SHA-256 签名协议。Signed Lua 包新增 `manif
 
 配置、目录、下载、中途文件与已验签 Lua 投递资源全部位于 `appdata/Kigtts/plugin/plugindata/tools.package-store/` 的 `config/catalogs/downloads/tmp/resources`。每次缓存命中会重新检查 byte count 与 SHA；下载失败或取消会清理本插件中途文件，镜像只在下载阶段切换。HTTPS最多显式跟随5次跳转以兼容魔搭LFS/CDN；每次核验HTTPS与无嵌入帐号，不复制Authorization或Cookie，拒绝HTTP降级，最终仍核对大小、SHA-256和签名。
 
-源的 `expectedPublisher` 只用于一致性校验，不能替用户授权某个发布者。主程序对原生包仍再次验签、显示权限、保存用户发布者信任并处理版本替换；Lua 仍由独立运行时显示权限、限制执行资源并人工审核。ASR/语音包等资源以后可增加其它包类型，走对应插件已明确导出的 import 接口；当前目录不会把未知 format 当作可安装代码。
+源的 `expectedPublisher` 只用于一致性校验，不能替用户授权某个发布者。主程序对原生包仍再次验签、显示权限、保存用户发布者信任并处理版本替换；Lua 仍由独立运行时显示权限、限制执行资源并人工审核。API29增加独立资源包导入，见下文；未知 format 不作为可安装代码。
 
 ## VCC 调研与区别
 
@@ -72,7 +72,7 @@ KPM（KIGTTS Package Manager）沿用目录schemaVersion=1，以下展示字段�
 | 源 `assets` | 素材ID → `{url, sha256, bytes, alt}`，HTTPS的PNG/JPEG/WebP或静态SVG |
 | 包 `thumbnails` | 最多8个已注册素材ID |
 
-每图最多2MiB，每源最多128图/16MiB。更新源时预取并校验素材，坏图不阻止有效目录；进入页面不自动连接介绍中的外部图片。Markdown图片以 `![说明](asset:icon-id)` 引用已注册资源。资源不改变包签名、发布者与权限。
+每图最多8MiB，每源最多128图/64MiB。更新源时预取并校验素材，坏图不阻止有效目录；进入页面不自动连接介绍中的外部图片。Markdown图片以 `![说明](asset:icon-id)` 引用已注册资源。资源不改变包签名、发布者与权限。
 
 网页指引和独立GitHub Pages模板：[KIGTTS/KPM](https://github.com/KIGTTS/KPM)。网页从同一目录生成，提供浏览、Markdown介绍、二维码、复制源与 `kigtts://source/add?url=` 唤起。唤起后仍由软件确认，源链接不直接安装包。页面无需服务器或账户，不复制Poiyomi的代码或美术资源。
 
@@ -101,3 +101,11 @@ API23 的 `ManagementList.itemActions` 提供每行 `ManagementProgressAction(la
 ## 网页插件详情链接
 
 kigtts://source/add?url=<编码后的HTTPS源地址>&package=<插件ID>。package 可选；省略时只添加源。主程序持久化并把 packageId 交给商店；商店先确认未添加的源，再打开该源内的目标插件。已添加源不重复添加，停用源不会自动开启，链接不自动下载或安装。
+
+## 资源与预览（API29，商店0.15.0）
+
+schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUICK_TEXT/PHOTOS/FILTER/VOICE/FRAME/STICKERS），发行format为RESOURCE，下载扩展名为.kigresource。签名、镜像、依赖和哈希规则继续适用。资源经用户确认进入各自资料库，快捷文本可重复导入，不计入插件安装或卸载列表。语音包缺少前置服务时先引导添加。
+
+首页按分类展示少量内容，标题右侧“更多”进入完整渐进列表；资源入口提供独立分类与来源管理。预览素材支持任意原始宽高比，assets可同时提供width和height；原生和网页图库保留比例并可放大，SVG预览也按viewBox比例展示。
+
+官方资源源：https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/index.json?view=false 。源构建、签名与发布脚本见tools/Build-ResourcePackage.py、Build-ResourceSource.py和Publish-ResourceSource.py；具体内容结构见SDK的docs/resource-packages.md。

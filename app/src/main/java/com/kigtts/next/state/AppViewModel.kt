@@ -82,7 +82,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }, useSystemCamera = { application.getSharedPreferences("polaroid_camera", 0).getBoolean("use-system-camera", false) })
     val quickTexts = hostRuntime?.quickTexts ?: QuickTextLibrary(phraseStore)
     val content = ContentWorkspace(application, mediaRepository, quickTexts, { state.value }, ::update, ::navigate, ::navigateBack, ::text,
-        ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead, permissions=pluginManager.permissions)
+        ::playAudioCard, { if(audioSessionDelegate.isInitialized())cardAudio.clear();viewModelScope.launch { speech.stopSpeaking() } }, ::autoRead, permissions=pluginManager.permissions,
+        openCustomTab = { url, title -> externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url, title = title, mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB)) })
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     internal val quickTextBackup by lazy { QuickTextBackup(this) }
@@ -142,6 +143,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
         ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },
         ready = { pluginCatalogReady }, missingStore = { storeBootstrap.offer() }) }
+    internal val externalFiles by lazy { ExternalFileOpen(this, viewModelScope) }
+    val externalLinks by lazy { com.kigtts.next.links.ExternalLinks(this) }
+    val resourceInstalls by lazy { com.kigtts.next.resources.ResourceInstalls(this, viewModelScope) }
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     private fun observePluginContext() = viewModelScope.launch {
@@ -161,8 +165,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
 
-    internal val externalFiles by lazy { ExternalFileOpen(this, viewModelScope) }
-    fun externalIntent(intent: android.content.Intent?) = externalFiles.accept(intent)
+    fun externalIntent(intent: android.content.Intent?) { externalFiles.accept(intent); externalLinks.accept(intent) }
 
     private fun update(transform: (AppState) -> AppState) {
         mutableState.update(transform)

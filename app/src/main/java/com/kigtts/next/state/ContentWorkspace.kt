@@ -23,7 +23,8 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     private val state:()->AppState,private val update:((AppState)->AppState)->Unit,private val navigate:(Destination)->Unit,
     private val back:()->Unit,private val setText:(String)->Unit,private val playAudio:(MediaEntry,Boolean)->Unit = { _,_ -> },
     private val stopAudio:()->Unit = {}, private val autoRead:()->Unit = {},
-    private val editorIo:CoroutineDispatcher=Dispatchers.IO, private val permissions:com.kigtts.plugin.runtime.PluginPermissions?=null) {
+    private val editorIo:CoroutineDispatcher=Dispatchers.IO, private val permissions:com.kigtts.plugin.runtime.PluginPermissions?=null,
+    private val openCustomTab: ((String, String) -> Unit)? = null) {
     private val history = ContentHistory()
     private val editorSnapshot=ContentEditorSnapshot(context)
     private val editorCompletion=EditorSaveCompletion()
@@ -83,6 +84,9 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun clearHistory() = history.clear()
     fun send(phrase:QuickPhrase) {
         val entry = repository.get(phrase.mediaId)
+        if (entry?.kind == MediaKind.WEB && phrase.metadata["web.openMode"] == "custom-tab" && openCustomTab != null) {
+            openCustomTab.invoke(entry.primary, phrase.title); return
+        }
         when (phrase.cardType(entry?.kind)) {
             QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode); update { state -> state.copy(webPermissionEntryId=phrase.id) }; preferences.edit { putString("webEntry",phrase.id) } } ?: setText(phrase.text)
             QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay,

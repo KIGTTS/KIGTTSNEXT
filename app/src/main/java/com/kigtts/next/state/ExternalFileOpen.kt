@@ -122,7 +122,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
         }
     }
 
-    private suspend fun importVoice(file: File) {
+    internal suspend fun importVoice(file: File) {
         val engine = requireNotNull(model.registry.plugin("engine.piper")) { "请先启用 Piper 语音引擎" }
         val relative = "imports/voices/${UUID.randomUUID()}.kigvpk"
         val target = model.pluginManager.paths.storage(engine.descriptor.id).file(relative)

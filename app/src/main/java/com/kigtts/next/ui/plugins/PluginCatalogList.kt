@@ -38,7 +38,14 @@ import java.io.File
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
         else if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
-            if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) { Text(group, Modifier.padding(top = 8.dp), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(group, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    list.sectionActions[group]?.let { action -> TextButton(feedbackClick { if (canInvoke) invoke(action.id, emptyMap()) }) {
+                        Text(action.label); Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp))
+                    } }
+                }
+            }
             items(entries, key = { it.id }) { item ->
                 Surface(onClick = feedbackClick { if (canInvoke) item.primaryAction?.let { invoke(it, emptyMap()) } }, enabled = active,
                     shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,

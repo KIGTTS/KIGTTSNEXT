@@ -35,6 +35,7 @@ fun HomeScreen(
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
     Box(Modifier.fillMaxSize().then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier)) {
+    if (exterior == null) com.kigtts.next.theme.AppearanceBackdrop(state.theme, Modifier.matchParentSize())
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
         LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
     else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)

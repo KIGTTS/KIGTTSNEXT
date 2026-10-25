@@ -78,8 +78,9 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val dark = settings.mode.usesDark(isSystemInDarkTheme())
+    val appearanceFont = rememberAppearanceFont(settings.font)
     SystemBarAppearance(dark)
-    val (colors, controls) = remember(settings, configuration, dark) {
+    val (colors, controls) = remember(settings.seed, settings.contrast, settings.deeperDark, settings.wallpaperEnabled, configuration, dark) {
         val wallpaper = if (settings.wallpaperEnabled && Build.VERSION.SDK_INT >= 31) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else null
@@ -99,7 +100,8 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
             displayMedium = TextStyle(fontSize = 38.sp, lineHeight = 50.sp, fontWeight = FontWeight.Bold),
             titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
             titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
-        ), content = { CompositionLocalProvider(LocalCornerRadius provides radius.dp,
+        ).withFont(appearanceFont), content = { CompositionLocalProvider(LocalCornerRadius provides radius.dp,
+            LocalAppearanceFont provides appearanceFont,
             LocalCompactControlPalette provides animatedCompactControlPalette(controls), content = content) },
     )
 }

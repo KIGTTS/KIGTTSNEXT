@@ -59,8 +59,10 @@ fun KigttsApp(model: AppViewModel) {
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
     val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
     val externalFile by model.externalFiles.prompt.collectAsStateWithLifecycle()
+    val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
+    val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -129,6 +131,8 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
             com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
             com.kigtts.next.ui.plugins.ExternalFilePrompt(model)
+            com.kigtts.next.links.ExternalLinkHost(model)
+            com.kigtts.next.resources.ResourceInstallHost(model)
             com.kigtts.next.overlay.OverlayEntrancePrompt(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),

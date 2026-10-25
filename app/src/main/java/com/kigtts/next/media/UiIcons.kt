@@ -42,6 +42,19 @@ class UiIcons(private val context: Context, private val root: File) {
             svg.setDocumentWidth(size.toFloat()); svg.setDocumentHeight(size.toFloat())
             return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { svg.renderToCanvas(Canvas(it)) }
         }
+        fun renderPreviewSvg(text: String, size: Int): Bitmap {
+            require(text.toByteArray(Charsets.UTF_8).size <= 512 * 1024 && size in 24..2048)
+            validateSvg(text)
+            val svg = SVG.getFromString(text)
+            val box = svg.documentViewBox
+            val ratio = if (box != null && box.width() > 0 && box.height() > 0) box.width() / box.height()
+                else if (svg.documentWidth > 0 && svg.documentHeight > 0) svg.documentWidth / svg.documentHeight else 1f
+            require(ratio.isFinite() && ratio > 0)
+            val width = if (ratio >= 1) size else (size * ratio).toInt().coerceAtLeast(1)
+            val height = if (ratio >= 1) (size / ratio).toInt().coerceAtLeast(1) else size
+            svg.setDocumentWidth(width.toFloat()); svg.setDocumentHeight(height.toFloat())
+            return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also { svg.renderToCanvas(Canvas(it)) }
+        }
         private fun validateSvg(text: String) {
             require(!text.contains(Regex("<!\\s*(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE))) { "SVG不允许实体或外部文档" }
             val factory = DocumentBuilderFactory.newInstance().apply { isExpandEntityReferences = false; isNamespaceAware = true }

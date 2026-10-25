@@ -16,6 +16,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
         manager.paths.validateId(owner)
         return object : AppBroker {
             override suspend fun request(command: AppCommand): AppReply {
+                if (command is AppCommand.OpenWeb) return openWebsite(manager, ui(), owner, capabilities, command)
                 if (command is AppCommand.Overlay) return overlay.request(owner, capabilities, command)
                 if (command is AppCommand.Notifications) return notifications.request(owner, capabilities, command)
                 if (command is AppCommand.Permission) {
@@ -38,6 +39,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                     if (command is AppCommand.BrowserSession) return withContext(Dispatchers.Main) { sessionBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
                     if (command is AppCommand.BrowserCapture) return withContext(Dispatchers.Main) { captureBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
                     if (command is AppCommand.DeliverResource) return deliver(owner, command)
+                    if (command is AppCommand.ResourcePackage) return requireNotNull(ui()).resourceInstalls.request(owner, command)
                     if (command is AppCommand.PluginCall) return call(owner, command)
                     withContext(Dispatchers.Main) { perform(owner, command) }
                 } catch (cancel: CancellationException) { throw cancel }
@@ -75,6 +77,8 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
         }
         val model = ui() ?: return AppReply.Failure("HOST_UNAVAILABLE", "请先打开 KIGTTS")
         when (command) {
+            is AppCommand.OpenWeb -> error("已单独处理")
+            is AppCommand.ResourcePackage -> error("已单独处理")
             AppCommand.State -> return data { val state = model.state.value
                 put("text", state.editorText); put("transcript", state.transcript); put("automaticRead", state.autoPlayback)
                 put("listening", state.listening); put("continuousRecognition", state.continuousRecognition)
