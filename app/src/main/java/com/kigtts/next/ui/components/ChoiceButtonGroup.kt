@@ -12,7 +12,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
-/** Standard M3E group: each button keeps its own corners and shares press expansion with neighbors. */
+/** Connected M3E shapes share press expansion without replacing the active pointer owner. */
 @Composable
 internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T)->String,onSelect:(T)->Unit,
     modifier:Modifier=Modifier,enabled:Boolean=true,compactLabels:Boolean=false,preserveColorWhenLocked:Boolean=false,
@@ -22,9 +22,14 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
     val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
         expansion=100f*ButtonGroupDefaults.ExpandedRatio)
     ButtonGroup(modifier.then(if (fitContent) Modifier.wrapContentWidth() else Modifier.fillMaxWidth()).selectableGroup(), expandedRatio = 0f,
-        horizontalArrangement=ButtonGroupDefaults.HorizontalArrangement) {
+        horizontalArrangement=Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween)) {
         options.forEachIndexed { index,option -> key(option) {
-            val defaults=ToggleButtonDefaults.shapes()
+            val defaults=when {
+                options.size == 1 -> ToggleButtonDefaults.shapes()
+                index == 0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                index == options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+            }
             val selectionProgress by animateFloatAsState(if (value==option) 1f else 0f,tween(160),label="choice-selection-shape")
             val shape=ChoiceButtonShape(defaults,selectionProgress,motions[index].progress.value)
             ToggleButton(checked=value==option,onCheckedChange={ checked -> motions[index].commit { if(checked&&option!=value)onSelect(option) } },

@@ -17,6 +17,11 @@ import kotlinx.coroutines.CancellationException
 /** The same navigation host owns entry, exit, predictive back and retained form state. */
 @Composable
 fun PhraseEditorScreen(model: AppViewModel, token: String) {
+    com.kigtts.next.ui.components.ProvideIconTextContextMenu { PhraseEditorContent(model, token) }
+}
+
+@Composable
+private fun PhraseEditorContent(model: AppViewModel, token: String) {
     val current by model.content.phraseDraft.collectAsStateWithLifecycle()
     val categories by model.categories.collectAsStateWithLifecycle()
     val saving by model.content.phraseSavePending.collectAsStateWithLifecycle()

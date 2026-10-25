@@ -30,7 +30,7 @@ class NativeOverlayService : Service() {
     private lateinit var wm: WindowManager
     private lateinit var windowContext: Context
     private val windowConfiguration = object : ComponentCallbacks {
-        override fun onConfigurationChanged(newConfig: Configuration) { dragX = 0f; dragY = 0f; place() }
+        override fun onConfigurationChanged(newConfig: Configuration) { resetPlacement() }
         override fun onLowMemory() = Unit
     }
     private var dial: OverlayWindow? = null
@@ -44,7 +44,9 @@ class NativeOverlayService : Service() {
     private var windowExpanded = false
     private var retraction = 0f
     private var dragX = 0f; private var dragY = 0f
+    private var dragAnchor: OverlayPlacement? = null
     private var idle: Job? = null
+    private var dockReturn: Job? = null
     private var collapseReady = true
     private lateinit var appearance: SharedPreferences
     private lateinit var feedback: SharedPreferences
@@ -132,7 +134,7 @@ class NativeOverlayService : Service() {
     }
     private fun place(animate: Boolean = false) {
         val safe = safeBounds()
-        layout = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded, retraction)
+        layout = dragAnchor ?: overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded, retraction)
         if (dragX != 0f || dragY != 0f) layout = layout.copy(x = layout.x + dragX.toInt(), y = (layout.y + dragY.toInt()).coerceIn(safe.top, safe.top + (safe.height - layout.height).coerceAtLeast(0)))
         try { dial?.place(layout.x, layout.y, layout.width, layout.height, animate) }
         catch (_: RuntimeException) { store.update { it.copy(enabled = false) }; stopSelf() }
@@ -140,10 +142,18 @@ class NativeOverlayService : Service() {
     }
     private fun interact() {
         idle?.cancel(); hidden = false
-        if (!expanded && config.autoHide && hub.bubble.value == null) idle = scope.launch { delay(3500); hidden = true }
+        if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) idle = scope.launch { delay(3500); hidden = true }
     }
     private fun toggle() { if (expanded) collapse() else {
-        interact(); collapseReady = false; windowExpanded = true; place(); expanded = true
+        dockReturn?.cancel(); dockReturn = null
+        interact(); collapseReady = false
+        val current = dial?.stopAtCurrentPosition(layout) ?: layout
+        val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
+        windowExpanded = true
+        layout = target.aroundCenterOf(current)
+        dial?.place(layout.x, layout.y, layout.width, layout.height)
+        expanded = true
+        scope.launch { yield(); if (expanded && dragAnchor == null) place(animate = true) }
     } }
     private fun collapse() {
         if (!expanded) return
@@ -152,15 +162,27 @@ class NativeOverlayService : Service() {
     private fun finishCollapse() {
         if (expanded) return
         collapseReady = true
-        if (dragX != 0f || dragY != 0f || !windowExpanded) return
-        windowExpanded = false; place(); interact()
+        if (dragAnchor != null || !windowExpanded || dockReturn?.isActive == true) return
+        val compact = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, false)
+        val returning = layout.aroundCenterOf(compact)
+        layout = returning
+        dial?.place(returning.x, returning.y, returning.width, returning.height, animate = true)
+        dockReturn = scope.launch {
+            delay(280)
+            if (!expanded && dragAnchor == null) { windowExpanded = false; place(); interact() }
+            dockReturn = null
+        }
     }
     private fun drag(x: Float, y: Float) {
+        dockReturn?.cancel(); dockReturn = null
+        if (dragAnchor == null) dragAnchor = dial?.stopAtCurrentPosition(layout) ?: layout
         if (expanded) collapse()
         interact(); dragX += x; dragY += y; place()
     }
     private fun drop() {
-        if (dragX == 0f && dragY == 0f) {
+        val wasDragging = dragAnchor != null
+        dragAnchor = null
+        if (!wasDragging) {
             if (collapseReady) finishCollapse()
             return
         }
@@ -194,7 +216,13 @@ class NativeOverlayService : Service() {
         val y = (layout.y + layout.fabY - height / 2).toInt().coerceIn(safe.top, safe.top + safe.height - height)
         runCatching { bubble?.place(x, y, width, height) }.onFailure { bubble?.close(); bubble = null }
     }
-    override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); dragX = 0f; dragY = 0f; place() }
+    private fun resetPlacement() {
+        dockReturn?.cancel(); dockReturn = null
+        dragX = 0f; dragY = 0f; dragAnchor = null
+        if (!expanded && collapseReady) windowExpanded = false
+        place()
+    }
+    override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); resetPlacement() }
     private fun foreground() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "悬浮快捷入口", NotificationManager.IMPORTANCE_LOW))

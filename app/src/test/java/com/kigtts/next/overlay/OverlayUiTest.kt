@@ -28,6 +28,25 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class OverlayUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun lowestVisibleEntranceAcceptsTouchOnRightAndAfterScrollingToTheEnd() = checkLowestEntrance(true)
+    @Test fun lowestVisibleEntranceAcceptsTouchOnLeftAndAfterScrollingToTheEnd() = checkLowestEntrance(false)
+    private fun checkLowestEntrance(right: Boolean) {
+        var opened: String? = null
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(rightEdge = right, shortcuts = defaultOverlayShortcuts() +
+                (1..4).map { OverlayShortcut("extra-$it", "额外入口$it", "extension") }),
+                OverlayPlacement(0, 0, 888, 1068, if (right) 768f else 120f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, { opened = it.id }, {})
+        } } }
+        compose.waitForIdle()
+        val last = defaultOverlayShortcuts().last()
+        compose.onNodeWithContentDescription(last.title).performTouchInput { click() }
+        compose.runOnIdle { assertEquals(last.id, opened); opened = null }
+        compose.onNodeWithContentDescription("拍照").performTouchInput { swipe(center, center + androidx.compose.ui.geometry.Offset(0f, -600f), 700) }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("额外入口4").performTouchInput { click() }
+        compose.runOnIdle { assertEquals("extra-4", opened) }
+    }
     @Test fun radialEntrancesOnlyBecomeClickableAfterExpandAndCollapseHasOneMeaning() {
         var expanded by mutableStateOf(false); var opened: String? = null
         var mode by mutableStateOf(ThemeMode.LIGHT)

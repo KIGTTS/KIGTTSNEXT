@@ -45,7 +45,9 @@ fun OverlaySettingsScreen() {
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (Settings.canDrawOverlays(context)) enable(true)
     }
-    OverlaySettingsList(displayEntries, store::order, { editing = it }, { add = true }) {
+    OverlaySettingsList(displayEntries, store::order, { editing = it }, { add = true }, remove = { entry ->
+        store.update { it.copy(shortcuts = it.shortcuts.filterNot { old -> old.id == entry.id }) }
+    }, controls = {
         SettingsGroup("悬浮快捷入口") {
             ToggleSetting("开启悬浮窗", "快速打开字幕板、相机和常用功能", Icons.Default.BubbleChart,
                 state.enabled && Settings.canDrawOverlays(context), { enabled ->
@@ -58,7 +60,7 @@ fun OverlaySettingsScreen() {
             ToggleSetting("优先小窗打开", "在其它应用中使用小窗，KIGTTS 前台保持当前窗口", Icons.Default.PictureInPictureAlt,
                 state.preferSmallWindows, { enabled -> store.update { it.copy(preferSmallWindows = enabled) } }, position = SettingPosition.LAST)
         }
-    }
+    })
     if (permissionExplanation) AlertDialog(onDismissRequest = { permissionExplanation = false },
         icon = { Icon(Icons.Default.BubbleChart, null) }, title = { Text("允许显示悬浮窗") },
         text = { Text("开启后，快捷入口会显示在其它应用上方。请在接下来的系统页面允许 KIGTTS 显示悬浮窗。") },
@@ -74,10 +76,8 @@ fun OverlaySettingsScreen() {
         if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.title) }, text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) { Text("显示文字", Modifier.weight(1f)); Switch(current.showLabel, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(showLabel = enabled) else old }) } }) }
-                Row { TextButton(onClick = feedbackClick { store.move(item.id, -1) }, enabled = state.shortcuts.firstOrNull()?.id != item.id) { Text("上移") }
-                    TextButton(onClick = feedbackClick { store.move(item.id, 1) }, enabled = state.shortcuts.lastOrNull()?.id != item.id) { Text("下移") } }
             }
         }, confirmButton = { TextButton(onClick = feedbackClick { editing = null }) { Text("完成") } },
-            dismissButton = { TextButton(onClick = feedbackClick { store.update { it.copy(shortcuts = it.shortcuts.filterNot { old -> old.id == item.id }) }; editing = null }) { Text("移除入口") } })
+            dismissButton = {})
     }
 }

@@ -44,7 +44,9 @@ fun TextEditor(
             }
             Column {
                 Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
-                SubtitleBody(state, model, Modifier.weight(1f).fillMaxWidth(), rendererInBackground = true)
+                Box(Modifier.weight(1f).fillMaxWidth()) { ProvideIconTextContextMenu {
+                    SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true)
+                } }
                 if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
                 EditorFooter(state, model, Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { bottom = it.height })
             }

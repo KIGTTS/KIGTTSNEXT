@@ -75,6 +75,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val animatedWheelOffset by animateFloatAsState(stretch, if (wheeling) snap() else
         spring(dampingRatio = .78f, stiffness = 400f), label = "wheel-settle")
     val wheelOffset = if (wheeling) stretch else animatedWheelOffset
+    val currentWheelOffset by rememberUpdatedState(wheelOffset)
     LaunchedEffect(settings.shortcuts.size) {
         wheel = wheel.copy(first = wheel.first.coerceIn(0, (settings.shortcuts.size - 5).coerceAtLeast(0)))
     }
@@ -86,7 +87,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     // Keep the ancestor input node alive while the FAB collapses during a drag.
     val scroll = Modifier.pointerInput(settings.shortcuts.size) {
         detectVerticalDragGestures(onDragStart = {
-            if (isExpanded) { interact(); wheel = wheel.copy(drag = animatedWheelOffset); wheeling = true }
+            if (isExpanded) { interact(); wheel = wheel.copy(drag = currentWheelOffset); wheeling = true }
         }, onVerticalDrag = { change, amount ->
             if (isExpanded) { change.consume(); wheel = dragOverlayWheel(wheel, amount, settings.shortcuts.size, stepPx) }
         }, onDragEnd = { wheeling = false; wheel = settleOverlayWheel(wheel, settings.shortcuts.size, stepPx) },

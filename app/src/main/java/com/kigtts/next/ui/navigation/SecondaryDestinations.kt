@@ -60,7 +60,11 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
-        extendToBottom = destination == Destination.SettingsDetail(SettingsCategory.APPEARANCE),
+        extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
+            destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.Plugins ||
+            (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
+                it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
+            } == true),
         backgroundSettings = state.theme) {
             when (destination) {
                 Destination.Home -> Unit

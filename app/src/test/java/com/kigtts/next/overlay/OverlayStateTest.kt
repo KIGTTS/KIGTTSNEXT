@@ -68,13 +68,18 @@ class OverlayStateTest {
                 assertTrue(p.fabX in 0f..p.width.toFloat()); assertTrue(p.fabY in 0f..p.height.toFloat())
             }
     }
-    @Test fun expandCollapseKeepsAbsoluteAnchorAtEveryHeightAndEdge() {
+    @Test fun cornerExpansionMovesTheWholeConcentricDialAndCanReturnToItsDock() {
         val safe = OverlayBounds(0, 138, 1440, 2960)
         for (right in listOf(false, true)) for (position in listOf(0f, .1f, .5f, .9f, 1f)) {
             val compact = overlayPlacement(safe, 3.6f, right, position, false)
             val expanded = overlayPlacement(safe, 3.6f, right, position, true)
             assertEquals(compact.x + compact.fabX, expanded.x + expanded.fabX, .01f)
-            assertEquals(compact.y + compact.fabY, expanded.y + expanded.fabY, .5f)
+            assertEquals(expanded.height / 2f, expanded.fabY, .01f)
+            val growing = expanded.aroundCenterOf(compact)
+            assertEquals(compact.x + compact.fabX, growing.x + growing.fabX, .5f)
+            assertEquals(compact.y + compact.fabY, growing.y + growing.fabY, .5f)
+            val returning = expanded.aroundCenterOf(compact)
+            assertEquals(compact.y + compact.fabY, returning.y + returning.fabY, .5f)
         }
     }
     @Test fun idleRetractionMovesAndClipsTheInputWindowInsteadOfLeavingAnInvisibleBlocker() {

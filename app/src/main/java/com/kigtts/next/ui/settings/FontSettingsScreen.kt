@@ -60,7 +60,7 @@ import kotlinx.coroutines.*
         finally { loading = false }
     }
     ReadablePage(840.dp) {
-        LazyColumn(Modifier.fillMaxSize().testTag("font-settings-list"), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.fillMaxSize().testTag("font-settings-list"), contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { FilledTonalButton(feedbackClick { if (busy == null) picker.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.FileOpen, null); Spacer(Modifier.width(8.dp)); Text("导入字体")
             } }

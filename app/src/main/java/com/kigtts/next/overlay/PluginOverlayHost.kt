@@ -16,7 +16,11 @@ internal class PluginOverlayHost(private val manager: PluginManager) {
         if ("overlay" !in capabilities) AppReply.Failure("PERMISSION_DENIED", "插件未声明悬浮窗权限") else {
             val installed = withContext(Dispatchers.IO) { manager.packages.installed().singleOrNull { it.manifest.id == owner && it.enabled } }
             if (installed == null || manager.safeMode()) AppReply.Failure("UNAVAILABLE", "插件未启用")
-            else if (command.operation == "status") data { put("enabled", OverlayStore.get(context).settings.value.enabled && Settings.canDrawOverlays(context)); put("userConfirmationRequired", true) }
+            else if (command.operation == "status") data {
+                put("enabled", OverlayStore.get(context).settings.value.enabled && Settings.canDrawOverlays(context))
+                put("authorized", manager.permissions.access("$owner:${installed.publisherSha256}", "overlay") == com.kigtts.plugin.runtime.PermissionAccess.ALLOW)
+                put("userConfirmationRequired", true)
+            }
             else if (command.operation == "clear-bubble") { withContext(Dispatchers.Main) { hub.clear(owner) }; data { put("cleared", true) } }
             else if (!manager.requestPermission(owner, "overlay")) AppReply.Failure("PERMISSION_DENIED", "悬浮窗权限尚未授权或已禁用")
             else withContext(Dispatchers.Main) {

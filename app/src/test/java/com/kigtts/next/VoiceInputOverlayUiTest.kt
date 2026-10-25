@@ -80,7 +80,7 @@ class VoiceInputOverlayUiTest {
         val model = show(); holdDock()
         compose.onNodeWithTag("voice-input-live").assertIsDisplayed()
         compose.onNodeWithContentDescription("KIGTTS 横版 Logo").assertExists()
-        compose.onNodeWithTag("voice-input-read").assertDoesNotExist()
+        compose.onNodeWithTag("voice-input-read").assertIsDisplayed()
         java.io.File("build/previews").mkdirs()
         compose.onRoot().let { it.captureRoboImage("build/previews/voice-arc-portrait.png") }
         val cancel = compose.onNodeWithTag("voice-input-cancel").fetchSemanticsNode().boundsInRoot.center

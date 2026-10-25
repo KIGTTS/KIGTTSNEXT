@@ -20,10 +20,12 @@ internal object BrowserSessions {
     private val sessions = linkedMapOf<String, Session>()
     private val gate = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var cleanup: Job? = null
-    private fun expire() { val now = android.os.SystemClock.elapsedRealtime(); sessions.filterValues { now - it.touched > 10 * 60 * 1000 }.keys.toList().forEach { sessions.remove(it)?.let(::release) } }
-    private fun scheduleCleanup() { if (cleanup?.isActive != true) cleanup = scope.launch { while (sessions.isNotEmpty()) { delay(60000); expire() } } }
-    fun closeAll() { cleanup?.cancel(); cleanup = null; sessions.values.toList().forEach { release(it) }; sessions.clear() }
+    private var themeUpdates: Job? = null
+    private fun observeTheme() {
+        if (themeUpdates?.isActive == true) return
+        themeUpdates = scope.launch { WebThemeState.themes.collect { sessions.values.toList().forEach { it.web.applyKigttsTheme() } } }
+    }
+    fun closeAll() { themeUpdates?.cancel(); themeUpdates = null; sessions.values.toList().forEach { release(it) }; sessions.clear() }
     private fun release(session: Session) { val view = session.subtitle ?: session.web; (view.parent as? ViewGroup)?.removeView(view); session.web.stopLoading(); session.web.destroy() }
     private suspend fun state(session: Session): JSONObject {
         val result = session.web.browserJson(BrowserDriverScripts.state)
@@ -42,10 +44,15 @@ internal object BrowserSessions {
     }
     suspend fun run(owner: String, command: AppCommand.BrowserSession, document: BrowserDocument?, output: File?): JSONObject = gate.withLock {
         withContext(Dispatchers.Main) {
-            expire()
-            require(command.operation in setOf("devices", "open", "open-subtitle", "state", "click", "type", "scroll", "wait", "screenshot", "close"))
+            observeTheme()
+            require(command.operation in setOf("devices", "sessions", "open", "open-subtitle", "state", "wait", "screenshot", "close") + BrowserInput.operations)
             if (command.operation == "devices")
                 return@withContext BrowserSimulation.devices(requireNotNull(BrowserInspector.attachedRoot()).context)
+                    .put("continuousSessions", true).put("maxSessionsPerOwner", 3)
+                    .put("inputOperations", org.json.JSONArray(BrowserInput.operations.toList()))
+            if (command.operation == "sessions") return@withContext JSONObject().put("ok", true).put("sessions", org.json.JSONArray(
+                sessions.filterValues { it.owner == owner }.map { (id, session) -> JSONObject().put("sessionId", id)
+                    .put("width", session.width).put("height", session.height).put("title", session.web.title.orEmpty().take(160)) }))
             require(command.text.length <= 16000 && (command.selector?.length ?: 0) <= 500)
             if (command.operation in setOf("open", "open-subtitle")) {
                 require(command.width in 240..2048 && command.height in 240..2048 && command.width.toLong() * command.height <= 3_000_000)
@@ -67,7 +74,7 @@ internal object BrowserSessions {
                     BrowserSimulation.calibrate(web)
                     subtitle?.applySafeArea()
                     diagnostics += web.awaitBrowserReady(command.waitMs, command.timeoutMs, command.selector)
-                    val id = UUID.randomUUID().toString(); sessions[id] = session; scheduleCleanup()
+                    val id = UUID.randomUUID().toString(); sessions[id] = session; web.applyKigttsTheme()
                     state(session).put("ok", true).put("sessionId", id).put("diagnostics", org.json.JSONArray(diagnostics))
                 } catch (failure: Throwable) { release(session); throw failure }
             } else {
@@ -79,21 +86,8 @@ internal object BrowserSessions {
                 when (command.operation) {
                     "close" -> { sessions.remove(id); release(session); JSONObject().put("ok", true).put("closed", true) }
                     else -> {
-                        when (command.operation) {
-                            "click" -> if (command.selector != null) {
-                                val result = web.browserJson(BrowserDriverScripts.action("click", requireNotNull(command.selector), ""))
-                                check(result.optBoolean("ok")) { result.optString("error") }
-                                tap(web, (result.getDouble("x") * web.width).toFloat(), (result.getDouble("y") * web.height).toFloat())
-                            }
-                            else {
-                                val x = requireNotNull(command.x); val y = requireNotNull(command.y)
-                                val localX = x - (session.subtitle?.viewport?.left ?: 0); val localY = y - (session.subtitle?.viewport?.top ?: 0)
-                                require(localX.isFinite() && localY.isFinite() && localX >= 0 && localX < web.width && localY >= 0 && localY < web.height) { "坐标在网页取景区域外，不能操作模拟宿主控件" }
-                                tap(web, localX, localY)
-                            }
-                            "type" -> { val result = web.browserJson(BrowserDriverScripts.action("type", requireNotNull(command.selector), command.text)); check(result.optBoolean("ok")) { result.optString("error") } }
-                            "scroll" -> { require(command.deltaY.isFinite() && kotlin.math.abs(command.deltaY) <= 20000); web.browserJson("(()=>{scrollBy(0,${command.deltaY});return '{}';})()") }
-                        }
+                        if (command.operation in BrowserInput.operations) BrowserInput.perform(web, command,
+                            session.subtitle?.viewport?.left ?: 0, session.subtitle?.viewport?.top ?: 0)
                         if (command.operation != "state") session.diagnostics += web.awaitBrowserReady(command.waitMs, command.timeoutMs, command.selector.takeIf { command.operation == "wait" })
                         val result = state(session).put("ok", true).put("sessionId", id)
                         if (command.operation == "screenshot") {
@@ -109,15 +103,5 @@ internal object BrowserSessions {
                 }
             }
         }
-    }
-    private suspend fun tap(web: WebView, x: Float, y: Float) {
-        require(x.isFinite() && y.isFinite() && x >= 0 && x < web.width && y >= 0 && y < web.height) { "目标在可见网页区域之外" }
-        val time = android.os.SystemClock.uptimeMillis()
-        fun dispatch(action: Int) {
-            val event = MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
-            try { web.dispatchTouchEvent(event) } finally { event.recycle() }
-        }
-        dispatch(MotionEvent.ACTION_DOWN)
-        try { delay(120) } finally { dispatch(MotionEvent.ACTION_UP) }
     }
 }

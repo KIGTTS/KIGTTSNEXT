@@ -30,8 +30,13 @@ internal fun overlayPlacement(safe: OverlayBounds, density: Float, right: Boolea
     val y = (anchorY - height / 2f).roundToInt().coerceIn(safe.top, safe.top + (safe.height - height).coerceAtLeast(0))
     val retract = fab * retraction.coerceIn(0f, 1f)
     return OverlayPlacement(if (right) safe.left + safe.width - width else safe.left, y, width, height,
-        (if (right) width - fab + retract else fab - retract).coerceIn(0f, width.toFloat()), (anchorY - y).coerceIn(fab, height - fab))
+        (if (right) width - fab + retract else fab - retract).coerceIn(0f, width.toFloat()), height / 2f)
 }
+
+/** Resize around the same absolute center before moving the complete dial into its safe bounds. */
+internal fun OverlayPlacement.aroundCenterOf(previous: OverlayPlacement) = copy(
+    x = (previous.x + previous.fabX - fabX).roundToInt(),
+    y = (previous.y + previous.fabY - fabY).roundToInt())
 
 internal fun dialPoint(slot: Int, right: Boolean, radius: Float): Pair<Float, Float> {
     val angle = Math.toRadians((slot - 2) * 36.0)

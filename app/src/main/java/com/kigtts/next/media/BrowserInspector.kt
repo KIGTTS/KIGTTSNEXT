@@ -32,7 +32,7 @@ object BrowserInspector {
             try {
                 web.measure(android.view.View.MeasureSpec.makeMeasureSpec(width, android.view.View.MeasureSpec.EXACTLY), android.view.View.MeasureSpec.makeMeasureSpec(height, android.view.View.MeasureSpec.EXACTLY))
                 web.layout(0, 0, width, height); web.loadUrl(document.url)
-                withTimeout(15_000) {
+                withTimeout(35_000) {
                     ready.await(); web.applyKigttsTheme()
                     BrowserSimulation.calibrate(web)
                     // Fonts and page scripts receive a rendering opportunity before the compositor fence.

@@ -27,6 +27,9 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val barState=rememberTopAppBarState()
     val ime = WindowInsets.ime
     val density = LocalDensity.current
+    val multiWindow = com.kigtts.next.ui.components.rememberMultiWindowMode()
+    val safe = if (multiWindow) WindowInsets.safeDrawing.union(WindowInsets.systemGestures) else WindowInsets.safeDrawing
+    val bottomClearance = with(density) { safe.getBottom(density).toDp() }
     val keyboard by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
     val input = rememberUpdatedState(host.input.focused || keyboard)
     val behavior=TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState,snapAnimationSpec=tween(220),
@@ -42,12 +45,13 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
     val background = (backgroundSettings ?: LocalAppAppearanceSettings.current).takeIf { it.secondaryPageBackground && it.background != null }
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
-        LocalSecondaryBackground provides background) {
+        LocalSecondaryBackground provides background,
+        LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
         Box(Modifier.fillMaxSize()) {
         background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
         Scaffold(modifier.fillMaxSize().then(if(largeBar)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
             containerColor=if(background==null)MaterialTheme.colorScheme.background else Color.Transparent,
-            contentWindowInsets=WindowInsets.safeDrawing.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
+            contentWindowInsets=safe.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading) },Modifier.testTag("large-page-bar"),
                 colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent,scrolledContainerColor=Color.Transparent),
                 subtitle=subtitle?.let { text -> { Text(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines=1, overflow=TextOverflow.Ellipsis) } },

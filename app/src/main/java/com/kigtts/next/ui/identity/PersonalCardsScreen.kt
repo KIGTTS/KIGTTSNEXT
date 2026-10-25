@@ -51,7 +51,8 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
             finally { working = false }
         }
     }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 16.dp,
+        bottom = 16.dp + com.kigtts.next.ui.navigation.LocalPageBottomInset.current), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (items.isNotEmpty()) {
             HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 20.dp), pageSpacing = 12.dp,
                 modifier = Modifier.fillMaxWidth().testTag("personal-cards-pager"), key = { items[it].id }) { page ->

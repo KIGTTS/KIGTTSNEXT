@@ -84,6 +84,7 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 put("listening", state.listening); put("continuousRecognition", state.continuousRecognition)
                 put("speaking", state.speaking); state.mediaId?.let { put("mediaId", it) }
                 put("themeMode", state.theme.mode.name); put("themeColor", state.theme.hex)
+                put("webTheme", PluginJson.parseToJsonElement(com.kigtts.next.media.WebThemeState.current.json().toString()))
                 put("locale", model.context().locale); put("subtitlePlaceholder", state.subtitlePlaceholder)
             }
             is AppCommand.Navigate -> when (command.target) {

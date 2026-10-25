@@ -63,13 +63,15 @@ internal class IconTextMenuProvider : TextContextMenuProvider {
 }
 
 /** Public Foundation menu callbacks keep native copy/paste/selection behavior and accessibility. */
+internal val LocalIconTextMenuEnabled = compositionLocalOf { false }
 @Composable
-internal fun ProvideIconTextContextMenu(content: @Composable () -> Unit) {
+internal fun ProvideIconTextContextMenu(enabled: Boolean = true, content: @Composable () -> Unit) {
+    if (!enabled) { content(); return }
     val provider = remember { IconTextMenuProvider() }
     val focus=LocalFocusManager.current
     var coordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
     DisposableEffect(provider) { onDispose { provider.session?.finish() } }
-    CompositionLocalProvider(LocalTextContextMenuToolbarProvider provides provider,
+    CompositionLocalProvider(LocalIconTextMenuEnabled provides true, LocalTextContextMenuToolbarProvider provides provider,
         LocalTextContextMenuDropdownProvider provides provider) {
         Box(Modifier.onGloballyPositioned { coordinates = it }, propagateMinConstraints = true) {
             content()

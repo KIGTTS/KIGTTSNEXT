@@ -25,8 +25,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 private val ContactLinksSaver = Saver<List<ContactLink>, String>(
-    save = { links -> JSONArray().apply { links.forEach { put(JSONObject().put("label", it.label).put("value", it.value)) } }.toString() },
-    restore = { text -> JSONArray(text).let { list -> List(list.length()) { i -> list.getJSONObject(i).let { ContactLink(it.getString("label"), it.getString("value")) } } } })
+    save = { links -> JSONArray().apply { links.forEach { put(JSONObject().put("label", it.label).put("value", it.value).put("qrContent", it.qrContent)) } }.toString() },
+    restore = { text -> JSONArray(text).let { list -> List(list.length()) { i -> list.getJSONObject(i).let { ContactLink(it.getString("label"), it.getString("value"), it.optString("qrContent").takeIf(String::isNotBlank)) } } } })
 
 @Composable
 internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRepository, close: () -> Unit,
@@ -59,13 +59,4 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
         } }, confirmButton = { TextButton(feedbackClick {
             save(value.copy(nickname = name.trim(), bio = bio.trim(), avatar = avatar, contacts = contacts))
         }, enabled = !working) { Text("保存") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
-}
-
-@Composable
-internal fun PersonalContactDialog(link: ContactLink, close: () -> Unit) {
-    val context = LocalContext.current
-    MotionAlertDialog(close, title = { Text(link.label) }, icon = { SocialContactIcon(link) }, text = { Text(link.value) },
-        confirmButton = { TextButton(dialogFeedbackClick {
-            context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(link.label, link.value)); close()
-        }) { Text("复制") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("关闭") } })
 }

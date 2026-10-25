@@ -28,6 +28,14 @@ internal class OverlayHub private constructor(context: Context) {
     fun discovered(entries: List<OverlayShortcut>, publishers: Map<String, String>) {
         discovered = entries; activePublishers = publishers; publish()
     }
+    fun refreshBadges(owner: String, publisher: String, ui: com.kigtts.plugin.api.PluginContributions) {
+        registered = registered.map { entry ->
+            if (entry.owner != owner || entry.publisher != publisher) entry else entry.copy(badge = (
+                ui.actions.firstOrNull { it.id == entry.action }?.badge ?: ui.settingsEntries.firstOrNull {
+                    entry.target == "page:${it.pageId}" || entry.title == it.label
+                }?.badge)?.toOverlayBadge())
+        }
+    }
     private fun publish() {
         val manual = registered.map { item ->
             if (activePublishers == null || activePublishers?.get(item.owner) == item.publisher) item

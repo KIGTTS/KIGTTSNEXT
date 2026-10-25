@@ -127,7 +127,7 @@ fun KigttsApp(model: AppViewModel) {
                 com.kigtts.next.sharing.LocalFaceShare provides remember(model) { com.kigtts.next.sharing.FaceShareActions(model.faceShare::openSend, model.faceShare::openReceive) },
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
             com.kigtts.next.sharing.FaceShareHost(model)
-            ProvideIconTextContextMenu {
+            CompositionLocalProvider(LocalIconTextMenuEnabled provides false) {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
                 pluginCapture, { pluginCapture = null })
             PluginExportRequest(model, pluginExport) { pluginExport = null }

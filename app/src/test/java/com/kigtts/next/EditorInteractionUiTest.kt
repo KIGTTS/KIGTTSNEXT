@@ -80,7 +80,7 @@ class EditorInteractionUiTest {
         }
         open()
         compose.onNodeWithContentDescription("朗读").assertDoesNotExist()
-        compose.onNodeWithContentDescription("翻译").assertIsDisplayed()
+        compose.onNodeWithContentDescription("翻译").assertDoesNotExist()
         listOf("bold" to TextFormat.BOLD,"italic" to TextFormat.ITALIC,"underline" to TextFormat.UNDERLINE).forEach { (tag,kind) ->
             compose.onNodeWithTag("text-menu-$tag").performClick()
             compose.onNodeWithTag("text-icon-menu").assertIsDisplayed()

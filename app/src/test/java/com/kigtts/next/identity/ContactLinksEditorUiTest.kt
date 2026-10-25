@@ -6,6 +6,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.identity.ContactLinksEditor
+import com.kigtts.next.ui.identity.ContactOrderList
+import androidx.compose.ui.geometry.Offset
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -19,11 +21,25 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class ContactLinksEditorUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun handleDragCommitsOnceAndKeepsContactsAndButtonsAvailableAfterDrop() {
+        var links by mutableStateOf(listOf(ContactLink("微信", "a"), ContactLink("QQ", "b"), ContactLink("Telegram", "c")))
+        var writes = 0
+        compose.setContent { KigttsTheme(ThemeSettings()) { ContactOrderList(links, { links = it; writes++ }, {}, { index -> links = links.filterIndexed { i, _ -> i != index } }) } }
+        val grip = compose.onNodeWithContentDescription("拖动排序微信")
+        val destination = compose.onNodeWithContentDescription("拖动排序Telegram").fetchSemanticsNode().boundsInRoot.center
+        val start = grip.fetchSemanticsNode().boundsInRoot.center
+        grip.performTouchInput { down(center); advanceEventTime(700); moveBy(destination - start, 400); up() }
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(listOf("QQ", "Telegram", "微信"), links.map { it.label }); assertEquals(1, writes) }
+        compose.onNodeWithContentDescription("移除QQ").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(listOf("Telegram", "微信"), links.map { it.label }) }
+    }
     @Test fun contactsCanBeAddedEditedAndRemovedIndividually() {
         var links by mutableStateOf(listOf(ContactLink("微信", "first")))
         compose.setContent { KigttsTheme(ThemeSettings()) { ContactLinksEditor(links) { links = it } } }
         compose.onNodeWithText("添加联系方式").performClick()
-        compose.onNodeWithText("平台或名称").performTextInput("QQ")
+        compose.onNodeWithText("搜索平台").performTextInput("QQ")
+        compose.onAllNodesWithText("QQ").filter(hasClickAction() and !hasSetTextAction()).onFirst().performClick()
         compose.onNodeWithText("账号或链接").performTextInput("12345")
         compose.onNodeWithText("保存").performClick()
         compose.runOnIdle { assertEquals(listOf(ContactLink("微信", "first"), ContactLink("QQ", "12345")), links) }

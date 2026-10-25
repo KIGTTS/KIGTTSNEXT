@@ -28,6 +28,7 @@ fun createBrowserView(context: Context, document: BrowserDocument, ready: (WebVi
         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest) =
             !(request.url.toString().startsWith(WebContentPolicy.ORIGIN + "/content/") || document.network && WebContentPolicy.https(request.url.toString()))
         override fun onPageFinished(view: WebView, url: String) { view.applyKigttsTheme(); ready(view) }
+        override fun onPageCommitVisible(view: WebView, url: String) { view.applyKigttsTheme(); ready(view) }
         override fun onReceivedError(view: WebView, request: WebResourceRequest, problem: WebResourceError) {
             if (request.isForMainFrame) error(problem.description.toString())
         }
@@ -42,7 +43,7 @@ fun createBrowserView(context: Context, document: BrowserDocument, ready: (WebVi
         }
     }
     if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-        WebViewCompat.addDocumentStartJavaScript(this, "document.addEventListener('DOMContentLoaded',()=>{" + WebThemeState.current.script() + "},{once:true});", setOf("*"))
+        WebViewCompat.addDocumentStartJavaScript(this, WebThemeState.current.script(), setOf("*"))
     }
     if (document.root != null && document.actions.isNotEmpty() && WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
         WebViewCompat.addWebMessageListener(this, "Kigtts", setOf(WebContentPolicy.ORIGIN)) { _, message, origin, mainFrame, _ ->

@@ -8,17 +8,19 @@ import com.kigtts.plugin.runtime.PluginManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Plugin UI entries are optional choices; discovery never adds a persistent shortcut. */
+/** Only explicitly registered shortcuts are offered; legacy saved UI links can still resolve. */
 internal fun refreshOverlayPlugins(context: Context, manager: PluginManager) {
     val active = manager.registry.plugins.filter { manager.registry.available(it) && !manager.safeMode() }
     val publishers = manager.status.filter { it.installed.enabled && active.any { plugin -> plugin.descriptor.id == it.installed.manifest.id } }
         .associate { it.installed.manifest.id to it.installed.publisherSha256 }
     val entries = active.flatMap { plugin ->
+        val saved = OverlayStore.get(context).settings.value.shortcuts
         val owner = plugin.descriptor.id
         val installed = manager.status.firstOrNull { it.installed.manifest.id == owner }?.installed
         if (installed?.enabled != true) return@flatMap emptyList()
         val publisher = installed.publisherSha256
         val ui = plugin.contributions
+        OverlayHub.get(context).refreshBadges(owner, publisher, ui)
         val pages = ui.settingsEntries.map { entry ->
             OverlayShortcut("plugin:$owner:page:${entry.id}", entry.label, entry.symbol ?: overlaySymbol(entry.icon),
                 "page:${entry.pageId}", owner = owner, publisher = publisher, category = plugin.descriptor.name,
@@ -32,7 +34,7 @@ internal fun refreshOverlayPlugins(context: Context, manager: PluginManager) {
                 "action", owner = owner, publisher = publisher, action = entry.id, category = plugin.descriptor.name,
                 badge = entry.badge?.toOverlayBadge())
         }
-        pages + actions + retainedOverlayActions(OverlayStore.get(context).settings.value.shortcuts, owner, publisher, ui)
+        (pages + actions).filter { candidate -> saved.any { it.id == candidate.id && it.publisher == publisher } } + retainedOverlayActions(saved, owner, publisher, ui)
             .filter { retained -> actions.none { it.id == retained.id } }
     }
     OverlayHub.get(context).discovered(entries, publishers)
@@ -83,6 +85,4 @@ internal fun resolveOverlayShortcuts(saved: List<OverlayShortcut>, candidates: L
 internal fun overlayBuiltInChoices() = defaultOverlayShortcuts().map { it.copy(category = "页面") } + listOf(
     OverlayShortcut("listen", "开启或停止聆听", "hearing", "listen", category = "操作"),
     OverlayShortcut("speak", "朗读字幕", "volume_up", "speak", category = "操作"),
-    OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings", category = "设置"),
-    OverlayShortcut("settings", "软件设置", "settings", "settings", category = "设置"),
 )

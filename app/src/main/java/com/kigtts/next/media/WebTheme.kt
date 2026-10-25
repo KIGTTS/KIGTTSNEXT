@@ -12,7 +12,14 @@ data class WebTheme(val dark: Boolean = false, val colors: Map<String, String> =
     fun json() = JSONObject().put("dark", dark).put("colors", JSONObject(colors)).put("corner", corner)
     fun css() = ":root{color-scheme:${if (dark) "dark" else "light"};" + colors.entries.joinToString("") { "--md-sys-color-${it.key}:${it.value};" } +
         "--kigtts-primary:var(--md-sys-color-primary);--kigtts-surface:var(--md-sys-color-surface);--kigtts-on-surface:var(--md-sys-color-on-surface);--kigtts-corner:${corner}px;}"
-    fun script() = """(()=>{const t=${json()};const r=document.documentElement;if(!r)return;r.dataset.kigttsTheme=t.dark?'dark':'light';r.style.colorScheme=t.dark?'dark':'light';let s=document.getElementById('kigtts-theme');if(!s){s=document.createElement('style');s.id='kigtts-theme';r.appendChild(s)}s.textContent=${JSONObject.quote(css())};Object.freeze(t.colors);window.KigttsTheme=Object.freeze(t);window.dispatchEvent(new CustomEvent('kigtts-theme-change',{detail:t}));})()"""
+    fun script() = """(()=>{const t=${json()};Object.freeze(t.colors);window.KigttsTheme=Object.freeze(t);
+      const apply=()=>{const r=document.documentElement;if(!r)return false;
+        r.dataset.kigttsTheme=t.dark?'dark':'light';r.style.colorScheme=t.dark?'dark':'light';
+        for(const [role,value] of Object.entries(t.colors))r.style.setProperty('--md-sys-color-'+role,value);
+        let s=document.getElementById('kigtts-theme');if(!s){s=document.createElement('style');s.id='kigtts-theme';r.appendChild(s)}
+        s.textContent=${JSONObject.quote(css())};return true;};
+      if(!apply()){const o=new MutationObserver(()=>{if(apply())o.disconnect()});o.observe(document,{childList:true,subtree:true});}
+      window.dispatchEvent(new CustomEvent('kigtts-theme-change',{detail:t}));})()""".trimIndent()
 }
 object WebThemeState {
     private val mutable = MutableStateFlow(WebTheme())

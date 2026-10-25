@@ -36,7 +36,7 @@ internal fun Modifier.overlayEntranceReorder(id: String, enabled: Boolean,
             var heldCenter = Offset.Zero
             var touch = Offset.Zero
             var automatic: Job? = null
-            fun finish() { automatic?.cancel(); automatic = null; dragged = null; onActive(null); onCenter(null) }
+            fun finish() { automatic?.cancel(); automatic = null; if (dragged != null) { dragged = null; onActive(null); onCenter(null) } }
             try {
                 detectDragGesturesAfterLongPress(
                     onDragStart = { local ->

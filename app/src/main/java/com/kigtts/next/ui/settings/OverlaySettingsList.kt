@@ -22,11 +22,14 @@ import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.ReadablePage
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.rememberDragFeedback
+import com.kigtts.next.ui.components.ElasticAction
+import com.kigtts.next.ui.components.ElasticButtonGroup
 import com.kigtts.next.ui.components.reorder.*
 
 /** One stable pointer owner, animated neighbors, and a single durable write on release. */
 @Composable internal fun OverlaySettingsList(entries: List<OverlayShortcut>, order: (List<String>) -> Unit,
-    edit: (OverlayShortcut) -> Unit, add: () -> Unit, controls: @Composable () -> Unit) {
+    edit: (OverlayShortcut) -> Unit, add: () -> Unit, controls: @Composable () -> Unit,
+    remove: (OverlayShortcut) -> Unit = {}) {
     val keys = entries.map { it.id }
     var positions by remember { mutableStateOf(keys) }
     val bounds = remember { mutableMapOf<String, LayoutCoordinates>() }
@@ -55,9 +58,15 @@ import com.kigtts.next.ui.components.reorder.*
         val index = if (floating) heldIndex else positions.indexOf(id)
         SettingItem(entry.title, if (entry.enabled) "" else "暂不可用", null,
             if (positions.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == positions.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
-            modifier = modifier, onClick = { edit(entry) },
+            modifier = modifier,
             leading = { Box(Modifier.alpha(if (entry.enabled) 1f else .45f)) { OverlayShortcutIcon(entry) } },
-            trailing = { Icon(Icons.Default.DragIndicator, "拖动排序${entry.title}", Modifier.size(40.dp).then(grip).semantics {
+            trailing = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                ElasticButtonGroup(listOf(
+                    ElasticAction("overlay-config:$id", "配置${entry.title}", Icons.Default.Tune, { edit(entry) }),
+                    ElasticAction("overlay-delete:$id", "移除${entry.title}", Icons.Default.Close, { remove(entry) })
+                ), plain = true)
+                Box(Modifier.size(40.dp).then(grip).semantics {
+                contentDescription = "拖动排序${entry.title}"
                 customActions = listOf(CustomAccessibilityAction("上移") {
                     val items = positions.toMutableList(); val i = items.indexOf(id)
                     if (i > 0) { items.add(i - 1, items.removeAt(i)); latestOrder(items) }; true
@@ -65,12 +74,13 @@ import com.kigtts.next.ui.components.reorder.*
                     val items = positions.toMutableList(); val i = items.indexOf(id)
                     if (i in 0 until items.lastIndex) { items.add(i + 1, items.removeAt(i)); latestOrder(items) }; true
                 })
-            }) })
+            }, contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(22.dp)) }
+            } })
     }
     ReadablePage(840.dp) {
         Box(Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }.reorderGestures(drag)) {
             LazyColumn(Modifier.fillMaxSize().testTag("overlay-shortcuts-list"), state = state,
-                contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "controls") { Column(Modifier.padding(bottom = 20.dp)) { controls() } }
                 item(key = "title") { Text("快捷入口", Modifier.padding(8.dp), style = MaterialTheme.typography.titleMedium) }
                 items(positions, key = { it }) { id ->

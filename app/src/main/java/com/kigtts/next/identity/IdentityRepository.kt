@@ -9,12 +9,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
-data class ContactLink(val label: String, val value: String)
+data class ContactLink(val label: String, val value: String, val qrContent: String? = null)
 data class IdentityCard(val id: String = UUID.randomUUID().toString(), val designId: String,
     val nickname: String = "", val bio: String = "", val avatar: String? = null,
     val contacts: List<ContactLink> = emptyList(), val gradient: Boolean = false) {
     fun publicJson() = JSONObject().put("id", id).put("nickname", nickname.ifBlank { "KIGTTS 用户" })
-        .put("bio", bio).put("contacts", JSONArray(contacts.map { JSONObject().put("label", it.label).put("value", it.value) }))
+        .put("bio", bio).put("contacts", JSONArray(contacts.map { JSONObject().put("label", it.label).put("value", it.value).put("qrContent", it.qrContent) }))
 }
 
 /** Background presets share a profile; album layers remain individually editable. */
@@ -47,7 +47,7 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
     }
     @Synchronized fun save(item: IdentityCard) {
         require(item.nickname.length <= 40 && item.bio.length <= 240 && item.contacts.size <= 8)
-        require(item.contacts.all { it.label.length <= 24 && it.value.length <= 512 && it.value.isNotBlank() })
+        require(item.contacts.all { it.label.length <= 24 && it.value.length <= 2048 && it.value.isNotBlank() && (it.qrContent?.length ?: 0) <= 2048 })
         val nextProfile = PersonalProfile.from(item)
         val next = if (mutable.value.any { it.id == item.id }) mutable.value.map { if (it.id == item.id) item else it } else mutable.value + item
         val projected = next.map(nextProfile::on)

@@ -51,6 +51,10 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         }
     }
     fun content(content: @Composable () -> Unit) = view.setContent(content)
+    fun stopAtCurrentPosition(placement: OverlayPlacement): OverlayPlacement {
+        settling?.cancel(); settling = null
+        return placement.copy(x = params.x, y = params.y, width = params.width, height = params.height)
+    }
     fun place(x: Int, y: Int, width: Int, height: Int, animate: Boolean = false) {
         settling?.cancel(); settling = null
         val fromX = params.x; val fromY = params.y
