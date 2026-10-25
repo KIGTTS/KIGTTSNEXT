@@ -110,4 +110,6 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 
 原生详情支持最多8张横竖混排预览，每张图片按自身比例确定卡片宽高，并支持横向吸附滚动。未填写尺寸时从位图或SVG读取比例；点击任意预览可进入全屏图库连续翻页，关闭后保留查看位置。
 
+官方插件图库维护在ARTS/PluginStore，包含15款花型SVG/PNG封面与隔离环境的原生界面预览。素材索引记录原始尺寸、哈希和截图来源；Build-OfficialPluginSource调用独立的Add-OfficialPluginArtwork脚本，将素材复制为带哈希的不可变地址，并在各包thumbnails中注册。重新生成与许可说明见ARTS/PluginStore/README.md。
+
 官方资源源：https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/index.json?view=false 。源构建、签名与发布脚本见tools/Build-ResourcePackage.py、Build-ResourceSource.py和Publish-ResourceSource.py；具体内容结构见SDK的docs/resource-packages.md。

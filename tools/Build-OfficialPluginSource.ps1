@@ -74,6 +74,7 @@ $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS
         bytes = (Get-Item -LiteralPath $sourceIcon).Length; alt = 'KPM 官方插件源' } }
     readme = "## KPM 官方插件源`n`n在这里浏览语音、AI与创作工具，按自己的需要丰富KIGTTS。`n`n- 找到适合日常交流的朗读和聆听工具。`n- 让AI协助整理内容与动手创作。`n- 使用插件编辑器制作并分享自己的小工具。"
     updatedAt = [DateTimeOffset]::UtcNow.ToString('o'); packages = $packages }
+& (Join-Path $PSScriptRoot 'Add-OfficialPluginArtwork.ps1') -Catalog $catalog -OutputDirectory $output
 [IO.File]::WriteAllText((Join-Path $output 'index.json'), ($catalog | ConvertTo-Json -Depth 15) + "`n", $utf8)
 $readme = @"
 ---

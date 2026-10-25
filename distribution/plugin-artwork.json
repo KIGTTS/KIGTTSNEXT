@@ -1,0 +1,17 @@
+{
+  "backup.kigusay": {"title": ["娃语预设兼容"], "tagline": "熟悉的短语，带到新的日常。", "accent": "mint", "page": "manager"},
+  "debug.ui": {"title": ["界面调试"], "tagline": "看清布局，也看见每一个细节。", "accent": "lilac", "page": "config"},
+  "display.led": {"title": ["LED 灯珠字幕"], "tagline": "让每一句话，都闪闪发光。", "accent": "lime", "action": "led-style"},
+  "engine.cloud-asr": {"title": ["云端语音识别"], "tagline": "把听到的话，留在字幕里。", "accent": "sky", "page": "providers", "setupAction": "add/azure"},
+  "engine.cloud-tts": {"title": ["云端语音合成"], "tagline": "为想说的话，找到喜欢的声音。", "accent": "peach", "page": "providers", "setupAction": "add-provider/azure"},
+  "engine.piper": {"title": ["Piper", "语音引擎"], "tagline": "挑一种音色，读出你的心情。", "accent": "peach", "page": "voices"},
+  "engine.sensevoice": {"title": ["SenseVoice", "语音识别"], "tagline": "听见此刻，留下文字。", "accent": "mint", "page": "packs"},
+  "engine.streaming-asr": {"title": ["流式语音识别"], "tagline": "边说边呈现，让交流更连贯。", "accent": "sky", "page": "packs"},
+  "input.quick-gestures": {"title": ["手势触发"], "tagline": "一笔画出，想说的那句话。", "accent": "lilac", "page": "gestures"},
+  "runtime.lua": {"title": ["插件编辑器"], "tagline": "从一个想法，做成随手的小工具。", "accent": "lilac", "page": "manager"},
+  "service.speech-recognition": {"title": ["语音识别服务"], "tagline": "让听见的话，也能被看见。", "accent": "mint", "page": "manager"},
+  "service.speech-synthesis": {"title": ["语音合成服务"], "tagline": "让文字开口，陪你自在表达。", "accent": "peach", "page": "manager"},
+  "tools.cloud-agent": {"title": ["AI 助手"], "tagline": "一起找答案，也一起动手创作。", "accent": "sky", "page": "chat"},
+  "tools.native-builder": {"title": ["原生构建扩展"], "tagline": "让小工具，拥有更多可能。", "accent": "lilac", "page": "manager"},
+  "tools.package-store": {"title": ["插件商店"], "tagline": "为你的 KIGTTS，添一点新本领。", "accent": "mint", "page": "store"}
+}

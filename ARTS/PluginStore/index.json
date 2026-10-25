@@ -1,0 +1,543 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-25T09:41:58.877556+00:00",
+  "packages": [
+    {
+      "id": "backup.kigusay",
+      "images": [
+        {
+          "file": "backup.kigusay/cover.svg",
+          "alt": "娃语预设兼容 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 137158,
+          "sha256": "26d67a030e4c500a73ad6df9e400d4778094d5ee03eb845b077723bc03613e46"
+        },
+        {
+          "file": "backup.kigusay/preview-light.png",
+          "alt": "娃语预设兼容 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 175737,
+          "sha256": "0565eb22a285a346777b9bbf0b658930da76aa6442074bcf01e803300da49eaa"
+        },
+        {
+          "file": "backup.kigusay/preview-dark.png",
+          "alt": "娃语预设兼容 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 174471,
+          "sha256": "29e6fc979762b1785b89153e4180f33919ed492da0f937f4e9d219ba4c413de6"
+        }
+      ]
+    },
+    {
+      "id": "debug.ui",
+      "images": [
+        {
+          "file": "debug.ui/cover.svg",
+          "alt": "界面调试插件 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 117050,
+          "sha256": "8b35e8dbcd35b7ceb23b588e921f59a975e6bdc8ec7474630d2b8ae413ec304e"
+        },
+        {
+          "file": "debug.ui/preview-light.png",
+          "alt": "界面调试插件 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 154085,
+          "sha256": "41dc920d1b0c1752d8b261beff110ea82ccaf7f15e582c45dfe3f74ba91e2673"
+        },
+        {
+          "file": "debug.ui/preview-dark.png",
+          "alt": "界面调试插件 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 151991,
+          "sha256": "acfea6ef2d222dc2f23a504075579fde979c17ede71653bac60edff005a316d2"
+        }
+      ]
+    },
+    {
+      "id": "display.led",
+      "images": [
+        {
+          "file": "display.led/cover.svg",
+          "alt": "LED 灯珠字幕 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 117239,
+          "sha256": "1dd145a59cd3dd45b6f0aa91b39473e4c89d4e9f8b5dba4d25202af5070d1301"
+        },
+        {
+          "file": "display.led/preview-led.png",
+          "alt": "LED 灯珠字幕 · LED 字幕效果",
+          "width": 1280,
+          "height": 720,
+          "bytes": 1191673,
+          "sha256": "1c63f822b0ba14b1ef1a05d7265003d22c51103e1675ae530387495380f84ca2"
+        },
+        {
+          "file": "display.led/preview-light.png",
+          "alt": "LED 灯珠字幕 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 110802,
+          "sha256": "ef29b71596c48bf934898e09e9e5a23235202791aa35acda9c3476a298f9d8fe"
+        },
+        {
+          "file": "display.led/preview-dark.png",
+          "alt": "LED 灯珠字幕 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 110927,
+          "sha256": "f71c0effa16aee99b8223ac44e81a1e962e96d803b8b9546768215eb6d24d07f"
+        }
+      ]
+    },
+    {
+      "id": "engine.cloud-asr",
+      "images": [
+        {
+          "file": "engine.cloud-asr/cover.svg",
+          "alt": "云端语音识别 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 120701,
+          "sha256": "77fcbaef33057c26001f9e31f8bf9b98f4bbe9f189804ea98e1acbcd70964250"
+        },
+        {
+          "file": "engine.cloud-asr/preview-light.png",
+          "alt": "云端语音识别 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 114950,
+          "sha256": "523a39b5dc55d639b09c30be358246910089d9603accccbb4680c8e6868f64c2"
+        },
+        {
+          "file": "engine.cloud-asr/preview-dark.png",
+          "alt": "云端语音识别 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 114811,
+          "sha256": "7cd8647d53f60567638797246032bdda60f0a4157b9947e822dbfd31a93ed585"
+        }
+      ]
+    },
+    {
+      "id": "engine.cloud-tts",
+      "images": [
+        {
+          "file": "engine.cloud-tts/cover.svg",
+          "alt": "云端语音合成 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 134505,
+          "sha256": "f9358c9e205670544d309822eef11a8be9e000bd8a5bfccb2282d32d566cd7dd"
+        },
+        {
+          "file": "engine.cloud-tts/preview-light.png",
+          "alt": "云端语音合成 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 115160,
+          "sha256": "0b15ae46bd2395c08275a999981779224f3ec3512b457808b0196e9fb4baf6ef"
+        },
+        {
+          "file": "engine.cloud-tts/preview-dark.png",
+          "alt": "云端语音合成 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 114807,
+          "sha256": "ca8f3744b72f7484b5adb45233158a1edf9322fe2b038da34dbdc7338167f66f"
+        }
+      ]
+    },
+    {
+      "id": "engine.piper",
+      "images": [
+        {
+          "file": "engine.piper/cover.svg",
+          "alt": "Piper 语音引擎 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 127203,
+          "sha256": "c3ff9d0c6ff00ea90e9fe39e014ce0bc73aa820c1c68b02954fe4a4c16b12693"
+        },
+        {
+          "file": "engine.piper/preview-light.png",
+          "alt": "Piper 语音引擎 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 67595,
+          "sha256": "f88fc76d2114a02b88cdf673a3d2f487af74314cca22682df4bac37d2d646b44"
+        },
+        {
+          "file": "engine.piper/preview-dark.png",
+          "alt": "Piper 语音引擎 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 67116,
+          "sha256": "1cf29b3c752d28203023fbbcd922a542bba36130b110ca979752ccb474fb4661"
+        }
+      ]
+    },
+    {
+      "id": "engine.sensevoice",
+      "images": [
+        {
+          "file": "engine.sensevoice/cover.svg",
+          "alt": "SenseVoice 语音识别 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 124118,
+          "sha256": "f5750edcf1787ba8dee355af1cf03db5e4e8547f3e45f310a5212eb87dfcf32f"
+        },
+        {
+          "file": "engine.sensevoice/preview-light.png",
+          "alt": "SenseVoice 语音识别 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 58298,
+          "sha256": "bec7205346d6bb2b20d3f449f0437310a5d21eb475eab711d3f138ab4c3fb11f"
+        },
+        {
+          "file": "engine.sensevoice/preview-dark.png",
+          "alt": "SenseVoice 语音识别 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 58085,
+          "sha256": "378dad1382088e75e721bafa581efaeca111c41038a0cd9fc9940d46c1510fba"
+        }
+      ]
+    },
+    {
+      "id": "engine.streaming-asr",
+      "images": [
+        {
+          "file": "engine.streaming-asr/cover.svg",
+          "alt": "流式语音识别 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 136531,
+          "sha256": "551f1a28eb7b19edc65c9809c09949ca7d1fbbbf99607ae3b2ddaa27f2568693"
+        },
+        {
+          "file": "engine.streaming-asr/preview-light.png",
+          "alt": "流式语音识别 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 64169,
+          "sha256": "d5c1d303404d8f284796bed1b9cbafba2948ce74470a388ebb1085685e8ef6e5"
+        },
+        {
+          "file": "engine.streaming-asr/preview-dark.png",
+          "alt": "流式语音识别 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 63839,
+          "sha256": "06075f1db289a8634022dde8865faed7ca39dcce17449300a3e1fea21ddd36da"
+        }
+      ]
+    },
+    {
+      "id": "input.quick-gestures",
+      "images": [
+        {
+          "file": "input.quick-gestures/cover.svg",
+          "alt": "手势触发 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 123679,
+          "sha256": "70cf7c9a28c9eee940259c94fd1ecafe0284ea2264607f3c3f62f72dede27c75"
+        },
+        {
+          "file": "input.quick-gestures/preview-light.png",
+          "alt": "手势触发 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 156677,
+          "sha256": "c4b51af44024f383f788133b8b5395a626ce2e8d7fc6de04d18b9a9f1e0a0d01"
+        },
+        {
+          "file": "input.quick-gestures/preview-dark.png",
+          "alt": "手势触发 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 156391,
+          "sha256": "654493b8e5d1d07b01e16ac511b71503d4d82cbcb49506292d40561bb6352f40"
+        }
+      ]
+    },
+    {
+      "id": "runtime.lua",
+      "images": [
+        {
+          "file": "runtime.lua/cover.svg",
+          "alt": "插件编辑器 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 129009,
+          "sha256": "4c90565a88b4dd2a63f29dc768a72b8bc3f221752a36e6851127778bea5177c8"
+        },
+        {
+          "file": "runtime.lua/preview-light.png",
+          "alt": "插件编辑器 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 72290,
+          "sha256": "6165640797c52e5773bb39928e235ecdec89eae6ae72f645bdd42f3bd739cfa9"
+        },
+        {
+          "file": "runtime.lua/preview-dark.png",
+          "alt": "插件编辑器 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 71830,
+          "sha256": "84942d2130705c98aa63ed7c1b0445ac834f76cedac7bc49fedf33165b6dc368"
+        }
+      ]
+    },
+    {
+      "id": "service.speech-recognition",
+      "images": [
+        {
+          "file": "service.speech-recognition/cover.svg",
+          "alt": "语音识别服务 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 130784,
+          "sha256": "abacecbfa17b86921a1d386e3ffb6b4c4155f3c7dd1899916216beb09df21c45"
+        },
+        {
+          "file": "service.speech-recognition/preview-light.png",
+          "alt": "语音识别服务 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 150010,
+          "sha256": "70d018ab7d1e6b84550b0e1c186b9316fb6dacc44c819ab58a74b87f3ab8d92a"
+        },
+        {
+          "file": "service.speech-recognition/preview-dark.png",
+          "alt": "语音识别服务 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 149661,
+          "sha256": "2954604399ce4a51ddeb780fe4175cf73cfa632690380055f2965b2755a394c9"
+        }
+      ]
+    },
+    {
+      "id": "service.speech-synthesis",
+      "images": [
+        {
+          "file": "service.speech-synthesis/cover.svg",
+          "alt": "语音合成服务 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 120744,
+          "sha256": "d0346ed07135416785af06a705c47be6085887ad7665374f17bccd2ada153fde"
+        },
+        {
+          "file": "service.speech-synthesis/preview-light.png",
+          "alt": "语音合成服务 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 86079,
+          "sha256": "0fca10e22d19b496ecaf41e3cbc6b32b358822dffe69961ab6a58b60024fb333"
+        },
+        {
+          "file": "service.speech-synthesis/preview-dark.png",
+          "alt": "语音合成服务 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 85984,
+          "sha256": "8bfa64b29ea3c1017ab3e86615e602df21d656f482d3e590b97be6eb5a4f13e9"
+        }
+      ]
+    },
+    {
+      "id": "tools.cloud-agent",
+      "images": [
+        {
+          "file": "tools.cloud-agent/cover.svg",
+          "alt": "AI 助手 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 119180,
+          "sha256": "5fec7ee7bac901b346ed29ae1a3e70eb3f28f2965387580efe5864d563e9da86"
+        },
+        {
+          "file": "tools.cloud-agent/preview-light.png",
+          "alt": "AI 助手 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 147405,
+          "sha256": "a3c2d3c4c322bf43aed2389432cb5877715f13c2d20e60a287aed85a2891b8d6"
+        },
+        {
+          "file": "tools.cloud-agent/preview-dark.png",
+          "alt": "AI 助手 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 146364,
+          "sha256": "2061fce33cd1752b63693707b497c8c6477151befe65f78091ed5175ba07e42a"
+        }
+      ]
+    },
+    {
+      "id": "tools.native-builder",
+      "images": [
+        {
+          "file": "tools.native-builder/cover.svg",
+          "alt": "原生构建扩展 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 122579,
+          "sha256": "de1ba3d6b9dd1c910ed901eca50c1d93463903200d7ef5107404b6566fe4e43e"
+        },
+        {
+          "file": "tools.native-builder/preview-light.png",
+          "alt": "原生构建扩展 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 85979,
+          "sha256": "5f9d7ca8e639824f7ce46321ea960515764000ba648c368a285b9b6106d92f19"
+        },
+        {
+          "file": "tools.native-builder/preview-dark.png",
+          "alt": "原生构建扩展 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 85272,
+          "sha256": "b830676534037dea30def8c74c9851438564865653de4de1d39630147e269ee1"
+        }
+      ]
+    },
+    {
+      "id": "tools.package-store",
+      "images": [
+        {
+          "file": "tools.package-store/cover.svg",
+          "alt": "插件商店 · 花型封面",
+          "width": 1600,
+          "height": 800,
+          "bytes": 121473,
+          "sha256": "3b0115f8d8b4d1434175d2b4f6766b9d762986efe522952b2032d87e606585b5"
+        },
+        {
+          "file": "tools.package-store/preview-light.png",
+          "alt": "插件商店 · 界面预览 · 浅色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 156612,
+          "sha256": "adb5110f698cafe51d27e05df4883f1f1048cda59f77adafa27e0d2e003c2361"
+        },
+        {
+          "file": "tools.package-store/preview-dark.png",
+          "alt": "插件商店 · 界面预览 · 深色",
+          "width": 1179,
+          "height": 2556,
+          "bytes": 157819,
+          "sha256": "ab090a41d56eeff48b683e9b4a2a3dfa1da969a1fa9dc3169914839754f54461"
+        }
+      ]
+    }
+  ],
+  "provenance": [
+    {
+      "id": "backup.kigusay",
+      "page": "import",
+      "sourceCommit": "7c8361700b4a8bb6ba2ae8e0473497dc551c725b",
+      "packageSha256": "2c6439da84d742547e95b08f723258ae224bbc7cc73d5efe0ceaf831ff738a0c"
+    },
+    {
+      "id": "debug.ui",
+      "page": "config",
+      "sourceCommit": "6dd6264b231e876c6e3f1d13a9fed5d286a2c371",
+      "packageSha256": "0897a31410ad918ce7adace0077a24ab90b6dc2bec01b761c27fdae7ab677771"
+    },
+    {
+      "id": "display.led",
+      "page": "LED 样式",
+      "sourceCommit": "b4565e60c99f7728a08ac8bf926d54eb9eb17ece",
+      "packageSha256": "f0a46d8a9412fa0422d30c85b4a9ebc438b0464adf6451e7442a3d2fe408f272"
+    },
+    {
+      "id": "engine.cloud-asr",
+      "page": "provider/YXp1cmUtY2NjNTMxNGY",
+      "sourceCommit": "0c3fbfb640e9e2198b9218db96cb2cae3e13fba1",
+      "packageSha256": "f8e92a0f8800ac442796add919a54867216ff67baef5b2bff3c0acd2f69a2e32"
+    },
+    {
+      "id": "engine.cloud-tts",
+      "page": "provider/YXp1cmUtNjk0ODA1NDM",
+      "sourceCommit": "4e1fc7cb6b395fbad3226b7a6db7e800a3854c83",
+      "packageSha256": "f821db400a06b4c3afc71779f3bd3c659b261cd8e6923db63550bcfa191ac468"
+    },
+    {
+      "id": "engine.piper",
+      "page": "about",
+      "sourceCommit": "61e2befc6b2a87bcc5f15d1f19e0d53064793cf4",
+      "packageSha256": "d18b18f543e2ae90589c16fabf325e1b452dcc2286f3c8b00331b0b93388794a"
+    },
+    {
+      "id": "engine.sensevoice",
+      "page": "settings",
+      "sourceCommit": "358036bfdba3bb6108395bf426962a6866f53ad6",
+      "packageSha256": "c1c931c2947cf736aaaf4420f6686cb5c5c19776d3ed6be58e78cef4a385cd19"
+    },
+    {
+      "id": "engine.streaming-asr",
+      "page": "packs",
+      "sourceCommit": "43cdf4010416c7bff6e5bacf8bacf341c6ac846d",
+      "packageSha256": "9ba6a6771c93c1ea96148a4c0aaf08a279649904e172893c7d8d2007130da54b"
+    },
+    {
+      "id": "input.quick-gestures",
+      "page": "gestures",
+      "sourceCommit": "eec4f03220b41736a7221f234fe5731ca0660f9b",
+      "packageSha256": "506b3da6322df71a05406168675610102f6f88ddc36495c6c213ff94c8ba410c"
+    },
+    {
+      "id": "runtime.lua",
+      "page": "manager",
+      "sourceCommit": "bf0dc45737f506a02325900f69eaab2045c6662a",
+      "packageSha256": "9edc542eebda92fbf07fd91b25995ed70d69b5e7e07222ae54df5de34b0ee4ca"
+    },
+    {
+      "id": "service.speech-recognition",
+      "page": "manager",
+      "sourceCommit": "6c5d027096a1baff838a8955a305447d607f5a1f",
+      "packageSha256": "46da79aca629488108759a5e240866172f3d5c7916836efdd3cd3eac69ae6b16"
+    },
+    {
+      "id": "service.speech-synthesis",
+      "page": "manager",
+      "sourceCommit": "6002af0d31abc58ae7860860054bf312f6a2a91d",
+      "packageSha256": "d9c74a4cb51cf6aaef559f00b6ee1399a1fb813e88734cf7b1adbafa327929a8"
+    },
+    {
+      "id": "tools.cloud-agent",
+      "page": "chat",
+      "sourceCommit": "eb0c5f9e591f2b8c7ed6753437f1e77e8bc8b096",
+      "packageSha256": "54fef8b9be2a409822c2a852c689201c329ca1b61dfdfe97ac7c8e9f88a4b570"
+    },
+    {
+      "id": "tools.native-builder",
+      "page": "manager",
+      "sourceCommit": "20ec934a341d6bffdf39e50f6950e3ddc6fd8d00",
+      "packageSha256": "f3fc8c1581bf54ec89df6b77b55e90c2197b96071b97e4411a4608b015ce713c"
+    },
+    {
+      "id": "tools.package-store",
+      "page": "store",
+      "sourceCommit": "7c37522104d71046d82d8dc2e8b143230f65b221",
+      "packageSha256": "5409bc60760f6c749a7ac96639176ebd79e299cee3ecda8f5da7eb69958dbc36"
+    }
+  ],
+  "environment": "Robolectric API 35, 393×852 dp, xxhdpi; LED: Chromium 1280×720",
+  "sampleData": "AI conversation and LED text are illustrative, offline data; no account credentials or real conversations."
+}

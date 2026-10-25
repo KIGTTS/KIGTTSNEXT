@@ -95,6 +95,9 @@ android {
     if (providers.gradleProperty("pluginIntegration").orNull == "true") {
         sourceSets.getByName("test").java.srcDir("src/pluginIntegrationTest/java")
     }
+    if (providers.gradleProperty("pluginArtwork").orNull == "true") {
+        sourceSets.getByName("test").java.srcDir("src/pluginArtworkTest/java")
+    }
 }
 dependencies {
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
