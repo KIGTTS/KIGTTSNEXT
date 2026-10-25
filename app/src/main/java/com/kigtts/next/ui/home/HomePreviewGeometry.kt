@@ -7,9 +7,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 
-/** Only measured rectangles, never a screenshot of the user's text or media. */
+/** Measured rectangles and control state; never screenshots of user text or media. */
 @Stable class HomePreviewGeometry {
     val regions = mutableStateMapOf<String, Rect>()
+    var automaticRead by mutableStateOf(false)
     fun update(key: String, rect: Rect) { if (regions[key] != rect) regions[key] = rect }
 }
 val LocalHomePreviewGeometry = staticCompositionLocalOf<HomePreviewGeometry?> { null }

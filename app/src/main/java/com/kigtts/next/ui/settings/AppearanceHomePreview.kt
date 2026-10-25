@@ -4,6 +4,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -13,11 +17,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kigtts.next.R
 import com.kigtts.next.state.SubtitleAppearance
 import com.kigtts.next.theme.*
@@ -26,7 +39,8 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
 /** Scale measured home geometry, retaining blank controls and branding but no user content. */
 @Composable internal fun AppearanceHomePreview(settings: ThemeSettings, placeholder: String,
     subtitle: SubtitleAppearance, modifier: Modifier = Modifier) {
-    val measured = LocalHomePreviewGeometry.current?.regions?.toMap().orEmpty()
+    val geometry = LocalHomePreviewGeometry.current
+    val measured = geometry?.regions?.toMap().orEmpty()
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current.density
     val viewport = measured["viewport"] ?: Rect(0f, 0f, configuration.screenWidthDp * density, configuration.screenHeightDp * density)
@@ -36,6 +50,8 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
     val controls = LocalCompactControlPalette.current ?: compactControlPalette(settings,
         dark = settings.mode.usesDark(isSystemInDarkTheme()), base = colors)
     val logo = painterResource(R.drawable.logo_horizontal)
+    val readIcon = rememberVectorPainter(if (geometry?.automaticRead == true) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff)
+    val settingsIcon = rememberVectorPainter(Icons.Default.Settings)
     val radius = settings.cornerRadius * density
     val fallback = if (wide) Rect(88f * density, 8f * density, viewport.right - 208f * density, viewport.bottom - 12f * density)
         else Rect(12f * density, 64f * density, viewport.right - 12f * density, viewport.bottom - 212f * density)
@@ -43,6 +59,10 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
     // Omit the listening panel; keep the actual subtitle bottom and drawer edges.
     val main = if (wide) original.copy(left = viewport.left + 88f * density)
         else original.copy(top = viewport.top + 64f * density)
+    val sample = rememberTextMeasurer().measure("你好", LocalAppearanceFont.current.apply(TextStyle(
+        color = colors.onSurface, fontSize = (minOf(main.width * .26f, main.height * .32f) / density).sp,
+        fontWeight = if (subtitle.bold) FontWeight.Bold else FontWeight.Normal,
+        platformStyle = PlatformTextStyle(includeFontPadding = false))))
     val drawer = measured["phrases"] ?: if (wide)
         Rect(viewport.right - 196f * density, 8f * density, viewport.right - 12f * density, viewport.bottom - 12f * density)
         else Rect(12f * density, viewport.bottom - 200f * density, viewport.right - 12f * density, viewport.bottom - 4f * density)
@@ -51,7 +71,8 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
         Box(Modifier.size((viewport.width * scale / density).dp, (viewport.height * scale / density).dp)
             .clip(MaterialTheme.shapes.large).testTag("appearance-home-thumbnail")) {
             AppearanceBackdrop(settings, Modifier.matchParentSize())
-            Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")) {
+            Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
+                .semantics { contentDescription = "主界面预览，示例文字：你好" }) {
                 withTransform({ scale(scale, scale, Offset.Zero); translate(-viewport.left, -viewport.top) }) {
                     fun panel(rect: Rect, color: Color, r: Float = radius) {
                         if (rect.width > 0 && rect.height > 0) drawRoundRect(color, rect.topLeft, rect.size,
@@ -63,6 +84,7 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
                             minOf(rect.width, rect.height, button) / 2, rect.center)
                     }
                     panel(main, colors.surfaceContainerHigh.copy(alpha = if (settings.background == null) 1f else .88f))
+                    drawText(sample, topLeft = Offset(main.center.x - sample.size.width / 2, main.center.y - sample.size.height / 2))
                     panel(drawer, colors.surfaceContainer.copy(alpha = if (settings.background == null) 1f else .85f))
                     val cards = measured.filterKeys { it.startsWith("phrase/") }.values.filter { it.overlaps(drawer) }
                     cards.forEach { panel(it.intersect(drawer), colors.surfaceContainerLowest, radius * .7f) }
@@ -75,16 +97,24 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
                             panel(Rect(left, top, left + cell, top + height), colors.surfaceContainerLowest)
                         }
                     }
-                    listOf(Offset(main.left + pad, main.top + pad), Offset(main.right - pad - button, main.top + pad),
-                        Offset(main.left + pad, main.bottom - pad - button), Offset(main.right - pad - button, main.bottom - pad - button))
-                        .forEach { circle(Rect(it, Size(button, button))) }
+                    val pillWidth = button * 1.8f
+                    listOf(Rect(main.left + pad, main.top + pad, main.left + pad + pillWidth, main.top + pad + button),
+                        Rect(main.left + pad, main.bottom - pad - button, main.left + pad + pillWidth, main.bottom - pad),
+                        Rect(main.right - pad - pillWidth, main.bottom - pad - button, main.right - pad, main.bottom - pad))
+                        .forEach { panel(it, controls.container, button / 2) }
+                    circle(Rect(main.right - pad - button, main.top + pad, main.right - pad, main.top + pad + button))
                     val headerStart = measured["header-start"] ?: if (wide)
                         Rect(8f * density, viewport.bottom - 56f * density, 56f * density, viewport.bottom - 8f * density)
                         else Rect(8f * density, viewport.top + 8f * density, 56f * density, viewport.top + 56f * density)
                     val headerEnd = measured["header-end"] ?: if (wide)
                         Rect(8f * density, 8f * density, 56f * density, 56f * density)
                         else Rect(viewport.right - 56f * density, viewport.top + 8f * density, viewport.right - 8f * density, viewport.top + 56f * density)
-                    circle(headerStart, controls.plainContent); circle(headerEnd, controls.plainContent)
+                    listOf(headerStart to readIcon, headerEnd to settingsIcon).forEach { (rect, painter) ->
+                        val size = Size(24f * density, 24f * density)
+                        withTransform({ translate(rect.center.x - size.width / 2, rect.center.y - size.height / 2) }) {
+                            with(painter) { draw(size, colorFilter = ColorFilter.tint(controls.plainContent)) }
+                        }
+                    }
                     val logoRect = measured["header-logo"] ?: Rect(
                         Offset(if (wide) 32f * density - 64f * density else viewport.center.x - 64f * density,
                             if (wide) viewport.center.y - 16f * density else viewport.top + 16f * density), Size(128f * density, 32f * density))
@@ -109,11 +139,9 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
                             val selected = key.startsWith("tab-selected/")
                             val bounds = rect.intersect(drawer).intersect(tabBar)
                             val corner = (if (selected) 16f else 8f) * density
-                            panel(bounds, if (selected) colors.primaryContainer else Color.Transparent, corner)
-                            if (!selected) drawRoundRect(colors.outlineVariant, bounds.topLeft, bounds.size,
+                            if (selected) panel(bounds, colors.primaryContainer, corner)
+                            else drawRoundRect(colors.outlineVariant, bounds.topLeft, bounds.size,
                                 CornerRadius(corner.coerceAtMost(bounds.height / 2)), style = Stroke(density))
-                            val content = if (selected) colors.onPrimaryContainer else colors.onSurfaceVariant
-                            drawCircle(content, 6f * density, Offset(bounds.left + 16f * density, bounds.center.y))
                         }
                     }
                 }

@@ -53,7 +53,8 @@ class AppearancePreviewUiTest {
             listOf(108f to 264f, 1071f to 264f, 108f to 1848f, 1071f to 1848f).forEach { (x, y) ->
                 assertEquals("四角控件应与主界面同色：" + theme, control, color(x, y))
             }
-            assertEquals("底部选中分组应保留主题色占位", palette.primaryContainer.toArgb(), color(240f, 2460f))
+            assertEquals("底部选中 Tab 保留主题色实心胶囊", palette.primaryContainer.toArgb(), color(240f, 2460f))
+            assertEquals("底部 Tab 内部不保留图标圆点", palette.primaryContainer.toArgb(), color(108f, 2460f))
             bitmap.recycle()
         }
     }
@@ -67,6 +68,7 @@ class AppearancePreviewUiTest {
         compose.onNodeWithTag("appearance-preview").assertIsDisplayed()
         compose.onNodeWithText("背景与字体").assertIsDisplayed()
         compose.onNodeWithTag("appearance-home-wireframe").assertIsDisplayed()
+        compose.onNodeWithContentDescription("主界面预览，示例文字：你好").assertIsDisplayed()
         compose.onAllNodes(hasText("点击输入文字") and hasAnyAncestor(hasTestTag("appearance-preview"))).assertCountEquals(0)
         compose.onNodeWithText("字体").performClick()
         compose.runOnIdle { org.junit.Assert.assertTrue(fonts) }

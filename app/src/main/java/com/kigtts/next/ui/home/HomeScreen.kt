@@ -35,6 +35,8 @@ fun HomeScreen(
 ) {
     QuickSortPrompt(model.quickSort)
     val sections = rememberSaveableStateHolder()
+    val preview = LocalHomePreviewGeometry.current
+    SideEffect { preview?.automaticRead = state.autoPlayback }
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
     var backdropViewport by remember { mutableStateOf(Rect.Zero) }
