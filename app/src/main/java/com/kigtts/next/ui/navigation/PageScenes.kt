@@ -18,6 +18,8 @@ data class PageEntry(val scene: PageScene, val depth: Int,
         is PageScene.Screen -> when (val destination = page.destination) {
             Destination.Home -> "home"
             Destination.Settings -> "settings"
+            Destination.PersonalCards -> "personal-cards"
+            Destination.Fonts -> "fonts"
             is Destination.SettingsDetail -> "settings/" + destination.category.name
             Destination.Plugins -> "plugins"
             is Destination.PluginPage -> destination.pluginId + "/" + destination.pageId

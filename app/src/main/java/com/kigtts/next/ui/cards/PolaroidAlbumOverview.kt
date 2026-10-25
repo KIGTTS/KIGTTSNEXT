@@ -64,7 +64,7 @@ private fun AlbumCover(cards: List<PolaroidCard>, imageFile: (String) -> File?, 
         if (cards.isEmpty()) Icon(Icons.Default.PhotoAlbum, "空相册", Modifier.size(56.dp), tint = emptyTint)
         else cards.forEachIndexed { index, card ->
             val frame = frames.firstOrNull { it.id == card.frameStyleId }
-            val width = minOf(maxWidth * .7f, maxHeight * .88f * polaroidFormat(card, frame).geometry.aspectRatio.toFloat())
+            val width = minOf(maxWidth * .7f, maxHeight * .88f * com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat())
             PolaroidCanvas(card, imageFile, Modifier.width(width).zIndex((3 - index).toFloat()).graphicsLayer {
                 translationX = when (index) { 1 -> 8.dp.toPx(); 2 -> -8.dp.toPx(); else -> 0f }
                 rotationZ = when (index) { 1 -> 6f; 2 -> -8f; else -> -2f }

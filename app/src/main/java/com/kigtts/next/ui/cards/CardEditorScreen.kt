@@ -68,7 +68,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     LaunchedEffect(cameraRequestVersion, cameraImageId) {
         if (cameraRequestVersion != 0L && cameraRequestVersion != handledCameraVersion && cameraImageId != null) {
             draft = draft.copy(imageId = cameraImageId, originalImageId = cameraOriginalImageId, photoX = cameraPhotoX, photoY = cameraPhotoY, photoZoom = cameraPhotoZoom,
-                frameStyleId = cameraFrameStyleId ?: draft.frameStyleId)
+                frameStyleId = if (persisted.frameStyleId == "identity.banner") "identity.banner" else cameraFrameStyleId ?: draft.frameStyleId)
             selectedId = null; mode = CardEditorMode.CROP
             handledCameraVersion = cameraRequestVersion
         }
@@ -126,7 +126,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
         try { events.collect { }; if (!savedReturn && !busy) backFromEditor() } catch (_: CancellationException) { }
     }
-    CardEditorPanelScaffold(polaroidFormat(draft, frames.firstOrNull { it.id == draft.frameStyleId }).geometry.aspectRatio.toFloat(),
+    CardEditorPanelScaffold(polaroidPaperGeometry(draft, frames.firstOrNull { it.id == draft.frameStyleId }).aspectRatio.toFloat(),
         enabled, textEditing, ::cancelAdjustment, preview = { paperModifier ->
             PolaroidCanvas(draft, stickers::imageFile, paperModifier,
                 if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
@@ -142,7 +142,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             selected = selected, editText = { textEditing = true }, layerColor = { textColor = true },
             deleteLayer = { draft = draft.copy(layers = draft.layers.filterNot { it.id == selectedId }); selectedId = null },
             forwardLayer = { selected?.let { layer -> draft = draft.copy(layers = draft.layers.filterNot { it.id == layer.id } + layer) } },
-            mode = mode, selectMode = { mode = it; cancelAdjustment() }, frames = frames, openLibrary = openLibrary,
+            mode = mode, selectMode = { mode = it; cancelAdjustment() }, frames = if (persisted.frameStyleId == "identity.banner") frames.filter { it.id == "identity.banner" } else frames, openLibrary = openLibrary,
             textEditing = textEditing, updateTextLayer = ::updateLayer,
             finishText = { textEditing = false; focus.clearFocus(); keyboard?.hide() }, showTabs = false,
             stickerLibrary = {

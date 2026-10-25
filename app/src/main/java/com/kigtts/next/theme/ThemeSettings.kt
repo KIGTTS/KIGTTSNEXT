@@ -14,6 +14,8 @@ enum class ThemeMode(val label: String) {
     fun usesDark(systemDark: Boolean) = when (this) { SYSTEM -> systemDark; LIGHT -> false; DARK -> true }
 }
 
+enum class ThemeColorSource(val label: String) { WALLPAPER("壁纸"), BACKGROUND("背景图"), CUSTOM("自定义") }
+
 data class ThemeSettings(
     val seed: Long = 0xFF00696E,
     val contrast: ContrastLevel = ContrastLevel.DEFAULT,
@@ -25,9 +27,20 @@ data class ThemeSettings(
     val backgroundDim: Float = .35f,
     val font: String? = null,
     val fontName: String = "系统默认",
+    val backgroundColorEnabled: Boolean = false,
+    val backgroundSeed: Long? = null,
+    val askBackgroundColor: Boolean = true,
 ) {
     val cornerRadius: Float get() = cornerLevel.radius
     val hex: String get() = "#%06X".format(seed and 0xFFFFFF)
+    val colorSource get() = when {
+        wallpaperEnabled -> ThemeColorSource.WALLPAPER
+        backgroundColorEnabled -> ThemeColorSource.BACKGROUND
+        else -> ThemeColorSource.CUSTOM
+    }
+    val effectiveSeed get() = if (backgroundColorEnabled && background != null) backgroundSeed ?: seed else seed
+    fun withColorSource(source: ThemeColorSource) = copy(wallpaperEnabled = source == ThemeColorSource.WALLPAPER,
+        backgroundColorEnabled = source == ThemeColorSource.BACKGROUND)
 }
 
 class ThemeSettingsStore(context: Context) {
@@ -43,6 +56,9 @@ class ThemeSettingsStore(context: Context) {
         backgroundDim = preferences.getFloat("backgroundDim", .35f).coerceIn(0f, 1f),
         font = preferences.getString("font", null),
         fontName = preferences.getString("fontName", "系统默认") ?: "系统默认",
+        backgroundColorEnabled = preferences.getBoolean("backgroundColor", false),
+        backgroundSeed = if (preferences.contains("backgroundSeed")) preferences.getLong("backgroundSeed", 0) else null,
+        askBackgroundColor = preferences.getBoolean("askBackgroundColor", true),
     )
     fun save(settings: ThemeSettings) {
         preferences.edit().putLong("seed", settings.seed).putFloat("contrast", settings.contrast.value)
@@ -50,5 +66,9 @@ class ThemeSettingsStore(context: Context) {
             .putBoolean("wallpaper", settings.wallpaperEnabled).putString("mode", settings.mode.name).apply()
         preferences.edit().putString("background", settings.background).putFloat("backgroundDim", settings.backgroundDim.coerceIn(0f, 1f))
             .putString("font", settings.font).putString("fontName", settings.fontName).apply()
+        preferences.edit().putBoolean("backgroundColor", settings.backgroundColorEnabled)
+            .putBoolean("askBackgroundColor", settings.askBackgroundColor).apply {
+                if (settings.backgroundSeed == null) remove("backgroundSeed") else putLong("backgroundSeed", settings.backgroundSeed)
+            }.apply()
     }
 }

@@ -5,9 +5,10 @@ import com.kigtts.plugin.api.*
 internal val editablePolaroidFormats = listOf(PolaroidFormat.MINI, PolaroidFormat.WIDE, PolaroidFormat.SQUARE)
 
 internal fun polaroidFormat(card: PolaroidCard, frame: PolaroidFrameStyle?): PolaroidFormat =
-    frame?.format ?: when (card.frameStyleId.split('.').getOrNull(1)?.takeIf { card.frameStyleId.startsWith("instax.") }) {
+    frame?.format ?: when (card.frameStyleId.split('.').getOrNull(1)?.takeIf { card.frameStyleId.startsWith("instax.") || card.frameStyleId.startsWith("received.") }) {
         "mini" -> PolaroidFormat.MINI
         "wide" -> PolaroidFormat.WIDE
+        "banner" -> PolaroidFormat.WIDE
         "square" -> PolaroidFormat.SQUARE
         else -> PolaroidFormat.LEGACY
     }

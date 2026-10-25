@@ -18,7 +18,8 @@ import com.kigtts.next.ui.components.feedbackClick
 /** The page background covers the full window; only its controls consume safe drawing insets. */
 @Composable
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String="返回上一页",largeBar:Boolean=true,
-    actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,content:@Composable ()->Unit) {
+    actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,extendToBottom:Boolean=false,
+    backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
@@ -38,9 +39,11 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     }
     val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back) {
+        Box(Modifier.fillMaxSize()) {
+        backgroundSettings?.let { com.kigtts.next.theme.AppearanceBackdrop(it,Modifier.matchParentSize()) }
         Scaffold(modifier.fillMaxSize().then(if(largeBar)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
-            containerColor=MaterialTheme.colorScheme.background,
-            contentWindowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
+            containerColor=if(backgroundSettings==null)MaterialTheme.colorScheme.background else androidx.compose.ui.graphics.Color.Transparent,
+            contentWindowInsets=WindowInsets.safeDrawing.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading) },Modifier.testTag("large-page-bar"),
                 subtitle=subtitle?.let { text -> { Text(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines=1, overflow=TextOverflow.Ellipsis) } },
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
@@ -54,6 +57,7 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
                 navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,false) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) }) }) { insets ->
             Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets)) { content() }
+        }
         }
     }
 }

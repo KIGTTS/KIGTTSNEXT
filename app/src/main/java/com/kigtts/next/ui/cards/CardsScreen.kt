@@ -29,7 +29,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
     val actions = remember(cards, stickers) { CardWorkspaceActions(context, cards, stickers, scope,
         { editor.value(it) }, { feedback.value(it) }, { id, title -> quick.value(id, title) }) }
     val preferences = remember(context) { context.getSharedPreferences("cards-view", 0) }
-    var discovery by remember { mutableStateOf(preferences.getBoolean("face-discovery", false)) }
+    val faceShare = com.kigtts.next.sharing.LocalFaceShare.current
     var mode by rememberSaveable { mutableStateOf(PolaroidBrowseMode.STACK) }
     var columnLevel by rememberSaveable { mutableIntStateOf(0) }
     var selectedAlbum by rememberSaveable { mutableStateOf(preferences.getString("album", CardRepository.DEFAULT_ALBUM) ?: CardRepository.DEFAULT_ALBUM) }
@@ -119,10 +119,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
                 if (columns < maximumColumns) "宫格列数：" + columns + "，点按缩小" else "相册总览",
                 if (columns < maximumColumns) Icons.Default.ViewWeek else Icons.Default.PhotoLibrary, enabled,
                 click = { if (columns < maximumColumns) columnLevel++ else mode = PolaroidBrowseMode.ALBUMS }))
-            add(ToolbarAction("face-discovery", "面对面发现", Icons.Default.Radar, active, checked = discovery, click = {
-                discovery = !discovery; preferences.edit().putBoolean("face-discovery", discovery).apply()
-                message(if (discovery) "面对面功能尚未开放" else "已关闭面对面发现")
-            }))
+            add(ToolbarAction("face-discovery", "面对面接收", Icons.Default.Radar, active, click = { faceShare?.receive?.invoke() }))
         }, primaryCount = 4)
 
         val body: @Composable () -> Unit = {

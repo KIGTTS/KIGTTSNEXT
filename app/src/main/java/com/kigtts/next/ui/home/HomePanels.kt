@@ -21,12 +21,12 @@ fun HomePanels(state: AppState, phrases: List<QuickPhrase>, categories: List<Str
     val background = animateFloatAsState(if (state.panel != null) 1f else 0f,
         MaterialTheme.motionScheme.defaultEffectsSpec(), label = "sheet-background")
     Surface(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
-        .heightFrom { motion.height }.testTag("home-sheet"),
+        .heightFrom { motion.height }.testTag("home-sheet").homePreviewRegion("phrases"),
         color = Color.Transparent,
         shape = homeCardShape(CornerNeighbors(above = motion.panel != null))) {
         Box {
-            Box(Modifier.matchParentSize().testTag("sheet-background").graphicsLayer { alpha = background.value }
-                .background(MaterialTheme.colorScheme.surfaceContainer))
+            com.kigtts.next.theme.DrawerBackdrop(state.theme,
+                Modifier.matchParentSize().testTag("sheet-background").graphicsLayer { alpha = background.value })
             Column {
                 SheetChrome(state, model, motion, model::editQuickTexts)
                 if (hasContent) QuickTextPanel(state, phrases, categories, model, motion, Modifier.weight(1f))

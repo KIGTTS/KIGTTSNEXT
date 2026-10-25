@@ -16,9 +16,10 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
-    context: PluginContext = PluginContext("", ""), revision: Int = 0) {
+    context: PluginContext = PluginContext("", ""), revision: Int = 0, personalInformation: @Composable () -> Unit = {}) {
     val cards = remember(registry, revision, context) { settingsCards(registry, context) }
     SettingsLayout {
+        personalInformation()
         MotionColumn(cards, { card, _ -> card.id }, Modifier.fillMaxWidth(), spacing = 20.dp, animateInitial = false) { card, active ->
             SettingsGroup(card.title, card.subtitle) {
                 MotionColumn(card.links, { link, _ -> link.id }, Modifier.fillMaxWidth(), enabled = active,

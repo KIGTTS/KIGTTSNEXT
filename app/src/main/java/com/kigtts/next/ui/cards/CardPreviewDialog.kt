@@ -48,6 +48,9 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
     var paperDrawn by remember(card.id) { mutableStateOf(false) }
     var handoffComplete by rememberSaveable(card.id) { mutableStateOf(printedOrigin == null) }
     val drawn = rememberUpdatedState(onFirstPaperDraw)
+    val faceShare = com.kigtts.next.sharing.LocalFaceShare.current
+    val receipt = com.kigtts.next.sharing.rememberFaceReceipt(card.id)
+    var senderInfo by remember(card.id) { mutableStateOf(false) }
     CardPreviewWindow(onDismiss, enterReady = paperReady && (!initialHandoff || paperDrawn), printHandoff = initialHandoff,
         closeEnabled = paperReady && (!initialHandoff || handoffComplete), initiallyOpened = resumedPreview) { reveal, closing, close ->
         LaunchedEffect(reveal) { if (reveal >= .999f) handoffComplete = true }
@@ -62,9 +65,10 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                 .then(if (movingPaper) Modifier else Modifier.clipToBounds())
                 .onSizeChanged { viewer.viewportSize = it }
                 .onGloballyPositioned { viewport = it.boundsInWindow(); window = it.findRootCoordinates().size }
-                .polaroidPreviewGestures(viewer, controlsEnabled && reveal >= .999f, feedbackClick { close(onDismiss) })
+                .polaroidPreviewGestures(viewer, controlsEnabled && reveal >= .999f, feedbackClick { close(onDismiss) },
+                    onSwipeUp = faceShare?.let { { it.send(listOf(card.id)) } })
                 .testTag("card-preview-content"), contentAlignment = Alignment.Center) {
-                val width = minOf(maxWidth, maxHeight * polaroidFormat(card, frame).geometry.aspectRatio.toFloat(), 720.dp)
+                val width = minOf(maxWidth, maxHeight * com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat(), 720.dp)
                 val density = LocalDensity.current
                 val warmImage = if (printedOrigin != null) {
                     val file = card.imageId?.let(imageFile)
@@ -76,7 +80,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                 } else null
                 val ready = !initialHandoff || (viewport.width > 0f && (card.imageId == null || warmImage != null))
                 SideEffect { if (ready) paperReady = true }
-                Box(Modifier.width(width.coerceAtLeast(1.dp)).aspectRatio(polaroidFormat(card, frame).geometry.aspectRatio.toFloat())
+                Box(Modifier.width(width.coerceAtLeast(1.dp)).aspectRatio(com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat())
                     .onSizeChanged { viewer.paperSize = it }.graphicsLayer {
                     if (movingPaper) {
                         val pose = printedPaperPose(printedPaperStart(requireNotNull(printedOrigin), window),
@@ -118,6 +122,10 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                     Icon(Icons.Default.MoreVert, "拍立得操作")
                 }
                 DropdownMenu(menu && controlsEnabled, { menu = false }) {
+                    if (receipt != null) DropdownMenuItem({ Text("发送者名片") }, onClick = feedbackClick { menu = false; senderInfo = true },
+                        leadingIcon = { Icon(Icons.Default.AccountCircle, null) })
+                    if (faceShare != null) DropdownMenuItem({ Text("面对面返图") }, onClick = feedbackClick { menu = false; faceShare.send(listOf(card.id)) },
+                        leadingIcon = { Icon(Icons.Default.Devices, null) })
                     DropdownMenuItem({ Text("添加到快捷文本") }, onClick = feedbackClick { menu = false; close(onQuick) },
                         leadingIcon = { Icon(Icons.Default.TextFields, null) })
                     DropdownMenuItem({ Text("移到相册") }, onClick = feedbackClick { menu = false; close(onMove) },
@@ -150,4 +158,5 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
             }
         }
     }
+    if (senderInfo && receipt != null) com.kigtts.next.sharing.FaceReceiptDialog(receipt) { senderInfo = false }
 }

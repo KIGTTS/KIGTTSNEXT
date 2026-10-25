@@ -32,7 +32,7 @@ private data class CameraBoundRequest(val format: PolaroidFormat, val front: Boo
 @Composable
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
-    onSystemCamera: (PolaroidFormat) -> Unit = {}) {
+    onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -154,6 +154,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))
+            CameraBurstStatus(session.burst, Modifier.align(Alignment.Center))
         }
     }
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
@@ -163,7 +164,11 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut, effects = options.effects) },
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
-            gallery = { onGallery(format) }, systemCamera = { onSystemCamera(format) })
+            gallery = { onGallery(format) }, systemCamera = { onSystemCamera(format) },
+            burstStart = onBurst?.let { complete -> { if (displayReady && !locked)
+                session.startBurst(format, filter, complete, options.filterStrength, lut, options.effects) } },
+            burstEnd = session.burst::stop, burstRunning = session.burst.running,
+            burstHeld = session.burst.held, burstCount = session.burst.count)
     }
     CameraPageLayout(preview, controls, error, header, format.geometry.photoAspectRatio.toFloat())
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable, enabled = interactive,

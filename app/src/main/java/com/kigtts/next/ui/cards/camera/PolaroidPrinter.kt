@@ -94,19 +94,24 @@ internal fun PolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> F
                     translationY = (paperHeight + 16.dp).toPx() * feed.value
                 }.onGloballyPositioned { paperCoordinates = it }.testTag("printer-paper"), frame = frame)
         }
-        Surface(Modifier.fillMaxWidth().height(slot + 8.dp).graphicsLayer {
-            translationY = -(slot + 8.dp).toPx() * (1f - housing.value)
-        }.testTag("printer-housing"), shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
-            color = colors.surfaceContainerHigh, shadowElevation = 12.dp) {
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
-                colors.surfaceContainerHighest, colors.surfaceContainerHigh, colors.surfaceContainer)))) {
-                Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS 打印机",
-                    Modifier.align(Alignment.Center).padding(top = inset).width(152.dp).aspectRatio(4f),
-                    tint = colors.onSurface)
-                Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 28.dp, vertical = 8.dp)
-                    .fillMaxWidth().height(6.dp).background(colors.onSurface.copy(alpha = .82f), RoundedCornerShape(50))
-                    .testTag("printer-slot"))
-            }
+        PrinterHousing(slot, inset, housing.value)
+    }
+}
+
+@Composable
+internal fun PrinterHousing(slot: androidx.compose.ui.unit.Dp, inset: androidx.compose.ui.unit.Dp, progress: Float) {
+    val colors = MaterialTheme.colorScheme
+    Surface(Modifier.fillMaxWidth().height(slot + 8.dp).graphicsLayer {
+        translationY = -(slot + 8.dp).toPx() * (1f - progress)
+    }.testTag("printer-housing"), shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+        color = colors.surfaceContainerHigh, shadowElevation = 12.dp) {
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+            colors.surfaceContainerHighest, colors.surfaceContainerHigh, colors.surfaceContainer)))) {
+            Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS",
+                Modifier.align(Alignment.Center).padding(top = inset).width(152.dp).aspectRatio(4f), tint = colors.onSurface)
+            Box(Modifier.align(Alignment.BottomCenter).padding(horizontal = 28.dp, vertical = 8.dp)
+                .fillMaxWidth().height(6.dp).background(colors.onSurface.copy(alpha = .82f), RoundedCornerShape(50))
+                .testTag("printer-slot"))
         }
     }
 }

@@ -35,7 +35,9 @@ internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry:
 internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean, canFlip: Boolean,
     cancel: () -> Unit, capture: () -> Unit, flip: () -> Unit, vertical: Boolean, locked: Boolean = busy,
     countingDown: Boolean = false, cancelCountdown: () -> Unit = {}, showCancel: Boolean = true,
-    gallery: (() -> Unit)? = null, systemCamera: (() -> Unit)? = null) {
+    gallery: (() -> Unit)? = null, systemCamera: (() -> Unit)? = null,
+    burstStart: (() -> Unit)? = null, burstEnd: () -> Unit = {}, burstRunning: Boolean = false,
+    burstHeld: Boolean = false, burstCount: Int = 0) {
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
@@ -47,14 +49,9 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
             colors = tonal,
             enabled = active && if (gallery != null) !locked else !busy,
             onLongClick = if (gallery != null) systemCamera else null)
-        ToolButton(if (countingDown) "取消倒计时" else "拍照", when {
-            countingDown -> Icons.Default.TimerOff
-            busy -> Icons.Default.HourglassEmpty
-            else -> Icons.Default.CameraAlt
-        }, if (countingDown) cancelCountdown else capture,
-            Modifier.align(Alignment.Center).testTag("camera-shutter"), size = 76.dp,
-            shapes = IconButtonDefaults.shapes(RoundedCornerShape(38.dp), RoundedCornerShape(20.dp)),
-            colors = IconButtonDefaults.filledIconButtonColors().let { if (!active) it.keepColorsWhenLocked() else it }, enabled = active && !busy && (countingDown || !locked && canCapture))
+        CameraShutterButton(active && (burstRunning || !busy && (countingDown || !locked && canCapture)), busy,
+            countingDown, if (countingDown) cancelCountdown else capture,
+            Modifier.align(Alignment.Center).testTag("camera-shutter"), burstStart, burstEnd, burstRunning, burstHeld, burstCount)
         ToolButton("切换镜头", Icons.Default.Cameraswitch, flip,
             Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterEnd).padding(12.dp).testTag("camera-flip"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),

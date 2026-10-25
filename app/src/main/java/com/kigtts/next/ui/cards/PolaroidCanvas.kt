@@ -59,7 +59,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val selectedId = rememberUpdatedState(selectedLayer)
     val change = rememberUpdatedState(updateLayer)
     val select = rememberUpdatedState(selectLayer)
-    val geometry = polaroidFormat(card, frame).geometry
+    val geometry = com.kigtts.next.cards.polaroidPaperGeometry(card, frame)
     val branding = polaroidBranding(card, frame)
     val captionWidth = branding?.captionWidth ?: geometry.titleWidth
     val gesture = remember(card.id) { CardGestureLayer() }
@@ -106,7 +106,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     val loaded = rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))
                     photoOverride ?: loaded
                 }
-                CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize())
+                if (image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize())
             }
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier
                 .offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))

@@ -46,9 +46,11 @@ class CardWorkspaceUiTest {
     @Test fun cardHomeKeepsPreviewAndLongPressManagementWithoutFabOrNativeBlankCreation() {
         val (cards, stickers) = repositories(); val messages = mutableListOf<String>()
         val card = cards.create(PolaroidCard(title = "拍立得")); val previews = mutableListOf<String>(); val edits = mutableListOf<String>(); var cameras = 0
-        compose.setContent { KigttsTheme(ThemeSettings()) { PageScaffold("拍立得", {}) {
+        var receives = 0
+        compose.setContent { CompositionLocalProvider(com.kigtts.next.sharing.LocalFaceShare provides com.kigtts.next.sharing.FaceShareActions({}, { receives++ })) {
+            KigttsTheme(ThemeSettings()) { PageScaffold("拍立得", {}) {
             CardsScreen(cards, stickers, { previews += it }, { edits += it }, { messages += it }, openCamera = { cameras++ })
-        } } }
+        } } } }
         compose.onNodeWithTag("cards-tabs").assertDoesNotExist()
         compose.onNodeWithTag("polaroid/" + card.id).performClick()
         compose.onNodeWithTag("card-preview-content").assertIsDisplayed()
@@ -68,10 +70,8 @@ class CardWorkspaceUiTest {
         compose.onNodeWithText("选图").assertDoesNotExist()
         assertEquals(0, cameras)
         assertEquals(listOf(card), cards.cards.value)
-        compose.onNodeWithTag("face-discovery").assertIsOff().performClick().assertIsOn()
-        val app = ApplicationProvider.getApplicationContext<Application>()
-        assertTrue(app.getSharedPreferences("cards-view", 0).getBoolean("face-discovery", false))
-        assertTrue(messages.last().contains("暂不搜索"))
+        compose.onNodeWithTag("face-discovery").assertContentDescriptionEquals("面对面接收").performClick()
+        assertEquals(1, receives)
     }
     @Test fun unsavedCardChangesStayLocalAndBackAsksBeforeSavingOnce() {
         val (cards, stickers) = repositories(); val original = cards.create(PolaroidCard(title = "旧标题"))

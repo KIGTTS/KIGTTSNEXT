@@ -60,7 +60,7 @@ internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, pho
     }
     val photoItem: @Composable (PolaroidCard) -> Unit = { card ->
         val image = card.imageId?.let { rememberCardImage(imageFile(it), 256) }
-        val geometry = polaroidFormat(card, null).geometry
+        val geometry = com.kigtts.next.cards.polaroidPaperGeometry(card, null)
         Surface(Modifier.then(if (landscape) Modifier.width(60.dp).aspectRatio(geometry.aspectRatio.toFloat()) else Modifier.size(64.dp, 82.dp))
             .testTag("card-album-photo/" + card.id)
             .clickable(enabled = enabled, onClick = feedbackClick { choosePhoto(card) })

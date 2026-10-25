@@ -33,7 +33,7 @@ fun TextEditor(
     val (idle, controlsAlpha) = rememberPanelIdleChrome(renderer?.presentation?.fadeControlsWhenIdle == true && media == null, state.editing)
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
     val horizontal = with(LocalDensity.current) { (if (renderer != null) 2.dp else 12.dp).roundToPx() }
-    Surface(modifier.testTag("subtitle-card").panelIdleWake(idle), shape = homeCardShape(neighbors),
+    Surface(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle), shape = homeCardShape(neighbors),
         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (state.theme.background == null) 1f else .88f)) {
         Box {
             SubtitleRendererBackdrop(state, model,

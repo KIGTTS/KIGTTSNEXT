@@ -53,7 +53,7 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
             val card = cards[index]
             val frame = frames.firstOrNull { it.id == card.frameStyleId }
             val paperWidth = (maxWidth - 36.dp - 14.dp * (columns - 1)) / columns
-            val paperHeight = paperWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
+            val paperHeight = paperWidth / com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat()
             val clearance = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)
             val offset = with(density) {
                 (paperHeight.toPx() * pending.paperY - maxHeight.toPx() * pending.viewportY + clearance.toPx() + 18.dp.toPx()).roundToInt()
@@ -72,7 +72,7 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
                 BoxWithConstraints(Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = tween(240, easing = FastOutSlowInEasing))) {
                     val frame = frames.firstOrNull { it.id == card.frameStyleId }
-                    val height = maxWidth / polaroidFormat(card, frame).geometry.aspectRatio.toFloat()
+                    val height = maxWidth / com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat()
                     val resize = rememberPolaroidResize(card.id, maxWidth, maxWidth, height, coordinateSpace = LocalCardWindowLandscape.current)
                     PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth().polaroidResizeLayer(resize)
                         .polaroidShadowFade {

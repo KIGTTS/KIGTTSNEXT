@@ -46,7 +46,7 @@ internal fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: Corn
     pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier,
     repository: com.kigtts.next.media.MediaRepository, hidden: Boolean = false, elevation: androidx.compose.ui.unit.Dp = 0.dp) {
     Surface(onClick = feedbackClick(select), interactionSource = source,
-        modifier = modifier.then(if (hidden) Modifier.clearAndSetSemantics {} else Modifier.testTag("quick-phrase-" + phrase.id)), shadowElevation = elevation,
+        modifier = modifier.homePreviewRegion("phrase/" + phrase.id).then(if (hidden) Modifier.clearAndSetSemantics {} else Modifier.testTag("quick-phrase-" + phrase.id)), shadowElevation = elevation,
         color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = homeCardShape(neighbors, pressed, neighborPressed)) {
         Box(Modifier.fillMaxSize()) {
         com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))

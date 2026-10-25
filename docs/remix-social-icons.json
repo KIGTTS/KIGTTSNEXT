@@ -1,0 +1,131 @@
+{
+  "upstream": "https://github.com/Remix-Design/RemixIcon",
+  "revision": "9fb7967c0a4c09910161192bde99efd3df09f5eb",
+  "icons": [
+    {
+      "resource": "ic_remix_wechat_fill.xml",
+      "source": "icons/Logos/wechat-fill.svg",
+      "sha256": "6cb21c0618637a87f6a2d13fa65a5fbba91e663308e032ad167b6bfc87ae46ca"
+    },
+    {
+      "resource": "ic_remix_qq_fill.xml",
+      "source": "icons/Logos/qq-fill.svg",
+      "sha256": "0dcbb197dd29e2d6118ab9f13cd635a1af92d9cbf3d9aa45b2377e29b737d9e7"
+    },
+    {
+      "resource": "ic_remix_weibo_fill.xml",
+      "source": "icons/Logos/weibo-fill.svg",
+      "sha256": "d716ed9b0291929a47963fac61f10d46b2ed9e0f8cff72d0d07203fd72072648"
+    },
+    {
+      "resource": "ic_remix_bilibili_fill.xml",
+      "source": "icons/Logos/bilibili-fill.svg",
+      "sha256": "e76ad067c8ddba9da589bbaa803d57e7bbd073fa0d93a946502ddeb1afe7183f"
+    },
+    {
+      "resource": "ic_remix_tiktok_fill.xml",
+      "source": "icons/Logos/tiktok-fill.svg",
+      "sha256": "13fcfaa9d8d5d7d3fa6e38bd5c113955c8db9295ed433b2d65c4db51a2963705"
+    },
+    {
+      "resource": "ic_remix_twitter_x_fill.xml",
+      "source": "icons/Logos/twitter-x-fill.svg",
+      "sha256": "27dc9f62d3d4af62b20710466e6e4fcd3b222cb6b86ddf0bd482400bb5975e29"
+    },
+    {
+      "resource": "ic_remix_twitter_fill.xml",
+      "source": "icons/Logos/twitter-fill.svg",
+      "sha256": "013890f9b1d2ebc48367e24f19170627423af37d4485e7c6177f621575732c43"
+    },
+    {
+      "resource": "ic_remix_telegram_fill.xml",
+      "source": "icons/Logos/telegram-fill.svg",
+      "sha256": "29c262ed77ffbdecda4b8697eb2dcab897d0c0cc82eb3bd0007aa96bb547422f"
+    },
+    {
+      "resource": "ic_remix_discord_fill.xml",
+      "source": "icons/Logos/discord-fill.svg",
+      "sha256": "22eb749fc1d6d371629a03b998f27232c3d96d072872e962b707c558066328d4"
+    },
+    {
+      "resource": "ic_remix_facebook_fill.xml",
+      "source": "icons/Logos/facebook-fill.svg",
+      "sha256": "0ac9072d31085d6074b1a5d2246005a54f71280605a39a9cecf28a1d3b3a900f"
+    },
+    {
+      "resource": "ic_remix_instagram_fill.xml",
+      "source": "icons/Logos/instagram-fill.svg",
+      "sha256": "f9e6afce562e1226a28dc8d7631d4198195cdf05c4c9ffd6dee32a293540a7c2"
+    },
+    {
+      "resource": "ic_remix_youtube_fill.xml",
+      "source": "icons/Logos/youtube-fill.svg",
+      "sha256": "80d117bf21a63324e4bfcd5dc899ac567e41329a3bc6e503eddf555f8d5eae93"
+    },
+    {
+      "resource": "ic_remix_github_fill.xml",
+      "source": "icons/Logos/github-fill.svg",
+      "sha256": "784a21914fa745be8d569ceb85dde5ba8f22aea6c4d2cd577e9ca75d733099bb"
+    },
+    {
+      "resource": "ic_remix_line_fill.xml",
+      "source": "icons/Logos/line-fill.svg",
+      "sha256": "64c3f30208607036f4214678419488dbfb101a215440c56c382d7a9d12850042"
+    },
+    {
+      "resource": "ic_remix_whatsapp_fill.xml",
+      "source": "icons/Logos/whatsapp-fill.svg",
+      "sha256": "da95f1dde750164a385beb3061c1dbfe64b2c083c771575ec5957d062a4d0b60"
+    },
+    {
+      "resource": "ic_remix_zhihu_fill.xml",
+      "source": "icons/Logos/zhihu-fill.svg",
+      "sha256": "8faf673f421885fd5ea01c93562aa4b532ab015eff84b5569b50c5d2ef1105eb"
+    },
+    {
+      "resource": "ic_remix_linkedin_fill.xml",
+      "source": "icons/Logos/linkedin-fill.svg",
+      "sha256": "30ff876c161a1b8fa711a89590a71a372e6750916863dc7c1ad9fd67004fa259"
+    },
+    {
+      "resource": "ic_remix_mastodon_fill.xml",
+      "source": "icons/Logos/mastodon-fill.svg",
+      "sha256": "b0fecd35547c21fc4089b4e4eef887b7bb3e2c434c2a9cc469fafb0ae75d1bdc"
+    },
+    {
+      "resource": "ic_remix_bluesky_fill.xml",
+      "source": "icons/Logos/bluesky-fill.svg",
+      "sha256": "246507f792191174abe32af3a89d35793d02aa892733e3a82936282898b379a6"
+    },
+    {
+      "resource": "ic_remix_threads_fill.xml",
+      "source": "icons/Logos/threads-fill.svg",
+      "sha256": "d90511965557b9c618767768f63e5d38fcdfe3d7b360006f2707d3e306dc023a"
+    },
+    {
+      "resource": "ic_remix_reddit_fill.xml",
+      "source": "icons/Logos/reddit-fill.svg",
+      "sha256": "2bf6e952127dba30a00067f671aa2c2dc901b411f49f094eb93a3b89ac327194"
+    },
+    {
+      "resource": "ic_remix_steam_fill.xml",
+      "source": "icons/Logos/steam-fill.svg",
+      "sha256": "b8747e13901c6fd2c134384f0cfde81abb9ff7216da79a78946fb63c6e8ff7fd"
+    },
+    {
+      "resource": "ic_remix_snapchat_fill.xml",
+      "source": "icons/Logos/snapchat-fill.svg",
+      "sha256": "d23b9b5c3752d9c36ee711308dc14cb639d89fda76ac45d6cd2c93653ff51879"
+    },
+    {
+      "resource": "ic_remix_mail_line.xml",
+      "source": "icons/Business/mail-line.svg",
+      "sha256": "9120f3d8f3c235a65c2002c9f5f0b1cc19d781f723680484a36970326a4fafab"
+    },
+    {
+      "resource": "ic_remix_links_line.xml",
+      "source": "icons/Business/links-line.svg",
+      "sha256": "52cdca232c3d82ede04898e2c7f863f54e8a9b65ca6e63c5bddfa837578bf9dc"
+    }
+  ]
+}

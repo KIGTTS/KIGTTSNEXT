@@ -37,17 +37,20 @@ internal class PolaroidPreviewTransform {
 /** Input stays in the fixed viewer coordinate system while the complete paper transforms. */
 @Composable
 internal fun Modifier.polaroidPreviewGestures(state: PolaroidPreviewTransform, enabled: Boolean,
-    onEmptyTap: () -> Unit): Modifier {
+    onEmptyTap: () -> Unit, onSwipeUp: (() -> Unit)? = null): Modifier {
     val interactive = rememberUpdatedState(enabled)
     val emptyTap = rememberUpdatedState(onEmptyTap)
+    val swipe = rememberUpdatedState(onSwipeUp)
     return pointerInput(state) {
         awaitEachGesture {
             val first = awaitFirstDown(requireUnconsumed = false)
             var touchedPaper = state.bounds().contains(first.position)
             var moved = false
             var multiple = false
+            var end = first.position
             do {
                 val event = awaitPointerEvent()
+                end = event.changes.firstOrNull { it.id == first.id }?.position ?: end
                 if (event.changes.count { it.pressed } > 1) {
                     multiple = true
                     if (event.changes.any { state.bounds().contains(it.position) }) touchedPaper = true
@@ -61,6 +64,9 @@ internal fun Modifier.polaroidPreviewGestures(state: PolaroidPreviewTransform, e
                     event.changes.forEach { if (it.position != it.previousPosition) it.consume() }
                 }
             } while (event.changes.any { it.pressed })
+            val travel = end - first.position
+            if (interactive.value && touchedPaper && !multiple && state.zoom <= 1.001f &&
+                travel.y < -72 * density && kotlin.math.abs(travel.x) < -travel.y * .6f) swipe.value?.invoke()
             if (interactive.value && !touchedPaper && !moved && !multiple) emptyTap.value()
         }
     }

@@ -21,13 +21,18 @@ import org.robolectric.annotation.*
 class AppearancePreviewUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Test fun previewAndNestedCardsRemainVisibleAsSheetExpands() {
+        var fonts = false
         compose.setContent {
             var settings by remember { mutableStateOf(ThemeSettings()) }
-            KigttsTheme(settings) { Surface(Modifier.fillMaxSize()) { AppearanceSettingsScreen(settings, { settings = it }) } }
+            KigttsTheme(settings) { Surface(Modifier.fillMaxSize()) { AppearanceSettingsScreen(settings, { settings = it }, onFonts = { fonts = true }) } }
         }
         compose.waitForIdle()
         compose.onNodeWithTag("appearance-preview").assertIsDisplayed()
         compose.onNodeWithText("背景与字体").assertIsDisplayed()
+        compose.onNodeWithTag("appearance-home-wireframe").assertIsDisplayed()
+        compose.onAllNodes(hasText("点击输入文字") and hasAnyAncestor(hasTestTag("appearance-preview"))).assertCountEquals(0)
+        compose.onNodeWithText("字体").performClick()
+        compose.runOnIdle { org.junit.Assert.assertTrue(fonts) }
         compose.onRoot().captureRoboImage("build/previews/appearance-preview-sheet.png")
         compose.onNodeWithTag("appearance-settings-sheet").performTouchInput { swipeUp() }
         compose.waitForIdle()

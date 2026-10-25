@@ -58,6 +58,13 @@ class AppearanceAssets(private val context: Context) {
         return key
     }
 
+    fun saveBackground(bitmap: Bitmap): String {
+        val bytes = java.io.ByteArrayOutputStream().also { check(bitmap.compress(Bitmap.CompressFormat.JPEG, 94, it)) }.toByteArray()
+        val key = digest(bytes) + ".jpg"
+        File(root, key).takeUnless { it.exists() }?.writeBytes(bytes)
+        return key
+    }
+
     companion object {
         const val MAX_FONT = 40 * 1024 * 1024
         fun readBounded(input: java.io.InputStream, limit: Int): ByteArray {

@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 
 @Composable fun AppearanceBackdrop(settings: ThemeSettings, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val bitmap by produceState<android.graphics.Bitmap?>(null, settings.background) {
-        value = withContext(Dispatchers.IO) { AppearanceAssets(context).file(settings.background)?.let { BitmapFactory.decodeFile(it.path) } }
+    val bitmap by produceState(AppearanceBackgrounds.peek(context, settings.background), settings.background) {
+        value = withContext(Dispatchers.IO) { AppearanceBackgrounds.load(context, settings.background) }
     }
     Box(modifier) {
         bitmap?.let { Image(it.asImageBitmap(), null, Modifier.matchParentSize(), contentScale = ContentScale.Crop) }

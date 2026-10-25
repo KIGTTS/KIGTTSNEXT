@@ -16,6 +16,9 @@ import android.content.res.Configuration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
@@ -34,11 +37,15 @@ fun HomeScreen(
     val sections = rememberSaveableStateHolder()
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
-    Box(Modifier.fillMaxSize().then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier)) {
+    var backdropViewport by remember { mutableStateOf(Rect.Zero) }
+    Box(Modifier.fillMaxSize().homePreviewRegion("viewport").onGloballyPositioned { backdropViewport = Rect(it.positionInWindow(), androidx.compose.ui.geometry.Size(it.size.width.toFloat(), it.size.height.toFloat())) }
+        .then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier)) {
+    CompositionLocalProvider(com.kigtts.next.theme.LocalBackdropViewport provides backdropViewport, LocalRecordHomePreview provides true) {
     if (exterior == null) com.kigtts.next.theme.AppearanceBackdrop(state.theme, Modifier.matchParentSize())
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
         LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
     else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
+    }
     }
 }
 

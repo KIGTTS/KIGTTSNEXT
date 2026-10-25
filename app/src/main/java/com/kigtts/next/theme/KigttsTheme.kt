@@ -26,7 +26,7 @@ import com.kigtts.next.ui.components.LocalCornerRadius
 
 fun themeColors(settings: ThemeSettings, wallpaperColors: ColorScheme? = null,
     isDark: Boolean = settings.mode.usesDark(true)): ColorScheme {
-    val seed = wallpaperColors?.primary?.toArgb() ?: settings.seed.toInt()
+    val seed = wallpaperColors?.primary?.toArgb() ?: settings.effectiveSeed.toInt()
     val scheme = SchemeTonalSpot(Hct.fromInt(seed), isDark, settings.contrast.value.toDouble(), SpecVersion.SPEC_2025, DynamicScheme.Platform.PHONE)
     val c = MaterialDynamicColors()
     val deeper = settings.deeperDark && isDark
@@ -80,7 +80,7 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
     val dark = settings.mode.usesDark(isSystemInDarkTheme())
     val appearanceFont = rememberAppearanceFont(settings.font)
     SystemBarAppearance(dark)
-    val (colors, controls) = remember(settings.seed, settings.contrast, settings.deeperDark, settings.wallpaperEnabled, configuration, dark) {
+    val (colors, controls) = remember(settings.effectiveSeed, settings.contrast, settings.deeperDark, settings.wallpaperEnabled, configuration, dark) {
         val wallpaper = if (settings.wallpaperEnabled && Build.VERSION.SDK_INT >= 31) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else null

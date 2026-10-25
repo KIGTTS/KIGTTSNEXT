@@ -58,6 +58,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val mediaRepository = hostRuntime?.mediaRepository ?: MediaRepository(application, pluginManager.paths)
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
+    val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
+    private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message) }
+    internal val faceShare get() = faceShareDelegate.value
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)
     val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
         { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } }, { id -> !cards.isReadOnly(id) })
@@ -479,6 +482,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     suspend fun stopSpeech() = speech.stopAll()
     fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || state.value.recognitionOutput == CaptionOutput.PANEL) viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
+        if (faceShareDelegate.isInitialized()) faceShare.dispose()
         super.onCleared()
         storeBootstrap.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()

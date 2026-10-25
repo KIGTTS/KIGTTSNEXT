@@ -37,6 +37,7 @@ fun KigttsApp(model: AppViewModel) {
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
     val snackbarAvoidance = remember { SnackbarAvoidance() }
+    val homePreview = remember { com.kigtts.next.ui.home.HomePreviewGeometry() }
     val toastContext = LocalContext.current.applicationContext
     var systemToast by remember { mutableStateOf<Toast?>(null) }
     DisposableEffect(Unit) { onDispose { systemToast?.cancel() } }
@@ -120,8 +121,11 @@ fun KigttsApp(model: AppViewModel) {
     KigttsTheme(state.theme) {
         com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
-            CompositionLocalProvider(LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
+            CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
+                LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
+                com.kigtts.next.sharing.LocalFaceShare provides remember(model) { com.kigtts.next.sharing.FaceShareActions(model.faceShare::openSend, model.faceShare::openReceive) },
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
+            com.kigtts.next.sharing.FaceShareHost(model)
             ProvideIconTextContextMenu {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
                 pluginCapture, { pluginCapture = null })

@@ -9,6 +9,8 @@ enum class SidePage(val label: String) { SKETCH("画板"), CARDS("拍立得") }
 sealed interface Destination {
     data object Home : Destination
     data object Settings : Destination
+    data object PersonalCards : Destination
+    data object Fonts : Destination
     data class SettingsDetail(val category: SettingsCategory) : Destination
     data object Plugins : Destination
     data class PluginPage(val pluginId: String, val pageId: String) : Destination

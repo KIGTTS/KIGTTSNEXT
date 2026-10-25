@@ -28,6 +28,7 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.RegisterCameraPullGuard
+import com.kigtts.next.ui.navigation.RegisterPageBackGuard
 import com.kigtts.next.ui.cards.rememberCardPhotoSources
 import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.CancellationException
@@ -42,6 +43,9 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
     val request by model.cardCapture.printRequest.collectAsStateWithLifecycle()
     val copying by model.cardCapture.processing.collectAsStateWithLifecycle()
     val frameRequest by model.cardCapture.frameRequest.collectAsStateWithLifecycle()
+    val burstReview by model.cardCapture.burst.review.collectAsStateWithLifecycle()
+    val burstSaved by model.cardCapture.burst.savedCount.collectAsStateWithLifecycle()
+    val review = burstReview?.takeIf { it.requestId == destination.requestId }
     val frame = frameRequest?.takeIf { it.requestId == destination.requestId }
     var externalStarted by rememberSaveable(destination.requestId) { mutableStateOf(false) }
     var importing by remember(destination.requestId) { mutableStateOf(false) }
@@ -77,12 +81,17 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
     val print = current ?: retained
     val active = LocalPageActive.current
     LaunchedEffect(destination.requestId, active) { if (active && destination.systemCamera && !externalStarted) { externalStarted = true; picker.camera() } }
-    RegisterCameraPullGuard(print != null || importing || copying || picker.processing || frame != null)
-    PredictiveBackHandler(active && (importing || copying)) { events ->
-        try { events.collect { } } catch (_: CancellationException) { }
+    RegisterCameraPullGuard(print != null || importing || copying || picker.processing || frame != null || review != null)
+    RegisterPageBackGuard(review != null) { if (!copying) model.cardCapture.burst.cancel(destination.requestId) }
+    PredictiveBackHandler(active && (importing || copying || review != null)) { events ->
+        try { events.collect { }; if (!copying && !importing && review != null) model.cardCapture.burst.cancel(destination.requestId) }
+        catch (_: CancellationException) { }
     }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        if (frame != null) CameraFramingScreen(frame, copying || importing, {
+        if (review != null) CameraBurstReviewScreen(review, copying, burstSaved,
+            { model.cardCapture.burst.cancel(destination.requestId) },
+            { selected -> model.cardCapture.burst.confirm(destination, selected) })
+        else if (frame != null) CameraFramingScreen(frame, copying || importing, {
             model.cardCapture.cancelFraming(destination.requestId)
             if (destination.systemCamera) model.navigateBack()
         }) { format, x, y, zoom -> model.cardCapture.confirmFraming(destination, format, x, y, zoom) }
@@ -100,8 +109,13 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
             initialFormat = destination.cardId?.let { id -> model.cards.cards.value.firstOrNull { it.id == id } }
                 ?.let { model.stickers.frameStyle(it).format }, suspended = print != null || importing || copying,
             onGallery = { format -> galleryFormat = format; picker.gallery() },
-            onSystemCamera = { format -> galleryFormat = format; picker.camera() })
-        if (print != null) PolaroidPrinter(print, model.stickers::imageFile,
+            onSystemCamera = { format -> galleryFormat = format; picker.camera() },
+            onBurst = if (destination.cardId == null) ({ shots ->
+                model.cardCapture.burst.receive(destination, shots); Unit
+            }) else null)
+        if (print != null && print.cards.size > 1) BatchPolaroidPrinter(print, model.stickers::imageFile,
+            model.stickers::frameStyle, active, { model.cardCapture.finishPrint(print.requestId) })
+        else if (print != null) PolaroidPrinter(print, model.stickers::imageFile,
             model.stickers.frameStyle(print.card), active, { model.cardCapture.finishPrint(print.requestId) },
             previewHandoff = { origin -> model.cardCapture.preparePrintPreview(print.requestId, origin) })
     }

@@ -54,6 +54,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var delivering = false
     private var preferredFlash = CameraFlash.OFF
     private val countdown = CameraCountdownState(scope)
+    val burst = CameraBurstCapture(scope)
     val manual = CameraManualController(context, message, ::clearFocus)
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
@@ -209,6 +210,23 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         flashMode = applyCameraFlash(binding?.capture, preferredFlash, flashAvailable)
     }
     fun cancelCountdown(): Boolean = countdown.cancel()
+    fun startBurst(format: PolaroidFormat, filter: PhotoFilter, complete: (List<PolaroidCameraCapture>) -> Unit,
+        strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
+        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
+        val current = binding ?: return
+        if (!ready || busy || countingDown) return
+        val epoch = generation; val front = boundFront
+        focusJob?.cancel(); focusJob = null; busy = true
+        val started = burst.start(capture = {
+            manual.awaitConfigured()
+            capturePolaroidPhoto(context, current.capture, front, format, PhotoFilter.ORIGINAL, message)
+        }, process = { processBurstPhoto(it, filter, strength, PhotoFilters.lut(filter, lut), effects, message) },
+            hasSpace = { context.cacheDir.usableSpace > 64L * 1024 * 1024 }, message = message,
+            complete = { shots ->
+                complete(shots); if (epoch == generation) delivering = true
+            }, finished = { if (epoch == generation) { busy = delivering; if (!delivering) clearFocus() } })
+        if (!started) busy = false
+    }
     fun capture(format: PolaroidFormat, filter: PhotoFilter, complete: (PolaroidCameraCapture) -> Unit,
         delaySeconds: Int = 0, strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
         effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
@@ -267,7 +285,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         }
     }
     fun unbind() {
-        generation++; captureJob?.cancel(); captureJob = null
+        generation++; burst.cancel(); captureJob?.cancel(); captureJob = null
         capabilitiesJob?.cancel(); capabilitiesJob = null
         countdown.cancel()
         motionBuffer?.close(); motionBuffer = null

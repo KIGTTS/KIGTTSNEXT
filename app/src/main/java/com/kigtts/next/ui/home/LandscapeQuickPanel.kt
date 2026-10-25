@@ -30,11 +30,13 @@ fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories:
     motion: LandscapePanelMotion, modifier: Modifier = Modifier) {
     val background by animateFloatAsState(if (state.panel != null) 1f else 0f, MaterialTheme.motionScheme.fastEffectsSpec(), label = "side-sheet-background")
     val showContent by remember(motion) { derivedStateOf { motion.visible && motion.width >= 136f } }
-    Box(modifier.fillMaxHeight().widthFrom { motion.width }.testTag("landscape-quick-panel").semantics {
+    Box(modifier.fillMaxHeight().widthFrom { motion.width }.testTag("landscape-quick-panel").homePreviewRegion("phrases").semantics {
         stateDescription = if (motion.visible) "${motion.columns}列快捷文本" else "快捷文本已收起"
     }) {
         Box(Modifier.matchParentSize().graphicsLayer { alpha = background }
-            .clip(homeCardShape(CornerNeighbors(start = true))).background(MaterialTheme.colorScheme.surfaceContainer))
+            .clip(homeCardShape(CornerNeighbors(start = true)))) {
+            com.kigtts.next.theme.DrawerBackdrop(state.theme, Modifier.matchParentSize())
+        }
         Row(Modifier.fillMaxSize()) {
             LandscapeSheetChrome(state, model, motion)
             AnimatedVisibility(showContent, Modifier.weight(1f).fillMaxHeight()) {

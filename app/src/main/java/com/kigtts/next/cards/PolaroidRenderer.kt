@@ -28,7 +28,7 @@ internal object PolaroidRenderer {
     /** A transparent photo window is reused as a single immutable overlay by the GPU movie renderer. */
     fun renderBitmap(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions(),
         transparentPhoto:Boolean=false,maximumHeight:Int=1500):Bitmap {
-        val frame=repository.frameStyle(card);val geometry=frame.format.geometry
+        val frame=repository.frameStyle(card);val geometry=polaroidPaperGeometry(card,frame)
         val branding=polaroidBranding(card,frame)
         val captionWidth=branding?.captionWidth ?: geometry.titleWidth
         val height=maximumHeight.coerceIn(128,1500);val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
@@ -42,7 +42,7 @@ internal object PolaroidRenderer {
         val photoPath=Path().apply {addRoundRect(imageArea,radius,radius,Path.Direction.CW)}
         canvas.save();canvas.clipPath(photoPath)
         if(transparentPhoto)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
-            canvas.drawColor(0xFFB0B0B0.toInt())
+            if(card.imageId!=null || !isFullPhotoPaper(card))canvas.drawColor(0xFFB0B0B0.toInt())
             card.imageId?.let {id->decode(repository,id)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}}
         };canvas.restore()
         if(options.includeFrame&&frame.borderWidth>0&&frame.borderColor!=null) {

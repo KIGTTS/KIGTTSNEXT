@@ -110,7 +110,7 @@ class CardPrintCoordinatorTest {
             assertEquals(0,f.backs);assertTrue(f.printed.isEmpty());f.assertSaved(request.card)
             f.coordinator.open()
             assertEquals(Destination.Settings,f.state.value.destination);assertEquals(request,f.coordinator.printRequest.value)
-            assertEquals(listOf("照片正在打印，请稍候"),f.messages)
+            assertEquals(listOf("照片正在保存，请稍候"),f.messages)
             f.state.value=f.state.value.copy(destination=scene,navigationStack=listOf(Destination.Cards))
             f.coordinator.onDestinationChanged(scene)
             assertTrue(f.coordinator.finishPrint(request.requestId));assertFalse(f.coordinator.finishPrint(request.requestId))

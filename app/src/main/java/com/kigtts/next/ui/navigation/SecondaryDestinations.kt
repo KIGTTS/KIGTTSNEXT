@@ -20,6 +20,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
             Destination.Settings -> "设置"
+            Destination.PersonalCards -> "个人信息与名片"
+            Destination.Fonts -> "字体"
             is Destination.SettingsDetail -> destination.category.title
             Destination.Plugins -> "插件管理"
             is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
@@ -57,13 +59,17 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     }
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
-        backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back") {
+        backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
+        extendToBottom = destination == Destination.SettingsDetail(SettingsCategory.APPEARANCE),
+        backgroundSettings = state.theme.takeIf { destination == Destination.Settings || destination is Destination.SettingsDetail || destination == Destination.Fonts }) {
             when (destination) {
                 Destination.Home -> Unit
-                Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision)
+                Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }
+                Destination.PersonalCards -> com.kigtts.next.ui.identity.PersonalCardsScreen(model)
+                Destination.Fonts -> FontSettingsScreen(state.theme, model::theme)
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
-                        state.subtitleAppearance, model::setSubtitleAppearance)
+                        state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) })
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)

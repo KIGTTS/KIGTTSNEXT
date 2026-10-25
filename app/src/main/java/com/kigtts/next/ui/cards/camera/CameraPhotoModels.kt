@@ -12,9 +12,10 @@ enum class PhotoFilter(val label: String) {
 
 /** Import both files before closing; the JPEG returned by CameraX is never edited in place. */
 class PolaroidCameraCapture internal constructor(val original: File, val processed: File?,
-    val format: PolaroidFormat, val filter: PhotoFilter, val motion: CameraMotionClip? = null) : Closeable {
+    val format: PolaroidFormat, val filter: PhotoFilter, val motion: CameraMotionClip? = null,
+    val capturedAt: Long = System.currentTimeMillis()) : Closeable {
     val displayFile: File get() = processed ?: original
-    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip)
+    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip, capturedAt)
     fun discard() { motion?.video?.delete(); processed?.takeIf { it != original }?.delete(); original.delete() }
     override fun close() = discard()
 }

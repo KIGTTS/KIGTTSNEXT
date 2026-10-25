@@ -19,6 +19,7 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
     val id = UUID.randomUUID().toString()
     val original = File(directory, "$id-original.jpg"); val processed = File(directory, "$id-filtered.jpg")
     val started = SystemClock.elapsedRealtime()
+    val capturedAt = System.currentTimeMillis()
     try {
         directory.mkdirs()
         capture.captureJpeg(context, original, front, exposureStarted)
@@ -30,9 +31,21 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
         catch (_: Exception) { message("原图已保留，本次未应用滤镜"); null }
         currentCoroutineContext().ensureActive()
         Log.d(CAMERA_LOG_TAG, "Photo handoff after ${SystemClock.elapsedRealtime() - started}ms,filter=$filter,strength=$strength,processing=${SystemClock.elapsedRealtime() - captured}ms")
-        return PolaroidCameraCapture(original, filtered, format, if (filtered == null) PhotoFilter.ORIGINAL else filter)
+        return PolaroidCameraCapture(original, filtered, format, if (filtered == null) PhotoFilter.ORIGINAL else filter, capturedAt = capturedAt)
     } catch (failure: Throwable) {
         original.delete(); processed.delete()
         throw failure
     }
+}
+
+internal suspend fun processBurstPhoto(photo: PolaroidCameraCapture, filter: PhotoFilter, strength: Float,
+    lut: com.kigtts.next.media.color.CubeLut?, effects: com.kigtts.next.media.color.PhotoEffects,
+    message: (String) -> Unit): PolaroidCameraCapture {
+    val output = File(photo.original.parentFile, photo.original.nameWithoutExtension + "-filtered.jpg")
+    val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(photo.original, output, filter, strength, lut, effects) } }
+    catch (cancel: CancellationException) { output.delete(); throw cancel }
+    catch (_: OutOfMemoryError) { output.delete(); message("原图已保留，本次未应用滤镜"); null }
+    catch (_: Exception) { output.delete(); message("原图已保留，本次未应用滤镜"); null }
+    return PolaroidCameraCapture(photo.original, filtered, photo.format,
+        if (filtered == null) PhotoFilter.ORIGINAL else filter, capturedAt = photo.capturedAt)
 }

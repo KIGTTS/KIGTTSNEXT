@@ -31,6 +31,14 @@ class NavigationThemeUiTest {
     }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+    @Test fun appearanceUsesMeasuredHomeWireframeWithoutListeningOrLabels() {
+        val model = show()
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); model.toggleListening() }
+        compose.waitForIdle()
+        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
+        compose.onNodeWithTag("appearance-home-wireframe").assertIsDisplayed()
+        capture("appearance-measured-home-wireframe")
+    }
     private fun predict(progress: Float) {
         val dispatcher = compose.activity.onBackPressedDispatcher
         compose.runOnIdle { dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 100f, 0f, BackEventCompat.EDGE_LEFT)) }
@@ -88,7 +96,9 @@ class NavigationThemeUiTest {
         val model = show()
         listOf(ThemeMode.LIGHT, ThemeMode.DARK).forEach { mode ->
             compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
+            compose.onNodeWithTag("appearance-settings-sheet").performTouchInput { swipeUp() }
             compose.onNodeWithContentDescription("主题模式：" + mode.label).performScrollTo().performClick()
+            compose.waitForIdle()
             val prefix = if (mode == ThemeMode.LIGHT) "light" else "dark"
             capture(prefix + "-settings")
             compose.runOnIdle {
@@ -112,6 +122,7 @@ class NavigationThemeUiTest {
             compose.runOnIdle { model.navigate(Destination.Home); model.closeListeningPanel() }
         }
         compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
+        compose.onNodeWithTag("appearance-settings-sheet").performTouchInput { swipeUp() }
         compose.onNodeWithContentDescription("主题模式：跟随系统").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(ThemeMode.SYSTEM, ThemeSettingsStore(ApplicationProvider.getApplicationContext()).load().mode) }
     }

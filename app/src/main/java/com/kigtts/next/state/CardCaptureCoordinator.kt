@@ -11,7 +11,7 @@ import java.util.UUID
 
 data class CapturedCardPhoto(val cardId: String, val imageId: String, val originalImageId: String,
     val frameStyleId: String, val version: Long, val photoX: Double = .5, val photoY: Double = .5, val photoZoom: Double = 1.0)
-data class CardPrintRequest(val requestId: String, val card: PolaroidCard)
+data class CardPrintRequest(val requestId: String, val card: PolaroidCard, val cards: List<PolaroidCard> = listOf(card))
 data class CardFrameRequest(val requestId: String, val original: File, val display: File, val motion: CameraMotionClip? = null)
 
 /** Captures are delivered into a retained editor draft or create a new design exactly once. */
@@ -33,9 +33,11 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         set(value) { pendingState.value = value }
     private var inFlightFiles = emptySet<String>()
     private var albumRequest: Pair<Destination.CardCamera, String>? = null
+    val burst = CardBurstCoordinator(cards, stickers, scope, state, { !pending && printing.value == null },
+        { albumRequest?.second ?: selectedAlbum() }, { pending = it }, { printing.value = it }, message)
     fun open(cardId: String? = null, systemCamera: Boolean = useSystemCamera()) {
         if (pending) { message("照片正在保存，请稍候"); return }
-        if (printing.value != null) { message("照片正在打印，请稍候"); return }
+        if (printing.value != null) { message("照片正在保存，请稍候"); return }
         printing.value = null
         val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId, systemCamera)
         albumRequest = destination to selectedAlbum()
@@ -43,6 +45,8 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     }
     /** Navigation owns the scene lifecycle; leaving it never deletes an already saved photo. */
     fun onDestinationChanged(destination: Destination) {
+        burst.review.value?.takeIf { (destination as? Destination.CardCamera)?.requestId != it.requestId }
+            ?.let { burst.cancel(it.requestId) }
         framing.value?.takeIf { (destination as? Destination.CardCamera)?.requestId != it.requestId }?.let { cancelFraming(it.requestId) }
         abortedScenes.removeAll { !cameraRetained(it, destination) }
         val aborted = (destination as? Destination.CardCamera)?.requestId

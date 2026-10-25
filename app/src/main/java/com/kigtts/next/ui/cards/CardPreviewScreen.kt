@@ -30,10 +30,15 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     val actions = remember(cards, stickers) { CardWorkspaceActions(context, cards, stickers, scope, openEditor,
         { callback.value(it) }, { id, title -> quick.value(id, title) }) }
     val active = LocalPageActive.current; val enabled = active && !busy && !actions.busy
+    val face = com.kigtts.next.sharing.LocalFaceShare.current
+    val receipt = com.kigtts.next.sharing.rememberFaceReceipt(cardId)
+    var senderInfo by remember(cardId) { mutableStateOf(false) }
     RegisterPageLoading(busy || actions.busy)
     RegisterPageActions(buildList {
         if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑拍立得", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
         add(ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { actions.share(saved) }))
+        if (face != null) add(ToolbarAction("face-card-preview", "面对面返图", Icons.Default.Devices, enabled, click = { face.send(listOf(cardId)) }))
+        if (receipt != null) add(ToolbarAction("sender-card-preview", "发送者名片", Icons.Default.AccountCircle, enabled, click = { senderInfo = true }))
         add(ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
             click = { actions.cardAction(saved, CardMenuAction.QUICK) })) })
     fun finishPhoto() {
@@ -54,10 +59,11 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     }
     BoxWithConstraints(Modifier.fillMaxSize().padding(18.dp), contentAlignment = Alignment.Center) {
         val frame = frames.firstOrNull { it.id == view.frameStyleId }
-        val width = minOf(maxWidth, maxHeight * polaroidFormat(view, frame).geometry.aspectRatio.toFloat(), 520.dp).coerceAtLeast(1.dp)
+        val width = minOf(maxWidth, maxHeight * com.kigtts.next.cards.polaroidPaperGeometry(view, frame).aspectRatio.toFloat(), 520.dp).coerceAtLeast(1.dp)
         PolaroidCanvas(view, stickers::imageFile, Modifier.width(width), photoEditable = enabled && cardId !in readOnly,
             onPhotoChange = { view = it }, onPhotoEnd = ::finishPhoto,
             frame = frame)
     }
     if (active) CardQuickExportDialog(actions)
+    if (active && senderInfo && receipt != null) com.kigtts.next.sharing.FaceReceiptDialog(receipt) { senderInfo = false }
 }
