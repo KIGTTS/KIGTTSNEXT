@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,7 +17,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -34,27 +32,24 @@ import androidx.compose.ui.unit.sp
 import com.kigtts.next.R
 import com.kigtts.next.state.SubtitleAppearance
 import com.kigtts.next.theme.*
-import com.kigtts.next.ui.home.LocalHomePreviewGeometry
 
-/** Scale measured home geometry, retaining blank controls and branding but no user content. */
+/** Fixed portrait home thumbnail, independent of live drawer, orientation and listening-panel geometry. */
 @Composable internal fun AppearanceHomePreview(settings: ThemeSettings, placeholder: String,
     subtitle: SubtitleAppearance, modifier: Modifier = Modifier) {
-    val geometry = LocalHomePreviewGeometry.current
-    val measured = geometry?.regions?.toMap().orEmpty()
-    val configuration = LocalConfiguration.current
+    val measured = emptyMap<String, Rect>()
     val density = LocalDensity.current.density
-    val viewport = measured["viewport"] ?: Rect(0f, 0f, configuration.screenWidthDp * density, configuration.screenHeightDp * density)
+    val viewport = Rect(0f, 0f, 400f * density, 832f * density)
     val wide = viewport.width > viewport.height
     val colors = MaterialTheme.colorScheme
     // The host deliberately raises compact light controls to medium contrast. Share its animated roles.
     val controls = LocalCompactControlPalette.current ?: compactControlPalette(settings,
         dark = settings.mode.usesDark(isSystemInDarkTheme()), base = colors)
     val logo = painterResource(R.drawable.logo_horizontal)
-    val readIcon = rememberVectorPainter(if (geometry?.automaticRead == true) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff)
+    val readIcon = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeOff)
     val settingsIcon = rememberVectorPainter(Icons.Default.Settings)
     val radius = settings.cornerRadius * density
     val fallback = if (wide) Rect(88f * density, 8f * density, viewport.right - 208f * density, viewport.bottom - 12f * density)
-        else Rect(12f * density, 64f * density, viewport.right - 12f * density, viewport.bottom - 212f * density)
+        else Rect(12f * density, 64f * density, viewport.right - 12f * density, 452f * density)
     val original = measured["subtitle"] ?: fallback
     // Omit the listening panel; keep the actual subtitle bottom and drawer edges.
     val main = if (wide) original.copy(left = viewport.left + 88f * density)
@@ -65,7 +60,7 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
         platformStyle = PlatformTextStyle(includeFontPadding = false))))
     val drawer = measured["phrases"] ?: if (wide)
         Rect(viewport.right - 196f * density, 8f * density, viewport.right - 12f * density, viewport.bottom - 12f * density)
-        else Rect(12f * density, viewport.bottom - 200f * density, viewport.right - 12f * density, viewport.bottom - 4f * density)
+        else Rect(12f * density, 456f * density, viewport.right - 12f * density, 818f * density)
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val scale = minOf(maxWidth.value * density / viewport.width, maxHeight.value * density / viewport.height)
         Box(Modifier.size((viewport.width * scale / density).dp, (viewport.height * scale / density).dp)

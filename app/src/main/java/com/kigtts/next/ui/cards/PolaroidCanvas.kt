@@ -52,12 +52,15 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     selectedLayer: String? = null, editable: Boolean = false, selectLayer: (String?) -> Unit = {},
     updateLayer: (CardLayer) -> Unit = {}, photoEditable: Boolean = false,
     onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null,
-    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null) {
+    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null,
+    removeLayer: (String) -> Unit = {}, configureLayer: ((CardLayer) -> Unit)? = null, configurableLayer: (CardLayer) -> Boolean = { false },
+    backgroundDecoration: @Composable () -> Unit = {}) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
     val selectedId = rememberUpdatedState(selectedLayer)
     val change = rememberUpdatedState(updateLayer)
+    val remove = rememberUpdatedState(removeLayer)
     val select = rememberUpdatedState(selectLayer)
     val geometry = com.kigtts.next.cards.polaroidPaperGeometry(card, frame)
     val branding = polaroidBranding(card, frame)
@@ -78,14 +81,23 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 gesture.layer = if (watching) current.value.layers.firstOrNull { it.id == selectedId.value } else null
                 transforming = watching
                 if (watching) haptics.value.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                try { do { val event = awaitPointerEvent() } while (event.changes.any { it.pressed }) }
-                finally { transforming = false; gesture.layer = null }
+                val original = gesture.layer
+                var completed = false
+                try { do { val event = awaitPointerEvent() } while (event.changes.any { it.pressed }); completed = true }
+                finally {
+                    val moved = gesture.layer
+                    if (watching && moved != null && (moved.x !in 0.0..1.0 || moved.y !in 0.0..1.0)) {
+                        if (completed) { remove.value(moved.id); select.value(null); haptics.value.performHapticFeedback(HapticFeedbackType.GestureEnd) }
+                        else original?.let { change.value(it) }
+                    }
+                    transforming = false; gesture.layer = null
+                }
             }
         }.pointerInput(card.id) {
             detectTransformGestures { _, pan, zoom, rotation ->
                 val layer = gesture.layer
                 if (layer != null) {
-                    gesture.layer = transformCardLayer(layer, pan.x, pan.y, zoom, rotation, size.width.toFloat(), size.height.toFloat())
+                    gesture.layer = transformCardLayer(layer, pan.x, pan.y, zoom, rotation, size.width.toFloat(), size.height.toFloat(), allowOutside = true)
                     change.value(requireNotNull(gesture.layer))
                 }
             }
@@ -108,6 +120,9 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 }
                 if (image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize())
             }
+            backgroundDecoration()
+            if (editable && current.value.layers.any { it.id == selectedId.value && (it.x !in 0.0..1.0 || it.y !in 0.0..1.0) })
+                Text("松手删除贴纸", Modifier.align(Alignment.TopCenter).padding(12.dp), color = MaterialTheme.colorScheme.error)
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier
                 .offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight))
@@ -155,7 +170,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 }.then(if (isSelected) Modifier.sizeIn(minWidth = 72.dp, minHeight = 72.dp) else Modifier)
                     .graphicsLayer { rotationZ = layer.rotation.toFloat() }
                     .then(if (isSelected && layer.kind == CardLayerKind.IMAGE) Modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)) else Modifier)
-                    .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(layer.id) }) else Modifier)
+                    .then(if (editable) Modifier.clickable(onClick = feedbackClick { if (isSelected && configureLayer != null) configureLayer(layer) else select.value(layer.id) }) else Modifier)
                     .testTag("card-layer/" + layer.id).semantics {
                         if (editable) { selected = isSelected; contentDescription = if (layer.kind == CardLayerKind.TEXT) "文字：${layer.text}" else "贴纸" }
                     }, contentAlignment = Alignment.Center) {
@@ -174,9 +189,9 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                         if (layer.kind == CardLayerKind.TEXT) Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
                             Box(Modifier.width(textControlWidth).fillMaxHeight()
                                 .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))) {
-                                CardLayerHandles(layer, updateLayer) { gesture.handleActive = it }
+                                CardLayerHandles(layer, updateLayer, { removeLayer(layer.id) }, configureLayer?.takeIf { configurableLayer(layer) }?.let { configure -> { configure(layer) } }) { gesture.handleActive = it }
                             }
-                        } else CardLayerHandles(layer, updateLayer) { gesture.handleActive = it }
+                        } else CardLayerHandles(layer, updateLayer, { removeLayer(layer.id) }, configureLayer?.takeIf { configurableLayer(layer) }?.let { configure -> { configure(layer) } }) { gesture.handleActive = it }
                     }
                 }
             } }

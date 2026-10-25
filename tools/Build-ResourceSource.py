@@ -30,6 +30,8 @@ def main():
                 lines.append(f"{r/4*.96+.04:.6f} {g/4*.97+.02:.6f} {b/4*.95+.01:.6f}")
     (filters / "soft-warm.cube").write_text("\n".join(lines)+"\n", encoding="utf-8")
     projects.append((filters, "柔和色彩", "轻柔的暖色调，让日常照片多一点温度。", "filter"))
+    projects += [(ROOT / "distribution/resources/card-borders", "名片边框", "细线、花瓣与电路，为你的名片添一道轮廓。", "id_card"),
+                 (ROOT / "distribution/resources/word-stickers", "彩色字贴", "写下文字，挑选颜色，做一张自己的字贴。", "text_fields")]
     packages = []
     for project, name, summary, symbol in projects:
         definition = json.loads((project / "package.json").read_text(encoding="utf-8"))
@@ -39,15 +41,15 @@ def main():
         packages.append(dict(id=definition["id"], name=name, summary=summary, resourceType=definition["resourceType"],
             category="外观", icon=dict(symbol=symbol), license="CC0-1.0", releases=[release]))
     assets = {}
-    for package, name, width, height in zip(packages, ("classic-frames", "soft-colors"), (1200, 480), (800, 900)):
+    for package, name, width, height in zip(packages, ("classic-frames", "soft-colors", "card-borders", "word-stickers"), (1200, 480, 1200, 1200), (800, 900, 800, 800)):
         local = ROOT / f"distribution/resources/previews/{name}.svg"
         target = folder / f"artwork/{name}.svg"; target.parent.mkdir(exist_ok=True); target.write_bytes(local.read_bytes())
         assets[name] = dict(url=BASE + f"artwork/{name}.svg", sha256=module.digest(local.read_bytes()), bytes=local.stat().st_size, width=width, height=height, alt=package["name"] + "预览")
         package["thumbnails"] = [name]
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.resources", name="KIGTTS 资源", description="为字幕与照片添加新的风格。",
-        homepage="https://github.com/KIGTTS/KPM", updatedAt="2026-10-25T00:00:00Z", icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
+        homepage="https://github.com/KIGTTS/KPM", updatedAt="2026-10-26T00:00:00Z", linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
     jsonschema.Draft202012Validator(json.loads((ROOT / "distribution/kpm-catalog.schema.json").read_text(encoding="utf-8"))).validate(catalog)
-    (folder / "index.json").write_text(json.dumps(catalog, ensure_ascii=False, indent=2)+"\n", encoding="utf-8")
+    (folder / "index.json").write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
     (folder / "README.md").write_text("# KIGTTS 资源\n\n相框与滤镜，在插件商店的「资源」页面添加。\n\n这里的原创相框与 LUT 按 [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) 提供。\n", encoding="utf-8", newline="\n")
     print(f"Prepared {len(packages)} signed resource packages -> {folder}")
 

@@ -17,6 +17,8 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
     private val catalogByteLimit:Int=8*1024*1024) {
     val root=File(context.getExternalFilesDir(null) ?: context.filesDir,"appdata/Kigtts/cards").apply {mkdirs()}
     val designs=PolaroidDesignStore(root)
+    val identityFrames=com.kigtts.next.identity.IdentityFrameStore(this)
+    val identityDesigns=com.kigtts.next.identity.IdentityDesignStore(context)
     private val catalog=File(root,"catalog.json")
     private val receipts=linkedMapOf<String,Pair<String,StickerReply>>()
     private val creationTimes=PolaroidCreationTimes()
@@ -79,6 +81,10 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
         stickerRequire(designs.referencedFrames().all { id -> frames.any { it.id==id } },message="边框仍用于相框预设，请先删除对应预设")
         return StickerEdits.apply(state.value,edits).also {
             val remaining = it.images.map { image -> image.id }.toSet()
+            stickerRequire(identityFrames.items.value.mapNotNull { frame -> frame.imageId }.all { it in remaining }, message="图片仍用于名片边框")
+            stickerRequire(identityDesigns.items.value.all { card ->
+                listOfNotNull(card.imageId, card.originalImageId).plus(card.layers.mapNotNull { layer -> layer.imageId }).all { image -> image in remaining }
+            }, message="图片仍用于个人名片，请先更换名片背景或贴纸")
             stickerRequire(designs.referencedImages().all { image -> image in remaining }, message="图片仍用于相框预设，请先删除对应预设")
             PolaroidFrames.validate(it,frames)
             cardPermissions.check(state.value,it,frameState.value,frames)}

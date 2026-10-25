@@ -76,8 +76,7 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                 .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
                 preview(Modifier.width(paperWidth).graphicsLayer {
                     // The tools overlay the paper. Its viewport remains stable while the sheet moves.
-                    val offset = if (avoidTools) end - minOf(48.dp.toPx(),
-                        (end - (sheet.offset.takeIf(Float::isFinite) ?: middle)).coerceAtLeast(0f) * .2f) else end
+                    val offset = if (avoidTools) (sheet.offset.takeIf(Float::isFinite) ?: middle) else end
                     val available = (offset - 24.dp.toPx()).coerceAtLeast(1f)
                     val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
                     scaleX = if (wide) minOf(1f, available / size.width.coerceAtLeast(1f),

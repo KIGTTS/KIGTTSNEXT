@@ -35,28 +35,37 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
     var bio by rememberSaveable(value.id) { mutableStateOf(value.bio) }
     var contacts by rememberSaveable(value.id, stateSaver = ContactLinksSaver) { mutableStateOf(value.contacts) }
     var avatar by rememberSaveable(value.id) { mutableStateOf(value.avatar) }
+    var avatarFrame by rememberSaveable(value.id) { mutableStateOf(value.avatarFrame) }
+    var avatarSource by rememberSaveable(value.id) { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) scope.launch {
             working = true
-            try { avatar = withContext(Dispatchers.IO) { stickers.importImage(uri).id } }
+            try { avatarSource = withContext(Dispatchers.IO) { prepareAvatarSource(stickers.context, uri).path } }
+            catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { error = "头像未能打开，请换一张图片" }
             finally { working = false }
         }
     }
-    MotionAlertDialog(close, title = { Text("个人信息") }, icon = { Icon(Icons.Default.AccountCircle, null) },
+    fun clearSource() { avatarSource?.let { java.io.File(it).delete() }; avatarSource = null }
+    val dismiss = { clearSource(); close() }
+    avatarSource?.let { source -> AvatarCropDialog(java.io.File(source), stickers, { clearSource() }, { id -> avatar = id; clearSource() }) }
+    MotionAlertDialog(dismiss, title = { Text("个人信息") }, icon = { Icon(Icons.Default.AccountCircle, null) },
         text = { Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            PersonalCardView(value.copy(nickname = name, bio = bio, avatar = avatar, contacts = contacts), stickers,
+            PersonalCardView(value.copy(nickname = name, bio = bio, avatar = avatar, contacts = contacts, avatarFrame = avatarFrame), stickers,
                 Modifier.fillMaxWidth(), interactive = false)
             TextButton(feedbackClick { picker.launch("image/*") }, enabled = !working) {
-                PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp)); Spacer(Modifier.width(12.dp)); Text("更换头像")
+                PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp), avatarFrame); Spacer(Modifier.width(12.dp)); Text("更换头像")
             }
+            Text("头像形状", style = MaterialTheme.typography.titleSmall)
+            ChoiceButtonGroup("头像形状", AvatarFrames.names.keys.toList(), avatarFrame,
+                { AvatarFrames.names.getValue(it) }, { avatarFrame = it })
             OutlinedTextField(name, { name = it.take(40) }, Modifier.fillMaxWidth(), label = { Text("昵称") }, singleLine = true)
             OutlinedTextField(bio, { bio = it.take(240) }, Modifier.fillMaxWidth(), label = { Text("简介") }, minLines = 2)
             ContactLinksEditor(contacts) { contacts = it }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         } }, confirmButton = { TextButton(feedbackClick {
-            save(value.copy(nickname = name.trim(), bio = bio.trim(), avatar = avatar, contacts = contacts))
-        }, enabled = !working) { Text("保存") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+            save(value.copy(nickname = name.trim(), bio = bio.trim(), avatar = avatar, contacts = contacts, avatarFrame = avatarFrame))
+        }, enabled = !working) { Text("保存") } }, dismissButton = { TextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
 }

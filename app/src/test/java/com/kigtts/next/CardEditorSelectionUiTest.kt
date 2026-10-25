@@ -72,11 +72,13 @@ class CardEditorSelectionUiTest {
         compose.onNodeWithTag("card-layer-flip-x/" + layer.id, useUnmergedTree = true).performTouchInput { click(center) }
         assertTrue(card.layers.single().flipX)
         assertEquals(layer.id, selected)
-        compose.onNodeWithTag("card-layer-flip-y/" + layer.id, useUnmergedTree = true).performTouchInput { click(center) }
-        assertTrue(card.layers.single().flipY)
-        assertEquals(layer.id, selected)
-        compose.onNodeWithTag("card-layer-rotate/" + layer.id, useUnmergedTree = true).performTouchInput { click(center) }
-        assertEquals(15.0, card.layers.single().rotation, .001)
+        compose.onNodeWithTag("card-layer-flip-y/" + layer.id, useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("card-layer-rotate/" + layer.id, useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("card-layer-scale/" + layer.id, useUnmergedTree = true).performTouchInput {
+            down(center); moveBy(Offset(20f, 35f), 100); up()
+        }
+        assertTrue("同一手柄改变缩放", card.layers.single().width != layer.width)
+        assertTrue("同一手柄改变旋转", kotlin.math.abs(card.layers.single().rotation) > 1)
         assertEquals(layer.x, card.layers.single().x, 0.0)
         assertEquals(layer.y, card.layers.single().y, 0.0)
         assertEquals(layer.id, selected)

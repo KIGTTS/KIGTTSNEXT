@@ -14,7 +14,8 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
         require(ids.size in 1..64) { "每次最多分享 64 张照片" }
         val outgoing = File(root, "outgoing").apply { mkdirs() }
         return ids.distinct().flatMap { id ->
-            val card = requireNotNull(cards.cards.value.firstOrNull { it.id == id }) { "这张照片已移除" }
+            val identity = identities.items.value.firstOrNull { it.designId == id }
+            val card = requireNotNull(if (identity != null) stickers.identityDesigns.get(id) else cards.cards.value.firstOrNull { it.id == id }) { "这张照片已移除" }
             val photo = UUID.nameUUIDFromBytes(id.toByteArray(Charsets.UTF_8)).toString()
             fun asset(source: File, variant: String): FaceAsset {
                 val key = faceToken(); val suffix = source.extension.lowercase().takeIf { it in setOf("png", "webp", "jpg", "jpeg") } ?: "jpg"
@@ -26,7 +27,6 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
             buildList {
                 if (original) (card.originalImageId ?: card.imageId)?.let(stickers::imageFile)?.takeIf { it.isFile }?.let { add(asset(it, "original")) }
                 if (polaroid) {
-                    val identity = identities.items.value.firstOrNull { it.designId == id }
                     val rendered = if (identity != null) com.kigtts.next.identity.exportIdentityCard(identity, stickers, outgoing)
                         else exportPolaroidStill(stickers, card)
                     add(asset(rendered, "polaroid"))

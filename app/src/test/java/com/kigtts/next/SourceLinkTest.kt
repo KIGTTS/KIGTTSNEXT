@@ -33,6 +33,22 @@ class SourceLinkTest {
         assertNull(SourceLinkCoordinator.parseRequest(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=../file")))
         assertNull(SourceLinkCoordinator.parseRequest(Uri.parse("kigtts://source/add?url=${Uri.encode(url)}&package=a&package=b")))
     }
+    @Test fun directDetailsAndExplicitSourcePolicySurviveRestart() {
+        val url = "https://example.org/frames.json"
+        fun link(path: String, suffix: String = "") = Uri.parse("kigtts://source/$path?url=${Uri.encode(url)}&package=test.frames$suffix")
+        assertFalse(SourceLinkCoordinator.parseRequest(link("open"))!!.requireSource)
+        assertTrue(SourceLinkCoordinator.parseRequest(link("add"))!!.requireSource)
+        assertTrue(SourceLinkCoordinator.parseRequest(link("open", "&addSource=required"))!!.requireSource)
+        assertFalse(SourceLinkCoordinator.parseRequest(link("add", "&addSource=optional"))!!.requireSource)
+        assertNull(SourceLinkCoordinator.parseRequest(link("open", "&addSource=auto")))
+        assertNull(SourceLinkCoordinator.parseRequest(link("open", "&addSource=optional&addSource=required")))
+        val app = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = app.getSharedPreferences("pending-package-source", 0); prefs.edit().clear().commit()
+        SourceLinkCoordinator(app, PluginRegistry(emptyList()), { _, _, _, _ -> error("unused") }, {}).accept(link("open"))
+        var inputs: Map<String, String> = emptyMap()
+        SourceLinkCoordinator(app, registry(), { _, _, value, done -> inputs = value; done(true) }, {}).deliver()
+        assertEquals("false", inputs["requireSource"]); assertEquals("test.frames", inputs["packageId"])
+    }
     private fun registry() = PluginRegistry(listOf(object : KigPlugin {
         override val descriptor = PluginDescriptor("test.store", "商店", "test")
         override val contributions = PluginContributions(sourceAction = "add-source")

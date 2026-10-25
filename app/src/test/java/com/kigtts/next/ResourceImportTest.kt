@@ -13,22 +13,24 @@ import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.security.*
 import java.util.zip.*
 
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35], application = Application::class)
 class ResourceImportTest {
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
     @Before fun before() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun after() { Dispatchers.resetMain() }
     private fun signed(payload: Map<String, ByteArray>, content: ResourcePackageContent, type: ResourceType,
-        hashes: Map<String, String>? = null): Pair<File, String> {
+        hashes: Map<String, String>? = null, api: Int = 29): Pair<File, String> {
         val key = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         val files = payload + ("content.json" to PluginJson.encodeToString(content).toByteArray())
         val raw = PluginJson.encodeToString(ResourcePackageManifest(id = "test.resources", name = "测试资源", version = "1.0.0",
-            versionCode = 1, resourceType = type, files = hashes ?: files.mapValues { hash(it.value) })).toByteArray()
+            versionCode = 1, apiVersion = api, resourceType = type, files = hashes ?: files.mapValues { hash(it.value) })).toByteArray()
         val signature = Signature.getInstance("SHA256withRSA").run { initSign(key.private); update(raw); sign() }
         val file = File.createTempFile("resource-", ".kigresource", app.cacheDir)
         ZipOutputStream(file.outputStream()).use { zip ->
@@ -77,4 +79,30 @@ class ResourceImportTest {
         assertEquals(frames.size, frames.map { it.id }.distinct().size)
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
     }
+    @Test fun personalFramesImportIntoTheirOwnLibraryAndGeneratorInstancesKeepIndependentValues() = runBlocking {
+        val model = AppViewModel(app, emptyList())
+        val frameStyles = model.stickers.frameStyles.value
+        val svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 576"><rect x="10" y="10" width="1004" height="556" rx="30" fill="none" stroke="#00696E" stroke-width="4"/></svg>""".toByteArray()
+        val descriptor = PersonalCardFramePackage(items = listOf(PersonalCardFrameResource("fine", "资源名片边框", "fine.svg")))
+        val (frame, publisher) = signed(mapOf("fine.svg" to svg, "card-frames.json" to PluginJson.encodeToString(descriptor).toByteArray()), ResourcePackageContent(), ResourceType.CARD_FRAME, api = 30)
+        importResource(model, ResourceArchive.read(frame, File(app.cacheDir, "personal-frame"), publisher))
+        assertEquals(frameStyles, model.stickers.frameStyles.value)
+        assertNotNull(model.stickers.identityFrames.items.value.firstOrNull { it.name == "资源名片边框" }?.imageId)
+        assertTrue(model.cards.cards.value.isEmpty())
+        val template = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 64"><rect width="128" height="64" fill="{{ink}}"/></svg>""".toByteArray()
+        val generators = StickerGenerators(items = listOf(VectorStickerGenerator("label", "参数字贴", "label.svg", 128, 64,
+            listOf(StickerParameter("ink", "颜色", StickerParameterKind.COLOR, "#00696E")))))
+        val (sticker, author) = signed(mapOf("label.svg" to template, "generators.json" to PluginJson.encodeToString(generators).toByteArray()), ResourcePackageContent(), ResourceType.STICKERS, api = 30)
+        importResource(model, ResourceArchive.read(sticker, File(app.cacheDir, "generated-sticker"), author))
+        val store = com.kigtts.next.cards.generators.GeneratedStickers(model.stickers)
+        val item = model.stickers.snapshot.value.items.first { it.name == "参数字贴" }
+        val original = store.get(item.imageId)!!
+        val changed = store.generate(original, mapOf("ink" to "#FF0000"))
+        assertNotEquals(item.imageId, changed)
+        assertEquals("#00696E", store.get(item.imageId)!!.values["ink"])
+        assertEquals("#FF0000", store.get(changed)!!.values["ink"])
+        assertTrue(model.cards.cards.value.isEmpty())
+        assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
+    }
+
 }

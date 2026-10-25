@@ -18,11 +18,12 @@ import com.kigtts.next.ui.components.feedbackClick
 internal enum class CardEditorMode { CROP, FRAME, STICKERS, TEXT }
 
 @Composable
-internal fun CardEditorTabs(mode: CardEditorMode, select: (CardEditorMode) -> Unit, compact: Boolean = false) {
-    PrimaryTabRow(mode.ordinal, Modifier.testTag("card-editor-tabs"), containerColor = Color.Transparent, divider = {}) {
-        CardEditorMode.entries.forEach { option -> Tab(option == mode, feedbackClick { select(option) },
+internal fun CardEditorTabs(mode: CardEditorMode, select: (CardEditorMode) -> Unit, compact: Boolean = false, personal: Boolean = false) {
+    val options = if (personal) listOf(CardEditorMode.CROP, CardEditorMode.STICKERS) else CardEditorMode.entries
+    PrimaryTabRow(options.indexOf(mode).coerceAtLeast(0), Modifier.testTag("card-editor-tabs"), containerColor = Color.Transparent, divider = {}) {
+        options.forEach { option -> Tab(option == mode, feedbackClick { select(option) },
             modifier = Modifier.testTag("card-editor-tab/" + option.name),
-            text = { Text(when (option) { CardEditorMode.CROP -> "裁剪"; CardEditorMode.FRAME -> "边框"; CardEditorMode.STICKERS -> "贴纸"; CardEditorMode.TEXT -> "文字" }) },
+            text = { Text(when (option) { CardEditorMode.CROP -> if (personal) "背景" else "裁剪"; CardEditorMode.FRAME -> "边框"; CardEditorMode.STICKERS -> "贴纸"; CardEditorMode.TEXT -> "文字" }) },
             icon = if (compact) null else ({ Icon(when (option) { CardEditorMode.CROP -> Icons.Default.Crop; CardEditorMode.FRAME -> Icons.Default.CropOriginal
                 CardEditorMode.STICKERS -> Icons.Default.Collections; CardEditorMode.TEXT -> Icons.Default.TextFields }, null, Modifier.size(22.dp)) })) }
     }

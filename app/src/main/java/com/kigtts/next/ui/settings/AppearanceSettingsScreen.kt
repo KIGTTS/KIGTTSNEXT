@@ -25,7 +25,10 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
         BoxWithConstraints(Modifier.fillMaxSize()) {
           val viewport = maxHeight
           val navigation = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
+          val sheet = rememberBottomSheetScaffoldState()
+          LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.bottomSheetState.expand() }
           BottomSheetScaffold(sheetPeekHeight = (viewport * .53f).coerceIn(180.dp, 420.dp),
+            scaffoldState = sheet,
             sheetDragHandle = { BottomSheetDefaults.DragHandle() },
             containerColor = Color.Transparent,
             sheetContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f),

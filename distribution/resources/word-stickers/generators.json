@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "word",
+      "name": "彩色字贴",
+      "template": "art/word.svg",
+      "width": 1024,
+      "height": 512,
+      "parameters": [
+        {
+          "id": "text",
+          "label": "文字",
+          "kind": "TEXT",
+          "default": "你好",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#00696E"
+        },
+        {
+          "id": "paper",
+          "label": "底色",
+          "kind": "COLOR",
+          "default": "#B5F2F4"
+        },
+        {
+          "id": "size",
+          "label": "字号",
+          "kind": "NUMBER",
+          "default": "128",
+          "minimum": 32,
+          "maximum": 192
+        }
+      ]
+    }
+  ]
+}

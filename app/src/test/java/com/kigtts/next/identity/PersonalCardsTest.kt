@@ -64,13 +64,13 @@ class PersonalCardsTest {
             val identities = IdentityRepository(f.app, f.cards)
             val first = identities.create(); val next = identities.create()
             val image = f.stickers.importResource(f.photo())
-            val design = f.cards.cards.value.first { it.id == first.designId }
-            f.cards.update(design.copy(frameColor = 0xFF3F6A62, layers = listOf(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, x = .75, y = .25, width = .2))))
+            val design = requireNotNull(f.stickers.identityDesigns.get(first.designId))
+            f.stickers.identityDesigns.put(design.copy(frameColor = 0xFF3F6A62, layers = listOf(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, x = .75, y = .25, width = .2))))
             identities.save(first.copy(nickname = "测试名片", bio = "你好", contacts = listOf(ContactLink("微信", "example"))))
             identities.select(first.id)
             val reloaded = IdentityRepository(f.app, f.cards)
             assertEquals(first.id, reloaded.current?.id); assertEquals(listOf(first.id, next.id), reloaded.items.value.map { it.id })
-            val paper = PolaroidRenderer.renderBitmap(f.stickers, f.cards.cards.value.first { it.id == first.designId })
+            val paper = PolaroidRenderer.renderBitmap(f.stickers, requireNotNull(f.stickers.identityDesigns.get(first.designId)))
             try {
                 assertEquals(16.0 / 9, paper.width.toDouble() / paper.height, .002)
                 assertEquals(0xFF3F6A62.toInt(), paper.getPixel(0, 0))

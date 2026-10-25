@@ -47,6 +47,7 @@ fun KigttsApp(model: AppViewModel) {
     var sketchShare by remember { mutableIntStateOf(0) }
     var dialog by remember { mutableStateOf<PluginOutcome.Dialog?>(null) }
     var pluginMenu by remember { mutableStateOf<Pair<String, PluginOutcome.Menu>?>(null) }
+    var artworkSelector by remember { mutableStateOf<Pair<String, PluginOutcome.SelectArtwork>?>(null) }
     var quickTextSelector by remember { mutableStateOf<Pair<String, PluginOutcome.SelectQuickText>?>(null) }
     var pluginControls by remember { mutableStateOf<Pair<String, PluginOutcome.Controls>?>(null) }
     var controlsRevision by remember { mutableIntStateOf(0) }
@@ -63,7 +64,7 @@ fun KigttsApp(model: AppViewModel) {
     val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
     val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -85,6 +86,7 @@ fun KigttsApp(model: AppViewModel) {
                 }
                 is PluginOutcome.Dialog -> dialog = outcome
                 is PluginOutcome.Menu -> pluginMenu = plugin to outcome
+                is PluginOutcome.SelectArtwork -> artworkSelector = plugin to outcome
                 is PluginOutcome.SelectQuickText -> quickTextSelector = plugin to outcome
                 is PluginOutcome.Controls -> { pluginControls = plugin to outcome; controlsRevision++ }
                 is PluginOutcome.Confirm -> pluginConfirmation = plugin to outcome
@@ -130,6 +132,7 @@ fun KigttsApp(model: AppViewModel) {
             CompositionLocalProvider(LocalIconTextMenuEnabled provides false) {
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
                 pluginCapture, { pluginCapture = null })
+            com.kigtts.next.ui.plugins.PluginArtworkRequest(model, artworkSelector) { artworkSelector = null }
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)

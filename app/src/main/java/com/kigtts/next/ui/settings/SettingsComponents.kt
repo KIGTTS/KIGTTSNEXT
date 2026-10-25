@@ -43,7 +43,7 @@ internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 internal fun SettingsGroup(title: String, subtitle: String = "", content: @Composable ColumnScope.() -> Unit) {
-    com.kigtts.next.theme.AppearanceCardSurface(Modifier.fillMaxWidth()) {
+    com.kigtts.next.theme.AppearanceCardSurface(Modifier.fillMaxWidth().settingFocus(title)) {
         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Text(title,Modifier.semantics { heading() },style=MaterialTheme.typography.titleMedium)
@@ -61,6 +61,7 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     leading: (@Composable () -> Unit)? = null,
     badge: com.kigtts.plugin.api.PluginBadge? = null,
     content: @Composable ColumnScope.() -> Unit = {}) {
+    val located = modifier.settingFocus(title)
     val shape = groupedSettingShape(position, MaterialTheme.shapes.small)
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -78,8 +79,8 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
             content()
         }
     }
-    if (onClick == null) Surface(modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
-    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = modifier, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
+    if (onClick == null) Surface(located, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
+    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = located, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
 }
 
 @Composable

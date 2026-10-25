@@ -25,7 +25,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     val title = when (val destination = state.destination) {
         Destination.Home -> "KIGTTS"
         Destination.Settings -> "设置"
-        Destination.PersonalCards -> "个人信息与名片"
+        Destination.PersonalCards -> "个人信息"
         Destination.Fonts -> "字体"
         is Destination.SettingsDetail -> destination.category.title
         Destination.Plugins -> "插件管理"

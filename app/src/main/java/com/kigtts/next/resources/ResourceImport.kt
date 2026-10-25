@@ -21,6 +21,7 @@ internal suspend fun importResource(model: AppViewModel, archive: ResourceArchiv
                 else -> error("无法读取快捷文本包")
             }
         }
+        ResourceType.CARD_FRAME -> withContext(Dispatchers.IO) { model.stickers.identityFrames.install(archive) }
         ResourceType.VOICE -> model.externalFiles.importVoice(archive.file(requireNotNull(archive.content.payload)))
         ResourceType.FILTER -> withContext(Dispatchers.IO) {
             val library = com.kigtts.next.ui.cards.camera.CameraLutLibrary(model.getApplication())
@@ -41,6 +42,14 @@ private fun importDesigns(model: AppViewModel, archive: ResourceArchive) {
         val prefix = "resource." + UUID.randomUUID().toString().replace("-", "") + "."
         val frames = archive.content.frames.associate { it.id to (prefix + it.id.takeLast(40)) }
         val edits = mutableListOf<StickerEdit>()
+        if (archive.generators.items.isNotEmpty()) {
+            val library = UUID.randomUUID().toString()
+            edits += StickerEdit.PutLibrary(StickerLibrary(library, archive.manifest.name))
+            com.kigtts.next.cards.generators.GeneratedStickers(model.stickers).install(archive).forEach { (name, imageId) ->
+                created += imageId
+                edits += StickerEdit.PutItem(StickerItem(UUID.randomUUID().toString(), library, name, imageId))
+            }
+        }
         archive.content.frames.forEach { style -> edits += StickerEdit.PutFrameStyle(style.copy(id = requireNotNull(frames[style.id]),
             overlayImageId = image(style.overlayImageId), owner = null)) }
         archive.content.snapshot?.let { snapshot ->

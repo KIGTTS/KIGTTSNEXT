@@ -33,11 +33,15 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     openLibrary: () -> Unit = {}, openCamera: () -> Unit = {}, cameraImageId: String? = null,
     cameraOriginalImageId: String? = null, cameraFrameStyleId: String? = null, cameraRequestVersion: Long = 0L,
     cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
-    identity: IdentityCard? = null) {
+    identity: IdentityCard? = null, personalDesign: PolaroidCard? = null,
+    savePersonal: ((PolaroidCard, IdentityCard) -> PolaroidCard)? = null,
+    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
+    val identityFrames by stickers.identityFrames.items.collectAsStateWithLifecycle()
+    val privateDesigns by stickers.identityDesigns.items.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
-    val persisted = catalog.cards.firstOrNull { it.id == cardId }
+    val persisted = if (identity != null) personalDesign ?: privateDesigns.firstOrNull { it.id == cardId } else catalog.cards.firstOrNull { it.id == cardId }
     if (persisted == null) { Text("这张拍立得已移除", Modifier.padding(24.dp)); return }
     if (cardId in readOnly) {
         Text("接收的照片只能查看和分享", Modifier.padding(24.dp))
@@ -45,9 +49,15 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }
     var draft by rememberSaveable(cardId, stateSaver = CardDraftSaver) { mutableStateOf(persisted) }
     var baseline by rememberSaveable(cardId, stateSaver = CardDraftSaver) { mutableStateOf(persisted) }
+    var personalDraft by remember(identity?.id) { mutableStateOf(identity) }
+    var personalBaseline by remember(identity?.id) { mutableStateOf(identity) }
+    var maskColor by remember { mutableStateOf(false) }
+    val noun = if (identity == null) "拍立得" else "名片"
     var selectedId by rememberSaveable(cardId) { mutableStateOf<String?>(null) }
     var handledCameraVersion by rememberSaveable(cardId) { mutableLongStateOf(0L) }
     var mode by rememberSaveable(cardId) { mutableStateOf(CardEditorMode.CROP) }
+    var generatorLayer by remember { mutableStateOf<CardLayer?>(null) }
+    val generators = remember(stickers) { com.kigtts.next.cards.generators.GeneratedStickers(stickers) }
     var textEditing by rememberSaveable { mutableStateOf(false) }
     var qrDialog by rememberSaveable { mutableStateOf(false) }
     var qrPayload by rememberSaveable { mutableStateOf("") }
@@ -64,7 +74,8 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     val active = LocalPageActive.current
     val currentActive = rememberUpdatedState(active)
     val leave = LocalPageBackAction.current
-    val dirty = draft != baseline
+    val dirty = draft != baseline || personalDraft != personalBaseline
+    val backgroundPixels = com.kigtts.next.ui.identity.rememberIdentityBackground(draft.takeIf { identity != null }, personalDraft ?: IdentityCard(designId = cardId), stickers)
     val selected = draft.layers.firstOrNull { it.id == selectedId }
     val conflict = persisted != baseline
     LaunchedEffect(persisted) { if (!dirty) { draft = persisted; baseline = persisted } }
@@ -111,17 +122,17 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         val candidate = draft; val previous = baseline
         work {
             val saved = withContext(Dispatchers.IO) { synchronized(stickers) {
-                check(cards.cards.value.firstOrNull { it.id == cardId } == previous) { "拍立得已在其它位置更新，请重新打开后保存" }
-                cards.update(candidate.copy(title = candidate.title.trim(),
-                    layers = candidate.layers.filterNot { it.kind == CardLayerKind.TEXT && it.text.isBlank() }))
+                check((if (identity != null) stickers.identityDesigns.get(cardId) else cards.cards.value.firstOrNull { it.id == cardId }) == previous) { "拍立得已在其它位置更新，请重新打开后保存" }
+                val clean = candidate.copy(title = candidate.title.trim(), layers = candidate.layers.filterNot { it.kind == CardLayerKind.TEXT && it.text.isBlank() })
+                if (personalDraft != null && savePersonal != null) savePersonal(clean, requireNotNull(personalDraft)) else cards.update(clean)
             } }
-            baseline = saved; draft = saved; savedReturn = true; message("已保存拍立得")
+            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = true; message("已保存$noun")
         }
     }
     LaunchedEffect(active, savedReturn, discard) {
         if (active && savedReturn && !discard) { savedReturn = false; leave?.invoke() }
     }
-    RegisterPageActions(listOf(ToolbarAction("save-card", "保存拍立得", Icons.Default.Save,
+    RegisterPageActions(listOf(ToolbarAction("save-card", "保存$noun", Icons.Default.Save,
         enabled && dirty && !conflict, preserveColorWhenLocked = busy, click = { saveDraft() })))
     fun cancelAdjustment() { selectedId = null; textEditing = false; focus.clearFocus(); keyboard?.hide() }
     fun backFromEditor() { if (selectedId != null || textEditing) cancelAdjustment() else discard = true }
@@ -136,9 +147,13 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
                 { if (it == null) cancelAdjustment() else { selectedId = it; if (draft.layers.none { layer -> layer.id == it && layer.kind == CardLayerKind.TEXT }) textEditing = false } },
                 ::updateLayer, photoEditable = enabled && mode == CardEditorMode.CROP,
-                onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId })
-            identity?.let { PersonalCardOverlay(it, stickers, Modifier.matchParentSize(), interactive = false,
-                backgroundColor = draft.frameColor, hasImage = draft.imageId != null) }
+                onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId },
+                configurableLayer = { layer -> generators.contains(layer.imageId) },
+                configureLayer = { layer -> if (generators.get(layer.imageId) != null) generatorLayer = layer },
+                removeLayer = { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }); selectedId = null },
+                backgroundDecoration = { if (identity != null) com.kigtts.next.ui.identity.IdentityBackgroundPreview(backgroundPixels) })
+            personalDraft?.let { PersonalCardOverlay(it, stickers, Modifier.matchParentSize(), interactive = false,
+                backgroundColor = draft.frameColor, hasImage = draft.imageId != null, backgroundPixels = backgroundPixels) }
             }
         }, tools = {
         if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
@@ -158,11 +173,18 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                     selectItem = { addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = it.imageId, width = .32)) },
                     itemMenu = {}, modifier = Modifier.fillMaxWidth().height(240.dp), showLibraryActions = false)
             }, designTools = { CardDesignTools(cards, draft, enabled, { draft = it }, message) },
-            captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) })
-    }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact) },
+            backgroundTools = personalDraft?.let { person -> {
+                com.kigtts.next.ui.identity.IdentityBackgroundTools(draft, person, enabled, { draft = it }, { personalDraft = it },
+                    { overlayImport = false; photo.gallery() }, { selectPhoto?.invoke { chosen -> draft = draft.copy(imageId = chosen.imageId, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0) } },
+                    { paperColor = true }, { maskColor = true }, identityFrames)
+            } }, captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) })
+    }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact, personal = identity != null) },
         imageFile = stickers::imageFile, insertElement = { layer ->
             addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false
         }, avoidTools = identity != null)
+    if (active) generatorLayer?.let { layer -> generators.get(layer.imageId)?.let { source ->
+        GeneratedStickerDialog(layer, source, stickers, { generatorLayer = null }, ::updateLayer)
+    } }
     if (active && qrDialog) CardNameDialog("添加二维码", qrPayload, { qrDialog = false }, { text ->
         qrDialog = false; qrPayload = text
         work {
@@ -171,7 +193,10 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         }
     }, multiline = true, maximum = 2048, trimInput = false, inputLabel = "二维码内容")
     if (active && paperColor) ColorPickerDialog(draft.frameColor, { color -> draft = draft.copy(frameColor = color); paperColor = false },
-        { paperColor = false }, title = "纸框颜色")
+        { paperColor = false }, title = if (identity == null) "纸框颜色" else "背景颜色")
+    if (active && maskColor && personalDraft != null) ColorPickerDialog(requireNotNull(personalDraft).gradientColor, { color ->
+        personalDraft = personalDraft?.copy(gradientColor = color); maskColor = false
+    }, { maskColor = false }, title = "渐变颜色")
     if (active && textColor && selected?.kind == CardLayerKind.TEXT) ColorPickerDialog(selected.color, { color ->
         updateLayer(selected.copy(color = color)); textColor = false
     }, { textColor = false }, title = "文字颜色")

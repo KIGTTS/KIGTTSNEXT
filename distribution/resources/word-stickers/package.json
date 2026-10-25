@@ -1,0 +1,10 @@
+{
+  "id": "resources.word-stickers",
+  "name": "彩色字贴",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "resourceType": "STICKERS",
+  "licenses": [
+    "LICENSE"
+  ]
+}

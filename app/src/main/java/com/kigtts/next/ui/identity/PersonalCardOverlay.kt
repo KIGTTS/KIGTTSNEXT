@@ -22,13 +22,14 @@ import com.kigtts.next.ui.components.*
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
     modifier: Modifier = Modifier, interactive: Boolean = true, backgroundColor: Long = 0xFF245E63,
-    hasImage: Boolean = true) {
+    hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null) {
     var contact by remember { mutableStateOf<ContactLink?>(null) }
-    val ink = if (!hasImage && !identity.gradient && Color(backgroundColor).luminance() > .5f) Color(0xFF202020) else Color.White
+    val ink = if (backgroundPixels != null) Color(identityInk(backgroundPixels)) else
+        if (!hasImage && Color(if (identity.gradient) identity.gradientColor else backgroundColor).luminance() > .42f) Color(0xFF202020) else Color.White
+    val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = .5f), androidx.compose.ui.geometry.Offset(0f, 1.5f), 4f)
     BoxWithConstraints(modifier) {
         val compact = maxWidth < 300.dp
         val padding = if (compact) 12.dp else 20.dp
-        if (identity.gradient) Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = .78f)))))
         CompositionLocalProvider(LocalContentColor provides ink) {
             LazyRow(Modifier.align(Alignment.TopStart).padding(8.dp).fillMaxWidth().testTag("personal-card-contacts"),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -42,10 +43,10 @@ import com.kigtts.next.ui.components.*
             }
             Row(Modifier.align(Alignment.BottomStart).padding(padding), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp))
+                PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp), identity.avatarFrame)
                 Column(Modifier.weight(1f)) {
-                    Text(identity.nickname.ifBlank { "我的名片" }, color = ink, style = MaterialTheme.typography.titleLarge, maxLines = 1)
-                    if (identity.bio.isNotBlank()) Text(identity.bio, color = ink.copy(alpha = .86f), style = MaterialTheme.typography.bodyMedium, maxLines = 2)
+                    Text(identity.nickname.ifBlank { "我的名片" }, color = ink, style = MaterialTheme.typography.titleLarge.copy(shadow = shadow), maxLines = 1)
+                    if (identity.bio.isNotBlank()) Text(identity.bio, color = ink.copy(alpha = .86f), style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow), maxLines = 2)
                 }
             }
         }

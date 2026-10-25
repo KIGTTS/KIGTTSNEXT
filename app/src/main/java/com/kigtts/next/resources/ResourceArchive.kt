@@ -9,11 +9,36 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.zip.ZipFile
 
 data class ResourceArchive(val directory: File, val manifest: ResourcePackageManifest, val content: ResourcePackageContent) {
+    val cardFrames: PersonalCardFramePackage by lazy {
+        require(manifest.resourceType == ResourceType.CARD_FRAME && manifest.apiVersion >= 30)
+        require("card-frames.json" in manifest.files)
+        val source = file("card-frames.json"); require(source.length() in 1..256L*1024)
+        PluginJson.decodeFromString<PersonalCardFramePackage>(source.readText(Charsets.UTF_8)).also { list ->
+            require(list.schemaVersion == 1 && list.items.size in 1..64 && list.items.map { it.id }.distinct().size == list.items.size)
+            list.items.forEach { frame -> require(frame.id.matches(Regex("[a-z][a-z0-9.-]{0,63}")) && frame.name.length in 1..128 && frame.artwork in manifest.files); file(frame.artwork) }
+        }
+    }
+    val generators: StickerGenerators by lazy {
+        if ("generators.json" !in manifest.files) StickerGenerators() else {
+            require(manifest.resourceType == ResourceType.STICKERS && manifest.apiVersion >= 30)
+            val descriptor = file("generators.json"); require(descriptor.length() in 1..512L*1024)
+            PluginJson.decodeFromString<StickerGenerators>(descriptor.readText(Charsets.UTF_8)).also { list ->
+                require(list.schemaVersion == 1 && list.items.size in 1..32 && list.items.map { it.id }.distinct().size == list.items.size)
+                list.items.forEach { spec ->
+                    require(spec.id.matches(Regex("[a-z][a-z0-9.-]{0,63}")) && spec.name.length in 1..128)
+                    require(spec.template in manifest.files && spec.fonts.size <= 8 && spec.fonts.values.all { it in manifest.files })
+                    val bitmap = com.kigtts.next.cards.generators.VectorStickerRenderer.render(spec, file(spec.template), spec.fonts.mapValues { file(it.value) }, emptyMap())
+                    bitmap.recycle()
+                }
+            }
+        }
+    }
     fun file(path: String): File = File(directory, path).also { require(safe(path) && it.isFile) { "资源文件不存在" } }
     val count: Int get() = when (manifest.resourceType) {
+        ResourceType.CARD_FRAME -> cardFrames.items.size
         ResourceType.FILTER -> content.filters.size
         ResourceType.FRAME -> content.frames.size
-        ResourceType.STICKERS -> content.snapshot?.items?.size ?: 0
+        ResourceType.STICKERS -> (content.snapshot?.items?.size ?: 0) + generators.items.size
         ResourceType.PHOTOS -> content.snapshot?.cards?.size ?: 0
         else -> 1
     }
@@ -72,10 +97,11 @@ private fun ResourceArchive.validate() {
     require(content.schemaVersion == 1 && content.filters.size <= 32 && content.imageFiles.size <= 2048 && content.frames.size <= 128)
     content.payload?.let(::file); content.filters.forEach { file(it.path) }; content.imageFiles.values.forEach(::file)
     when (manifest.resourceType) {
+        ResourceType.CARD_FRAME -> require(cardFrames.items.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.QUICK_TEXT, ResourceType.VOICE -> require(content.payload != null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.FILTER -> require(content.filters.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty())
         ResourceType.FRAME -> require(content.frames.isNotEmpty() && content.payload == null && content.filters.isEmpty() && content.snapshot == null)
         ResourceType.PHOTOS -> require(content.snapshot?.cards?.isNotEmpty() == true && content.payload == null && content.filters.isEmpty())
-        ResourceType.STICKERS -> require(content.snapshot?.items?.isNotEmpty() == true && content.snapshot?.cards?.isEmpty() == true && content.payload == null && content.filters.isEmpty() && content.frames.isEmpty())
+        ResourceType.STICKERS -> require((content.snapshot?.items?.isNotEmpty() == true || generators.items.isNotEmpty()) && content.snapshot?.cards.isNullOrEmpty() && content.payload == null && content.filters.isEmpty() && content.frames.isEmpty())
     }
 }

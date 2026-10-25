@@ -12,9 +12,10 @@ import java.util.UUID
 data class ContactLink(val label: String, val value: String, val qrContent: String? = null)
 data class IdentityCard(val id: String = UUID.randomUUID().toString(), val designId: String,
     val nickname: String = "", val bio: String = "", val avatar: String? = null,
-    val contacts: List<ContactLink> = emptyList(), val gradient: Boolean = false) {
+    val contacts: List<ContactLink> = emptyList(), val gradient: Boolean = false, val gradientColor: Long = 0xFF000000,
+    val pattern: String = "", val avatarFrame: String = "circle", val cardFrameId: String = "none") {
     fun publicJson() = JSONObject().put("id", id).put("nickname", nickname.ifBlank { "KIGTTS 用户" })
-        .put("bio", bio).put("contacts", JSONArray(contacts.map { JSONObject().put("label", it.label).put("value", it.value).put("qrContent", it.qrContent) }))
+        .put("bio", bio).put("avatarFrame", avatarFrame).put("avatarClipPath", AvatarFrames.svgPath(avatarFrame)).put("contacts", JSONArray(contacts.map { JSONObject().put("label", it.label).put("value", it.value).put("qrContent", it.qrContent) }))
 }
 
 /** Background presets share a profile; album layers remain individually editable. */
@@ -26,12 +27,13 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
     private val mutable = MutableStateFlow(saved.map(profile::on)); val items = mutable.asStateFlow()
     private val selected = MutableStateFlow(preferences.getString("selected", null)); val selectedId = selected.asStateFlow()
     val current get() = mutable.value.firstOrNull { it.id == selected.value } ?: mutable.value.firstOrNull()
-    init { if (saved.isNotEmpty() && !preferences.contains("profile")) persist(mutable.value, profile) }
+    init { cards.stickers.identityDesigns.migrate(saved, cards); if (saved.isNotEmpty() && !preferences.contains("profile")) persist(mutable.value, profile) }
     private fun load(): List<IdentityCard> = runCatching {
         val list = JSONArray(preferences.getString("items", "[]"))
         (0 until list.length()).map { index -> val item = list.getJSONObject(index)
             val info = PersonalProfile.from(item)
-            info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", true)))
+            info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", true),
+                gradientColor = item.optLong("gradientColor", 0xFF000000), pattern = item.optString("pattern"), cardFrameId = item.optString("cardFrameId", "none")))
         }
     }.getOrDefault(emptyList())
     @Synchronized fun create(): IdentityCard {
@@ -40,8 +42,8 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         synchronized(stickers) {
             if (stickers.frameStyles.value.none { it.id == "identity.banner" })
                 stickers.apply(listOf(StickerEdit.PutFrameStyle(PolaroidFrameStyle("identity.banner", "个人名片", format = PolaroidFormat.WIDE))))
-            val album = cards.albums.value.firstOrNull { it.id == "personal-cards" } ?: cards.createAlbum("我的名片", "personal-cards")
-            val design = cards.create(PolaroidCard(title = "", frameColor = 0xFF245E63, frameStyleId = "identity.banner"), album.id)
+            val design = stickers.identityDesigns.put(PolaroidCard(title = "", frameColor = 0xFF245E63,
+                frameStyleId = "identity.banner", photoBackdrop = PhotoBackdropMode.BLUR))
             return profile.on(IdentityCard(designId = design.id)).also { save(it); select(it.id) }
         }
     }
@@ -54,12 +56,14 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         persist(projected, nextProfile); profile = nextProfile; mutable.value = projected
     }
     @Synchronized fun remove(id: String) {
+        val removed = mutable.value.firstOrNull { it.id == id }
         val next = mutable.value.filterNot { it.id == id }; persist(next, profile); mutable.value = next
+        removed?.let { cards.stickers.identityDesigns.remove(it.designId) }
         if (selected.value == id) { selected.value = next.firstOrNull()?.id; preferences.edit().putString("selected", selected.value).apply() }
     }
     fun select(id: String) { if (mutable.value.none { it.id == id }) return; selected.value = id; preferences.edit().putString("selected", id).apply() }
     private fun persist(values: List<IdentityCard>, person: PersonalProfile) {
-        val json = JSONArray(values.map { JSONObject().put("id", it.id).put("designId", it.designId).put("gradient", it.gradient) })
+        val json = JSONArray(values.map { JSONObject().put("id", it.id).put("designId", it.designId).put("gradient", it.gradient).put("gradientColor", it.gradientColor).put("pattern", it.pattern).put("cardFrameId", it.cardFrameId) })
         val edit = preferences.edit().putString("items", json.toString()).putString("profile", person.json().toString())
         // Preserve earlier per-card information when consolidating the selected identity.
         if (!preferences.contains("profile") && !preferences.contains("legacy-items-v1")) edit.putString("legacy-items-v1", preferences.getString("items", "[]"))

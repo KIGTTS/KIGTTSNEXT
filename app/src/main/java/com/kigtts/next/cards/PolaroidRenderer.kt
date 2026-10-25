@@ -27,7 +27,7 @@ internal object PolaroidRenderer {
     }
     /** A transparent photo window is reused as a single immutable overlay by the GPU movie renderer. */
     fun renderBitmap(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions(),
-        transparentPhoto:Boolean=false,maximumHeight:Int=1500):Bitmap {
+        transparentPhoto:Boolean=false,maximumHeight:Int=1500, beforeLayers: ((Canvas, Bitmap) -> Unit)? = null):Bitmap {
         val frame=repository.frameStyle(card);val geometry=polaroidPaperGeometry(card,frame)
         val branding=polaroidBranding(card,frame)
         val captionWidth=branding?.captionWidth ?: geometry.titleWidth
@@ -69,6 +69,7 @@ internal object PolaroidRenderer {
             }
         }
         }
+        beforeLayers?.invoke(canvas, result)
         if(options.includeStickers)card.layers.filter {it.kind!=CardLayerKind.PHOTO_INFO}.forEach {layer->
             val x=(layer.x*width).toFloat();val y=(layer.y*height).toFloat();val span=(layer.width*width).toFloat()
             canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)

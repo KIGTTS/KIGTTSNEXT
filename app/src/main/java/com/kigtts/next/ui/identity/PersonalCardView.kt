@@ -21,21 +21,22 @@ import com.kigtts.next.ui.cards.rememberCardImage
 
 @Composable
 internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepository, modifier: Modifier = Modifier, interactive: Boolean = true) {
-    val snapshot by stickers.snapshot.collectAsState()
-    val card = snapshot.cards.firstOrNull { it.id == identity.designId }
+    val designs by stickers.identityDesigns.items.collectAsState()
+    val card = designs.firstOrNull { it.id == identity.designId }
+    val pixels = rememberIdentityBackground(card, identity, stickers)
     Surface(modifier.aspectRatio(16f / 9f), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
         Box {
-            card?.let { PolaroidCanvas(it, stickers::imageFile, Modifier.fillMaxSize(), frame = stickers.frameStyle(it), paperElevation = 0.dp) }
+            card?.let { PolaroidCanvas(it, stickers::imageFile, Modifier.fillMaxSize(), frame = stickers.frameStyle(it), paperElevation = 0.dp, backgroundDecoration = { IdentityBackgroundPreview(pixels) }) }
             PersonalCardOverlay(identity, stickers, Modifier.matchParentSize(), interactive,
-                backgroundColor = card?.frameColor ?: 0xFF245E63, hasImage = card?.imageId != null)
+                backgroundColor = card?.frameColor ?: 0xFF245E63, hasImage = card?.imageId != null, backgroundPixels = pixels)
         }
     }
 }
 
 @Composable
-internal fun PersonalAvatar(file: java.io.File?, modifier: Modifier = Modifier) {
+internal fun PersonalAvatar(file: java.io.File?, modifier: Modifier = Modifier, frame: String = "circle") {
     val image = rememberCardImage(file, 192)
-    Box(modifier.clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+    Box(modifier.clip(com.kigtts.next.identity.AvatarFrames.shape(frame)).background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
         if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
         else Icon(Icons.Default.Person, null, Modifier.fillMaxSize().padding(10.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
     }

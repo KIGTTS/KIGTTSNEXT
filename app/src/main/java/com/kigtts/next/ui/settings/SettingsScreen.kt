@@ -5,7 +5,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.Search
+import com.kigtts.next.ui.navigation.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.kigtts.next.state.*
@@ -18,6 +21,9 @@ import androidx.compose.ui.unit.dp
 fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
     context: PluginContext = PluginContext("", ""), revision: Int = 0, personalInformation: @Composable () -> Unit = {}) {
     val cards = remember(registry, revision, context) { settingsCards(registry, context) }
+    var searching by rememberSaveable { mutableStateOf(false) }
+    RegisterPageActions(listOf(ToolbarAction("search-settings", "搜索设置", Icons.Default.Search, click = { searching = true })))
+    if (searching) SettingsSearchDialog(cards, { searching = false }, open)
     SettingsLayout {
         personalInformation()
         MotionColumn(cards, { card, _ -> card.id }, Modifier.fillMaxWidth(), spacing = 20.dp, animateInitial = false) { card, active ->

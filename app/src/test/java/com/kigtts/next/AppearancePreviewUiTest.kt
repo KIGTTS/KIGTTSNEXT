@@ -46,15 +46,15 @@ class AppearancePreviewUiTest {
             val path = "build/previews/appearance-control-" + theme.name.lowercase() + ".png"
             compose.onNodeWithTag("appearance-home-wireframe").captureRoboImage(path)
             val bitmap = android.graphics.BitmapFactory.decodeFile(path)
-            fun color(x: Float, y: Float) = bitmap.getPixel((x / 1179 * bitmap.width).toInt(), (y / 2556 * bitmap.height).toInt())
+            fun color(x: Float, y: Float) = bitmap.getPixel((x / 400 * bitmap.width).toInt(), (y / 832 * bitmap.height).toInt())
             val settings = ThemeSettings(mode = theme)
             val palette = themeColors(settings, isDark = theme == ThemeMode.DARK)
             val control = compactControlPalette(settings, dark = theme == ThemeMode.DARK, base = palette).container.toArgb()
-            listOf(108f to 264f, 1071f to 264f, 108f to 1848f, 1071f to 1848f).forEach { (x, y) ->
+            listOf(48.8f to 88f, 364f to 88f, 48.8f to 428f, 351.2f to 428f).forEach { (x, y) ->
                 assertEquals("四角控件应与主界面同色：" + theme, control, color(x, y))
             }
-            assertEquals("底部选中 Tab 保留主题色实心胶囊", palette.primaryContainer.toArgb(), color(240f, 2460f))
-            assertEquals("底部 Tab 内部不保留图标圆点", palette.primaryContainer.toArgb(), color(108f, 2460f))
+            assertEquals("底部选中 Tab 保留主题色实心胶囊", palette.primaryContainer.toArgb(), color(60f, 794f))
+            assertEquals("底部 Tab 内部不保留图标圆点", palette.primaryContainer.toArgb(), color(36f, 794f))
             bitmap.recycle()
         }
     }

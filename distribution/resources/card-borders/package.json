@@ -1,0 +1,7 @@
+{
+  "id": "resources.card-borders",
+  "name": "名片边框",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "resourceType": "CARD_FRAME"
+}

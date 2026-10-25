@@ -36,7 +36,7 @@ class PersonalCardsUiTest {
         compose.onNode(hasContentDescription("联系方式：微信") and hasAnyAncestor(hasTestTag("personal-card-${second.id}"))).performClick()
         compose.onNodeWithText("example").assertIsDisplayed()
         compose.onNodeWithText("关闭").performClick()
-        compose.onNodeWithText("编辑个人信息").performClick()
+        compose.onNodeWithText("头像与昵称").performClick()
         compose.onNodeWithText("昵称").performTextReplacement("新的昵称")
         compose.onNodeWithText("保存").performClick()
         compose.waitUntil(5000) { model.identities.current?.nickname == "新的昵称" }
@@ -62,7 +62,7 @@ class PersonalCardsUiTest {
         compose.onNodeWithText("名片预览").assertIsDisplayed()
         val collapsed = compose.onNodeWithTag("polaroid/" + identity.designId).getUnclippedBoundsInRoot()
         assertTrue(collapsed.top > before.top)
-        assertTrue(collapsed.top.value - before.top.value <= 25f)
+        assertTrue("展开抽屉时预览应明显上移", collapsed.top.value - before.top.value > 25f)
         compose.onRoot().captureRoboImage("build/previews/personal-card-background-editor.png")
     }
 }

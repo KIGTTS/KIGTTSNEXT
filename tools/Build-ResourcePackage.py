@@ -8,7 +8,7 @@ import zipfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS")
+TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS", "CARD_FRAME")
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -27,6 +27,25 @@ def build(project, output, private_key):
     payload = {"content.json": (project / "content.json").read_bytes()}
     paths = list(content.get("imageFiles", {}).values()) + [x["path"] for x in content.get("filters", [])]
     if content.get("payload"): paths.append(content["payload"])
+    generators = project / "generators.json"
+    if generators.is_file():
+        if definition["resourceType"] != "STICKERS": raise ValueError("Generators require STICKERS")
+        descriptor = json.loads(generators.read_text(encoding="utf-8"))
+        assert descriptor.get("schemaVersion", 1) == 1 and 1 <= len(descriptor["items"]) <= 32
+        payload["generators.json"] = generators.read_bytes()
+        for item in descriptor["items"]:
+            assert 32 <= item.get("width", 1024) <= 2048 and 32 <= item.get("height", 512) <= 2048
+            assert len(item.get("parameters", [])) <= 16 and len(item.get("fonts", {})) <= 8
+            paths.append(item["template"])
+            paths.extend(item.get("fonts", {}).values())
+    paths.extend(definition.get("licenses", []))
+    card_frames = project / "card-frames.json"
+    if definition["resourceType"] == "CARD_FRAME":
+        descriptor = json.loads(card_frames.read_text(encoding="utf-8"))
+        assert 1 <= len(descriptor["items"]) <= 64
+        payload["card-frames.json"] = card_frames.read_bytes()
+        paths.extend(item["artwork"] for item in descriptor["items"])
+    api_version = 30 if generators.is_file() or definition["resourceType"] == "CARD_FRAME" else 29
     for name in paths:
         if not safe(name) or name in ("package.json", "resource.json") or name.startswith("signature/"): raise ValueError("Invalid payload path")
         file = (project / name).resolve()
@@ -34,7 +53,7 @@ def build(project, output, private_key):
         payload[name] = file.read_bytes()
     assert len(payload) <= 4093 and sum(map(len, payload.values())) <= 768 * 1024 * 1024
     manifest = {k: definition[k] for k in ("id", "name", "version", "versionCode", "resourceType")}
-    manifest.update(schemaVersion=1, apiVersion=29, minSdk=26, content="content.json", dependencies=definition.get("dependencies", {}), files={p: digest(b) for p, b in sorted(payload.items())})
+    manifest.update(schemaVersion=1, apiVersion=api_version, minSdk=26, content="content.json", dependencies=definition.get("dependencies", {}), files={p: digest(b) for p, b in sorted(payload.items())})
     raw = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     key = serialization.load_der_private_key(Path(private_key).read_bytes(), password=None)
     if not isinstance(key, rsa.RSAPrivateKey) or key.key_size < 2048: raise ValueError("RSA 2048+ required")
@@ -54,7 +73,7 @@ def build(project, output, private_key):
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, data)
     if output.stat().st_size > 256 * 1024 * 1024: raise ValueError("Archive too large")
-    return dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=29, minSdk=26,
+    return dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=api_version, minSdk=26,
         sha256=digest(output.read_bytes()), bytes=output.stat().st_size, expectedPublisher=digest(public), dependencies=manifest["dependencies"])
 
 if __name__ == "__main__":

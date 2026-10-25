@@ -27,20 +27,22 @@ import kotlin.math.*
 
 /** Controls match the layer's bounds and never enlarge the paper canvas's measured size. */
 @Composable
-internal fun BoxScope.CardLayerHandles(layer: CardLayer, change: (CardLayer) -> Unit, handleActive: (Boolean) -> Unit) {
+internal fun BoxScope.CardLayerHandles(layer: CardLayer, change: (CardLayer) -> Unit, remove: () -> Unit = {},
+    configure: (() -> Unit)? = null, handleActive: (Boolean) -> Unit) {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Box(Modifier.matchParentSize().onGloballyPositioned { coordinates = it }) {
         fun center(): Offset? = coordinates?.takeIf { it.isAttached }?.let { it.localToRoot(Offset(it.size.width / 2f, it.size.height / 2f)) }
-        CardDragHandle("旋转贴纸", Icons.Default.RotateRight, Modifier.align(Alignment.TopStart).testTag("card-layer-rotate/" + layer.id),
-            layer, ::center, false, change, handleActive)
-        CardDragHandle("缩放贴纸", Icons.Default.OpenInFull, Modifier.align(Alignment.BottomEnd).testTag("card-layer-scale/" + layer.id),
+        CardDragHandle("缩放并旋转贴纸", Icons.Default.OpenInFull, Modifier.align(Alignment.BottomEnd).testTag("card-layer-scale/" + layer.id),
             layer, ::center, true, change, handleActive)
         MotionIconButton(feedbackClick { change(layer.copy(flipX = !layer.flipX)) },
-            Modifier.align(Alignment.TopEnd).requiredSize(32.dp).testTag("card-layer-flip-x/" + layer.id),
+            Modifier.align(Alignment.TopStart).requiredSize(32.dp).testTag("card-layer-flip-x/" + layer.id),
             colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Flip, "水平镜像", Modifier.size(18.dp)) }
-        MotionIconButton(feedbackClick { change(layer.copy(flipY = !layer.flipY)) },
-            Modifier.align(Alignment.BottomStart).requiredSize(32.dp).testTag("card-layer-flip-y/" + layer.id),
-            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.FlipCameraAndroid, "垂直镜像", Modifier.size(18.dp)) }
+        MotionIconButton(feedbackClick(remove), Modifier.align(Alignment.TopEnd).requiredSize(32.dp).testTag("card-layer-delete/" + layer.id),
+            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Close, "删除贴纸", Modifier.size(18.dp)) }
+        if (configure != null) MotionIconButton(feedbackClick(configure), Modifier.align(Alignment.BottomStart).requiredSize(32.dp)
+            .testTag("card-layer-settings/" + layer.id), colors = IconButtonDefaults.filledTonalIconButtonColors()) {
+            Icon(Icons.Default.Settings, "贴纸设置", Modifier.size(18.dp))
+        }
     }
 }
 
@@ -82,13 +84,13 @@ private fun CardDragHandle(label: String, icon: ImageVector, modifier: Modifier,
                         val input = event.changes.firstOrNull { it.id == down.id }
                         if (input != null && input.pressed) point(input.position)?.let { vector ->
                             if ((input.position - down.position).getDistance() > viewConfiguration.touchSlop) dragged = true
-                            val candidate = if (scale) origin.copy(width = (origin.width * vector.getDistance() / radius).coerceIn(.01, 2.0))
-                            else {
+                            val candidate = run {
                                 val nextAngle = atan2(vector.y.toDouble(), vector.x.toDouble())
                                 var delta = nextAngle - lastAngle
                                 if (delta > PI) delta -= 2 * PI; if (delta < -PI) delta += 2 * PI
                                 angle += delta * 180 / PI; lastAngle = nextAngle
-                                origin.copy(rotation = angle.coerceIn(-36000.0, 36000.0))
+                                origin.copy(width = (origin.width * vector.getDistance() / radius).coerceIn(.01,
+                                    if (origin.kind == CardLayerKind.TEXT) .3 else 2.0), rotation = angle.coerceIn(-36000.0, 36000.0))
                             }
                             if (candidate != origin) { changed = true; update.value(candidate) }
                             input.consume()
