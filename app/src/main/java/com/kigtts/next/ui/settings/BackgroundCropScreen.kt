@@ -52,6 +52,7 @@ import kotlinx.coroutines.withContext
                     val key = AppearanceAssets(context).saveBackground(output)
                     AppearanceBackgrounds.load(context, key)
                     AppearanceBackgrounds.load(context, key, true)
+                    AppearanceBackgrounds.load(context, key, BackgroundBlur.PAGE)
                     key to backgroundThemeSeed(output)
                 } finally { output.recycle() }
             }

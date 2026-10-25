@@ -11,8 +11,10 @@ internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerReposit
     try {
         val canvas = Canvas(bitmap); val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val width = bitmap.width.toFloat(); val height = bitmap.height.toFloat()
-        paint.shader = LinearGradient(0f, height * .3f, 0f, height, Color.TRANSPARENT, 0xDD000000.toInt(), Shader.TileMode.CLAMP)
-        canvas.drawRect(0f, 0f, width, height, paint); paint.shader = null
+        if (identity.gradient) {
+            paint.shader = LinearGradient(0f, height * .3f, 0f, height, Color.TRANSPARENT, 0xDD000000.toInt(), Shader.TileMode.CLAMP)
+            canvas.drawRect(0f, 0f, width, height, paint); paint.shader = null
+        }
         val size = height * .22f; val x = width * .06f; val y = height * .67f
         identity.avatar?.let(stickers::imageFile)?.let { file ->
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(file.path, options)
@@ -22,7 +24,17 @@ internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerReposit
                     canvas.drawBitmap(avatar, null, RectF(x, y, x + size, y + size), paint); canvas.restore() } finally { avatar.recycle() }
             }
         }
-        paint.color = Color.WHITE; paint.textSize = height * .07f; paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.color = if (!identity.gradient && card.imageId == null && androidx.core.graphics.ColorUtils.calculateLuminance(card.frameColor.toInt()) > .5) 0xFF202020.toInt() else Color.WHITE
+        val iconSize = (height * .085f).toInt()
+        identity.contacts.take(8).forEachIndexed { index, link ->
+            androidx.core.content.ContextCompat.getDrawable(stickers.context, socialPlatform(link).icon)?.mutate()?.let { icon ->
+                icon.setTint(paint.color)
+                val left = (height * .06f + index * height * .15f).toInt()
+                val top = (height * .06f).toInt()
+                icon.setBounds(left, top, left + iconSize, top + iconSize); icon.draw(canvas)
+            }
+        }
+        paint.textSize = height * .07f; paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText(identity.nickname.ifBlank { "KIGTTS 用户" }, x + size + 24, y + size * .4f, paint)
         paint.typeface = Typeface.DEFAULT; paint.textSize = height * .038f
         canvas.drawText(identity.bio.take(60), x + size + 24, y + size * .82f, paint)

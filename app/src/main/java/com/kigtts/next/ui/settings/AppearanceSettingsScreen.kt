@@ -21,7 +21,6 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
     subtitle: com.kigtts.next.state.SubtitleAppearance = com.kigtts.next.state.SubtitleAppearance(),
     onSubtitleChange: (com.kigtts.next.state.SubtitleAppearance) -> Unit = {}, onFonts: () -> Unit = {}) {
     Box(Modifier.fillMaxSize()) {
-      AppearanceBackdrop(settings, Modifier.matchParentSize())
       ReadablePage(840.dp) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
           val viewport = maxHeight

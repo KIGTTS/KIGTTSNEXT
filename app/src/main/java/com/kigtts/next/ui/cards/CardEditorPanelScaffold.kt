@@ -32,7 +32,7 @@ import java.io.File
 internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expandTools: Boolean,
     clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit,
     categories: (@Composable (Boolean, () -> Unit) -> Unit)? = null,
-    imageFile: (String) -> File? = { null }, insertElement: (CardLayer) -> Unit = {}) {
+    imageFile: (String) -> File? = { null }, insertElement: (CardLayer) -> Unit = {}, avoidTools: Boolean = false) {
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -76,7 +76,8 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                 .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
                 preview(Modifier.width(paperWidth).graphicsLayer {
                     // The tools overlay the paper. Its viewport remains stable while the sheet moves.
-                    val offset = end
+                    val offset = if (avoidTools) end - minOf(48.dp.toPx(),
+                        (end - (sheet.offset.takeIf(Float::isFinite) ?: middle)).coerceAtLeast(0f) * .2f) else end
                     val available = (offset - 24.dp.toPx()).coerceAtLeast(1f)
                     val paperHeight = size.width / aspectRatio.coerceAtLeast(.1f)
                     scaleX = if (wide) minOf(1f, available / size.width.coerceAtLeast(1f),

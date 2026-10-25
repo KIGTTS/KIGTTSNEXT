@@ -58,4 +58,35 @@ class BackgroundAppearanceTest {
         assertEquals(0xff6750a4, settings.withColorSource(ThemeColorSource.CUSTOM).effectiveSeed)
         assertEquals(ThemeColorSource.WALLPAPER, settings.withColorSource(ThemeColorSource.WALLPAPER).colorSource)
     }
+    @Test fun secondaryBackgroundDefaultsOffAndBothBlurLayersRemainDistinctAcrossRestart() {
+        app.getSharedPreferences("appearance", 0).edit().clear().commit()
+        val store = ThemeSettingsStore(app)
+        assertFalse(store.load().secondaryPageBackground)
+        val image = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK) }
+        Canvas(image).drawRect(64f, 0f, 128f, 128f, Paint().apply { color = Color.WHITE })
+        val key = AppearanceAssets(app).saveBackground(image)
+        val cache = BackgroundBlurCache(app)
+        val lightFile = cache.file(key, BackgroundBlur.PAGE)!!
+        val strongFile = cache.file(key, BackgroundBlur.CARD)!!
+        assertNotEquals(lightFile, strongFile)
+        val light = BitmapFactory.decodeFile(lightFile.path)
+        val strong = BitmapFactory.decodeFile(strongFile.path)
+        assertTrue(Color.red(light.getPixel(72, 64)) > Color.red(strong.getPixel(72, 64)) + 20)
+        val settings = ThemeSettings(background = key, secondaryPageBackground = true)
+        store.save(settings); assertEquals(settings, ThemeSettingsStore(app).load())
+        store.save(settings.copy(secondaryPageBackground = false))
+        assertEquals(key, store.load().background); assertFalse(store.load().secondaryPageBackground)
+        image.recycle(); light.recycle(); strong.recycle()
+    }
+    @Test fun scrollingCardUsesSameScreenCoordinatesAsPageInBothOrientations() {
+        val image = androidx.compose.ui.geometry.Size(384f, 384f)
+        listOf(androidx.compose.ui.geometry.Size(393f, 852f), androidx.compose.ui.geometry.Size(852f, 393f)).forEach { viewport ->
+            val page = backgroundImageRect(image, viewport, androidx.compose.ui.geometry.Offset.Zero)
+            listOf(120f, 350f, -80f).forEach { scroll ->
+                val origin = androidx.compose.ui.geometry.Offset(24f, scroll)
+                val card = backgroundImageRect(image, viewport, origin)
+                assertEquals(page, card.translate(origin))
+            }
+        }
+    }
 }

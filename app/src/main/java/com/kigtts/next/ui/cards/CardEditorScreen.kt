@@ -18,6 +18,8 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.cards.*
+import com.kigtts.next.identity.IdentityCard
+import com.kigtts.next.ui.identity.PersonalCardOverlay
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.plugin.api.*
@@ -30,7 +32,8 @@ private val CardDraftSaver = Saver<PolaroidCard, String>(
 fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId: String, message: (String) -> Unit,
     openLibrary: () -> Unit = {}, openCamera: () -> Unit = {}, cameraImageId: String? = null,
     cameraOriginalImageId: String? = null, cameraFrameStyleId: String? = null, cameraRequestVersion: Long = 0L,
-    cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0) {
+    cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
+    identity: IdentityCard? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
@@ -128,11 +131,15 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }
     CardEditorPanelScaffold(polaroidPaperGeometry(draft, frames.firstOrNull { it.id == draft.frameStyleId }).aspectRatio.toFloat(),
         enabled, textEditing, ::cancelAdjustment, preview = { paperModifier ->
-            PolaroidCanvas(draft, stickers::imageFile, paperModifier,
+            Box(paperModifier.aspectRatio(polaroidPaperGeometry(draft, frames.firstOrNull { it.id == draft.frameStyleId }).aspectRatio.toFloat())) {
+            PolaroidCanvas(draft, stickers::imageFile, Modifier.fillMaxSize(),
                 if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
                 { if (it == null) cancelAdjustment() else { selectedId = it; if (draft.layers.none { layer -> layer.id == it && layer.kind == CardLayerKind.TEXT }) textEditing = false } },
                 ::updateLayer, photoEditable = enabled && mode == CardEditorMode.CROP,
                 onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId })
+            identity?.let { PersonalCardOverlay(it, stickers, Modifier.matchParentSize(), interactive = false,
+                backgroundColor = draft.frameColor, hasImage = draft.imageId != null) }
+            }
         }, tools = {
         if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
         CardEditorFields(draft, enabled, { draft = it },
@@ -155,7 +162,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact) },
         imageFile = stickers::imageFile, insertElement = { layer ->
             addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false
-        })
+        }, avoidTools = identity != null)
     if (active && qrDialog) CardNameDialog("添加二维码", qrPayload, { qrDialog = false }, { text ->
         qrDialog = false; qrPayload = text
         work {

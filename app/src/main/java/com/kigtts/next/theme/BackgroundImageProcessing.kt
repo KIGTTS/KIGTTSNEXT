@@ -53,10 +53,11 @@ internal fun backgroundThemeSeed(bitmap: Bitmap): Long {
 /** A versioned disk cache; expensive work only happens on import or cache miss, on Dispatchers.IO. */
 internal class BackgroundBlurCache(context: Context) {
     private val assets = AppearanceAssets(context)
-    private val root = File(context.cacheDir, "appearance-blur-v1").apply { mkdirs() }
-    fun file(key: String?): File? {
+    private val root = File(context.cacheDir, "appearance-blur-v2").apply { mkdirs() }
+    fun file(key: String?, blur: BackgroundBlur = BackgroundBlur.CARD): File? {
+        require(blur != BackgroundBlur.NONE)
         val source = assets.file(key) ?: return null
-        val output = File(root, source.name)
+        val output = File(root, blur.name.lowercase() + "-" + source.name)
         if (output.length() > 0) return output
         synchronized(lock) {
             if (output.length() > 0) return output
@@ -66,8 +67,8 @@ internal class BackgroundBlurCache(context: Context) {
             options.inSampleSize = 1
             while (max(options.outWidth, options.outHeight) / options.inSampleSize > 384) options.inSampleSize *= 2
             val bitmap = BitmapFactory.decodeFile(source.path, options) ?: return null
-            val blurred = try { gaussianBlur(bitmap, 9f) } finally { bitmap.recycle() }
-            val temp = File(root, source.name + ".tmp")
+            val blurred = try { gaussianBlur(bitmap, blur.sigma) } finally { bitmap.recycle() }
+            val temp = File(root, output.name + ".tmp")
             try { temp.outputStream().use { check(blurred.compress(Bitmap.CompressFormat.JPEG, 90, it)) }
                 check(temp.renameTo(output)); return output
             } finally { blurred.recycle(); temp.delete() }

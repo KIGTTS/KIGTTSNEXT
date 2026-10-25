@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.next.theme.LocalUseCompactControlPalette
+import com.kigtts.next.theme.*
 
 /** Window geometry, rather than device orientation, decides how much space the title may use. */
 @Composable
@@ -35,8 +36,10 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
         canScroll = { active.value && !forced.value && (avoidKeyboard || !keyboardOpen.value) })
     val compact by remember(barState) { derivedStateOf { barState.collapsedFraction >= .5f } }
     val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
-    CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
+    val background = LocalAppAppearanceSettings.current.takeIf { it.secondaryPageBackground && it.background != null }
+    CompositionLocalProvider(LocalUseCompactControlPalette provides true, LocalSecondaryBackground provides background) {
     BoxWithConstraints(modifier.fillMaxSize()) {
+        background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
         val landscape = maxWidth > maxHeight
         LaunchedEffect(forceCompact, landscape, barState.heightOffsetLimit) {
             if (!landscape && barState.heightOffsetLimit > -Float.MAX_VALUE) {
@@ -48,7 +51,7 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
         CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
             LocalCardPageChrome provides chrome, LocalCardWindowLandscape provides landscape) {
             Scaffold(Modifier.fillMaxSize().then(if (!landscape) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier)
-                .testTag("immersive-page"), containerColor = MaterialTheme.colorScheme.background,
+                .testTag("immersive-page"), containerColor = if(background==null)MaterialTheme.colorScheme.background else Color.Transparent,
                 contentWindowInsets = (if (avoidKeyboard) WindowInsets.safeDrawing else WindowInsets.systemBars.union(WindowInsets.displayCutout))
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
                 topBar = {
@@ -63,6 +66,7 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
                         navigationIcon = { PageBackNavigation(guardedBack, backLabel, "page-back", false) },
                         actions = { PageActionButtons(actions + (host.source?.value ?: emptyList())) })
                     else LargeFlexibleTopAppBar(title = { PageBarTitle(title, compact, host.loading) },
+                        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                         modifier = Modifier.testTag("large-page-bar"), subtitle = subtitle?.let { text -> {
                             Text(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines = 1,
                                 overflow = TextOverflow.Ellipsis)

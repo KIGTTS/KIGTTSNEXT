@@ -43,7 +43,7 @@ internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 internal fun SettingsGroup(title: String, subtitle: String = "", content: @Composable ColumnScope.() -> Unit) {
-    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.large,color=MaterialTheme.colorScheme.surfaceContainerHigh) {
+    com.kigtts.next.theme.AppearanceCardSurface(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Text(title,Modifier.semantics { heading() },style=MaterialTheme.typography.titleMedium)

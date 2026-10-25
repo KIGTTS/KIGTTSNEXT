@@ -11,13 +11,14 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
     val result by model.cardCapture.result.collectAsStateWithLifecycle()
     val photo = result?.takeIf { it.cardId == destination.cardId }
     val identities by model.identities.items.collectAsStateWithLifecycle()
-    val personal = identities.any { it.designId == destination.cardId }
-    CardPageScaffold(if (personal) "编辑名片背景" else "编辑拍立得", model::navigateBack, subtitle = null, avoidKeyboard = false) {
+    val personal = identities.firstOrNull { it.designId == destination.cardId }
+    CardPageScaffold(if (personal != null) "编辑名片背景" else "编辑拍立得", model::navigateBack, subtitle = null, avoidKeyboard = false) {
         CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },
             cameraImageId = photo?.imageId, cameraOriginalImageId = photo?.originalImageId,
             cameraFrameStyleId = photo?.frameStyleId, cameraRequestVersion = photo?.version ?: 0L,
-            cameraPhotoX = photo?.photoX ?: .5, cameraPhotoY = photo?.photoY ?: .5, cameraPhotoZoom = photo?.photoZoom ?: 1.0)
+            cameraPhotoX = photo?.photoX ?: .5, cameraPhotoY = photo?.photoY ?: .5, cameraPhotoZoom = photo?.photoZoom ?: 1.0,
+            identity = personal)
     }
 }

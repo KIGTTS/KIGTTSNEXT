@@ -122,6 +122,7 @@ fun KigttsApp(model: AppViewModel) {
         com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
             CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
+                com.kigtts.next.theme.LocalAppAppearanceSettings provides state.theme,
                 LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
                 com.kigtts.next.sharing.LocalFaceShare provides remember(model) { com.kigtts.next.sharing.FaceShareActions(model.faceShare::openSend, model.faceShare::openReceive) },
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {

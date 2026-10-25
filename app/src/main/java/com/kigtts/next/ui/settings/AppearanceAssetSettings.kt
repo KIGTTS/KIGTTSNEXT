@@ -41,6 +41,8 @@ import kotlinx.coroutines.*
         if (settings.background != null) SettingItem("背景遮罩", "", Icons.Default.Opacity, SettingPosition.MIDDLE) {
             Slider(settings.backgroundDim, { onChange(settings.copy(backgroundDim = it)) })
         }
+        ToggleSetting("在其它页面显示背景", "", Icons.Default.Wallpaper, settings.secondaryPageBackground,
+            { onChange(settings.copy(secondaryPageBackground = it)) }, position = SettingPosition.MIDDLE)
         SettingItem("字体", settings.fontName, Icons.Default.TextFields, SettingPosition.LAST,
             onClick = onFonts, trailing = { Icon(Icons.Default.ChevronRight, null) })
     }

@@ -61,7 +61,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         extendToBottom = destination == Destination.SettingsDetail(SettingsCategory.APPEARANCE),
-        backgroundSettings = state.theme.takeIf { destination == Destination.Settings || destination is Destination.SettingsDetail || destination == Destination.Fonts }) {
+        backgroundSettings = state.theme) {
             when (destination) {
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }

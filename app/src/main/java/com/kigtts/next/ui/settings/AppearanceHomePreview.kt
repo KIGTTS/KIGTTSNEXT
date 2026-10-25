@@ -70,7 +70,7 @@ import com.kigtts.next.ui.home.LocalHomePreviewGeometry
         val scale = minOf(maxWidth.value * density / viewport.width, maxHeight.value * density / viewport.height)
         Box(Modifier.size((viewport.width * scale / density).dp, (viewport.height * scale / density).dp)
             .clip(MaterialTheme.shapes.large).testTag("appearance-home-thumbnail")) {
-            AppearanceBackdrop(settings, Modifier.matchParentSize())
+            AppearanceBackdrop(settings, Modifier.matchParentSize(), screenAnchored = false)
             Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
                 .semantics { contentDescription = "主界面预览，示例文字：你好" }) {
                 withTransform({ scale(scale, scale, Offset.Zero); translate(-viewport.left, -viewport.top) }) {

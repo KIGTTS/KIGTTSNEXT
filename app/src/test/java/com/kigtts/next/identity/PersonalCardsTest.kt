@@ -8,6 +8,7 @@ import com.kigtts.next.sharing.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.cancel
 import org.json.JSONObject
+import org.json.JSONArray
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +20,44 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
 class PersonalCardsTest {
+    @Test fun backgroundPresetsShareInformationButKeepTheirGradientAndSurviveRemovingAllPresets() {
+        val f = CardPrintCoordinatorTest.Fixture()
+        try {
+            val identities = IdentityRepository(f.app, f.cards)
+            val first = identities.create()
+            val profile = first.copy(nickname = "同一个人", bio = "你好", contacts = listOf(ContactLink("QQ", "12345")))
+            identities.save(profile)
+            val next = identities.create()
+            assertEquals(profile.nickname, next.nickname); assertEquals(profile.contacts, next.contacts)
+            assertFalse(next.gradient)
+            identities.save(next.copy(gradient = true, nickname = "新昵称"))
+            val reload = IdentityRepository(f.app, f.cards)
+            assertTrue(reload.items.value.all { it.nickname == "新昵称" && it.contacts == profile.contacts })
+            assertFalse(reload.items.value.first { it.id == first.id }.gradient)
+            assertTrue(reload.items.value.first { it.id == next.id }.gradient)
+            reload.items.value.forEach { reload.remove(it.id) }
+            val restored = IdentityRepository(f.app, f.cards).create()
+            assertEquals("新昵称", restored.nickname); assertEquals(profile.contacts, restored.contacts)
+        } finally { f.scope.cancel() }
+    }
+    @Test fun oldCardsUseSelectedProfileAndPreserveAllLegacyInformationDuringMigration() {
+        val f = CardPrintCoordinatorTest.Fixture()
+        try {
+            val prefs = f.app.getSharedPreferences("personal-cards", 0)
+            val old = JSONArray().put(JSONObject().put("id", "a").put("designId", "design-a").put("nickname", "以前的信息"))
+                .put(JSONObject().put("id", "b").put("designId", "design-b").put("nickname", "正在用的信息")
+                    .put("contacts", JSONArray().put(JSONObject().put("label", "微信").put("value", "example"))))
+            prefs.edit().putString("items", old.toString()).putString("selected", "b").commit()
+            val identities = IdentityRepository(f.app, f.cards)
+            assertTrue(identities.items.value.all { it.nickname == "正在用的信息" && it.gradient })
+            identities.select("a")
+            assertEquals("正在用的信息", IdentityRepository(f.app, f.cards).current!!.nickname)
+            identities.save(identities.current!!.copy(gradient = false))
+            assertEquals(old.toString(), prefs.getString("legacy-items-v1", null))
+            assertEquals(1, IdentityRepository(f.app, f.cards).current!!.contacts.size)
+            assertFalse(JSONArray(prefs.getString("items", "[]")).getJSONObject(0).has("nickname"))
+        } finally { f.scope.cancel() }
+    }
     @Test fun editableBackgroundAndStickersPersistAndExportAsOneLandscapeCard() {
         val f = CardPrintCoordinatorTest.Fixture()
         try {

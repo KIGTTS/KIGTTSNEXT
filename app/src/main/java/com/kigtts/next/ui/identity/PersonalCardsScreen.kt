@@ -38,7 +38,6 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
     val pager = rememberPagerState(initialPage = items.indexOfFirst { it.id == model.identities.selectedId.value }.coerceAtLeast(0)) { items.size }
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf<IdentityCard?>(null) }
-    var contact by remember { mutableStateOf<ContactLink?>(null) }
     var working by remember { mutableStateOf(false) }
     fun create() {
         if (working) return
@@ -46,7 +45,6 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
         scope.launch {
             try {
                 val card = withContext(Dispatchers.IO) { model.identities.create() }
-                editing = card
                 val index = snapshotFlow { items.indexOfFirst { it.id == card.id } }.first { it >= 0 }
                 pager.animateScrollToPage(index)
             } catch (error: Exception) { model.message(error.message ?: "名片未能创建，请重试") }
@@ -57,15 +55,20 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
         if (items.isNotEmpty()) {
             HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 20.dp), pageSpacing = 12.dp,
                 modifier = Modifier.fillMaxWidth().testTag("personal-cards-pager"), key = { items[it].id }) { page ->
-                PersonalCardView(items[page], model.stickers, Modifier.fillMaxWidth())
+                PersonalCardView(items[page], model.stickers, Modifier.fillMaxWidth().testTag("personal-card-${items[page].id}"))
             }
             val card = items[pager.currentPage.coerceIn(items.indices)]
             LaunchedEffect(card.id) { model.identities.select(card.id) }
             Text("${pager.currentPage + 1} / ${items.size}", Modifier.padding(horizontal = 20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                card.contacts.forEach { link -> OutlinedButton(feedbackClick { contact = link }, Modifier.fillMaxWidth()) {
-                    SocialContactIcon(link); Spacer(Modifier.width(8.dp)); Text(link.label.ifBlank { "联系方式" })
-                } }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Icon(Icons.Default.Gradient, null); Spacer(Modifier.width(12.dp))
+                    Text("渐变遮罩", Modifier.weight(1f))
+                    Switch(card.gradient, feedbackChange { checked -> scope.launch {
+                        try { withContext(Dispatchers.IO) { model.identities.save(card.copy(gradient = checked)) } }
+                        catch (error: Exception) { model.message(error.message ?: "设置未能保存") }
+                    } }, Modifier.testTag("personal-card-gradient"))
+                }
                 Button(feedbackClick { editing = card }, Modifier.fillMaxWidth()) { Icon(Icons.Default.Edit, null); Spacer(Modifier.width(8.dp)); Text("编辑个人信息") }
                 FilledTonalButton(feedbackClick { model.navigate(Destination.CardEditor(card.designId)) }, Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Wallpaper, null); Spacer(Modifier.width(8.dp)); Text("编辑背景与贴纸")
@@ -73,11 +76,14 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
                 OutlinedButton(feedbackClick { model.faceShare.openSend(listOf(card.designId)) }, Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Share, null); Spacer(Modifier.width(8.dp)); Text("分享名片")
                 }
-                TextButton(feedbackClick { model.identities.remove(card.id) }) { Text("移除此名片") }
+                TextButton(feedbackClick { scope.launch {
+                    try { withContext(Dispatchers.IO) { model.identities.remove(card.id) } }
+                    catch (error: Exception) { model.message(error.message ?: "背景未能移除") }
+                } }) { Text("移除此背景") }
             }
         } else Text("用一张名片介绍自己", Modifier.padding(24.dp), style = MaterialTheme.typography.titleLarge)
         FilledTonalButton(feedbackClick(::create), Modifier.padding(horizontal = 20.dp).fillMaxWidth(), enabled = !working) {
-            Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("添加名片")
+            Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("添加名片背景")
         }
     }
     editing?.let { value -> PersonalInformationDialog(value, model.stickers, { editing = null }) { updated ->
@@ -86,5 +92,4 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
             catch (error: Exception) { model.message(error.message ?: "名片未能保存") }
         }
     } }
-    contact?.let { PersonalContactDialog(it) { contact = null } }
 }

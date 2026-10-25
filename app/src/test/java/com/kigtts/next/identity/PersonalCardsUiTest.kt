@@ -9,6 +9,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.identity.PersonalCardsScreen
+import com.kigtts.next.ui.cards.CardEditorScreen
+import com.kigtts.next.ui.cards.CardPageScaffold
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +33,7 @@ class PersonalCardsUiTest {
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { PersonalCardsScreen(model) } }
         compose.onNodeWithText("2 / 2").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/previews/personal-cards.png")
-        compose.onNodeWithText("微信").performClick()
+        compose.onNode(hasContentDescription("联系方式：微信") and hasAnyAncestor(hasTestTag("personal-card-${second.id}"))).performClick()
         compose.onNodeWithText("example").assertIsDisplayed()
         compose.onNodeWithText("关闭").performClick()
         compose.onNodeWithText("编辑个人信息").performClick()
@@ -42,5 +44,25 @@ class PersonalCardsUiTest {
         compose.onNodeWithTag("personal-cards-pager").performTouchInput { swipeRight() }
         compose.onNodeWithText("1 / 2").assertIsDisplayed()
         assertEquals(first.id, model.identities.current?.id)
+        assertEquals("新的昵称", model.identities.current?.nickname)
+    }
+    @Test fun backgroundEditorPreviewsIdentityWhileItsToolPanelRemainsUsable() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        compose.activity.viewModelStore.put("personal-editor-test", model)
+        val identity = model.identities.create().copy(nickname = "名片预览", bio = "你好", contacts = listOf(ContactLink("QQ", "12345")))
+        model.identities.save(identity)
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            CardPageScaffold("编辑名片背景", {}, subtitle = null, avoidKeyboard = false) {
+                CardEditorScreen(model.cards, model.stickers, identity.designId, {}, identity = identity)
+            }
+        } }
+        compose.onNodeWithText("名片预览").assertIsDisplayed()
+        val before = compose.onNodeWithTag("polaroid/" + identity.designId).getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("toggle-card-editor-panel").performClick()
+        compose.onNodeWithText("名片预览").assertIsDisplayed()
+        val collapsed = compose.onNodeWithTag("polaroid/" + identity.designId).getUnclippedBoundsInRoot()
+        assertTrue(collapsed.top > before.top)
+        assertTrue(collapsed.top.value - before.top.value <= 25f)
+        compose.onRoot().captureRoboImage("build/previews/personal-card-background-editor.png")
     }
 }

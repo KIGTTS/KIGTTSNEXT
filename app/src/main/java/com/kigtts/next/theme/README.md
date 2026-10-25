@@ -4,6 +4,8 @@
 
 `AppearanceBackdrop` 是页面通用背景层，`PageScaffold.backgroundSettings` 可按页面接入。`AppearanceBackgrounds` 按资源标识共享已解码图片，横竖屏复用同一实例；布局变化只改变裁切，不重新解码。导入时先处理好图片和缓存，再更新当前背景。
 
+其它页面的背景通过 `ThemeSettings.secondaryPageBackground` 单独开启，默认关闭。通用页面与相册大字顶栏保持透明，背景和卡片按窗口坐标绘制。`BackgroundBlur.PAGE` 使用较轻的预烘焙高斯模糊，设置分组的 `AppearanceCardSurface` 使用较强的 `CARD` 缓存与半透明主题表面；两级缓存各自持久化，滚动时不重新居中或计算模糊。
+
 背景裁剪以方形为母版，透明十字遮罩显示横竖屏的中心区域；裁剪页仅改变预览和最终背景副本。`BackgroundCrop` 用归一化中心和缩放保存位置，转屏时保留。
 
 快捷文本抽屉使用 `DrawerBackdrop`。`BackgroundBlurCache` 在 IO 线程预生成低分辨率可分离高斯模糊并写入版本化磁盘缓存；绘制时与主背景共享窗口坐标。拖动抽屉只绘制缓存图片，不截图或逐帧模糊。
