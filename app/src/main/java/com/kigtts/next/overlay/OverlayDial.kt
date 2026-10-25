@@ -47,18 +47,14 @@ private class DialShape(private val morph: Morph, private val bounds: FloatArray
 internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement, expanded: Boolean, hidden: Boolean,
     toggle: () -> Unit, move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit,
     open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}, reorder: (String, Int) -> Boolean = { _, _ -> false },
-    retracted: ((Float) -> Unit)? = null) {
+    retracted: ((Float) -> Unit)? = null, initialCenter: Offset? = null, collapsedCenter: Offset? = null,
+    dragging: Boolean = false, centerChanged: (Offset) -> Unit = {}) {
     val density = LocalDensity.current
     val hostView = LocalView.current
     val hostLocation = remember { IntArray(2) }
-    val expansion = remember { Animatable(0f) }
-    val progress = expansion.value
-    val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    val onCollapsed by rememberUpdatedState(collapsed)
-    LaunchedEffect(expanded) {
-        expansion.animateTo(if (expanded) 1f else 0f, spatial)
-        if (!expanded) onCollapsed()
-    }
+    val motion = rememberOverlayDialMotion(placement, expanded, dragging, initialCenter, collapsedCenter, collapsed)
+    val progress = motion.progress
+    SideEffect { centerChanged(motion.center) }
     val effects by animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
     val retraction by animateFloatAsState(if (hidden && !expanded) 1f else 0f, MaterialTheme.motionScheme.slowSpatialSpec(), label = "dial-edge-hide")
     SideEffect { retracted?.invoke(retraction.coerceIn(0f, 1f)) }
@@ -79,10 +75,8 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     LaunchedEffect(settings.shortcuts.size) {
         wheel = wheel.copy(first = wheel.first.coerceIn(0, (settings.shortcuts.size - 5).coerceAtLeast(0)))
     }
-    val cx = with(density) { placement.fabX.toDp() }; val cy = with(density) { placement.fabY.toDp() }
-    // Near a cutout or a small freeform window the ring translates to stay within its own safe host.
+    val cx = with(density) { motion.center.x.toDp() }; val cy = with(density) { motion.center.y.toDp() }
     val radius = minOf(136f, placement.height / density.density * .35f, placement.width / density.density * .46f, (placement.width / density.density - 176f).coerceAtLeast(48f))
-    val ringCenterY = with(density) { (placement.height / 2f).toDp() }
     val isExpanded by rememberUpdatedState(expanded)
     // Keep the ancestor input node alive while the FAB collapses during a drag.
     val scroll = Modifier.pointerInput(settings.shortcuts.size) {
@@ -116,8 +110,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 val dy = kotlin.math.sin(radians).toFloat() * radius
                 val edgeAlpha = ((100f - kotlin.math.abs(angle)) / 28f).coerceIn(0f, 1f)
                 val x = cx + (dx * progress).dp
-                val targetY = ringCenterY + dy.dp
-                val y = cy + (targetY - cy) * progress
+                val y = cy + (dy * progress).dp
                 val settling = sorting != null || reorderMotion > .001f
                 val displayedX: Dp
                 val displayedY: Dp
@@ -153,11 +146,11 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                     }
                     if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && settings.rightEdge) { Label(); Spacer(Modifier.width(8.dp)) }
                     IconActionHint(item.title, hasLongAction = true) {
-                        FilledTonalIconButton(onClick = feedbackClick { if (item.enabled) { interact(); open(item) } }, enabled = expanded && edgeAlpha > .4f && item.enabled,
-                            modifier = Modifier.size(48.dp).overlayEntranceReorder(item.id, expanded && (held || edgeAlpha > .4f),
+                        FilledTonalIconButton(onClick = feedbackClick { if (item.enabled) { interact(); open(item) } }, enabled = expanded && edgeAlpha > .01f && item.enabled,
+                            modifier = Modifier.size(48.dp).overlayEntranceReorder(item.id, expanded && (held || edgeAlpha > .01f),
                                 { sorting = it; interact() }, reorder,
                                 { wheel = wheel.copy(first = (wheel.first - 1).coerceAtLeast(0)) }, { sortCenter = it })
-                                .semantics { contentDescription = item.title; if (edgeAlpha <= .4f && !held) hideFromAccessibility() },
+                                .semantics { contentDescription = item.title; if (edgeAlpha <= .01f && !held) hideFromAccessibility() },
                             shapes = IconButtonDefaults.shapes(shape = CircleShape, pressedShape = MaterialTheme.shapes.medium)) {
                             OverlayShortcutIcon(item)
                         }

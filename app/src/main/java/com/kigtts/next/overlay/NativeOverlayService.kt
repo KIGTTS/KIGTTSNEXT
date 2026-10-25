@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.provider.Settings
 import android.view.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.geometry.Offset
 import com.kigtts.next.R
 import com.kigtts.next.state.FeedbackSettingsStore
 import com.kigtts.next.theme.*
@@ -45,11 +46,11 @@ class NativeOverlayService : Service() {
     private var haptics by mutableStateOf(true)
     private var windowExpanded = false
     private var retraction = 0f
-    private var dragX = 0f; private var dragY = 0f
-    private var dragAnchor: OverlayPlacement? = null
+    private var dragCenter by mutableStateOf<Offset?>(null)
+    private var motionStart by mutableStateOf<Offset?>(null)
+    private var docking by mutableStateOf(false)
+    private var visibleFabCenter = Offset(40f, 40f)
     private var idle: Job? = null
-    private var dockReturn: Job? = null
-    private var collapseReady = true
     private lateinit var appearance: SharedPreferences
     private lateinit var feedback: SharedPreferences
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
@@ -83,9 +84,11 @@ class NativeOverlayService : Service() {
                     }, retracted = { value ->
                         if (retraction != value) {
                             retraction = value
-                            if (!windowExpanded && dragAnchor == null) place(continuousResize = true)
+                            if (!windowExpanded && dragCenter == null && !docking) place(continuousResize = true)
                         }
-                    })
+                    }, initialCenter = motionStart,
+                    collapsedCenter = if (windowExpanded) renderedLayout.local(compactPlacement().centerOnScreen()) else null,
+                    dragging = dragCenter != null, centerChanged = { visibleFabCenter = it })
             } }
         } }
         place(); interact()
@@ -99,7 +102,7 @@ class NativeOverlayService : Service() {
                 config.shortcuts.map { it.id } != next.shortcuts.map { it.id }
             config = next
             if (!next.enabled || !Settings.canDrawOverlays(this@NativeOverlayService)) { stopSelf(); return@collectLatest }
-            if (geometryChanged) place(animate = true)
+            if (geometryChanged && !docking && dragCenter == null) place(animate = true)
             if (behaviorChanged) interact()
         } }
         scope.launch { hub.bubble.collectLatest { value ->
@@ -143,15 +146,15 @@ class NativeOverlayService : Service() {
     }
     private fun place(animate: Boolean = false, continuousResize: Boolean = false) {
         val safe = safeBounds()
-        layout = dragAnchor ?: overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded, retraction)
-        if (dragX != 0f || dragY != 0f) layout = layout.copy(x = layout.x + dragX.toInt(), y = (layout.y + dragY.toInt()).coerceIn(safe.top, safe.top + (safe.height - layout.height).coerceAtLeast(0)))
+        layout = dragCenter?.let { overlayDragPlacement(safe, windowContext.resources.displayMetrics.density, it) }
+            ?: overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, windowExpanded, if (windowExpanded) 0f else retraction)
         try { renderPlacement(animate, continuousResize) }
         catch (_: RuntimeException) { store.update { it.copy(enabled = false) }; stopSelf() }
         hub.bubble.value?.let { if (bubble != null) placeBubble() }
     }
-    private fun renderPlacement(animate: Boolean = false, continuousResize: Boolean = false) {
+    private fun renderPlacement(animate: Boolean = false, continuousResize: Boolean = false, rebase: Boolean = false) {
         // Moving the system window does not change its local Compose layout.
-        if (!layout.sameLocalGeometry(renderedLayout)) renderedLayout = layout
+        if (rebase || !layout.sameLocalGeometry(renderedLayout)) renderedLayout = layout
         dial?.place(layout.x, layout.y, layout.width, layout.height, animate, continuousResize)
     }
     private fun interact() {
@@ -159,68 +162,53 @@ class NativeOverlayService : Service() {
     }
     private fun armIdle() {
         idle?.cancel(); idle = null
-        if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) idle = scope.launch {
+        if (!expanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) idle = scope.launch {
             delay(3500)
-            if (!expanded && dragAnchor == null && config.autoHide && hub.bubble.value == null) hidden = true
+            if (!expanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) hidden = true
         }
     }
     private fun toggle() { if (expanded) collapse() else {
-        dockReturn?.cancel(); dockReturn = null
-        collapseReady = false
         val current = dial?.stopAtCurrentPosition(layout) ?: layout
+        val absolute = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
         val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
-        windowExpanded = true
-        layout = target.aroundCenterOf(current)
-        renderPlacement()
+        docking = false; windowExpanded = true
+        layout = target; motionStart = target.local(absolute)
+        renderPlacement(rebase = true)
         expanded = true; interact()
-        scope.launch { yield(); if (expanded && dragAnchor == null) place(animate = true) }
     } }
     private fun collapse() {
         if (!expanded) return
-        expanded = false; collapseReady = false
+        expanded = false
     }
+    private fun compactPlacement() = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, false)
     private fun finishCollapse() {
-        if (expanded) return
-        collapseReady = true
-        if (dragAnchor != null || !windowExpanded || dockReturn?.isActive == true) return
-        val compact = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, false)
-        val returning = layout.aroundCenterOf(compact)
-        layout = returning
-        renderPlacement(animate = true)
-        dockReturn = scope.launch {
-            delay(280)
-            if (!expanded && dragAnchor == null) { windowExpanded = false; place(); interact() }
-            dockReturn = null
-        }
+        if (expanded || dragCenter != null || !windowExpanded && !docking) return
+        docking = false; windowExpanded = false; motionStart = null
+        place(); interact()
     }
     private fun drag(x: Float, y: Float) {
-        dockReturn?.cancel(); dockReturn = null
-        if (dragAnchor == null) dragAnchor = dial?.stopAtCurrentPosition(layout) ?: layout
+        if (dragCenter == null) {
+            val current = dial?.stopAtCurrentPosition(layout) ?: layout
+            dragCenter = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
+            docking = false; windowExpanded = false; motionStart = null
+        }
         if (expanded) collapse()
         if (hidden || idle != null) { hidden = false; idle?.cancel(); idle = null }
-        dragX += x; dragY += y; place()
+        dragCenter = dragCenter!! + Offset(x, y)
+        place(continuousResize = true)
     }
     private fun drop() {
-        val wasDragging = dragAnchor != null
-        dragAnchor = null
-        if (!wasDragging) {
-            if (collapseReady) finishCollapse()
-            return
-        }
-        val safe = safeBounds(); val centerX = layout.x + layout.fabX; val centerY = layout.y + layout.fabY
-        dragX = 0f; dragY = 0f
-        // Collapse around the current absolute center before crossing edges. Otherwise the
-        // local anchor flips from the right to the left of the large host in one frame.
-        if (windowExpanded) {
-            windowExpanded = false
-            val compact = overlayPlacement(safe, windowContext.resources.displayMetrics.density, config.rightEdge, config.position, false)
-            layout = compact.copy(x = (centerX - compact.fabX).toInt(), y = (centerY - compact.fabY).toInt())
-            renderPlacement()
-        }
+        if (dragCenter == null) return
+        val safe = safeBounds(); val absolute = layout.centerOnScreen()
+        val centerX = absolute.x; val centerY = absolute.y
+        dragCenter = null; docking = true
         val padding = 40 * windowContext.resources.displayMetrics.density
         val position = ((centerY - safe.top - padding) / (safe.height - 2 * padding).coerceAtLeast(1f)).coerceIn(0f, 1f)
         store.update { it.copy(rightEdge = centerX > safe.left + safe.width / 2f, position = position) }
-        config = store.settings.value; place(animate = true); interact()
+        config = store.settings.value
+        layout = overlayDockPlacement(safe, windowContext.resources.displayMetrics.density, absolute, compactPlacement())
+        motionStart = layout.local(absolute)
+        renderPlacement(rebase = true); interact()
     }
     private fun open(item: OverlayShortcut) { collapse(); OverlayLaunch.open(this, item) }
     private fun showBubble(value: OverlayNotice) {
@@ -239,9 +227,8 @@ class NativeOverlayService : Service() {
     }
     private fun resetPlacement() {
         cachedBounds = null
-        dockReturn?.cancel(); dockReturn = null
-        dragX = 0f; dragY = 0f; dragAnchor = null
-        if (!expanded && collapseReady) windowExpanded = false
+        dragCenter = null; docking = false; motionStart = null
+        windowExpanded = expanded
         place()
         if (!expanded) armIdle()
     }

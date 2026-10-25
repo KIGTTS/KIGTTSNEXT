@@ -29,6 +29,57 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class OverlayUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun fifthSubtitleBoardRemainsClickableWhileTheFirstPageBouncesAtItsTopEdge() {
+        var opened: String? = null
+        val defaults = defaultOverlayShortcuts()
+        val shortcuts = defaults.drop(1) + OverlayShortcut("other", "其它入口", "extension") + defaults.first() +
+            (1..3).map { OverlayShortcut("extra-$it", "额外入口$it", "extension") }
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp).testTag("dial")) {
+            OverlayDial(OverlaySettings(shortcuts = shortcuts), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, { opened = it.id }, {})
+        } } }
+        val dial = compose.onNodeWithTag("dial")
+        dial.performTouchInput { swipe(center, center + androidx.compose.ui.geometry.Offset(0f, -600f), 500) }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        dial.performTouchInput { down(center); moveBy(androidx.compose.ui.geometry.Offset(0f, 1300f), 500) }
+        compose.mainClock.advanceTimeBy(48)
+        compose.waitForIdle()
+        // The fifth entry is still on screen during resisted overscroll, rather than disabled at alpha .4.
+        compose.onNodeWithContentDescription("字幕板").assertIsEnabled()
+        dial.performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(16)
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("字幕板").performTouchInput { click() }
+        compose.runOnIdle { assertEquals("home", opened) }
+        compose.mainClock.autoAdvance = true
+    }
+    @Test fun cornerAnchorMovesContinuouslyAndFinishesReturningInTheSameTransition() {
+        var expanded by mutableStateOf(true)
+        var center = androidx.compose.ui.geometry.Offset.Zero
+        var collapsed = 0
+        val dock = androidx.compose.ui.geometry.Offset(768f, 120f)
+        compose.mainClock.autoAdvance = false
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(), OverlayPlacement(0, 0, 888, 1068, 768f, 534f), expanded, false,
+                {}, { _, _ -> }, {}, {}, {}, {}, { collapsed++ }, initialCenter = dock, collapsedCenter = dock,
+                centerChanged = { center = it })
+        } } }
+        compose.waitForIdle()
+        assertEquals(dock.y, center.y, 1f)
+        compose.mainClock.advanceTimeBy(96); compose.waitForIdle()
+        assertTrue("Opening midpoint: $center", center.y > dock.y && center.y < 534f)
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        assertEquals(534f, center.y, .01f)
+        compose.runOnIdle { expanded = false }
+        compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(112); compose.waitForIdle()
+        assertTrue("Closing midpoint: $center, completion callbacks: $collapsed", center.y > dock.y && center.y < 534f)
+        assertEquals(0, collapsed)
+        compose.mainClock.advanceTimeBy(240); compose.waitForIdle()
+        assertEquals(dock.y, center.y, .01f); assertEquals(1, collapsed)
+        compose.mainClock.autoAdvance = true
+    }
     @Test fun retractedFabKeepsASquareDrawingInsideTheHalfWidthTouchWindow() {
         var right by mutableStateOf(true)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {

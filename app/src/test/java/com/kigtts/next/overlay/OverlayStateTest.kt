@@ -75,11 +75,14 @@ class OverlayStateTest {
             val expanded = overlayPlacement(safe, 3.6f, right, position, true)
             assertEquals(compact.x + compact.fabX, expanded.x + expanded.fabX, .01f)
             assertEquals(expanded.height / 2f, expanded.fabY, .01f)
-            val growing = expanded.aroundCenterOf(compact)
-            assertEquals(compact.x + compact.fabX, growing.x + growing.fabX, .5f)
-            assertEquals(compact.y + compact.fabY, growing.y + growing.fabY, .5f)
-            val returning = expanded.aroundCenterOf(compact)
-            assertEquals(compact.y + compact.fabY, returning.y + returning.fabY, .5f)
+            val initial = expanded.local(compact.centerOnScreen())
+            assertEquals(compact.centerOnScreen().y, expanded.y + initial.y, .01f)
+            assertTrue(initial.y in 0f..expanded.height.toFloat())
+            val returning = overlayDockPlacement(safe, 3.6f, expanded.centerOnScreen(), compact)
+            assertEquals(compact.centerOnScreen(), returning.centerOnScreen())
+            assertTrue(returning.x >= safe.left && returning.y >= safe.top)
+            assertTrue(returning.x + returning.width <= safe.left + safe.width)
+            assertTrue(returning.y + returning.height <= safe.top + safe.height)
         }
     }
     @Test fun idleRetractionMovesAndClipsTheInputWindowInsteadOfLeavingAnInvisibleBlocker() {
