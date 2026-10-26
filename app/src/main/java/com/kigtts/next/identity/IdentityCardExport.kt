@@ -7,8 +7,9 @@ import java.io.File
 /** Identity overlays are also drawn into the shared image, not just the settings preview. */
 internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerRepository, directory: File): File {
     val card = requireNotNull(stickers.identityDesigns.get(identity.designId))
+    val background = kotlinx.coroutines.runBlocking { stickers.identityBackgrounds.load(card, identity, 720) }
     val bitmap = PolaroidRenderer.renderBitmap(stickers, card, maximumHeight = 720,
-        beforeLayers = { canvas, pixels -> decorateIdentityBackground(canvas, pixels, identity, stickers) })
+        beforeLayers = { canvas, pixels -> canvas.drawBitmap(background, null, Rect(0, 0, pixels.width, pixels.height), Paint(Paint.FILTER_BITMAP_FLAG)) })
     try {
         val canvas = Canvas(bitmap); val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val width = bitmap.width.toFloat(); val height = bitmap.height.toFloat()
@@ -22,17 +23,8 @@ internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerReposit
                     canvas.drawBitmap(avatar, null, RectF(x, y, x + size, y + size), paint); canvas.restore() } finally { avatar.recycle() }
             }
         }
-        val background = renderIdentityBackground(card, identity, stickers)
-        paint.color = try { identityInk(background) } finally { background.recycle() }
-        val iconSize = (height * .085f).toInt()
-        identity.contacts.take(8).forEachIndexed { index, link ->
-            androidx.core.content.ContextCompat.getDrawable(stickers.context, socialPlatform(link).icon)?.mutate()?.let { icon ->
-                icon.setTint(paint.color)
-                val left = (height * .06f + index * height * .15f).toInt()
-                val top = (height * .06f).toInt()
-                icon.setBounds(left, top, left + iconSize, top + iconSize); icon.draw(canvas)
-            }
-        }
+        paint.color = identityInk(background)
+        drawIdentityContacts(canvas, identity, stickers, height)
         paint.setShadowLayer(height * .006f, 0f, height * .002f, 0x88000000.toInt())
         paint.textSize = height * .07f; paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         canvas.drawText(identity.nickname.ifBlank { "KIGTTS 用户" }, x + size + 24, y + size * .4f, paint)

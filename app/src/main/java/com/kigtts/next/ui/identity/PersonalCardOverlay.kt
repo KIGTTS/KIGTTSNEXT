@@ -2,8 +2,6 @@ package com.kigtts.next.ui.identity
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,25 +20,18 @@ import com.kigtts.next.ui.components.*
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
     modifier: Modifier = Modifier, interactive: Boolean = true, backgroundColor: Long = 0xFF245E63,
-    hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null) {
+    hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null, backgroundInk: Int? = null) {
     var contact by remember { mutableStateOf<ContactLink?>(null) }
-    val ink = if (backgroundPixels != null) Color(identityInk(backgroundPixels)) else
+    val sampledInk = remember(backgroundPixels) { backgroundPixels?.let(::identityInk) }
+    val ink = (backgroundInk ?: sampledInk)?.let(::Color) ?:
         if (!hasImage && Color(if (identity.gradient) identity.gradientColor else backgroundColor).luminance() > .42f) Color(0xFF202020) else Color.White
     val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = .5f), androidx.compose.ui.geometry.Offset(0f, 1.5f), 4f)
     BoxWithConstraints(modifier) {
         val compact = maxWidth < 300.dp
         val padding = if (compact) 12.dp else 20.dp
         CompositionLocalProvider(LocalContentColor provides ink) {
-            LazyRow(Modifier.align(Alignment.TopStart).padding(8.dp).fillMaxWidth().testTag("personal-card-contacts"),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                itemsIndexed(identity.contacts) { index, link ->
-                    val label = "联系方式：" + link.label.ifBlank { "链接" }
-                    if (interactive) IconActionHint(label) {
-                        IconButton(feedbackClick { contact = link }, Modifier.size(40.dp).testTag("personal-contact-" + index)
-                            .iconLongAction(true, null).semantics { contentDescription = label }) { SocialContactIcon(link, Modifier.size(22.dp)) }
-                    } else Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) { SocialContactIcon(link, Modifier.size(22.dp)) }
-                }
-            }
+            PersonalContactButtons(identity.contacts, interactive, { contact = it },
+                Modifier.align(Alignment.TopStart).padding(8.dp).fillMaxWidth())
             Row(Modifier.align(Alignment.BottomStart).padding(padding), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp), identity.avatarFrame)

@@ -49,7 +49,7 @@ class PersonalCardsTest {
                     .put("contacts", JSONArray().put(JSONObject().put("label", "微信").put("value", "example"))))
             prefs.edit().putString("items", old.toString()).putString("selected", "b").commit()
             val identities = IdentityRepository(f.app, f.cards)
-            assertTrue(identities.items.value.all { it.nickname == "正在用的信息" && it.gradient })
+            assertTrue(identities.items.value.all { it.nickname == "正在用的信息" && !it.gradient })
             identities.select("a")
             assertEquals("正在用的信息", IdentityRepository(f.app, f.cards).current!!.nickname)
             identities.save(identities.current!!.copy(gradient = false))

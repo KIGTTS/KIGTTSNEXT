@@ -32,7 +32,7 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         val list = JSONArray(preferences.getString("items", "[]"))
         (0 until list.length()).map { index -> val item = list.getJSONObject(index)
             val info = PersonalProfile.from(item)
-            info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", true),
+            info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", false),
                 gradientColor = item.optLong("gradientColor", 0xFF000000), pattern = item.optString("pattern"), cardFrameId = item.optString("cardFrameId", "none")))
         }
     }.getOrDefault(emptyList())

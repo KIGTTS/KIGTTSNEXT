@@ -19,6 +19,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
     val designs=PolaroidDesignStore(root)
     val identityFrames=com.kigtts.next.identity.IdentityFrameStore(this)
     val identityDesigns=com.kigtts.next.identity.IdentityDesignStore(context)
+    internal val identityBackgrounds=com.kigtts.next.identity.IdentityBackgroundCache(this)
     private val catalog=File(root,"catalog.json")
     private val receipts=linkedMapOf<String,Pair<String,StickerReply>>()
     private val creationTimes=PolaroidCreationTimes()

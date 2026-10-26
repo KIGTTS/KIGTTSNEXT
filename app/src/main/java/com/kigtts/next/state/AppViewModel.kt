@@ -63,6 +63,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
     val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
+    init { com.kigtts.next.identity.warmIdentityBackground(viewModelScope, stickers, identities) }
     private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message) }
     internal val faceShare get() = faceShareDelegate.value
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)

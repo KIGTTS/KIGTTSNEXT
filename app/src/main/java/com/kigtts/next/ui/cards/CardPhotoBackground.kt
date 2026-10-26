@@ -16,13 +16,14 @@ import com.kigtts.plugin.api.*
 /** Only two fingers move the photograph; single-finger taps and parent scrolling stay available. */
 @Composable
 internal fun CardPhotoBackground(card: PolaroidCard, image: ImageBitmap?, enabled: Boolean,
-    change: (PolaroidCard) -> Unit, finish: () -> Unit, modifier: Modifier = Modifier) {
+    change: (PolaroidCard) -> Unit, finish: () -> Unit, modifier: Modifier = Modifier,
+    content: (@Composable () -> Unit)? = null) {
     val latest = rememberUpdatedState(card); val update = rememberUpdatedState(change); val end = rememberUpdatedState(finish)
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     BoxWithConstraints(modifier.background(Color(0xFFB0B0B0)).testTag("card-photo/" + card.id), contentAlignment = Alignment.Center) {
         val width = constraints.maxWidth.toFloat(); val height = constraints.maxHeight.toFloat()
-        CardPhotoContent(card, image, width, height)
-        if (enabled && image != null) Box(Modifier.matchParentSize().pointerInput(card.id, enabled) {
+        if (content != null) content() else CardPhotoContent(card, image, width, height)
+        if (enabled && (image != null || content != null && card.imageId != null)) Box(Modifier.matchParentSize().pointerInput(card.id, enabled) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
                 var began = false; var changed = false; var completed = false

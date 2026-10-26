@@ -59,8 +59,7 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
                 PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp), avatarFrame); Spacer(Modifier.width(12.dp)); Text("更换头像")
             }
             Text("头像形状", style = MaterialTheme.typography.titleSmall)
-            ChoiceButtonGroup("头像形状", AvatarFrames.names.keys.toList(), avatarFrame,
-                { AvatarFrames.names.getValue(it) }, { avatarFrame = it })
+            AvatarShapePicker(avatarFrame) { avatarFrame = it }
             OutlinedTextField(name, { name = it.take(40) }, Modifier.fillMaxWidth(), label = { Text("昵称") }, singleLine = true)
             OutlinedTextField(bio, { bio = it.take(240) }, Modifier.fillMaxWidth(), label = { Text("简介") }, minLines = 2)
             ContactLinksEditor(contacts) { contacts = it }

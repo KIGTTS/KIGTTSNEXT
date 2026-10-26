@@ -75,7 +75,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     val currentActive = rememberUpdatedState(active)
     val leave = LocalPageBackAction.current
     val dirty = draft != baseline || personalDraft != personalBaseline
-    val backgroundPixels = com.kigtts.next.ui.identity.rememberIdentityBackground(draft.takeIf { identity != null }, personalDraft ?: IdentityCard(designId = cardId), stickers)
+    val backgroundPainter = personalDraft?.let { com.kigtts.next.ui.identity.rememberIdentityPainter(draft, it, stickers) }
     val selected = draft.layers.firstOrNull { it.id == selectedId }
     val conflict = persisted != baseline
     LaunchedEffect(persisted) { if (!dirty) { draft = persisted; baseline = persisted } }
@@ -151,9 +151,9 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 configurableLayer = { layer -> generators.contains(layer.imageId) },
                 configureLayer = { layer -> if (generators.get(layer.imageId) != null) generatorLayer = layer },
                 removeLayer = { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }); selectedId = null },
-                backgroundDecoration = { if (identity != null) com.kigtts.next.ui.identity.IdentityBackgroundPreview(backgroundPixels) })
+                photoContent = if (identity != null) ({ com.kigtts.next.ui.identity.IdentityLiveBackground(draft, backgroundPainter) }) else null)
             personalDraft?.let { PersonalCardOverlay(it, stickers, Modifier.matchParentSize(), interactive = false,
-                backgroundColor = draft.frameColor, hasImage = draft.imageId != null, backgroundPixels = backgroundPixels) }
+                backgroundColor = draft.frameColor, hasImage = draft.imageId != null, backgroundInk = backgroundPainter?.ink) }
             }
         }, tools = {
         if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
