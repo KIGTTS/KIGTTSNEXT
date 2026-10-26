@@ -629,6 +629,11 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 
 ## 2026-10-26 · 首选音频设备与搜索设置
 
-- 宿主输入/输出设备分别保存，热插拔回退和重连恢复；主界面自动朗读长按选设备。17项音频、识别和引导回归通过，包含Compose真实长按操作。日志build/audio-device-tests-final.log。
+- 宿主输入/输出设备分别保存，热插拔回退和重连恢复；主界面自动朗读长按选设备。19项音频、识别和引导回归通过，包含Android 8/15路由及Compose真实长按操作。日志build/audio-devices-release-final.log。
 - AI助手0.9.27新增独立搜索设置；首次成功验证DeepSeek官方连接后询问是否设为默认源，保留用户选择。搜索API测试使用模拟响应，不调用用户密钥。
 - 按用户要求先完成电脑端发布，不安装、不操作手机；蓝牙路由及机型兼容性交由实机验收。
+
+- 最终源码21e436a，Release/R8/Lint通过（6分16秒），开发签名与16KB对齐验证通过。APK：build/releases/KIGTTSNEXT-api31-20261026-2969104a979c.apk，8669361字节，SHA256 2969104a979cbdb9888c611057d83031b3ce2b4860a33a3288051c4025acfa6f。
+- AI助手0.9.27/code31/API31源码9b4d5d4，122项回归通过；签名包378277字节，SHA256 7541cccb6b0b16da81875b85452a86b18985a09eac498d128c2ced863819f7fc。支持Bing、DeepSeek、博查、Tavily、Brave、Serper及独立网页读取选择；未进行付费接口实测。
+
+- 官方源发布后119份引用文件的匿名下载大小/SHA256均一致，无待传播缓存；保留70份插件历史发行和47张展示图。报告.tools/modelscope-verified.json，日志build/official-publish-search-audio.log。

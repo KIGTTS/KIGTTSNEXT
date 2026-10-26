@@ -8,4 +8,4 @@
 
 Android 将此接口定义为首选设备，并不保证所有设备、格式和蓝牙录音组合都能采用指定路由。实际生效仍由系统决定；不支持时回退默认。参考 [AudioRouting](https://developer.android.com/reference/android/media/AudioRouting#setPreferredDevice(android.media.AudioDeviceInfo)) 和 [设备连接通知](https://developer.android.com/reference/android/media/AudioManager#registerAudioDeviceCallback(android.media.AudioDeviceCallback,%20android.os.Handler))。
 
-验证：`AudioDeviceRoutingTest` 覆盖运行中输入/输出分离、断开回退、重连恢复、重启持久化及仅服务可设置设备；`AutomaticReadDeviceUiTest` 覆盖长按选择与自动朗读状态隔离。与识别、合成协调及服务引导回归合计17项通过，日志 `build/audio-device-tests-final.log`。未操作手机，蓝牙和不同机型的实际路由需实机验收。
+验证：`AudioDeviceRoutingTest` 覆盖运行中输入/输出分离、断开回退、重连恢复、重启持久化及仅服务可设置设备；`AutomaticReadDeviceUiTest` 覆盖长按选择与自动朗读状态隔离。与识别、合成协调及服务引导回归合计19项通过，包含 Android 8 和 Android 15 两档设备路由测试，日志 `build/audio-devices-release-final.log`。未操作手机，蓝牙和不同机型的实际路由需实机验收。
