@@ -6,6 +6,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ChatTimelineTest {
+    @Test fun fileOnlyAssistantResultRemainsAnAnswer() {
+        val file = ChatFile(PluginResource("workspace/result.gltf"), "result.gltf", 100)
+        val message = ChatMessage("file", ChatRole.ASSISTANT, "", files = listOf(file))
+        assertEquals(message, chatTimeline(listOf(message)).single().answer)
+    }
     @Test fun onlyFinishedAdjacentThoughtsAndToolsMergeAndAnswersRemainIndependent() {
         val thought = ChatMessage("plan", ChatRole.ASSISTANT, "", reasoning = "检查资源", hasReasoning = true)
         val tool = ChatMessage("read", ChatRole.TOOL, "完成", toolName = "读取文件")

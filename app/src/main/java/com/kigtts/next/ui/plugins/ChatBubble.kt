@@ -26,7 +26,7 @@ import com.kigtts.plugin.api.*
     Column(Modifier.fillMaxWidth().testTag("chat-message/" + message.id), verticalArrangement = Arrangement.spacedBy(8.dp)) {
     if (!user && showThought) ChatThought(message, readingInteraction)
     val status = message.state == ChatMessageState.CANCELLED || message.state == ChatMessageState.FAILED
-    if (displayText.isNotBlank() || message.images.isNotEmpty() || message.options.isNotEmpty() || status) {
+    if (displayText.isNotBlank() || message.images.isNotEmpty() || message.files.isNotEmpty() || message.options.isNotEmpty() || status) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = if (user) Arrangement.End else Arrangement.Start) {
         Surface(Modifier.fillMaxWidth(if (user) .88f else .94f).testTag("chat-answer/" + message.id),
             shape = RoundedCornerShape(topStart = if (user) 20.dp else 4.dp, topEnd = if (user) 4.dp else 20.dp, bottomEnd = 20.dp, bottomStart = 20.dp),
@@ -38,6 +38,7 @@ import com.kigtts.plugin.api.*
                     Text("回答", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (message.images.isNotEmpty()) ChatImages(message.images, resolve)
+                if (message.files.isNotEmpty()) ChatFiles(message.files, invoke)
                 if (displayText.isNotBlank()) SelectionContainer { ChatRichText(displayText) }
                 if (message.options.isNotEmpty()) {
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -24,7 +24,7 @@ Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Ex
 
 | 主题 | 文档 |
 | --- | --- |
-| 插件 SDK、设置入口、页面与宿主操作 | [API30](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
+| 插件 SDK、设置入口、页面与宿主操作 | [API31](docs/plugin-api.md)、[页面风格](docs/plugin-page-style.md)、[快捷文本接口](docs/quick-text-plugin-api.md) |
 | 专用包、资源归属、安装与调试 | [插件包](docs/plugin-packages.md)、[独立管理器](docs/plugin-manager.md) |
 | 合成与识别 | [合成生命周期](docs/tts-lifecycle.md)、[识别服务](docs/recognition-service.md)、[流式识别包](docs/streaming-recognition.md) |
 | 媒体、卡片与源码 | [媒体协议](docs/media-content.md)、[快捷卡片](docs/quick-cards.md)、[HTML 文件与编辑器](docs/html-editor.md) |
@@ -52,3 +52,5 @@ Release 启用 R8 与资源收缩。当前构建、签名检查、安装结果�
 ## 独立仓库
 
 主程序仓库为 [KIGTTS/KIGTTSNEXT](https://github.com/KIGTTS/KIGTTSNEXT)，保持私有。插件与SDK统一由 [KIGTTS组织](https://github.com/KIGTTS) 管理，一个插件一个仓库，保留各自LICENSE/NOTICE。主程序只固定SDK子模块，不包含外置插件源码。完整映射、许可证和跨仓库测试见[仓库结构](docs/repositories.md)。
+
+聊天文件接口与验证说明见 [API31](docs/api31-chat-files.md)。

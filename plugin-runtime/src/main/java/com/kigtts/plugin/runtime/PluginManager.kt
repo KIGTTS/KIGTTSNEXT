@@ -135,6 +135,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     }
     suspend fun importResource(id: String, directory: String, name: String, zip: Boolean,
         open: () -> java.io.InputStream): String = mutation.withLock {
+        // User-picked attachments are staged atomically in the caller's inbox. Keep live
+        // chat workers and queued conversations attached while copying new inputs.
+        if (directory == "imports" || directory.startsWith("imports/"))
+            return@withLock withContext(Dispatchers.IO) { ResourceImporter.import(paths.storage(id), open(), directory, name, zip) }
         unload(id)
         try { withContext(Dispatchers.IO) { ResourceImporter.import(paths.storage(id), open(), directory, name, zip) } }
         finally { reloadLocked() }

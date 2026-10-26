@@ -25,7 +25,7 @@ import java.io.File
     var draft by rememberSaveable(chat.conversationId, chat.sendAction) { mutableStateOf("") }
     // Other conversations may run independently; their activity only affects the header indicator.
     val running = chat.running
-    val canSend = draft.isNotBlank() || chat.draftImages.isNotEmpty()
+    val canSend = draft.isNotBlank() || (chat.draftImages.isNotEmpty() || chat.draftFiles.isNotEmpty())
     fun send(action: String) { val text = draft; draft = ""; sent(); invoke(action, mapOf("message" to text)) }
     Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth().testTag("plugin-chat-composer")) { Column {
         if (chat.queued.isNotEmpty()) ChatQueuePane(chat, enabled, invoke)
@@ -33,10 +33,12 @@ import java.io.File
         if (chat.draftImages.isNotEmpty()) Box(Modifier.padding(horizontal = 12.dp)) {
             ChatImages(chat.draftImages, resolve) { index -> chat.removeImageAction?.let { invoke(it, mapOf("value" to chat.draftImages[index].source.path)) } }
         }
+        if (chat.draftFiles.isNotEmpty()) Box(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) { ChatFiles(chat.draftFiles, invoke) { file -> chat.removeFileAction?.let { invoke(it, mapOf("value" to file.source.path)) } } }
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             chat.imageAction?.let { action -> IconButton(onClick = feedbackClick { invoke(action, emptyMap()) },
                 modifier = Modifier.testTag("plugin-chat-image").iconLongAction(enabled && chat.draftImages.size < 4) { invoke(action, mapOf("source" to "camera")) },
                 enabled = enabled && chat.draftImages.size < 4) { Icon(Icons.Default.AddPhotoAlternate, "添加图片，长按拍照") } }
+            chat.fileAction?.let { action -> IconButton(onClick = feedbackClick { invoke(action, emptyMap()) }, enabled = enabled && chat.draftFiles.size < 8, modifier = Modifier.testTag("plugin-chat-file")) { Icon(Icons.Default.AttachFile, "添加文件") } }
             OutlinedTextField(draft, { if (it.length <= 16000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"), placeholder = { Text(chat.placeholder) }, maxLines = 5, shape = MaterialTheme.shapes.large, enabled = enabled)
             val action = when { !running -> ChatPrimaryAction.SEND; canSend -> ChatPrimaryAction.QUEUE; else -> ChatPrimaryAction.STOP }
             val label = when (action) { ChatPrimaryAction.SEND -> "发送"; ChatPrimaryAction.STOP -> "停止生成"; ChatPrimaryAction.QUEUE -> "加入队列" }
