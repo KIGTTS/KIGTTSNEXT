@@ -616,3 +616,13 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - AI助手0.9.24保留DeepSeek官方Search/Fetch优先与回退，新增任务前检索、相关截图与语言/地区/来源可达性规则。106项JVM回归通过，签名与全部载荷校验通过，包SHA256为de5e55be9c8280056c7fa5c27c5c145f72daecffa6a2aecbac5939c7c59d0001，342953字节；已通过管理器从0.9.23升级。未使用用户密钥发起付费查询或模型任务，提示词的实际遵循仍由用户验证。
 
 - 官方插件源116个文件匿名下载后大小/SHA256校验全部一致，无待传播缓存；保留67份历史发行和47张展示图。资源源四个包与四张图、目录及README均已匿名校验，历史签名包保持原字节。
+
+## 2026-10-26 · API31会话文件
+
+- 源码：主程序db5fd87、SDK e1a2f8c；AI助手最终0.9.26/code30/API31，提交dff1a12。
+- 主程序Release/R8/Lint、开发证书一致性及16KB zipalign通过。APK：build/releases/KIGTTSNEXT-api31-20261026-6d5d0755add0.apk，SHA256 6d5d0755add01681aec75302bff838c261a3e39f4979c2944473d6b12a6298d5。日志build/files-release.log。
+- AI115项单元测试通过，日志build/agent-files-tests-final3.log。最终签名包358314字节，SHA256 e1b562526eb8d89c974192752c9dc42fe0ba04433207c9fc21358f8a4b50a13d。0.9.25固定产物保留，后续修正递增到0.9.26。
+- SDK合同往返/旧JSON/copy保留附件测试通过。宿主聊天7项及插件运行时33项回归通过，日志build/host-files-tests-final.log、build/host-files-tests-2.log。
+- 自动检查不调用用户模型密钥或付费接口。手机ADB断开，当前新包尚未覆盖安装；功能验收由用户进行。
+
+官方源最终118个文件匿名大小及SHA256校验通过，无分支缓存待传播；报告 .tools/modelscope-verified.json。用户选择先完成电脑端发布，手机安装待重新连接后安排。
