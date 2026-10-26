@@ -30,6 +30,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
     val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures)
     val registry = pluginManager.registry
+    val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
+    fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
+        audioDevices.decorate(plugin, plugin.page(pageId, context()))
+    }
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)
     val selectedAsrId get() = engineSelection.getString("asr", null)
@@ -78,6 +82,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null))))
     val state = mutableState.asStateFlow()
+    init { audioDevices.onChanged = { update { it.copy(pluginRevision = it.pluginRevision + 1) } } }
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
         { id -> cardUi.focusCard(id, openPreview = false) }, saveMotion = { imageId, clip ->
@@ -355,6 +360,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
+        if (runCatching { audioDevices.handle(plugin, actionId) }.getOrElse { message(it.message ?: "设备切换失败"); true }) {
+            update { it.copy(pluginRevision = it.pluginRevision + 1) }; complete?.invoke(true); return
+        }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }
         update { it.copy(busyPlugins = it.busyPlugins + pluginId) }
         viewModelScope.launch {
@@ -486,6 +494,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         super.onCleared()
         storeBootstrap.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
+        audioDevices.close()
         captionOutput.close()
         hostRuntime?.detach(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); if (hostRuntime == null) pluginManager.close() }

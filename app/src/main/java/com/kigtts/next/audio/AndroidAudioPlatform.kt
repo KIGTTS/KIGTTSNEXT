@@ -10,6 +10,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 
 class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
+    internal val devices = AudioDeviceRouting(context)
     override fun hasMicrophonePermission() = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     @Suppress("MissingPermission")
     override fun capture(format: AudioFormat) = flow {
@@ -23,6 +24,7 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
             .setBufferSizeInBytes(maxOf(minimum * 2, chunkSize * 4)).build()
         try {
             check(recorder.state == AudioRecord.STATE_INITIALIZED) { "麦克风初始化失败" }
+            devices.bind(recorder, true)
             recorder.startRecording()
             val buffer = ByteArray(chunkSize)
             while (currentCoroutineContext().isActive) {
@@ -30,12 +32,12 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
                 check(count >= 0) { "麦克风读取失败（$count）" }
                 if (count == 0) delay(10) else emit(PcmAudio(buffer.copyOf(count), format.sampleRate, format.channels))
             }
-        } finally { runCatching { recorder.stop() }; recorder.release() }
+        } finally { devices.unbind(recorder); runCatching { recorder.stop() }; recorder.release() }
     }.flowOn(Dispatchers.IO)
-    override fun player(): PcmPlayer = AndroidPcmPlayer()
+    override fun player(): PcmPlayer = AndroidPcmPlayer(devices)
 }
 
-private class AndroidPcmPlayer : PcmPlayer {
+private class AndroidPcmPlayer(private val devices: AudioDeviceRouting) : PcmPlayer {
     private var track: AudioTrack? = null
     private var currentFormat: com.kigtts.plugin.api.AudioFormat? = null
     private var frames = 0L
@@ -49,7 +51,7 @@ private class AndroidPcmPlayer : PcmPlayer {
             track = AudioTrack.Builder().setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
                 .setAudioFormat(NativeAudioFormat.Builder().setEncoding(NativeAudioFormat.ENCODING_PCM_16BIT).setSampleRate(audio.sampleRate).setChannelMask(mask).build())
-                .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(minimum * 2).build().also { it.play() }
+                .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(minimum * 2).build().also { devices.bind(it, false); it.play() }
             currentFormat = format; frames = 0
         }
         var offset = 0
@@ -66,5 +68,5 @@ private class AndroidPcmPlayer : PcmPlayer {
         val player = track ?: return
         withTimeout(30_000) { while ((player.playbackHeadPosition.toLong() and 0xffffffffL) < frames) delay(10) }
     }
-    override fun close() { track?.let { runCatching { it.stop() }; it.release() }; track = null; currentFormat = null; frames = 0 }
+    override fun close() { track?.let { devices.unbind(it); runCatching { it.stop() }; it.release() }; track = null; currentFormat = null; frames = 0 }
 }

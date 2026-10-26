@@ -29,7 +29,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
         Destination.Fonts -> "字体"
         is Destination.SettingsDetail -> destination.category.title
         Destination.Plugins -> "插件管理"
-        is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
+        is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: "插件页面"
         is Destination.MediaLibrary -> "媒体库"
         is Destination.HtmlFiles -> "页面文件"
         is Destination.HtmlPreview -> "页面预览"

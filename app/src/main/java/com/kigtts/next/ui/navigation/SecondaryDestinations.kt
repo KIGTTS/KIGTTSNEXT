@@ -24,7 +24,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> "字体"
             is Destination.SettingsDetail -> destination.category.title
             Destination.Plugins -> "插件管理"
-            is Destination.PluginPage -> model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context())?.title ?: "插件页面"
+            is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: "插件页面"
             is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) "页面库" else "媒体库"
             is Destination.HtmlFiles -> "页面文件"
             is Destination.HtmlPreview -> "页面预览"
@@ -50,7 +50,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         com.kigtts.next.ui.cards.CardEditorRoute(model, destination)
         return
     }
-    val pluginPage = (destination as? Destination.PluginPage)?.let { model.registry.plugin(it.pluginId)?.page(it.pageId, model.context()) }
+    val pluginPage = (destination as? Destination.PluginPage)?.let { model.pluginPage(it.pluginId, it.pageId) }
     if (destination is Destination.PluginPage && pluginPage?.search != null) {
         PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
             resolve = { model.pluginManager.paths.existingResource(it.pluginId ?: destination.pluginId, it.path) },
@@ -96,7 +96,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerReview -> com.kigtts.next.ui.cards.StickerReviewScreen(model, destination.token)
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
-                is Destination.PluginPage -> PluginPageScreen(model.registry.plugin(destination.pluginId)?.page(destination.pageId, model.context()), destination.pluginId in state.busyPlugins,
+                is Destination.PluginPage -> PluginPageScreen(model.pluginPage(destination.pluginId, destination.pageId), destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/") { action, inputs ->

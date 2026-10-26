@@ -1,10 +1,14 @@
 # 云端助手插件
 
-`tools.cloud-agent` 是单独安装的 MIT 插件，当前版本0.9.26，要求API31。主程序提供标准聊天、文件附件、设置页面及授权后的操作接口；供应商请求、密钥、会话和Agent工具由插件维护。
+`tools.cloud-agent` 是单独安装的 MIT 插件，当前版本0.9.27，要求API31。主程序提供标准聊天、文件附件、设置页面及授权后的操作接口；供应商请求、密钥、会话和Agent工具由插件维护。
 
 ## 连接与对话
 
 在设置的「助手」卡片中打开AI助手。通过「添加供应商」选择DeepSeek、GLM、Kimi、OpenRouter、硅基流动、百炼、火山方舟、MiniMax、OpenAI、OpenCode等模板，或添加自定义账户；填写密钥后刷新模型列表。Codex设备登录提供独立模板。各连接分别保存地址、模型目录与加密凭据。会话顶栏提供历史会话、新会话和设置。
+
+## 搜索与网页读取
+
+助手设置中可选Bing、DeepSeek、博查、Tavily、Brave或Serper；分别配置API地址与密钥，调整结果数量、Fetch和备用来源。DeepSeek复用官方供应商连接，首次验证成功后询问是否设为默认源。浏览器工具也使用此配置。详见[搜索设置](https://github.com/KIGTTS/plugin-cloud-agent/blob/main/docs/search-settings.md)。
 
 ## 文件附件与成果
 
