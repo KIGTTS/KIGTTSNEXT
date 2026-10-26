@@ -637,3 +637,9 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - AI助手0.9.27/code31/API31源码9b4d5d4，122项回归通过；签名包378277字节，SHA256 7541cccb6b0b16da81875b85452a86b18985a09eac498d128c2ced863819f7fc。支持Bing、DeepSeek、博查、Tavily、Brave、Serper及独立网页读取选择；未进行付费接口实测。
 
 - 官方源发布后119份引用文件的匿名下载大小/SHA256均一致，无待传播缓存；保留70份插件历史发行和47张展示图。报告.tools/modelscope-verified.json，日志build/official-publish-search-audio.log。
+
+## 2026-10-26 · API31搜索与音频版手机安装
+
+- 用户要求安装后，cfc8ef16（23113RKC6C）覆盖安装APK返回Success；设备base.apk SHA256与发布包2969104a979cbdb9888c611057d83031b3ce2b4860a33a3288051c4025acfa6f一致，非debuggable。主程序启动成功，管理桥读取宿主API31。
+- 通过独立管理器先inspect核验ID、API、版本与既有发布者b5927c76，再更新8个已有插件：云端识别0.1.1、云端合成0.1.1、SenseVoice0.8.2、流式识别0.8.2、手势触发0.1.3、识别服务0.8.1、合成服务0.8.3、AI助手0.9.27。所有包大小及SHA与官方目录一致。
+- 原启停状态保留，15/15启用插件均loaded且error为空。没有清除数据或导入测试资源；本轮确认安装、启动及插件加载状态，音频设备实际路由、搜索和交互体验由用户验证。安装前后快照、逐包检查及结果保存在本机忽略目录.tools/install-search-audio-*。
