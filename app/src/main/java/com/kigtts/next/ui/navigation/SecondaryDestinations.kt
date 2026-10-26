@@ -70,7 +70,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }
                 Destination.PersonalCards -> com.kigtts.next.ui.identity.PersonalCardsScreen(model)
-                Destination.Fonts -> FontSettingsScreen(state.theme, model::theme)
+                Destination.Fonts -> FontSettingsScreen(state.theme, model::theme,
+                    fromStore = if (model.registry.plugins.any { it.descriptor.id == com.kigtts.next.plugins.control.STORE_ID && model.registry.available(it) })
+                        ({ model.invoke(com.kigtts.next.plugins.control.STORE_ID, "font-library") }) else null)
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
                         state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) })

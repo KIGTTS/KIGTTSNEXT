@@ -97,6 +97,12 @@ private fun ResourceArchive.validate() {
     require(content.schemaVersion == 1 && content.filters.size <= 32 && content.imageFiles.size <= 2048 && content.frames.size <= 128)
     content.payload?.let(::file); content.filters.forEach { file(it.path) }; content.imageFiles.values.forEach(::file)
     when (manifest.resourceType) {
+        ResourceType.FONT -> {
+            require(manifest.apiVersion >= 32 && content.payload != null && content.snapshot == null &&
+                content.frames.isEmpty() && content.filters.isEmpty() && content.imageFiles.isEmpty())
+            val font = file(requireNotNull(content.payload))
+            require(font.extension.lowercase() in setOf("ttf", "otf") && font.length() in 12..com.kigtts.next.theme.AppearanceAssets.MAX_FONT.toLong()) { "请选择小于 40 MB 的 TTF 或 OTF 字体" }
+        }
         ResourceType.CARD_FRAME -> require(cardFrames.items.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.QUICK_TEXT, ResourceType.VOICE -> require(content.payload != null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.FILTER -> require(content.filters.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty())

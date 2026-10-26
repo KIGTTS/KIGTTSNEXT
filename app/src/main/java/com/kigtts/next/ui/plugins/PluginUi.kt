@@ -115,12 +115,19 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
     } },enabled=true,animateInitial=false,
         spacing = if (grouped) 2.dp else 12.dp) { block,active ->
         RenderBlock(block, true, { action, inputs -> if (active && enabled && pageActive) invoke(action, inputs) },
-            if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE, resolve)
+            if (grouped) settingPosition(blocks.indexOf(block).coerceAtLeast(0), blocks.size) else SettingPosition.SINGLE, resolve, grouped)
     }
 }
 
 @Composable
-private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?) {
+private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?, grouped: Boolean = false) {
+    if (grouped && (block is PageBlock.Text || block is PageBlock.Markdown || block is PageBlock.Gallery)) {
+        Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = groupedSettingShape(position, MaterialTheme.shapes.small)) {
+            Box(Modifier.padding(16.dp)) { RenderBlock(block, enabled, invoke, position, resolve) }
+        }
+        return
+    }
     when (block) {
         is PageBlock.StrokeGuide -> PluginStrokeGuide(block, enabled, invoke, position)
         is PageBlock.Slider -> Surface(color = MaterialTheme.colorScheme.surfaceContainerLow, shape = groupedSettingShape(position, MaterialTheme.shapes.small)) {

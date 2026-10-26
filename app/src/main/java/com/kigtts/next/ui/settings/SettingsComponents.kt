@@ -42,11 +42,15 @@ internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-internal fun SettingsGroup(title: String, subtitle: String = "", content: @Composable ColumnScope.() -> Unit) {
+internal fun SettingsGroup(title: String, subtitle: String = "", headerAction: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit) {
     com.kigtts.next.theme.AppearanceCardSurface(Modifier.fillMaxWidth().settingFocus(title)) {
         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                Text(title,Modifier.semantics { heading() },style=MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title,Modifier.weight(1f).semantics { heading() },style=MaterialTheme.typography.titleMedium)
+                    headerAction?.invoke()
+                }
                 if(subtitle.isNotBlank())Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(2.dp),content=content)

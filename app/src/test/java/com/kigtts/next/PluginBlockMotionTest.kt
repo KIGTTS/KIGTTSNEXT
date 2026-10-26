@@ -48,8 +48,9 @@ class PluginBlockMotionTest {
         val before = descriptions.mapIndexed { i, label -> colour(label, "before-$i") }
         compose.runOnIdle { busy = true }; step(20)
         descriptions.forEachIndexed { i, label ->
-            compose.onNodeWithContentDescription(label).assertIsNotEnabled().performTouchInput { click() }
             assertEquals(before[i], colour(label, "busy-$i"))
+            compose.onNodeWithContentDescription(label).performTouchInput { click() }
+            step(40)
         }
         assertEquals(0, calls)
         compose.runOnIdle { busy = false }; step(20)
@@ -98,8 +99,10 @@ class PluginBlockMotionTest {
             return BitmapFactory.decodeFile(path).let { image -> image.getPixel(image.width/2,image.height/4).also {image.recycle()} }
         }
         val before=color("before")
-        compose.runOnIdle { busy=true };step(20);compose.onNodeWithText("执行").assertIsNotEnabled();assertEquals(before,color("busy"))
-        compose.runOnIdle { busy=false;active=false };step(20);compose.onNodeWithText("执行").assertIsNotEnabled();assertEquals(before,color("background"))
+        compose.runOnIdle { busy=true };step(20);assertEquals(before,color("busy"))
+        compose.onNodeWithText("执行").performClick();assertEquals(0,calls)
+        compose.runOnIdle { busy=false;active=false };step(20);assertEquals(before,color("background"))
+        compose.onNodeWithText("执行").performClick();assertEquals(0,calls)
         compose.runOnIdle { active=true };step(20);compose.onNodeWithText("执行").performTouchInput { down(center);advanceEventTime(8);up() };step(40)
         assertEquals(1,calls);assertEquals(before,color("restored"))
     }

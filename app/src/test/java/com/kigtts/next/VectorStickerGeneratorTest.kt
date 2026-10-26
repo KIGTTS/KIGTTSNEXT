@@ -37,4 +37,10 @@ class VectorStickerGeneratorTest {
         assertTrue(runCatching { VectorStickerRenderer.values(spec, mapOf("size" to "100")) }.isFailure)
         assertTrue(runCatching { VectorStickerRenderer.values(spec, mapOf("unknown" to "x")) }.isFailure)
     }
+    @Test fun literalBracesDollarBackslashAndMultilingualTextStayInsideOneSvgTextNode() {
+        val source = file("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 128"><text x="128" y="80" font-size="{{size}}" text-anchor="middle" fill="{{color}}">{{title}}</text></svg>""")
+        val image = VectorStickerRenderer.render(spec, source, emptyMap(), mapOf("title" to "你好 {{title}} ${'$'}1 \\ &amp;"))
+        try { assertEquals(256, image.width); assertEquals(128, image.height) }
+        finally { image.recycle(); source.delete() }
+    }
 }

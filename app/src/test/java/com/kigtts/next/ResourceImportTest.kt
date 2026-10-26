@@ -21,6 +21,22 @@ import java.util.zip.*
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35], application = Application::class)
 class ResourceImportTest {
+    @Test fun signedFontAddsToAppearanceWithoutChangingSelectionOrCreatingPlugin() = runBlocking {
+        val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/appearance-font/fixture.ttf")).use { it.readBytes() }
+        val model = AppViewModel(app, emptyList())
+        val before = model.state.value.theme
+        val (file, publisher) = signed(mapOf("font.ttf" to bytes), ResourcePackageContent(payload = "font.ttf"), ResourceType.FONT, api = 32)
+        repeat(2) { index -> importResource(model, ResourceArchive.read(file, File(app.cacheDir, "font-$index"), publisher)) }
+        val fonts = com.kigtts.next.theme.InstalledFonts(app).list(before)
+        assertEquals(1, fonts.count { it.name == "测试资源" })
+        assertEquals(before, model.state.value.theme)
+        assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
+        val (bad, owner) = signed(mapOf("font.ttf" to "invalid font bytes".toByteArray()), ResourcePackageContent(payload = "font.ttf"), ResourceType.FONT, api = 32)
+        val archive = ResourceArchive.read(bad, File(app.cacheDir, "bad-font"), owner)
+        assertTrue(runCatching { importResource(model, archive) }.isFailure)
+        val (old, oldOwner) = signed(mapOf("font.ttf" to bytes), ResourcePackageContent(payload = "font.ttf"), ResourceType.FONT, api = 29)
+        assertTrue(runCatching { ResourceArchive.read(old, File(app.cacheDir, "old-font"), oldOwner) }.isFailure)
+    }
     private val app get() = ApplicationProvider.getApplicationContext<Application>()
     @Before fun before() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun after() { Dispatchers.resetMain() }
@@ -78,6 +94,38 @@ class ResourceImportTest {
         assertTrue(frames.size >= 2)
         assertEquals(frames.size, frames.map { it.id }.distinct().size)
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
+    }
+    @Test fun slowImportCanLeaveDialogAndStillReportsCompletionWithoutStartingAnotherImport() = runBlocking {
+        val model = AppViewModel(app, emptyList())
+        val dispatcher = StandardTestDispatcher()
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val installs = ResourceInstalls(model, scope)
+        val (archive, publisher) = signed(emptyMap(), ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "后台相框"))), ResourceType.FRAME)
+        val owner = "test.resource-owner"
+        val file = model.pluginManager.paths.storage(owner).file("resource.kigresource")
+        archive.copyTo(file, overwrite = true)
+        val command = AppCommand.ResourcePackage(source = PluginResource("resource.kigresource"), expectedPublisher = publisher)
+        try {
+            val reply = installs.request(owner, command) as AppReply.Data
+            val token = reply.value["token"]!!.toString().trim('"')
+            installs.confirm()
+            assertTrue(installs.prompt.value!!.busy)
+            installs.dismiss()
+            assertNull(installs.prompt.value)
+            assertEquals("BUSY", (installs.request(owner, command) as AppReply.Failure).code)
+            val completed = withTimeout(10000) {
+                while (true) {
+                    dispatcher.scheduler.runCurrent()
+                    val status = installs.request(owner, AppCommand.ResourcePackage("status", token = token)) as AppReply.Data
+                    if (status.value["state"].toString() == "\"COMPLETED\"") break
+                    delay(10)
+                }
+                true
+            }
+            assertTrue(completed)
+            assertNull(installs.prompt.value)
+            assertTrue(model.stickers.frameStyles.value.any { it.name == "后台相框" })
+        } finally { scope.cancel() }
     }
     @Test fun personalFramesImportIntoTheirOwnLibraryAndGeneratorInstancesKeepIndependentValues() = runBlocking {
         val model = AppViewModel(app, emptyList())

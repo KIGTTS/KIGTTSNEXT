@@ -18,11 +18,12 @@ class ResourceInstalls(private val model: AppViewModel, private val scope: Corou
     private val lock = Mutex()
     private val receipts = java.util.concurrent.ConcurrentHashMap<String, ResourceReceipt>()
     private val mutable = MutableStateFlow<ResourceInstallPrompt?>(null)
+    @Volatile private var importing: Job? = null
     internal val prompt = mutable.asStateFlow()
     suspend fun request(owner: String, command: AppCommand.ResourcePackage): AppReply = lock.withLock {
         if (command.operation == "status") return@withLock status(owner, requireNotNull(command.token))
         require(command.operation == "install")
-        if (mutable.value != null) return@withLock AppReply.Failure("BUSY", "请先完成当前资源的导入")
+        if (mutable.value != null || importing?.isActive == true) return@withLock AppReply.Failure("BUSY", "请先完成当前资源的导入")
         val source = requireNotNull(command.source)
         require(source.pluginId == null || source.pluginId == owner) { "只能导入插件自己的资源" }
         val file = requireNotNull(model.pluginManager.paths.existingResource(owner, source.path))
@@ -44,29 +45,35 @@ class ResourceInstalls(private val model: AppViewModel, private val scope: Corou
     internal fun guide() {
         val prompt = mutable.value ?: return
         receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "DEFERRED") }
-        prompt.archive.directory.deleteRecursively(); mutable.value = null
+        mutable.value = null; discard(prompt)
         model.openSpeechPluginStore(if (model.registry.plugins.none { model.registry.available(it) && it.tts?.info?.role == TtsRole.SERVICE }) "语音合成服务" else "Piper 语音引擎")
     }
     internal fun dismiss() {
+        if (mutable.value?.busy == true) { mutable.value = null; return }
         val prompt = mutable.value?.takeUnless { it.busy } ?: return
         receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "CANCELLED") }
-        prompt.archive.directory.deleteRecursively(); mutable.value = null
+        mutable.value = null; discard(prompt)
+    }
+    private fun discard(prompt: ResourceInstallPrompt) {
+        scope.launch(Dispatchers.IO) { runCatching { prompt.archive.directory.deleteRecursively() } }
     }
     internal fun confirm() {
         val prompt = mutable.value?.takeUnless { it.busy } ?: return
         if (missingVoice()) { guide(); return }
         mutable.value = prompt.copy(busy = true, error = null)
-        scope.launch {
+        importing = scope.launch {
             try {
                 importResource(model, prompt.archive)
                 receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "COMPLETED") }
-                prompt.archive.directory.deleteRecursively(); mutable.value = null
+                withContext(Dispatchers.IO) { runCatching { prompt.archive.directory.deleteRecursively() } }
+                if (mutable.value?.token == prompt.token) mutable.value = null
                 model.message("${prompt.archive.manifest.name}已添加")
             } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) {
                 val message = e.message ?: "导入失败，请重试"
                 receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "FAILED", message = message) }
-                mutable.value = prompt.copy(error = message)
+                if (mutable.value?.token == prompt.token) mutable.value = prompt.copy(error = message)
+                else { discard(prompt); model.message(message) }
             }
         }
     }

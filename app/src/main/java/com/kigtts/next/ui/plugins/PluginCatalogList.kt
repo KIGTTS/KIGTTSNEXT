@@ -38,6 +38,14 @@ import java.io.File
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
         else if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
+            if (group.isNotBlank() && list.sectionActions.isNotEmpty()) {
+                item("section/$group", span = { GridItemSpan(maxLineSpan) }) {
+                    Box(Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120))) {
+                        PluginCatalogSection(group, entries, if (wide) 2 else 1, list, active, canInvoke, resolve, invoke)
+                    }
+                }
+                return@forEach
+            }
             if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) {
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(group, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -47,18 +55,8 @@ import java.io.File
                 }
             }
             items(entries, key = { it.id }) { item ->
-                Surface(onClick = feedbackClick { if (canInvoke) item.primaryAction?.let { invoke(it, emptyMap()) } }, enabled = active,
-                    shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLow,
-                    modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)).testTag("managed-item/" + item.id)) {
-                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ResourceAvatar(item, resolve, 64.dp)
-                        ManagedItemHeading(item, Modifier.weight(1f))
-                        val action = list.itemActions[item.id]
-                        if (action != null) InlineProgressButton(item.id, action, active, { actionId, inputs -> if (canInvoke) invoke(actionId, inputs) })
-                        else Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(24.dp))
-                        if (item.actions.isNotEmpty()) CatalogItemMenu(item, active, { actionId, inputs -> if (canInvoke) invoke(actionId, inputs) })
-                    }
-                }
+                PluginCatalogEntry(item, list.itemActions[item.id], active, canInvoke, resolve, invoke,
+                    Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)))
             }
         }
         if (list.loadMore != null) item("catalog-more", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
@@ -67,7 +65,7 @@ import java.io.File
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable private fun CatalogItemMenu(item: ManagementItem, enabled: Boolean, invoke: (String, Map<String, String>) -> Unit) {
+@Composable internal fun CatalogItemMenu(item: ManagementItem, enabled: Boolean, invoke: (String, Map<String, String>) -> Unit) {
     var open by remember(item.id) { mutableStateOf(false) }
     Box {
         TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),

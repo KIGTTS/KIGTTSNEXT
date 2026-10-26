@@ -4,7 +4,6 @@ import android.graphics.*
 import com.caverock.androidsvg.SVG
 import com.kigtts.plugin.api.*
 import java.io.File
-import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
@@ -33,15 +32,8 @@ internal object VectorStickerRenderer {
         require(template.length() in 1..512L * 1024 && fonts.size <= 8)
         val parameters = values(spec, inputs)
         var text = template.readText(Charsets.UTF_8)
-        require(!text.contains(Regex("<!DOCTYPE|<!ENTITY|<\\?xml-stylesheet", RegexOption.IGNORE_CASE)))
-        text = Regex("\\{\\{([a-zA-Z0-9_]+)}}").replace(text) { match -> escape(requireNotNull(parameters[match.groupValues[1]]) { "贴纸参数不存在" }) }
-        require(text.length <= 2 * 1024 * 1024)
-        val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true; setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-            setFeature("http://xml.org/sax/features/external-general-entities", false)
-            setFeature("http://xml.org/sax/features/external-parameter-entities", false); isXIncludeAware = false
-        }
-        val document = factory.newDocumentBuilder().parse(text.byteInputStream())
+        text = Regex("\\{\\{([a-zA-Z0-9_]+)\\}\\}").replace(text) { match -> escape(requireNotNull(parameters[match.groupValues[1]]) { "贴纸参数不存在" }) }
+        val document = VectorStickerXml.parse(text)
         val nodes = document.getElementsByTagName("*"); require(nodes.length in 1..4096)
         val allowed = setOf("svg", "g", "defs", "path", "circle", "ellipse", "rect", "line", "polyline", "polygon", "linearGradient", "radialGradient", "stop", "clipPath", "text", "title", "desc")
         val texts = mutableListOf<Element>()

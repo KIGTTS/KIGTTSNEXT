@@ -29,6 +29,22 @@ def main():
             if not local.is_relative_to(folder) or hashlib.sha256(local.read_bytes()).hexdigest() != font[hashfield]: raise ValueError("Asset verification failed")
             files.add(path)
         files.add(unquote(font["licenseUrl"].removeprefix(BASE)))
+    kpm_index = folder / "kpm/index.json"
+    if kpm_index.is_file():
+        kpm = json.loads(kpm_index.read_text(encoding="utf-8"))
+        files.add("kpm/index.json")
+        assets = list(kpm.get("assets", {}).values())
+        for package in kpm["packages"]:
+            if package.get("resourceType") != "FONT": raise ValueError("Unexpected KPM resource type")
+            for release in package["releases"]:
+                assets.append(dict(url=release["mirrors"][0]["url"], sha256=release["sha256"]))
+        for asset in assets:
+            if not asset["url"].startswith(BASE): raise ValueError("Unexpected KPM URL")
+            relative = unquote(asset["url"][len(BASE):])
+            local = (folder / relative).resolve()
+            if not local.is_relative_to(folder) or hashlib.sha256(local.read_bytes()).hexdigest() != asset["sha256"]:
+                raise ValueError("KPM font verification failed")
+            files.add(relative)
     if not args.verify_only:
         if ModelScopeConfig.get_cookies() is None: raise RuntimeError("ModelScope login required")
         api = HubApi()
@@ -38,7 +54,10 @@ def main():
                 license="SIL Open Font License 1.1", description="KIGTTS 字体、SVG 字形预览与字体授权。")
         elif response.status_code != 200: response.raise_for_status()
         api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder),
-            ignore_patterns=["index.json"], commit_message="Add original OFL fonts and outline SVG previews")
+            ignore_patterns=["index.json", "kpm/index.json"], commit_message="Add OFL fonts, signed KPM resources and SVG previews")
+        if kpm_index.is_file():
+            api.upload_file(repo_id=REPO, repo_type="dataset", path_or_fileobj=str(kpm_index),
+                path_in_repo="kpm/index.json", commit_message="Publish signed KPM font catalog")
         api.upload_file(repo_id=REPO, repo_type="dataset", path_or_fileobj=str(folder / "index.json"),
             path_in_repo="index.json", commit_message="Publish font catalog")
     verified = []

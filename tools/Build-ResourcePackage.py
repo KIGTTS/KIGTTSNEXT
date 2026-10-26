@@ -8,7 +8,7 @@ import zipfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS", "CARD_FRAME")
+TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS", "CARD_FRAME", "FONT")
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -46,6 +46,17 @@ def build(project, output, private_key):
         payload["card-frames.json"] = card_frames.read_bytes()
         paths.extend(item["artwork"] for item in descriptor["items"])
     api_version = 30 if generators.is_file() or definition["resourceType"] == "CARD_FRAME" else 29
+    if definition["resourceType"] == "FONT":
+        api_version = 32
+        assert content.get("payload") and not any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles"))
+        font_path = (project / content["payload"]).resolve()
+        if not font_path.is_relative_to(project) or font_path.suffix.lower() not in (".ttf", ".otf"):
+            raise ValueError("Font payload must be a local TTF or OTF")
+        if not 12 <= font_path.stat().st_size <= 40 * 1024 * 1024:
+            raise ValueError("Font must be smaller than 40 MB")
+        with font_path.open("rb") as font_file:
+            if font_file.read(4) not in (b"\x00\x01\x00\x00", b"OTTO"):
+                raise ValueError("Invalid font signature")
     for name in paths:
         if not safe(name) or name in ("package.json", "resource.json") or name.startswith("signature/"): raise ValueError("Invalid payload path")
         file = (project / name).resolve()

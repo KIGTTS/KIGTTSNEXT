@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.dp
@@ -45,9 +49,15 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
 internal fun PhraseTile(phrase: QuickPhrase, select: () -> Unit, neighbors: CornerNeighbors,
     pressed: Boolean, neighborPressed: Boolean, source: MutableInteractionSource, modifier: Modifier,
     repository: com.kigtts.next.media.MediaRepository, hidden: Boolean = false, elevation: androidx.compose.ui.unit.Dp = 0.dp) {
+    val shape = homeCardShape(neighbors, pressed, neighborPressed)
+    // A local shadow follows the translated floating card. Platform elevation projects
+    // against the window light and can separate from a card lifted from the final row.
+    val lifted = if (elevation > 0.dp) Modifier.dropShadow(shape,
+        Shadow(radius = 12.dp, color = Color.Black.copy(alpha = .2f * (elevation.value / 8f).coerceIn(0f, 1f)),
+            offset = DpOffset(0.dp, 4.dp))) else Modifier
     Surface(onClick = feedbackClick(select), interactionSource = source,
-        modifier = modifier.homePreviewRegion("phrase/" + phrase.id).then(if (hidden) Modifier.clearAndSetSemantics {} else Modifier.testTag("quick-phrase-" + phrase.id)), shadowElevation = elevation,
-        color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = homeCardShape(neighbors, pressed, neighborPressed)) {
+        modifier = modifier.then(lifted).homePreviewRegion("phrase/" + phrase.id).then(if (hidden) Modifier.clearAndSetSemantics {} else Modifier.testTag("quick-phrase-" + phrase.id)),
+        color = quickPhraseColor(phrase), contentColor = quickPhraseContentColor(phrase), shape = shape) {
         Box(Modifier.fillMaxSize()) {
         com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
         QuickPhraseText(phrase, Modifier.fillMaxHeight().fillMaxWidth(if (phrase.mediaId == null) 1f else .60f)

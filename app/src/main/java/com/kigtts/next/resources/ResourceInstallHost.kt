@@ -24,8 +24,8 @@ import com.kigtts.next.ui.components.*
                 else "${archive.count} 项${archive.manifest.resourceType.label}")
             if (archive.manifest.resourceType == com.kigtts.plugin.api.ResourceType.QUICK_TEXT) Text("添加为新的快捷文本分组。", style = MaterialTheme.typography.bodyMedium)
             prompt.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (prompt.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (prompt.busy) { Text("正在添加…"); LinearProgressIndicator(Modifier.fillMaxWidth()) }
         } }, confirmButton = { Button(dialogFeedbackClick(model.resourceInstalls::confirm), enabled = !prompt.busy) {
             Text(if (missingVoice) "前往商店" else if (prompt.error != null) "重试" else "添加")
-        } }, dismissButton = { if (!prompt.busy) TextButton(dialogFeedbackClick(model.resourceInstalls::dismiss)) { Text("取消") } })
+        } }, dismissButton = { TextButton(dialogFeedbackClick(model.resourceInstalls::dismiss)) { Text(if (prompt.busy) "后台添加" else "取消") } })
 }

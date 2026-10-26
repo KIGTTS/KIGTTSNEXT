@@ -9,6 +9,11 @@ import java.util.UUID
 
 internal suspend fun importResource(model: AppViewModel, archive: ResourceArchive) {
     when (archive.manifest.resourceType) {
+        ResourceType.FONT -> withContext(Dispatchers.IO) {
+            val context = model.getApplication<android.app.Application>()
+            val key = com.kigtts.next.theme.AppearanceAssets(context).importFont(Uri.fromFile(archive.file(requireNotNull(archive.content.payload))))
+            com.kigtts.next.theme.InstalledFonts(context).remember(key, archive.manifest.name)
+        }
         ResourceType.QUICK_TEXT -> {
             val file = archive.file(requireNotNull(archive.content.payload))
             val reply = model.quickTextBackup.prepareImport(model.getApplication<android.app.Application>().contentResolver, Uri.fromFile(file))

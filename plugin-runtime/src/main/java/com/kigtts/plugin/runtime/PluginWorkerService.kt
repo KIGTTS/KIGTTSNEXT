@@ -103,13 +103,15 @@ open class PluginWorkerService : Service() {
         override fun execute(actionId: String, context: String): String = runBlocking(Dispatchers.IO) {
             require(context.toByteArray().size <= 256 * 1024 && actionId.length <= 256)
             val result = requireNotNull(plugin).execute(actionId, PluginJson.decodeFromString(context))
-            if (result is PluginOutcome.OpenPage) synchronized(pages) { pages.add(result.pageId) }
+            rememberPage(result)
             PluginJson.encodeToString(result)
         }
         override fun voiceCommand(command: String): String = runBlocking(Dispatchers.IO) {
             require(command.length <= 8192)
-            PluginJson.encodeToString(requireNotNull(plugin?.voiceManager) { "此引擎不支持语音包管理" }
-                .command(PluginJson.decodeFromString(command)))
+            val result = requireNotNull(plugin?.voiceManager) { "此引擎不支持语音包管理" }
+                .command(PluginJson.decodeFromString(command))
+            rememberPage(result)
+            PluginJson.encodeToString(result)
         }
         override fun synthesize(request: String, token: String): ParcelFileDescriptor = launchSession(token) { output ->
             val engine = requireNotNull(plugin?.tts) { "插件没有 TTS 能力" }
@@ -140,6 +142,14 @@ open class PluginWorkerService : Service() {
                 Handler(Looper.getMainLooper()).postDelayed({ Process.killProcess(Process.myPid()) }, 100)
             }
         }
+    }
+    private fun rememberPage(result: PluginOutcome) {
+        val pageId = when (result) {
+            is PluginOutcome.OpenPage -> result.pageId
+            is PluginOutcome.OpenPluginPage -> result.pageId.takeIf { result.pluginId == plugin?.descriptor?.id }
+            else -> null
+        }
+        if (pageId != null) synchronized(pages) { pages.add(pageId) }
     }
     private fun launchSession(token: String, inputs: List<ParcelFileDescriptor> = emptyList(),
         block: suspend (DataOutputStream) -> Unit): ParcelFileDescriptor {

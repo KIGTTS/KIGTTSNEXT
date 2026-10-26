@@ -43,8 +43,10 @@ class PluginSettingsUiTest {
         compose.onNodeWithTag("managed-toggle/resident").performClick()
         assertEquals(listOf("sounds" to emptyMap(), "resident" to mapOf("checked" to "true")), calls)
         compose.runOnIdle { busy = true }; step(5)
-        compose.onNodeWithTag("managed-item/voice").assertIsNotEnabled()
-        compose.onNodeWithTag("managed-toggle/resident").assertIsNotEnabled()
+        // Busy requests keep the existing appearance; callbacks still reject a second operation.
+        compose.onNodeWithTag("managed-item/voice").performClick()
+        compose.onNodeWithTag("managed-toggle/resident").performClick()
+        assertEquals(2, calls.size)
         compose.runOnIdle { busy = false; active = false }; step(5)
         compose.onNodeWithTag("managed-item/voice").assertIsNotEnabled()
         compose.runOnIdle { active = true }; step(20)
