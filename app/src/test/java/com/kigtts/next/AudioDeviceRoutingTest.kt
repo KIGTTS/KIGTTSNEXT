@@ -17,15 +17,16 @@ import org.robolectric.shadows.AudioDeviceInfoBuilder
 import java.lang.reflect.Proxy
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [26, 35])
 class AudioDeviceRoutingTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
     private val manager = app.getSystemService(AudioManager::class.java)
     private val shadow get() = shadowOf(manager)
     private fun device(type: Int) = AudioDeviceInfoBuilder.newBuilder().setType(type).build().also {
+        val port: Any = org.robolectric.util.ReflectionHelpers.getField(it, "mPort")
+        org.robolectric.util.ReflectionHelpers.setField(port, "mName", "")
         // Robolectric's public builder only maps output device types.
         if (type == AudioDeviceInfo.TYPE_BUILTIN_MIC) {
-            val port: Any = org.robolectric.util.ReflectionHelpers.getField(it, "mPort")
             org.robolectric.util.ReflectionHelpers.setField(port, "mType", 0x80000004.toInt())
         }
     }

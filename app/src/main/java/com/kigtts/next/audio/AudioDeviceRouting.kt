@@ -6,6 +6,7 @@ import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.AudioRouting
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.kigtts.plugin.api.*
@@ -41,7 +42,7 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
         val name = device.productName?.toString().orEmpty()
         val label = if (device.type in setOf(AudioDeviceInfo.TYPE_BUILTIN_MIC, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
                 AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE, AudioDeviceInfo.TYPE_BUILTIN_EARPIECE) || name.isBlank()) kind else "$name · $kind"
-        return AudioEndpoint(audioEndpointKey(device.type, device.address.orEmpty(), name), label, device.type)
+        return AudioEndpoint(audioEndpointKey(device.type, (if (Build.VERSION.SDK_INT >= 28) device.address.orEmpty() else ""), name), label, device.type)
     }
     @Synchronized internal fun endpoints(input: Boolean) = devices(input).map(::endpoint).distinctBy { it.key }
     internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)

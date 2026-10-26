@@ -30,7 +30,7 @@ internal fun AutomaticReadButton(state: AppState, model: AppViewModel) {
     if (picker) AudioDevicePicker(model.audioDevices) { picker = false }
     if (visible) Box(
         Modifier.size(48.dp).testTag("auto-playback").homePreviewRegion("header-start")
-            .combinedClickable(role = Role.Button, onClick = feedbackClick(model::toggleAutoPlayback),
+            .combinedClickable(role = Role.Button, hapticFeedbackEnabled = false, onClick = feedbackClick(model::toggleAutoPlayback),
                 onLongClickLabel = "切换朗读设备", onLongClick = feedbackClick { picker = true }),
         contentAlignment = Alignment.Center) {
         Icon(if (state.autoPlayback) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,

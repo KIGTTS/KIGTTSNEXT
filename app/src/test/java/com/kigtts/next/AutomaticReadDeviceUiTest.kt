@@ -4,6 +4,8 @@ import android.app.Application
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -42,7 +44,7 @@ class AutomaticReadDeviceUiTest {
         shadowOf(app.getSystemService(AudioManager::class.java)).setOutputDevices(listOf(speaker))
         val model = AppViewModel(app, listOf(service))
         try {
-            compose.setContent { KigttsTheme(ThemeSettings()) { AutomaticReadButton(model.state.value, model) } }
+            compose.setContent { val state by model.state.collectAsState(); KigttsTheme(ThemeSettings()) { AutomaticReadButton(state, model) } }
             compose.onNodeWithTag("auto-playback").performTouchInput { longClick() }
             compose.onNodeWithText("首选朗读设备").assertIsDisplayed()
             compose.onNodeWithText("手机扬声器").performClick()
