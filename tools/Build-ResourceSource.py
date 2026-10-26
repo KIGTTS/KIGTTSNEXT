@@ -43,14 +43,16 @@ def main():
     assets = {}
     for package, name, width, height in zip(packages, ("classic-frames", "soft-colors", "card-borders", "word-stickers"), (1200, 480, 1200, 1200), (800, 900, 800, 800)):
         local = ROOT / f"distribution/resources/previews/{name}.svg"
-        target = folder / f"artwork/{name}.svg"; target.parent.mkdir(exist_ok=True); target.write_bytes(local.read_bytes())
-        assets[name] = dict(url=BASE + f"artwork/{name}.svg", sha256=module.digest(local.read_bytes()), bytes=local.stat().st_size, width=width, height=height, alt=package["name"] + "预览")
+        preview_hash = module.digest(local.read_bytes())
+        preview_path = f"artwork/{name}-{preview_hash[:12]}.svg"
+        target = folder / preview_path; target.parent.mkdir(exist_ok=True); target.write_bytes(local.read_bytes())
+        assets[name] = dict(url=BASE + preview_path, sha256=preview_hash, bytes=local.stat().st_size, width=width, height=height, alt=package["name"] + "预览")
         package["thumbnails"] = [name]
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.resources", name="KIGTTS 资源", description="为字幕与照片添加新的风格。",
         homepage="https://github.com/KIGTTS/KPM", updatedAt="2026-10-26T00:00:00Z", linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
     jsonschema.Draft202012Validator(json.loads((ROOT / "distribution/kpm-catalog.schema.json").read_text(encoding="utf-8"))).validate(catalog)
     (folder / "index.json").write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
-    (folder / "README.md").write_text("# KIGTTS 资源\n\n相框与滤镜，在插件商店的「资源」页面添加。\n\n这里的原创相框与 LUT 按 [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) 提供。\n", encoding="utf-8", newline="\n")
+    (folder / "README.md").write_text("# KIGTTS 资源\n\n在商店添加相框、滤镜、名片边框与可调字贴。\n\n这里的原创资源与预览按 [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) 提供。\n", encoding="utf-8", newline="\n")
     print(f"Prepared {len(packages)} signed resource packages -> {folder}")
 
 if __name__ == "__main__": main()

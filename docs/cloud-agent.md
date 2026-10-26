@@ -112,7 +112,11 @@ Lua 草稿格式与 `runtime.lua` 相同：`manifest.json` 包含 `id`、`name`�
 
 生成任务独立于页面和当前选中的会话。工作进程在生成期间显示前台通知并使用有时限的 CPU 锁，结束、取消或系统超时时释放；不会为了保活在空闲时常驻，也不自动重发中断请求。Android 和厂商仍可终止进程，未完成文字按已停止恢复。
 
-联网检索使用公开 Bing RSS，支持有限次数的 HTTPS 区域跳转；结果依赖网络与检索服务可用性。正文工具限制大小，不向网页转发供应商密钥，不访问本机/局域网。网站内容作为资料，不作为工具指令；回复应引用核对过的来源链接。
+AI 助手 0.9.22 优先使用已配置的 DeepSeek 官方 Search 与 Fetch 服务。按供应商地址 `https://api.deepseek.com` 识别账户，使用该账户的密钥，当前聊天模型可以来自其它供应商。密钥无效或服务暂不可用时，搜索回退至公开 Bing RSS、正文回退至直接读取，并标明备用来源。无效密钥暂避五分钟，修改密钥后可立即重试。
+
+`browser` 也支持 `operation=search` 与 `operation=fetch`，和 `web_search` / `web_fetch` 共用选择逻辑；动态页面仍通过持久 WebView 操作与截图。正文和结果均限制大小，不向被读取的网页转发供应商密钥，不访问本机/局域网。网站内容作为资料，不作为工具指令；回复应引用核对过的来源链接。接口格式见 [DeepSeek 官方文档](https://api-docs.deepseek.com/guides/search/)。
+
+0.9.24在执行任务前先查相关资料，界面任务同时查找截图与示例；结合用户语言、地区和访问条件优先选择可打开的可靠来源。每轮传入系统语言、地区偏好和时区，不做定位或IP查询，用户说明优先。提示词设计参考DSH标准模式和ZCode官方源码，具体取舍记录在[独立插件检索规则](https://github.com/KIGTTS/plugin-cloud-agent/blob/main/docs/research-policy.md)。
 
 交互参考 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的会话、工具与权限分工，保持原生宿主与独立插件结构，不包含子代理功能。
 
@@ -128,11 +132,7 @@ Lua 草稿格式与 `runtime.lua` 相同：`manifest.json` 包含 `id`、`name`�
 
 长任务不再按固定工具轮数暂停。上下文按完整工具调用/结果组保留近期窗口、原始目标和最新用户指令；完整历史不丢弃，助手可通过 `conversation_history(offset,limit)` 查阅省略记录。取消、权限批准、结果未知和真实服务错误仍会停止当前执行；进程被系统终止不会自动重放工具。
 
-提供商、模型和思考强度位于同一个滚动弹窗，按提供商小标题分组，支持搜索；选择模型后保持弹窗以继续调整强度。配置密钥/地址后自动GET兼容`/models`，每个账户缓存24小时，可强制刷新；不支持接口或失败时保留人工列表。列表支持逐行ID或JSON：
-
-```json
-[{"id":"my-model","reasoningEfforts":["low","high","max"],"vision":true}]
-```
+“选择模型”弹窗只列出已配置密钥的可用账户和模型，支持搜索，搜索栏右侧为刷新按钮；底部“管理模型”进入配置。当前模型失效而仍有可用模型时提示“请选择可用模型”；没有可用模型时引导添加供应商。新配置从预设模板或自定义供应商开始，同名配置自动编号；支持Chat Completions、Responses与Anthropic Messages。模型由兼容`/models`接口获取并缓存24小时，可手动刷新；不提供手填模型入口。
 
 思考强度仅按接口明确返回的`effort.supported_levels`、`reasoningEfforts`或`supported_reasoning_efforts`显示分段滑条，未知时保持服务默认；不根据名字猜测档位。接口元数据参考[DeepSeek模型发现](https://api-docs.deepseek.com/api/list-models/)。未用用户密钥执行本轮付费聊天测试。
 

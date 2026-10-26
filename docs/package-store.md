@@ -113,3 +113,9 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 官方插件图库维护在ARTS/PluginStore，包含15款花型SVG/PNG封面与隔离环境的原生界面预览。素材索引记录原始尺寸、哈希和截图来源；Build-OfficialPluginSource调用独立的Add-OfficialPluginArtwork脚本，将素材复制为带哈希的不可变地址，并在各包thumbnails中注册。重新生成与许可说明见ARTS/PluginStore/README.md。
 
 官方资源源：https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/index.json?view=false 。源构建、签名与发布脚本见tools/Build-ResourcePackage.py、Build-ResourceSource.py和Publish-ResourceSource.py；具体内容结构见SDK的docs/resource-packages.md。
+
+## 临时来源详情与名片资源（API30，商店0.16.0）
+
+`kigtts://source/open?url=<编码后的HTTPS源地址>&package=<包ID>&addSource=optional` 可在添加源之前查看指定包；`addSource=required` 要求先确认添加源。旧的 `/source/add` 仍保留先添加再打开详情的行为。资源源可通过 `linkPolicy.requireAddition` 选择添加前置，通过 `linkPolicy.recommendAfterInstall` 在导入完成后邀请添加来源；链接不自动安装包。
+
+`CARD_FRAME` 单独表示名片边框，和拍立得 `FRAME` 分开管理。参数贴纸支持数值、颜色、文本和选项，也可包含已授权字体；名片、拍立得与画板选择器统一提供单选、多选及预览。官方资源图的地址附带内容摘要并固定已校验提交，避免分支缓存返回旧图或404。
