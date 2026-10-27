@@ -31,7 +31,7 @@ import kotlin.math.roundToInt
 /** Shared virtualized list with stable container gestures, drop animation and one persisted commit. */
 @Composable
 fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (PluginResource) -> File? = { null },
-    invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit = {}) {
+    invoke: (String, Map<String, String>) -> Unit, compactActions: Boolean = false, header: @Composable ColumnScope.() -> Unit = {}) {
     com.kigtts.next.ui.components.ReadablePage {
     val columns = if (maxWidth >= 960.dp) 2 else 1
     val lazy = rememberLazyGridState()
@@ -93,6 +93,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                     Modifier.reorderGrip(item.id, drag), list.reorderAction != null, false, pageActive, resolve,
                     { action, inputs -> if (interactive) invoke(action, inputs) }, { if(interactive)moveAccessible(item.id, it) },
                     catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
+                    compactActions = compactActions,
                     position = if (columns == 1) managedItemPosition(orderedItems, index) else managedItemPosition(orderedItems.filterIndexed { i, _ -> i % columns == index % columns }, index / columns))
             }
         }
@@ -104,6 +105,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                 .height(with(density) { drag.floatingBounds.height.toDp() }).clearAndSetSemantics { testTag = "managed-drag/" + draggedItem.id },
             Modifier, list.reorderAction != null, true, pageActive, resolve, { _, _ -> }, {}, shadowElevation = elevation,
             catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[draggedItem.id],
+            compactActions = compactActions,
             position = if (columns == 1 && draggedPosition >= 0) managedItemPosition(ordered, draggedPosition) else com.kigtts.next.ui.settings.SettingPosition.SINGLE)
         ReorderAutoScroll(drag, { lazy.layoutInfo.viewportSize.height.toFloat() }, { lazy.scrollBy(it) })
     }

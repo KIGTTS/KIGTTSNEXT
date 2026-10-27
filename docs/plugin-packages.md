@@ -30,6 +30,28 @@ pwsh -File tools/Build-EnginePlugins.ps1 -Modules quick-text-tools
 
 首次打包在 `.tools/plugin-signing/private.der` 生成本地 RSA 私钥，不入 Git。后续更新保留同一发布者；正式发布可用 -SigningKey 指定 PKCS#8 DER 私钥。更新递增 plugin-spec.json.versionCode，descriptor.version 与清单一致；签名身份不能随意替换。
 
+## 插件管理与关于
+
+### 语音包详情
+
+语音合成服务 0.8.4（API28）将语音包详情统一为设置布局：顶部显示头像、名称和备注；详细信息、语音包设置、音频设置及管理操作放入双层卡片，声音以单选行呈现。详情页没有顶层页签式操作，滑条调整与恢复默认都留在当前页。引擎停用时保留包信息和禁用的声音列表，不提供编辑操作。
+
+该版本的 34 项独立仓库回归通过，已核对原发布者签名并覆盖安装到手机，保留原配置。真实渲染证据见 [设备检查记录](device-plugin-audit-20261027.md)。
+
+插件管理条目仅保留一个「设置」图标，打开插件第一个显式设置入口（没有设置入口时使用第一个抽屉入口）；次级功能由插件自己的设置页承载。「关于」、权限和卸载收进更多菜单。无设置页面的插件仍可查看关于信息。
+
+### 包内关于信息
+
+可在签名清单的 `files` 中包含 `assets/plugin-info.json`，以提供无需启动插件即可查看的信息：
+
+```json
+{"description":"插件介绍，可使用 Markdown。","author":"开发者","homepage":"https://example.com"}
+```
+
+该文件最多 16 KiB；介绍、作者与主页字段分别限制 8000、120、2048 字符。未提供介绍时依次读取 `assets/about.md`、`assets/README.md`、`README.md`（各最多 16 KiB），再回退到已加载描述符。名称、版本与许可证标识来自包清单。
+
+「查看开源许可」支持根目录的 `LICENSE`、`LICENSE.md`、`LICENSE.txt`、`NOTICE`、`NOTICE.md`，以及 `assets/licenses/` 或 `licenses/` 下的 `.md`/`.txt`；最多 16 个文件、单个最多 128 KiB、总计最多 256 KiB。所有读取均限定在当前包目录和已签名清单，不执行插件代码。`PluginAboutTest` 覆盖未签名文件排除和大小限制。
+
 ## 原生包结构
 
 ```text

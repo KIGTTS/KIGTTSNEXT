@@ -14,6 +14,10 @@ import kotlin.math.roundToInt
 @Composable
 internal fun PluginSliderSetting(control: PluginControl.Slider, modifier: Modifier = Modifier, enabled: Boolean = true,
     continuous: Boolean = true, change: (String) -> Unit) {
+    if (control.actionId == com.kigtts.next.audio.SPEECH_GAIN_ACTION) {
+        SpeechGainSlider(control, modifier, enabled, continuous, change)
+        return
+    }
     val min = control.min.takeIf(Float::isFinite) ?: 0f
     val max = control.max.takeIf { it.isFinite() && it > min } ?: (min + 1f)
     var value by remember(control.actionId, control.value) {

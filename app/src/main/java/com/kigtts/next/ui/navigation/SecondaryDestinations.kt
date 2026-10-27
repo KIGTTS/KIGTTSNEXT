@@ -61,6 +61,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
+        subtitle = if (destination == Destination.Plugins) "管理已安装的插件" else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
             destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.ContactFavorites || destination == Destination.Plugins ||
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
@@ -78,7 +79,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
                         state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) })
-                    SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort)
+                    SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)
                     SettingsCategory.WEB -> WebSettingsScreen()

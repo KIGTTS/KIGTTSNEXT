@@ -46,6 +46,7 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
     }
     @Synchronized internal fun endpoints(input: Boolean) = devices(input).map(::endpoint).distinctBy { it.key }
     internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)
+    internal val outputGain: Float get() = preferences.getFloat("output-gain", 1f).takeIf { it.isFinite() && it in 0f..10f } ?: 1f
     fun summary(input: Boolean): String = selected(input)?.let { key ->
         endpoints(input).firstOrNull { it.key == key }?.label ?: (preferences.getString(side(input) + "-name", "音频设备") + "（未连接）")
     } ?: "系统默认"
@@ -76,17 +77,27 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
             plugin.tts?.info?.role == TtsRole.SERVICE -> false
             else -> return page
         }
-        return page.copy(blocks = page.blocks + PageBlock.Group("音频设备", listOf(
+        val controls = mutableListOf<PageBlock>()
+        if (!input) controls += PageBlock.Slider(PluginControl.Slider("音量", SPEECH_GAIN_ACTION, outputGain, 0f, 10f, suffix = "×"))
+        controls +=
             PageBlock.Select(if (input) "首选麦克风" else "首选朗读设备", actions(input),
-                action(input, selected(input)), if (input) PluginIcon.MIC else PluginIcon.SPEAKER))))
+                action(input, selected(input)), if (input) PluginIcon.MIC else PluginIcon.SPEAKER)
+        return page.copy(blocks = page.blocks + PageBlock.Group("音频设备", controls))
     }
     private fun action(input: Boolean, key: String?) = "host-audio/${side(input)}/" + (key ?: "default")
     private fun actions(input: Boolean) = listOf(PageAction(action(input, null), "系统默认")) +
         endpoints(input).map { PageAction(action(input, it.key), it.label) } +
         if (selected(input) != null && endpoints(input).none { it.key == selected(input) })
             listOf(PageAction(action(input, selected(input)), summary(input))) else emptyList()
-    fun handle(plugin: KigPlugin, action: String): Boolean {
+    fun handle(plugin: KigPlugin, action: String, inputs: Map<String, String> = emptyMap()): Boolean {
         if (!action.startsWith("host-audio/")) return false
+        if (action == SPEECH_GAIN_ACTION) {
+            require(plugin.tts?.info?.role == TtsRole.SERVICE)
+            val value = inputs["value"]?.toFloatOrNull()
+            require(value != null && value.isFinite() && value in 0f..10f) { "音量需在0至10倍之间" }
+            preferences.edit().putFloat("output-gain", value).apply()
+            return true
+        }
         val parts = action.split('/', limit = 3)
         require(parts.size == 3)
         val input = when (parts[1]) { "input" -> true; "output" -> false; else -> error("音频设备选项无效") }

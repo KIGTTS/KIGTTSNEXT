@@ -54,10 +54,11 @@ private class AndroidPcmPlayer(private val devices: AudioDeviceRouting) : PcmPla
                 .setTransferMode(AudioTrack.MODE_STREAM).setBufferSizeInBytes(minimum * 2).build().also { devices.bind(it, false); it.play() }
             currentFormat = format; frames = 0
         }
+        val playback = speechPcmGain(audio.bytes, devices.outputGain)
         var offset = 0
-        while (offset < audio.bytes.size) {
+        while (offset < playback.size) {
             currentCoroutineContext().ensureActive()
-            val count = requireNotNull(track).write(audio.bytes, offset, audio.bytes.size - offset, AudioTrack.WRITE_NON_BLOCKING)
+            val count = requireNotNull(track).write(playback, offset, playback.size - offset, AudioTrack.WRITE_NON_BLOCKING)
             check(count >= 0) { "音频播放失败（$count）" }
             offset += count
             if (count == 0) delay(5)

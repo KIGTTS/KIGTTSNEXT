@@ -24,6 +24,7 @@ internal val nativeSettingsSearchEntries = listOf(
     SettingsSearchResult("空白提示", "设置 / ${SettingsCategory.APPEARANCE.title} / 字幕 / 空白提示", Destination.SettingsDetail(SettingsCategory.APPEARANCE)),
     SettingsSearchResult("操作反馈", "设置 / ${SettingsCategory.FEEDBACK.title} / 操作反馈", Destination.SettingsDetail(SettingsCategory.FEEDBACK)),
     SettingsSearchResult("按键震动反馈", "设置 / ${SettingsCategory.FEEDBACK.title} / 操作反馈 / 按键震动反馈", Destination.SettingsDetail(SettingsCategory.FEEDBACK)),
+    SettingsSearchResult("二次返回退出", "设置 / ${SettingsCategory.FEEDBACK.title} / 返回操作 / 二次返回退出", Destination.SettingsDetail(SettingsCategory.FEEDBACK)),
     SettingsSearchResult("快捷文本", "设置 / ${SettingsCategory.FEEDBACK.title} / 操作反馈 / 快捷文本", Destination.SettingsDetail(SettingsCategory.FEEDBACK)),
     SettingsSearchResult("长按快速排序", "设置 / ${SettingsCategory.FEEDBACK.title} / 操作反馈 / 长按快速排序", Destination.SettingsDetail(SettingsCategory.FEEDBACK)),
     SettingsSearchResult("悬浮快捷入口", "设置 / ${SettingsCategory.OVERLAY.title} / 悬浮快捷入口", Destination.SettingsDetail(SettingsCategory.OVERLAY)),

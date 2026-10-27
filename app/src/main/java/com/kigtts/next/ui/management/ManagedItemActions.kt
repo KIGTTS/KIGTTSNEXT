@@ -58,7 +58,7 @@ internal fun managedVisibleActions(widths: List<Float>, available: Float, overfl
     }
 }
 
-@Composable private fun ManagedActionTooltip(label: String, content: @Composable () -> Unit) {
+@Composable internal fun ManagedActionTooltip(label: String, content: @Composable () -> Unit) {
     TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = { PlainTooltip(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
             contentColor = MaterialTheme.colorScheme.onSurface) { Text(label) } }, state = rememberTooltipState(), content = content)

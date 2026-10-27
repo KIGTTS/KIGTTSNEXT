@@ -22,6 +22,31 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PluginManagementUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun managementKeepsOneSettingsTargetAndMovesAboutIntoOverflow() {
+        val plugin = object : KigPlugin {
+            override val descriptor = PluginDescriptor("test.settings", "测试语音服务", "包内说明", "2.0")
+            override val contributions = PluginContributions(settingsEntries = listOf(
+                SettingsEntry("main", "语音合成服务", "manager", PluginIcon.SPEAKER),
+                SettingsEntry("voices", "语音包", "packs", PluginIcon.SPEAKER)))
+            override fun page(pageId: String, context: PluginContext) = PluginPage(pageId, "主要设置", emptyList())
+            override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
+        }
+        val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>(), listOf(plugin))
+        model.navigate(Destination.Plugins)
+        compose.setContent { KigttsApp(model) }
+        compose.onAllNodesWithContentDescription("设置").assertCountEquals(1)
+        compose.onAllNodesWithText("管理已安装的插件").assertCountEquals(1)
+        compose.onNodeWithTag("page-subtitle").assertTextEquals("管理已安装的插件")
+        compose.onRoot().captureRoboImage("build/previews/plugin-manager-compact-settings.png")
+        compose.onNodeWithText("语音包").assertDoesNotExist()
+        compose.onNodeWithText("关于").assertDoesNotExist()
+        compose.onNodeWithTag("managed-more/test.settings").performClick()
+        compose.onNodeWithText("关于").performClick()
+        compose.onNodeWithText("关闭").assertIsDisplayed().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("设置").performClick()
+        compose.runOnIdle { assertEquals(Destination.PluginPage("test.settings", "manager"), model.state.value.destination) }
+    }
     @Test fun productionManagementOffersInstallerAndNoBundledSpeechEngine() {
         val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>())
         model.navigate(Destination.Plugins)

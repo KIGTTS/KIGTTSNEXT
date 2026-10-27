@@ -35,6 +35,7 @@ fun PluginsScreen(model: AppViewModel) {
     var remove by remember { mutableStateOf<String?>(null) }
     var managedRemove by remember { mutableStateOf<Pair<String, String>?>(null) }
     var permission by remember { mutableStateOf<Pair<String, String?>?>(null) }
+    var about by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val state by model.state.collectAsStateWithLifecycle()
     val working = busy || state.busyPlugins.isNotEmpty()
@@ -53,7 +54,7 @@ fun PluginsScreen(model: AppViewModel) {
         ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working,preserveColorWhenLocked=true) { importer.launch(arrayOf("*/*")) },
         ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
-    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), working,
+    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), working, compactActions = true,
         invoke = { action, inputs ->
             val pieces = action.split('/')
             when (pieces[0]) {
@@ -64,6 +65,7 @@ fun PluginsScreen(model: AppViewModel) {
                 "remove" -> remove = pieces[1]
                 "page" -> model.navigate(Destination.PluginPage(pieces[1], pieces.drop(2).joinToString("/")))
                 "permissions" -> permission = pieces[1] to pieces.getOrNull(2)
+                "about" -> about = pieces[1]
                 "managed" -> model.invoke(pieces[1], pieces.drop(2).joinToString("/"), inputs)
                 "managed-remove" -> managedRemove = pieces[1] to pieces[2]
             }
@@ -74,10 +76,10 @@ fun PluginsScreen(model: AppViewModel) {
                 try { model.safeModeSession.restorePlugins() } finally { busy = false }
             } }) { Text("恢复插件") }
         }
-        Text("管理已安装的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (model.pluginManager.status.isEmpty()) Text("还没有安装插件")
     }
     permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }
+    about?.let { id -> InstalledPluginAbout(model, id) { about = null } }
     managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text("卸载插件？") }, text = { Text("将删除这个 Lua 插件及其保存的数据。") },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick {
             model.registry.plugin(runtime)?.contributions?.managedPackages?.firstOrNull { it.id == id }?.removeAction?.let { action -> model.invoke(runtime, action) }

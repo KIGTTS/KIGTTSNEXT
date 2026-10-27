@@ -73,9 +73,17 @@ class AudioDeviceRoutingTest {
             val page = PluginPage("manager", "语音合成服务", emptyList())
             assertEquals(page, routes.decorate(plugin(TtsRole.PROVIDER), page))
             val group = routes.decorate(plugin(TtsRole.SERVICE), page)!!.blocks.single() as PageBlock.Group
-            assertEquals("首选朗读设备", (group.children.single() as PageBlock.Select).title)
+            assertEquals("首选朗读设备", group.children.filterIsInstance<PageBlock.Select>().single().title)
+            assertEquals(SPEECH_GAIN_ACTION, group.children.filterIsInstance<PageBlock.Slider>().single().control.actionId)
             try { routes.handle(plugin(TtsRole.PROVIDER), "host-audio/output/default"); fail() } catch (_: IllegalArgumentException) { }
             assertTrue(routes.handle(plugin(TtsRole.SERVICE), "host-audio/output/default"))
+            assertTrue(routes.handle(plugin(TtsRole.SERVICE), SPEECH_GAIN_ACTION, mapOf("value" to "4.5")))
+            assertEquals(4.5f, routes.outputGain)
+            for (invalid in listOf("NaN", "Infinity", "-1", "11")) {
+                try { routes.handle(plugin(TtsRole.SERVICE), SPEECH_GAIN_ACTION, mapOf("value" to invalid)); fail() } catch (_: IllegalArgumentException) { }
+            }
+            assertEquals(4.5f, routes.outputGain)
         }
+        AudioDeviceRouting(app).use { assertEquals(4.5f, it.outputGain) }
     }
 }

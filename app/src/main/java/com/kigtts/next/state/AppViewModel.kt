@@ -52,6 +52,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val subtitleAppearanceStore = SubtitleAppearanceStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
     val quickSort = QuickSortPreference(application)
+    val homeExit = HomeExitPreference(application)
     internal val subtitleRenderer = SubtitleRendererState()
     internal val listeningPanel = ListeningPanelState()
     private val phraseStore = QuickPhraseStore(application)
@@ -365,7 +366,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
-        if (runCatching { audioDevices.handle(plugin, actionId) }.getOrElse { message(it.message ?: "设备切换失败"); true }) {
+        if (runCatching { audioDevices.handle(plugin, actionId, inputs) }.getOrElse { message(it.message ?: "音频设置失败"); true }) {
             update { it.copy(pluginRevision = it.pluginRevision + 1) }; complete?.invoke(true); return
         }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }

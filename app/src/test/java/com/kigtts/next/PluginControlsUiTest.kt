@@ -25,10 +25,23 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PluginControlsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun ledChoicesKeepSeparateCornersAndGroupSpacingInBothThemes() = ledStyleGroups()
+    @Test fun speechGainUsesHalfTheTrackForZeroToOneAndCommitsOnce() {
+        val changes = mutableListOf<Float>()
+        val page = PluginPage("audio", "朗读", listOf(PageBlock.Slider(PluginControl.Slider(
+            "音量", com.kigtts.next.audio.SPEECH_GAIN_ACTION, 0f, 0f, 10f))))
+        compose.setContent { MaterialTheme { PluginPageScreen(page) { _, inputs -> changes += inputs.getValue("value").toFloat() } } }
+        compose.onNodeWithContentDescription("音量").performTouchInput { click(center) }
+        compose.runOnIdle { assertEquals(listOf(1f), changes) }
+        compose.onNodeWithContentDescription("音量").performTouchInput { swipe(center, Offset(width - 4f, center.y), durationMillis = 300) }
+        compose.runOnIdle { assertTrue(changes.last() in 9f..10f); assertEquals(2, changes.size) }
+        compose.onNodeWithContentDescription("音量").performSemanticsAction(SemanticsActions.SetProgress) { it(1f) }
+        compose.runOnIdle { assertEquals(10f, changes.last(), .01f); assertEquals(3, changes.size) }
+        compose.onNodeWithText("10×").assertIsDisplayed()
+    }
+    @Test fun ledChoicesKeepConnectedShapesAndSpacingInBothThemes() = ledStyleGroups()
 
     @Test @Config(qualifiers = "zh-rCN-w852dp-h393dp-xxhdpi")
-    fun ledChoicesKeepSeparateCornersAndGroupSpacingInLandscape() = ledStyleGroups("landscape")
+    fun ledChoicesKeepConnectedShapesAndSpacingInLandscape() = ledStyleGroups("landscape")
 
     private fun ledStyleGroups(orientation: String = "portrait") {
         val mode = mutableStateOf(ThemeMode.LIGHT)
@@ -50,8 +63,8 @@ class PluginControlsUiTest {
             val first = compose.onNodeWithContentDescription("文本对齐：居左").getUnclippedBoundsInRoot()
             val center = middle.getUnclippedBoundsInRoot()
             val last = compose.onNodeWithContentDescription("文本对齐：居右").getUnclippedBoundsInRoot()
-            assertTrue("Separate standard buttons need a visible gap", (center.left - first.right).value >= 11f)
-            assertTrue((last.left - center.right).value >= 11f)
+            assertTrue("Connected buttons keep a narrow visible gap", (center.left - first.right).value in 1f..5f)
+            assertEquals((center.left - first.right).value, (last.left - center.right).value, 1f)
             compose.onNodeWithTag("plugin-controls").captureRoboImage("build/previews/led-button-groups-$orientation-${theme.name.lowercase()}.png")
         }
         compose.onNodeWithContentDescription("文本对齐：居右").performClick().assertIsSelected()

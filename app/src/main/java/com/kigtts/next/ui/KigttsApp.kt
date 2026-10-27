@@ -106,7 +106,7 @@ fun KigttsApp(model: AppViewModel) {
         keyboard?.hide()
     }
     val back = rememberPredictiveReturn(
-        (navigation.returningHome || state.voiceInputActive || state.webCanGoBack || state.subtitleExpanded || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
+        (navigation.returningHome || state.voiceInputActive || state.webCanGoBack || state.subtitleExpanded || state.quickTextEditing || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
         identity = navigation.current.identity) {
         when {
             state.voiceInputActive -> model.endVoiceInput(false)
@@ -131,6 +131,9 @@ fun KigttsApp(model: AppViewModel) {
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
             com.kigtts.next.sharing.FaceShareHost(model)
             CompositionLocalProvider(LocalIconTextMenuEnabled provides false) {
+            HomeExitHandler(model.homeExit, state.destination == Destination.Home && !navigation.returningHome &&
+                !state.voiceInputActive && !state.webCanGoBack && !state.subtitleExpanded && state.sidePage == null &&
+                state.panel == null && !state.captionsVisible && !state.quickTextEditing && !inputOverlay, model::message)
             PluginRequests(model, pluginInput, pluginImport, { pluginInput = null }, { pluginImport = null },
                 pluginCapture, { pluginCapture = null })
             com.kigtts.next.ui.plugins.PluginArtworkRequest(model, artworkSelector) { artworkSelector = null }

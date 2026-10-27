@@ -1,0 +1,38 @@
+package com.kigtts.next.ui.plugins
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.ui.components.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+@Composable internal fun InstalledPluginAbout(model: AppViewModel, id: String, dismiss: () -> Unit) {
+    var failed by remember(id) { mutableStateOf(false) }
+    var license by remember(id) { mutableStateOf(false) }
+    val info by produceState<InstalledPluginDetails?>(null, id) {
+        value = withContext(Dispatchers.IO) { runCatching { installedPluginDetails(model, id) }.getOrNull() }
+        failed = value == null
+    }
+    MotionAlertDialog(dismiss, title = { Text(if (license) "开源许可" else info?.name ?: "关于插件") },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                info?.let { detail ->
+                    if (license) SelectionContainer { Text(detail.licenseText.ifBlank { detail.license.ifBlank { "插件包未附许可说明" } }) }
+                    else {
+                        Text(listOf("v${detail.version}", detail.author).filter(String::isNotBlank).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (detail.description.isNotBlank()) ChatRichText(detail.description)
+                        if (detail.homepage.isNotBlank()) SelectionContainer { Text(detail.homepage) }
+                        if (detail.license.isNotBlank()) Text("许可证：${detail.license}")
+                        if (detail.licenseText.isNotBlank()) TextButton(feedbackClick { license = true }) { Text("查看开源许可") }
+                    }
+                } ?: if (failed) Text("暂时无法读取插件信息") else CircularProgressIndicator()
+            }
+        }, confirmButton = { MotionTextButton(dialogFeedbackClick { if (license) license = false else dismiss() }) { Text(if (license) "返回" else "关闭") } })
+}

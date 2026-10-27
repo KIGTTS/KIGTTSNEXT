@@ -24,7 +24,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     enabled: Boolean, resolve: (PluginResource) -> File?, invoke: (String, Map<String, String>) -> Unit,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
     catalog: Boolean = false, trailingAction: ManagementProgressAction? = null,
-    position: SettingPosition = SettingPosition.SINGLE) {
+    position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false) {
     val primary = item.primaryAction
     // Start in the current state so the first pointer frame cannot flash the old icon/shape.
     var lifted by remember(item.id) { mutableStateOf(elevated) }
@@ -41,14 +41,19 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                     ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
                 ManagedItemHeading(item, Modifier.weight(1f))
                 trailingAction?.let { InlineProgressButton(item.id, it, enabled, invoke) }
-                ManagedItemControl(item, enabled, invoke)
+                if (!compactActions) ManagedItemControl(item, enabled, invoke)
                 if (reorderable) Box(dragGrip.size(40.dp).testTag("managed-grip/" + item.id).semantics {
                     contentDescription = "拖动排序"
                     customActions = listOf(CustomAccessibilityAction("上移") { moveAccessible(-1); true },
                         CustomAccessibilityAction("下移") { moveAccessible(1); true })
                 }, contentAlignment = Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(24.dp)) }
             }
-            if (item.actions.isNotEmpty()) ManagedItemActions(item, enabled, invoke)
+            if (compactActions) Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ManagedItemControl(item, enabled && !elevated, invoke)
+                Spacer(Modifier.weight(1f))
+                CompactManagedActions(item, enabled && !elevated, invoke)
+            } else if (item.actions.isNotEmpty()) ManagedItemActions(item, enabled, invoke)
         }
     }
 }
