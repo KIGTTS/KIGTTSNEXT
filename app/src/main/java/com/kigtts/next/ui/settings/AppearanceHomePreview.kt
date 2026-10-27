@@ -3,6 +3,7 @@ package com.kigtts.next.ui.settings
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
@@ -64,7 +65,7 @@ import com.kigtts.next.theme.*
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val scale = minOf(maxWidth.value * density / viewport.width, maxHeight.value * density / viewport.height)
         Box(Modifier.size((viewport.width * scale / density).dp, (viewport.height * scale / density).dp)
-            .clip(MaterialTheme.shapes.large).testTag("appearance-home-thumbnail")) {
+            .clip(RoundedCornerShape(4.dp)).testTag("appearance-home-thumbnail")) {
             AppearanceBackdrop(settings, Modifier.matchParentSize(), screenAnchored = false)
             Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
                 .semantics { contentDescription = "主界面预览，示例文字：你好" }) {

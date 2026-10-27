@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
@@ -29,11 +30,11 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
           LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.bottomSheetState.expand() }
           BottomSheetScaffold(sheetPeekHeight = (viewport * .53f).coerceIn(180.dp, 420.dp),
             scaffoldState = sheet,
-            sheetDragHandle = { BottomSheetDefaults.DragHandle() },
+            sheetDragHandle = { Box(Modifier.fillMaxWidth().testTag("appearance-sheet-handle"), contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() } },
             containerColor = Color.Transparent,
             sheetContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f),
             sheetContent = {
-              Column(Modifier.fillMaxWidth().heightIn(max = viewport * .92f)
+              Column(Modifier.fillMaxWidth().heightIn(max = (viewport - 48.dp).coerceAtLeast(1.dp))
                 .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)
                 .windowInsetsPadding(navigation).testTag("appearance-settings-sheet"),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {

@@ -23,15 +23,19 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.*
 import java.io.File
 
+/** Entry effects wait while native reviews or other modal surfaces cover the page. */
+internal val LocalPluginEntryBlocked = staticCompositionLocalOf { false }
+
 /** An entry action runs once per visible visit, never on page snapshot reads or UI revisions. */
 @Composable internal fun PluginPageEntry(page: PluginPage?, busy: Boolean, invoke: (String, Map<String, String>) -> Unit) {
     val active = LocalPageActive.current
+    val blocked = LocalPluginEntryBlocked.current
     val action = page?.onEnterAction
     var entered by remember(page?.id, action) { mutableStateOf(false) }
     val currentInvoke by rememberUpdatedState(invoke)
-    LaunchedEffect(page?.id, action, active, busy) {
+    LaunchedEffect(page?.id, action, active, busy, blocked) {
         if (!active) entered = false
-        else if (action != null && !busy && !entered) {
+        else if (action != null && !busy && !blocked && !entered) {
             entered = true
             currentInvoke(action, emptyMap())
         }

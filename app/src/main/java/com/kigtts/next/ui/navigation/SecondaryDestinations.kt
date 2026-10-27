@@ -67,7 +67,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
-        backgroundSettings = state.theme) {
+        backgroundSettings = state.theme,
+        contentScrollsHeader = destination != Destination.SettingsDetail(SettingsCategory.APPEARANCE)) {
             when (destination) {
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }

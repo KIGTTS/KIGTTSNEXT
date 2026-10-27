@@ -1,9 +1,9 @@
 package com.kigtts.next.theme
 
-import android.graphics.Typeface
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -18,13 +18,13 @@ data class AppearanceFont(val family: FontFamily? = null, val heightScale: Float
 }
 val LocalAppearanceFont = staticCompositionLocalOf { AppearanceFont() }
 
-@Composable internal fun rememberAppearanceFont(key: String?): AppearanceFont {
+@Composable internal fun rememberAppearanceFont(key: String?, weight: Int = 400): AppearanceFont {
     val context = LocalContext.current
-    val font by produceState(AppearanceFont(), key) {
+    val resolver = LocalFontFamilyResolver.current
+    val font by produceState(AppearanceFont(), key, weight, resolver) {
         value = withContext(Dispatchers.IO) {
             runCatching { AppearanceAssets(context).file(key)?.let {
-                val face = Typeface.createFromFile(it)
-                AppearanceFont(FontFamily(face), AppearanceAssets.heightScale(face))
+                loadAppearanceFont(it, weight).also { loaded -> loaded.family?.let { family -> resolver.preload(family) } }
             } ?: AppearanceFont() }.getOrDefault(AppearanceFont())
         }
     }

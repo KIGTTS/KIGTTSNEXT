@@ -22,6 +22,26 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PluginPagePresentationUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun changedEntryActionsWaitForModalReviewsAndOnlyRunOnceAfterTheyClose() {
+        val page = mutableStateOf(PluginPage("store", "商店", emptyList(), onEnterAction = "auto-install/A"))
+        val blocked = mutableStateOf(true)
+        val busy = mutableStateOf(false)
+        val calls = mutableListOf<String>()
+        compose.setContent { KigttsTheme(com.kigtts.next.theme.ThemeSettings()) {
+            CompositionLocalProvider(com.kigtts.next.ui.plugins.LocalPluginEntryBlocked provides blocked.value) {
+                PluginPageScreen(page.value, busy.value) { action, _ -> calls += action }
+            }
+        } }
+        compose.runOnIdle { assertTrue(calls.isEmpty()); blocked.value = false }
+        compose.runOnIdle { assertEquals(listOf("auto-install/A"), calls); blocked.value = true }
+        compose.runOnIdle { page.value = page.value.copy(onEnterAction = "downloads-enter"); busy.value = true }
+        compose.runOnIdle { busy.value = false }
+        compose.runOnIdle { assertEquals(1, calls.size); page.value = page.value.copy(onEnterAction = "auto-install/B") }
+        compose.runOnIdle { assertEquals(1, calls.size); blocked.value = false }
+        compose.runOnIdle { assertEquals(listOf("auto-install/A", "auto-install/B"), calls); busy.value = true }
+        compose.runOnIdle { busy.value = false; page.value = page.value.copy(title = "商店 · 下载完成") }
+        compose.runOnIdle { assertEquals(2, calls.size) }
+    }
     @Test fun entryRunsOncePerVisitAfterBusyAndDetailsRemainExpandedOnRefresh() {
         com.kigtts.next.ui.components.MaterialSymbols.initialize(androidx.test.core.app.ApplicationProvider.getApplicationContext())
         val page = mutableStateOf(PluginPage("store", "商店", listOf(PageBlock.Group("权限说明", listOf(PageBlock.Text("用于下载插件")), collapsible = true)),

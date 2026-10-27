@@ -57,7 +57,7 @@ import org.json.JSONObject
             Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 modifier = Modifier.fillMaxWidth().testTag("favorite-card/${item.id}")) {
                 Column {
-                    Surface(onClick = { expanded = if (open) null else item.id }, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Surface(onClick = feedbackClick { expanded = if (open) null else item.id }, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                         Column {
                         item.cover?.let { ProfileTileImage(it, Modifier.fillMaxWidth().aspectRatio(16f / 9), "${person.name}的名片") }
                         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -74,7 +74,7 @@ import org.json.JSONObject
                     AnimatedVisibility(open, enter = expandVertically(tween(240)) + fadeIn(tween(180)), exit = shrinkVertically(tween(220)) + fadeOut(tween(150))) {
                         Column(Modifier.padding(16.dp).testTag("favorite-details/${item.id}"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             FaceProfileContent(profile, image = store::image)
-                            TextButton({ removing = item }, Modifier.align(Alignment.End)) { Icon(Icons.Default.DeleteOutline, null); Text("移除收藏") }
+                            TextButton(feedbackClick { removing = item }, Modifier.align(Alignment.End)) { Icon(Icons.Default.DeleteOutline, null); Text("移除收藏") }
                         }
                     }
                 }
@@ -83,7 +83,7 @@ import org.json.JSONObject
     }
     }
     removing?.let { item -> MotionAlertDialog({ removing = null }, title = { Text("移除这张名片？") },
-        confirmButton = { TextButton({ scope.launch {
+        confirmButton = { TextButton(feedbackClick { scope.launch {
             try { withContext(Dispatchers.IO) { store.remove(item.id) }; removing = null }
             catch (e: Exception) { model.message(e.message ?: "未能移除名片") }
         } }) { Text("移除") } }, dismissButton = { TextButton(dialogFeedbackClick { removing = null }) { Text("取消") } }) }

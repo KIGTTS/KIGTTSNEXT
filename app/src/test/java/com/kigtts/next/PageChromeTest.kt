@@ -53,8 +53,8 @@ class PageChromeTest {
         assertTrue(back.top.value>=24f)
         compose.onNodeWithContentDescription("打开设置").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/immersive-large-bar-expanded.png")
-        compose.onNode(SemanticsMatcher("vertical-scroll") { it.config.contains(SemanticsProperties.VerticalScrollAxisRange) } and
-            hasAnyAncestor(hasTestTag("navigation-secondary"))).performTouchInput { swipeUp() }
+        // Appearance owns a draggable sheet, so only a direct bar drag should collapse its header.
+        bar.performTouchInput { swipeUp(durationMillis = 500) }
         compose.waitForIdle()
         val collapsed=bar.getUnclippedBoundsInRoot()
         assertTrue(expanded.bottom-expanded.top>collapsed.bottom-collapsed.top+30.dp)

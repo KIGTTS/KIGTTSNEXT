@@ -18,6 +18,8 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.zIndex
 import com.kigtts.next.identity.*
+import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.rememberDragFeedback
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -47,9 +49,10 @@ import kotlin.math.roundToInt
             tiles.forEach { tile -> key(tile.id) {
                 val target = geometry.bounds.getValue(tile.id)
                 val motion = remember { ProfileTileMotion(target) }
+                val feedback by rememberUpdatedState(rememberDragFeedback())
                 SideEffect { motions[tile.id] = motion }
                 LaunchedEffect(target, motion.gesture) { motion.settle(target) }
-                DisposableEffect(editing, geometry.unit) { onDispose { motion.release() } }
+                DisposableEffect(editing, geometry.unit) { onDispose { feedback.finish(cancelled = true); motion.release() } }
                 val elevation by animateDpAsState(if (motion.raised) 8.dp else 0.dp, tween(140), label = "tile-lift")
                 Box(Modifier.offset { motion.bounds.topLeft.let { IntOffset(it.x.roundToInt(), it.y.roundToInt()) } }
                     .layout { measurable, _ ->
@@ -60,20 +63,20 @@ import kotlin.math.roundToInt
                     }.zIndex(if (motion.raised) 1f else 0f).testTag("profile-tile/${tile.id}")
                     .then(if (editing) Modifier.pointerInput(tile.id, geometry.unit) {
                         var start = Rect.Zero; var delta = Offset.Zero
-                        detectDragGesturesAfterLongPress(onDragStart = { start = motion.begin(TileGesture.MOVE); delta = Offset.Zero },
-                            onDragEnd = motion::release, onDragCancel = motion::release) { event, amount ->
+                        detectDragGesturesAfterLongPress(onDragStart = { start = motion.begin(TileGesture.MOVE); delta = Offset.Zero; feedback.start(0f) },
+                            onDragEnd = { feedback.finish(); motion.release() }, onDragCancel = { feedback.finish(cancelled = true); motion.release() }) { event, amount ->
                             event.consume(); delta += amount; val floating = start.translate(delta); motion.follow(floating)
                             val hovered = latestGeometry.bounds.entries.firstOrNull { it.value.contains(floating.center) }?.key
                             if (hovered != null && hovered != tile.id) {
                                 val next = latestTiles.toMutableList(); val from = next.indexOfFirst { it.id == tile.id }; val to = next.indexOfFirst { it.id == hovered }
-                                if (from >= 0 && to >= 0) { val item = next.removeAt(from); next.add(to.coerceAtMost(next.size), item); latestChange(next) }
+                                if (from >= 0 && to >= 0) { val item = next.removeAt(from); next.add(to.coerceAtMost(next.size), item); latestChange(next); feedback.step() }
                             }
                         }
                     } else Modifier)) {
                     val contact = contacts.firstOrNull { it.value == tile.contact }
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
                     val clickable = editing || tile.kind == ProfileTileKind.LINK || (tile.kind == ProfileTileKind.CONTACT && contact != null)
-                    Surface(onClick = { if (editing) edit(tile) else if (tile.kind == ProfileTileKind.LINK) openLink(tile.text) else contact?.let(openContact) },
+                    Surface(onClick = feedbackClick { if (editing) edit(tile) else if (tile.kind == ProfileTileKind.LINK) openLink(tile.text) else contact?.let(openContact) },
                         enabled = clickable, modifier = Modifier.fillMaxSize().then(if (iconOnly) Modifier.semantics {
                             contentDescription = tile.title.ifBlank { contact?.label ?: "链接" }
                         } else Modifier),
@@ -81,7 +84,7 @@ import kotlin.math.roundToInt
                         color = if (tile.kind == ProfileTileKind.TITLE) MaterialTheme.colorScheme.surface.copy(alpha = 0f) else MaterialTheme.colorScheme.surfaceContainerHigh,
                         shadowElevation = elevation) { ProfileTileContent(tile, contact, image, editing) }
                     if (editing) {
-                        IconButton({ remove(tile) }, Modifier.align(Alignment.TopStart).then(if (tile.kind == ProfileTileKind.TITLE) Modifier else Modifier.offset((-6).dp, (-6).dp))
+                        IconButton(feedbackClick { remove(tile) }, Modifier.align(Alignment.TopStart).then(if (tile.kind == ProfileTileKind.TITLE) Modifier else Modifier.offset((-6).dp, (-6).dp))
                             .size(32.dp).testTag("tile-remove/${tile.id}")) { Icon(Icons.Default.RemoveCircle, "移除磁贴", Modifier.size(22.dp)) }
                         if (tile.kind != ProfileTileKind.TITLE) ProfileTileResizeHandle(tile, motion, geometry, { columns, rows ->
                             latestChange(latestTiles.map { if (it.id == tile.id) it.copy(columns = columns, rows = rows) else it })

@@ -69,17 +69,17 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
             PersonalCardView(card, model.stickers, Modifier.fillMaxWidth().testTag("personal-card-${card.id}"))
             ProfileTags(card.tags)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                TextButton({ tagsEditing = true }) { Icon(Icons.Default.Tag, null); Spacer(Modifier.width(6.dp)); Text("编辑标签") }
-                if (!layoutEditing) FilledTonalButton({ draft = card.tiles; layoutEditing = true }) { Icon(Icons.Default.DashboardCustomize, null); Text("编辑磁贴") }
+                TextButton(feedbackClick { tagsEditing = true }) { Icon(Icons.Default.Tag, null); Spacer(Modifier.width(6.dp)); Text("编辑标签") }
+                if (!layoutEditing) FilledTonalButton(feedbackClick { draft = card.tiles; layoutEditing = true }) { Icon(Icons.Default.DashboardCustomize, null); Text("编辑磁贴") }
                 else Row {
-                    TextButton({ layoutEditing = false }) { Text("取消") }
-                    FilledTonalButton({ saveProfile(card.copy(tiles = draft)) { layoutEditing = false } }) { Text(if (working) "保存中…" else "保存布局") }
+                    TextButton(feedbackClick { layoutEditing = false }) { Text("取消") }
+                    FilledTonalButton(feedbackClick { saveProfile(card.copy(tiles = draft)) { layoutEditing = false } }) { Text(if (working) "保存中…" else "保存布局") }
                 }
             }
             ProfileTileBoard(if (layoutEditing) draft else card.tiles, card.contacts, { profileImageFile(model.stickers, it) },
                 editing = layoutEditing, change = { draft = it }, edit = { tileEditor = it }, remove = { tile -> draft = draft.filterNot { it.id == tile.id } },
                 openContact = { contact = it }, openLink = { url -> safeProfileLink(url)?.let { runCatching { uriHandler.openUri(it) } } })
-            if (layoutEditing) OutlinedButton({ if (draft.size < 24) addingTile = true else model.message("最多添加 24 个磁贴") }, Modifier.fillMaxWidth()) {
+            if (layoutEditing) OutlinedButton(feedbackClick { if (draft.size < 24) addingTile = true else model.message("最多添加 24 个磁贴") }, Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, null); Text("添加磁贴")
             }
             SettingsGroup("个人资料") {

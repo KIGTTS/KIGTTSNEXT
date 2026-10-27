@@ -14,6 +14,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
 import kotlinx.coroutines.*
@@ -60,9 +62,18 @@ import kotlinx.coroutines.*
             item { Text("我的字体", style = MaterialTheme.typography.titleMedium) }
             item { FontChoiceRow("系统默认", settings.font == null, { onChange(current.copy(font = null, fontName = "系统默认")) }) }
             items(locals, key = { it.key }) { font ->
-                val face = rememberAppearanceFont(font.key)
-                FontChoiceRow(font.name, settings.font == font.key, { onChange(current.copy(font = font.key, fontName = font.name)) }) {
-                    Text("你好，KIGTTS · Aa 123", style = face.apply(MaterialTheme.typography.titleLarge), maxLines = 1)
+                val selected = settings.font == font.key
+                val face = rememberAppearanceFont(font.key, if (selected) settings.fontWeight else 400)
+                val axis by produceState<FontWeightAxis?>(null, font.key) {
+                    value = withContext(Dispatchers.IO) { AppearanceAssets(context).file(font.key)?.let(::readFontWeightAxis) }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FontChoiceRow(font.name, selected, { onChange(current.copy(font = font.key, fontName = font.name)) }) {
+                        Text("你好，KIGTTS · Aa 123", style = face.apply(TextStyle(fontSize = 24.sp, lineHeight = 32.sp)), maxLines = 1)
+                    }
+                    if (selected) axis?.let { range -> FontWeightControl(range, settings.fontWeight) {
+                        onChange(current.copy(fontWeight = it))
+                    } }
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }

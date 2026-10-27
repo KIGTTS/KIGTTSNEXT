@@ -31,6 +31,7 @@ data class ThemeSettings(
     val backgroundSeed: Long? = null,
     val askBackgroundColor: Boolean = true,
     val secondaryPageBackground: Boolean = false,
+    val fontWeight: Int = 400,
 ) {
     val cornerRadius: Float get() = cornerLevel.radius
     val hex: String get() = "#%06X".format(seed and 0xFFFFFF)
@@ -61,6 +62,7 @@ class ThemeSettingsStore(context: Context) {
         backgroundSeed = if (preferences.contains("backgroundSeed")) preferences.getLong("backgroundSeed", 0) else null,
         askBackgroundColor = preferences.getBoolean("askBackgroundColor", true),
         secondaryPageBackground = preferences.getBoolean("secondaryPageBackground", false),
+        fontWeight = preferences.getInt("fontWeight", 400).coerceIn(1, 1000),
     )
     fun save(settings: ThemeSettings) {
         preferences.edit().putLong("seed", settings.seed).putFloat("contrast", settings.contrast.value)
@@ -68,7 +70,8 @@ class ThemeSettingsStore(context: Context) {
             .putBoolean("wallpaper", settings.wallpaperEnabled).putString("mode", settings.mode.name).apply()
         preferences.edit().putString("background", settings.background).putFloat("backgroundDim", settings.backgroundDim.coerceIn(0f, 1f))
             .putBoolean("secondaryPageBackground", settings.secondaryPageBackground)
-            .putString("font", settings.font).putString("fontName", settings.fontName).apply()
+            .putString("font", settings.font).putString("fontName", settings.fontName)
+            .putInt("fontWeight", settings.fontWeight.coerceIn(1, 1000)).apply()
         preferences.edit().putBoolean("backgroundColor", settings.backgroundColorEnabled)
             .putBoolean("askBackgroundColor", settings.askBackgroundColor).apply {
                 if (settings.backgroundSeed == null) remove("backgroundSeed") else putLong("backgroundSeed", settings.backgroundSeed)

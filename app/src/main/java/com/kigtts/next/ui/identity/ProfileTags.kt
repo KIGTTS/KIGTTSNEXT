@@ -23,11 +23,11 @@ import com.kigtts.next.ui.components.*
     MotionAlertDialog(close, title = { Text("我的标签") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { draft.forEach { tag ->
-                InputChip(true, { draft = draft - tag }, label = { Text(tag) }, trailingIcon = { Text("×") })
+                InputChip(true, feedbackClick { draft = draft - tag }, label = { Text(tag) }, trailingIcon = { Text("×") })
             } }
             OutlinedTextField(text, { text = it.take(20) }, Modifier.fillMaxWidth().testTag("profile-tag-input"), label = { Text("新标签") }, singleLine = true)
-            TextButton({ val tag = text.trim(); if (tag.isNotBlank() && tag !in draft && draft.size < 12) { draft += tag; text = "" } }) { Text("添加标签") }
+            TextButton(feedbackClick { val tag = text.trim(); if (tag.isNotBlank() && tag !in draft && draft.size < 12) { draft += tag; text = "" } }) { Text("添加标签") }
         }
-    }, confirmButton = { TextButton({ val tag = text.trim(); save(if (tag.isNotBlank() && tag !in draft && draft.size < 12) draft + tag else draft) }) { Text("保存标签") } },
+    }, confirmButton = { TextButton(feedbackClick { val tag = text.trim(); save(if (tag.isNotBlank() && tag !in draft && draft.size < 12) draft + tag else draft) }) { Text("保存标签") } },
         dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
 }

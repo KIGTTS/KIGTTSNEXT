@@ -7,6 +7,7 @@ from urllib.parse import quote, unquote
 import shutil
 import jsonschema
 import xml.etree.ElementTree as ET
+from font_icon import font_icon
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/"
@@ -16,6 +17,7 @@ def build(folder, private_key):
     spec = importlib.util.spec_from_file_location("resource_builder", ROOT / "tools/Build-ResourcePackage.py")
     builder = importlib.util.module_from_spec(spec); spec.loader.exec_module(builder)
     legacy = json.loads((folder / "index.json").read_text(encoding="utf-8"))
+    locked = {font["id"]: font for font in json.loads((ROOT / "distribution/font-sources.json").read_text(encoding="utf-8"))["fonts"]}
     packages, assets = [], {}
     for font in legacy["fonts"]:
         def verified(field, digest_field=None):
@@ -47,8 +49,17 @@ def build(folder, private_key):
         artwork.parent.mkdir(parents=True, exist_ok=True); artwork.write_text(svg, encoding="utf-8", newline="\n")
         assets[font["id"]] = dict(url=BASE + "kpm/previews/" + font["id"] + ".svg", sha256=builder.digest(artwork.read_bytes()), bytes=artwork.stat().st_size,
                                   width=int(width + .5), height=int(height + .5), alt=font["name"] + "字形预览")
-        packages.append(dict(id=definition["id"], name=font["name"], summary="你好，KIGTTS · 添加后在外观中选择", resourceType="FONT",
-                             category="外观", license=font["license"], icon=dict(symbol="font_download"),
+        icon_key = font["id"] + "-icon"
+        icon = folder / "kpm/icons" / (font["id"] + ".svg")
+        icon.parent.mkdir(parents=True, exist_ok=True)
+        icon_text = locked[font["id"]]["iconText"]
+        icon.write_text(font_icon(original.read_bytes(), icon_text), encoding="utf-8", newline="\n")
+        assets[icon_key] = dict(url=BASE + "kpm/icons/" + font["id"] + ".svg", sha256=builder.digest(icon.read_bytes()),
+                               bytes=icon.stat().st_size, width=128, height=128, alt=font["name"] + " · " + icon_text)
+        weight = next((a for a in font.get("axes", []) if a["tag"] == "wght"), None)
+        weight_note = f" · 可变字重 {weight['min']:g}–{weight['max']:g}" if weight else ""
+        packages.append(dict(id=definition["id"], name=font["name"], summary=font.get("previewText", "你好，KIGTTS") + weight_note, resourceType="FONT",
+                             category="外观", license=font["license"], icon=dict(image=icon_key),
                              thumbnails=[font["id"]], releases=[release]))
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.fonts", name="KIGTTS 字体库", description="给文字换一种表情。",
                    homepage="https://github.com/KIGTTS/KPM", icon=dict(symbol="font_download"), assets=assets, packages=packages)

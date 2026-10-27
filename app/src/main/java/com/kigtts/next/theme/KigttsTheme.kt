@@ -78,7 +78,7 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val dark = settings.mode.usesDark(isSystemInDarkTheme())
-    val appearanceFont = rememberAppearanceFont(settings.font)
+    val appearanceFont = rememberAppearanceFont(settings.font, settings.fontWeight)
     SystemBarAppearance(dark)
     val (colors, controls) = remember(settings.effectiveSeed, settings.contrast, settings.deeperDark, settings.wallpaperEnabled, configuration, dark) {
         val wallpaper = if (settings.wallpaperEnabled && Build.VERSION.SDK_INT >= 31) {

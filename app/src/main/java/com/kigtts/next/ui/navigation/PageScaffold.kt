@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String="返回上一页",largeBar:Boolean=true,
     actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,extendToBottom:Boolean=false,
-    backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,content:@Composable ()->Unit) {
+    backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,contentScrollsHeader:Boolean=true,content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
@@ -49,7 +49,8 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
         LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
         Box(Modifier.fillMaxSize()) {
         background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
-        Scaffold(modifier.fillMaxSize().then(if(largeBar)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
+        // Sheets own their vertical scroll chain; the bar still supports direct dragging.
+        Scaffold(modifier.fillMaxSize().then(if(largeBar&&contentScrollsHeader)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
             containerColor=if(background==null)MaterialTheme.colorScheme.background else Color.Transparent,
             contentWindowInsets=safe.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading) },Modifier.testTag("large-page-bar"),

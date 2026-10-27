@@ -127,6 +127,7 @@ fun KigttsApp(model: AppViewModel) {
             CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
                 com.kigtts.next.theme.LocalAppAppearanceSettings provides state.theme,
                 LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
+                com.kigtts.next.ui.plugins.LocalPluginEntryBlocked provides inputOverlay,
                 com.kigtts.next.sharing.LocalFaceShare provides remember(model) { com.kigtts.next.sharing.FaceShareActions(model.faceShare::openSend, model.faceShare::openReceive) },
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
             com.kigtts.next.sharing.FaceShareHost(model)

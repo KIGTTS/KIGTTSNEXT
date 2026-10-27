@@ -43,12 +43,12 @@ internal fun FaceReceiptDialog(profile: JSONObject, close: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(24.dp)) {
             val stored = repository?.let { repo -> saved.firstOrNull { it.id == repo.key(profile) } }
             FaceProfileContent(stored?.let { JSONObject(it.profile) } ?: profile, image = { repository?.image(it) })
-            FilledTonalButton({ if (!saving && !alreadySaved) scope.launch {
+            FilledTonalButton(feedbackClick { if (!saving && !alreadySaved) scope.launch {
                 saving = true
                 try { withContext(Dispatchers.IO) { ContactFavorites.get(context).save(profile) } }
                 catch (e: Exception) { error = e.message ?: "未能收藏，请重试" }
                 finally { saving = false }
-            } }, Modifier.fillMaxWidth()) { Text(if (alreadySaved) "已加入扩列收藏夹" else if (saving) "正在收藏…" else "加入扩列收藏夹") }
+            } }, Modifier.fillMaxWidth(), enabled = !saving && !alreadySaved) { Text(if (alreadySaved) "已加入扩列收藏夹" else if (saving) "正在收藏…" else "加入扩列收藏夹") }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             FilledTonalButton(feedbackClick(close), Modifier.fillMaxWidth()) { Text("完成") }
         }
