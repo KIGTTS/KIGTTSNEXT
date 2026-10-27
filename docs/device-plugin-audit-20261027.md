@@ -68,3 +68,10 @@ ADB 模拟滑动仍未滚动页面，`52-synthesis-common-gain` 是滚动尝试�
 - 安装后API32，安全模式false，6插件全部loaded、error为空；没有新建账户、发起云API调用或更改插件配置。
 - 尚未以实际触摸验证磁贴拖动帧率；当前结论是本地逐帧检查、网页显示与覆盖安装通过。
 - 最终Release/R8/lintRelease成功（7分20秒）；Lint 0 错误、166 警告、3 提示。
+
+## 商店更新按钮统一与最终安装
+
+- 最终商店0.16.4/code26/API32：build/plugin-packages/tools.package-store-0.16.4.kigplugin，171125字节；SHA256 c180f8a2e1e8c3d4aeb7fcfee45c9fb3c489922ed683bbdfafc8c208d4bd6137。
+- 同名版本提高原生构建号或API时统一显示更新，下载完成继续保持更新。旧任务按完整包身份匹配，保留历史版本、Lua构建号与资源添加行为。73项独立回归/AAR构建通过。
+- 首次0.16.3签名包未同步内部descriptor版本，被运行时拒载；保留失败包与记录。0.16.4补真实声明与包配置一致性回归，递增版本后无损升级恢复。
+- inspect确认原发布者b5927c76c21539ef99352707c215b3ce48f3fed937a6f995d39a3c677a052ab5与knownPublisher=true。安装后实际版本0.16.4，enabled/loaded=true、error为空；全部6插件正常、安全模式false，无卸载或配置清空。未声称已在手机上构造每一种更新版本状态；这些边界由本地回归覆盖。
