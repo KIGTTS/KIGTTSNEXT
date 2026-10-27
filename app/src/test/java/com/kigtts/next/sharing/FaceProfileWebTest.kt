@@ -34,6 +34,21 @@ class FaceProfileWebTest {
         assertTrue(page.contains("fetch('/s/test/theme'"))
         assertTrue(faceWebTheme(theme).colors.containsKey("surface-container-high"))
     }
+    @Test fun oneCellContactAndLinkTilesOnlyRenderIconsWithAccessibleActions() {
+        val json = profile().put("tiles", profileTileJson(listOf(
+            ProfileTile(id = "social", kind = ProfileTileKind.CONTACT, contact = "12345678", title = "QQ 小格", columns = 1),
+            ProfileTile(id = "link", kind = ProfileTileKind.LINK, title = "项目 \"A\"", text = "https://example.com", columns = 1),
+            ProfileTile(id = "wide", kind = ProfileTileKind.LINK, title = "宽磁贴", text = "https://example.org"))))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val html = faceWebTiles(PublicIdentityProfile.from(json), "/s/test/", emptyList(), FaceWebIcons(app)::icon)
+        assertEquals(2, Regex("tile-icon-only").findAll(html).count())
+        assertEquals(3, Regex("<svg ").findAll(html).count())
+        assertTrue(html.contains("aria-label=\"项目 &quot;A&quot;\""))
+        assertFalse(html.contains("<strong>QQ 小格</strong>")); assertFalse(html.contains("<strong>项目 &quot;A&quot;</strong>"))
+        assertFalse(html.contains("<small>12345678</small>"))
+        assertTrue(html.contains("data-contact=\"contact-0\"")); assertTrue(html.contains("href=\"https://example.com\""))
+        assertTrue(html.contains("<strong>宽磁贴</strong>")); assertTrue(html.contains("<span>https://example.org</span>"))
+    }
     @Test fun personalShareHasOneProfileAndContactQrWithoutPhotoSelectionControls() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val banner = FaceAsset("preview.png", "profile", "polaroid", "名片.png", "image/png", 1, "", "BANNER")
