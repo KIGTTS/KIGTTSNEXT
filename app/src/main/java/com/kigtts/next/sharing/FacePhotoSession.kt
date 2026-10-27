@@ -11,6 +11,7 @@ import java.util.zip.ZipOutputStream
 
 /** A revocable capability URL and per-session receive consent, never an open file browser. */
 internal class FacePhotoSession(val root: File, private val profile: () -> JSONObject,
+    private val contactIcon: (com.kigtts.next.identity.ContactLink) -> String = { "<span aria-hidden=\"true\">↗</span>" },
     private val received: (FaceOffer, List<FaceAsset>) -> Unit) : Closeable {
     val token = faceToken()
     val assets = ConcurrentHashMap<String, FaceAsset>()
@@ -36,8 +37,9 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
         if (closed || !request.path.startsWith(path)) { response.text("{}", status = 404); return }
         val route = request.path.removePrefix(path)
         when {
-            request.method == "GET" && route.isEmpty() -> response.text(faceGallery(profile(), assets.values.sortedBy { it.name }, path), "text/html; charset=utf-8")
+            request.method == "GET" && route.isEmpty() -> response.text(faceGallery(profile(), assets.values.sortedBy { it.name }, path, contactIcon), "text/html; charset=utf-8")
             request.method == "GET" && route == "hello" -> response.text(profile().put("protocol", 1).toString())
+            request.method == "GET" && route == "theme" -> response.text(faceWebTheme(com.kigtts.next.media.WebThemeState.current).json().toString())
             request.method == "GET" && route.startsWith("file/") -> {
                 val id = route.removePrefix("file/").substringBefore('?')
                 val asset = assets[id]; val file = asset?.file
@@ -56,10 +58,10 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
                 }
             }
             request.method == "POST" && route == "offer" -> {
-                val json = JSONObject(String(request.body(), Charsets.UTF_8))
+                val json = JSONObject(String(request.body(393216), Charsets.UTF_8))
                 val files = assetsFrom(json); val session = json.getString("session"); val id = json.getString("id")
                 require(session.matches(Regex("[A-Za-z0-9_-]{32,64}")) && id.matches(Regex("[A-Za-z0-9_-]{32,64}")))
-                val identity = json.getJSONObject("profile"); require(identity.toString().length <= 16384)
+                val identity = json.getJSONObject("profile"); require(identity.toString().toByteArray(Charsets.UTF_8).size <= 262144)
                 require(identity.optString("nickname").length <= 40 && identity.optString("bio").length <= 240)
                 synchronized(guard) {
                     val now = System.currentTimeMillis()
@@ -126,5 +128,5 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
         disposed = true; revoke(); consent.clear(); tickets.clear(); pending.value = emptyList(); assets.clear()
         root.deleteRecursively()
     }
-    companion object { fun extension(mime: String) = when (mime) { "image/png" -> "png"; "image/webp" -> "webp"; else -> "jpg" } }
+    companion object { fun extension(mime: String) = when (mime) { "image/png" -> "png"; "image/webp" -> "webp"; "image/gif" -> "gif"; else -> "jpg" } }
 }

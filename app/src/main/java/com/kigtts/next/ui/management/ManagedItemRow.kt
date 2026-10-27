@@ -38,7 +38,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                 Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
-                    ResourceAvatar(item, resolve, if (catalog || item.image != null) 64.dp else 40.dp)
+                    ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
                 ManagedItemHeading(item, Modifier.weight(1f))
                 trailingAction?.let { InlineProgressButton(item.id, it, enabled, invoke) }
                 ManagedItemControl(item, enabled, invoke)

@@ -16,12 +16,17 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.*
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.sharing.LocalFaceShare
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.foundation.shape.CircleShape
 
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
     modifier: Modifier = Modifier, interactive: Boolean = true, backgroundColor: Long = 0xFF245E63,
     hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null, backgroundInk: Int? = null) {
     var contact by remember { mutableStateOf<ContactLink?>(null) }
+    val faceShare = LocalFaceShare.current
     val sampledInk = remember(backgroundPixels) { backgroundPixels?.let(::identityInk) }
     val ink = (backgroundInk ?: sampledInk)?.let(::Color) ?:
         if (!hasImage && Color(if (identity.gradient) identity.gradientColor else backgroundColor).luminance() > .42f) Color(0xFF202020) else Color.White
@@ -31,7 +36,12 @@ import com.kigtts.next.ui.components.*
         val padding = if (compact) 12.dp else 20.dp
         CompositionLocalProvider(LocalContentColor provides ink) {
             PersonalContactButtons(identity.contacts, interactive, { contact = it },
-                Modifier.align(Alignment.TopStart).padding(8.dp).fillMaxWidth())
+                Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 56.dp).fillMaxWidth())
+            if (interactive && faceShare != null) IconButton(feedbackClick { faceShare.send(listOf(identity.designId)) },
+                Modifier.align(Alignment.TopEnd).padding(8.dp).size(40.dp).testTag("personal-face-share")
+                    .background(Color.Black.copy(alpha = .36f), CircleShape)) {
+                Icon(Icons.Default.WifiTethering, "开启面对面", tint = Color.White, modifier = Modifier.size(22.dp))
+            }
             Row(Modifier.align(Alignment.BottomStart).padding(padding), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp), identity.avatarFrame)

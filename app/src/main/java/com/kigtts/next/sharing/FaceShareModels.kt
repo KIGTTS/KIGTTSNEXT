@@ -21,20 +21,24 @@ internal data class FaceAsset(val id: String, val photo: String, val variant: St
             val asset = FaceAsset(json.getString("id"), json.getString("photo"), json.getString("variant"), json.getString("name"),
                 json.getString("mime"), json.getLong("bytes"), json.getString("sha256"), json.optString("format", "SQUARE"))
             require(asset.id.matches(Regex("[A-Za-z0-9_-]{8,64}")) && asset.photo.matches(Regex("[A-Za-z0-9_-]{8,64}")))
-            require(asset.variant in setOf("original", "polaroid") && asset.mime in setOf("image/jpeg", "image/png", "image/webp"))
+            require(asset.variant in setOf("original", "polaroid", "profile") && asset.mime in setOf("image/jpeg", "image/png", "image/webp", "image/gif"))
             require(asset.bytes in 1..268_435_456 && asset.sha.matches(Regex("[a-f0-9]{64}")) && asset.name.length <= 128)
-            require(asset.format in setOf("MINI", "SQUARE", "WIDE", "LEGACY", "BANNER")); return asset
+            require(asset.format in setOf("MINI", "SQUARE", "WIDE", "LEGACY", "BANNER", "PROFILE"))
+            require((asset.format == "PROFILE") == (asset.variant == "profile"))
+            if (asset.format == "PROFILE") require(asset.bytes <= 20_000_000)
+            return asset
         }
     }
 }
 internal data class FacePeer(val id: String, val name: String, val host: String? = null, val port: Int,
-    val token: String, val p2p: String? = null, val bluetooth: String? = null, val signal: Int = -100, val avatar: String? = null)
+    val token: String, val p2p: String? = null, val bluetooth: String? = null, val signal: Int = -100, val avatar: String? = null,
+    val profile: String? = null)
 internal data class FaceOffer(val id: String, val session: String, val profile: JSONObject, val assets: List<FaceAsset>,
     val created: Long = System.currentTimeMillis(), val status: String = "waiting") {
     val nickname get() = profile.optString("nickname", "KIGTTS 用户").take(40)
 }
 internal enum class FaceMode { CHOOSE, BROWSER, SEND, RECEIVE }
-internal data class FacePanel(val ids: List<String>, val mode: FaceMode = FaceMode.CHOOSE)
+internal data class FacePanel(val ids: List<String>, val mode: FaceMode = FaceMode.CHOOSE, val personal: Boolean = false)
 internal fun assetsFrom(json: JSONObject): List<FaceAsset> {
     val list = json.getJSONArray("assets"); require(list.length() in 1..128)
     return (0 until list.length()).map { FaceAsset.parse(list.getJSONObject(it)) }.also { assets ->

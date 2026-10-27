@@ -32,6 +32,7 @@ fun KigttsApp(model: AppViewModel) {
     com.kigtts.next.ui.media.PublishWebTheme()
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
+    val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
     val categories by model.categories.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -64,7 +65,7 @@ fun KigttsApp(model: AppViewModel) {
     val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
     val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -142,6 +143,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.links.ExternalLinkHost(model)
             com.kigtts.next.resources.ResourceInstallHost(model)
             com.kigtts.next.overlay.OverlayEntrancePrompt(model)
+            com.kigtts.next.recovery.SafeModePromptHost(model)
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->

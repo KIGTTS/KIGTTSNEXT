@@ -38,8 +38,7 @@ fun PluginsScreen(model: AppViewModel) {
     var busy by remember { mutableStateOf(false) }
     val state by model.state.collectAsStateWithLifecycle()
     val working = busy || state.busyPlugins.isNotEmpty()
-    val recovery = remember { com.kigtts.next.recovery.CrashRecovery(context) }
-    var safeMode by remember { mutableStateOf(recovery.safeMode()) }
+    val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     DisposableEffect(Unit) { onDispose { pending?.file?.delete() } }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) scope.launch {
@@ -69,10 +68,10 @@ fun PluginsScreen(model: AppViewModel) {
                 "managed-remove" -> managedRemove = pieces[1] to pieces[2]
             }
         }) {
-        if (safeMode) {
-            Text("软件多次启动失败，已进入安全模式并暂时停用插件。插件数据和原有设置已保留。", color = MaterialTheme.colorScheme.error)
+        if (recovery.active) {
+            Text("安全模式中，插件已暂时停用。", color = MaterialTheme.colorScheme.error)
             MotionTextButton(enabled = !working, onClick = feedbackClick { scope.launch { busy = true
-                try { recovery.restore(); safeMode = false; model.refreshPlugins() } finally { busy = false }
+                try { model.safeModeSession.restorePlugins() } finally { busy = false }
             } }) { Text("恢复插件") }
         }
         Text("管理已安装的插件", color = MaterialTheme.colorScheme.onSurfaceVariant)

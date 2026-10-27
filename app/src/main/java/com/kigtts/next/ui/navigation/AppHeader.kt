@@ -6,6 +6,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -22,10 +24,12 @@ import com.kigtts.next.ui.home.homePreviewRegion
 @Composable
 fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     val home = state.destination == Destination.Home
+    val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     val title = when (val destination = state.destination) {
         Destination.Home -> "KIGTTS"
         Destination.Settings -> "设置"
         Destination.PersonalCards -> "个人信息"
+        Destination.ContactFavorites -> "扩列收藏夹"
         Destination.Fonts -> "字体"
         is Destination.SettingsDetail -> destination.category.title
         Destination.Plugins -> "插件管理"
@@ -53,8 +57,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
             if (home) SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
         }
-        if (home) Icon(painterResource(R.drawable.logo_horizontal), contentDescription = "KIGTTS 横版 Logo",
-            modifier = Modifier.width(128.dp).height(32.dp).homePreviewRegion("header-logo"), tint = MaterialTheme.colorScheme.onSurface)
+        if (home) SafeModeBrand(recovery.active, Modifier.homePreviewRegion("header-logo"))
         else Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             if (home) SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.weight(1f),

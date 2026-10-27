@@ -9,6 +9,7 @@ import java.util.UUID
 
 internal class FacePhotoRepository(private val cards: CardRepository, private val identities: IdentityRepository) {
     private val stickers get() = cards.stickers
+    private val favorites by lazy { com.kigtts.next.identity.ContactFavorites.get(stickers.context) }
     fun prepare(ids: List<String>, original: Boolean, polaroid: Boolean, root: File): List<FaceAsset> {
         require(original || polaroid) { "请选择原图或拍立得成片" }
         require(ids.size in 1..64) { "每次最多分享 64 张照片" }
@@ -32,11 +33,29 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
                     add(asset(rendered, "polaroid"))
                 }
             }
-        }.also { require(it.isNotEmpty()) { "没有可以分享的原图，请选择拍立得成片" } }
+        }.also { require(it.isNotEmpty()) { "没有可以分享的原图，请选择拍立得成片" } }.let { photos ->
+            val images = identities.current?.tiles.orEmpty().filter { it.kind == com.kigtts.next.identity.ProfileTileKind.IMAGE }.mapNotNull { tile ->
+                val source = com.kigtts.next.identity.profileImageFile(stickers, tile.image) ?: return@mapNotNull null
+                val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                android.graphics.BitmapFactory.decodeFile(source.path, options)
+                val mime = options.outMimeType?.takeIf { it in setOf("image/gif", "image/png", "image/webp", "image/jpeg") } ?: return@mapNotNull null
+                val key = faceToken(); val file = File(outgoing, "$key.${FacePhotoSession.extension(mime)}"); source.copyTo(file)
+                FaceAsset(key, com.kigtts.next.identity.profileTileMediaId(tile.id), "profile", "图片.${file.extension}", mime,
+                    file.length(), sha256(file), "PROFILE", file)
+            }
+            photos + images
+        }
     }
     fun receive(offer: FaceOffer, assets: List<FaceAsset>) = synchronized(stickers) {
-        val album = cards.albums.value.firstOrNull { it.id == "face-received" } ?: cards.createAlbum("面对面接收", "face-received")
-        assets.groupBy { it.photo }.forEach { (photo, variants) ->
+        val album by lazy { cards.albums.value.firstOrNull { it.id == "face-received" } ?: cards.createAlbum("面对面接收", "face-received") }
+        val media = com.kigtts.next.identity.profileTiles(offer.profile).mapNotNull { tile ->
+            assets.firstOrNull { it.format == "PROFILE" && it.photo == com.kigtts.next.identity.profileTileMediaId(tile.id) }?.file?.let { tile.id to it }
+        }.toMap()
+        assets.filterNot { it.format == "PROFILE" }.groupBy { it.photo }.forEach { (photo, variants) ->
+            if (variants.first().format == "BANNER") {
+                favorites.save(offer.profile, variants.firstOrNull { it.variant == "polaroid" }?.file ?: variants.first().file, media)
+                return@forEach
+            }
             val id = UUID.nameUUIDFromBytes("face/${offer.id}/$photo".toByteArray(Charsets.UTF_8)).toString()
             if (cards.cards.value.none { it.id == id }) {
                 val original = variants.firstOrNull { it.variant == "original" }?.file?.let(stickers::importResource)

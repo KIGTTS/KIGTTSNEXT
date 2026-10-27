@@ -1,0 +1,19 @@
+package com.kigtts.next.sharing
+
+import com.kigtts.next.media.WebTheme
+import com.kigtts.next.media.webThemeColors
+import com.kigtts.next.theme.ThemeSettings
+import com.kigtts.next.theme.themeColors
+
+/** Same semantic roles as the native UI, including its adjusted light surfaces. */
+internal fun faceWebTheme(theme: WebTheme): WebTheme = theme.copy(
+    colors = webThemeColors(themeColors(ThemeSettings(), isDark = theme.dark)) + theme.colors,
+    corner = theme.corner.coerceIn(4, 24))
+
+internal const val faceThemeStyles = """
+body{background:var(--md-sys-color-surface);color:var(--md-sys-color-on-surface);font-family:system-ui,-apple-system,'Noto Sans SC',sans-serif;transition:background-color .2s,color .2s}.brand,.page-note,.bio,.contact-link small{color:var(--md-sys-color-on-surface-variant)}h1{font-size:32px;line-height:1.25;font-weight:700}.profile{padding:24px 16px 12px}.profile-cover{border-radius:var(--kigtts-corner)}.avatar-fallback{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}.profile-group{padding:8px;margin:24px 0;background:var(--md-sys-color-surface-container-high);border-radius:var(--kigtts-corner);text-align:left}.profile-group h2{font-size:16px;line-height:24px;margin:8px 8px 20px;font-weight:600}.contact-links{gap:2px;margin:0}.contact-link{background:var(--md-sys-color-surface-container-low);border:0;border-radius:4px;color:var(--md-sys-color-on-surface);padding:16px;min-height:72px;transition:background-color .18s,border-radius .18s}.contact-link:first-of-type{border-top-left-radius:calc(var(--kigtts-corner) * .6);border-top-right-radius:calc(var(--kigtts-corner) * .6)}.contact-link:last-of-type{border-bottom-left-radius:calc(var(--kigtts-corner) * .6);border-bottom-right-radius:calc(var(--kigtts-corner) * .6)}.contact-link:hover{background:var(--md-sys-color-surface-container);transform:none}.contact-link:active{border-radius:12px}.contact-link svg{color:var(--md-sys-color-on-surface-variant)}.contact-dialog{background:var(--md-sys-color-surface-container-high);color:var(--md-sys-color-on-surface);border-radius:var(--kigtts-corner)}.contact-actions a,.contact-actions button,.card-download a,footer button{background:var(--md-sys-color-primary);color:var(--md-sys-color-on-primary);font-weight:600}.contact-actions{gap:2px}.contact-actions:has(:nth-child(2))>:first-child{border-radius:28px 6px 6px 28px}.contact-actions:has(:nth-child(2))>:last-child{border-radius:6px 28px 28px 6px}footer{background:var(--md-sys-color-surface-container)}footer button:first-child{background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container)}article{background:var(--md-sys-color-surface-container-low);border-radius:var(--kigtts-corner)}.photo{background:var(--md-sys-color-surface-container-high)}input{border-color:var(--md-sys-color-outline)}input:checked{background:var(--md-sys-color-primary)}input:checked:after{color:var(--md-sys-color-on-primary)}button:focus-visible,a:focus-visible{outline-color:var(--md-sys-color-primary)}::selection{background:var(--md-sys-color-primary-container);color:var(--md-sys-color-on-primary-container)}.contact-qr{fill:#111;background:#fff}
+"""
+
+internal fun faceThemeScript(path: String) = """
+const applyHostTheme=t=>{if(!t||!t.colors)return;const r=document.documentElement;r.style.colorScheme=t.dark?'dark':'light';r.dataset.kigttsTheme=t.dark?'dark':'light';for(const [k,v]of Object.entries(t.colors)){if(/^[a-z-]+${'$'}/.test(k)&&/^#[0-9a-f]{6}${'$'}/i.test(v))r.style.setProperty('--md-sys-color-'+k,v);}r.style.setProperty('--kigtts-corner',Math.max(4,Math.min(24,t.corner||24))+'px');};window.addEventListener('kigtts-theme-change',e=>applyHostTheme(e.detail));async function syncTheme(){try{if(!document.hidden){const r=await fetch('${path}theme',{cache:'no-store'});if(r.ok)applyHostTheme(await r.json());}}catch{}setTimeout(syncTheme,3000);}setTimeout(syncTheme,3000);
+"""

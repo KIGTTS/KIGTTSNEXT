@@ -21,6 +21,8 @@ internal class FaceShareController(private val context: Context, private val sco
     private val mutableProgress = MutableStateFlow(0f); val progress = mutableProgress.asStateFlow()
     val hotspot = FaceHotspot(context) { message(it) }
     private val media = FacePhotoRepository(cards, identities)
+    private val webIcons = FaceWebIcons(context)
+    private val profileLookups = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var session: FacePhotoSession? = null
     private var collector: Job? = null; private var transfer: Job? = null; private var addressing: Job? = null
     private var files = emptyList<FaceAsset>()
@@ -37,7 +39,7 @@ internal class FaceShareController(private val context: Context, private val sco
     private var generation = 0
     private val sessionLock = Mutex()
     private fun profile() = (identities.current?.publicJson() ?: JSONObject().put("nickname", "KIGTTS 用户")).put("id", sessionId).put("avatar", avatar ?: "")
-    fun openSend(ids: List<String>) { generation++; mutablePanel.value = FacePanel(ids.distinct()) }
+    fun openSend(ids: List<String>) { generation++; mutablePanel.value = FacePanel(ids.distinct(), personal = ids.distinct().singleOrNull() == identities.current?.designId) }
     fun openReceive() { generation++; mutablePanel.value = FacePanel(emptyList(), FaceMode.RECEIVE) }
     fun hide() { generation++; mutablePanel.value = null; stopDiscovery() }
     private fun found(peer: FacePeer) {
@@ -46,13 +48,15 @@ internal class FaceShareController(private val context: Context, private val sco
             val old = before.firstOrNull { it.id == peer.id }
             val combined = peer.copy(host = peer.host ?: old?.host, p2p = peer.p2p ?: old?.p2p,
                 bluetooth = peer.bluetooth ?: old?.bluetooth, signal = maxOf(peer.signal, old?.signal ?: -100))
-            (before.filterNot { it.id == peer.id } + combined.copy(avatar = peer.avatar ?: old?.avatar)).sortedByDescending { it.signal }.take(64)
+            (before.filterNot { it.id == peer.id } + combined.copy(avatar = peer.avatar ?: old?.avatar, profile = peer.profile ?: old?.profile)).sortedByDescending { it.signal }.take(64)
         }
-        if (peer.host != null && peer.avatar == null && peers.value.firstOrNull { it.id == peer.id }?.avatar == null) scope.launch(Dispatchers.IO) {
-            runCatching { FaceTransferClient.request(peer.host, peer.port, "GET", "/s/${peer.token}/hello") }.getOrNull()?.let { info ->
+        val epoch = generation
+        if (peer.host != null && peers.value.firstOrNull { it.id == peer.id }?.profile == null && profileLookups.add(peer.id + peer.token)) scope.launch(Dispatchers.IO) {
+            runCatching { FaceTransferClient.request(peer.host, peer.port, "GET", "/s/${peer.token}/hello", owner = clientSession, timeoutMillis = 7_000) }.getOrNull()?.let { info ->
                 val image = info.optString("avatar").takeIf { it.isNotBlank() && it.length < 65536 }
-                mutablePeers.update { list -> list.map { if (it.id == peer.id) it.copy(avatar = image) else it } }
+                if (epoch == generation) mutablePeers.update { list -> list.map { if (it.id == peer.id) it.copy(avatar = image, profile = info.toString()) else it } }
             }
+            if (epoch != generation) profileLookups.remove(peer.id + peer.token)
         }
     }
     private suspend fun ensureSession(): FacePhotoSession = sessionLock.withLock {
@@ -61,8 +65,10 @@ internal class FaceShareController(private val context: Context, private val sco
         withContext(NonCancellable) {
         val created = withContext(Dispatchers.IO) {
             avatar = identities.current?.avatar?.let(cards.stickers::imageFile)?.let(::faceAvatarData)
-            FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile) { offer, assets ->
-                media.receive(offer, assets); mutableStatus.value = "已接收 ${assets.map { it.photo }.distinct().size} 张照片"
+            FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile, webIcons::icon) { offer, assets ->
+                media.receive(offer, assets)
+                val pictures = assets.filterNot { it.format == "PROFILE" }
+                mutableStatus.value = if (pictures.all { it.format == "BANNER" }) "名片已加入扩列收藏夹" else "已接收 ${pictures.map { it.photo }.distinct().size} 张照片"
             }
         }
         if (epoch != generation || !scope.isActive) {
@@ -85,7 +91,7 @@ internal class FaceShareController(private val context: Context, private val sco
         val current = panel.value ?: return
         val epoch = generation
         if (mutableBusy.value) return
-        mutableBusy.value = true; mutableStatus.value = "正在准备照片"
+        mutableBusy.value = true; mutableStatus.value = if (current.personal) "正在准备名片" else "正在准备照片"
         transfer = scope.launch {
             try {
                 val active = ensureSession()
@@ -132,7 +138,8 @@ internal class FaceShareController(private val context: Context, private val sco
                 FaceTransferClient.send(resolved, clientSession, profile(), files) { value ->
                     mutableProgress.value = value; mutableStatus.value = "正在发送 ${(value * 100).toInt()}%"
                 }
-                mutableStatus.value = "照片已送达"; message("照片已送达")
+                val sent = if (panel.value?.personal == true) "名片已送达" else "照片已送达"
+                mutableStatus.value = sent; message(sent)
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { mutableStatus.value = "发送未完成"; message(error.message ?: "未能连接对方，请重试") }
             finally { mutableBusy.value = false }
@@ -147,6 +154,7 @@ internal class FaceShareController(private val context: Context, private val sco
         val old = session; session = null; files = emptyList(); connected = null
         old?.revoke()
         mutablePeers.value = emptyList(); mutableRequests.value = emptyList(); mutableUrl.value = null
+        profileLookups.clear()
         mutablePanel.value = null; mutableBusy.value = false; mutableStatus.value = ""; FaceShareService.finish(context)
         if (old != null) CoroutineScope(Dispatchers.IO).launch { old.close() }
     }

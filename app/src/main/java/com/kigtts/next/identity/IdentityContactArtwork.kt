@@ -9,13 +9,16 @@ internal fun drawIdentityContacts(canvas: Canvas, identity: IdentityCard, sticke
     val iconSize = (height * .085f).toInt().coerceAtLeast(1)
     val links = identity.contacts.take(5).map { it as ContactLink? } + if (identity.contacts.size > 5) listOf(null) else emptyList()
     links.forEachIndexed { index, link ->
-        val left = height * .06f + index * height * .15f; val top = height * .06f
-        val x = left + iconSize / 2f; val y = top + iconSize / 2f; val radius = iconSize * 40f / 44f
-        val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
-            shader = RadialGradient(x, y, radius, intArrayOf(0x85000000.toInt(), 0x57000000, 0x1A000000, Color.TRANSPARENT),
-                floatArrayOf(0f, .55f, .85f, 1f), Shader.TileMode.CLAMP)
-        }
-        canvas.drawCircle(x, y, radius, p); p.shader = null
+        val buttonSize = iconSize * 40f / 22f; val gap = buttonSize * .05f
+        val buttonLeft = height * .04f + index * (buttonSize + gap); val buttonTop = height * .04f
+        val left = buttonLeft + (buttonSize - iconSize) / 2; val top = buttonTop + (buttonSize - iconSize) / 2
+        val outer = buttonSize / 2; val inner = buttonSize * .11f
+        val start = if (index == 0) outer else inner; val end = if (index == links.lastIndex) outer else inner
+        val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply { color = 0x5C000000 }
+        val shape = Path().apply { addRoundRect(RectF(buttonLeft, buttonTop, buttonLeft + buttonSize, buttonTop + buttonSize),
+            floatArrayOf(start, start, end, end, end, end, start, start), Path.Direction.CW) }
+        canvas.drawPath(shape, p)
+        p.color = Color.WHITE
         val glyph = Bitmap.createBitmap(iconSize, iconSize, Bitmap.Config.ARGB_8888)
         try {
             val drawing = Canvas(glyph)

@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 import com.kigtts.next.ui.components.vector
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.Dispatchers
@@ -30,12 +31,12 @@ internal fun ResourceAvatar(item: ManagementItem, resolve: (PluginResource) -> F
     }
     if (artwork != null) {
         val (bitmap, lineArt) = artwork!!
-        Surface(Modifier.size(size), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Surface(Modifier.size(size).testTag("managed-avatar/" + item.id), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
             Image(bitmap, "${item.title}图标", Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
                 colorFilter = if (lineArt) ColorFilter.tint(MaterialTheme.colorScheme.onSecondaryContainer) else null)
         }
     }
-    else Surface(Modifier.size(size), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
+    else Surface(Modifier.size(size).testTag("managed-avatar/" + item.id), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.secondaryContainer) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(item.icon.vector(item.symbol), null, Modifier.size(size * .55f), tint = MaterialTheme.colorScheme.onSecondaryContainer) }
     }
 }

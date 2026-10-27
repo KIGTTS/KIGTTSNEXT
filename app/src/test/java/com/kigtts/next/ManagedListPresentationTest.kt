@@ -30,6 +30,17 @@ import org.robolectric.annotation.*
 class ManagedListPresentationTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Before fun initializeIcons() { com.kigtts.next.ui.components.MaterialSymbols.initialize(compose.activity) }
+    @Test fun mixedSourceArtworkAndVectorIconsOccupyTheSameStandardListSize() {
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            ManagedItemList(ManagementList("sources", listOf(
+                ManagementItem("image", "官方源", image = PluginResource("missing.svg")),
+                ManagementItem("vector", "自定义源", icon = PluginIcon.SETTINGS))), invoke = { _, _ -> })
+        } }
+        val image = compose.onNodeWithTag("managed-avatar/image", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val vector = compose.onNodeWithTag("managed-avatar/vector", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals(40f, (image.right - image.left).value, .1f)
+        assertEquals(image.right - image.left, vector.right - vector.left); assertEquals(image.bottom - image.top, vector.bottom - vector.top)
+    }
     private val actions = listOf(PageAction("pin", "置顶", PluginIcon.PIN), PageAction("info", "详细信息", PluginIcon.INFO),
         PageAction("settings", "音频设置", PluginIcon.SETTINGS), PageAction("export", "导出语音包", PluginIcon.EXPORT),
         PageAction("delete", "删除语音包", symbol = "delete"))

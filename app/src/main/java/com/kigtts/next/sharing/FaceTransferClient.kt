@@ -34,15 +34,16 @@ internal object FaceTransferClient {
         check(completed == "complete") { "照片未能保存到对方相册，请重试" }; progress(1f)
     }
     fun request(host: String, port: Int, method: String, path: String, body: ByteArray? = null, file: File? = null,
-        headers: Map<String, String> = emptyMap(), owner: String? = null, progress: (Long) -> Unit = {}): JSONObject {
+        headers: Map<String, String> = emptyMap(), owner: String? = null, timeoutMillis: Int = 120_000, progress: (Long) -> Unit = {}): JSONObject {
         val address = InetAddress.getByName(host)
         require(address.isSiteLocalAddress || address.isLinkLocalAddress || address.isLoopbackAddress)
         require(port in 1..65535 && path.startsWith('/') && '\r' !in path && '\n' !in path)
+        require(timeoutMillis in 1_000..120_000)
         return Socket().use { socket ->
             val owned = owner?.let { sockets.computeIfAbsent(it) { java.util.concurrent.ConcurrentHashMap.newKeySet() } }
             owned?.add(socket)
             try {
-            socket.connect(InetSocketAddress(address, port), 10_000); socket.soTimeout = 120_000
+            socket.connect(InetSocketAddress(address, port), minOf(10_000, timeoutMillis)); socket.soTimeout = timeoutMillis
             val size = file?.length() ?: body?.size?.toLong() ?: 0
             val head = buildString {
                 append("$method $path HTTP/1.1\r\nHost: $host:$port\r\nConnection: close\r\nContent-Length: $size\r\nContent-Type: application/json\r\n")
@@ -60,7 +61,7 @@ internal object FaceTransferClient {
             var headerCount = 0; var length = -1
             while (true) { val row = line(); if (row.isEmpty()) break; require(++headerCount < 64)
                 if (row.startsWith("Content-Length:", true)) length = row.substringAfter(':').trim().toInt() }
-            require(length in 0..65536); val result = ByteArray(length); DataInputStream(input).readFully(result)
+            require(length in 0..393216); val result = ByteArray(length); DataInputStream(input).readFully(result)
             check(status in 200..299) { "连接已结束或对方暂时无法接收" }
             JSONObject(String(result, Charsets.UTF_8))
             } finally { owned?.remove(socket) }

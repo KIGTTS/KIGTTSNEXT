@@ -4,7 +4,6 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -16,10 +15,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.identity.rememberAvatarShape
 import kotlinx.coroutines.*
 
 @Composable
-internal fun FacePeerAvatar(avatar: String?) {
+internal fun FacePeerAvatar(avatar: String?, modifier: Modifier = Modifier.size(48.dp), frame: String = "circle") {
     val bitmap by produceState<ImageBitmap?>(null, avatar) {
         value = withContext(Dispatchers.Default) { runCatching {
             avatar?.takeIf { it.length < 65536 }?.let { text -> Base64.decode(text, Base64.DEFAULT) }?.let { bytes ->
@@ -29,18 +29,22 @@ internal fun FacePeerAvatar(avatar: String?) {
         }.getOrNull() }
     }
     val shown = bitmap
-    if (shown == null) Icon(Icons.Default.Person, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-    else Image(shown, null, Modifier.size(48.dp).clip(CircleShape), contentScale = ContentScale.Crop)
+    Surface(modifier, shape = rememberAvatarShape(frame), color = MaterialTheme.colorScheme.secondaryContainer) {
+        if (shown == null) Icon(Icons.Default.Person, null, Modifier.fillMaxSize().padding(12.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer)
+        else Image(shown, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+    }
 }
 
 @Composable
 internal fun FaceReceivePrompt(offer: FaceOffer, approve: (String, Boolean) -> Unit, reject: (String) -> Unit) {
     var auto by remember(offer.id) { mutableStateOf(false) }
-    MotionAlertDialog({ reject(offer.id) }, title = { Text("接收 ${offer.nickname} 的照片？") },
+    val pictures = offer.assets.filterNot { it.format == "PROFILE" }
+    val personal = pictures.isNotEmpty() && pictures.all { it.format == "BANNER" }
+    MotionAlertDialog({ reject(offer.id) }, title = { Text("接收 ${offer.nickname} 的${if (personal) "名片" else "照片"}？") },
         icon = { FacePeerAvatar(offer.profile.optString("avatar").takeIf { it.isNotBlank() }) }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (offer.profile.optString("bio").isNotBlank()) Text(offer.profile.optString("bio"))
-                Text("${offer.assets.map { it.photo }.distinct().size} 张照片 · %.1f MB".format(offer.assets.sumOf { it.bytes } / 1048576.0))
+                Text(if (personal) "接收后保存到扩列收藏夹" else "${pictures.map { it.photo }.distinct().size} 张照片 · %.1f MB".format(offer.assets.sumOf { it.bytes } / 1048576.0))
                 Row { Checkbox(auto, feedbackChange { auto = it }); Text("本次会话自动接收", Modifier.padding(top = 12.dp)) }
             }
         }, confirmButton = { Button(dialogFeedbackClick { approve(offer.id, auto) }) { Text("接收") } },

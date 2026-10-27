@@ -24,14 +24,14 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PersonalCardsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun rememberedCardSwipesAndItsInformationAndContactEntriesRemainUsable() {
+    @Test fun singleProfileKeepsInformationAndContactEntriesUsableWithoutPresetControls() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         compose.activity.viewModelStore.put("personal-test", model)
-        val first = model.identities.create().copy(nickname = "第一张名片")
-        val second = model.identities.create().copy(nickname = "第二张名片", bio = "很高兴认识你", contacts = listOf(ContactLink("微信", "example")))
-        model.identities.save(first); model.identities.save(second); model.identities.select(second.id)
+        val second = model.identities.create().copy(nickname = "我的名片", bio = "很高兴认识你", contacts = listOf(ContactLink("微信", "example")))
+        model.identities.save(second)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { PersonalCardsScreen(model) } }
-        compose.onNodeWithText("2 / 2").assertIsDisplayed()
+        compose.onNodeWithTag("personal-cards-pager").assertDoesNotExist()
+        compose.onNodeWithText("添加名片背景").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/personal-cards.png")
         compose.onNode(hasContentDescription("联系方式：微信") and hasAnyAncestor(hasTestTag("personal-card-${second.id}"))).performClick()
         compose.onNodeWithText("example").assertIsDisplayed()
@@ -41,10 +41,11 @@ class PersonalCardsUiTest {
         compose.onNodeWithText("保存").performClick()
         compose.waitUntil(5000) { model.identities.current?.nickname == "新的昵称" }
         assertEquals("新的昵称", model.identities.current?.nickname)
-        compose.onNodeWithTag("personal-cards-pager").performTouchInput { swipeRight() }
-        compose.onNodeWithText("1 / 2").assertIsDisplayed()
-        assertEquals(first.id, model.identities.current?.id)
-        assertEquals("新的昵称", model.identities.current?.nickname)
+        assertEquals(second.id, model.identities.current?.id)
+        assertEquals(1, model.identities.items.value.size)
+        compose.onNodeWithText("面对面分享").performScrollTo().performClick()
+        assertTrue(model.faceShare.panel.value!!.personal)
+        assertEquals(listOf(second.designId), model.faceShare.panel.value!!.ids)
     }
     @Test fun backgroundEditorPreviewsIdentityWhileItsToolPanelRemainsUsable() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())

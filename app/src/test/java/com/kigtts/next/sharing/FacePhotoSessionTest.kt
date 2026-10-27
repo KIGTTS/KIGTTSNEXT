@@ -16,6 +16,20 @@ import java.util.zip.ZipInputStream
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FacePhotoSessionTest {
+    @Test fun profileWithAvatarAndTilesCanCrossTheFormer64KiBTransportLimit() {
+        val root = Files.createTempDirectory("face-profile-large").toFile()
+        val profile = JSONObject().put("nickname", "资料").put("avatar", "A".repeat(60000))
+            .put("tiles", JSONArray((1..20).map { JSONObject().put("id", "tile$it").put("text", "中文".repeat(150)) }))
+        val server = FacePhotoSession(File(root, "session"), { profile }) { _, _ -> }
+        try {
+            val hello = FaceTransferClient.request("127.0.0.1", server.server.port, "GET", server.path + "hello")
+            assertEquals(60000, hello.getString("avatar").length)
+            val file = asset(root)
+            val offer = JSONObject().put("profile", profile).put("session", faceToken()).put("id", faceToken()).put("assets", JSONArray().put(file.json()))
+            val reply = FaceTransferClient.request("127.0.0.1", server.server.port, "POST", server.path + "offer", offer.toString().toByteArray(Charsets.UTF_8))
+            assertEquals("waiting", reply.getString("status")); assertEquals(1, server.requests.value.size)
+        } finally { server.close(); root.deleteRecursively() }
+    }
     private fun asset(root: File, body: String = "photo bytes") = File(root, "source.jpg").apply { writeText(body) }.let {
         FaceAsset(faceToken(), faceToken(), "original", "照片.jpg", "image/jpeg", it.length(), sha256(it), "SQUARE", it)
     }

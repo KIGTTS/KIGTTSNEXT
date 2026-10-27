@@ -21,6 +21,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Home -> "KIGTTS"
             Destination.Settings -> "设置"
             Destination.PersonalCards -> "个人信息"
+            Destination.ContactFavorites -> "扩列收藏夹"
             Destination.Fonts -> "字体"
             is Destination.SettingsDetail -> destination.category.title
             Destination.Plugins -> "插件管理"
@@ -61,7 +62,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
-            destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.Plugins ||
+            destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.ContactFavorites || destination == Destination.Plugins ||
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
@@ -70,6 +71,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.Home -> Unit
                 Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }
                 Destination.PersonalCards -> com.kigtts.next.ui.identity.PersonalCardsScreen(model)
+                Destination.ContactFavorites -> com.kigtts.next.ui.identity.ContactFavoritesScreen(model)
                 Destination.Fonts -> FontSettingsScreen(state.theme, model::theme,
                     fromStore = if (model.registry.plugins.any { it.descriptor.id == com.kigtts.next.plugins.control.STORE_ID && model.registry.available(it) })
                         ({ model.invoke(com.kigtts.next.plugins.control.STORE_ID, "font-library") }) else null)

@@ -29,6 +29,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
     val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures)
+    private val recovery = hostRuntime?.recovery ?: com.kigtts.next.recovery.CrashRecovery(application)
+    internal val safeModeSession = com.kigtts.next.recovery.SafeModeSession(recovery, ::refreshPlugins)
+    init { pluginManager.safeMode = recovery::safeMode }
     val registry = pluginManager.registry
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
@@ -63,6 +66,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
     val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
+    internal val contactFavorites by lazy { com.kigtts.next.identity.ContactFavorites.get(application) }
     init { com.kigtts.next.identity.warmIdentityBackground(viewModelScope, stickers, identities) }
     private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message) }
     internal val faceShare get() = faceShareDelegate.value
@@ -444,6 +448,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         else if (state.value.speaking || synthesisGuidance.request()) speech.speak()
     }
     suspend fun refreshPlugins() {
+        safeModeSession.synchronize()
         pluginManager.reload()
         subtitleRenderer.reconcile(registry)
         listeningPanel.reconcile(registry)

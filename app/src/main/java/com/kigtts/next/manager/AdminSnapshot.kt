@@ -23,7 +23,7 @@ suspend fun adminSnapshot(context: Context, host: HostPluginRuntime, journal: Ad
             .put("api",plugin.descriptor.apiVersion).put("builtin",true).put("enabled",true).put("loaded",true).put("pid",android.os.Process.myPid())
             .put("error",if(manager.registry.available(plugin))"" else "需要语音识别服务"))
     }
-    return JSONObject().put("bridgeVersion",AdminContract.VERSION).put("pluginApi",PLUGIN_API_VERSION)
+    return JSONObject().put("bridgeVersion",AdminContract.VERSION).put("pluginApi",PLUGIN_API_VERSION).put("safeMode",host.recovery.safeMode())
         .put("pid",android.os.Process.myPid()).put("time",System.currentTimeMillis()).put("plugins",plugins)
         .put("listening",host.state()?.listening==true).put("speaking",host.state()?.speaking==true).put("logs",journal.snapshot())
         .put("mediaId",host.state()?.mediaId).put("uiAttached",host.ui()!=null)

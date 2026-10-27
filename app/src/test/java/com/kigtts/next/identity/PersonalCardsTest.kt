@@ -20,24 +20,23 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
 class PersonalCardsTest {
-    @Test fun backgroundPresetsShareInformationButKeepTheirGradientAndSurviveRemovingAllPresets() {
+    @Test fun creationIsIdempotentAndKeepsOneEditableIdentity() {
         val f = CardPrintCoordinatorTest.Fixture()
         try {
             val identities = IdentityRepository(f.app, f.cards)
             val first = identities.create()
             val profile = first.copy(nickname = "同一个人", bio = "你好", contacts = listOf(ContactLink("QQ", "12345")))
             identities.save(profile)
-            val next = identities.create()
-            assertEquals(profile.nickname, next.nickname); assertEquals(profile.contacts, next.contacts)
-            assertFalse(next.gradient)
-            identities.save(next.copy(gradient = true, nickname = "新昵称"))
+            assertEquals(profile, identities.create())
+            assertEquals(1, identities.items.value.size)
+            assertFalse(profile.gradient)
+            identities.save(profile.copy(gradient = true))
             val reload = IdentityRepository(f.app, f.cards)
-            assertTrue(reload.items.value.all { it.nickname == "新昵称" && it.contacts == profile.contacts })
-            assertFalse(reload.items.value.first { it.id == first.id }.gradient)
-            assertTrue(reload.items.value.first { it.id == next.id }.gradient)
-            reload.items.value.forEach { reload.remove(it.id) }
-            val restored = IdentityRepository(f.app, f.cards).create()
-            assertEquals("新昵称", restored.nickname); assertEquals(profile.contacts, restored.contacts)
+            assertEquals(first.id, reload.current!!.id)
+            assertTrue(reload.current!!.gradient)
+            assertEquals(profile.contacts, reload.current!!.contacts)
+            assertTrue(runCatching { reload.save(profile.copy(id = "another-person")) }.isFailure)
+            assertEquals(1, reload.items.value.size)
         } finally { f.scope.cancel() }
     }
     @Test fun oldCardsUseSelectedProfileAndPreserveAllLegacyInformationDuringMigration() {
@@ -50,7 +49,10 @@ class PersonalCardsTest {
             prefs.edit().putString("items", old.toString()).putString("selected", "b").commit()
             val identities = IdentityRepository(f.app, f.cards)
             assertTrue(identities.items.value.all { it.nickname == "正在用的信息" && !it.gradient })
+            assertEquals(listOf("b"), identities.items.value.map { it.id })
+            assertEquals(old.toString(), prefs.getString("legacy-backgrounds-v2", null))
             identities.select("a")
+            assertEquals("b", identities.current!!.id)
             assertEquals("正在用的信息", IdentityRepository(f.app, f.cards).current!!.nickname)
             identities.save(identities.current!!.copy(gradient = false))
             assertEquals(old.toString(), prefs.getString("legacy-items-v1", null))
@@ -69,7 +71,7 @@ class PersonalCardsTest {
             identities.save(first.copy(nickname = "测试名片", bio = "你好", contacts = listOf(ContactLink("微信", "example"))))
             identities.select(first.id)
             val reloaded = IdentityRepository(f.app, f.cards)
-            assertEquals(first.id, reloaded.current?.id); assertEquals(listOf(first.id, next.id), reloaded.items.value.map { it.id })
+            assertEquals(first.id, reloaded.current?.id); assertEquals(first.id, next.id); assertEquals(listOf(first.id), reloaded.items.value.map { it.id })
             val paper = PolaroidRenderer.renderBitmap(f.stickers, requireNotNull(f.stickers.identityDesigns.get(first.designId)))
             try {
                 assertEquals(16.0 / 9, paper.width.toDouble() / paper.height, .002)
@@ -83,9 +85,11 @@ class PersonalCardsTest {
             val media = FacePhotoRepository(f.cards, identities)
             val assets = media.prepare(listOf(first.designId), false, true, File(f.app.cacheDir, "identity-share"))
             assertEquals("BANNER", assets.single().format)
-            media.receive(FaceOffer(faceToken(), faceToken(), first.publicJson(), assets), assets)
-            val received = f.cards.cardsInAlbum("face-received").single()
-            assertEquals(16.0 / 9, polaroidPaperGeometry(received).aspectRatio, .002)
+            media.receive(FaceOffer(faceToken(), faceToken(), reloaded.current!!.publicJson(), assets), assets)
+            assertTrue(f.cards.cardsInAlbum("face-received").isEmpty())
+            val saved = ContactFavorites.get(f.app).items.value.single()
+            assertEquals("测试名片", JSONObject(saved.profile).getString("nickname"))
+            assertTrue(saved.cover!!.isFile)
         } finally { f.scope.cancel() }
     }
     @Test fun nativeReceivePreservesOriginalAndComposedVersionsAndNeverDuplicatesACard() {

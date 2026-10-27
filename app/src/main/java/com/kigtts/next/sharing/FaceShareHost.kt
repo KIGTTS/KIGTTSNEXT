@@ -30,6 +30,9 @@ internal fun FaceShareHost(model: AppViewModel) {
     val url by controller.url.collectAsStateWithLifecycle()
     val hotspot by controller.hotspot.details.collectAsStateWithLifecycle()
     val peers by controller.peers.collectAsStateWithLifecycle()
+    val identities by model.identities.items.collectAsStateWithLifecycle()
+    var detailPeer by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(panel) { if (panel == null) detailPeer = null }
     val permission = rememberFacePermissionRequest(model::message)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle, panel?.mode) {
@@ -48,16 +51,21 @@ internal fun FaceShareHost(model: AppViewModel) {
                 .navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 24.dp).testTag("face-share"),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (shown.mode == FaceMode.RECEIVE) "面对面接收" else "面对面返图", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
+                    Text(if (shown.mode == FaceMode.RECEIVE) "面对面接收" else if (shown.personal) "面对面分享名片" else "面对面返图", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
                     ToolButton("关闭", Icons.Default.Close, controller::hide, colors = compactPlainIconColors())
                 }
                 when (shown.mode) {
                     FaceMode.CHOOSE -> {
-                        Text("已选 ${shown.ids.size} 张照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        FaceFormatSwitch("原图", "原始清晰度", Icons.Default.Image, original, !busy) { original = it }
-                        FaceFormatSwitch("拍立得成片", "保留相框与贴纸", Icons.Default.Photo, composed, !busy) { composed = it }
+                        if (shown.personal) identities.firstOrNull()?.let {
+                            com.kigtts.next.ui.identity.PersonalCardView(it, model.stickers, Modifier.fillMaxWidth(), interactive = false)
+                            FaceProfileContent(it.publicJson(), showHeader = false, image = { id -> com.kigtts.next.identity.profileImageFile(model.stickers, id) })
+                        } else {
+                            Text("已选 ${shown.ids.size} 张照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FaceFormatSwitch("原图", "原始清晰度", Icons.Default.Image, original, !busy) { original = it }
+                            FaceFormatSwitch("拍立得成片", "保留相框与贴纸", Icons.Default.Photo, composed, !busy) { composed = it }
+                        }
                         Button(feedbackClick { controller.prepare(FaceMode.BROWSER, original, composed) }, Modifier.fillMaxWidth(), enabled = !busy && (original || composed)) {
-                            Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(8.dp)); Text("扫码领取")
+                            Icon(Icons.Default.QrCode, null); Spacer(Modifier.width(8.dp)); Text(if (shown.personal) "扫码查看名片" else "扫码领取")
                         }
                         FilledTonalButton(feedbackClick { permission(true) { controller.prepare(FaceMode.SEND, original, composed) } }, Modifier.fillMaxWidth(), enabled = !busy && (original || composed)) {
                             Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("附近互传")
@@ -79,22 +87,27 @@ internal fun FaceShareHost(model: AppViewModel) {
                         else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             CircularProgressIndicator(Modifier.size(24.dp)); Text("等待 Wi-Fi 连接")
                         }
-                        Text("对方用浏览器预览、选择并保存照片。", style = MaterialTheme.typography.bodyMedium)
+                        Text(if (shown.personal) "对方用浏览器查看你的名片和联系方式。" else "对方用浏览器预览、选择并保存照片。", style = MaterialTheme.typography.bodyMedium)
                     }
                     FaceMode.SEND -> {
-                        Text("点选对方，发送照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (shown.personal) "点选对方，分享名片" else "点选对方，发送照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (peers.isEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             CircularProgressIndicator(Modifier.size(24.dp)); Text("正在查找附近的 KIGTTS")
                         }
                         peers.forEach { peer -> OutlinedCard(feedbackClick { controller.send(peer) }, Modifier.fillMaxWidth(), enabled = !busy) {
                             ListItem(headlineContent = { Text(peer.name.ifBlank { "KIGTTS 用户" }) }, leadingContent = { FacePeerAvatar(peer.avatar) },
-                                supportingContent = { Text(if (peer.host != null) "同一 Wi-Fi" else "附近设备") }, trailingContent = { Icon(Icons.Default.Send, "发送照片") })
+                                supportingContent = { Text(if (peer.host != null) "同一 Wi-Fi" else "附近设备") }, trailingContent = {
+                                    ToolButton("查看个人主页", Icons.Default.ContactPage, { detailPeer = peer.id }, colors = compactPlainIconColors())
+                                })
                         } }
                     }
                     FaceMode.RECEIVE -> {
                         Icon(Icons.Default.Radar, null, Modifier.align(Alignment.CenterHorizontally).size(64.dp), tint = MaterialTheme.colorScheme.primary)
                         Text("请让对方打开“面对面返图”，点选你的头像。")
-                        model.identities.current?.let { com.kigtts.next.ui.identity.PersonalCardView(it, model.stickers, Modifier.fillMaxWidth()) }
+                        identities.firstOrNull()?.let {
+                            com.kigtts.next.ui.identity.PersonalCardView(it, model.stickers, Modifier.fillMaxWidth(), interactive = false)
+                            FaceProfileContent(it.publicJson(), showHeader = false, image = { id -> com.kigtts.next.identity.profileImageFile(model.stickers, id) })
+                        }
                     }
                 }
                 if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
@@ -102,6 +115,12 @@ internal fun FaceShareHost(model: AppViewModel) {
                 if (shown.mode != FaceMode.CHOOSE) TextButton(feedbackClick(controller::stop), Modifier.fillMaxWidth()) { Text("结束分享") }
             }
         }
+    }
+    if (panel != null) peers.firstOrNull { it.id == detailPeer }?.let { peer ->
+        val profile = remember(peer.profile, peer.name, peer.avatar) {
+            runCatching { peer.profile?.let { org.json.JSONObject(it) } }.getOrNull() ?: org.json.JSONObject().put("nickname", peer.name).put("avatar", peer.avatar)
+        }
+        FaceReceiptDialog(profile) { detailPeer = null }
     }
     requests.firstOrNull()?.let { offer -> FaceReceivePrompt(offer, controller::approve, controller::reject) }
 }
