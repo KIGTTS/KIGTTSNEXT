@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
+import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
 import com.kigtts.next.recovery.*
@@ -35,6 +36,9 @@ class PersonalProfileSharingUiTest {
                 Box(Modifier.width(360.dp)) { PersonalCardView(card, model.stickers) }
             }
         } }
+        compose.onNodeWithTag("personal-face-share").assertWidthIsEqualTo(32.dp).assertHeightIsEqualTo(32.dp)
+        compose.onNodeWithTag("personal-contact-0").assertWidthIsEqualTo(32.dp).assertHeightIsEqualTo(32.dp)
+        compose.onRoot().captureRoboImage("build/previews/personal-card-compact-corners.png")
         compose.onNodeWithContentDescription("开启面对面").performClick()
         assertEquals(listOf(card.designId), sent)
         compose.onNodeWithContentDescription("联系方式：QQ").performClick()

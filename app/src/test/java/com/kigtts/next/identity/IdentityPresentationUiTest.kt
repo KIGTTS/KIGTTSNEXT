@@ -81,9 +81,19 @@ class IdentityPresentationUiTest {
             }
         } }
         for (index in 0..4) compose.onNodeWithTag("personal-contact-$index").assertIsDisplayed()
+            .assertWidthIsEqualTo(32.dp).assertHeightIsEqualTo(32.dp)
+        for (index in 1..4) {
+            val previous = compose.onNodeWithTag("personal-contact-${index - 1}").getUnclippedBoundsInRoot()
+            val current = compose.onNodeWithTag("personal-contact-$index").getUnclippedBoundsInRoot()
+            assertTrue("相邻底框必须留出间隔", current.left - previous.right >= 4.dp)
+        }
         compose.onNodeWithTag("personal-contact-5").assertDoesNotExist()
         compose.onNodeWithTag("personal-contact-more").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/previews/identity-contact-buttons.png")
+        compose.onNodeWithTag("personal-contact-0").performTouchInput { down(center) }
+        compose.mainClock.advanceTimeBy(100)
+        compose.onRoot().captureRoboImage("build/previews/identity-contact-buttons-pressed.png")
+        compose.onNodeWithTag("personal-contact-0").performTouchInput { cancel() }
         compose.onNodeWithTag("personal-contact-more").performClick()
         compose.onNodeWithTag("personal-contact-overflow-5").performClick()
         compose.onNodeWithText("account5").assertIsDisplayed()

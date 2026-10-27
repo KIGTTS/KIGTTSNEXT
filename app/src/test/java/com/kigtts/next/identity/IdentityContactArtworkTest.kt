@@ -17,7 +17,7 @@ class IdentityContactArtworkTest {
             val person = IdentityCard(designId = "test", contacts = List(8) { ContactLink("QQ", "account$it") })
             val pixels = Bitmap.createBitmap(1280, 720, Bitmap.Config.ARGB_8888)
             drawIdentityContacts(Canvas(pixels), person, f.stickers, 720f)
-            val size = (720 * .085f).toInt(); val button = size * 40f / 22f; val gap = button * .05f
+            val size = (720 * .085f).toInt(); val button = size * 32f / 22f; val gap = button * .125f
             val sixthLeft = 720 * .04f + 5 * (button + gap)
             val y = (720 * .04f + button / 2).toInt()
             assertEquals(Color.WHITE, pixels.getPixel((sixthLeft + button / 2f).toInt(), y))

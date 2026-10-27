@@ -9,7 +9,7 @@ internal fun drawIdentityContacts(canvas: Canvas, identity: IdentityCard, sticke
     val iconSize = (height * .085f).toInt().coerceAtLeast(1)
     val links = identity.contacts.take(5).map { it as ContactLink? } + if (identity.contacts.size > 5) listOf(null) else emptyList()
     links.forEachIndexed { index, link ->
-        val buttonSize = iconSize * 40f / 22f; val gap = buttonSize * .05f
+        val buttonSize = iconSize * 32f / 22f; val gap = buttonSize * .125f
         val buttonLeft = height * .04f + index * (buttonSize + gap); val buttonTop = height * .04f
         val left = buttonLeft + (buttonSize - iconSize) / 2; val top = buttonTop + (buttonSize - iconSize) / 2
         val outer = buttonSize / 2; val inner = buttonSize * .11f

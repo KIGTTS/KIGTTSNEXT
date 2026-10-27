@@ -1,25 +1,18 @@
 package com.kigtts.next.ui.identity
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.*
-import com.kigtts.next.ui.components.*
 import com.kigtts.next.sharing.LocalFaceShare
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.WifiTethering
-import androidx.compose.foundation.shape.CircleShape
 
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
@@ -37,9 +30,8 @@ import androidx.compose.foundation.shape.CircleShape
         CompositionLocalProvider(LocalContentColor provides ink) {
             PersonalContactButtons(identity.contacts, interactive, { contact = it },
                 Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 56.dp).fillMaxWidth())
-            if (interactive && faceShare != null) IconButton(feedbackClick { faceShare.send(listOf(identity.designId)) },
-                Modifier.align(Alignment.TopEnd).padding(8.dp).size(40.dp).testTag("personal-face-share")
-                    .background(Color.Black.copy(alpha = .36f), CircleShape)) {
+            if (interactive && faceShare != null) PersonalCardActionButton("开启面对面", "personal-face-share", true,
+                { faceShare.send(listOf(identity.designId)) }, Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 Icon(Icons.Default.WifiTethering, "开启面对面", tint = Color.White, modifier = Modifier.size(22.dp))
             }
             Row(Modifier.align(Alignment.BottomStart).padding(padding), verticalAlignment = Alignment.CenterVertically,
