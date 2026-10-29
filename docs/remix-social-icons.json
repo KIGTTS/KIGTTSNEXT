@@ -118,6 +118,146 @@
       "sha256": "d23b9b5c3752d9c36ee711308dc14cb639d89fda76ac45d6cd2c93653ff51879"
     },
     {
+      "resource": "ic_remix_douban_fill.xml",
+      "source": "icons/Logos/douban-fill.svg",
+      "sha256": "4f5ee29418510973e23b021d1469513f263c8300ab8fa300f081af36215ae232"
+    },
+    {
+      "resource": "ic_remix_baidu_fill.xml",
+      "source": "icons/Logos/baidu-fill.svg",
+      "sha256": "1aba5ab72548679a92c996d8e30730df5631720abe5c6e6db52a0d481b59bad6"
+    },
+    {
+      "resource": "ic_remix_wechat_2_fill.xml",
+      "source": "icons/Logos/wechat-2-fill.svg",
+      "sha256": "02597e3c43cb86af26f43a86c8616041868b6679334ba86e581dea7363fc8ec9"
+    },
+    {
+      "resource": "ic_remix_wechat_channels_fill.xml",
+      "source": "icons/Logos/wechat-channels-fill.svg",
+      "sha256": "626a4302fe5b9f6a97f006edf7cc4ee877e24a34a294533d1fb6b63088dedcd7"
+    },
+    {
+      "resource": "ic_remix_netease_cloud_music_fill.xml",
+      "source": "icons/Logos/netease-cloud-music-fill.svg",
+      "sha256": "0c06131bb79966f2ffde8da8b4dd13adcbc79478965067763cf70b2dd93e265a"
+    },
+    {
+      "resource": "ic_remix_spotify_fill.xml",
+      "source": "icons/Logos/spotify-fill.svg",
+      "sha256": "d796c19a8dd073717273901042e91cda3b39cd01eb2a43dcb4180548de0b44fe"
+    },
+    {
+      "resource": "ic_remix_soundcloud_fill.xml",
+      "source": "icons/Logos/soundcloud-fill.svg",
+      "sha256": "cdae3bf40ba8b2fa49a2ac3faa8e55e5645a8f9795acf5c1d25b4daeba2a22ba"
+    },
+    {
+      "resource": "ic_remix_twitch_fill.xml",
+      "source": "icons/Logos/twitch-fill.svg",
+      "sha256": "ac34a70fddb14b5a5622ee27c8fe0ce780c3200646d688026dc2bb37387a80ff"
+    },
+    {
+      "resource": "ic_remix_vimeo_fill.xml",
+      "source": "icons/Logos/vimeo-fill.svg",
+      "sha256": "904f081523927fba98890d16a3627d8493437abdcf8b7b7691134559c67db5e2"
+    },
+    {
+      "resource": "ic_remix_yuque_fill.xml",
+      "source": "icons/Logos/yuque-fill.svg",
+      "sha256": "3727b8eb947b28dcaf550770c9ef6ec9ed202995824dddc738a96eb7ad31065b"
+    },
+    {
+      "resource": "ic_remix_medium_fill.xml",
+      "source": "icons/Logos/medium-fill.svg",
+      "sha256": "568cff6f762d63b629034fbc0a218d0238841623e1ea2dfec34b40f7c8367859"
+    },
+    {
+      "resource": "ic_remix_tumblr_fill.xml",
+      "source": "icons/Logos/tumblr-fill.svg",
+      "sha256": "af78ba14b517aa8f6e71e029aa6cda38c6a9c5fdc78c9348812e72f42ebedfe4"
+    },
+    {
+      "resource": "ic_remix_wordpress_fill.xml",
+      "source": "icons/Logos/wordpress-fill.svg",
+      "sha256": "b49e37069c6e0da29690ac1b706fb494549f881fb0820b0c252ec2e25dab1fd2"
+    },
+    {
+      "resource": "ic_remix_gitlab_fill.xml",
+      "source": "icons/Logos/gitlab-fill.svg",
+      "sha256": "a9fa6db1fc1ccc625cb790438bc5bc6db3a4f324ba418ee0020b35619f288e2a"
+    },
+    {
+      "resource": "ic_remix_gitee_fill.xml",
+      "source": "icons/Logos/gitee-fill.svg",
+      "sha256": "1e5be01d069bcf2433877d8d23b7fd91e161eb9b1ee79fbbde5b2f4ff07e8995"
+    },
+    {
+      "resource": "ic_remix_stack_overflow_fill.xml",
+      "source": "icons/Logos/stack-overflow-fill.svg",
+      "sha256": "fe910498bc544be0e9ac39fc22963ce660d4e24bf32a4277b4df2d83bdffca79"
+    },
+    {
+      "resource": "ic_remix_codepen_fill.xml",
+      "source": "icons/Logos/codepen-fill.svg",
+      "sha256": "ee6a2fd426fa1797a96699e38d3a638241749b872f0e1e5d8b3511dafe12fb62"
+    },
+    {
+      "resource": "ic_remix_product_hunt_fill.xml",
+      "source": "icons/Logos/product-hunt-fill.svg",
+      "sha256": "a333c7c0bfbf5ee5a1d2a808fe68a540d07d9de22e657510b2f97ee1b9ccfbd5"
+    },
+    {
+      "resource": "ic_remix_notion_fill.xml",
+      "source": "icons/Logos/notion-fill.svg",
+      "sha256": "bf075687ce719bed2b094136c296b61975500bcff5720c463b017f594225cfdf"
+    },
+    {
+      "resource": "ic_remix_zcool_fill.xml",
+      "source": "icons/Logos/zcool-fill.svg",
+      "sha256": "badbb1b1f662c8286034f6ff1a6613cdf467147a01dde2992f9972bdf50e54e3"
+    },
+    {
+      "resource": "ic_remix_figma_fill.xml",
+      "source": "icons/Logos/figma-fill.svg",
+      "sha256": "9f730583a063708f2abf6884a3e460057f8e0de41018dde5ad533cc00e493fa1"
+    },
+    {
+      "resource": "ic_remix_dribbble_fill.xml",
+      "source": "icons/Logos/dribbble-fill.svg",
+      "sha256": "398741b2897798b7a34a2c2fb8d285caa1f07c1482f3218965b3349380a62346"
+    },
+    {
+      "resource": "ic_remix_behance_fill.xml",
+      "source": "icons/Logos/behance-fill.svg",
+      "sha256": "efe558d0fb27a57fa018d008ec00a364fa7e685b7680fc2af47711a5b7d29805"
+    },
+    {
+      "resource": "ic_remix_pinterest_fill.xml",
+      "source": "icons/Logos/pinterest-fill.svg",
+      "sha256": "5fb597defed52e1506aaa908d661db2450dd60785477a287267c8e300591f7eb"
+    },
+    {
+      "resource": "ic_remix_unsplash_fill.xml",
+      "source": "icons/Logos/unsplash-fill.svg",
+      "sha256": "c3783792baffd83d0e01b37a22644d415427e79be0d3f966767d3327147e56c9"
+    },
+    {
+      "resource": "ic_remix_flickr_fill.xml",
+      "source": "icons/Logos/flickr-fill.svg",
+      "sha256": "91e4c83dfdd957bae333e20dfa6603e87a036dbd218a5bd05390c9e441fd597f"
+    },
+    {
+      "resource": "ic_remix_patreon_fill.xml",
+      "source": "icons/Logos/patreon-fill.svg",
+      "sha256": "618f200262b16515fd25af5fae35247cd78e95184d1979f2a073e27d20443bd9"
+    },
+    {
+      "resource": "ic_remix_paypal_fill.xml",
+      "source": "icons/Logos/paypal-fill.svg",
+      "sha256": "3d0cc2ec28f7406776ac5c5b20bd67f84568e2119a0578ae7592eadad953bcdd"
+    },
+    {
       "resource": "ic_remix_mail_line.xml",
       "source": "icons/Business/mail-line.svg",
       "sha256": "9120f3d8f3c235a65c2002c9f5f0b1cc19d781f723680484a36970326a4fafab"
@@ -126,6 +266,71 @@
       "resource": "ic_remix_links_line.xml",
       "source": "icons/Business/links-line.svg",
       "sha256": "52cdca232c3d82ede04898e2c7f863f54e8a9b65ca6e63c5bddfa837578bf9dc"
+    },
+    {
+      "resource": "ic_remix_book_2_fill.xml",
+      "source": "icons/Document/book-2-fill.svg",
+      "sha256": "ca0b023f8e83fe39aec37f24d46f27bdd6ad7f775021e29423e14ee303937d05"
+    },
+    {
+      "resource": "ic_remix_film_fill.xml",
+      "source": "icons/Media/film-fill.svg",
+      "sha256": "3bdfa992cfd6f9cd84359315fe451fe8efc134291d24d0022e7cb740ad1c4fa6"
+    },
+    {
+      "resource": "ic_remix_flashlight_fill.xml",
+      "source": "icons/Weather/flashlight-fill.svg",
+      "sha256": "e5e9ddc5507917b27877b529ac96514337bddd64e3494b611a89756aae17c733"
+    },
+    {
+      "resource": "ic_remix_music_2_fill.xml",
+      "source": "icons/Media/music-2-fill.svg",
+      "sha256": "70a5c81119274e9b6c0a6286afa125c15414f42d0aa3a799e8c971bebecb1221"
+    },
+    {
+      "resource": "ic_remix_mic_fill.xml",
+      "source": "icons/Media/mic-fill.svg",
+      "sha256": "8c06b1fa3ceb00f686b66ef0932afeb461a9b77bc3cc316372fbe85c06f62806"
+    },
+    {
+      "resource": "ic_remix_headphone_fill.xml",
+      "source": "icons/Media/headphone-fill.svg",
+      "sha256": "b2955f3c06eaba84504c8de7c633793ddcf89d97a80f0bd12deb228c5ce1a016"
+    },
+    {
+      "resource": "ic_remix_article_fill.xml",
+      "source": "icons/Document/article-fill.svg",
+      "sha256": "988ac46d8da3c22e8853b06373ea045181d65cc8f25ee2c57013129d9fabd719"
+    },
+    {
+      "resource": "ic_remix_code_s_slash_fill.xml",
+      "source": "icons/Development/code-s-slash-fill.svg",
+      "sha256": "daa927c289019fa5352855afc6c963d485158471ef390a5c390ebfacbbddf8bf"
+    },
+    {
+      "resource": "ic_remix_image_fill.xml",
+      "source": "icons/Media/image-fill.svg",
+      "sha256": "3ff53e3bc94a21b0baf9c02990dd05d635e9994345ccac65d7040098616b27fe"
+    },
+    {
+      "resource": "ic_remix_user_star_fill.xml",
+      "source": "icons/User & Faces/user-star-fill.svg",
+      "sha256": "cf26e777fcea035e2466f5e6b6a3daa9de3eff51461f8ca9c495f67bb963de2d"
+    },
+    {
+      "resource": "ic_remix_brush_fill.xml",
+      "source": "icons/Design/brush-fill.svg",
+      "sha256": "daca9837e0c2ae684181c00d14c26cebe06208c31ede9fcfd42647af04ab5785"
+    },
+    {
+      "resource": "ic_remix_hand_heart_fill.xml",
+      "source": "icons/Finance/hand-heart-fill.svg",
+      "sha256": "b5f7f9c2df088c8fed2957fac5224d698b63914cda564ccadaf0b3479dc3bc80"
+    },
+    {
+      "resource": "ic_remix_cup_fill.xml",
+      "source": "icons/Food/cup-fill.svg",
+      "sha256": "ebfd4bf904d1fc1afc0e2b8d7ba8470699ed8c2850f5e322eaf2c4fee8f94f84"
     }
   ]
 }

@@ -20,6 +20,9 @@ data class ProfileTile(val id: String = UUID.randomUUID().toString(), val kind: 
     }
 }
 
+internal val ProfileTile.isTitleOnlyText: Boolean
+    get() = kind == ProfileTileKind.TEXT && title.isNotBlank() && text.isBlank()
+
 internal fun profileTags(json: JSONObject): List<String> = json.optJSONArray("tags")?.let { list ->
     (0 until minOf(list.length(), 12)).mapNotNull { i -> (list.opt(i) as? String)?.trim()?.take(20)?.takeIf(String::isNotBlank) }.distinct()
 }.orEmpty()

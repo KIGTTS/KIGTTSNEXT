@@ -49,4 +49,22 @@ class ContactLinksEditorUiTest {
         compose.onNodeWithContentDescription("移除微信").performClick()
         compose.runOnIdle { assertEquals(listOf(ContactLink("QQ", "67890")), links) }
     }
+
+    @Test fun platformPickerSearchFindsNewServicesAndTheirGroupWithoutChangingExistingAccounts() {
+        var links by mutableStateOf(emptyList<ContactLink>())
+        compose.setContent { KigttsTheme(ThemeSettings()) { ContactLinksEditor(links) { links = it } } }
+        compose.onNodeWithText("添加联系方式").performClick()
+        compose.onNodeWithText("搜索平台").performTextInput("rednote")
+        compose.onNodeWithText("社交媒体").assertIsDisplayed()
+        compose.onNodeWithText("小红书").performClick()
+        compose.onNodeWithText("账号或链接").performTextInput("my-profile")
+        compose.onNodeWithText("保存").performClick()
+        compose.runOnIdle { assertEquals(listOf(ContactLink("小红书", "my-profile")), links) }
+        compose.onNodeWithText("添加联系方式").performClick()
+        compose.onNodeWithText("搜索平台").performTextInput("apple music")
+        compose.onNodeWithText("音视频创作").assertIsDisplayed()
+        compose.onNodeWithText("Apple Music").assertIsDisplayed()
+        compose.onNodeWithText("取消").performClick()
+        compose.runOnIdle { assertEquals(1, links.size) }
+    }
 }

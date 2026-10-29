@@ -6,8 +6,18 @@ $utf8 = [Text.UTF8Encoding]::new($false)
 $icons = @('wechat-fill','qq-fill','weibo-fill','bilibili-fill','tiktok-fill','twitter-x-fill',
     'twitter-fill','telegram-fill','discord-fill','facebook-fill','instagram-fill','youtube-fill',
     'github-fill','line-fill','whatsapp-fill','zhihu-fill','linkedin-fill','mastodon-fill',
-    'bluesky-fill','threads-fill','reddit-fill','steam-fill','snapchat-fill')
-$sources = @($icons | ForEach-Object { "icons/Logos/$_.svg" }) + @('icons/Business/mail-line.svg','icons/Business/links-line.svg')
+    'bluesky-fill','threads-fill','reddit-fill','steam-fill','snapchat-fill',
+    'douban-fill','baidu-fill','wechat-2-fill','wechat-channels-fill','netease-cloud-music-fill',
+    'spotify-fill','soundcloud-fill','twitch-fill','vimeo-fill','yuque-fill','medium-fill','tumblr-fill',
+    'wordpress-fill','gitlab-fill','gitee-fill','stack-overflow-fill','codepen-fill','product-hunt-fill',
+    'notion-fill','zcool-fill','figma-fill','dribbble-fill','behance-fill','pinterest-fill','unsplash-fill',
+    'flickr-fill','patreon-fill','paypal-fill')
+$sources = @($icons | ForEach-Object { "icons/Logos/$_.svg" }) + @(
+    'icons/Business/mail-line.svg','icons/Business/links-line.svg','icons/Document/book-2-fill.svg',
+    'icons/Media/film-fill.svg','icons/Weather/flashlight-fill.svg','icons/Media/music-2-fill.svg',
+    'icons/Media/mic-fill.svg','icons/Media/headphone-fill.svg','icons/Document/article-fill.svg',
+    'icons/Development/code-s-slash-fill.svg','icons/Media/image-fill.svg','icons/User & Faces/user-star-fill.svg',
+    'icons/Design/brush-fill.svg','icons/Finance/hand-heart-fill.svg','icons/Food/cup-fill.svg')
 $rows = @()
 foreach ($source in $sources) {
     $url = "https://raw.githubusercontent.com/Remix-Design/RemixIcon/$Revision/$source"

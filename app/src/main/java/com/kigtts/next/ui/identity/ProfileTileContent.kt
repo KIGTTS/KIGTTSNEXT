@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.*
@@ -21,6 +23,13 @@ import java.io.File
     if (tile.kind == ProfileTileKind.TITLE) {
         Text(tile.title, Modifier.padding(start = if (editing) 36.dp else 4.dp, top = 4.dp, end = 4.dp),
             style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis); return
+    }
+    if (tile.isTitleOnlyText) {
+        Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Text(tile.title, Modifier.fillMaxWidth(), style = MaterialTheme.typography.titleLarge.copy(lineBreak = LineBreak.Heading),
+                textAlign = TextAlign.Center, maxLines = tile.rows * 2, overflow = TextOverflow.Ellipsis)
+        }
+        return
     }
     val hasIcon = tile.kind == ProfileTileKind.CONTACT || tile.kind == ProfileTileKind.LINK
     val mode = if (hasIcon && tile.columns == 1 && tile.rows == 1) 0 else if (tile.rows == 1) 1 else 2

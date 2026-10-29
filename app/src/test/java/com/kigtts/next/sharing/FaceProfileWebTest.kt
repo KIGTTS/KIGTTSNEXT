@@ -16,6 +16,29 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FaceProfileWebTest {
+    @Test fun titleOnlyTextTilesUseCenteredLargerTypeWithoutAnEmptyBodyOrChangingHeadings() {
+        val tiles = listOf(ProfileTile(id = "short", title = "你好"),
+            ProfileTile(id = "tall", title = "很高兴认识你", text = " \n", rows = 2),
+            ProfileTile(id = "heading", kind = ProfileTileKind.TITLE, title = "标题"))
+        val json = profile().put("tiles", profileTileJson(tiles))
+        val html = faceWebTiles(PublicIdentityProfile.from(json), "./", emptyList()) { "" }
+        assertEquals(2, Regex("tile-text-title-only").findAll(html).count())
+        assertTrue(html.contains("--tile-title-lines:4"))
+        assertTrue(html.contains("<strong>你好</strong></section>"))
+        assertTrue(html.contains("tile-title\""))
+        assertTrue(faceTileStyles.contains("text-align:center"))
+        assertTrue(faceTileStyles.contains("font-size:22px"))
+    }
+
+    @Test fun everyContactPlatformHasABundledVectorThatAlsoRendersInTheSharedWebPage() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val icons = FaceWebIcons(app)
+        SocialPlatform.entries.forEach { platform ->
+            val svg = icons.icon(ContactLink(platform.displayName, "account"))
+            assertTrue(platform.displayName, svg.contains("<svg ") && svg.contains("<path "))
+        }
+    }
+
     private fun profile() = JSONObject().put("nickname", "你好，KIGTTS").put("bio", "很高兴认识你。\n这里是我的联系方式。")
         .put("contacts", JSONArray().put(JSONObject().put("label", "QQ").put("value", "12345678"))
             .put(JSONObject().put("label", "GitHub").put("value", "https://github.com/KIGTTS"))
