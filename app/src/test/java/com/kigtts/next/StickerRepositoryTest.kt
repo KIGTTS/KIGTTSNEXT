@@ -42,6 +42,19 @@ class StickerRepositoryTest {
         broker=host.forPlugin("test.stickers",capabilities)
     }
     @After fun end() {Dispatchers.resetMain()}
+    @Test fun cleanInstallAndRestartNeverSeedPhotosOrBringBackDeletedCards() = runTest {
+        assertTrue(CardStore(app).load().isEmpty())
+        val cards = CardRepository(app,repo)
+        cards.migrateLegacy()
+        assertTrue(repo.cards.value.isEmpty())
+        assertEquals(listOf(DEFAULT_POLAROID_ALBUM_ID),repo.albums.value.map { it.id })
+        val card = cards.create(PolaroidCard(title="我的照片"))
+        cards.remove(card.id)
+        val restored = StickerRepository(app,paths,media)
+        CardRepository(app,restored).migrateLegacy()
+        assertTrue(restored.cards.value.isEmpty())
+        assertTrue(restored.legacyMigrated)
+    }
     private fun png(target:File,color:Int=Color.GREEN):File {
         target.parentFile!!.mkdirs();val image=Bitmap.createBitmap(24,12,Bitmap.Config.ARGB_8888);image.eraseColor(color)
         target.outputStream().use {assertTrue(image.compress(Bitmap.CompressFormat.PNG,100,it))};image.recycle();return target

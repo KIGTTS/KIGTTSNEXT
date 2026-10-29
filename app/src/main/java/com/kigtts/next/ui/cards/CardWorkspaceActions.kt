@@ -35,9 +35,9 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
         albumId: String = CardRepository.DEFAULT_ALBUM) {
         if (busy) { selection.release(); message("正在处理图片，请稍后重试"); return }
         startWork({
-            val image = stickers.importImage(selection.uri)
+            val image = if (asSticker) stickers.importImage(selection.uri) else stickers.importPhoto(selection.uri)
             if (!asSticker) {
-                val facts = PolaroidPhotoFacts.enrich(context, PolaroidPhotoFacts.read(stickers.imageFile(image.id), selection.fromCamera), cards.designs.requiredFields())
+                val facts = PolaroidPhotoFacts.enrichCapture(context, PolaroidPhotoFacts.read(stickers.imageFile(image.id), selection.fromCamera), cards.designs.requiredFields())
                 cards.createPhoto(PolaroidCard(title = "", imageId = image.id), facts, albumId).id
             }
             else {

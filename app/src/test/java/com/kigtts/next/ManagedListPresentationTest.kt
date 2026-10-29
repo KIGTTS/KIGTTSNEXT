@@ -45,7 +45,7 @@ class ManagedListPresentationTest {
         PageAction("settings", "音频设置", PluginIcon.SETTINGS), PageAction("export", "导出语音包", PluginIcon.EXPORT),
         PageAction("delete", "删除语音包", symbol = "delete"))
 
-    @Test fun secondaryActionsStayBelowTheHeaderAndDoNotSelectTheVoice() {
+    @Test fun secondaryActionsRevealBesideTheRowAndDoNotSelectTheVoice() {
         val calls = mutableListOf<String>()
         var selected by mutableStateOf(false)
         compose.setContent { KigttsTheme(ThemeSettings()) { ProvideButtonFeedback(true) {
@@ -55,13 +55,21 @@ class ManagedListPresentationTest {
         } } }
         val radio = compose.onNodeWithTag("managed-select/voice", useUnmergedTree = true)
         radio.assertIsNotSelected()
-        val button = compose.onNodeWithTag("managed-action/voice/export", useUnmergedTree = true)
-        assertTrue(button.getUnclippedBoundsInRoot().top >= radio.getUnclippedBoundsInRoot().bottom)
+        val row = compose.onNodeWithTag("managed-item/voice")
+        val bounds = row.getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("reveal-action/voice/delete").assertDoesNotExist()
+        compose.onNodeWithTag("managed-more/voice").performClick()
+        val button = compose.onNodeWithTag("reveal-action/voice/export", useUnmergedTree = true)
+        assertTrue(button.getUnclippedBoundsInRoot().top < radio.getUnclippedBoundsInRoot().bottom)
+        val delete = compose.onNodeWithTag("reveal-action/voice/delete").getUnclippedBoundsInRoot()
+        assertTrue("M3E side actions should be tall capsules", delete.bottom - delete.top > delete.right - delete.left)
+        assertTrue(delete.left > button.getUnclippedBoundsInRoot().left)
+        assertEquals(bounds.bottom - bounds.top, row.getUnclippedBoundsInRoot().bottom - row.getUnclippedBoundsInRoot().top)
+        compose.onRoot().captureRoboImage("build/previews/managed-voice-list-light.png")
         button.performClick()
         assertEquals(listOf("export"), calls); radio.assertIsNotSelected()
         radio.performClick(); radio.assertIsSelected(); assertEquals(listOf("export", "use"), calls)
-        compose.onNodeWithTag("managed-more/voice").assertDoesNotExist()
-        compose.onRoot().captureRoboImage("build/previews/managed-voice-list-light.png")
+        compose.onNodeWithTag("managed-more/voice").assertIsDisplayed()
     }
 
     @Test fun narrowListsOverflowOnlyTheActionsThatDoNotFitAndAdaptWhenWidened() {
@@ -73,14 +81,17 @@ class ManagedListPresentationTest {
                     invoke = { action, _ -> calls += action })
             } } }
         } } }
-        compose.onNodeWithTag("managed-action/voice/pin").assertIsDisplayed()
-        compose.onNodeWithTag("managed-action/voice/delete").assertDoesNotExist()
+        compose.onNodeWithTag("reveal-action/voice/pin").assertDoesNotExist()
+        compose.onNodeWithTag("reveal-action/voice/delete").assertDoesNotExist()
         compose.onNodeWithTag("managed-more/voice").performClick()
-        compose.onNodeWithText("删除语音包").performClick()
-        assertEquals(listOf("delete"), calls)
+        compose.onNodeWithTag("reveal-action/voice/delete").assertIsDisplayed()
+        compose.onNodeWithTag("reveal-overflow/voice").performClick()
+        compose.onNodeWithText("导出语音包").performClick()
+        assertEquals(listOf("export"), calls)
         compose.runOnIdle { width = 393.dp }
-        compose.onNodeWithTag("managed-more/voice").assertDoesNotExist()
-        compose.onNodeWithTag("managed-action/voice/delete").assertIsDisplayed()
+        compose.onNodeWithTag("managed-more/voice").performClick()
+        compose.onNodeWithTag("reveal-overflow/voice").assertDoesNotExist()
+        compose.onNodeWithTag("reveal-action/voice/delete").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/previews/managed-voice-list-dark.png")
     }
 
@@ -98,8 +109,8 @@ class ManagedListPresentationTest {
                 selected = index == 2, selection = ManagementSelection("use/$index"), actions = actions) }, "order"), invoke = { _, _ -> })
         } } }
         compose.onNodeWithTag("managed-select/voice2", useUnmergedTree = true).assertIsDisplayed().assertIsSelected()
-        compose.onNodeWithTag("managed-action/voice2/export", useUnmergedTree = true).assertIsDisplayed()
-        compose.onNodeWithTag("managed-more/voice2").assertDoesNotExist()
+        compose.onNodeWithTag("managed-more/voice2").performClick()
+        compose.onNodeWithTag("reveal-action/voice2/export", useUnmergedTree = true).assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/previews/managed-voice-list-landscape.png")
     }
 
@@ -112,5 +123,41 @@ class ManagedListPresentationTest {
         compose.onNodeWithTag("managed-select/off", useUnmergedTree = true).assertIsNotEnabled()
         compose.onNodeWithTag("managed-item/off").performClick()
         assertEquals(listOf("details"), calls)
+    }
+
+    @Test fun swipingRevealsWithoutExecutingAndPinningIsOnlyAvailableWhenSupported() {
+        val calls = mutableListOf<String>()
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            ManagedItemList(ManagementList("swipe", listOf(
+                ManagementItem("a", "支持置顶", primaryAction = "details", actions = actions),
+                ManagementItem("b", "普通条目", actions = actions.filterNot { it.icon == PluginIcon.PIN }))),
+                invoke = { action, _ -> calls += action })
+        } }
+        compose.onNodeWithTag("reveal-row/a").performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("reveal-action/a/delete").assertIsDisplayed()
+        assertTrue("Even a full swipe cannot delete or activate an item", calls.isEmpty())
+        compose.onNodeWithTag("managed-more/b").performClick()
+        compose.onNodeWithTag("reveal-action/a/delete").assertDoesNotExist()
+        compose.onNodeWithTag("reveal-action/b/delete").assertIsDisplayed()
+        compose.onNodeWithTag("managed-more/b").performClick()
+        val closed = compose.onNodeWithTag("managed-item/b").getUnclippedBoundsInRoot()
+        compose.onNodeWithTag("reveal-row/b").performTouchInput { swipeRight() }
+        assertEquals(closed, compose.onNodeWithTag("managed-item/b").getUnclippedBoundsInRoot())
+        compose.onNodeWithTag("reveal-row/a").performTouchInput { swipeRight() }
+        compose.onNodeWithTag("reveal-action/a/pin").assertIsDisplayed().performClick()
+        assertEquals(listOf("pin"), calls)
+        compose.onNodeWithTag("reveal-action/a/pin").assertDoesNotExist()
+    }
+
+    @Test fun filterTabsHaveCompactTopInsetAndActionsDoNotAddASecondButtonRow() {
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            ManagedItemList(ManagementList("tabs", listOf(ManagementItem("voice", "声音", actions = actions)),
+                filters = listOf(ManagementFilter("all", "全部", "all", true))), invoke = { _, _ -> })
+        } }
+        val list = compose.onNodeWithTag("managed-list/tabs").getUnclippedBoundsInRoot()
+        val tab = compose.onNodeWithText("全部").getUnclippedBoundsInRoot()
+        assertTrue("Filter label must begin within the first 24dp", (tab.top - list.top).value <= 24f)
+        val row = compose.onNodeWithTag("managed-item/voice").getUnclippedBoundsInRoot()
+        assertEquals(80f, (row.bottom - row.top).value, 1f)
     }
 }

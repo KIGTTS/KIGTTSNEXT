@@ -1,0 +1,9 @@
+Offline nearby-city names and coordinates are derived from GeoNames cities15000.
+Source: https://download.geonames.org/export/dump/cities15000.zip
+Copyright GeoNames contributors. Licensed under Creative Commons Attribution 4.0:
+https://creativecommons.org/licenses/by/4.0/
+
+KIGTTS changes: regional subset, compact columns and selected Chinese alternate names.
+Snapshot, source SHA-256 and generated-data SHA-256: photo-facts/source.json.
+This index identifies a nearby city only, not an administrative boundary or exact address.
+The original data is supplied as is without warranty of accuracy or completeness.

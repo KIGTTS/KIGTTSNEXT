@@ -12,16 +12,20 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.testTag
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.next.ui.components.rememberDragFeedback
 import com.kigtts.next.ui.navigation.RegisterPageLoading
 import com.kigtts.plugin.api.*
@@ -37,6 +41,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     val lazy = rememberLazyGridState()
     RegisterPageLoading(busy)
     val density = androidx.compose.ui.platform.LocalDensity.current
+    var headerHeight by remember { mutableIntStateOf(0) }
+    var revealedItem by remember(list.id) { mutableStateOf<String?>(null) }
+    val topInset = if (list.filters.isEmpty()) 16.dp else 4.dp
     val horizontalPadding = with(density) { 16.dp.toPx() }
     val external = list.items.map { it.id }
     var order by remember(list.id) { mutableStateOf(external) }
@@ -63,6 +70,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     var wasBusy by remember { mutableStateOf(false) }
     LaunchedEffect(busy) { if (!busy && wasBusy && drag.key == null) order = external; wasBusy = busy }
     val offset by rememberReorderDrop(drag)
+    LaunchedEffect(lazy.isScrollInProgress, drag.key) {
+        if (lazy.isScrollInProgress || drag.key != null) revealedItem = null
+    }
     val elevation by animateDpAsState(if (drag.key != null && !drag.settling) 8.dp else 0.dp,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "managed-drop-elevation")
     fun moveAccessible(id: String, delta: Int) {
@@ -72,17 +82,16 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
     Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag) else Modifier)) {
-        LazyVerticalGrid(GridCells.Fixed(columns), Modifier.fillMaxSize(), state = lazy, contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(),
+        val pagePadding = com.kigtts.next.ui.navigation.pageContentPadding()
+        LazyVerticalGrid(GridCells.Fixed(columns), Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(
+            start = 16.dp, end = 16.dp, top = topInset,
+            bottom = pagePadding.calculateBottomPadding()),
             verticalArrangement = Arrangement.spacedBy(2.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            item("management-header", span = { GridItemSpan(maxLineSpan) }) { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item("management-header", span = { GridItemSpan(maxLineSpan) }) { Column(Modifier.onSizeChanged { headerHeight = it.height }, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 header()
                 if (list.filters.isNotEmpty()) LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(list.filters, key = { it.id }) { filter -> FilterChip(selected = filter.selected,
                     onClick = feedbackClick { if(interactive)invoke(filter.action, emptyMap()) }, label = { Text(filter.label) }) }
-                }
-                AnimatedVisibility(list.items.isEmpty(), enter = fadeIn(tween(180)) + expandVertically(tween(220)),
-                    exit = fadeOut(tween(120)) + shrinkVertically(tween(220))) {
-                    Text(list.emptyText, Modifier.padding(vertical = 16.dp))
                 }
             } }
             val orderedItems = order.mapNotNull(data::get)
@@ -94,9 +103,12 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                     { action, inputs -> if (interactive) invoke(action, inputs) }, { if(interactive)moveAccessible(item.id, it) },
                     catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
                     compactActions = compactActions,
+                    revealActive = revealedItem == item.id, activateReveal = { revealedItem = item.id },
                     position = if (columns == 1) managedItemPosition(orderedItems, index) else managedItemPosition(orderedItems.filterIndexed { i, _ -> i % columns == index % columns }, index / columns))
             }
         }
+        EmptyContent(list.items.isEmpty() && !busy, Icons.AutoMirrored.Filled.ListAlt, list.emptyText,
+            Modifier.padding(top = with(density) { headerHeight.toDp() } + topInset, bottom = 24.dp))
         val draggedItem = drag.key?.let(data::get)
         val ordered = order.mapNotNull(data::get)
         val draggedPosition = ordered.indexOfFirst { it.id == draggedItem?.id }

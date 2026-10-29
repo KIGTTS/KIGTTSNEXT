@@ -12,7 +12,8 @@ import java.util.UUID
 data class CapturedCardPhoto(val cardId: String, val imageId: String, val originalImageId: String,
     val frameStyleId: String, val version: Long, val photoX: Double = .5, val photoY: Double = .5, val photoZoom: Double = 1.0)
 data class CardPrintRequest(val requestId: String, val card: PolaroidCard, val cards: List<PolaroidCard> = listOf(card))
-data class CardFrameRequest(val requestId: String, val original: File, val display: File, val motion: CameraMotionClip? = null)
+data class CardFrameRequest(val requestId: String, val original: File, val display: File, val motion: CameraMotionClip? = null,
+    val fromCamera: Boolean = false)
 
 /** Captures are delivered into a retained editor draft or create a new design exactly once. */
 class CardCaptureCoordinator(private val cards: CardRepository, private val stickers: StickerRepository,
@@ -60,9 +61,9 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         val request = printing.value ?: return
         if (!cameraRetained(request.requestId, destination)) printing.value = null
     }
-    fun prepareFraming(destination: Destination.CardCamera, original: File, display: File, motion: CameraMotionClip? = null): Boolean {
+    fun prepareFraming(destination: Destination.CardCamera, original: File, display: File, motion: CameraMotionClip? = null, fromCamera: Boolean = false): Boolean {
         if (state().destination != destination || pending || printing.value != null || framing.value != null) return false
-        framing.value = CardFrameRequest(destination.requestId, original, display, motion)
+        framing.value = CardFrameRequest(destination.requestId, original, display, motion, fromCamera)
         return true
     }
     fun cancelFraming(requestId: String) {
@@ -74,7 +75,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     fun confirmFraming(destination: Destination.CardCamera, format: PolaroidFormat, x: Double, y: Double, zoom: Double): Boolean {
         val frame = framing.value?.takeIf { it.requestId == destination.requestId } ?: return false
         require(x in 0.0..1.0 && y in 0.0..1.0 && zoom in 1.0..8.0)
-        return captured(destination, frame.original, frame.display, format, print = destination.cardId == null, motion = frame.motion, fromCamera = false, photoX = x, photoY = y, photoZoom = zoom)
+        return captured(destination, frame.original, frame.display, format, print = destination.cardId == null, motion = frame.motion, fromCamera = frame.fromCamera, photoX = x, photoY = y, photoZoom = zoom)
     }
     private fun cameraRetained(requestId: String, destination: Destination): Boolean =
         destination is Destination.CardCamera && destination.requestId == requestId && destination.cardId == null ||
@@ -159,7 +160,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                 val frameStyleId = "instax.${format.name.lowercase()}.classic"
                 if (state().destination != destination) return@launch
                 if (destination.cardId == null) {
-                    val facts = PolaroidPhotoFacts.enrich(stickers.context,
+                    val facts = PolaroidPhotoFacts.enrichCapture(stickers.context,
                         withContext(Dispatchers.IO) { PolaroidPhotoFacts.read(original, fromCamera = fromCamera) }, cards.designs.requiredFields())
                     val card = withContext(Dispatchers.IO) {
                         synchronized(stickers) {

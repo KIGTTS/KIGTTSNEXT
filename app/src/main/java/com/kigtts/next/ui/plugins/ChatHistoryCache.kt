@@ -9,6 +9,11 @@ class ChatHistoryCache {
     private val conversations = linkedMapOf<String, LinkedHashMap<String, ChatMessage>>()
     fun merge(key: String, chat: PageBlock.Chat): List<ChatMessage> {
         if (chat.historyAction == null) return chat.messages
+        // A confirmed empty conversation must not resurrect cached messages after clearing.
+        if (chat.historyTotal == 0 && chat.messages.isEmpty() && !chat.running) {
+            conversations.remove(key); expanded.remove(key)
+            return emptyList()
+        }
         val messages = conversations.getOrPut(key) { linkedMapOf() }
         chat.messages.forEach { messages[it.id] = it }
         if (key !in expanded && messages.size > 100) {

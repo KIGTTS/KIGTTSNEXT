@@ -63,7 +63,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
                     shot = selected.photo
                     if (model.state.value.destination == destination) {
                         selected.warning?.let(model::message)
-                        delivered = if (selection.fromCamera) model.cardCapture.prepareFraming(destination, selected.photo.original, selected.photo.displayFile, selected.photo.motion)
+                        delivered = if (selection.fromCamera) model.cardCapture.prepareFraming(destination, selected.photo.original, selected.photo.displayFile, selected.photo.motion, fromCamera = true)
                         else model.cardCapture.captured(destination, selected.photo.original, selected.photo.displayFile,
                             selected.photo.format, print = destination.cardId == null, motion = selected.photo.motion, fromCamera = false)
                     }

@@ -2,15 +2,12 @@
 package com.kigtts.next.sharing
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -46,19 +43,11 @@ internal fun FaceShareHost(model: AppViewModel) {
         var original by remember(shown.ids) { mutableStateOf(false) }
         var composed by remember(shown.ids) { mutableStateOf(true) }
         LaunchedEffect(shown.mode) { if (shown.mode == FaceMode.RECEIVE) permission(true) { controller.receive() } }
-        ModalBottomSheet(controller::hide, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
-            Column(Modifier.fillMaxWidth().heightIn(max = 720.dp).verticalScroll(rememberScrollState())
-                .navigationBarsPadding().padding(horizontal = 24.dp).padding(bottom = 24.dp).testTag("face-share"),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (shown.mode == FaceMode.RECEIVE) "面对面接收" else if (shown.personal) "面对面分享名片" else "面对面返图", Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall)
-                    ToolButton("关闭", Icons.Default.Close, controller::hide, colors = compactPlainIconColors())
-                }
+        FaceShareSheet(if (shown.mode == FaceMode.RECEIVE) "面对面接收" else if (shown.personal) "面对面分享名片" else "面对面返图", controller::hide) {
                 when (shown.mode) {
                     FaceMode.CHOOSE -> {
                         if (shown.personal) identities.firstOrNull()?.let {
                             com.kigtts.next.ui.identity.PersonalCardView(it, model.stickers, Modifier.fillMaxWidth(), interactive = false)
-                            FaceProfileContent(it.publicJson(), showHeader = false, image = { id -> com.kigtts.next.identity.profileImageFile(model.stickers, id) })
                         } else {
                             Text("已选 ${shown.ids.size} 张照片", color = MaterialTheme.colorScheme.onSurfaceVariant)
                             FaceFormatSwitch("原图", "原始清晰度", Icons.Default.Image, original, !busy) { original = it }
@@ -106,14 +95,12 @@ internal fun FaceShareHost(model: AppViewModel) {
                         Text("请让对方打开“面对面返图”，点选你的头像。")
                         identities.firstOrNull()?.let {
                             com.kigtts.next.ui.identity.PersonalCardView(it, model.stickers, Modifier.fillMaxWidth(), interactive = false)
-                            FaceProfileContent(it.publicJson(), showHeader = false, image = { id -> com.kigtts.next.identity.profileImageFile(model.stickers, id) })
                         }
                     }
                 }
                 if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
                 if (busy) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
                 if (shown.mode != FaceMode.CHOOSE) TextButton(feedbackClick(controller::stop), Modifier.fillMaxWidth()) { Text("结束分享") }
-            }
         }
     }
     if (panel != null) peers.firstOrNull { it.id == detailPeer }?.let { peer ->

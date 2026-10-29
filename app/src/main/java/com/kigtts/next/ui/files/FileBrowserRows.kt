@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.MotionIconButton
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.EmptyContent
 
 internal data class BrowserFile(val path: String, val name: String, val directory: Boolean,
     val summary: String = "", val icon: ImageVector = if (directory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile)
@@ -35,7 +36,8 @@ internal fun FileBrowserRows(items: List<BrowserFile>, selected: List<String>, e
     select: (String) -> Unit, open: (BrowserFile) -> Unit, action: (BrowserFile, FileAction) -> Unit,
     modifier: Modifier = Modifier, tagPrefix: String = "file", extra: (BrowserFile) -> List<FileMenuAction> = { emptyList() },
     showMenu: Boolean = true, emptyText: String = "这里还没有文件") {
-    LazyColumn(modifier, contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Box(modifier) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(items, key = { it.path }) { item ->
             val selectedColor by animateColorAsState(if (item.path in selected) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.surfaceContainer, tween(120), label = "file-selection")
@@ -62,7 +64,8 @@ internal fun FileBrowserRows(items: List<BrowserFile>, selected: List<String>, e
                 }
             }
         }
-        if (items.isEmpty()) item { Text(emptyText, Modifier.padding(24.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+    EmptyContent(items.isEmpty(), Icons.Default.FolderOpen, emptyText)
     }
 }
 

@@ -152,6 +152,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
     }
     @Synchronized fun cardCreatedAt(id:String):Long=creationTimes.get(id)
     fun importImage(uri:Uri):StickerImage=resources.import(uri)
+    suspend fun importPhoto(uri:Uri):StickerImage=resources.import(openPhotoSource(context,uri))
     fun importMedia(mediaId:String):StickerImage=resources.importMedia(mediaId)
     fun importResource(source:File):StickerImage=resources.import(source.inputStream())
     fun imageFile(id:String):File?=resources.file(id)

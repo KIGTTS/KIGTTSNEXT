@@ -54,8 +54,8 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
         if (groups.size > 1) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             (listOf("") + groups).forEach { value -> FilterChip(group == value, feedbackClick { group = value }, label = { Text(value.ifBlank { "全部" }) }) }
         }
-        if (visible.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("还没有作品") }
-        LazyVerticalGrid(GridCells.Adaptive(112.dp), Modifier.weight(1f).fillMaxWidth()
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+        LazyVerticalGrid(GridCells.Adaptive(112.dp), Modifier.fillMaxSize()
             .burstRangeSelection(grid, multiple && preview == null, visible.indices.filter { visible[it].id in selected }) { indices ->
                 val hidden = selected.filter { id -> visible.none { it.id == id } }
                 selected = (hidden + indices.mapNotNull { visible.getOrNull(it)?.id }).distinct().take(64)
@@ -67,6 +67,8 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
                     BurstPhotoCheck(entry.id in selected, true, { toggle(entry.id) }, Modifier.align(Alignment.TopEnd))
                 }
             } }
+        }
+        EmptyContent(visible.isEmpty(), Icons.Default.Collections, "还没有作品")
         }
     } }
     preview?.let { id ->

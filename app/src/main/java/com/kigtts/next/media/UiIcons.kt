@@ -35,6 +35,16 @@ class UiIcons(private val context: Context, private val root: File) {
         }.getOrNull()?.also { cache.put(id, it) }
     }
     companion object {
+        fun renderSvgPicture(text: String, size: Int = 256): android.graphics.Picture {
+            require(text.toByteArray(Charsets.UTF_8).size <= 512 * 1024 && size in 24..2048)
+            validateSvg(text)
+            val svg = SVG.getFromString(text)
+            svg.setDocumentWidth(size.toFloat()); svg.setDocumentHeight(size.toFloat())
+            return android.graphics.Picture().apply {
+                val canvas = beginRecording(size, size)
+                try { svg.renderToCanvas(canvas) } finally { endRecording() }
+            }
+        }
         fun renderSvg(text: String, size: Int): Bitmap {
             require(text.toByteArray(Charsets.UTF_8).size <= 512 * 1024 && size in 24..2048)
             validateSvg(text)

@@ -22,13 +22,8 @@ internal enum class CardMenuAction(val label: String) { COPY("复制拍立得"),
 internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) -> File?, enabled: Boolean,
     preview: (PolaroidCard) -> Unit, edit: (PolaroidCard) -> Unit, share: (PolaroidCard) -> Unit, action: (PolaroidCard, CardMenuAction) -> Unit,
     modifier: Modifier = Modifier, frames: List<PolaroidFrameStyle> = emptyList()) {
-    if (cards.isEmpty()) Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Badge, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("用一张照片介绍自己", style = MaterialTheme.typography.bodyLarge)
-            Text("拍照、选图，或从空白拍立得开始", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    } else LazyVerticalGrid(GridCells.Adaptive(270.dp), modifier.fillMaxSize().testTag("cards-grid"),
+    Box(modifier.fillMaxSize()) {
+    LazyVerticalGrid(GridCells.Adaptive(270.dp), Modifier.fillMaxSize().testTag("cards-grid"),
         contentPadding = PaddingValues(start = 22.dp, top = 18.dp, end = 22.dp, bottom = 104.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         items(cards, key = { it.id }) { card ->
@@ -54,5 +49,7 @@ internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) ->
                 }
             }
         }
+    }
+    EmptyContent(cards.isEmpty(), Icons.Default.Collections, "从一张照片开始", description = "下滑拍照，也可在相机中选图")
     }
 }

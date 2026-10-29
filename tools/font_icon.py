@@ -26,7 +26,6 @@ def font_icon(data, text):
         left, bottom, right, top = bounds.bounds
         scale = min(92 / (right - left), 88 / (top - bottom))
         tx, ty = 64 - (left + right) * scale / 2, 64 + (bottom + top) * scale / 2
-        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">'
-                '<rect width="128" height="128" rx="24" fill="#E0EFF0"/>'
-                f'<g fill="#145B60" transform="matrix({scale:.8f} 0 0 {-scale:.8f} {tx:.6f} {ty:.6f})">'
+        return ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="#ffffff">'
+                f'<g fill="#ffffff" transform="matrix({scale:.8f} 0 0 {-scale:.8f} {tx:.6f} {ty:.6f})">'
                 + "".join(paths) + '</g></svg>\n')

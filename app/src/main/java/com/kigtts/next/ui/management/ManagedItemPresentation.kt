@@ -31,7 +31,7 @@ internal fun managedItemPosition(items: List<ManagementItem>, index: Int): Setti
 
 @Composable internal fun managedItemShape(position: SettingPosition, elevated: Boolean): RoundedCornerShape {
     val density = LocalDensity.current
-    val outer = MaterialTheme.shapes.medium
+    val outer = RoundedCornerShape(20.dp)
     val top = elevated || position == SettingPosition.SINGLE || position == SettingPosition.FIRST
     val bottom = elevated || position == SettingPosition.SINGLE || position == SettingPosition.LAST
     @Composable fun radius(outerPx: Float, outside: Boolean) = animateDpAsState(

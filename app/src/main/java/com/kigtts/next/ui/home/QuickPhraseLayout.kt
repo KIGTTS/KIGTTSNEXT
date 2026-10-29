@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
@@ -75,8 +77,8 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
         { if (currentRow) row.scrollBy(it) else grid.scrollBy(it) }, horizontal = singleRow)
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
     val spatial = MaterialTheme.motionScheme.fastSpatialSpec<androidx.compose.ui.unit.IntOffset>()
-    if (filtered.isEmpty()) Box(Modifier.fillMaxSize()) { Text("还没有短语，点击编辑添加。", Modifier.padding(12.dp)) }
-    else AnimatedContent(singleRow, modifier = Modifier.fillMaxSize().clipToBounds().testTag("phrases-layout-transition"),
+    Box(Modifier.fillMaxSize()) {
+    AnimatedContent(singleRow, modifier = Modifier.fillMaxSize().clipToBounds().testTag("phrases-layout-transition"),
         label = "quick-text-layout", transitionSpec = {
             val direction = if (targetState) -1 else 1
             (fadeIn(effects) + slideInVertically(spatial) { direction * it / 8 })
@@ -108,6 +110,8 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
                         .then(if (drag.key == phrase.id) Modifier.alpha(0f) else Modifier), model.mediaRepository, hidden = drag.key == phrase.id)
             }
         }
+    }
+    EmptyContent(filtered.isEmpty(), Icons.Default.TextFields, "还没有快捷文本", description = "点击编辑添加")
     }
 }
 

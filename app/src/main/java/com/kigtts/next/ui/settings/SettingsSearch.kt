@@ -54,14 +54,16 @@ internal fun searchSettings(query: String, cards: List<SettingsCard>): List<Sett
                         })
                     TextButton(feedbackClick(close)) { Text("取消") }
                 }
+                Box(Modifier.weight(1f).fillMaxWidth()) {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    if (query.isNotBlank() && results.isEmpty()) item { Text("没有找到相关设置", Modifier.padding(24.dp)) }
                     items(results, key = { it.path }) { result ->
                         SettingItem(result.title, result.path, Icons.Default.Settings, SettingPosition.SINGLE, onClick = {
                             SettingFocus.target = SettingFocus.Target(result.target); close(); open(result.destination)
                         })
                     }
+                }
+                EmptyContent(query.isNotBlank() && results.isEmpty(), Icons.Default.Search, "没有找到相关设置")
                 }
             }
         }

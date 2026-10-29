@@ -12,7 +12,10 @@ internal object WebAndroidPermissions {
     val pending = MutableStateFlow<Request?>(null)
     private val gate = Mutex()
     suspend fun request(context: Context, permissions: List<String>): Boolean = gate.withLock {
-        val needed = permissions.filter { ContextCompat.checkSelfPermission(context, it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
+        val missing = permissions.filter { ContextCompat.checkSelfPermission(context, it) != android.content.pm.PackageManager.PERMISSION_GRANTED }
+        // Android 12+ ignores a fine-only upgrade, even when coarse was granted earlier.
+        val pairLocation = android.Manifest.permission.ACCESS_FINE_LOCATION in missing && android.Manifest.permission.ACCESS_COARSE_LOCATION in permissions
+        val needed = permissions.filter { it in missing || pairLocation && it == android.Manifest.permission.ACCESS_COARSE_LOCATION }
         if (needed.isEmpty()) return@withLock true
         val value = Request(needed); pending.value = value
         try { withTimeoutOrNull(90000) { value.result.await() } == true }

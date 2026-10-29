@@ -54,7 +54,7 @@ fun PluginsScreen(model: AppViewModel) {
         ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working,preserveColorWhenLocked=true) { importer.launch(arrayOf("*/*")) },
         ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
-    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order"), working, compactActions = true,
+    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order", emptyText = "还没有安装插件"), working, compactActions = true,
         invoke = { action, inputs ->
             val pieces = action.split('/')
             when (pieces[0]) {
@@ -76,7 +76,6 @@ fun PluginsScreen(model: AppViewModel) {
                 try { model.safeModeSession.restorePlugins() } finally { busy = false }
             } }) { Text("恢复插件") }
         }
-        if (model.pluginManager.status.isEmpty()) Text("还没有安装插件")
     }
     permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }
     about?.let { id -> InstalledPluginAbout(model, id) { about = null } }

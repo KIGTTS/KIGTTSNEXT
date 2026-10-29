@@ -1,6 +1,6 @@
 # 插件商店与包源
 
-`tools.package-store` 是独立 MIT 插件，版本 0.11.0，要求 API23。默认内置一条魔搭官方源，但不自动信任发布者或安装插件。设置中提供一个「插件商店」入口，使用主程序同一套分组、圆角、按钮与页面动效。源管理和浏览视图共用数据模型；可以浏览全部源，也可切到指定源。
+`tools.package-store` 是独立 MIT 插件，版本 0.16.8，要求 API33。默认内置一条魔搭官方源，但不自动信任发布者或安装插件。设置中提供一个「插件商店」入口，使用主程序同一套分组、圆角、按钮与页面动效。源管理和浏览视图共用数据模型；可以浏览全部源，也可切到指定源。
 
 ## 使用流程
 
@@ -119,3 +119,7 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 `kigtts://source/open?url=<编码后的HTTPS源地址>&package=<包ID>&addSource=optional` 可在添加源之前查看指定包；`addSource=required` 要求先确认添加源。旧的 `/source/add` 仍保留先添加再打开详情的行为。资源源可通过 `linkPolicy.requireAddition` 选择添加前置，通过 `linkPolicy.recommendAfterInstall` 在导入完成后邀请添加来源；链接不自动安装包。
 
 `CARD_FRAME` 单独表示名片边框，和拍立得 `FRAME` 分开管理。参数贴纸支持数值、颜色、文本和选项，也可包含已授权字体；名片、拍立得与画板选择器统一提供单选、多选及预览。官方资源图的地址附带内容摘要并固定已校验提交，避免分支缓存返回旧图或404。
+
+### 随主题色显示的 SVG 图标
+
+源和包均可注册 `"icon": {"image": "glyph", "monochrome": true}`，其中 `glyph` 为 assets 中已校验的受限 SVG。该 SVG 的透明度决定形状，前景由当前主题提供；请将留白写进 viewBox，不绘制底板。省略 monochrome 时保留原图颜色，透明白色旧 SVG 仍兼容自动染色。位图和详情预览图保持原色。宿主接口对应 API33 的 PluginResource.monochrome。

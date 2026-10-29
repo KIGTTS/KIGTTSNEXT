@@ -21,11 +21,12 @@ import java.util.Date
 @Composable internal fun SketchGalleryScreen(repository: SketchAlbumRepository, open: (String) -> Unit,
     close: () -> Unit, message: (String) -> Unit) {
     var works by remember { mutableStateOf<List<SketchArtwork>>(emptyList()) }
+    var loaded by remember { mutableStateOf(false) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope(); val context = LocalContext.current
-    LaunchedEffect(repository) { works = withContext(Dispatchers.IO) { repository.list() } }
+    LaunchedEffect(repository) { works = withContext(Dispatchers.IO) { repository.list() }; loaded = true }
     fun remove(id: String) {
         if (busy) return
         busy = true
@@ -38,9 +39,8 @@ import java.util.Date
         }
     }
     PageScaffold("画板作品", close, backLabel = "返回画板") {
-        if (works.isEmpty()) Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.Draw, null); Text("还没有保存的作品", style = MaterialTheme.typography.titleMedium)
-        } else LazyVerticalGrid(GridCells.Adaptive(150.dp), Modifier.fillMaxSize().testTag("sketch-album"),
+        Box(Modifier.fillMaxSize()) {
+        LazyVerticalGrid(GridCells.Adaptive(150.dp), Modifier.fillMaxSize().testTag("sketch-album"),
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(works, key = { it.id }) { artwork ->
                 Card(onClick = feedbackClick { selectedId = artwork.id }, enabled = !busy,
@@ -50,6 +50,8 @@ import java.util.Date
                         Modifier.padding(12.dp), style = MaterialTheme.typography.labelMedium)
                 }
             }
+        }
+        EmptyContent(loaded && works.isEmpty(), Icons.Default.Draw, "还没有保存的作品")
         }
     }
     val selected = works.firstOrNull { it.id == selectedId }

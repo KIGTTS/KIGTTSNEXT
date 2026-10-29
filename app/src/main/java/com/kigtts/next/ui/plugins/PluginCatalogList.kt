@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.ReadablePage
+import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.next.ui.management.ResourceAvatar
 import com.kigtts.next.ui.management.InlineProgressButton
 import com.kigtts.next.ui.management.ManagedItemHeading
@@ -33,10 +35,10 @@ import java.io.File
     CatalogLoadMore(list, scroll, canInvoke, invoke)
     ReadablePage {
     val wide = maxWidth >= 600.dp
+    Box(Modifier.fillMaxSize()) {
     LazyVerticalGrid(columns = GridCells.Fixed(if (wide) 2 else 1), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
         state = scroll, contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
-        else if (list.items.isEmpty()) item("empty", span = { GridItemSpan(maxLineSpan) }) { Text(list.emptyText, Modifier.padding(vertical = 24.dp)) }
         list.items.groupBy { it.group }.forEach { (group, entries) ->
             if (group.isNotBlank() && list.sectionActions.isNotEmpty()) {
                 item("section/$group", span = { GridItemSpan(maxLineSpan) }) {
@@ -60,6 +62,9 @@ import java.io.File
             }
         }
         if (list.loadMore != null) item("catalog-more", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
+    }
+    EmptyContent(list.items.isEmpty() && !loading && !busy && list.loadMore == null,
+        Icons.Default.Storefront, list.emptyText, Modifier.padding(com.kigtts.next.ui.navigation.pageContentPadding()))
     }
     }
 }

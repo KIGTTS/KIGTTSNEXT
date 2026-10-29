@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,36 +26,52 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     enabled: Boolean, resolve: (PluginResource) -> File?, invoke: (String, Map<String, String>) -> Unit,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
     catalog: Boolean = false, trailingAction: ManagementProgressAction? = null,
-    position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false) {
+    position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false,
+    revealActive: Boolean = false, activateReveal: () -> Unit = {}) {
     val primary = item.primaryAction
+    val direct = if (compactActions) item.actions.firstOrNull { it.id == primary } else null
+    val secondary = item.actions.filterNot { it.id == direct?.id }
+    val pin = secondary.filter { it.icon == PluginIcon.PIN || it.symbol == "push_pin" }
+    val other = secondary.filterNot { it in pin }.sortedBy { it.isDestructive() }
+    fun PageAction.reveal() = RevealAction(id, label, if (isDestructive()) Icons.Default.Delete else icon.vector(symbol), isDestructive())
     // Start in the current state so the first pointer frame cannot flash the old icon/shape.
     var lifted by remember(item.id) { mutableStateOf(elevated) }
     LaunchedEffect(elevated) { lifted = elevated }
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         tween(180), label = "managed-selection-color")
-    Surface(modifier.testTag("managed-item/" + item.id), shape = managedItemShape(position, lifted),
+    val row: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggleActions, closeActions ->
+    Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, lifted || revealed),
         color = color, shadowElevation = shadowElevation) {
-        Column {
-            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if (primary != null && !elevated)
-                Modifier.clickable(enabled = enabled, onClick = feedbackClick { invoke(primary, emptyMap()) }) else Modifier)
-                .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((primary != null || revealed) && !elevated)
+                Modifier.clickable(enabled = enabled, onClick = feedbackClick {
+                    if (revealed) closeActions() else primary?.let { invoke(it, emptyMap()) }
+                }) else Modifier)
+                .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
                     ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
                 ManagedItemHeading(item, Modifier.weight(1f))
                 trailingAction?.let { InlineProgressButton(item.id, it, enabled, invoke) }
-                if (!compactActions) ManagedItemControl(item, enabled, invoke)
+                ManagedItemControl(item, enabled, invoke)
+                direct?.let { action -> ManagedActionTooltip(action.label) {
+                    MotionIconButton(onClick = feedbackClick { invoke(action.id, emptyMap()) }, enabled = enabled,
+                        modifier = Modifier.size(40.dp).testTag("managed-action/${item.id}/${action.id}")) {
+                        Icon(action.icon.vector(action.symbol), action.label, Modifier.size(24.dp))
+                    }
+                } }
+                if (secondary.isNotEmpty()) MotionIconButton(onClick = feedbackClick(toggleActions), enabled = enabled,
+                    modifier = Modifier.size(40.dp).testTag("managed-more/${item.id}")) { Icon(Icons.Default.MoreHoriz, "更多操作") }
                 if (reorderable) Box(dragGrip.size(40.dp).testTag("managed-grip/" + item.id).semantics {
                     contentDescription = "拖动排序"
                     customActions = listOf(CustomAccessibilityAction("上移") { moveAccessible(-1); true },
                         CustomAccessibilityAction("下移") { moveAccessible(1); true })
                 }, contentAlignment = Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(24.dp)) }
             }
-            if (compactActions) Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ManagedItemControl(item, enabled && !elevated, invoke)
-                Spacer(Modifier.weight(1f))
-                CompactManagedActions(item, enabled && !elevated, invoke)
-            } else if (item.actions.isNotEmpty()) ManagedItemActions(item, enabled, invoke)
-        }
     }
+    }
+    if (elevated) Box(modifier) { row(false, {}, {}) }
+    else SwipeRevealRow(item.id, revealActive, activateReveal, pin.map { it.reveal() }, other.map { it.reveal() },
+        enabled = enabled, modifier = modifier, invoke = { invoke(it, emptyMap()) }, content = row)
 }
+
+private fun PageAction.isDestructive() = symbol in setOf("delete", "delete_forever", "delete_outline") ||
+    label.startsWith("删除") || label.startsWith("卸载")

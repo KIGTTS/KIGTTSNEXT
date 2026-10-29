@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import com.kigtts.next.media.decodeResourceArtwork
 import com.kigtts.next.media.isWhiteLineArtwork
+import com.kigtts.next.media.decodeResourceVector
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -25,6 +26,7 @@ class ResourceArtworkTest {
         assertEquals(256, result.width); assertEquals(Color.RED, result.getPixel(128, 128)); result.recycle()
         file.writeText("<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert(1)</script></svg>")
         assertNull(decodeResourceArtwork(file))
+        assertNull(decodeResourceVector(file))
         file.writeText("<!DOCTYPE svg [<!ENTITY x SYSTEM 'file:///etc/hosts'>]><svg xmlns=\"http://www.w3.org/2000/svg\">&x;</svg>")
         assertNull(decodeResourceArtwork(file))
     }
@@ -60,6 +62,24 @@ class ResourceArtworkTest {
             assertEquals(bitmap.height * .62f, (bottom - top + 1).toFloat(), 3f)
             assertEquals((bitmap.width - 1) / 2f, (left + right) / 2f, 2f)
             assertEquals((bitmap.height - 1) / 2f, (top + bottom) / 2f, 2f)
+        } finally { bitmap.recycle() }
+        val vector = requireNotNull(decodeResourceVector(file))
+        assertTrue(vector.whiteLine)
+        val large = Bitmap.createBitmap(1024,1024,Bitmap.Config.ARGB_8888)
+        try {
+            android.graphics.Canvas(large).apply { scale(4f,4f); drawPicture(vector.picture) }
+            assertTrue(large.isWhiteLineArtwork())
+            assertEquals(0, Color.alpha(large.getPixel(0,0)))
+        } finally { large.recycle() }
+    }
+
+    @Test fun actualFontOutlinesUseTheSharedThemeMask() {
+        val file = temp.newFile("font.svg")
+        file.writeBytes(javaClass.getResourceAsStream("/fixtures/appearance-font/icon.svg")!!.use { it.readBytes() })
+        val bitmap = requireNotNull(decodeResourceArtwork(file))
+        try {
+            assertTrue("Font glyphs must have no baked plate or fixed foreground colour", bitmap.isWhiteLineArtwork())
+            assertEquals(0, Color.alpha(bitmap.getPixel(0, 0)))
         } finally { bitmap.recycle() }
     }
 }

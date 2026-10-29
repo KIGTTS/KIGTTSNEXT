@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.manager.HostPluginRuntime
 import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.next.ui.components.MotionAlertDialog as AlertDialog
 import kotlinx.coroutines.delay
 
@@ -59,7 +60,8 @@ import kotlinx.coroutines.delay
                 IconButton(onClick = feedbackClick { path = path.dropLast(1) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回上一级") }
                 Text(path.last(), style = MaterialTheme.typography.titleSmall)
             }
-            LazyColumn(Modifier.weight(1f, fill = false)) {
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(Modifier.fillMaxSize()) {
                 if (sections.isNotEmpty()) items(sections, key = { "section:$it" }) { title ->
                     TextButton(onClick = feedbackClick { path = path + title }, modifier = Modifier.fillMaxWidth()) {
                         Icon(when (title) { "应用" -> Icons.Default.Apps; "插件" -> Icons.Default.Extension; "操作" -> Icons.Default.TouchApp; "设置" -> Icons.Default.Settings; else -> Icons.Default.Widgets }, null)
@@ -80,9 +82,10 @@ import kotlinx.coroutines.delay
                 if ((path.firstOrNull() == "应用" || searching) && failed) item {
                     TextButton(onClick = feedbackClick { retry++ }) { Text("应用列表未能加载，重试") }
                 }
-                if (sections.isEmpty() && items.isEmpty() && !loading) item {
-                    Text(if (searching) "没有找到入口" else "暂无可添加的入口", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            }
+            EmptyContent(sections.isEmpty() && items.isEmpty() && !loading && !failed,
+                if (searching) Icons.Default.Search else Icons.Default.Widgets,
+                if (searching) "没有找到入口" else "暂无可添加的入口")
             }
         }
     }, confirmButton = { TextButton(onClick = feedbackClick(onDismiss)) { Text("取消") } })

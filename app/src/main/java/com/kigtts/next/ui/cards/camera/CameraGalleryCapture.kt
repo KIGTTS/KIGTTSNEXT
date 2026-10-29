@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import com.kigtts.next.media.MotionPhoto
+import com.kigtts.next.cards.openPhotoSource
 import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -24,7 +25,7 @@ internal suspend fun cameraGalleryCapture(context: Context, uri: Uri, format: Po
     val still = File(directory, "$key-original.jpg")
     val video = File(directory, "$key-motion.mp4")
     try {
-        requireNotNull(context.contentResolver.openInputStream(uri)) { "无法读取所选照片" }.use { input ->
+        openPhotoSource(context, uri).use { input ->
             raw.outputStream().use { output ->
                 val buffer = ByteArray(64 * 1024); var count = 0L
                 while (true) {

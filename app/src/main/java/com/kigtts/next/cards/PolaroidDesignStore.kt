@@ -14,7 +14,8 @@ import java.util.UUID
 
 enum class PhotoTextField(val label: String) { DATE("日期"), TIME("时间"), DATE_TIME("日期时间"), LOCATION("地点"), WEATHER("天气") }
 data class FrozenPhotoFacts(val capturedAt: Long? = null, val zone: String = ZoneId.systemDefault().id,
-    val latitude: Double? = null, val longitude: Double? = null, val location: String? = null, val weather: String? = null) {
+    val latitude: Double? = null, val longitude: Double? = null, val location: String? = null, val weather: String? = null,
+    val fromCamera: Boolean = false) {
     fun text(field: PhotoTextField): String = when (field) {
         PhotoTextField.LOCATION -> location?.takeIf(String::isNotBlank) ?: "未知"
         PhotoTextField.WEATHER -> weather?.takeIf(String::isNotBlank) ?: "未知"
@@ -67,12 +68,12 @@ class PolaroidDesignStore(private val root: File) {
         val value = json.optJSONObject("photos")?.optJSONObject(cardId) ?: return FrozenPhotoFacts()
         return FrozenPhotoFacts(value.optLong("at").takeIf { it > 0 }, value.optString("zone", ZoneId.systemDefault().id),
             if (value.has("lat")) value.getDouble("lat") else null, if (value.has("lon")) value.getDouble("lon") else null,
-            value.optString("location").takeIf(String::isNotBlank), value.optString("weather").takeIf(String::isNotBlank))
+            value.optString("location").takeIf(String::isNotBlank), value.optString("weather").takeIf(String::isNotBlank), value.optBoolean("camera"))
     }
     @Synchronized fun freeze(cardId: String, facts: FrozenPhotoFacts) {
         val next = JSONObject(json.toString()); val photos = next.optJSONObject("photos") ?: JSONObject().also { next.put("photos", it) }
         photos.put(cardId, JSONObject().put("at", facts.capturedAt).put("zone", facts.zone).put("lat", facts.latitude).put("lon", facts.longitude)
-            .put("location", facts.location).put("weather", facts.weather))
+            .put("location", facts.location).put("weather", facts.weather).put("camera", facts.fromCamera))
         commit(next)
     }
     @Synchronized fun bind(cardId: String, layer: CardLayer, field: PhotoTextField) {

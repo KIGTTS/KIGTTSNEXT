@@ -34,6 +34,29 @@ class CardCaptureCoordinatorTest {
         try { file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) } } finally { bitmap.recycle() }
         return file
     }
+    @Test fun framingPreservesCameraOriginAndDoesNotInventDatesForGalleryPhotos() = runBlocking {
+        val (cards, stickers) = repositories()
+        val state = MutableStateFlow(AppState(destination = Destination.Cards))
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val coordinator = CardCaptureCoordinator(cards, stickers, scope, { state.value },
+            { state.value = state.value.copy(destination = it) }, {}, { fail(it) })
+        try {
+            for (camera in listOf(true, false)) {
+                coordinator.open(systemCamera = camera)
+                val destination = state.value.destination as Destination.CardCamera
+                val original = photo(android.graphics.Color.RED)
+                assertTrue(coordinator.prepareFraming(destination, original, original, fromCamera = camera))
+                assertTrue(coordinator.confirmFraming(destination, PolaroidFormat.WIDE, .5, .5, 1.0))
+                withTimeout(5000) { while (coordinator.printRequest.value == null || original.exists()) delay(10) }
+                val saved = coordinator.printRequest.value!!.card
+                val facts = cards.designs.facts(saved.id)
+                assertEquals(camera, facts.fromCamera)
+                assertEquals(camera, facts.capturedAt != null)
+                state.value = state.value.copy(destination = Destination.Cards)
+                coordinator.onDestinationChanged(Destination.Cards)
+            }
+        } finally { scope.cancel() }
+    }
     @Test fun duplicateDeliveryDoesNotDeleteAnInFlightFileOrCreateTwoDesigns() = runBlocking {
         val (cards, stickers) = repositories(); val beforeIds = cards.cards.value.map { it.id }.toSet(); val before = beforeIds.size
         val state = MutableStateFlow(AppState(destination = Destination.Cards))

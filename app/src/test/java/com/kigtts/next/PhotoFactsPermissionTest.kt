@@ -29,10 +29,10 @@ class PhotoFactsPermissionTest {
     @Test fun locationPermissionMustBeGrantedBeforeReadingCurrentPosition() = runBlocking {
         val time = 1_700_000_000_000L
         val denied = Access(false)
-        assertNull(PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(time), setOf(PhotoTextField.LOCATION), denied, time).location)
+        assertNull(PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(time, fromCamera = true), setOf(PhotoTextField.LOCATION), denied, time).location)
         assertEquals(listOf("consent/location", "permission"), denied.calls)
         val allowed = Access(true)
-        val result = PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(time), setOf(PhotoTextField.LOCATION), allowed, time)
+        val result = PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(time, fromCamera = true), setOf(PhotoTextField.LOCATION), allowed, time)
         assertEquals("拍摄地点", result.location)
         assertEquals(listOf("consent/location", "permission", "locate", "place"), allowed.calls)
     }
@@ -46,14 +46,56 @@ class PhotoFactsPermissionTest {
         assertEquals(frozen, PolaroidPhotoFacts.enrich(app, frozen, setOf(PhotoTextField.LOCATION), access, 1_700_000_000_000L))
         assertTrue(access.calls.isEmpty())
     }
-    @Test fun androidAdapterQueuesTheRealCoarseLocationRuntimePermission() = runBlocking {
-        shadowOf(app).denyPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+    @Test fun androidAdapterQueuesBothLocationPermissionsAndAcceptsApproximateChoice() = runBlocking {
+        shadowOf(app).denyPermissions(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
         val request = async(start = CoroutineStart.UNDISPATCHED) { AndroidPhotoFactsAccess(app).locationPermission() }
         try {
-            assertEquals(listOf(Manifest.permission.ACCESS_COARSE_LOCATION), WebAndroidPermissions.pending.value?.permissions)
-            WebAndroidPermissions.finish(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to false))
-            assertFalse(request.await())
+            assertEquals(listOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), WebAndroidPermissions.pending.value?.permissions)
+            shadowOf(app).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+            WebAndroidPermissions.finish(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true, Manifest.permission.ACCESS_FINE_LOCATION to false))
+            assertTrue(request.await())
         } finally { WebAndroidPermissions.cancel() }
+    }
+
+    @Test fun importedRecentPhotoWithoutGpsNeverUsesTheDevicesPosition() = runTest {
+        val access = Access(true)
+        val time = System.currentTimeMillis()
+        val imported = FrozenPhotoFacts(time)
+        assertEquals(imported, PolaroidPhotoFacts.enrich(app, imported, setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER), access, time))
+        assertTrue(access.calls.isEmpty())
+    }
+
+    @Test fun rememberedCaptureFactsAreSavedWithoutBeingPresentInThePaperPreset() = runTest {
+        app.getSharedPreferences("polaroid-facts", 0).edit().putBoolean("location", true).putBoolean("weather", true).commit()
+        val time = System.currentTimeMillis()
+        val access = Access(true)
+        val result = PolaroidPhotoFacts.enrichCapture(app, FrozenPhotoFacts(time, fromCamera = true), emptySet(), access, time)
+        assertEquals("拍摄地点", result.location); assertEquals("晴", result.weather)
+        assertTrue(result.fromCamera)
+        assertTrue(access.calls.containsAll(listOf("locate", "place", "weather")))
+    }
+
+    @Test fun oldExifCoordinatesStillResolveWithoutRequestingDeviceLocation() = runTest {
+        val access = Access(false)
+        val result = PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(1, latitude = 31.23, longitude = 121.47),
+            setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER), access)
+        assertEquals("拍摄地点", result.location); assertEquals("晴", result.weather)
+        assertFalse(access.calls.any { it in listOf("locate", "permission") })
+    }
+
+    @Test fun twoBlockedLegacyGeocodersCannotStarveTheWeatherQueue() = runBlocking {
+        val entered = java.util.concurrent.CountDownLatch(2)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val jobs = (1..2).map { async(start = CoroutineStart.UNDISPATCHED) { PhotoFactsWork.run(2000) {
+            entered.countDown()
+            while (release.count > 0) { try { release.await() } catch (_: InterruptedException) { } }
+            "late"
+        } } }
+        try {
+            assertTrue(entered.await(3, java.util.concurrent.TimeUnit.SECONDS))
+            assertEquals("weather", PhotoFactsWork.network(1000) { "weather" })
+            jobs.awaitAll().forEach { assertNull(it) }
+        } finally { release.countDown() }
     }
 
     @Test fun stalledQueriesFinishTogetherAndUnavailableFieldsStayVisibleAsUnknown() = runTest {

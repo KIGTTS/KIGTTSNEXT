@@ -41,7 +41,7 @@ class PluginManagementUiTest {
         compose.onNodeWithText("语音包").assertDoesNotExist()
         compose.onNodeWithText("关于").assertDoesNotExist()
         compose.onNodeWithTag("managed-more/test.settings").performClick()
-        compose.onNodeWithText("关于").performClick()
+        compose.onNodeWithContentDescription("关于").performClick()
         compose.onNodeWithText("关闭").assertIsDisplayed().performClick()
         compose.waitForIdle()
         compose.onNodeWithContentDescription("设置").performClick()

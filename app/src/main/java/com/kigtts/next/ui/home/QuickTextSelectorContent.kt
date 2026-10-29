@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.foundation.pager.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,10 +28,7 @@ import kotlinx.coroutines.launch
 internal fun QuickTextSelectorContent(phrases: List<QuickPhrase>, categories: List<String>,
     icons: Map<String, CategoryIcon>, repository: MediaRepository?, selected: Set<String>,
     mode: QuickTextSelectionMode, select: (QuickPhrase) -> Unit, modifier: Modifier = Modifier) {
-    val groups = remember(phrases, categories) { (categories + phrases.map { it.category }).distinct() }
-    if (groups.isEmpty()) {
-        Box(modifier, contentAlignment = Alignment.Center) { Text("还没有快捷文本") }; return
-    }
+    val groups = remember(phrases, categories) { (categories + phrases.map { it.category }).distinct().ifEmpty { listOf("") } }
     key(groups) {
         val initial = phrases.firstOrNull { it.id in selected }?.category
         val pager = rememberPagerState(initialPage = groups.indexOf(initial).coerceAtLeast(0)) { groups.size }
@@ -38,7 +37,7 @@ internal fun QuickTextSelectorContent(phrases: List<QuickPhrase>, categories: Li
         val grouped = remember(phrases) { phrases.groupBy { it.category } }
         LaunchedEffect(pager.currentPage) { tabs.animateScrollToItem(pager.currentPage) }
         Column(modifier) {
-            LazyRow(Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag("selector-tabs"), state = tabs,
+            if (groups.singleOrNull() != "") LazyRow(Modifier.fillMaxWidth().padding(bottom = 12.dp).testTag("selector-tabs"), state = tabs,
                 horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 itemsIndexed(groups, key = { _, group -> group }) { index, group ->
                     val source = remember { MutableInteractionSource() }
@@ -54,14 +53,16 @@ internal fun QuickTextSelectorContent(phrases: List<QuickPhrase>, categories: Li
                 beyondViewportPageCount = 1) { page ->
                 val group = groups[page]
                 val items = grouped[group].orEmpty()
-                if (items.isEmpty()) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("这个分组还没有快捷文本", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else LazyVerticalGrid(GridCells.Adaptive(140.dp), Modifier.fillMaxSize().testTag("selector-group/$group"),
+                Box(Modifier.fillMaxSize()) {
+                LazyVerticalGrid(GridCells.Adaptive(140.dp), Modifier.fillMaxSize().testTag("selector-group/$group"),
                     verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp),
                     contentPadding = PaddingValues(bottom = 4.dp)) {
                     items(items, key = { it.id }) { phrase ->
                         SelectorCard(phrase, phrase.id in selected, mode, repository) { select(phrase) }
                     }
+                }
+                EmptyContent(items.isEmpty(), Icons.Default.TextFields,
+                    if (group.isBlank()) "还没有快捷文本" else "这个分组还没有快捷文本")
                 }
             }
         }

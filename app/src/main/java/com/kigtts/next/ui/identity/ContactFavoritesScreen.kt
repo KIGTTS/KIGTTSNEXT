@@ -39,18 +39,16 @@ import org.json.JSONObject
     var removing by remember { mutableStateOf<SavedContact?>(null) }
     var search by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    val filtered = remember(indexed, search) { indexed.filter { (_, p) -> search.isBlank() ||
-        (p.name + " " + p.bio + " " + p.tags.joinToString(" ")).contains(search.trim(), true) } }
+    val filtered = remember(indexed, entries, search) { indexed.filter { (item, p) -> entries.any { it.id == item.id } && (search.isBlank() ||
+        (p.name + " " + p.bio + " " + p.tags.joinToString(" ")).contains(search.trim(), true)) } }
     ReadablePage(840.dp) {
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            label = { Text("搜索昵称或标签") }, singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) })
+    Box(Modifier.weight(1f).fillMaxWidth()) {
     LazyColumn(Modifier.fillMaxSize().testTag("contact-favorites-list"), contentPadding = pageContentPadding(),
         verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        item(key = "search") {
-        OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), label = { Text("搜索昵称或标签") }, singleLine = true,
-            leadingIcon = { Icon(Icons.Default.Search, null) })
-        }
-        if (entries.isEmpty()) item(key = "empty") { Text("面对面收到的名片会保存在这里，也可以从对方的资料页收藏。", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        else if (indexed.isEmpty()) item(key = "loading") { LinearProgressIndicator(Modifier.fillMaxWidth()) }
-        else if (filtered.isEmpty()) item(key = "no-results") { Text("没有找到匹配的名片", Modifier.padding(16.dp)) }
+        if (entries.isNotEmpty() && indexed.isEmpty()) item(key = "loading") { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         items(filtered, key = { it.first.id }) { (item, person) ->
             val profile = remember(item.profile) { JSONObject(item.profile) }
             val open = expanded == item.id
@@ -80,6 +78,12 @@ import org.json.JSONObject
                 }
             }
         }
+    }
+    EmptyContent(entries.isEmpty() || indexed.isNotEmpty() && filtered.isEmpty(),
+        if (search.isBlank()) Icons.Default.ContactPage else Icons.Default.Search,
+        if (entries.isEmpty()) "还没有收藏的名片" else "没有找到匹配的名片",
+        description = if (entries.isEmpty()) "面对面收到或收藏的名片会保存在这里" else null)
+    }
     }
     }
     removing?.let { item -> MotionAlertDialog({ removing = null }, title = { Text("移除这张名片？") },

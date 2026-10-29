@@ -57,7 +57,7 @@ class CardBurstCoordinator internal constructor(private val cards: CardRepositor
                     val card = existing ?: run {
                         val facts = withContext(Dispatchers.IO) { PolaroidPhotoFacts.read(shot.original, true, shot.capturedAt) }
                         val frozen = snapshot?.let { facts.copy(latitude = it.latitude, longitude = it.longitude, location = it.location, weather = it.weather) }
-                            ?: PolaroidPhotoFacts.enrich(stickers.context, facts, cards.designs.requiredFields()).also { snapshot = it }
+                            ?: PolaroidPhotoFacts.enrichCapture(stickers.context, facts, cards.designs.requiredFields()).also { snapshot = it }
                         withContext(Dispatchers.IO) {
                             val source = stickers.importResource(shot.original)
                             val shown = if (shot.displayFile.canonicalFile == shot.original.canonicalFile) source else stickers.importResource(shot.displayFile)

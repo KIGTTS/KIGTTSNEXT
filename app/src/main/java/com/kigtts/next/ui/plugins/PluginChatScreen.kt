@@ -23,6 +23,7 @@ import androidx.compose.material3.pulltorefresh.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.channels.Channel
@@ -49,7 +50,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     val dragging by list.interactionSource.collectIsDraggedAsState()
     val scrollRequests = remember(chat.conversationId) { Channel<ChatScrollRequest>(Channel.CONFLATED) }
     val cache = historyCache ?: remember { ChatHistoryCache() }
-    val messages = remember(chat.messages, historyKey) { cache.merge(historyKey, chat) }
+    val messages = remember(chat.messages, chat.historyTotal, chat.running, historyKey) { cache.merge(historyKey, chat) }
     val rows = remember(messages) { chatTimeline(messages) }
     val rowCount = rememberUpdatedState(rows.size)
     val earliest = messages.minOfOrNull { it.position } ?: 0
@@ -106,6 +107,8 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
         }
     }
     ChatViewport(Modifier.fillMaxSize().testTag("plugin-chat"), overlay = {
+        EmptyContent(rows.isEmpty() && !chat.running && chat.approval == null, Icons.Default.AutoAwesome,
+            "开始新的对话", Modifier.testTag("chat-empty"), "有什么想聊的？")
         androidx.compose.animation.AnimatedVisibility(!follow && !atBottom,
             Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
             SmallFloatingActionButton(onClick = feedbackClick {

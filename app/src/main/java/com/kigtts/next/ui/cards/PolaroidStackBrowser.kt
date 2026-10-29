@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.File
@@ -98,30 +99,22 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                 val active = current && activeLayout
                 val interactive = enabled && active
                 CompositionLocalProvider(LocalPolaroidPhotoVisible provides (pageVisible && active)) {
+                Box(Modifier.fillMaxSize()) {
                 when {
                     target == PolaroidBrowseMode.STACK && scene.cards.isNotEmpty() -> PolaroidStack(scene.cards, scene.focusedId, imageFile, frames,
                         interactive, { if (current) focus(it) }, { if (current) preview(it) }, { if (current) managePhoto(it) },
                         scene.positionRequest, { if (current) onPositioned(it) }, wideLayout, active)
                     target == PolaroidBrowseMode.GRID && scene.gridCards.isNotEmpty() -> PolaroidGallery(scene.gridCards, imageFile, frames, interactive,
                         { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, targetLayout.columns, active, scene.focusedId)
-                    else -> PolaroidEmpty()
+                }
+                EmptyContent(if (target == PolaroidBrowseMode.GRID) scene.gridCards.isEmpty() else scene.cards.isEmpty(),
+                    Icons.Default.Collections, "从一张照片开始", description = "下滑拍照，也可在相机中选图")
                 }
                 }
             }
           }
         }
     }
-    }
-}
-
-@Composable
-private fun PolaroidEmpty() {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Collections, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("从一张照片开始", style = MaterialTheme.typography.bodyLarge)
-            Text("下滑拍照，也可在相机中选图", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 

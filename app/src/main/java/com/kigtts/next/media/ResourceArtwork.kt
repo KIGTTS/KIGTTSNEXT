@@ -4,6 +4,25 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import java.io.File
 
+internal data class ResourceVector(val picture: android.graphics.Picture, val whiteLine: Boolean)
+
+/** Keep SVG draw commands so avatar scaling never enlarges a cached bitmap. */
+internal fun decodeResourceVector(file: File?): ResourceVector? = runCatching {
+    if (file == null || !file.isFile || file.length() !in 1..512L * 1024) return null
+    val prefix = file.inputStream().use { input ->
+        val buffer = ByteArray(256); val count = input.read(buffer)
+        String(buffer, 0, count.coerceAtLeast(0), Charsets.UTF_8).trimStart('\uFEFF', ' ', '\n', '\r', '\t')
+    }
+    if (!prefix.startsWith("<svg") && !prefix.startsWith("<?xml") && !prefix.startsWith("<!--")) return null
+    val picture = UiIcons.renderSvgPicture(file.readText(Charsets.UTF_8))
+    val probe = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+    val white = try {
+        android.graphics.Canvas(probe).apply { scale(32f / picture.width, 32f / picture.height); drawPicture(picture) }
+        probe.isWhiteLineArtwork()
+    } finally { probe.recycle() }
+    ResourceVector(picture, white)
+}.getOrNull()
+
 /** Catalog artwork can have hash-addressed filenames without a format extension. */
 internal fun decodeResourceArtwork(file: File?, size: Int = 256): Bitmap? = runCatching {
     if (file == null || !file.isFile || file.length() !in 1..8L * 1024 * 1024) return null
