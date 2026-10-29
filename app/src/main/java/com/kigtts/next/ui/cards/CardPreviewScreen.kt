@@ -36,8 +36,7 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     RegisterPageLoading(busy || actions.busy)
     RegisterPageActions(buildList {
         if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑拍立得", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
-        add(ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { actions.share(saved) }))
-        if (face != null) add(ToolbarAction("face-card-preview", "面对面返图", Icons.Default.Devices, enabled, click = { face.send(listOf(cardId)) }))
+        add(ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { face?.send(listOf(cardId)) ?: actions.share(saved) }))
         if (receipt != null) add(ToolbarAction("sender-card-preview", "发送者名片", Icons.Default.AccountCircle, enabled, click = { senderInfo = true }))
         add(ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
             click = { actions.cardAction(saved, CardMenuAction.QUICK) })) })

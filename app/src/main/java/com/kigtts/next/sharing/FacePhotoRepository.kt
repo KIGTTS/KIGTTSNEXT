@@ -10,7 +10,7 @@ import java.util.UUID
 internal class FacePhotoRepository(private val cards: CardRepository, private val identities: IdentityRepository) {
     private val stickers get() = cards.stickers
     private val favorites by lazy { com.kigtts.next.identity.ContactFavorites.get(stickers.context) }
-    fun prepare(ids: List<String>, original: Boolean, polaroid: Boolean, root: File): List<FaceAsset> {
+    suspend fun prepare(ids: List<String>, original: Boolean, polaroid: Boolean, root: File, includeMotion: Boolean = false): List<FaceAsset> {
         require(original || polaroid) { "请选择原图或拍立得成片" }
         require(ids.size in 1..64) { "每次最多分享 64 张照片" }
         val outgoing = File(root, "outgoing").apply { mkdirs() }
@@ -29,8 +29,12 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
                 if (original) (card.originalImageId ?: card.imageId)?.let(stickers::imageFile)?.takeIf { it.isFile }?.let { add(asset(it, "original")) }
                 if (polaroid) {
                     val rendered = if (identity != null) com.kigtts.next.identity.exportIdentityCard(identity, stickers, outgoing)
-                        else exportPolaroidStill(stickers, card)
-                    add(asset(rendered, "polaroid"))
+                        else if (includeMotion) exportPolaroidMedia(stickers, card) else exportPolaroidStill(stickers, card)
+                    try { add(asset(rendered, "polaroid")) }
+                    finally {
+                        if (includeMotion && identity == null && rendered.name.endsWith("MP.jpg", true) &&
+                            rendered.canonicalFile.parentFile == File(stickers.root, "exports").canonicalFile) rendered.delete()
+                    }
                 }
             }
         }.also { require(it.isNotEmpty()) { "没有可以分享的原图，请选择拍立得成片" } }.let { photos ->

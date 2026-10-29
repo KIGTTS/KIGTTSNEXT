@@ -112,7 +112,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
             Row(Modifier.widthIn(max = 480.dp).fillMaxWidth().graphicsLayer { alpha = reveal }
                 .testTag("card-preview-actions"), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CardPreviewButton("分享", Icons.Default.Share, feedbackClick(onShare), Modifier.weight(1f).testTag("share-card-preview"),
+            CardPreviewButton("分享", Icons.Default.Share, feedbackClick { faceShare?.send(listOf(card.id)) ?: onShare() }, Modifier.weight(1f).testTag("share-card-preview"),
                 controlsEnabled, closing)
             if (!readOnly) CardPreviewButton("编辑", Icons.Default.Edit, feedbackClick { close(onEdit) }, Modifier.weight(1f).testTag("edit-card-preview"),
                 controlsEnabled, closing, primary = true)
@@ -124,8 +124,6 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                 DropdownMenu(menu && controlsEnabled, { menu = false }) {
                     if (receipt != null) DropdownMenuItem({ Text("发送者名片") }, onClick = feedbackClick { menu = false; senderInfo = true },
                         leadingIcon = { Icon(Icons.Default.AccountCircle, null) })
-                    if (faceShare != null) DropdownMenuItem({ Text("面对面返图") }, onClick = feedbackClick { menu = false; faceShare.send(listOf(card.id)) },
-                        leadingIcon = { Icon(Icons.Default.Devices, null) })
                     DropdownMenuItem({ Text("添加到快捷文本") }, onClick = feedbackClick { menu = false; close(onQuick) },
                         leadingIcon = { Icon(Icons.Default.TextFields, null) })
                     DropdownMenuItem({ Text("移到相册") }, onClick = feedbackClick { menu = false; close(onMove) },

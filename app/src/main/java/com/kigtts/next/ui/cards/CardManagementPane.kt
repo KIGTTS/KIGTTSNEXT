@@ -37,7 +37,7 @@ import com.kigtts.plugin.api.*
         add(ToolbarAction("cards-manage-select-all", if (selected.size == keys.size && keys.isNotEmpty()) "取消全选" else "全选",
             Icons.Default.SelectAll, interactive && keys.isNotEmpty(), click = { state.selectAll(keys) }))
         if (!albumsMode) {
-            if (faceShare != null) add(ToolbarAction("cards-manage-face-share", "面对面返图", Icons.Default.Devices,
+            if (faceShare != null) add(ToolbarAction("cards-manage-face-share", "分享所选照片", Icons.Default.Share,
                 interactive && selected.isNotEmpty(), click = { faceShare.send(selected) }))
             add(ToolbarAction("cards-manage-move", "移动所选照片", Icons.Default.DriveFileMove, interactive && selected.isNotEmpty(), click = { move = selected }))
             if (selected.size == 1 && !cards.isReadOnly(selected.single())) add(ToolbarAction("cards-manage-edit", "编辑照片", Icons.Default.Edit, interactive, click = { state.finish(); edit(selected.single()) }))

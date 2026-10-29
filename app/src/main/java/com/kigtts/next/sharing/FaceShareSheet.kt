@@ -12,15 +12,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.kigtts.next.ui.components.ToolButton
 import com.kigtts.next.ui.components.compactPlainIconColors
 
 /** Keep the sheet anchor stable while discovery, QR codes and transfer status change. */
 @Composable
-internal fun FaceShareSheet(title: String, dismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+internal fun FaceShareSheet(title: String, dismiss: () -> Unit, maximumHeight: Dp = 720.dp, content: @Composable ColumnScope.() -> Unit) {
     ModalBottomSheet(dismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val height = minOf(720.dp, maxHeight * .86f)
+            val height = minOf(maximumHeight, maxHeight * .86f)
             Column(Modifier.fillMaxWidth().height(height).navigationBarsPadding().testTag("face-share")) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {

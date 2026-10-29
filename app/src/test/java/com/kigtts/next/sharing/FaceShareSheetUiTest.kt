@@ -13,6 +13,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.identity.ProfileTile
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
+import com.kigtts.plugin.api.PolaroidCard
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -35,16 +36,22 @@ class FaceShareSheetUiTest {
         model.identities.save(person)
         model.faceShare.openSend(listOf(person.designId))
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { FaceShareHost(model) } }
-        compose.onNodeWithText("面对面分享名片").assertIsDisplayed()
+        compose.onNodeWithText("分享名片").assertIsDisplayed()
         compose.onNodeWithText("我的名片").assertIsDisplayed()
         compose.onNodeWithText("不在分享面板显示的磁贴").assertDoesNotExist()
         compose.onNodeWithTag("face-profile").assertDoesNotExist()
         val before = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
-        compose.runOnIdle { model.faceShare.openSend(listOf("photo-a", "photo-b")) }
-        compose.onNodeWithText("已选 2 张照片").assertIsDisplayed()
+        compose.runOnIdle { model.identities.save(person.copy(nickname = "新的昵称")) }
+        compose.onNodeWithText("新的昵称").assertIsDisplayed()
         val after = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
         assertEquals(before.top.value, after.top.value, 1f)
         assertEquals((before.bottom - before.top).value, (after.bottom - after.top).value, 1f)
+        compose.runOnIdle {
+            val photos = (1..2).map { model.cards.create(PolaroidCard(title = "照片$it")) }
+            model.faceShare.openSend(photos.map { it.id })
+        }
+        compose.onNodeWithText("2 张照片").assertIsDisplayed()
+        compose.onNodeWithTag("face-share-identity").assertDoesNotExist()
         compose.onNodeWithContentDescription("关闭").performClick()
         compose.onNodeWithTag("face-share").assertDoesNotExist()
     }

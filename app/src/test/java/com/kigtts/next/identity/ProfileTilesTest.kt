@@ -3,6 +3,7 @@ package com.kigtts.next.identity
 import com.kigtts.next.CardPrintCoordinatorTest
 import com.kigtts.next.sharing.*
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.json.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -41,7 +42,7 @@ class ProfileTilesTest {
         assertNull(ProfileTile.from(json).social)
     }
 
-    @Test fun gifRemainsAnimatedThroughPreparingAndReceivingAPersonalCard() {
+    @Test fun gifRemainsAnimatedThroughPreparingAndReceivingAPersonalCard() = runBlocking {
         val f = CardPrintCoordinatorTest.Fixture()
         try {
             val repo = IdentityRepository(f.app, f.cards)

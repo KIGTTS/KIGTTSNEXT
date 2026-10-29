@@ -37,8 +37,8 @@ internal data class FaceOffer(val id: String, val session: String, val profile: 
     val created: Long = System.currentTimeMillis(), val status: String = "waiting") {
     val nickname get() = profile.optString("nickname", "KIGTTS 用户").take(40)
 }
-internal enum class FaceMode { CHOOSE, BROWSER, SEND, RECEIVE }
-internal data class FacePanel(val ids: List<String>, val mode: FaceMode = FaceMode.CHOOSE, val personal: Boolean = false)
+internal enum class FaceMode { BROWSER, SEND, RECEIVE }
+internal data class FacePanel(val ids: List<String>, val mode: FaceMode = FaceMode.SEND, val personal: Boolean = false)
 internal fun assetsFrom(json: JSONObject): List<FaceAsset> {
     val list = json.getJSONArray("assets"); require(list.length() in 1..128)
     return (0 until list.length()).map { FaceAsset.parse(list.getJSONObject(it)) }.also { assets ->

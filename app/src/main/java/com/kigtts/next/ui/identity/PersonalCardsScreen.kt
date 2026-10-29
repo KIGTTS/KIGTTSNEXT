@@ -91,7 +91,7 @@ internal fun PersonalCardsScreen(model: AppViewModel) {
             SettingsGroup("我的名片") {
                 SettingItem("背景与贴纸", "", Icons.Default.Wallpaper,
                     SettingPosition.FIRST, onClick = { model.navigate(Destination.CardEditor(card.designId)) })
-                SettingItem("面对面分享", "", Icons.Default.Share, SettingPosition.MIDDLE,
+                SettingItem("分享名片", "", Icons.Default.Share, SettingPosition.MIDDLE,
                     onClick = { model.faceShare.openSend(listOf(card.designId)) })
                 SettingItem("面对面接收", "", Icons.Default.MoveToInbox, SettingPosition.LAST,
                     onClick = { model.faceShare.openReceive() })

@@ -14,8 +14,11 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
     private val contactIcon: (com.kigtts.next.identity.ContactLink) -> String = { "<span aria-hidden=\"true\">↗</span>" },
     private val received: (FaceOffer, List<FaceAsset>) -> Unit) : Closeable {
     val token = faceToken()
+    // Discovery may expose a receive endpoint, never the browser's unconfirmed download capability.
+    val peerToken = faceToken()
     val assets = ConcurrentHashMap<String, FaceAsset>()
     private val tickets = ConcurrentHashMap<String, FaceOffer>()
+    val hasActiveOffers get() = tickets.values.any { it.status in setOf("waiting", "accepted", "receiving") }
     private val consent = ConcurrentHashMap.newKeySet<String>()
     private val pending = MutableStateFlow<List<FaceOffer>>(emptyList()); val requests = pending.asStateFlow()
     private val guard = Any()
@@ -34,8 +37,14 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
     fun revoke() { closed = true; server.close() }
     private fun refresh() { pending.value = tickets.values.filter { it.status == "waiting" }.sortedBy { it.created } }
     private fun handle(request: PhotoHttpRequest, response: PhotoHttpResponse) {
-        if (closed || !request.path.startsWith(path)) { response.text("{}", status = 404); return }
-        val route = request.path.removePrefix(path)
+        val peerPath = "/s/$peerToken/"
+        val peerRequest = request.path.startsWith(peerPath)
+        val prefix = if (peerRequest) peerPath else path
+        if (closed || !request.path.startsWith(prefix)) { response.text("{}", status = 404); return }
+        val route = request.path.removePrefix(prefix)
+        if (peerRequest && !(route == "hello" || route == "offer" || route.startsWith("offer/") || route.startsWith("receive/"))) {
+            response.text("{}", status = 404); return
+        }
         when {
             request.method == "GET" && route.isEmpty() -> response.text(faceGallery(profile(), assets.values.sortedBy { it.name }, path, contactIcon), "text/html; charset=utf-8")
             request.method == "GET" && route == "hello" -> response.text(profile().put("protocol", 1).toString())

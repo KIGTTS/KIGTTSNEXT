@@ -7,6 +7,7 @@ import com.kigtts.next.cards.*
 import com.kigtts.next.sharing.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.json.JSONArray
 import org.junit.Assert.*
@@ -60,7 +61,7 @@ class PersonalCardsTest {
             assertFalse(JSONArray(prefs.getString("items", "[]")).getJSONObject(0).has("nickname"))
         } finally { f.scope.cancel() }
     }
-    @Test fun editableBackgroundAndStickersPersistAndExportAsOneLandscapeCard() {
+    @Test fun editableBackgroundAndStickersPersistAndExportAsOneLandscapeCard() = runBlocking {
         val f = CardPrintCoordinatorTest.Fixture()
         try {
             val identities = IdentityRepository(f.app, f.cards)

@@ -16,6 +16,20 @@ import java.util.zip.ZipInputStream
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FacePhotoSessionTest {
+    @Test fun discoverablePeerTokenCannotOpenTheBrowserOrDownloadPreparedPhotos() {
+        val root = Files.createTempDirectory("face-peer-isolation").toFile()
+        val server = FacePhotoSession(root.resolve("session"), { JSONObject().put("nickname", "sender") }) { _, _ -> }
+        try {
+            val file = asset(root); server.assets[file.id] = file
+            val peerPath = "/s/${server.peerToken}/"
+            assertNotEquals(server.token, server.peerToken)
+            assertEquals(200, get(server.server.port, peerPath + "hello").code)
+            assertEquals(404, get(server.server.port, peerPath).code)
+            assertEquals(404, get(server.server.port, peerPath + "file/${file.id}").code)
+            assertEquals(404, get(server.server.port, peerPath + "download?ids=${file.id}").code)
+            assertArrayEquals(file.file!!.readBytes(), get(server.server.port, server.path + "file/${file.id}").body)
+        } finally { server.close(); root.deleteRecursively() }
+    }
     @Test fun profileWithAvatarAndTilesCanCrossTheFormer64KiBTransportLimit() {
         val root = Files.createTempDirectory("face-profile-large").toFile()
         val profile = JSONObject().put("nickname", "资料").put("avatar", "A".repeat(60000))
