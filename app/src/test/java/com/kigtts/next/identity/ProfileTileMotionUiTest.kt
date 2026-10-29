@@ -21,6 +21,18 @@ import org.robolectric.annotation.*
 @RunWith(RobolectricTestRunner::class) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED) @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class ProfileTileMotionUiTest {
+    @Test fun anIndependentOneCellSocialTileOpensItsOwnAccount() {
+        val contact = ContactLink("GitLab", "https://gitlab.com/me", "account-qr")
+        val socialTile = ProfileTile(id = "independent", kind = ProfileTileKind.CONTACT, columns = 1, social = contact)
+        var opened: ContactLink? = null
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.width(360.dp)) { ProfileTileBoard(listOf(socialTile), emptyList(), { null }, openContact = { opened = it }) }
+        } }
+        compose.onNodeWithContentDescription("GitLab").performClick()
+        compose.runOnIdle { assertEquals(contact, opened) }
+        compose.onNodeWithText(contact.value).assertDoesNotExist()
+    }
+
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun tile(id: String) = compose.onNodeWithTag("profile-tile/$id")
     private fun width(id: String) = tile(id).getUnclippedBoundsInRoot().let { (it.right - it.left).value }

@@ -73,7 +73,7 @@ import kotlin.math.roundToInt
                             }
                         }
                     } else Modifier)) {
-                    val contact = contacts.firstOrNull { it.value == tile.contact }
+                    val contact = tile.resolveContact(contacts)
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
                     val clickable = editing || tile.kind == ProfileTileKind.LINK || (tile.kind == ProfileTileKind.CONTACT && contact != null)
                     Surface(onClick = feedbackClick { if (editing) edit(tile) else if (tile.kind == ProfileTileKind.LINK) openLink(tile.text) else contact?.let(openContact) },

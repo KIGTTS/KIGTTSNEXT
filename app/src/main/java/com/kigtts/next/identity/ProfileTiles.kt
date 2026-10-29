@@ -8,15 +8,17 @@ enum class ProfileTileKind { TEXT, STATUS, CONTACT, LINK, TITLE, IMAGE }
 
 data class ProfileTile(val id: String = UUID.randomUUID().toString(), val kind: ProfileTileKind = ProfileTileKind.TEXT,
     val title: String = "", val text: String = "", val contact: String = "", val columns: Int = 2, val rows: Int = 1,
-    val image: String = "") {
+    val image: String = "", val social: ContactLink? = null) {
     fun json() = JSONObject().put("id", id).put("kind", kind.name).put("title", title).put("text", text)
         .put("contact", contact).put("columns", columns).put("rows", rows).put("image", image)
+        .put("social", social?.let { JSONObject().put("label", it.label).put("value", it.value).put("qrContent", it.qrContent) })
     companion object {
         fun from(json: JSONObject) = ProfileTile(json.optString("id").take(80).ifBlank { UUID.randomUUID().toString() },
             runCatching { ProfileTileKind.valueOf(json.optString("kind")) }.getOrDefault(ProfileTileKind.TEXT),
             json.optString("title").take(40), json.optString("text").take(2048), json.optString("contact").take(2048),
             json.optInt("columns", 2).coerceIn(1, 4), json.optInt("rows", 1).coerceIn(1, 3),
-            json.optString("image").take(80).takeIf { it.matches(Regex("[A-Za-z0-9_.-]{0,80}")) }.orEmpty())
+            json.optString("image").take(80).takeIf { it.matches(Regex("[A-Za-z0-9_.-]{0,80}")) }.orEmpty(),
+            profileTileSocial(json.optJSONObject("social")))
     }
 }
 

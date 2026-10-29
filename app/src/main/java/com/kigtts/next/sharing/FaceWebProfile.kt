@@ -49,6 +49,12 @@ private fun contactQr(value: String): String = runCatching {
     "<svg class=\"contact-qr\" viewBox=\"0 0 ${bits.width} ${bits.height}\" role=\"img\" aria-label=\"联系方式二维码\"><path d=\"$path\"/></svg>"
 }.getOrDefault("<p>内容较长，请复制下方文字。</p>")
 
+internal fun faceContactDialog(link: ContactLink, id: String): String {
+    val label = faceHtml(link.label.ifBlank { "联系方式" })
+    val url = faceContactUrl(link)
+    return """<dialog class="contact-dialog" id="$id"><button class="contact-close" data-close="$id" aria-label="关闭">×</button><h2>$label</h2>${contactQr(contactPayload(link))}<p class="contact-value">${faceHtml(link.value)}</p><div class="contact-actions"><button data-copy="$id">复制</button>${url?.let { "<a href=\"${faceHtml(it)}\" target=\"_blank\" rel=\"noopener noreferrer\">打开链接 ↗</a>" }.orEmpty()}</div><span class="copy-status" role="status"></span></dialog>"""
+}
+
 internal fun faceProfileMarkup(json: JSONObject, cover: FaceAsset?, path: String, icon: (ContactLink) -> String, media: List<FaceAsset> = emptyList()): String {
     val person = PublicIdentityProfile.from(json)
     val avatar = person.avatar?.takeIf { it.matches(Regex("[A-Za-z0-9+/=]{1,65535}")) }?.let {
@@ -57,9 +63,7 @@ internal fun faceProfileMarkup(json: JSONObject, cover: FaceAsset?, path: String
     } ?: "<div class=\"avatar avatar-fallback\" aria-hidden=\"true\">${faceHtml(person.name.take(1))}</div>"
     val contacts = person.contacts.mapIndexed { i, link ->
         val label = faceHtml(link.label.ifBlank { "联系方式" })
-        val url = faceContactUrl(link)
-        """<button class="contact-link" data-contact="contact-$i">${icon(link)}<span class="contact-label"><strong>$label</strong><small>${faceHtml(link.value)}</small></span><span aria-hidden="true">↗</span></button>
-<dialog class="contact-dialog" id="contact-$i"><button class="contact-close" data-close="contact-$i" aria-label="关闭">×</button><h2>$label</h2>${contactQr(contactPayload(link))}<p class="contact-value">${faceHtml(link.value)}</p><div class="contact-actions"><button data-copy="contact-$i">复制</button>${url?.let { "<a href=\"${faceHtml(it)}\" target=\"_blank\" rel=\"noopener noreferrer\">打开链接 ↗</a>" }.orEmpty()}</div><span class="copy-status" role="status"></span></dialog>"""
+        """<button class="contact-link" data-contact="contact-$i">${icon(link)}<span class="contact-label"><strong>$label</strong><small>${faceHtml(link.value)}</small></span><span aria-hidden="true">↗</span></button>""" + faceContactDialog(link, "contact-$i")
     }.joinToString("")
     return """<header class="profile"><div class="brand">KIGTTS · 面对面</div>${cover?.let { "<img class=\"profile-cover\" src=\"${path}file/${it.id}\" alt=\"个人名片\">" }.orEmpty()}$avatar<h1>${faceHtml(person.name)}</h1>${person.bio.takeIf(String::isNotBlank)?.let { "<p class=\"bio\">${faceHtml(it)}</p>" }.orEmpty()}${faceWebTiles(person, path, media, icon)}${if (contacts.isNotBlank()) "<section class=\"profile-group\"><h2>联系方式</h2><nav class=\"contact-links\" aria-label=\"联系方式\">$contacts</nav></section>" else ""}</header>"""
 }

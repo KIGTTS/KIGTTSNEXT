@@ -14,6 +14,33 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ProfileTilesTest {
+    @Test fun socialAccountsSurviveRestartAndPublicSharingWithoutDependingOnProfileContacts() {
+        val f = CardPrintCoordinatorTest.Fixture()
+        try {
+            val repo = IdentityRepository(f.app, f.cards)
+            val tiles = listOf(ProfileTile(id = "main", kind = ProfileTileKind.CONTACT, social = ContactLink("小红书", "https://xhslink.com/a")),
+                ProfileTile(id = "other", kind = ProfileTileKind.CONTACT, social = ContactLink("小红书", "another-account", "custom-qr")))
+            repo.save(repo.create().copy(tiles = tiles))
+            val restored = IdentityRepository(f.app, f.cards).current!!
+            assertTrue(restored.contacts.isEmpty())
+            assertEquals(tiles, restored.tiles)
+            val public = PublicIdentityProfile.from(restored.publicJson())
+            assertEquals(tiles, public.tiles)
+            assertEquals(tiles.map { it.social }, public.tiles.map { it.resolveContact(emptyList()) })
+            val legacy = ProfileTile.from(JSONObject().put("kind", "CONTACT").put("contact", "123"))
+            assertEquals(ContactLink("QQ", "123"), legacy.resolveContact(listOf(ContactLink("QQ", "123"))))
+        } finally { f.scope.cancel() }
+    }
+
+    @Test fun importedSocialTileFieldsAreBoundedAndEmptyAccountsAreIgnored() {
+        val json = JSONObject().put("kind", "CONTACT").put("social", JSONObject().put("label", "a".repeat(100))
+            .put("value", "b".repeat(5000)).put("qrContent", "c".repeat(5000)))
+        val social = ProfileTile.from(json).social!!
+        assertEquals(24, social.label.length); assertEquals(2048, social.value.length); assertEquals(2048, social.qrContent!!.length)
+        json.getJSONObject("social").put("value", "  ")
+        assertNull(ProfileTile.from(json).social)
+    }
+
     @Test fun gifRemainsAnimatedThroughPreparingAndReceivingAPersonalCard() {
         val f = CardPrintCoordinatorTest.Fixture()
         try {

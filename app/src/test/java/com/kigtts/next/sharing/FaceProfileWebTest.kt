@@ -16,6 +16,19 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FaceProfileWebTest {
+    @Test fun independentSocialTilesHaveTheirOwnIconsAndQrDialogsWithoutAddingProfileContactRows() {
+        val contacts = listOf(ContactLink("GitLab", "https://gitlab.com/me"), ContactLink("小红书", "my-account", "custom-qr"))
+        val tiles = contacts.mapIndexed { i, contact -> ProfileTile(id = "social-$i", kind = ProfileTileKind.CONTACT, social = contact, columns = 1) }
+        val json = JSONObject().put("nickname", "朋友").put("tiles", profileTileJson(tiles))
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val page = faceProfileMarkup(json, null, "./", FaceWebIcons(app)::icon)
+        assertTrue(page.contains("data-contact=\"tile-contact-0\"")); assertTrue(page.contains("id=\"tile-contact-0\""))
+        assertTrue(page.contains("data-contact=\"tile-contact-1\"")); assertTrue(page.contains("id=\"tile-contact-1\""))
+        assertTrue(page.contains("href=\"https://gitlab.com/me\""))
+        assertEquals(2, Regex("class=\"contact-qr\"").findAll(page).count())
+        assertFalse(page.contains("class=\"contact-link\""))
+    }
+
     @Test fun titleOnlyTextTilesUseCenteredLargerTypeWithoutAnEmptyBodyOrChangingHeadings() {
         val tiles = listOf(ProfileTile(id = "short", title = "你好"),
             ProfileTile(id = "tall", title = "很高兴认识你", text = " \n", rows = 2),

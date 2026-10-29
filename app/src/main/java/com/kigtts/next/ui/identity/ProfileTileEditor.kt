@@ -23,6 +23,7 @@ import java.io.File
     var title by remember(tile?.id) { mutableStateOf(tile?.title.orEmpty()) }
     var text by remember(tile?.id) { mutableStateOf(tile?.text.orEmpty()) }
     var contact by remember(tile?.id) { mutableStateOf(tile?.contact.orEmpty()) }
+    var social by remember(tile?.id) { mutableStateOf(tile?.social) }
     var image by remember(tile?.id) { mutableStateOf(tile?.image.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
@@ -58,13 +59,8 @@ import java.io.File
                 Text(names[kind] ?: "状态", style = MaterialTheme.typography.titleSmall)
                 if (kind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(if (kind == ProfileTileKind.TITLE) "标题" else "名称") }, singleLine = true)
                 when (kind) {
-                    ProfileTileKind.CONTACT -> {
-                        if (contacts.isEmpty()) Text("请先添加联系方式")
-                        contacts.forEach { link -> Row(Modifier.fillMaxWidth()) {
-                            RadioButton(contact == link.value, feedbackClick { contact = link.value })
-                            TextButton(feedbackClick { contact = link.value }) { SocialContactIcon(link); Spacer(Modifier.width(8.dp)); Text(link.label) }
-                        } }
-                    }
+                    ProfileTileKind.CONTACT -> ProfileTileContactField(social, contact, contacts,
+                        { social = it; contact = ""; error = null }, { social = null; contact = it.value; error = null })
                     ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text("网址") }, singleLine = true)
                     ProfileTileKind.IMAGE -> {
                         if (image.isNotBlank()) ProfileTileImage(profileImageFile(stickers, image), Modifier.fillMaxWidth().height(160.dp))
@@ -81,10 +77,11 @@ import java.io.File
         if (working) return@feedbackClick
         val selected = kind ?: return@feedbackClick
         if (selected == ProfileTileKind.LINK && safeProfileLink(text) == null) { error = "请输入 http 或 https 网址"; return@feedbackClick }
-        if (selected == ProfileTileKind.CONTACT && contact.isBlank()) { error = "请选择联系方式"; return@feedbackClick }
+        if (selected == ProfileTileKind.CONTACT && social == null && (contact.isBlank() || contacts.none { it.value == contact })) { error = "请选择社媒平台或联系方式"; return@feedbackClick }
         if (selected == ProfileTileKind.IMAGE && image.isBlank()) { error = "请选择图片"; return@feedbackClick }
         if (selected == ProfileTileKind.TITLE && title.isBlank()) { error = "请输入标题"; return@feedbackClick }
-        save((tile ?: ProfileTile()).copy(kind = selected, title = title.trim(), text = text.trim(), contact = contact, image = image,
+        save((tile ?: ProfileTile()).copy(kind = selected, title = title.trim(), text = text.trim(), contact = if (selected == ProfileTileKind.CONTACT) contact else "", image = image,
+            social = social.takeIf { selected == ProfileTileKind.CONTACT },
             columns = if (selected == ProfileTileKind.TITLE) 4 else tile?.columns ?: 2, rows = if (selected == ProfileTileKind.TITLE) 1 else tile?.rows ?: 2))
     }) { Text("完成") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
 }

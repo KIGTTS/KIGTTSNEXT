@@ -13,12 +13,12 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.*
 import com.kigtts.next.ui.components.*
 
-@Composable internal fun ContactPlatformPicker(close: () -> Unit, choose: (SocialPlatform) -> Unit) {
+@Composable internal fun ContactPlatformPicker(close: () -> Unit, title: String = "添加联系方式", choose: (SocialPlatform) -> Unit) {
     var query by remember { mutableStateOf("") }
     val groups = remember(query) { socialPlatformGroups(query) }
     val listState = rememberLazyListState()
     LaunchedEffect(query) { listState.scrollToItem(0) }
-    MotionAlertDialog(close, title = { Text("添加联系方式") }, text = {
+    MotionAlertDialog(close, title = { Text(title) }, text = {
         Column(Modifier.heightIn(max = 440.dp)) {
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true,
                 label = { Text("搜索平台") }, leadingIcon = { Icon(Icons.Default.Search, null) })
