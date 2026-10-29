@@ -50,11 +50,27 @@ class PhotoFactsPermissionTest {
         shadowOf(app).denyPermissions(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
         val request = async(start = CoroutineStart.UNDISPATCHED) { AndroidPhotoFactsAccess(app).locationPermission() }
         try {
+            assertEquals("location", PhotoFactsConsent.pending.value?.kind)
+            assertNull(WebAndroidPermissions.pending.value)
+            requireNotNull(PhotoFactsConsent.pending.value).result.complete(true)
+            yield()
             assertEquals(listOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION), WebAndroidPermissions.pending.value?.permissions)
             shadowOf(app).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
             WebAndroidPermissions.finish(mapOf(Manifest.permission.ACCESS_COARSE_LOCATION to true, Manifest.permission.ACCESS_FINE_LOCATION to false))
             assertTrue(request.await())
-        } finally { WebAndroidPermissions.cancel() }
+        } finally { WebAndroidPermissions.cancel(); request.cancel() }
+    }
+
+    @Test fun decliningThePurposeExplanationDoesNotRequestLocationEvenIfSystemPermissionWasGranted() = runBlocking {
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
+        val request = async(start = CoroutineStart.UNDISPATCHED) { AndroidPhotoFactsAccess(app).locationPermission() }
+        try {
+            assertEquals("location", PhotoFactsConsent.pending.value?.kind)
+            assertNull(WebAndroidPermissions.pending.value)
+            requireNotNull(PhotoFactsConsent.pending.value).result.complete(false)
+            assertFalse(request.await())
+            assertNull(WebAndroidPermissions.pending.value)
+        } finally { request.cancel(); WebAndroidPermissions.cancel() }
     }
 
     @Test fun importedRecentPhotoWithoutGpsNeverUsesTheDevicesPosition() = runTest {

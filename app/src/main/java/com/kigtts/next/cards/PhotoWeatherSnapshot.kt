@@ -59,6 +59,6 @@ internal object PhotoWeatherSnapshot {
             in 51..67, in 80..82 -> "雨"; in 71..77, 85, 86 -> "雪"; in 95..99 -> "雷雨"
             else -> return null
         }
-        return "$description ${temperature.roundToInt()}°C · 模型估计"
+        return "$description ${temperature.roundToInt()}°C"
     }
 }

@@ -20,7 +20,7 @@ class PhotoWeatherSnapshotTest {
         assertTrue(request.contains("timeformat=unixtime")); assertFalse(request.contains("31.234567"))
         val hour = now / 3_600_000 * 3600
         val json = """{"hourly":{"time":[$hour],"weather_code":[0],"temperature_2m":[-2.7]}}"""
-        assertEquals("晴 -3°C · 模型估计", PhotoWeatherSnapshot.parse(facts,json))
+        assertEquals("晴 -3°C", PhotoWeatherSnapshot.parse(facts,json))
     }
     @Test fun archiveDatesAreCaptureDatesAndMissingValuesAreNeverInvented() {
         val facts = FrozenPhotoFacts(now-30L*24*3600*1000, latitude=31.23, longitude=121.47)

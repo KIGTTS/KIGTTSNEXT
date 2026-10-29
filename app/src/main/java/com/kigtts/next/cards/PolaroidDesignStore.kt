@@ -18,7 +18,7 @@ data class FrozenPhotoFacts(val capturedAt: Long? = null, val zone: String = Zon
     val fromCamera: Boolean = false) {
     fun text(field: PhotoTextField): String = when (field) {
         PhotoTextField.LOCATION -> location?.takeIf(String::isNotBlank) ?: "未知"
-        PhotoTextField.WEATHER -> weather?.takeIf(String::isNotBlank) ?: "未知"
+        PhotoTextField.WEATHER -> weather?.takeIf(String::isNotBlank)?.let(::photoWeatherCaption) ?: "未知"
         else -> capturedAt?.let { instant ->
             val pattern = when (field) { PhotoTextField.DATE -> "yyyy.MM.dd"; PhotoTextField.TIME -> "HH:mm"; else -> "yyyy.MM.dd HH:mm" }
             DateTimeFormatter.ofPattern(pattern).format(Instant.ofEpochMilli(instant).atZone(ZoneId.of(zone)))
@@ -96,7 +96,8 @@ class PolaroidDesignStore(private val root: File) {
             val field = layer.photoField() ?: bound[layer.id]?.takeIf {
                 layer.kind == CardLayerKind.PHOTO_INFO || layer.kind == CardLayerKind.TEXT && it.text == layer.text
             }?.field
-            if (field != null) fields[field] = layer.copy(id = field.layerId(), kind = CardLayerKind.PHOTO_INFO)
+            if (field != null) fields[field] = layer.copy(id = field.layerId(), kind = CardLayerKind.PHOTO_INFO,
+                text = if (field == PhotoTextField.WEATHER) photoWeatherCaption(layer.text) else layer.text)
             field == null
         }
         return card.copy(layers = retained + PhotoTextField.entries.mapNotNull(fields::get))

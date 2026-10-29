@@ -69,4 +69,23 @@ class PolaroidDesignStoreTest {
         reload.freeze(target.id, FrozenPhotoFacts(1735689600000L, "UTC"))
         assertEquals(1, reload.fieldLayers(reload.apply(target), PhotoTextField.DATE).size)
     }
+
+    @Test fun savedWeatherFieldsLoseTheGeneratedSuffixWhileHandwrittenTextStaysIntact() {
+        val store = PolaroidDesignStore(folder.root)
+        val legacy = "晴 -3°C · 模型估计"
+        val weather = CardLayer(kind = CardLayerKind.TEXT, text = legacy)
+        val handwritten = CardLayer(kind = CardLayerKind.TEXT, text = legacy)
+        val card = PolaroidCard(title = "", layers = listOf(weather, handwritten))
+        store.bind(card.id, weather, PhotoTextField.WEATHER)
+        val normalized = store.normalizeFields(card)
+        assertEquals("晴 -3°C", normalized.layers.single { it.photoField() == PhotoTextField.WEATHER }.text)
+        assertEquals(legacy, normalized.layers.single { it.kind == CardLayerKind.TEXT }.text)
+        assertEquals(normalized, store.normalizeFields(normalized))
+        store.freeze(card.id, FrozenPhotoFacts(weather = legacy))
+        store.savePreset("天气", normalized, true)
+        val restored = PolaroidDesignStore(folder.root)
+        assertEquals("晴 -3°C", restored.facts(card.id).text(PhotoTextField.WEATHER))
+        assertEquals("晴 -3°C", restored.apply(card).layers.single { it.photoField() == PhotoTextField.WEATHER }.text)
+        assertEquals("未知", FrozenPhotoFacts().text(PhotoTextField.WEATHER))
+    }
 }

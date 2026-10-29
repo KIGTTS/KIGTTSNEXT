@@ -21,7 +21,7 @@ internal fun PhotoFactsConsentHost() {
                 Icon(if (weather) Icons.Default.Cloud else Icons.Default.LocationOn, null)
             } },
             text = { Text(if (weather) "允许将大致位置和拍摄日期发送给 Open-Meteo，查询拍摄时的天气？天气为估算值，免费服务限非商业用途。"
-                else "允许获取拍摄位置、查询地点名称，并随照片保存？") },
+                else "用于给照片添加拍摄地点和天气。新拍照片使用当前位置，导入照片读取已有的拍摄位置。是否允许？") },
             confirmButton = { TextButton({ request.result.complete(true) }) { Text("允许") } },
             dismissButton = { TextButton({ request.result.complete(false) }) { Text("暂不允许") } })
     }

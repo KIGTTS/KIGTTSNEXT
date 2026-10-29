@@ -13,7 +13,7 @@ import java.io.InputStream
 /** Prefer the selected original's EXIF when permitted; a denied location grant never blocks import. */
 internal suspend fun openPhotoSource(context: Context, uri: Uri): InputStream {
     val media = uri.scheme == "content" && uri.authority in setOf(MediaStore.AUTHORITY, "com.android.providers.media.documents")
-    if (Build.VERSION.SDK_INT >= 29 && media) {
+    if (Build.VERSION.SDK_INT >= 29 && media && PhotoFactsConsent.request(context, "location")) {
         val prefs = context.getSharedPreferences("polaroid-facts", 0)
         fun granted() = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED
         if (!granted() && !prefs.getBoolean("media-location-asked", false)) {

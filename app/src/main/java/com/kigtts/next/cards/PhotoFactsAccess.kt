@@ -24,6 +24,7 @@ internal interface PhotoFactsAccess {
 internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFactsAccess {
     override suspend fun consent(kind: String) = PhotoFactsConsent.request(context, kind)
     override suspend fun locationPermission(): Boolean {
+        if (!PhotoFactsConsent.request(context, "location")) return false
         fun has(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         val prefs = context.getSharedPreferences("polaroid-facts", 0)
         if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION) && prefs.getBoolean("location-permission-v2", false)) return true

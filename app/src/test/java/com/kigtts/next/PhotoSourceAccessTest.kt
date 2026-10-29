@@ -30,6 +30,9 @@ import java.io.File
 class PhotoSourceAccessTest {
     @get:Rule val temp=TemporaryFolder()
     private val app get()=ApplicationProvider.getApplicationContext<Application>()
+    @Before fun previouslyAcceptedLocationPurpose() {
+        app.getSharedPreferences("polaroid-facts", 0).edit().putBoolean("location", true).commit()
+    }
     private val uri=Uri.parse("content://media/external/images/media/1")
     private fun jpeg(gps:Boolean):File = temp.newFile().also { file ->
         Bitmap.createBitmap(12,12,Bitmap.Config.ARGB_8888).also { bitmap ->
@@ -88,5 +91,36 @@ class PhotoSourceAccessTest {
         shadowOf(app).grantPermissions(Manifest.permission.ACCESS_MEDIA_LOCATION)
         assertNull(read().latitude)
         assertEquals(2,provider.requests.size)
+    }
+
+    @Test fun firstImportShowsItsPurposeBeforeRequestingOriginalPhotoLocation()=runBlocking {
+        app.getSharedPreferences("polaroid-facts", 0).edit().clear().commit()
+        val provider=provider();shadowOf(app).denyPermissions(Manifest.permission.ACCESS_MEDIA_LOCATION)
+        val request=async(start=CoroutineStart.UNDISPATCHED) { read() }
+        try {
+            assertEquals("location",PhotoFactsConsent.pending.value?.kind)
+            assertNull(WebAndroidPermissions.pending.value);assertTrue(provider.requests.isEmpty())
+            requireNotNull(PhotoFactsConsent.pending.value).result.complete(true)
+            yield()
+            assertEquals(listOf(Manifest.permission.ACCESS_MEDIA_LOCATION),WebAndroidPermissions.pending.value?.permissions)
+            WebAndroidPermissions.finish(mapOf(Manifest.permission.ACCESS_MEDIA_LOCATION to false))
+            assertNull(request.await().latitude)
+            assertEquals(1,provider.requests.size)
+        } finally { request.cancel();WebAndroidPermissions.cancel() }
+    }
+
+    @Test fun decliningImportLocationExplanationStillReadsThePhotoWithoutRequestingPermission()=runBlocking {
+        app.getSharedPreferences("polaroid-facts", 0).edit().clear().commit()
+        val provider=provider();shadowOf(app).denyPermissions(Manifest.permission.ACCESS_MEDIA_LOCATION)
+        val request=async(start=CoroutineStart.UNDISPATCHED) { read() }
+        try {
+            requireNotNull(PhotoFactsConsent.pending.value).result.complete(false)
+            val facts=request.await()
+            assertNull(facts.latitude);assertNotNull(facts.capturedAt)
+            assertNull(WebAndroidPermissions.pending.value)
+            assertEquals(1,provider.requests.size)
+            assertNull(provider.requests.single().getQueryParameter("requireOriginal"))
+            assertFalse(app.getSharedPreferences("polaroid-facts", 0).getBoolean("media-location-asked",false))
+        } finally { request.cancel();WebAndroidPermissions.cancel() }
     }
 }
