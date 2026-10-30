@@ -10,6 +10,7 @@ import java.util.UUID
 
 /** The UI and plugin broker edit exactly the same design catalog. */
 class CardRepository(private val context:Context,val stickers:StickerRepository) {
+    internal val systemAlbum by lazy { PolaroidSystemAlbum(context, stickers) }
     val cards=stickers.cards
     val albums=stickers.albums
     val designs=stickers.designs

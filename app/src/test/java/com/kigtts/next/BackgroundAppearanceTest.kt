@@ -13,6 +13,13 @@ import org.robolectric.annotation.*
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class BackgroundAppearanceTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
+    @Test fun secondaryPagesUseAStrongerScrimWithoutChangingHomeOrExceedingOpaque() {
+        listOf(0f, .2f, .7f, 1f).forEach { dim ->
+            assertEquals(dim, appearanceBackgroundDim(dim, BackgroundBlur.NONE), .001f)
+            assertEquals(1f - (1f - dim) * .75f, appearanceBackgroundDim(dim, BackgroundBlur.PAGE), .001f)
+            assertTrue(appearanceBackgroundDim(dim, BackgroundBlur.CARD) in dim..1f)
+        }
+    }
     @Test fun squareCropClampsPanAndRetainsOriginalPixels() {
         val image = Bitmap.createBitmap(600, 300, Bitmap.Config.ARGB_8888)
         Canvas(image).apply { drawColor(Color.GREEN); drawRect(0f, 0f, 100f, 300f, Paint().apply { color = Color.RED }) }
@@ -27,8 +34,9 @@ class BackgroundAppearanceTest {
     @Test fun gaussianIsSymmetricAndCachedWithoutTouchingSource() {
         val image = Bitmap.createBitmap(65, 65, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK); setPixel(32, 32, Color.WHITE) }
         val output = gaussianBlur(image, 3f)
-        assertEquals(output.getPixel(30, 32), output.getPixel(34, 32))
-        assertEquals(output.getPixel(32, 30), output.getPixel(32, 34))
+        // Final 8-bit dither can differ by up to two levels between mirrored pixels.
+        assertEquals(Color.red(output.getPixel(30, 32)).toDouble(), Color.red(output.getPixel(34, 32)).toDouble(), 2.0)
+        assertEquals(Color.red(output.getPixel(32, 30)).toDouble(), Color.red(output.getPixel(32, 34)).toDouble(), 2.0)
         assertTrue(Color.red(output.getPixel(32, 32)) < 255)
         assertTrue(Color.red(output.getPixel(31, 32)) > 0)
         assertEquals(Color.WHITE, image.getPixel(32, 32))
@@ -71,7 +79,10 @@ class BackgroundAppearanceTest {
         assertNotEquals(lightFile, strongFile)
         val light = BitmapFactory.decodeFile(lightFile.path)
         val strong = BitmapFactory.decodeFile(strongFile.path)
-        assertTrue(Color.red(light.getPixel(72, 64)) > Color.red(strong.getPixel(72, 64)) + 20)
+        fun contrast(bitmap: Bitmap) = (60..68).map { y ->
+            Color.red(bitmap.getPixel(72, y)) - Color.red(bitmap.getPixel(55, y))
+        }.average()
+        assertTrue("卡片层的边界过渡应比页面层更柔和", contrast(light) > contrast(strong) + 20)
         val settings = ThemeSettings(background = key, secondaryPageBackground = true)
         store.save(settings); assertEquals(settings, ThemeSettingsStore(app).load())
         store.save(settings.copy(secondaryPageBackground = false))

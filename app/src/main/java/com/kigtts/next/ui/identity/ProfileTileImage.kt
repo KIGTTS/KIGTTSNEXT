@@ -19,7 +19,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /** Bounded image decoding with composition-owned GIF playback, including Android 8. */
-@Composable internal fun ProfileTileImage(file: File?, modifier: Modifier = Modifier, description: String? = null) {
+@Composable internal fun ProfileTileImage(file: File?, modifier: Modifier = Modifier, description: String? = null,
+    fit: Boolean = false) {
     val view = LocalView.current
     var visible by remember { mutableStateOf(false) }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
@@ -28,10 +29,11 @@ import java.io.File
     }
     if (drawable == null) Icon(Icons.Default.Image, description, modifier)
     else {
-        AndroidView(factory = { ImageView(it).apply { scaleType = ImageView.ScaleType.CENTER_CROP } }, modifier = modifier.onGloballyPositioned {
+        AndroidView(factory = { ImageView(it) }, modifier = modifier.onGloballyPositioned {
             val bounds = it.boundsInWindow(); visible = bounds.bottom > 0 && bounds.top < view.rootView.height && bounds.right > 0 && bounds.left < view.rootView.width
         },
-            update = { view -> if (view.drawable !== drawable) view.setImageDrawable(drawable); view.contentDescription = description })
+            update = { view -> view.scaleType = if (fit) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
+                if (view.drawable !== drawable) view.setImageDrawable(drawable); view.contentDescription = description })
         DisposableEffect(drawable, visible, lifecycle) {
             if (visible && lifecycle.isAtLeast(Lifecycle.State.STARTED)) (drawable as? Animatable)?.start() else (drawable as? Animatable)?.stop()
             onDispose { (drawable as? Animatable)?.stop() }

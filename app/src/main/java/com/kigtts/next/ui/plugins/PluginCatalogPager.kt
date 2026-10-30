@@ -5,6 +5,7 @@ import androidx.compose.foundation.pager.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ReadablePage
 import com.kigtts.next.ui.navigation.LocalPageActive
@@ -17,9 +18,10 @@ import java.io.File
 internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (PluginResource) -> File?,
     invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
     val active = LocalPageActive.current
+    val headerScroll = remember { CatalogHeaderScroll() }
     if (list.filters.size < 2) {
-        Column(Modifier.fillMaxSize()) {
-            CatalogFixedHeader(list, active, { action, inputs -> if (!busy) invoke(action, inputs) }, header)
+        Column(Modifier.fillMaxSize().nestedScroll(headerScroll)) {
+            CatalogFixedHeader(list, active, { action, inputs -> if (!busy) invoke(action, inputs) }, headerScroll, header)
             Box(Modifier.weight(1f)) { PluginCatalogPane(list, busy, resolve, invoke) }
         }
         return
@@ -44,13 +46,13 @@ internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (Pl
                 if (target != selected) latestInvoke(list.filters[target].action, emptyMap())
             }
         }
-        Column(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize().nestedScroll(headerScroll)) {
         CatalogFixedHeader(list.copy(filters = list.filters.mapIndexed { i, filter -> filter.copy(selected = i == pager.currentPage) }),
             active, { action, inputs ->
                 val target = list.filters.indexOfFirst { it.action == action }
                 if (target >= 0) scope.launch { pager.animateScrollToPage(target) }
                 else if (!busy) latestInvoke(action, inputs)
-            }, header)
+            }, headerScroll, header)
         HorizontalPager(pager, Modifier.weight(1f).testTag("catalog-pages"), key = { ids[it] }, beyondViewportPageCount = 1) { index ->
             val snapshot = if (index == selected) list else snapshots[ids[index]]
             val loading = snapshot == null
@@ -67,15 +69,17 @@ internal fun PluginCatalogList(list: ManagementList, busy: Boolean, resolve: (Pl
 /** A single header lives outside the pager: dragging a category never translates or recreates it. */
 @Composable
 private fun CatalogFixedHeader(list: ManagementList, active: Boolean,
-    invoke: (String, Map<String, String>) -> Unit, header: @Composable ColumnScope.() -> Unit) {
+    invoke: (String, Map<String, String>) -> Unit, scroll: CatalogHeaderScroll, header: @Composable ColumnScope.() -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val wide = maxWidth >= 600.dp
         Box(Modifier.fillMaxWidth(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = 1120.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
-                .testTag("catalog-fixed-header"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                header()
-                CatalogShortcuts(list.shortcuts, wide, active, invoke)
-                CatalogTabs(list.filters, active, invoke)
+            Column(Modifier.widthIn(max = 1120.dp).fillMaxWidth().padding(horizontal = 16.dp)
+                .testTag("catalog-fixed-header")) {
+                CatalogCollapsingHeader(scroll) {
+                    header()
+                    CatalogShortcuts(list.shortcuts, wide, active, invoke)
+                }
+                Box(Modifier.padding(bottom = 12.dp)) { CatalogTabs(list.filters, active, invoke) }
             }
         }
     }

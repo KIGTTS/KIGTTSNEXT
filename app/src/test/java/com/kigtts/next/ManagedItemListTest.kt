@@ -75,6 +75,8 @@ class ManagedItemListTest {
             ManagedItemList(ManagementList("groups", values, "order"), invoke = { _, inputs -> orders += inputs.getValue("order") })
         } } }
         val bounds = compose.onNodeWithTag("managed-item/p").getUnclippedBoundsInRoot()
+        val normal = compose.onNodeWithTag("managed-item/n").getUnclippedBoundsInRoot()
+        assertTrue("Pinned items are visually separated", (normal.top - bounds.bottom).value >= 12f)
         assertEquals(80f, (bounds.bottom - bounds.top).value, 1f)
         val action = compose.onNodeWithTag("managed-grip/p", useUnmergedTree = true).fetchSemanticsNode()
             .config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].single { it.label == "下移" }

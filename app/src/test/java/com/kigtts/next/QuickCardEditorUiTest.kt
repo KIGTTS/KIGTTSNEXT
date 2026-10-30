@@ -64,7 +64,7 @@ class QuickCardEditorUiTest {
         compose.runOnIdle { model.content.send(saved) }
         assertEquals("你好，朋友", model.state.value.editorText); assertEquals(saved.formats, model.state.value.subtitleFormats)
     }
-    @Test fun customColorUsesSharedHsvDialogAndNoColorCanBeSavedWithoutChangingText() {
+    @Test fun customColorUsesSharedHsvDialogAndDefaultCanBeSavedWithoutChangingText() {
         val model = show()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("颜色正文")
         compose.onNodeWithTag("phrase-appearance-toggle").performScrollTo().performClick()
@@ -75,10 +75,11 @@ class QuickCardEditorUiTest {
         compose.waitUntil(5000) { model.content.phraseDraft.value?.colorMode == CardColorMode.CUSTOM }
         assertEquals(0xFF6750A4, model.content.phraseDraft.value!!.color)
         assertEquals(CardColorMode.CUSTOM, model.content.phraseDraft.value!!.colorMode)
-        compose.onNodeWithContentDescription("卡片颜色：无颜色").performClick()
+        compose.onNodeWithContentDescription("卡片颜色：无颜色").assertDoesNotExist()
+        compose.onNodeWithContentDescription("卡片颜色：默认").performClick()
         compose.onNodeWithTag("save-phrase-details").performClick()
         compose.waitUntil(5000) { model.content.phraseDraft.value == null }
         val saved = model.phrases.value.last()
-        assertEquals(CardColorMode.NONE, saved.colorMode); assertEquals("颜色正文", saved.text)
+        assertEquals(CardColorMode.DEFAULT, saved.colorMode); assertEquals("颜色正文", saved.text)
     }
 }

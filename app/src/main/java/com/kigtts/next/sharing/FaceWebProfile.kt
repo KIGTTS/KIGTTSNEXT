@@ -73,5 +73,6 @@ internal const val faceProfileStyles = """
 """
 
 internal const val faceProfileScript = """
+document.querySelectorAll('[data-image-preview]').forEach(b=>b.onclick=()=>{const d=document.getElementById('tile-image-viewer'),i=b.querySelector('img');d.querySelector('img').src=i.src;d.querySelector('img').alt=i.alt;d.querySelector('a').href=i.src+'?download=1';d.showModal();});
 document.querySelectorAll('[data-contact]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.contact).showModal());document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close).close());document.querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{const d=document.getElementById(b.dataset.copy),v=d.querySelector('.contact-value').textContent;try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(v);else{const t=document.createElement('textarea');t.value=v;t.style.position='fixed';t.style.opacity='0';document.body.append(t);t.select();const ok=document.execCommand('copy');t.remove();if(!ok)throw Error();}d.querySelector('.copy-status').textContent='已复制';}catch{d.querySelector('.copy-status').textContent='请长按上方文字复制';}});
 """

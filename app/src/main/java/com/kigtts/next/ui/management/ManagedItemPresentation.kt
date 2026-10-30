@@ -22,12 +22,28 @@ import com.kigtts.next.ui.settings.SettingPosition
 import com.kigtts.plugin.api.*
 
 internal fun managedItemPosition(items: List<ManagementItem>, index: Int): SettingPosition {
-    val group = items[index].group
-    val before = items.getOrNull(index - 1)?.group == group
-    val after = items.getOrNull(index + 1)?.group == group
+    val item = items[index]
+    val before = items.getOrNull(index - 1)?.let { managedItemsConnected(item, it) } == true
+    val after = items.getOrNull(index + 1)?.let { managedItemsConnected(item, it) } == true
     return when { before && after -> SettingPosition.MIDDLE; before -> SettingPosition.LAST
         after -> SettingPosition.FIRST; else -> SettingPosition.SINGLE }
 }
+
+internal fun managedItemsConnected(first: ManagementItem, second: ManagementItem) =
+    first.group == second.group && first.pinned == second.pinned
+
+/** Each section starts a fresh grid row, including on tablets with an odd pinned count. */
+internal fun managedItemSections(items: List<ManagementItem>): List<List<ManagementItem>> {
+    val sections = mutableListOf<MutableList<ManagementItem>>()
+    items.forEach { item ->
+        if (sections.lastOrNull()?.lastOrNull()?.let { managedItemsConnected(it, item) } != true) sections += mutableListOf<ManagementItem>()
+        sections.last() += item
+    }
+    return sections
+}
+
+internal fun managedGridPosition(section: List<ManagementItem>, index: Int, columns: Int): SettingPosition =
+    managedItemPosition(section.filterIndexed { i, _ -> i % columns == index % columns }, index / columns)
 
 @Composable internal fun managedItemShape(position: SettingPosition, elevated: Boolean): RoundedCornerShape {
     val density = LocalDensity.current

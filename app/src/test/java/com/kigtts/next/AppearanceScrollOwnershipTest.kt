@@ -21,6 +21,30 @@ import org.robolectric.annotation.*
 @GraphicsMode(GraphicsMode.Mode.NATIVE) @LooperMode(LooperMode.Mode.PAUSED)
 class AppearanceScrollOwnershipTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun touchingContentDuringHandleSettlingStopsTheOldAnimationImmediately() {
+        compose.setContent {
+            KigttsTheme(ThemeSettings()) { PageScaffold("外观", {}, contentScrollsHeader = false) {
+                AppearanceSettingsScreen(ThemeSettings(), {})
+            } }
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        val handle = compose.onNodeWithTag("appearance-sheet-handle", useUnmergedTree = true)
+        val sheet = compose.onNodeWithTag("appearance-settings-sheet")
+        handle.performTouchInput { swipe(center, Offset(centerX, -250f), 180) }
+        compose.mainClock.advanceTimeByFrame()
+        compose.mainClock.advanceTimeBy(48)
+        sheet.performTouchInput { down(Offset(width * .9f, 20f)) }
+        compose.waitForIdle()
+        val stoppedTop = sheet.getUnclippedBoundsInRoot().top.value
+        compose.mainClock.advanceTimeBy(400)
+        assertEquals("新触摸期间抽屉不能继续被旧归位动画拉走", stoppedTop,
+            sheet.getUnclippedBoundsInRoot().top.value, .5f)
+        sheet.performTouchInput { moveBy(Offset(0f, 80f)); up() }
+        compose.mainClock.advanceTimeBy(400)
+        sheet.assertExists()
+    }
+
     @Test fun sheetAndContentScrollIndependentlyOfHeaderWhileHeaderStillAcceptsDirectDrag() {
         compose.setContent {
             var settings by remember { mutableStateOf(ThemeSettings()) }

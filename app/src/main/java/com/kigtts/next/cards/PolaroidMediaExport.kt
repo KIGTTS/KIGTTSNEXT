@@ -17,13 +17,13 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 fun exportPolaroidStill(stickers: StickerRepository, card: PolaroidCard, includeFrame: Boolean = true,
-    includeStickers: Boolean = true): File = PolaroidRenderer.export(stickers, card, PolaroidExportOptions(includeFrame, includeStickers))
+    includeStickers: Boolean = true, maximumHeight: Int = 1500): File = PolaroidRenderer.export(stickers, card, PolaroidExportOptions(includeFrame, includeStickers), maximumHeight)
 
 /** Both quick-text media and ordinary sharing use this one design-aware export path. */
 suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard, includeFrame: Boolean = true,
-    includeStickers: Boolean = true): File {
+    includeStickers: Boolean = true, maximumHeight: Int = 1500): File {
     val motion = withContext(Dispatchers.IO) { CardMotionRepository(stickers).get(card.imageId) }
-        ?: return withContext(Dispatchers.IO) { exportPolaroidStill(stickers, card, includeFrame, includeStickers) }
+        ?: return withContext(Dispatchers.IO) { exportPolaroidStill(stickers, card, includeFrame, includeStickers, maximumHeight) }
     val options = PolaroidExportOptions(includeFrame, includeStickers)
     val directory = File(stickers.context.cacheDir, "cards/motion-" + UUID.randomUUID())
     check(withContext(Dispatchers.IO) { directory.mkdirs() }) { "无法准备实况导出" }
@@ -35,7 +35,7 @@ suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard,
         val effect = CardMotionPaperEffect(card, stickers.frameStyle(card), paper, motion.colorMatrix, includeFrame, motion.lut, motion.lutStrength, motion.effects)
         transform(stickers, motion, effect, clip)
         return withContext(Dispatchers.IO) {
-            val still = PolaroidRenderer.renderBitmap(stickers, card, options)
+            val still = PolaroidRenderer.renderBitmap(stickers, card, options, maximumHeight = maximumHeight)
             try { jpeg.outputStream().use { check(still.compress(Bitmap.CompressFormat.JPEG, 95, it)) { "无法生成实况封面" } } }
             finally { still.recycle() }
             val output = File(stickers.root, "exports/${card.id}-${UUID.randomUUID()}MP.jpg")

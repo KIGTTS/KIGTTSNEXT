@@ -13,6 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +37,15 @@ internal fun groupedSettingShape(position: SettingPosition, outer: CornerBasedSh
         bottomEnd = if (position in setOf(SettingPosition.SINGLE, SettingPosition.LAST)) outer.bottomEnd else inner)
 }
 
+@Composable internal fun animatedSettingShape(position: SettingPosition, outer: CornerBasedShape): RoundedCornerShape {
+    val density = LocalDensity.current
+    val target = groupedSettingShape(position, outer)
+    @Composable fun corner(size: CornerSize, label: String) = animateDpAsState(
+        with(density) { size.toPx(Size.Zero, density).toDp() }, tween(180), label = label).value
+    return RoundedCornerShape(corner(target.topStart, "setting-top-start"), corner(target.topEnd, "setting-top-end"),
+        corner(target.bottomEnd, "setting-bottom-end"), corner(target.bottomStart, "setting-bottom-start"))
+}
+
 @Composable
 internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
     com.kigtts.next.ui.components.ReadablePage(840.dp) {
@@ -43,8 +56,9 @@ internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 internal fun SettingsGroup(title: String, subtitle: String = "", headerAction: (@Composable () -> Unit)? = null,
+    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit) {
-    com.kigtts.next.theme.AppearanceCardSurface(Modifier.fillMaxWidth().settingFocus(title)) {
+    com.kigtts.next.theme.AppearanceCardSurface(modifier.fillMaxWidth().settingFocus(title)) {
         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -66,7 +80,7 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     badge: com.kigtts.plugin.api.PluginBadge? = null,
     content: @Composable ColumnScope.() -> Unit = {}) {
     val located = modifier.settingFocus(title)
-    val shape = groupedSettingShape(position, MaterialTheme.shapes.small)
+    val shape = animatedSettingShape(position, MaterialTheme.shapes.small)
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

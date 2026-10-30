@@ -35,8 +35,9 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
     var chooseGroup by remember { mutableStateOf(false) }
     var appearance by rememberSaveable(draft.key) { mutableStateOf(false) }
     LaunchedEffect(enabled) { if(!enabled)chooseGroup=false }
+    com.kigtts.next.ui.components.ReadablePage(840.dp) {
     Column(Modifier.fillMaxSize().testTag("phrase-details-form")
-        .verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        .verticalScroll(rememberScrollState()).padding(com.kigtts.next.ui.navigation.pageContentPadding()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         PhraseEditorSection("字幕与标题") {
             RichPhraseTextField(draft, model, enabled)
             OutlinedTextField(title, { value -> title = value.copy(text=value.text.replace('\n',' ')); model.content.editPhrase { it.copy(title = title.text) } },
@@ -63,5 +64,6 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
         PhraseAppearanceSection(appearance,enabled,{ focus.clearFocus();keyboard?.hide();appearance=!appearance }) {
             PhraseAppearanceSettings(draft, model, enabled&&appearance)
         }
+    }
     }
 }

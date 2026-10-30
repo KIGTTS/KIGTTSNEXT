@@ -23,7 +23,7 @@ class QuickCardContentTest {
         val library = QuickTextLibrary(QuickPhraseStore(app))
         QuickCardType.entries.forEachIndexed { i, type ->
             assertTrue(library.savePhrase(QuickPhrase("完整正文", "常用", "card-$i", "缩略标题", if (type == QuickCardType.TEXT) null else "asset-$i",
-                type, CardColorMode.entries[i % 3], 0xFF835FC1, type == QuickCardType.TEXT, listOf(TextFormatRun(0, 2, TextFormat.BOLD)))))
+                type, listOf(CardColorMode.DEFAULT, CardColorMode.CUSTOM)[i % 2], 0xFF835FC1, type == QuickCardType.TEXT, listOf(TextFormatRun(0, 2, TextFormat.BOLD)))))
         }
         val original = library.phrases.value.takeLast(4)
         library.movePhrase(original[3].id, original[0].id)
@@ -31,9 +31,13 @@ class QuickCardContentTest {
         val restored = QuickTextLibrary(QuickPhraseStore(app))
         assertEquals(library.phrases.value, restored.phrases.value)
         assertEquals(CardColorMode.CUSTOM, restored.phrases.value.first { it.id == "card-1" }.colorMode)
-        assertEquals(CardColorMode.NONE, restored.phrases.value.first { it.id == "card-2" }.colorMode)
+        assertEquals(CardColorMode.DEFAULT, restored.phrases.value.first { it.id == "card-2" }.colorMode)
         assertEquals("", restored.phrases.value.first { it.id == "card-0" }.title)
         assertTrue(QuickPhrase("正文", "常用").richText)
+    }
+    @Test fun legacyNoColorUsesDefaultWithoutLosingOtherCardFields() {
+        val source = QuickPhrase("正文", "常用", title = "标题", colorMode = CardColorMode.NONE)
+        assertEquals(source.copy(colorMode = CardColorMode.DEFAULT), QuickPhraseCodec.read(QuickPhraseCodec.write(source)))
     }
     @Test fun draftTabsPreserveEachResourceAndCancelledImportsNeverAttachToAnotherDraft() = runBlocking {
         val model = testAppModel(app)

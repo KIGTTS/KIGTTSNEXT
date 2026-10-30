@@ -21,6 +21,9 @@ import kotlin.math.max
 internal val LocalAppAppearanceSettings = staticCompositionLocalOf { ThemeSettings() }
 internal val LocalSecondaryBackground = compositionLocalOf<ThemeSettings?> { null }
 
+internal fun appearanceBackgroundDim(base: Float, blur: BackgroundBlur): Float =
+    if (blur == BackgroundBlur.NONE) base.coerceIn(0f, 1f) else (1f - (1f - base.coerceIn(0f, 1f)) * .75f)
+
 /** A single screen anchor keeps the image stationary behind scrolling cards and page chrome. */
 internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): Rect {
     val scale = max(viewport.width / image.width.coerceAtLeast(1f), viewport.height / image.height.coerceAtLeast(1f))
@@ -44,7 +47,7 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
             val rect = backgroundImageRect(Size(image.width.toFloat(), image.height.toFloat()), viewport, if (screenAnchored) origin else Offset.Zero)
             withTransform({ translate(rect.left, rect.top); scale(rect.width / image.width, rect.height / image.height, Offset.Zero) }) { drawImage(image) }
         }
-        drawRect(dim.copy(alpha = if (image == null) 1f else settings.backgroundDim))
+        drawRect(dim.copy(alpha = if (image == null) 1f else appearanceBackgroundDim(settings.backgroundDim, blur)))
         drawRect(overlay)
     }
 }

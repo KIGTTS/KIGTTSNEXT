@@ -11,7 +11,7 @@ internal object QuickPhraseCodec {
         return QuickPhrase(text, json.getString("category"), json.optString("id").takeIf(String::isNotBlank) ?: UUID.randomUUID().toString(),
             (if (json.has("title") && !json.isNull("title")) json.optString("title") else json.optString("description")).trim(),
             json.optString("mediaId").takeIf(String::isNotBlank), QuickCardType.entries.firstOrNull { it.name == json.optString("type") },
-            CardColorMode.entries.firstOrNull { it.name == json.optString("colorMode") } ?: CardColorMode.DEFAULT,
+            CardColorMode.entries.firstOrNull { it.name == json.optString("colorMode") && it != CardColorMode.NONE } ?: CardColorMode.DEFAULT,
             0xFF000000L or (json.optLong("color", 0xFF00696E) and 0xFFFFFF), json.optBoolean("richText", true),
             formats, json.optBoolean("autoPlay", true),
             com.kigtts.next.media.MediaAudioMode.read(json.optString("audioMode")),

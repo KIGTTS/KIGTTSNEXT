@@ -51,11 +51,14 @@ import com.kigtts.next.ui.components.reorder.*
     val density = LocalDensity.current
     val elevation by animateDpAsState(if (drag.key != null && !drag.settling) 6.dp else 0.dp, tween(180), label = "overlay-entry-lift")
     val byId = entries.associateBy { it.id }
-    val floatingShape = groupedSettingShape(SettingPosition.SINGLE, MaterialTheme.shapes.small)
-    val heldIndex = remember(drag.key) { positions.indexOf(drag.key) }
-    @Composable fun Entry(id: String, modifier: Modifier, grip: Modifier, floating: Boolean = false) {
+    val floatingPosition = positions.indexOf(drag.key).let { index ->
+        when { positions.size == 1 -> SettingPosition.SINGLE; index == 0 -> SettingPosition.FIRST
+            index == positions.lastIndex -> SettingPosition.LAST; else -> SettingPosition.MIDDLE }
+    }
+    val floatingShape = animatedSettingShape(floatingPosition, MaterialTheme.shapes.small)
+    @Composable fun Entry(id: String, modifier: Modifier, grip: Modifier) {
         val entry = byId[id] ?: return
-        val index = if (floating) heldIndex else positions.indexOf(id)
+        val index = positions.indexOf(id)
         SettingItem(entry.title, if (entry.enabled) "" else "暂不可用", null,
             if (positions.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == positions.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
             modifier = modifier,
@@ -98,7 +101,7 @@ import com.kigtts.next.ui.components.reorder.*
                 Entry(id, Modifier.width(with(density) { drag.floatingBounds.width.toDp() }).graphicsLayer {
                     translationX = drop.value.x; translationY = drop.value.y; shadowElevation = elevation.toPx()
                     shape = floatingShape
-                }.testTag("overlay-floating-entry").clearAndSetSemantics { }, Modifier, floating = true)
+                }.testTag("overlay-floating-entry").clearAndSetSemantics { }, Modifier)
             }
         }
     }

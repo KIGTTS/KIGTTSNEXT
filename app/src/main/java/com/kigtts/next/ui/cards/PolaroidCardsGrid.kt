@@ -16,7 +16,7 @@ import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.api.PolaroidFrameStyle
 import java.io.File
 
-internal enum class CardMenuAction(val label: String) { COPY("复制拍立得"), QUICK("添加到快捷文本"), DELETE("删除拍立得") }
+internal enum class CardMenuAction(val label: String) { SAVE("保存到系统相册"), COPY("复制拍立得"), QUICK("添加到快捷文本"), DELETE("删除拍立得") }
 
 @Composable
 internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) -> File?, enabled: Boolean,
@@ -40,6 +40,7 @@ internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) ->
                         DropdownMenu(menu && enabled, { menu = false }) {
                             CardMenuAction.entries.forEach { operation -> DropdownMenuItem(text = { Text(operation.label) },
                                 leadingIcon = { Icon(when (operation) {
+                                    CardMenuAction.SAVE -> Icons.Default.Download
                                     CardMenuAction.COPY -> Icons.Default.ContentCopy
                                     CardMenuAction.QUICK -> Icons.Default.TextFields
                                     CardMenuAction.DELETE -> Icons.Default.DeleteOutline

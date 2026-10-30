@@ -21,7 +21,7 @@ internal fun QuickPhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase
     val position = rememberReorderDrop(drag)
     val density = LocalDensity.current
     val picked = phrases.firstOrNull { it.id == drag.key }
-    val neighbors = remember(drag.key) {
+    val neighbors = remember(phrases, picked?.category, drag.key, columns, singleRow) {
         val group = phrases.filter { it.category == picked?.category }
         val index = group.indexOfFirst { it.id == picked?.id }
         if (singleRow) CornerNeighbors(start = index > 0, end = index < group.lastIndex)

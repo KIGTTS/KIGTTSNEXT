@@ -34,13 +34,10 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     val pin = secondary.filter { it.icon == PluginIcon.PIN || it.symbol == "push_pin" }
     val other = secondary.filterNot { it in pin }.sortedBy { it.isDestructive() }
     fun PageAction.reveal() = RevealAction(id, label, if (isDestructive()) Icons.Default.Delete else icon.vector(symbol), isDestructive())
-    // Start in the current state so the first pointer frame cannot flash the old icon/shape.
-    var lifted by remember(item.id) { mutableStateOf(elevated) }
-    LaunchedEffect(elevated) { lifted = elevated }
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         tween(180), label = "managed-selection-color")
     val row: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggleActions, closeActions ->
-    Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, lifted || revealed),
+    Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, revealed),
         color = color, shadowElevation = shadowElevation) {
             Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((primary != null || revealed) && !elevated)
                 Modifier.clickable(enabled = enabled, onClick = feedbackClick {

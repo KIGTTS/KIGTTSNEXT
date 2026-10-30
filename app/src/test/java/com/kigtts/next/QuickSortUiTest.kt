@@ -3,6 +3,11 @@ package com.kigtts.next
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
+import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -15,6 +20,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.KigttsApp
 import com.kigtts.next.ui.home.QuickTextContent
+import com.kigtts.next.ui.home.QuickPhraseDragOverlay
+import com.kigtts.next.ui.components.reorder.*
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -27,6 +34,34 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class QuickSortUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun heldCardCornersFollowItsNewPositionBeforeTheFingerIsReleased() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        compose.activity.viewModelStore.put("quick-corners", model)
+        val first = QuickPhrase("你好", "分组", id = "first")
+        var phrases by mutableStateOf(listOf(first, QuickPhrase("第二条", "分组"), QuickPhrase("第三条", "分组")))
+        val drag = ReorderDrag({ emptyList() }, { _, _ -> })
+        drag.begin(ReorderTarget(first.id, Rect(0f, 0f, 180f, 80f)), Offset(90f, 40f))
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                MaterialTheme { Box(Modifier.size(200.dp, 100.dp).background(Color.Magenta).testTag("corner-stage")) {
+                    QuickPhraseDragOverlay(drag, phrases, true, 1, model)
+                } }
+            }
+        }
+        fun cornerGreen(): Int {
+            val file = java.io.File("build/previews/quick-corners.png")
+            compose.onNodeWithTag("corner-stage").captureRoboImage(file.path)
+            val bitmap = requireNotNull(android.graphics.BitmapFactory.decodeFile(file.path))
+            return try { android.graphics.Color.green(bitmap.getPixel(3, 3)) } finally { bitmap.recycle() }
+        }
+        assertTrue(cornerGreen() < 128)
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { phrases = listOf(phrases[1], first, phrases[2]) }
+        compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(400); compose.waitForIdle()
+        assertEquals(first.id, drag.key)
+        assertTrue("The held card takes its new connected corner without waiting for drop", cornerGreen() > 200)
+    }
     @Test fun singleRowKeepsTheGrabbedFirstCardUnderTheFingerAfterSwapping() = verifyLeadingCardDrag(true)
     @Test fun singleColumnKeepsTheGrabbedFirstCardUnderTheFingerAfterSwapping() = verifyLeadingCardDrag(false)
     @Test fun quickSortingCanMoveAcrossGroupsFromTheGridEdge() = verifyEdgeTransfer(false, 2)

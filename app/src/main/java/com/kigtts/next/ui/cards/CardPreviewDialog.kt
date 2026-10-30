@@ -133,6 +133,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                             feedbackClick { menu = false; close { onAction(operation) } }
                             else feedbackClick { menu = false; onAction(operation) },
                             leadingIcon = { Icon(when (operation) {
+                                CardMenuAction.SAVE -> Icons.Default.Download
                                 CardMenuAction.COPY -> Icons.Default.ContentCopy
                                 CardMenuAction.QUICK -> Icons.Default.TextFields
                                 CardMenuAction.DELETE -> Icons.Default.DeleteOutline

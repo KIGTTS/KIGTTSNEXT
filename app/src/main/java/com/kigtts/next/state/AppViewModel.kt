@@ -438,6 +438,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
+    init { com.kigtts.next.cards.observePolaroidSystemAlbum(viewModelScope, cards, ::message) }
     internal fun rendererUnavailable(owner: String) {
         subtitleRenderer.clear(owner)
         update { it.copy(pluginRevision = it.pluginRevision + 1) }

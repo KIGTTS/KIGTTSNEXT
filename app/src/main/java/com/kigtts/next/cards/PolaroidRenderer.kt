@@ -12,13 +12,14 @@ import kotlin.math.roundToInt
 
 /** Shared export geometry: overlays are positioned against the complete paper canvas. */
 internal object PolaroidRenderer {
-    fun export(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions()):File=try {render(repository,card,options)}
+    fun export(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions=PolaroidExportOptions(),maximumHeight:Int=1500):File=try {render(repository,card,options,maximumHeight)}
         catch(_:OutOfMemoryError) {throw StickerFault(StickerError.TOO_LARGE,"设备内存不足，请稍后重试导出")}
-    private fun render(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions):File {
-        val result=renderBitmap(repository,card,options)
+    private fun render(repository:StickerRepository,card:PolaroidCard,options:PolaroidExportOptions,maximumHeight:Int):File {
+        val result=renderBitmap(repository,card,options,maximumHeight=maximumHeight)
         try {
             val suffix=if(options.includeFrame&&options.includeStickers) "" else "-${options.includeFrame}-${options.includeStickers}"
-            val output=File(repository.root,"exports/${card.id}$suffix.png").apply {parentFile!!.mkdirs()}
+            val resolution=if(maximumHeight>1500) "-hd" else ""
+            val output=File(repository.root,"exports/${card.id}$suffix$resolution.png").apply {parentFile!!.mkdirs()}
             val stage=File(output.parentFile,".${card.id}-${java.util.UUID.randomUUID()}.tmp")
             try {stage.outputStream().use {stickerRequire(result.compress(Bitmap.CompressFormat.PNG,100,it),message="拍立得导出失败")}
                 java.nio.file.Files.move(stage.toPath(),output.toPath(),java.nio.file.StandardCopyOption.REPLACE_EXISTING);return output
@@ -31,7 +32,10 @@ internal object PolaroidRenderer {
         val frame=repository.frameStyle(card);val geometry=polaroidPaperGeometry(card,frame)
         val branding=polaroidBranding(card,frame)
         val captionWidth=branding?.captionWidth ?: geometry.titleWidth
-        val height=maximumHeight.coerceIn(128,1500);val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
+        // Gallery exports use source pixels rather than the 1500px sharing/preview ceiling.
+        val limit=minOf(6144.0/maxOf(1.0,geometry.aspectRatio),kotlin.math.sqrt(12_000_000.0/geometry.aspectRatio)).toInt()
+        val height=maximumHeight.coerceIn(128,limit);val width=(height*geometry.aspectRatio).roundToInt();val unit=(height/geometry.paperHeight).toFloat()
+        val decodeEdge=if(maximumHeight>1500)8192 else 2048
         val result=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888)
         try {
         val paperColor=polaroidPaperColor(card,frame).toInt()
@@ -43,13 +47,13 @@ internal object PolaroidRenderer {
         canvas.save();canvas.clipPath(photoPath)
         if(transparentPhoto)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
             if(card.imageId!=null || !isFullPhotoPaper(card))canvas.drawColor(0xFFB0B0B0.toInt())
-            card.imageId?.let {id->decode(repository,id)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}}
+            card.imageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}}
         };canvas.restore()
         if(options.includeFrame&&frame.borderWidth>0&&frame.borderColor!=null) {
             val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
             canvas.drawPath(photoPath,line)
         }
-        if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
+        if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         if(options.includeFrame) {
         if(card.layers.any {it.kind==CardLayerKind.PHOTO_INFO})polaroidCaption(card,geometry,captionWidth,width.toFloat(),
@@ -75,7 +79,7 @@ internal object PolaroidRenderer {
             canvas.save();canvas.rotate(layer.rotation.toFloat(),x,y)
             canvas.scale(if(layer.flipX)-1f else 1f,if(layer.flipY)-1f else 1f,x,y)
             when(layer.kind) {
-                CardLayerKind.IMAGE->layer.imageId?.let {id->decode(repository,id)?.let {bitmap->try {
+                CardLayerKind.IMAGE->layer.imageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {
                     val tall=span*bitmap.height/bitmap.width;canvas.drawBitmap(bitmap,null,RectF(x-span/2,y-tall/2,x+span/2,y+tall/2),paint)
                 } finally {bitmap.recycle()}}}
                 CardLayerKind.TEXT->{val text=TextPaint(Paint.ANTI_ALIAS_FLAG).apply {color=layer.color.toInt();textSize=span}
@@ -92,9 +96,9 @@ internal object PolaroidRenderer {
         return clipped
         } catch(failure:Throwable) {result.recycle();throw failure}
     }
-    private fun decode(repository:StickerRepository,id:String):Bitmap?=repository.imageFile(id)?.let {file->
+    private fun decode(repository:StickerRepository,id:String,maximumEdge:Int=2048):Bitmap?=repository.imageFile(id)?.let {file->
         val image=repository.images.value.firstOrNull {it.id==id} ?: return@let null
-        var sample=1;while(maxOf(image.width,image.height)/sample>2048)sample*=2
+        var sample=1;while(maxOf(image.width,image.height)/sample>maximumEdge || image.width.toLong()*image.height/sample/sample>24_000_000)sample*=2
         val bitmap=file.inputStream().use {stream->BitmapFactory.decodeStream(stream,null,BitmapFactory.Options().apply {inSampleSize=sample})} ?: return@let null
         val exif=runCatching {file.inputStream().use {ExifInterface(it)}}.getOrNull()
         val matrix=Matrix().apply {exif?.let {if(it.isFlipped)postScale(-1f,1f);postRotate(it.rotationDegrees.toFloat())}}

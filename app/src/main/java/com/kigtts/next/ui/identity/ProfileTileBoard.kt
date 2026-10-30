@@ -28,6 +28,7 @@ import kotlin.math.roundToInt
     edit: (ProfileTile) -> Unit = {}, remove: (ProfileTile) -> Unit = {}, openContact: (ContactLink) -> Unit = {},
     openLink: (String) -> Unit = {}) {
     if (tiles.isEmpty()) return
+    var preview by remember { mutableStateOf<Pair<File, String>?>(null) }
     val latestTiles by rememberUpdatedState(tiles)
     val latestChange by rememberUpdatedState(change)
     BoxWithConstraints(modifier.fillMaxWidth().testTag("profile-tiles")) {
@@ -75,8 +76,15 @@ import kotlin.math.roundToInt
                     } else Modifier)) {
                     val contact = tile.resolveContact(contacts)
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
-                    val clickable = editing || tile.kind == ProfileTileKind.LINK || (tile.kind == ProfileTileKind.CONTACT && contact != null)
-                    Surface(onClick = feedbackClick { if (editing) edit(tile) else if (tile.kind == ProfileTileKind.LINK) openLink(tile.text) else contact?.let(openContact) },
+                    val clickable = editing || tile.kind == ProfileTileKind.LINK || tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank() || (tile.kind == ProfileTileKind.CONTACT && contact != null)
+                    Surface(onClick = feedbackClick {
+                        when {
+                            editing -> edit(tile)
+                            tile.kind == ProfileTileKind.IMAGE -> image(tile.image)?.let { preview = it to tile.title.ifBlank { "图片" } }
+                            tile.kind == ProfileTileKind.LINK -> openLink(tile.text)
+                            else -> contact?.let(openContact)
+                        }
+                    },
                         enabled = clickable, modifier = Modifier.fillMaxSize().then(if (iconOnly) Modifier.semantics {
                             contentDescription = tile.title.ifBlank { contact?.label ?: "链接" }
                         } else Modifier),
@@ -94,4 +102,5 @@ import kotlin.math.roundToInt
             } }
         }
     }
+    preview?.let { (file, description) -> ProfileImagePreview(file, description, { preview = null }) }
 }

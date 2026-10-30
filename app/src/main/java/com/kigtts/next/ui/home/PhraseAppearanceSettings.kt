@@ -16,9 +16,8 @@ import com.kigtts.next.ui.components.*
 
 @Composable
 internal fun quickPhraseColor(phrase: QuickPhrase): Color = when (phrase.colorMode) {
-    CardColorMode.DEFAULT -> MaterialTheme.colorScheme.surfaceContainerLowest
+    CardColorMode.DEFAULT, CardColorMode.NONE -> MaterialTheme.colorScheme.surfaceContainerLowest
     CardColorMode.CUSTOM -> Color(phrase.color)
-    CardColorMode.NONE -> Color.Transparent
 }
 @Composable
 internal fun quickPhraseContentColor(phrase: QuickPhrase): Color = if (phrase.colorMode == CardColorMode.CUSTOM)
@@ -28,8 +27,9 @@ internal fun quickPhraseContentColor(phrase: QuickPhrase): Color = if (phrase.co
 internal fun PhraseAppearanceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean) {
     var picker by remember { mutableStateOf(false) }
     Text("卡片颜色", style = MaterialTheme.typography.titleMedium)
-    ChoiceButtonGroup("卡片颜色", CardColorMode.entries, draft.colorMode,
-        { when (it) { CardColorMode.DEFAULT -> "默认"; CardColorMode.CUSTOM -> "自定义"; CardColorMode.NONE -> "无颜色" } },
+    ChoiceButtonGroup("卡片颜色", listOf(CardColorMode.DEFAULT, CardColorMode.CUSTOM),
+        if (draft.colorMode == CardColorMode.NONE) CardColorMode.DEFAULT else draft.colorMode,
+        { if (it == CardColorMode.CUSTOM) "自定义" else "默认" },
         { if (enabled) { if (it == CardColorMode.CUSTOM) picker = true else model.content.editPhrase { current -> current.copy(colorMode = it) } } },
         Modifier.testTag("phrase-color-mode"),enabled=enabled)
     if (draft.colorMode == CardColorMode.CUSTOM) MotionTextButton(feedbackClick { picker = true }, enabled = enabled) {

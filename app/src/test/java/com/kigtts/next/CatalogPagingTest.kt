@@ -7,17 +7,51 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.plugins.PluginCatalogList
+import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.plugin.api.*
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xhdpi")
 class CatalogPagingTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun upwardScrollHidesShortcutsAndPinsTabsWhileHorizontalPagingPreservesTheHeader() {
+        var selected by mutableIntStateOf(0)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            PluginCatalogList(ManagementList("category/$selected",
+                (0..40).map { ManagementItem("item$selected-$it", "插件 $it") },
+                filters = (0..2).map { ManagementFilter("$it", "分类 $it", "select/$it", selected == it, "category") },
+                shortcuts = listOf(PageAction("sources", "来源", PluginIcon.SETTINGS), PageAction("categories", "分类", PluginIcon.MENU)),
+                style = ManagementListStyle.CATALOG), false, { null }, { action, _ -> selected = action.substringAfter('/').toInt() }, {})
+        } }
+        val before = compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot()
+        val list = compose.onNodeWithTag("managed-list/category/0")
+        list.performTouchInput { swipeUp(durationMillis = 600) }
+        compose.waitForIdle()
+        val pinned = compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot()
+        assertTrue(pinned.top < before.top)
+        compose.onNodeWithTag("catalog-tabs").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/previews/catalog-collapsed.png")
+        assertTrue("tabs=$pinned before=$before header=" + compose.onNodeWithTag("catalog-fixed-header").getUnclippedBoundsInRoot() +
+            " shortcut=" + compose.onNodeWithTag("catalog-shortcut/sources").getUnclippedBoundsInRoot(), pinned.top.value < 1f)
+        compose.onNodeWithTag("catalog-shortcut/sources").assertIsNotDisplayed()
+        list.performTouchInput { down(Offset(width * .9f, height * .5f)); moveBy(Offset(-width * .6f, 0f), 250) }
+        compose.waitForIdle()
+        assertEquals(pinned, compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot())
+        list.performTouchInput { up() }; compose.waitForIdle()
+        assertEquals(1, selected)
+        assertEquals(pinned, compose.onNodeWithTag("catalog-tabs").getUnclippedBoundsInRoot())
+        compose.onNodeWithTag("catalog-shortcut/sources").assertIsNotDisplayed()
+        compose.onNodeWithTag("managed-list/category/1").performTouchInput { swipeDown(durationMillis = 600) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("catalog-shortcut/sources").assertIsDisplayed()
+    }
     @Test fun draggingMovesThePageBeforeRequestAndRequestsOnlyAfterSettling() {
         var selected by mutableIntStateOf(0)
         val calls = mutableListOf<String>()

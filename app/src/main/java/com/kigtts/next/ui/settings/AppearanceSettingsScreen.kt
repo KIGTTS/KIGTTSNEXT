@@ -4,17 +4,27 @@ package com.kigtts.next.ui.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.*
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
+import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit,
@@ -23,18 +33,31 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
     onSubtitleChange: (com.kigtts.next.state.SubtitleAppearance) -> Unit = {}, onFonts: () -> Unit = {}) {
     Box(Modifier.fillMaxSize()) {
       ReadablePage(840.dp) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
           val viewport = maxHeight
           val navigation = WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)
-          val sheet = rememberBottomSheetScaffoldState()
-          LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.bottomSheetState.expand() }
-          BottomSheetScaffold(sheetPeekHeight = (viewport * .53f).coerceIn(180.dp, 420.dp),
-            scaffoldState = sheet,
-            sheetDragHandle = { Box(Modifier.fillMaxWidth().testTag("appearance-sheet-handle"), contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() } },
-            containerColor = Color.Transparent,
-            sheetContainerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f),
-            sheetContent = {
-              Column(Modifier.fillMaxWidth().heightIn(max = (viewport - 48.dp).coerceAtLeast(1.dp))
+          val scope = rememberCoroutineScope()
+          val density = LocalDensity.current
+          var expanded by rememberSaveable { mutableStateOf(false) }
+          val range = rememberUpdatedState(with(density) { (viewport - (viewport * .53f).coerceIn(180.dp, 420.dp).coerceAtMost(viewport)).toPx() })
+          val sheet = remember(scope, density.density) { AppearanceSheetMotion(scope, range, density.density, expanded) { expanded = it } }
+          LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.expand() }
+          AppearanceHomePreview(settings, placeholder, subtitle,
+            Modifier.fillMaxWidth().height(viewport * .43f).padding(12.dp).testTag("appearance-preview"))
+          Surface(Modifier.fillMaxWidth().height(viewport).offset { IntOffset(0, sheet.offset.roundToInt()) }
+            .nestedScroll(sheet).interruptAppearanceSheet(sheet),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f)) {
+            Column(Modifier.fillMaxSize()) {
+              Box(Modifier.fillMaxWidth().height(48.dp).testTag("appearance-sheet-handle")
+                .draggable(rememberDraggableState { sheet.drag(it) }, Orientation.Vertical, startDragImmediately = sheet.animating,
+                  onDragStarted = { sheet.interrupt() }, onDragStopped = { sheet.settle(it) })
+                .clickable(onClick = feedbackClick { sheet.toggle() }).semantics {
+                    contentDescription = "调整外观面板高度"
+                    stateDescription = if (sheet.fraction < .5f) "已展开" else "已收起"
+                    expand { sheet.expand(); true }; collapse { if (sheet.fraction < .5f) sheet.toggle(); true }
+                }, contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
+              Column(Modifier.fillMaxWidth().weight(1f)
                 .verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)
                 .windowInsetsPadding(navigation).testTag("appearance-settings-sheet"),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -48,10 +71,8 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                   Icon(Icons.Default.Restore, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("恢复默认外观")
                 }
               }
-            }) { _ ->
-              AppearanceHomePreview(settings, placeholder, subtitle,
-                Modifier.fillMaxWidth().height(viewport * .43f).padding(12.dp).testTag("appearance-preview"))
             }
+          }
         }
       }
     }

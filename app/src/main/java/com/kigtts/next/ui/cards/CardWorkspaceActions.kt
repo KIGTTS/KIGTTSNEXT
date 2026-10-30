@@ -49,6 +49,7 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
         }, { id -> if (id != null) openEditor(id) else message("已添加到贴纸库") }, selection.release)
     }
     fun cardAction(card: PolaroidCard, action: CardMenuAction) = when (action) {
+        CardMenuAction.SAVE -> startWork({ cards.systemAlbum.save(card.id) }, { message("已保存到系统相册") }, {})
         CardMenuAction.COPY -> work({ cards.copy(card) }) { message("已复制拍立得") }
         CardMenuAction.QUICK -> requestQuick(card)
         CardMenuAction.DELETE -> work({ cards.remove(card.id) }) { message("已删除拍立得") }

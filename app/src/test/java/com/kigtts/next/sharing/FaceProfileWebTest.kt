@@ -16,6 +16,16 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FaceProfileWebTest {
+    @Test fun imageTilesOpenFullSizeImagesAndOfferTheOriginalDownload() {
+        val tile = ProfileTile(id = "picture", kind = ProfileTileKind.IMAGE, image = "image", title = "照片\"<script>")
+        val json = profile().put("tiles", profileTileJson(listOf(tile)))
+        val asset = FaceAsset("image123", profileTileMediaId(tile.id), "profile", "image.gif", "image/gif", 100, "hash", "PROFILE")
+        val page = faceGallery(json, listOf(asset), "/s/test/")
+        assertTrue(page.contains("data-image-preview")); assertTrue(page.contains("id=\"tile-image-viewer\""))
+        assertTrue(page.contains("/s/test/file/image123")); assertTrue(page.contains("?download=1"))
+        assertFalse(page.contains("照片\"<script>")); assertTrue(page.contains("照片&quot;&lt;script&gt;"))
+        assertTrue(page.contains("object-fit:contain"))
+    }
     @Test fun independentSocialTilesHaveTheirOwnIconsAndQrDialogsWithoutAddingProfileContactRows() {
         val contacts = listOf(ContactLink("GitLab", "https://gitlab.com/me"), ContactLink("小红书", "my-account", "custom-qr"))
         val tiles = contacts.mapIndexed { i, contact -> ProfileTile(id = "social-$i", kind = ProfileTileKind.CONTACT, social = contact, columns = 1) }
