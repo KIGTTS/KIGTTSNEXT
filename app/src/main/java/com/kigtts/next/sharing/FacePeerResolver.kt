@@ -8,6 +8,8 @@ import kotlinx.coroutines.sync.withPermit
 import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
+private const val PROFILE_LOG_TAG = "FaceTransfer"
+
 /** Bounded profile probes retry after failure and never publish results from a closed discovery session. */
 internal class FacePeerResolver(private val scope: CoroutineScope, private val owner: String,
     private val found: (FacePeer) -> Unit,
@@ -40,8 +42,8 @@ internal class FacePeerResolver(private val scope: CoroutineScope, private val o
                 catch (cancel: CancellationException) { throw cancel }
                 catch (failure: Exception) {
                     // Never log capability URLs, tokens, or personal profile contents.
-                    if (Log.isLoggable("FaceTransfer", Log.DEBUG))
-                        Log.d("FaceTransfer", "Profile probe $host:${peer.port} failed (${failure.javaClass.simpleName})")
+                    if (Log.isLoggable(PROFILE_LOG_TAG, Log.DEBUG))
+                        Log.d(PROFILE_LOG_TAG, "Profile probe $host:${peer.port} failed (${failure.javaClass.simpleName})")
                 }
             }
             null

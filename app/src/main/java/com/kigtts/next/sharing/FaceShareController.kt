@@ -11,6 +11,8 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import java.io.File
 
+private const val SHARE_LOG_TAG = "FaceTransfer"
+
 internal class FaceShareController(private val context: Context, private val scope: CoroutineScope,
     private val cards: CardRepository, private val identities: IdentityRepository, private val message: (String) -> Unit) {
     private val mutablePanel = MutableStateFlow<FacePanel?>(null); val panel = mutablePanel.asStateFlow()
@@ -70,8 +72,8 @@ internal class FaceShareController(private val context: Context, private val sco
     }
     private fun found(peer: FacePeer) {
         if (peer.id == sessionId) return
-        if (Log.isLoggable("FaceTransfer", Log.DEBUG))
-            Log.d("FaceTransfer", "Discovered addresses=${facePeerHosts(peer)} port=${peer.port} p2p=${peer.p2p != null} profile=${peer.profile != null}")
+        if (Log.isLoggable(SHARE_LOG_TAG, Log.DEBUG))
+            Log.d(SHARE_LOG_TAG, "Discovered addresses=${facePeerHosts(peer)} port=${peer.port} p2p=${peer.p2p != null} profile=${peer.profile != null}")
         mutablePeers.update { before ->
             val old = before.firstOrNull { it.id == peer.id }
             (before.filterNot { it.id == peer.id } + mergeFacePeer(old, peer)).sortedByDescending { it.signal }.take(64)
@@ -86,8 +88,8 @@ internal class FaceShareController(private val context: Context, private val sco
             avatarAsset = identities.current?.avatar
             avatar = avatarAsset?.let(cards.stickers::imageFile)?.let(::faceAvatarData)
             bluetoothAvatar = faceBluetoothAvatar(avatar)
-            if (Log.isLoggable("FaceTransfer", Log.DEBUG))
-                Log.d("FaceTransfer", "Identity avatar configured=${avatarAsset != null} encoded=${avatar != null}")
+            if (Log.isLoggable(SHARE_LOG_TAG, Log.DEBUG))
+                Log.d(SHARE_LOG_TAG, "Identity avatar configured=${avatarAsset != null} encoded=${avatar != null}")
             FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile, webIcons::icon) { offer, assets ->
                 media.receive(offer, assets)
                 val pictures = assets.filterNot { it.format == "PROFILE" }
@@ -187,7 +189,7 @@ internal class FaceShareController(private val context: Context, private val sco
                 mutableStatus.value = "发送未完成"; message("连接或接收超时，请重新查找对方后再试")
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
-                Log.w("FaceTransfer", "Send failed (${error.javaClass.simpleName})", error)
+                Log.w(SHARE_LOG_TAG, "Send failed (${error.javaClass.simpleName})", error)
                 mutableStatus.value = "发送未完成"; message(error.message ?: "未能连接对方，请重试")
             }
             finally { mutableBusy.value = false }
