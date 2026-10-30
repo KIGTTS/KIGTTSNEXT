@@ -55,7 +55,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         (info.key as? String)?.takeIf { it in data }?.let { ReorderTarget(it,
             Rect(info.offset.x + horizontalPadding, (info.offset.y + lazy.layoutInfo.beforeContentPadding).toFloat(), info.offset.x + info.size.width + horizontalPadding,
                 (info.offset.y + info.size.height + lazy.layoutInfo.beforeContentPadding).toFloat())) }
-    } }, animateDrop = true, verticalOnly = columns == 1) { from, to ->
+    } }, animateDrop = true, verticalOnly = columns == 1, feedback = feedback) { from, to ->
         if (data[from]?.let { a -> data[to]?.let { b -> managedItemsConnected(a, b) } } == true) {
             order = ItemOrder.move(order, from, to); feedback.step()
         }
@@ -63,9 +63,9 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     var owned by remember { mutableStateOf(false) }
     LaunchedEffect(external) { if (drag.key == null) order = external }
     LaunchedEffect(drag.key) {
-        if (drag.key != null) { owned = true; feedback.start(0f) }
+        if (drag.key != null) { owned = true }
         else if (owned) {
-            owned = false; feedback.finish()
+            owned = false
             if (order != external) list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(ItemOrder.reconcile(order, external)))) }
         }
     }
@@ -83,7 +83,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         order = ItemOrder.move(order, id, target)
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
-    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag) else Modifier)) {
+    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag, handlesOnly = true) else Modifier)) {
         val pagePadding = com.kigtts.next.ui.navigation.pageContentPadding()
         val sections = managedItemSections(order.mapNotNull(data::get))
         LazyVerticalGrid(GridCells.Fixed(columns), Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(

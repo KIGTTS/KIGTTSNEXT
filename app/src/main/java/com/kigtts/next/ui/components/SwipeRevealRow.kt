@@ -2,10 +2,9 @@
 package com.kigtts.next.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -16,10 +15,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -27,58 +30,86 @@ import kotlin.math.roundToInt
 internal data class RevealAction(val id: String, val label: String, val icon: ImageVector, val destructive: Boolean = false)
 private enum class RevealSide { CLOSED, START, END }
 
-/** Reveals actions without ever executing them on release. One owner per list closes sibling rows. */
+/** Stable pointer owner: only physical release can commit a full right swipe. */
 @Composable internal fun SwipeRevealRow(
     id: String, active: Boolean, onActivate: () -> Unit,
     startActions: List<RevealAction> = emptyList(), endActions: List<RevealAction> = emptyList(),
-    enabled: Boolean = true, modifier: Modifier = Modifier, invoke: (String) -> Unit,
+    enabled: Boolean = true, modifier: Modifier = Modifier, fullSwipeStartAction: String? = null, invoke: (String) -> Unit,
     content: @Composable (revealed: Boolean, toggleActions: () -> Unit, closeActions: () -> Unit) -> Unit,
 ) {
-    val state = remember(id) { AnchoredDraggableState(RevealSide.CLOSED) }
-    val interaction = remember(id) { MutableInteractionSource() }
-    val dragging by interaction.collectIsDraggedAsState()
+    var offset by remember(id) { mutableFloatStateOf(0f) }
+    var target by remember(id) { mutableStateOf(RevealSide.CLOSED) }
+    var settling by remember(id) { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    fun close() { scope.launch { state.animateTo(RevealSide.CLOSED, tween(220)) } }
-    LaunchedEffect(dragging) { if (dragging) onActivate() }
-    LaunchedEffect(active, enabled) { if (!active || !enabled) state.animateTo(RevealSide.CLOSED, tween(220)) }
-    BackHandler(state.targetValue != RevealSide.CLOSED) { close() }
+    val feedback = LocalHapticFeedback.current
+    val latestInvoke by rememberUpdatedState(invoke)
+    val latestActivate by rememberUpdatedState(onActivate)
+    fun settle(side: RevealSide, distance: Float) {
+        settling?.cancel(); target = side
+        settling = scope.launch { Animatable(offset).animateTo(distance, tween(220)) { offset = value } }
+    }
+    fun close() = settle(RevealSide.CLOSED, 0f)
+    LaunchedEffect(active, enabled) { if (!active || !enabled) close() }
+    BackHandler(abs(offset) > .5f) { close() }
     BoxWithConstraints(modifier.clipToBounds().testTag("reveal-row/$id")) {
-        // Keep a part of the row visible, even on a narrow split-screen window.
         val slots = ((maxWidth.value * .8f + 4) / 52).toInt().coerceIn(1, 4)
         val start = revealVisibleActions(startActions, slots)
         val end = revealVisibleActions(endActions, slots)
         val startWidth = with(density) { (start.size * 52).dp.toPx() }
         val endWidth = with(density) { (end.size * 52).dp.toPx() }
-        val anchors = remember(startWidth, endWidth) {
-            DraggableAnchors {
-                RevealSide.CLOSED at 0f
-                if (start.isNotEmpty()) RevealSide.START at startWidth
-                if (end.isNotEmpty()) RevealSide.END at -endWidth
+        val fullWidth = with(density) { (maxWidth - 16.dp).toPx() }.coerceAtLeast(startWidth)
+        val triggerWidth = maxOf(startWidth, fullWidth * .92f)
+        val side = when { offset > .5f -> RevealSide.START; offset < -.5f -> RevealSide.END; else -> RevealSide.CLOSED }
+        LaunchedEffect(startWidth, endWidth) {
+            if (target == RevealSide.END) settle(target, -endWidth)
+            else if (target == RevealSide.START) settle(target, startWidth)
+        }
+        fun act(action: String) { close(); latestInvoke(action) }
+        // The gesture detector stays outside the translated content. Row movement cannot
+        // alter the pointer's coordinate system or restart the gesture on every frame.
+        Box(Modifier.fillMaxWidth().pointerInput(id, enabled, startWidth, endWidth, fullWidth, fullSwipeStartAction) {
+            if (enabled && (start.isNotEmpty() || end.isNotEmpty())) {
+                var edge = 0
+                detectHorizontalDragGestures(onDragStart = {
+                    settling?.cancel(); latestActivate(); edge = 0
+                }, onDragEnd = {
+                    val pin = fullSwipeStartAction
+                    if (pin != null && offset >= triggerWidth) latestInvoke(pin)
+                    when {
+                        offset < 0f && -offset >= endWidth * .4f -> settle(RevealSide.END, -endWidth)
+                        pin == null && offset > 0f && offset >= startWidth * .4f -> settle(RevealSide.START, startWidth)
+                        else -> close()
+                    }
+                }, onDragCancel = { close() }) { change, amount ->
+                    change.consume()
+                    offset = (offset + amount).coerceIn(-endWidth, if (fullSwipeStartAction != null) fullWidth else startWidth)
+                    val next = when {
+                        fullSwipeStartAction != null && offset >= triggerWidth -> 1
+                        endWidth > 0f && offset <= -endWidth + 1f -> -1
+                        else -> 0
+                    }
+                    if (next != 0 && next != edge) feedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                    edge = next
+                }
             }
-        }
-        SideEffect { state.updateAnchors(anchors) }
-        val side by remember(state) { derivedStateOf {
-            when { state.offset > .5f -> RevealSide.START; state.offset < -.5f -> RevealSide.END; else -> RevealSide.CLOSED }
-        } }
-        val revealed = side != RevealSide.CLOSED
-        fun act(action: String) { close(); invoke(action) }
-        Box(Modifier.matchParentSize().padding(vertical = 4.dp)) {
-            if (side == RevealSide.START) RevealRail(id, start, startActions, true, startWidth, { state.offset }, enabled, ::act,
-                Modifier.align(Alignment.CenterStart).fillMaxHeight())
-            if (side == RevealSide.END) RevealRail(id, end, endActions, false, endWidth, { state.offset }, enabled, ::act,
-                Modifier.align(Alignment.CenterEnd).fillMaxHeight())
-        }
-        Box(Modifier.fillMaxWidth().offset { IntOffset((state.offset.takeUnless(Float::isNaN) ?: 0f).roundToInt(), 0) }
-            .anchoredDraggable(state, Orientation.Horizontal, enabled = enabled && (start.isNotEmpty() || end.isNotEmpty()),
-                interactionSource = interaction,
-                flingBehavior = AnchoredDraggableDefaults.flingBehavior(state, positionalThreshold = { it * .4f }, animationSpec = tween(220)))) {
-            content(revealed, {
-                onActivate()
-                val target = if (state.targetValue == RevealSide.END) RevealSide.CLOSED
-                    else if (end.isNotEmpty()) RevealSide.END else RevealSide.START
-                scope.launch { state.animateTo(target, tween(220)) }
-            }, ::close)
+        }) {
+            Box(Modifier.matchParentSize()) {
+                if (side == RevealSide.START) RevealRail(id, start, startActions, true, startWidth, { offset }, enabled, ::act,
+                    Modifier.align(Alignment.CenterStart).fillMaxHeight())
+                if (side == RevealSide.END) RevealRail(id, end, endActions, false, endWidth, { offset }, enabled, ::act,
+                    Modifier.align(Alignment.CenterEnd).fillMaxHeight())
+            }
+            Box(Modifier.fillMaxWidth().offset { IntOffset(offset.roundToInt(), 0) }) {
+                content(side != RevealSide.CLOSED, {
+                    latestActivate()
+                    when {
+                        target != RevealSide.CLOSED -> close()
+                        end.isNotEmpty() -> settle(RevealSide.END, -endWidth)
+                        start.isNotEmpty() -> settle(RevealSide.START, startWidth)
+                    }
+                }, ::close)
+            }
         }
     }
 }

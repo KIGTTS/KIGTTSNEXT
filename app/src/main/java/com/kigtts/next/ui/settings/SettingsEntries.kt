@@ -18,6 +18,7 @@ internal data class SettingsCard(val id: String, val title: String, val subtitle
 /** Formal entries share native cards. Old plugins retain their page entrances until rebuilt. */
 internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): List<SettingsCard> {
     val reserved = linkedMapOf(
+        "sharing" to ("面对面" to ""),
         "appearance" to ("外观与交互" to "调整显示效果和操作反馈"),
         "audio" to ("音频" to ""),
         "content" to ("内容" to ""),
@@ -26,6 +27,8 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
     fun category(id: String, category: SettingsCategory, icon: ImageVector) =
         SettingsLink(id, category.title, category.summary, icon, Destination.SettingsDetail(category))
     val native = mapOf(
+        "sharing" to listOf(SettingsLink("face-receive", "面对面接收", "", Icons.Default.MoveToInbox, Destination.Settings),
+            SettingsLink("contact-favorites", "扩列收藏夹", "", Icons.Default.Bookmarks, Destination.ContactFavorites)),
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
             category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration),
             category("overlay", SettingsCategory.OVERLAY, Icons.Default.BubbleChart)),

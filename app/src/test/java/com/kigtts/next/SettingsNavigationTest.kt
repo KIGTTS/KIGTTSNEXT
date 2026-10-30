@@ -94,7 +94,7 @@ class SettingsNavigationTest {
             assertEquals(ThemeSettings(), model.state.value.theme)
         }
         back()
-        compose.onNodeWithText("触感反馈").performClick()
+        compose.onNodeWithText(SettingsCategory.FEEDBACK.title).performScrollTo().performClick()
         compose.onNodeWithContentDescription("按键震动反馈").performClick().assertIsOff()
         compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.hapticsEnabled) }
         back()

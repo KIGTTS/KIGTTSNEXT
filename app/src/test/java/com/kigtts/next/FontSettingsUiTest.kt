@@ -57,7 +57,9 @@ class FontSettingsUiTest {
             compose.onNodeWithTag("reveal-action/font/$variable/weight").performClick()
         }
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("font-more/$variable").fetchSemanticsNodes().isNotEmpty() }
-        openWeight()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("可变字重").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("你好，KIGTTS · Aa 123").assertDoesNotExist()
+        compose.onNodeWithText("可变字体").performClick()
         compose.onNode(isDialog()).captureRoboImage("build/previews/font-weight-dialog.png")
         compose.onNodeWithContentDescription("字重").performSemanticsAction(SemanticsActions.SetProgress) { it(700f) }
         compose.runOnIdle { Assert.assertEquals(400, settings.fontWeight) }

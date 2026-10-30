@@ -34,7 +34,7 @@ class PluginManagementUiTest {
         val model = AppViewModel(ApplicationProvider.getApplicationContext<Application>(), listOf(plugin))
         model.navigate(Destination.Plugins)
         compose.setContent { KigttsApp(model) }
-        compose.onAllNodesWithContentDescription("设置").assertCountEquals(1)
+        compose.onAllNodesWithContentDescription("设置").assertCountEquals(0)
         compose.onAllNodesWithText("管理已安装的插件").assertCountEquals(1)
         compose.onNodeWithTag("page-subtitle").assertTextEquals("管理已安装的插件")
         compose.onRoot().captureRoboImage("build/previews/plugin-manager-compact-settings.png")
@@ -44,7 +44,7 @@ class PluginManagementUiTest {
         compose.onNodeWithContentDescription("关于").performClick()
         compose.onNodeWithText("关闭").assertIsDisplayed().performClick()
         compose.waitForIdle()
-        compose.onNodeWithContentDescription("设置").performClick()
+        compose.onNodeWithText("测试语音服务").performClick()
         compose.runOnIdle { assertEquals(Destination.PluginPage("test.settings", "manager"), model.state.value.destination) }
     }
     @Test fun productionManagementOffersInstallerAndNoBundledSpeechEngine() {

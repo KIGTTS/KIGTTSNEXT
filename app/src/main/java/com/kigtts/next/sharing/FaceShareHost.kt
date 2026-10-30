@@ -27,17 +27,20 @@ internal fun FaceShareHost(model: AppViewModel) {
     val url by controller.url.collectAsStateWithLifecycle()
     val hotspot by controller.hotspot.details.collectAsStateWithLifecycle()
     val peers by controller.peers.collectAsStateWithLifecycle()
+    val receiving by controller.receiving.collectAsStateWithLifecycle()
     val identities by model.identities.items.collectAsStateWithLifecycle()
     val catalog by model.stickers.snapshot.collectAsStateWithLifecycle()
     val permission = rememberFacePermissionRequest(model::message)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle, panel?.mode) {
+    DisposableEffect(lifecycle, panel?.mode, receiving) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) controller.stopDiscovery()
-            if (event == Lifecycle.Event.ON_START && panel?.mode in setOf(FaceMode.RECEIVE, FaceMode.SEND)) controller.discover()
+            if (event == Lifecycle.Event.ON_STOP) controller.foreground(false)
+            if (event == Lifecycle.Event.ON_START) controller.foreground(true)
         }
+        controller.foreground(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))
         lifecycle.addObserver(observer); onDispose { lifecycle.removeObserver(observer) }
     }
+    LaunchedEffect(receiving) { if (receiving && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) controller.startDiscovery() }
     panel?.let { shown ->
         var format by remember(shown.ids) { mutableStateOf(FacePhotoFormat.COMPOSED) }
         LaunchedEffect(shown.mode, shown.ids) {
@@ -90,5 +93,5 @@ internal fun FaceShareHost(model: AppViewModel) {
                 if (shown.mode in setOf(FaceMode.RECEIVE, FaceMode.BROWSER)) TextButton(feedbackClick(controller::stop), Modifier.fillMaxWidth()) { Text("结束分享") }
         }
     }
-    requests.firstOrNull()?.let { offer -> FaceReceivePrompt(offer, controller::approve, controller::reject) }
+    FaceReceiveBanner(requests.firstOrNull(), controller::approve, controller::reject)
 }

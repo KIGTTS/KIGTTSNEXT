@@ -71,7 +71,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         contentScrollsHeader = destination != Destination.SettingsDetail(SettingsCategory.APPEARANCE)) {
             when (destination) {
                 Destination.Home -> Unit
-                Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }
+                Destination.Settings -> SettingsScreen(model::navigate, model.registry, model.context(), state.pluginRevision,
+                    receiving = { FaceReceivingSetting(model, it) }) { com.kigtts.next.ui.identity.PersonalInformationEntry(model) }
                 Destination.PersonalCards -> com.kigtts.next.ui.identity.PersonalCardsScreen(model)
                 Destination.ContactFavorites -> com.kigtts.next.ui.identity.ContactFavoritesScreen(model)
                 Destination.Fonts -> FontSettingsScreen(state.theme, model::theme,

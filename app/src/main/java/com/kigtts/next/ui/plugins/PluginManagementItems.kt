@@ -10,7 +10,7 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
     return model.pluginOrder(all).map { id ->
         managed[id]?.let { (runtime, item) ->
             val primary = item.manageAction?.let { PageAction("managed/$runtime/$it", "设置", PluginIcon.SETTINGS) }
-            val actions = listOfNotNull(primary,
+            val actions = listOfNotNull(
                 PageAction("about/$id", "关于", PluginIcon.INFO),
                 PageAction("permissions/$runtime/${item.id}", "权限", PluginIcon.SETTINGS, symbol = "shield_locked"),
                 item.removeAction?.let { PageAction("managed-remove/$runtime/${item.id}", "卸载", PluginIcon.CLOSE) })
@@ -25,7 +25,6 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val contribution = plugin?.contributions(model.context())
         val entry = contribution?.settingsEntries?.firstOrNull()
         val page = entry?.pageId ?: contribution?.drawerEntries?.firstOrNull()?.pageId
-        page?.let { actions += PageAction("page/$id/$it", "设置", PluginIcon.SETTINGS) }
         actions += PageAction("about/$id", "关于", PluginIcon.INFO)
         if (installed != null) actions += PageAction("permissions/$id", "权限", PluginIcon.SETTINGS, symbol = "shield_locked")
         if (installed != null) actions += PageAction("remove/$id", "卸载", PluginIcon.CLOSE)
@@ -33,7 +32,7 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val dependency = if (plugin != null && !model.registry.available(plugin)) " · 缺少依赖：语音识别服务" else ""
         ManagementItem(id, name, "v$version · " + (installed?.error ?: if (installed?.installed?.enabled == false) "已停用" else plugin?.descriptor?.description.orEmpty()) + availability + dependency,
             icon = if (plugin?.asr != null) PluginIcon.HEARING else if (plugin?.tts != null) PluginIcon.SPEAKER else PluginIcon.SETTINGS,
-            primaryAction = actions.firstOrNull { it.id.startsWith("page/") }?.id, actions = actions,
+            primaryAction = page?.let { "page/$id/$it" }, actions = actions,
             toggle = installed?.let { ManagementToggle(it.installed.enabled, "enable/$id") })
     }
 }

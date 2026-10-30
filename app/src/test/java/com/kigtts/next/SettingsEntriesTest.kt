@@ -47,7 +47,7 @@ class SettingsEntriesTest {
             SettingsEntry("manager", "语音识别", "manager", PluginIcon.MIC, "audio", "音频", "聆听字幕与语音输入")),
             listOf(DrawerEntry("old-manager", "旧服务入口", "manager", PluginIcon.MIC)))))
         val cards = settingsCards(registry, PluginContext("", ""))
-        assertEquals(listOf("appearance", "audio", "content", "extensions"), cards.map { it.id })
+        assertEquals(listOf("sharing", "appearance", "audio", "content", "extensions"), cards.map { it.id })
         val audio = cards.single { it.id == "audio" }
         assertEquals("音频", audio.title); assertEquals(1, audio.links.size)
         assertEquals("语音识别", audio.links.single().title)

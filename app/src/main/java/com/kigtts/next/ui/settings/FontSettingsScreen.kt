@@ -3,7 +3,9 @@ package com.kigtts.next.ui.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -73,17 +76,14 @@ import kotlinx.coroutines.*
                 { onChange(current.copy(font = null, fontName = "系统默认")) }) }
             items(locals, key = { it.key }) { font ->
                 val selected = settings.font == font.key
-                val face = rememberAppearanceFont(font.key, if (selected) settings.fontWeight else 400)
-                val axis by produceState<FontWeightAxis?>(null, font.key) {
-                    value = withContext(Dispatchers.IO) { AppearanceAssets(context).file(font.key)?.let(::readFontWeightAxis) }
-                }
+                val preview = rememberFontListPreview(font.key, if (selected) settings.fontWeight else 400)
+                val axis = preview?.axis
                     FontChoiceRow(font.key, font.name, selected,
                         if (font == locals.last()) SettingPosition.LAST else SettingPosition.MIDDLE,
-                        { onChange(current.copy(font = font.key, fontName = font.name)) },
+                        { onChange(current.copy(font = font.key, fontName = font.name)); axis?.let { weightEditor = font to it } },
                         revealed == font.key, { revealed = font.key }, { remove = font },
-                        axis?.let { range -> ({ weightEditor = font to range }) }) {
-                        Text("你好，KIGTTS · Aa 123", style = face.apply(TextStyle(fontSize = 24.sp, lineHeight = 32.sp)), maxLines = 1)
-                    }
+                        axis?.let { range -> ({ weightEditor = font to range }) }, variable = axis != null,
+                        titleStyle = (preview?.face ?: AppearanceFont()).apply(MaterialTheme.typography.titleMedium), loaded = preview != null)
             }
             item { Spacer(Modifier.height(8.dp)) }
         }
@@ -111,23 +111,31 @@ import kotlinx.coroutines.*
 
 @Composable private fun FontChoiceRow(id: String, name: String, selected: Boolean, position: SettingPosition, select: () -> Unit,
     active: Boolean = false, activate: () -> Unit = {}, remove: (() -> Unit)? = null,
-    changeWeight: (() -> Unit)? = null, preview: @Composable ColumnScope.() -> Unit = {}) {
+    changeWeight: (() -> Unit)? = null, variable: Boolean = false, titleStyle: TextStyle? = null, loaded: Boolean = true) {
+    val opacity by animateFloatAsState(if (loaded) 1f else 0f, tween(180), label = "font-row-load")
     SwipeRevealRow("font/$id", active, activate,
         endActions = listOfNotNull(changeWeight?.let { RevealAction("weight", "调整字重", Icons.Default.Tune) },
             remove?.let { RevealAction("delete", "删除字体", Icons.Default.Delete, true) }),
-        modifier = Modifier.fillMaxWidth(), invoke = { when (it) { "delete" -> remove?.invoke(); "weight" -> changeWeight?.invoke() } }) { revealed, toggle, close ->
+        modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = opacity }, enabled = loaded,
+        invoke = { when (it) { "delete" -> remove?.invoke(); "weight" -> changeWeight?.invoke() } }) { revealed, toggle, close ->
     Surface(shape = managedItemShape(position, revealed), color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.fillMaxWidth().clickable(onClick = feedbackClick { if (revealed) close() else select() })
+        Column(Modifier.fillMaxWidth().combinedClickable(enabled = loaded, onLongClick = if (remove != null) feedbackClick(toggle) else null,
+            onClick = feedbackClick { if (revealed) close() else select() })
             .padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.TextFields, null); Spacer(Modifier.width(12.dp))
-                Text(name, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(name, style = titleStyle ?: MaterialTheme.typography.titleMedium)
+                    if (variable) Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.tertiaryContainer) {
+                        Text("可变字重", Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer)
+                    }
+                }
                 RadioButton(selected, null)
                 if (remove != null) MotionIconButton(onClick = feedbackClick(toggle), modifier = Modifier.size(40.dp).testTag("font-more/$id")) {
                     Icon(Icons.Default.MoreHoriz, "更多操作")
                 }
             }
-            preview()
         }
     }
     }

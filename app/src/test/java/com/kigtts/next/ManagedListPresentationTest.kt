@@ -144,7 +144,6 @@ class ManagedListPresentationTest {
         compose.onNodeWithTag("reveal-row/b").performTouchInput { swipeRight() }
         assertEquals(closed, compose.onNodeWithTag("managed-item/b").getUnclippedBoundsInRoot())
         compose.onNodeWithTag("reveal-row/a").performTouchInput { swipeRight() }
-        compose.onNodeWithTag("reveal-action/a/pin").assertIsDisplayed().performClick()
         assertEquals(listOf("pin"), calls)
         compose.onNodeWithTag("reveal-action/a/pin").assertDoesNotExist()
     }

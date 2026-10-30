@@ -3,7 +3,7 @@ package com.kigtts.next.ui.management
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DragIndicator
@@ -30,7 +30,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     revealActive: Boolean = false, activateReveal: () -> Unit = {}) {
     val primary = item.primaryAction
     val direct = if (compactActions) item.actions.firstOrNull { it.id == primary } else null
-    val secondary = item.actions.filterNot { it.id == direct?.id }
+    val secondary = item.actions.filterNot { it.id == primary }
     val pin = secondary.filter { it.icon == PluginIcon.PIN || it.symbol == "push_pin" }
     val other = secondary.filterNot { it in pin }.sortedBy { it.isDestructive() }
     fun PageAction.reveal() = RevealAction(id, label, if (isDestructive()) Icons.Default.Delete else icon.vector(symbol), isDestructive())
@@ -39,8 +39,8 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     val row: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggleActions, closeActions ->
     Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, revealed),
         color = color, shadowElevation = shadowElevation) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((primary != null || revealed) && !elevated)
-                Modifier.clickable(enabled = enabled, onClick = feedbackClick {
+            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((primary != null || secondary.isNotEmpty() || revealed) && !elevated)
+                Modifier.combinedClickable(enabled = enabled, onLongClick = if (secondary.isNotEmpty()) feedbackClick(toggleActions) else null, onClick = feedbackClick {
                     if (revealed) closeActions() else primary?.let { invoke(it, emptyMap()) }
                 }) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -67,7 +67,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     }
     if (elevated) Box(modifier) { row(false, {}, {}) }
     else SwipeRevealRow(item.id, revealActive, activateReveal, pin.map { it.reveal() }, other.map { it.reveal() },
-        enabled = enabled, modifier = modifier, invoke = { invoke(it, emptyMap()) }, content = row)
+        enabled = enabled, modifier = modifier, fullSwipeStartAction = pin.firstOrNull()?.id, invoke = { invoke(it, emptyMap()) }, content = row)
 }
 
 private fun PageAction.isDestructive() = symbol in setOf("delete", "delete_forever", "delete_outline") ||

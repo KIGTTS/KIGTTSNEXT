@@ -18,8 +18,9 @@ import com.kigtts.plugin.api.PluginRegistry
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
-    context: PluginContext = PluginContext("", ""), revision: Int = 0, personalInformation: @Composable () -> Unit = {}) {
+internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
+    context: PluginContext = PluginContext("", ""), revision: Int = 0,
+    receiving: (@Composable (SettingPosition) -> Unit)? = null, personalInformation: @Composable () -> Unit = {}) {
     val cards = remember(registry, revision, context) { settingsCards(registry, context) }
     var searching by rememberSaveable { mutableStateOf(false) }
     RegisterPageActions(listOf(ToolbarAction("search-settings", "搜索设置", Icons.Default.Search, click = { searching = true })))
@@ -37,7 +38,8 @@ fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null
                         index == card.links.lastIndex -> SettingPosition.LAST
                         else -> SettingPosition.MIDDLE
                     }
-                    SettingItem(link.title, link.summary, link.icon, position,
+                    if (link.id == "face-receive" && receiving != null) receiving(position)
+                    else SettingItem(link.title, link.summary, link.icon, position,
                         Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = enabled, badge = link.badge,
                         trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
                 }
