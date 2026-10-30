@@ -80,7 +80,10 @@ import kotlinx.coroutines.*
                 val axis = preview?.axis
                     FontChoiceRow(font.key, font.name, selected,
                         if (font == locals.last()) SettingPosition.LAST else SettingPosition.MIDDLE,
-                        { onChange(current.copy(font = font.key, fontName = font.name)); axis?.let { weightEditor = font to it } },
+                        {
+                            if (current.font == font.key) axis?.let { weightEditor = font to it }
+                            else onChange(current.copy(font = font.key, fontName = font.name))
+                        },
                         revealed == font.key, { revealed = font.key }, { remove = font },
                         axis?.let { range -> ({ weightEditor = font to range }) }, variable = axis != null,
                         titleStyle = (preview?.face ?: AppearanceFont()).apply(MaterialTheme.typography.titleMedium), loaded = preview != null)

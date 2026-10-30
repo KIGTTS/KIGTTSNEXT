@@ -29,6 +29,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false,
     revealActive: Boolean = false, activateReveal: () -> Unit = {}) {
     val primary = item.primaryAction
+    val clickAction = managedItemClickAction(item)
     val direct = if (compactActions) item.actions.firstOrNull { it.id == primary } else null
     val secondary = item.actions.filterNot { it.id == primary }
     val pin = secondary.filter { it.icon == PluginIcon.PIN || it.symbol == "push_pin" }
@@ -39,9 +40,9 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     val row: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggleActions, closeActions ->
     Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, revealed),
         color = color, shadowElevation = shadowElevation) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((primary != null || secondary.isNotEmpty() || revealed) && !elevated)
+            Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((clickAction != null || secondary.isNotEmpty() || revealed) && !elevated)
                 Modifier.combinedClickable(enabled = enabled, onLongClick = if (secondary.isNotEmpty()) feedbackClick(toggleActions) else null, onClick = feedbackClick {
-                    if (revealed) closeActions() else primary?.let { invoke(it, emptyMap()) }
+                    if (revealed) closeActions() else clickAction?.let { invoke(it, emptyMap()) }
                 }) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)

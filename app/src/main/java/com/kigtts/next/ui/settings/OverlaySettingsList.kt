@@ -22,8 +22,7 @@ import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.ReadablePage
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.rememberDragFeedback
-import com.kigtts.next.ui.components.ElasticAction
-import com.kigtts.next.ui.components.ElasticButtonGroup
+import com.kigtts.next.ui.management.managedItemShape
 import com.kigtts.next.ui.components.reorder.*
 
 /** One stable pointer owner, animated neighbors, and a single durable write on release. */
@@ -32,6 +31,7 @@ import com.kigtts.next.ui.components.reorder.*
     remove: (OverlayShortcut) -> Unit = {}) {
     val keys = entries.map { it.id }
     var positions by remember { mutableStateOf(keys) }
+    var revealed by remember { mutableStateOf<String?>(null) }
     val bounds = remember { mutableMapOf<String, LayoutCoordinates>() }
     var root by remember { mutableStateOf(Offset.Zero) }
     val feedback = rememberDragFeedback()
@@ -48,6 +48,9 @@ import com.kigtts.next.ui.components.reorder.*
         positions = if (drag.key == null) keys else positions.filter { it in keys } + keys.filterNot { it in positions }
     }
     val state = rememberLazyListState()
+    LaunchedEffect(state.isScrollInProgress, drag.key) {
+        if (state.isScrollInProgress || drag.key != null) revealed = null
+    }
     val density = LocalDensity.current
     val elevation by animateDpAsState(if (drag.key != null && !drag.settling) 6.dp else 0.dp, tween(180), label = "overlay-entry-lift")
     val byId = entries.associateBy { it.id }
@@ -55,33 +58,20 @@ import com.kigtts.next.ui.components.reorder.*
         when { positions.size == 1 -> SettingPosition.SINGLE; index == 0 -> SettingPosition.FIRST
             index == positions.lastIndex -> SettingPosition.LAST; else -> SettingPosition.MIDDLE }
     }
-    val floatingShape = animatedSettingShape(floatingPosition, MaterialTheme.shapes.small)
-    @Composable fun Entry(id: String, modifier: Modifier, grip: Modifier) {
+    val floatingShape = managedItemShape(floatingPosition, false)
+    @Composable fun Entry(id: String, modifier: Modifier, grip: Modifier, elevated: Boolean = false) {
         val entry = byId[id] ?: return
         val index = positions.indexOf(id)
-        SettingItem(entry.title, if (entry.enabled) "" else "暂不可用", null,
+        OverlaySettingsRow(entry,
             if (positions.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == positions.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
-            modifier = modifier,
-            leading = { Box(Modifier.alpha(if (entry.enabled) 1f else .45f)) { OverlayShortcutIcon(entry) } },
-            trailing = { Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                ElasticButtonGroup(listOf(
-                    ElasticAction("overlay-config:$id", "配置${entry.title}", Icons.Default.Tune, { edit(entry) }),
-                    ElasticAction("overlay-delete:$id", "移除${entry.title}", Icons.Default.Close, { remove(entry) })
-                ), plain = true)
-                Box(Modifier.size(40.dp).then(grip).semantics {
-                contentDescription = "拖动排序${entry.title}"
-                customActions = listOf(CustomAccessibilityAction("上移") {
+            modifier = modifier, grip = grip, elevated = elevated, active = revealed == id,
+            activate = { revealed = id }, edit = { edit(entry) }, remove = { remove(entry) }, move = { delta ->
                     val items = positions.toMutableList(); val i = items.indexOf(id)
-                    if (i > 0) { items.add(i - 1, items.removeAt(i)); latestOrder(items) }; true
-                }, CustomAccessibilityAction("下移") {
-                    val items = positions.toMutableList(); val i = items.indexOf(id)
-                    if (i in 0 until items.lastIndex) { items.add(i + 1, items.removeAt(i)); latestOrder(items) }; true
-                })
-            }, contentAlignment = androidx.compose.ui.Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(22.dp)) }
-            } })
+                    if (i + delta in items.indices) { items.add(i + delta, items.removeAt(i)); latestOrder(items) }
+            })
     }
     ReadablePage(840.dp) {
-        Box(Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }.reorderGestures(drag)) {
+        Box(Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }.reorderGestures(drag, handlesOnly = true)) {
             LazyColumn(Modifier.fillMaxSize().testTag("overlay-shortcuts-list"), state = state,
                 contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "controls") { Column(Modifier.padding(bottom = 20.dp)) { controls() } }
@@ -101,7 +91,7 @@ import com.kigtts.next.ui.components.reorder.*
                 Entry(id, Modifier.width(with(density) { drag.floatingBounds.width.toDp() }).graphicsLayer {
                     translationX = drop.value.x; translationY = drop.value.y; shadowElevation = elevation.toPx()
                     shape = floatingShape
-                }.testTag("overlay-floating-entry").clearAndSetSemantics { }, Modifier)
+                }.testTag("overlay-floating-entry").clearAndSetSemantics { }, Modifier, elevated = true)
             }
         }
     }

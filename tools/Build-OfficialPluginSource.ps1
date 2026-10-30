@@ -18,6 +18,11 @@ function Read-ZipBytes($archive, [string]$name) {
     try { $stream.CopyTo($buffer); return ,$buffer.ToArray() } finally { $stream.Dispose(); $buffer.Dispose() }
 }
 $packages = @(); $rows = @()
+$checkedIds = [Collections.Generic.HashSet[string]]::new()
+$permissionSource = [IO.File]::ReadAllText((Join-Path $projectRoot 'plugin-runtime/src/main/java/com/kigtts/plugin/runtime/PluginPermissions.kt'))
+$sensitiveDeclaration = [regex]::Match($permissionSource, 'val sensitive = setOf\(([^)]*)\)')
+if (-not $sensitiveDeclaration.Success) { throw 'Missing runtime permission definitions' }
+$sensitivePermissions = @([regex]::Matches($sensitiveDeclaration.Groups[1].Value, '"([a-z-]+)"') | ForEach-Object { $_.Groups[1].Value })
 foreach ($item in $config) {
     if ($item.file -notmatch '^[a-z0-9.-]+\.kigplugin$') { throw 'Invalid package filename' }
     $file = Join-Path $projectRoot "build/plugin-packages/$($item.file)"
@@ -25,6 +30,13 @@ foreach ($item in $config) {
     try {
         $raw = Read-ZipBytes $archive 'plugin.json'
         $spec = $utf8.GetString($raw) | ConvertFrom-Json
+        # First release per ID is the current official version; keep historical signed packages unchanged.
+        if ($checkedIds.Add($spec.id)) {
+            $missingPurposes = @($spec.capabilities | Where-Object {
+                $_ -in $sensitivePermissions -and [string]::IsNullOrWhiteSpace($spec.permissionPurposes.$_)
+            })
+            if ($missingPurposes.Count) { throw "Missing permission purposes in current official package $($spec.id): $($missingPurposes -join ', ')" }
+        }
         $key = Read-ZipBytes $archive 'signature/public.der'
         $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($key)).ToLowerInvariant()
         if ($digest -ne $publisher) { throw "Unexpected publisher: $($spec.id)" }

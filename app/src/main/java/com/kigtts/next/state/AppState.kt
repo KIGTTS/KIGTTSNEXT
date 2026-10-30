@@ -10,6 +10,7 @@ sealed interface Destination {
     data object Home : Destination
     data object Settings : Destination
     data object PersonalCards : Destination
+    data object PersonalInformationEditor : Destination
     data object ContactFavorites : Destination
     data object Fonts : Destination
     data class SettingsDetail(val category: SettingsCategory) : Destination

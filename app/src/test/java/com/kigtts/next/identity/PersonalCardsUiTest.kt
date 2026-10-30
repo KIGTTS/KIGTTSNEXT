@@ -3,12 +3,15 @@ package com.kigtts.next.identity
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.identity.PersonalCardsScreen
+import com.kigtts.next.state.Destination
+import com.kigtts.next.ui.navigation.SecondaryDestination
 import com.kigtts.next.ui.cards.CardEditorScreen
 import com.kigtts.next.ui.cards.CardPageScaffold
 import org.junit.Assert.*
@@ -29,21 +32,34 @@ class PersonalCardsUiTest {
         compose.activity.viewModelStore.put("personal-test", model)
         val second = model.identities.create().copy(nickname = "我的名片", bio = "很高兴认识你", contacts = listOf(ContactLink("微信", "example")))
         model.identities.save(second)
-        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { PersonalCardsScreen(model) } }
+        model.navigate(Destination.PersonalCards)
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            val state by model.state.collectAsState()
+            SecondaryDestination(state.destination, state, model)
+        } }
         compose.onNodeWithTag("personal-cards-pager").assertDoesNotExist()
         compose.onNodeWithText("添加名片背景").assertDoesNotExist()
         compose.onRoot().captureRoboImage("build/previews/personal-cards.png")
         compose.onNode(hasContentDescription("联系方式：微信") and hasAnyAncestor(hasTestTag("personal-card-${second.id}"))).performClick()
         compose.onNodeWithText("example").assertIsDisplayed()
         compose.onNodeWithText("关闭").performClick()
-        compose.onNodeWithText("头像与昵称").performClick()
+        compose.onNodeWithText("头像与昵称").assertDoesNotExist()
+        compose.onNodeWithText("编辑磁贴").assertDoesNotExist()
+        compose.onNodeWithText("编辑标签").assertDoesNotExist()
+        compose.onNodeWithTag("edit-personal-information").performClick()
+        compose.runOnIdle { assertEquals(Destination.PersonalInformationEditor, model.state.value.destination) }
+        compose.onNodeWithText("头像与昵称").performScrollTo().performClick()
         compose.onNodeWithText("昵称").performTextReplacement("新的昵称")
         compose.onNodeWithText("保存").performClick()
         compose.waitUntil(5000) { model.identities.current?.nickname == "新的昵称" }
         assertEquals("新的昵称", model.identities.current?.nickname)
         assertEquals(second.id, model.identities.current?.id)
         assertEquals(1, model.identities.items.value.size)
-        compose.onNodeWithText("面对面分享").performScrollTo().performClick()
+        compose.onNodeWithText("编辑磁贴").assertExists()
+        compose.onNodeWithTag("page-back").performClick()
+        compose.runOnIdle { assertEquals(Destination.PersonalCards, model.state.value.destination) }
+        compose.onNodeWithText("编辑磁贴").assertDoesNotExist()
+        compose.onNodeWithText("分享名片").performScrollTo().performClick()
         assertTrue(model.faceShare.panel.value!!.personal)
         assertEquals(listOf(second.designId), model.faceShare.panel.value!!.ids)
     }

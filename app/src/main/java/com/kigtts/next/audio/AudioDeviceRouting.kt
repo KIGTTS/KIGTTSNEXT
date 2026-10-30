@@ -47,6 +47,10 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
     @Synchronized internal fun endpoints(input: Boolean) = devices(input).map(::endpoint).distinctBy { it.key }
     internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)
     internal val outputGain: Float get() = preferences.getFloat("output-gain", 1f).takeIf { it.isFinite() && it in 0f..10f } ?: 1f
+    internal fun setOutputGain(value: Float) {
+        require(value.isFinite() && value in 0f..10f) { "音量需在0至10倍之间" }
+        preferences.edit().putFloat("output-gain", value).apply()
+    }
     fun summary(input: Boolean): String = selected(input)?.let { key ->
         endpoints(input).firstOrNull { it.key == key }?.label ?: (preferences.getString(side(input) + "-name", "音频设备") + "（未连接）")
     } ?: "系统默认"
@@ -95,7 +99,7 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
             require(plugin.tts?.info?.role == TtsRole.SERVICE)
             val value = inputs["value"]?.toFloatOrNull()
             require(value != null && value.isFinite() && value in 0f..10f) { "音量需在0至10倍之间" }
-            preferences.edit().putFloat("output-gain", value).apply()
+            setOutputGain(value)
             return true
         }
         val parts = action.split('/', limit = 3)

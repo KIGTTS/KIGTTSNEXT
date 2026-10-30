@@ -29,6 +29,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
         Destination.Home -> "KIGTTS"
         Destination.Settings -> "设置"
         Destination.PersonalCards -> "个人信息"
+        Destination.PersonalInformationEditor -> "编辑个人信息"
         Destination.ContactFavorites -> "扩列收藏夹"
         Destination.Fonts -> "字体"
         is Destination.SettingsDetail -> destination.category.title

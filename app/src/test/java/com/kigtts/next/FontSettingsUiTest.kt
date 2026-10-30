@@ -48,7 +48,7 @@ class FontSettingsUiTest {
             return AppearanceAssets(app).importFont(Uri.fromFile(file)).also { InstalledFonts(app).remember(it, name) }
         }
         val variable = install("variable-font", "可变字体"); install("appearance-font", "静态字体")
-        var settings by mutableStateOf(ThemeSettings(font = variable, fontName = "可变字体", fontWeight = 400))
+        var settings by mutableStateOf(ThemeSettings(fontWeight = 400))
         compose.setContent { MaterialTheme { FontSettingsScreen(settings, { settings = it }) } }
         compose.onNodeWithTag("font-weight-control", useUnmergedTree = true).assertDoesNotExist()
         fun openWeight() {
@@ -59,6 +59,9 @@ class FontSettingsUiTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("font-more/$variable").fetchSemanticsNodes().isNotEmpty() }
         compose.waitUntil(10_000) { compose.onAllNodesWithText("可变字重").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("你好，KIGTTS · Aa 123").assertDoesNotExist()
+        compose.onNodeWithText("可变字体").performClick()
+        compose.runOnIdle { Assert.assertEquals(variable, settings.font) }
+        compose.onNode(isDialog()).assertDoesNotExist()
         compose.onNodeWithText("可变字体").performClick()
         compose.onNode(isDialog()).captureRoboImage("build/previews/font-weight-dialog.png")
         compose.onNodeWithContentDescription("字重").performSemanticsAction(SemanticsActions.SetProgress) { it(700f) }
@@ -74,6 +77,8 @@ class FontSettingsUiTest {
         compose.onNodeWithText("完成").performClick()
         compose.runOnIdle { Assert.assertEquals(200, settings.fontWeight) }
         compose.onNodeWithText("静态字体").performScrollTo().performClick()
+        compose.onNodeWithText("静态字体").performClick()
+        compose.onNode(isDialog()).assertDoesNotExist()
         compose.onNodeWithTag("font-weight-control", useUnmergedTree = true).assertDoesNotExist()
     }
 

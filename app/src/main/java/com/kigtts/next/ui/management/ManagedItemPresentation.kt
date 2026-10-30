@@ -45,6 +45,13 @@ internal fun managedItemSections(items: List<ManagementItem>): List<List<Managem
 internal fun managedGridPosition(section: List<ManagementItem>, index: Int, columns: Int): SettingPosition =
     managedItemPosition(section.filterIndexed { i, _ -> i % columns == index % columns }, index / columns)
 
+/** Choose an available option before opening its details on a subsequent activation. */
+internal fun managedItemClickAction(item: ManagementItem): String? {
+    val selection = item.selection
+    return if (!item.selected && selection?.enabled == true) selection.action
+        else item.primaryAction ?: selection?.takeIf { it.enabled }?.action
+}
+
 @Composable internal fun managedItemShape(position: SettingPosition, elevated: Boolean): RoundedCornerShape {
     val density = LocalDensity.current
     val outer = RoundedCornerShape(20.dp)
@@ -78,7 +85,7 @@ internal fun managedGridPosition(section: List<ManagementItem>, index: Int, colu
         onCheckedChange = feedbackChange { invoke(toggle.action, mapOf("checked" to it.toString())) }, enabled = enabled,
         colors = SwitchDefaults.colors().keepColorsWhenLocked(), modifier = Modifier.testTag("managed-toggle/" + item.id))
     else if (item.selection != null || item.selected) {
-        val action = item.selection?.action ?: item.primaryAction
+        val action = managedItemClickAction(item)
         RadioButton(item.selected, onClick = action?.let { feedbackClick { invoke(it, emptyMap()) } },
             enabled = enabled && item.selection?.enabled != false && action != null,
             modifier = Modifier.testTag("managed-select/" + item.id).semantics { contentDescription = "选用${item.title}" })

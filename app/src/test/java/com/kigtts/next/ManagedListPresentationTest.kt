@@ -125,6 +125,38 @@ class ManagedListPresentationTest {
         assertEquals(listOf("details"), calls)
     }
 
+    @Test fun dualActionRowsSelectBeforeOpeningAndRadioUsesTheSameRule() {
+        val calls = mutableListOf<String>()
+        var selected by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            ManagedItemList(ManagementList("engines", listOf(ManagementItem("cloud", "云端声音", selected = selected,
+                primaryAction = "details", selection = ManagementSelection("use")))), invoke = { action, _ ->
+                calls += action; if (action == "use") selected = true
+            })
+        } }
+        compose.onNodeWithText("云端声音").performClick()
+        compose.onNodeWithTag("managed-select/cloud", useUnmergedTree = true).assertIsSelected()
+        assertEquals(listOf("use"), calls)
+        compose.onNodeWithText("云端声音").performClick()
+        assertEquals(listOf("use", "details"), calls)
+        compose.runOnIdle { selected = false }
+        compose.onNodeWithTag("managed-select/cloud", useUnmergedTree = true).performClick()
+        compose.onNodeWithTag("managed-select/cloud", useUnmergedTree = true).performClick()
+        assertEquals(listOf("use", "details", "use", "details"), calls)
+    }
+
+    @Test fun selectionOnlyRowsStillWorkWithoutAPrimaryAction() {
+        val calls = mutableListOf<String>()
+        var selected by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            ManagedItemList(ManagementList("choices", listOf(ManagementItem("choice", "选项", selected = selected,
+                selection = ManagementSelection("use")))), invoke = { action, _ -> calls += action; selected = true })
+        } }
+        compose.onNodeWithText("选项").performClick()
+        compose.onNodeWithText("选项").performClick()
+        assertEquals(listOf("use", "use"), calls)
+    }
+
     @Test fun swipingRevealsWithoutExecutingAndPinningIsOnlyAvailableWhenSupported() {
         val calls = mutableListOf<String>()
         compose.setContent { KigttsTheme(ThemeSettings()) {

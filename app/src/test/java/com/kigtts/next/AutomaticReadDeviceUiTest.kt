@@ -8,6 +8,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.theme.*
@@ -41,17 +42,32 @@ class AutomaticReadDeviceUiTest {
             override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.NoAction
         }
         val speaker = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_BUILTIN_SPEAKER).build()
+        val mic = AudioDeviceInfoBuilder.newBuilder().setType(AudioDeviceInfo.TYPE_BUILTIN_MIC).build().also {
+            val port: Any = org.robolectric.util.ReflectionHelpers.getField(it, "mPort")
+            org.robolectric.util.ReflectionHelpers.setField(port, "mType", 0x80000004.toInt())
+        }
+        shadowOf(app.getSystemService(AudioManager::class.java)).setInputDevices(listOf(mic))
         shadowOf(app.getSystemService(AudioManager::class.java)).setOutputDevices(listOf(speaker))
         val model = AppViewModel(app, listOf(service))
         try {
             compose.setContent { val state by model.state.collectAsState(); KigttsTheme(ThemeSettings()) { AutomaticReadButton(state, model) } }
             compose.onNodeWithTag("auto-playback").performTouchInput { longClick() }
-            compose.onNodeWithText("首选朗读设备").assertIsDisplayed()
+            compose.onNodeWithText("音频设备").assertIsDisplayed()
+            compose.onNodeWithTag("audio-device-menu/input").performClick()
+            compose.onNodeWithText("内置麦克风").performClick()
+            compose.runOnIdle { assertEquals("内置麦克风", model.audioDevices.summary(true)); assertNull(model.audioDevices.selected(false)) }
+            compose.onNodeWithTag("audio-device-menu/output").performClick()
             compose.onNodeWithText("手机扬声器").performClick()
             compose.runOnIdle { assertFalse(model.state.value.autoPlayback); assertEquals("手机扬声器", model.audioDevices.summary(false)) }
-            compose.onNodeWithTag("auto-playback").performTouchInput { longClick() }
-            compose.onNodeWithText("系统默认").performClick()
+            compose.onNodeWithContentDescription("语音合成音量").performSemanticsAction(SemanticsActions.SetProgress) { it(.75f) }
+            compose.runOnIdle { assertEquals(5.5f, model.audioDevices.outputGain, .01f) }
+            compose.onNodeWithTag("audio-device-menu/output").performClick()
+            compose.onNodeWithTag("audio-device-option/output/default").performClick()
             compose.runOnIdle { assertNull(model.audioDevices.selected(false)); assertFalse(model.state.value.autoPlayback) }
+            compose.onNodeWithText("完成").performClick()
+            compose.onNodeWithTag("auto-playback").performTouchInput { longClick() }
+            compose.onNodeWithText("5.5×").assertIsDisplayed()
+            compose.runOnIdle { assertEquals("内置麦克风", model.audioDevices.summary(true)) }
         } finally { model.audioDevices.close() }
     }
 }

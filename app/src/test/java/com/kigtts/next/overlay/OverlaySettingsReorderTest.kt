@@ -20,6 +20,29 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class OverlaySettingsReorderTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun swipeLongPressAndMoreShareOneMenuWithoutStartingReorder() {
+        var entries by mutableStateOf(defaultOverlayShortcuts())
+        var edits = 0; var writes = 0
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface {
+            OverlaySettingsList(entries, { writes++ }, { edits++ }, {}, {},
+                remove = { entry -> entries = entries.filterNot { it.id == entry.id } })
+        } } }
+        compose.onNodeWithTag("reveal-action/overlay/camera/delete").assertDoesNotExist()
+        compose.onNodeWithTag("reveal-row/overlay/camera").performTouchInput { swipeLeft() }
+        compose.onNodeWithTag("reveal-action/overlay/camera/settings").assertIsDisplayed().performClick()
+        assertEquals(1, edits); assertEquals(0, writes)
+        compose.onNodeWithText("拍立得").performTouchInput { longClick() }
+        compose.onNodeWithTag("overlay-floating-entry", useUnmergedTree = true).assertDoesNotExist()
+        compose.onNodeWithTag("reveal-action/overlay/cards/delete").assertIsDisplayed()
+        compose.onNodeWithTag("overlay-more/sketch").performClick()
+        compose.onNodeWithTag("reveal-action/overlay/cards/delete").assertDoesNotExist()
+        val row = compose.onNodeWithTag("overlay-entry:sketch").getUnclippedBoundsInRoot()
+        val action = compose.onNodeWithTag("reveal-action/overlay/sketch/delete").getUnclippedBoundsInRoot()
+        assertEquals((row.bottom - row.top).value, (action.bottom - action.top).value, .5f)
+        compose.onNodeWithTag("reveal-action/overlay/sketch/delete").performClick()
+        compose.onNodeWithTag("overlay-entry:sketch").assertDoesNotExist()
+        assertEquals(0, writes)
+    }
     @Test fun settingsHandleFollowsTheFingerAcrossRowsAndPersistsOnlyOnRelease() {
         var entries by mutableStateOf(defaultOverlayShortcuts())
         var writes = 0; var edits = 0

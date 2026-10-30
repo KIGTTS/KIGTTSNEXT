@@ -28,8 +28,9 @@ internal fun searchSettings(query: String, cards: List<SettingsCard>): List<Sett
         SettingsSearchResult(link.title, "设置 / ${group.title} / ${link.title}", link.destination)
     } }
     val personal = listOf(SettingsSearchResult("个人信息", "设置 / 个人信息", Destination.PersonalCards),
-        SettingsSearchResult("头像与昵称", "设置 / 个人信息 / 头像与昵称", Destination.PersonalCards),
-        SettingsSearchResult("联系方式", "设置 / 个人信息 / 联系方式", Destination.PersonalCards))
+        SettingsSearchResult("头像与昵称", "设置 / 个人信息 / 编辑 / 头像与昵称", Destination.PersonalInformationEditor),
+        SettingsSearchResult("联系方式", "设置 / 个人信息 / 编辑 / 联系方式", Destination.PersonalInformationEditor),
+        SettingsSearchResult("背景与贴纸", "设置 / 个人信息 / 编辑 / 背景与贴纸", Destination.PersonalInformationEditor))
     val words = query.trim().lowercase().split(Regex("\\s+")).filter(String::isNotBlank)
     if (words.isEmpty()) return emptyList()
     return (root + nativeSettingsSearchEntries + personal).distinctBy { it.path }.filter { entry ->
