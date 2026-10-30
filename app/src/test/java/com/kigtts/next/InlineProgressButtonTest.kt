@@ -7,6 +7,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.DpRect
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import com.kigtts.next.ui.management.InlineProgressButton
 import com.kigtts.plugin.api.ManagementProgressAction
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -52,12 +53,16 @@ class InlineProgressButtonTest {
         compose.mainClock.advanceTimeBy(300)
         compose.waitForIdle()
         assertEquals(36f, shape.getUnclippedBoundsInRoot().width.value, .1f)
+        compose.onNodeWithTag("managed-action-progress/font", useUnmergedTree = true)
+            .assertRangeInfoEquals(ProgressBarRangeInfo(.4f, 0f..1f))
         target.performClick()
         compose.runOnIdle { state = ManagementProgressAction("安装", "install") }
         compose.waitForIdle()
         compose.mainClock.advanceTimeByFrame()
         compose.mainClock.advanceTimeBy(96)
         compose.waitForIdle()
+        compose.onNodeWithTag("managed-action-progress/font", useUnmergedTree = true)
+            .assertRangeInfoEquals(ProgressBarRangeInfo(.4f, 0f..1f))
         val middle = shape.getUnclippedBoundsInRoot()
         assertTrue(middle.width.value in 37f..63f)
         assertEquals(36f, middle.height.value, .1f)

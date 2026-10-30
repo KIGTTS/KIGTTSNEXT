@@ -30,7 +30,10 @@ import com.kigtts.plugin.api.ManagementProgressAction
 @Composable
 internal fun InlineProgressButton(id: String, state: ManagementProgressAction, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit) {
-    val progress by animateFloatAsState(state.progress ?: 0f, tween(180), label = "download-progress")
+    var lastProgress by remember { mutableStateOf(state.progress) }
+    SideEffect { if (state.running) lastProgress = state.progress }
+    val visibleProgress = if (state.running) state.progress else lastProgress
+    val progress by animateFloatAsState(visibleProgress ?: 0f, tween(180), label = "download-progress")
     val measurer = rememberTextMeasurer()
     val style = MaterialTheme.typography.labelLarge
     // Keep the idle label during download: the cancel label must not change the morph's width.
@@ -65,8 +68,9 @@ internal fun InlineProgressButton(id: String, state: ManagementProgressAction, e
         if (motion.currentState || motion.targetState) {
             Box(Modifier.size(36.dp).testTag("managed-action-ring/$id").graphicsLayer { alpha = ring },
                 contentAlignment = Alignment.Center) {
-                if (state.progress == null) CircularProgressIndicator(Modifier.fillMaxSize(), strokeWidth = 2.5.dp)
-                else CircularProgressIndicator(progress = { progress }, Modifier.fillMaxSize(), strokeWidth = 2.5.dp)
+                val indicator = Modifier.fillMaxSize().testTag("managed-action-progress/$id")
+                if (visibleProgress == null) CircularProgressIndicator(indicator, strokeWidth = 2.5.dp)
+                else CircularProgressIndicator(progress = { progress }, indicator, strokeWidth = 2.5.dp)
                 Icon(Icons.Default.Stop, null, Modifier.size(16.dp), tint = colors.primary)
             }
         }
