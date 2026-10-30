@@ -82,10 +82,7 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
             private fun read(bytes: ByteArray?, status: Int) {
                 try {
                     if (generation != epoch || status != BluetoothGatt.GATT_SUCCESS || bytes == null || bytes.size > 2048) return
-                    val json = JSONObject(String(bytes, Charsets.UTF_8)); val token = json.getString("token")
-                    require(token.matches(Regex("[A-Za-z0-9_-]{32,64}")))
-                    found(FacePeer(json.getString("id"), json.optString("nickname").take(40), port = json.getInt("port"), token = token,
-                        p2p = json.optString("p2p").takeIf { it.isNotBlank() }, bluetooth = result.device.address, signal = result.rssi))
+                    found(faceBluetoothPeer(JSONObject(String(bytes, Charsets.UTF_8)), result.device.address, result.rssi))
                 } catch (_: Exception) { } finally { finish() }
             }
         }

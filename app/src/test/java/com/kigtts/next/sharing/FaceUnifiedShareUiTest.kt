@@ -27,6 +27,34 @@ import org.robolectric.annotation.*
 class FaceUnifiedShareUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun resolvedPeerShowsItsNicknamePhotoAndActualAvatarShapeAfterSparseUpdates() {
+        val file = java.io.File(compose.activity.cacheDir, "discovery-avatar.jpg")
+        val source = android.graphics.Bitmap.createBitmap(96, 96, android.graphics.Bitmap.Config.ARGB_8888)
+        source.eraseColor(android.graphics.Color.rgb(220, 25, 110))
+        file.outputStream().use { source.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }; source.recycle()
+        val raw = FacePeer(faceToken(), "KIGTTS 用户", "192.168.1.2", 12345, faceToken())
+        val resolved = facePeerProfile(raw, org.json.JSONObject().put("id", raw.id).put("protocol", 1)
+            .put("nickname", "我的朋友").put("avatar", faceAvatarData(file)).put("avatarFrame", "flower"))
+        var peers by mutableStateOf(listOf(raw)); var sent: FacePeer? = null
+        compose.setContent { KigttsTheme(ThemeSettings()) { FaceDiscoveryBar(peers, false, {}, {}, { sent = it }) } }
+        compose.runOnIdle { peers = listOf(mergeFacePeer(resolved, raw.copy(host = null))) }
+        compose.onNodeWithText("我的朋友").assertIsDisplayed()
+        compose.onNodeWithTag("face-peer-${raw.id}").performClick(); assertEquals("我的朋友", sent?.name)
+        fun capture(name: String): android.graphics.Bitmap {
+            val path = "build/previews/face-discovery-$name.png"
+            compose.onNodeWithTag("face-peer-${raw.id}").captureRoboImage(path)
+            return android.graphics.BitmapFactory.decodeFile(path)
+        }
+        val flower = capture("flower")
+        val center = flower.getPixel(flower.width / 2, flower.height / 2)
+        assertTrue(android.graphics.Color.red(center) > 200 && android.graphics.Color.green(center) < 45)
+        compose.runOnIdle { peers = listOf(resolved.copy(avatarFrame = "circle")) }
+        val circle = capture("circle")
+        val changed = (0 until flower.height).sumOf { y -> (0 until flower.width).count { x -> flower.getPixel(x, y) != circle.getPixel(x, y) } }
+        assertTrue("头像框应实际改变轮廓", changed > flower.width * flower.height / 50)
+        flower.recycle(); circle.recycle(); file.delete()
+    }
+
     @Test fun discoveryBarScrollsHorizontallyAndRoutesSystemWifiAndPeerActionsSeparately() {
         var shares = 0; var wifi = 0; var sent: String? = null
         val peers = (1..8).map { FacePeer("peer$it", "朋友$it", "192.168.1.$it", 12345, faceToken()) }

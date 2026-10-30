@@ -32,7 +32,7 @@ internal data class FaceAsset(val id: String, val photo: String, val variant: St
 }
 internal data class FacePeer(val id: String, val name: String, val host: String? = null, val port: Int,
     val token: String, val p2p: String? = null, val bluetooth: String? = null, val signal: Int = -100, val avatar: String? = null,
-    val profile: String? = null)
+    val profile: String? = null, val hosts: List<String> = emptyList(), val avatarFrame: String = "circle")
 internal data class FaceOffer(val id: String, val session: String, val profile: JSONObject, val assets: List<FaceAsset>,
     val created: Long = System.currentTimeMillis(), val status: String = "waiting") {
     val nickname get() = profile.optString("nickname", "KIGTTS 用户").take(40)

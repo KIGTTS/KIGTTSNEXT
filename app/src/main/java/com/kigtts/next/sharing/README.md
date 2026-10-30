@@ -22,6 +22,10 @@
 
 BLE 只交换连接描述，Wi-Fi Direct 用于无路由器时的照片传输。Android 的系统授权/配对提示仍由系统显示；权限拒绝后可以尝试同一 Wi-Fi。路由器若启用 AP/客户端隔离，NSD 和广播都不能跨越隔离，需要换网络或用临时热点扫码。Wi-Fi Aware 和 NFC 配对属于后续增强。
 
+BLE 描述包含有限数量的私有局域网地址，不含头像大数据。`FacePeerResolver` 优先通过这些地址或 NSD/UDP 的地址读取 `hello`，核验会话 ID 后补齐昵称、头像和头像框，失败后限速重试。稀疏发现更新不会抹除已解析资料，新 token/端口不沿用旧地址。发送前重新核验端点，避免无须直连时误走 Wi-Fi Direct。
+
+Wi-Fi Direct 只公布本机 MAC，不把所连组主冒充为本机；双方开启接收时，仅撤销当前会话创建的本机组再加入对方。连接完成广播需匹配所选对方，取消时停止协商；失败提示使用设置中的接收开关及同 Wi-Fi/扫码操作。
+
 ## 验证范围
 
 `FacePhotoSessionTest` 通过真实 loopback TCP 套接字验证链接隔离、浏览器 ZIP 选择、接收同意、完整性、幂等与会话结束。`PersonalCardsTest` 与 `PersonalCardsUiTest` 覆盖名片背景/贴纸导出、16:9 接收、联系方式、编辑保存和翻页。社交平台入口使用固定版本的 Remix Icon 本地矢量，见 `docs/remix-social-icons.json`。

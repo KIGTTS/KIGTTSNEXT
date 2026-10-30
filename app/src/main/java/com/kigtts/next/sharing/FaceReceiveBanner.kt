@@ -33,7 +33,7 @@ import kotlinx.coroutines.delay
                         .padding(12.dp).widthIn(max = 560.dp).fillMaxWidth().testTag("face-incoming-banner")) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            FacePeerAvatar(shown.profile.optString("avatar").takeIf(String::isNotBlank))
+                            FacePeerAvatar(shown.profile.optString("avatar").takeIf(String::isNotBlank), frame = shown.profile.optString("avatarFrame", "circle"))
                             Column(Modifier.weight(1f)) {
                                 Text("${shown.nickname} 想与你分享", style = MaterialTheme.typography.titleMedium)
                                 Text(faceOfferSummary(shown), style = MaterialTheme.typography.bodyMedium,

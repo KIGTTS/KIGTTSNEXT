@@ -25,20 +25,23 @@ internal class FaceShareController(private val context: Context, private val sco
     val hotspot = FaceHotspot(context) { message(it) }
     private val media = FacePhotoRepository(cards, identities)
     private val webIcons = FaceWebIcons(context)
-    private val profileLookups = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var session: FacePhotoSession? = null
     private var collector: Job? = null; private var transfer: Job? = null; private var addressing: Job? = null
     private var starting: Job? = null
     private val clientSession = faceToken()
     private val sessionId = faceToken()
+    private val profiles = FacePeerResolver(scope, clientSession, { peer ->
+        mutablePeers.update { before -> before.map { if (it.id == peer.id && it.token == peer.token && it.port == peer.port)
+            mergeFacePeer(it, peer) else it } }
+    })
+    @Volatile private var advertisedHosts = emptyList<String>()
     private val wifi = FaceWifiDirect(context, message)
     private val lan = FaceLanDiscovery(context, ::found) { id -> mutablePeers.update { it.filterNot { peer -> peer.id == id } } }
     private val ble = FaceBluetoothDiscovery(context, {
-        JSONObject().put("id", sessionId).put("nickname", profile().optString("nickname").take(30)).put("port", session?.server?.port ?: 0)
-            .put("token", session?.peerToken ?: "").put("p2p", wifi.address ?: "")
+        faceBluetoothDescriptor(sessionId, profile(), session?.server?.port ?: 0, session?.peerToken ?: "", wifi.address, advertisedHosts)
     }, ::found)
-    private var connected: FacePeer? = null
-    private var avatar: String? = null
+    @Volatile private var avatar: String? = null
+    private var avatarAsset: String? = null
     private var generation = 0
     private val sessionLock = Mutex()
     private fun profile() = (identities.current?.publicJson() ?: JSONObject().put("nickname", "KIGTTS 用户")).put("id", sessionId).put("avatar", avatar ?: "")
@@ -67,25 +70,17 @@ internal class FaceShareController(private val context: Context, private val sco
         if (peer.id == sessionId) return
         mutablePeers.update { before ->
             val old = before.firstOrNull { it.id == peer.id }
-            val combined = peer.copy(host = peer.host ?: old?.host, p2p = peer.p2p ?: old?.p2p,
-                bluetooth = peer.bluetooth ?: old?.bluetooth, signal = maxOf(peer.signal, old?.signal ?: -100))
-            (before.filterNot { it.id == peer.id } + combined.copy(avatar = peer.avatar ?: old?.avatar, profile = peer.profile ?: old?.profile)).sortedByDescending { it.signal }.take(64)
+            (before.filterNot { it.id == peer.id } + mergeFacePeer(old, peer)).sortedByDescending { it.signal }.take(64)
         }
-        val epoch = generation
-        if (peer.host != null && peers.value.firstOrNull { it.id == peer.id }?.profile == null && profileLookups.add(peer.id + peer.token)) scope.launch(Dispatchers.IO) {
-            runCatching { FaceTransferClient.request(peer.host, peer.port, "GET", "/s/${peer.token}/hello", owner = clientSession, timeoutMillis = 7_000) }.getOrNull()?.let { info ->
-                val image = info.optString("avatar").takeIf { it.isNotBlank() && it.length < 65536 }
-                if (epoch == generation) mutablePeers.update { list -> list.map { if (it.id == peer.id) it.copy(avatar = image, profile = info.toString()) else it } }
-            }
-            if (epoch != generation) profileLookups.remove(peer.id + peer.token)
-        }
+        peers.value.firstOrNull { it.id == peer.id }?.let(profiles::refresh)
     }
     private suspend fun ensureSession(): FacePhotoSession = sessionLock.withLock {
         session?.let { return it }
         val epoch = generation
         withContext(NonCancellable) {
         val created = withContext(Dispatchers.IO) {
-            avatar = identities.current?.avatar?.let(cards.stickers::imageFile)?.let(::faceAvatarData)
+            avatarAsset = identities.current?.avatar
+            avatar = avatarAsset?.let(cards.stickers::imageFile)?.let(::faceAvatarData)
             FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile, webIcons::icon) { offer, assets ->
                 media.receive(offer, assets)
                 val pictures = assets.filterNot { it.format == "PROFILE" }
@@ -102,6 +97,12 @@ internal class FaceShareController(private val context: Context, private val sco
             FaceShareService.start(context, ::stop) { id, accept -> if (accept) approve(id, false) else reject(id) }
             addressing = scope.launch { while (isActive) {
                 val addresses = withContext(Dispatchers.IO) { localWifiAddresses(context) }
+                advertisedHosts = addresses.filter(::facePrivateHost).take(4)
+                val currentAvatar = identities.current?.avatar
+                if (currentAvatar != avatarAsset) {
+                    avatar = withContext(Dispatchers.IO) { currentAvatar?.let(cards.stickers::imageFile)?.let(::faceAvatarData) }
+                    avatarAsset = currentAvatar
+                }
                 val address = if (hotspot.details.value != null) addresses.firstOrNull { it.endsWith(".1") } ?: addresses.firstOrNull() else addresses.firstOrNull()
                 mutableUrl.value = address?.let { "http://$it:${created.server.port}${created.path}" }
                 delay(1500)
@@ -145,7 +146,7 @@ internal class FaceShareController(private val context: Context, private val sco
         runCatching { ble.start(true) }
     }
     fun refreshDiscovery() { if (!mutableBusy.value) { stopDiscovery(); startDiscovery() } }
-    fun stopDiscovery() { lan.stop(); ble.stop(); wifi.stopDiscovery() }
+    fun stopDiscovery() { lan.stop(); ble.stop(); wifi.stopDiscovery(); profiles.clear() }
     fun send(peer: FacePeer, original: Boolean = false, composed: Boolean = true) {
         val current = panel.value?.takeIf { it.mode == FaceMode.SEND } ?: return
         if (mutableBusy.value) return
@@ -157,11 +158,13 @@ internal class FaceShareController(private val context: Context, private val sco
                 val files = withContext(Dispatchers.IO) { media.prepare(current.ids, original, composed, active.root) }
                 if (epoch != generation) return@launch
                 mutableStatus.value = "正在连接 ${peer.name}"
-                val resolved = connected?.takeIf { it.id == peer.id } ?: if (peer.host != null) peer else {
-                    val address = wifi.connect(requireNotNull(peer.p2p) { "对方尚未准备好，请稍后重试或改用扫码领取" })
-                    peer.copy(host = address)
+                val target = peers.value.firstOrNull { it.id == peer.id && it.token == peer.token } ?: peer
+                val resolved = profiles.resolve(target) ?: run {
+                    val device = target.p2p ?: error("无法连接对方，请确认对方已开启面对面接收，并连接同一 Wi-Fi；也可以使用扫码领取")
+                    val address = wifi.connect(device)
+                    profiles.resolve(target.copy(host = address, hosts = emptyList()))
+                        ?: error("对方暂时无法接收，请重新查找或使用扫码领取")
                 }
-                connected = resolved
                 found(resolved)
                 mutableStatus.value = "等待对方接收"
                 FaceTransferClient.send(resolved, clientSession, profile(), files) { value ->
@@ -169,6 +172,8 @@ internal class FaceShareController(private val context: Context, private val sco
                 }
                 val sent = if (panel.value?.personal == true) "名片已送达" else "照片已送达"
                 mutableStatus.value = sent; message(sent)
+            } catch (_: TimeoutCancellationException) {
+                mutableStatus.value = "发送未完成"; message("连接或接收超时，请重新查找对方后再试")
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { mutableStatus.value = "发送未完成"; message(error.message ?: "未能连接对方，请重试") }
             finally { mutableBusy.value = false }
@@ -210,10 +215,10 @@ internal class FaceShareController(private val context: Context, private val sco
     private fun release() {
         generation++
         transfer?.cancel(); starting?.cancel(); FaceTransferClient.cancel(clientSession); collector?.cancel(); addressing?.cancel(); stopDiscovery(); wifi.stop(); hotspot.stop()
-        val old = session; session = null; connected = null
+        val old = session; session = null
         old?.revoke()
         mutablePeers.value = emptyList(); mutableRequests.value = emptyList(); mutableUrl.value = null
-        profileLookups.clear()
+        profiles.clear(); advertisedHosts = emptyList()
         incomingNotifications.clear()
         mutablePanel.value = null; mutableBusy.value = false; mutableStatus.value = ""; FaceShareService.finish(context)
         if (old != null) CoroutineScope(Dispatchers.IO).launch { old.close() }

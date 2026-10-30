@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.identity.rememberAvatarShape
 
 @Composable
 internal fun FaceDiscoveryBar(peers: List<FacePeer>, busy: Boolean, share: () -> Unit, wifi: () -> Unit, send: (FacePeer) -> Unit) {
@@ -32,8 +33,8 @@ internal fun FaceDiscoveryBar(peers: List<FacePeer>, busy: Boolean, share: () ->
                 Surface(feedbackClick { if (!busy) send(peer) }, Modifier.size(64.dp).testTag("face-peer-${peer.id}").semantics {
                     contentDescription = "发送给 ${peer.name.ifBlank { "KIGTTS 用户" }}"; if (busy) disabled()
                 },
-                    shape = CircleShape, color = MaterialTheme.colorScheme.secondaryContainer) {
-                    FacePeerAvatar(peer.avatar, Modifier.fillMaxSize())
+                    shape = rememberAvatarShape(peer.avatarFrame), color = MaterialTheme.colorScheme.secondaryContainer) {
+                    FacePeerAvatar(peer.avatar, Modifier.fillMaxSize(), peer.avatarFrame)
                 }
                 Text(peer.name.ifBlank { "KIGTTS 用户" }, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

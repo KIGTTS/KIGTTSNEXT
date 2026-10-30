@@ -41,7 +41,7 @@ internal fun FaceReceivePrompt(offer: FaceOffer, approve: (String, Boolean) -> U
     val pictures = offer.assets.filterNot { it.format == "PROFILE" }
     val personal = pictures.isNotEmpty() && pictures.all { it.format == "BANNER" }
     MotionAlertDialog({ reject(offer.id) }, title = { Text("接收 ${offer.nickname} 的${if (personal) "名片" else "照片"}？") },
-        icon = { FacePeerAvatar(offer.profile.optString("avatar").takeIf { it.isNotBlank() }) }, text = {
+        icon = { FacePeerAvatar(offer.profile.optString("avatar").takeIf { it.isNotBlank() }, frame = offer.profile.optString("avatarFrame", "circle")) }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (offer.profile.optString("bio").isNotBlank()) Text(offer.profile.optString("bio"))
                 Text(if (personal) "接收后保存到扩列收藏夹" else "${pictures.map { it.photo }.distinct().size} 张照片 · %.1f MB".format(offer.assets.sumOf { it.bytes } / 1048576.0))
