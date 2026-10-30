@@ -45,12 +45,16 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         catch (_: RuntimeException) { close(); failed() }
     }
     private var target: android.graphics.Rect? = null
+    private val screenLocation = IntArray(2)
     init {
         owner.attach(view)
         // Geometry and WindowManager resize arrive through separate frame phases.
         // Do not paint new local FAB coordinates into the old-sized surface.
         view.viewTreeObserver.addOnPreDrawListener {
-            val draw = !attached || resizeGate.canDraw(view.width == params.width && view.height == params.height)
+            view.getLocationOnScreen(screenLocation)
+            val draw = !attached || resizeGate.canDraw(
+                sizeMatches = view.width == params.width && view.height == params.height,
+                positionMatches = screenLocation[0] == params.x && screenLocation[1] == params.y)
             if (!draw) view.postInvalidateOnAnimation()
             draw
         }
@@ -68,7 +72,8 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         settling?.cancel(); settling = null
         val fromX = params.x; val fromY = params.y
         val canAnimate = animate && attached && params.width == width && params.height == height
-        if (params.width != width || params.height != height) resizeGate.resizing(continuousResize)
+        val resized = params.width != width || params.height != height
+        if (resized) resizeGate.resizing(continuousResize)
         params.width = width; params.height = height
         if (canAnimate && (fromX != x || fromY != y)) {
             settling = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -83,7 +88,9 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
             }
         } else {
             params.x = x; params.y = y
-            if (attached) updates.request() else { wm.addView(view, params); attached = true }
+            if (attached) {
+                if (resized && !continuousResize) updates.flush() else updates.request()
+            } else { wm.addView(view, params); attached = true }
         }
     }
     fun close() { updates.close(); settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
@@ -92,9 +99,9 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
 /** A ROM can constrain overlay size permanently (IME, rotation, split screen). Never stop drawing forever. */
 internal class OverlayResizeGate {
     private var frames = 0
-    fun resizing(continuous: Boolean = false) { if (!continuous) frames = 2 }
-    fun canDraw(matches: Boolean): Boolean {
-        if (matches) frames = 0
+    fun resizing(continuous: Boolean = false) { frames = if (continuous) 0 else 3 }
+    fun canDraw(sizeMatches: Boolean, positionMatches: Boolean = true): Boolean {
+        if (sizeMatches && positionMatches) frames = 0
         if (frames == 0) return true
         frames--
         return false

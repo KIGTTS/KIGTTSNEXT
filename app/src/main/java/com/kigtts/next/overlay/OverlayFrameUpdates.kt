@@ -5,13 +5,17 @@ internal class OverlayFrameUpdates(private val schedule: (Runnable) -> Unit, pri
     private var pending = false
     private var closed = false
     private val frame = Runnable {
-        pending = false
-        if (!closed) apply()
+        if (pending) flush()
     }
     fun request() {
         if (closed || pending) return
         pending = true
         schedule(frame)
+    }
+    /** Discrete resize must reach WindowManager before Compose renders rebased local geometry. */
+    fun flush() {
+        pending = false
+        if (!closed) apply()
     }
     fun close() { closed = true }
 }

@@ -4,6 +4,30 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class OverlayFrameUpdatesTest {
+    @Test fun resizeFlushesTheLatestGeometryImmediatelyAndItsQueuedFrameDoesNotRepeatIt() {
+        val frames = mutableListOf<Runnable>()
+        var geometry = 1
+        val applied = mutableListOf<Int>()
+        val updates = OverlayFrameUpdates({ frames += it }) { applied += geometry }
+        updates.request()
+        geometry = 2
+        updates.flush()
+        assertEquals(listOf(2), applied)
+        frames.removeAt(0).run()
+        assertEquals(listOf(2), applied)
+        geometry = 3; updates.request(); frames.removeAt(0).run()
+        assertEquals(listOf(2, 3), applied)
+    }
+    @Test fun aResizedSurfaceAtTheTemporaryScreenOriginMustNotPassTheFirstDrawGate() {
+        val gate = OverlayResizeGate()
+        gate.resizing()
+        assertFalse(gate.canDraw(sizeMatches = true, positionMatches = false))
+        assertFalse(gate.canDraw(sizeMatches = true, positionMatches = false))
+        assertTrue(gate.canDraw(sizeMatches = true, positionMatches = true))
+        gate.resizing()
+        gate.resizing(continuous = true)
+        assertTrue(gate.canDraw(sizeMatches = false, positionMatches = false))
+    }
     @Test fun aBurstOfPointerUpdatesAppliesOnlyTheLatestPositionPerDisplayFrame() {
         val frames = mutableListOf<Runnable>()
         var pointer = 0

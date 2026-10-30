@@ -154,8 +154,8 @@ class NativeOverlayService : Service() {
     }
     private fun renderPlacement(animate: Boolean = false, continuousResize: Boolean = false, rebase: Boolean = false) {
         // Moving the system window does not change its local Compose layout.
-        if (rebase || !layout.sameLocalGeometry(renderedLayout)) renderedLayout = layout
         dial?.place(layout.x, layout.y, layout.width, layout.height, animate, continuousResize)
+        if (rebase || !layout.sameLocalGeometry(renderedLayout)) renderedLayout = layout
     }
     private fun interact() {
         hidden = false; armIdle()

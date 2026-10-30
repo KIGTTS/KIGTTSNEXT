@@ -58,7 +58,7 @@ class OverlayServiceTest {
     @Test fun constrainedWindowCannotSuspendRenderingForever() {
         val gate = OverlayResizeGate()
         gate.resizing()
-        assertFalse(gate.canDraw(false)); assertFalse(gate.canDraw(false))
+        repeat(3) { assertFalse(gate.canDraw(false)) }
         repeat(20) { assertTrue(gate.canDraw(false)) }
         gate.resizing(); assertTrue(gate.canDraw(true)); assertTrue(gate.canDraw(false))
     }
