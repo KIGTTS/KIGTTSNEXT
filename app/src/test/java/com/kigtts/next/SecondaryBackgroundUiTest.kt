@@ -30,7 +30,7 @@ import org.robolectric.annotation.*
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
-@Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
+@Config(sdk = [29, 35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class SecondaryBackgroundUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Test fun otherPageBackgroundIsOptInAndLargeTitleSharesItEvenWhenCollapsed() {
@@ -39,7 +39,8 @@ class SecondaryBackgroundUiTest {
         val key = AppearanceAssets(app).saveBackground(source); source.recycle()
         AppearanceBackgrounds.load(app, key, BackgroundBlur.PAGE)
         AppearanceBackgrounds.load(app, key, BackgroundBlur.CARD)
-        var settings by mutableStateOf(ThemeSettings(mode = ThemeMode.LIGHT, background = key, backgroundDim = .2f))
+        var settings by mutableStateOf(ThemeSettings(mode = ThemeMode.LIGHT, background = key, backgroundDim = .2f,
+            secondaryPageBackground = false))
         compose.setContent {
             KigttsTheme(settings) {
                 CompositionLocalProvider(LocalAppAppearanceSettings provides settings) {

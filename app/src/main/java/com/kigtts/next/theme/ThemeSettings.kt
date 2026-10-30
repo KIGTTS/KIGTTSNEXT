@@ -30,7 +30,7 @@ data class ThemeSettings(
     val backgroundColorEnabled: Boolean = false,
     val backgroundSeed: Long? = null,
     val askBackgroundColor: Boolean = true,
-    val secondaryPageBackground: Boolean = false,
+    val secondaryPageBackground: Boolean = true,
     val fontWeight: Int = 400,
 ) {
     val cornerRadius: Float get() = cornerLevel.radius
@@ -61,7 +61,7 @@ class ThemeSettingsStore(context: Context) {
         backgroundColorEnabled = preferences.getBoolean("backgroundColor", false),
         backgroundSeed = if (preferences.contains("backgroundSeed")) preferences.getLong("backgroundSeed", 0) else null,
         askBackgroundColor = preferences.getBoolean("askBackgroundColor", true),
-        secondaryPageBackground = preferences.getBoolean("secondaryPageBackground", false),
+        secondaryPageBackground = preferences.getBoolean("secondaryPageBackground", true),
         fontWeight = preferences.getInt("fontWeight", 400).coerceIn(1, 1000),
     )
     fun save(settings: ThemeSettings) {

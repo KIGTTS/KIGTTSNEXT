@@ -67,10 +67,11 @@ class BackgroundAppearanceTest {
         assertEquals(0xff6750a4, settings.withColorSource(ThemeColorSource.CUSTOM).effectiveSeed)
         assertEquals(ThemeColorSource.WALLPAPER, settings.withColorSource(ThemeColorSource.WALLPAPER).colorSource)
     }
-    @Test fun secondaryBackgroundDefaultsOffAndBothBlurLayersRemainDistinctAcrossRestart() {
+    @Test fun secondaryBackgroundDefaultsOnAndExplicitOptOutSurvivesRestart() {
         app.getSharedPreferences("appearance", 0).edit().clear().commit()
         val store = ThemeSettingsStore(app)
-        assertFalse(store.load().secondaryPageBackground)
+        assertTrue(ThemeSettings().secondaryPageBackground)
+        assertTrue(store.load().secondaryPageBackground)
         val image = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK) }
         Canvas(image).drawRect(64f, 0f, 128f, 128f, Paint().apply { color = Color.WHITE })
         val key = AppearanceAssets(app).saveBackground(image)
