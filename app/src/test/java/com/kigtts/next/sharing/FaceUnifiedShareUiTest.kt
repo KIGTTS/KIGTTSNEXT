@@ -78,6 +78,30 @@ class FaceUnifiedShareUiTest {
         } finally { compose.runOnIdle { model.faceShare.stop() } }
     }
 
+    @Test fun receivingChangesKeepPhotoPreviewFormatActionsAndSheetPosition() {
+        val model = testAppModel(compose.activity.application)
+        compose.activity.viewModelStore.put("share-isolation", model)
+        val photos = (1..2).map { model.cards.create(PolaroidCard(title = "照片$it")) }
+        model.faceShare.openSend(photos.map { it.id })
+        try {
+            compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { FaceShareHost(model) } }
+            compose.mainClock.advanceTimeBy(600); compose.waitForIdle()
+            val before = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
+            compose.onNodeWithContentDescription("分享格式：原图").performClick()
+            compose.runOnIdle { model.faceShare.openReceive() }
+            compose.onNodeWithText("分享照片").assertIsDisplayed()
+            compose.onNodeWithText("面对面接收").assertDoesNotExist()
+            compose.onNodeWithContentDescription("分享格式：原图").assertIsSelected()
+            compose.runOnIdle { model.faceShare.setReceiving(false) }
+            compose.onNodeWithContentDescription("分享格式：原图").assertIsSelected()
+            (0..1).forEach { compose.onNodeWithTag("face-share-photo-$it", useUnmergedTree = true).assertExists() }
+            compose.onNodeWithTag("face-system-share").assertIsDisplayed()
+            compose.onNodeWithTag("face-wifi-share").assertIsDisplayed()
+            val after = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
+            assertEquals(before, after)
+        } finally { compose.runOnIdle { model.faceShare.stop() } }
+    }
+
     @Test fun ordinaryPhotoShareButtonUsesUnifiedPanelInsteadOfBypassingIt() {
         val photo = PolaroidCard(title = "照片")
         var selected = emptyList<String>(); var systemDirect = false

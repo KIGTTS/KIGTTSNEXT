@@ -16,6 +16,28 @@ import java.util.zip.ZipInputStream
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class FacePhotoSessionTest {
+    @Test fun endingBrowserShareRevokesItsUrlWithoutLosingPendingReceiveRequests() {
+        val root = Files.createTempDirectory("face-end-browser").toFile()
+        val server = FacePhotoSession(root.resolve("session"), { JSONObject().put("nickname", "receiver") }) { _, _ -> }
+        try {
+            val file = asset(root); server.assets[file.id] = file
+            val oldPath = server.path; val peerPath = "/s/${server.peerToken}/"
+            val offer = JSONObject().put("id", faceToken()).put("session", faceToken()).put("profile", JSONObject().put("nickname", "朋友"))
+                .put("assets", JSONArray().put(file.json()))
+            val reply = FaceTransferClient.request("127.0.0.1", server.server.port, "POST", peerPath + "offer", offer.toString().toByteArray())
+            assertEquals("waiting", reply.getString("status"))
+            server.endBrowserShare()
+            assertEquals(404, get(server.server.port, oldPath).code)
+            assertEquals(404, get(server.server.port, oldPath + "file/${file.id}").code)
+            assertTrue(server.assets.isEmpty())
+            assertEquals(1, server.requests.value.size)
+            assertEquals(200, get(server.server.port, peerPath + "hello").code)
+            server.approve(reply.getString("id"), false)
+            assertTrue(server.requests.value.isEmpty())
+            val status = FaceTransferClient.request("127.0.0.1", server.server.port, "GET", peerPath + "offer/${reply.getString("id")}")
+            assertEquals("accepted", status.getString("status"))
+        } finally { server.close(); root.deleteRecursively() }
+    }
     @Test fun discoverablePeerTokenCannotOpenTheBrowserOrDownloadPreparedPhotos() {
         val root = Files.createTempDirectory("face-peer-isolation").toFile()
         val server = FacePhotoSession(root.resolve("session"), { JSONObject().put("nickname", "sender") }) { _, _ -> }

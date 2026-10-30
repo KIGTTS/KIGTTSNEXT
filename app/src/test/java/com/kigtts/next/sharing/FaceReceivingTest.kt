@@ -56,4 +56,26 @@ class FaceReceivingTest {
             val next = controller(); assertFalse(next.receiving.value); next.dispose()
         } finally { first.stop(); scope.cancel() }
     }
+    @Test fun receiveEntryAndToggleNeverReplaceOrCloseAnOutgoingSelection() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val dispatcher = object : CoroutineDispatcher() { override fun dispatch(context: CoroutineContext, block: Runnable) = Unit }
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val model = testAppModel(context)
+        val controller = FaceShareController(context, scope, model.cards, model.identities, {})
+        try {
+            controller.openSend(listOf("first-photo", "second-photo"))
+            val original = controller.panel.value
+            assertEquals(false, original?.personal)
+            controller.openReceive()
+            assertTrue(controller.receiving.value); assertSame(original, controller.panel.value)
+            controller.setReceiving(false)
+            assertFalse(controller.receiving.value); assertSame(original, controller.panel.value)
+            assertEquals("", controller.status.value); assertFalse(controller.busy.value)
+            controller.setReceiving(true)
+            controller.finishSending()
+            assertTrue(controller.receiving.value); assertNull(controller.panel.value)
+            controller.openSend(listOf("third-photo")); controller.hide()
+            assertTrue(controller.receiving.value); assertNull(controller.panel.value)
+        } finally { controller.stop(); scope.cancel() }
+    }
 }

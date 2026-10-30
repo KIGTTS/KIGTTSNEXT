@@ -42,14 +42,17 @@ internal class FaceShareController(private val context: Context, private val sco
     private var generation = 0
     private val sessionLock = Mutex()
     private fun profile() = (identities.current?.publicJson() ?: JSONObject().put("nickname", "KIGTTS 用户")).put("id", sessionId).put("avatar", avatar ?: "")
-    fun openSend(ids: List<String>) { generation++; starting?.cancel(); starting = null
-        mutablePanel.value = FacePanel(ids.distinct(), FaceMode.SEND, personal = ids.distinct().singleOrNull() == identities.current?.designId) }
-    fun openReceive() { generation++; starting?.cancel(); starting = null; mutablePanel.value = FacePanel(emptyList(), FaceMode.RECEIVE) }
+    fun openSend(ids: List<String>) {
+        generation++; starting?.cancel(); starting = null
+        val selected = ids.distinct()
+        mutablePanel.value = FacePanel(selected, FaceMode.SEND, personal = identities.current?.designId?.let { selected.singleOrNull() == it } == true)
+    }
+    fun openReceive() { setReceiving(true); message("面对面接收已开启") }
     fun setReceiving(enabled: Boolean) {
         mutableReceiving.value = enabled; preferences.edit().putBoolean("enabled", enabled).apply()
         if (enabled) startDiscovery()
         else if (panel.value == null && !busy.value) release()
-        else if (panel.value?.mode !in setOf(FaceMode.SEND, FaceMode.RECEIVE)) stopDiscovery()
+        else if (panel.value?.mode != FaceMode.SEND) stopDiscovery()
     }
     fun foreground(visible: Boolean) {
         incomingNotifications.foreground = visible
@@ -86,7 +89,8 @@ internal class FaceShareController(private val context: Context, private val sco
             FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile, webIcons::icon) { offer, assets ->
                 media.receive(offer, assets)
                 val pictures = assets.filterNot { it.format == "PROFILE" }
-                mutableStatus.value = if (pictures.all { it.format == "BANNER" }) "名片已加入扩列收藏夹" else "已接收 ${pictures.map { it.photo }.distinct().size} 张照片"
+                val summary = if (pictures.all { it.format == "BANNER" }) "名片已加入扩列收藏夹" else "已接收 ${pictures.map { it.photo }.distinct().size} 张照片"
+                scope.launch { message(summary) }
             }
         }
         if (epoch != generation || !scope.isActive) {
@@ -124,7 +128,7 @@ internal class FaceShareController(private val context: Context, private val sco
         }
     }
     fun startDiscovery() {
-        if ((!receiving.value && panel.value?.mode !in setOf(FaceMode.SEND, FaceMode.RECEIVE)) || starting?.isActive == true) return
+        if ((!receiving.value && panel.value?.mode != FaceMode.SEND) || starting?.isActive == true) return
         val epoch = generation
         starting = scope.launch {
             try { ensureSession(); if (epoch == generation) discover() }
@@ -134,11 +138,10 @@ internal class FaceShareController(private val context: Context, private val sco
     }
     fun returnToShare() { mutablePanel.value = panel.value?.copy(mode = FaceMode.SEND); startDiscovery() }
     fun discover() {
-        if (!receiving.value && panel.value?.mode !in setOf(FaceMode.SEND, FaceMode.RECEIVE)) return
+        if (!receiving.value && panel.value?.mode != FaceMode.SEND) return
         val active = session ?: return
-        val receiving = receiving.value || panel.value?.mode == FaceMode.RECEIVE
         lan.start(sessionId, profile().optString("nickname"), active.server.port, active.peerToken)
-        runCatching { wifi.start(receiving) }
+        runCatching { wifi.start(receiving.value && !busy.value) }
         runCatching { ble.start(true) }
     }
     fun refreshDiscovery() { if (!mutableBusy.value) { stopDiscovery(); startDiscovery() } }
@@ -192,6 +195,14 @@ internal class FaceShareController(private val context: Context, private val sco
     fun startHotspot() { hotspot.start() }
     fun approve(id: String, auto: Boolean) { val active = session; scope.launch(Dispatchers.IO) { active?.approve(id, auto) } }
     fun reject(id: String) { val active = session; scope.launch(Dispatchers.IO) { active?.reject(id) } }
+    fun finishSending() {
+        generation++; transfer?.cancel(); starting?.cancel(); starting = null; FaceTransferClient.cancel(clientSession)
+        session?.endBrowserShare(); hotspot.stop()
+        mutablePanel.value = null; mutableBusy.value = false; mutableStatus.value = ""; mutableProgress.value = 0f; mutableUrl.value = null
+        if (receiving.value) startDiscovery()
+        else if (session?.hasActiveOffers == true) stopDiscovery()
+        else release()
+    }
     fun stop() {
         mutableReceiving.value = false; preferences.edit().putBoolean("enabled", false).apply()
         release()

@@ -13,7 +13,7 @@ import java.util.zip.ZipOutputStream
 internal class FacePhotoSession(val root: File, private val profile: () -> JSONObject,
     private val contactIcon: (com.kigtts.next.identity.ContactLink) -> String = { "<span aria-hidden=\"true\">↗</span>" },
     private val received: (FaceOffer, List<FaceAsset>) -> Unit) : Closeable {
-    val token = faceToken()
+    @Volatile var token = faceToken(); private set
     // Discovery may expose a receive endpoint, never the browser's unconfirmed download capability.
     val peerToken = faceToken()
     val assets = ConcurrentHashMap<String, FaceAsset>()
@@ -34,6 +34,7 @@ internal class FacePhotoSession(val root: File, private val profile: () -> JSONO
     }
     fun reject(id: String) = synchronized(guard) { tickets[id]?.let { tickets[id] = it.copy(status = "rejected") }; refresh() }
     fun stopAutoReceive() { consent.clear() }
+    fun endBrowserShare() = synchronized(guard) { assets.clear(); token = faceToken() }
     fun revoke() { closed = true; server.close() }
     private fun refresh() { pending.value = tickets.values.filter { it.status == "waiting" }.sortedBy { it.created } }
     private fun handle(request: PhotoHttpRequest, response: PhotoHttpResponse) {
