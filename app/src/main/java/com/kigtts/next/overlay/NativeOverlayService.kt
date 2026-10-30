@@ -49,6 +49,13 @@ class NativeOverlayService : Service() {
     private var dragCenter by mutableStateOf<Offset?>(null)
     private var motionStart by mutableStateOf<Offset?>(null)
     private var docking by mutableStateOf(false)
+    private val dockMotion = OverlayDockMotion({ center ->
+        dragCenter = center
+        place(continuousResize = true)
+    }, {
+        dragCenter = null; docking = false
+        place(); armIdle()
+    })
     private var visibleFabCenter = Offset(40f, 40f)
     private var idle: Job? = null
     private lateinit var appearance: SharedPreferences
@@ -168,10 +175,11 @@ class NativeOverlayService : Service() {
         }
     }
     private fun toggle() { if (expanded) collapse() else {
+        dockMotion.cancel()
         val current = dial?.stopAtCurrentPosition(layout) ?: layout
         val absolute = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
         val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
-        docking = false; windowExpanded = true
+        dragCenter = null; docking = false; windowExpanded = true
         layout = target; motionStart = target.local(absolute)
         renderPlacement(rebase = true)
         expanded = true; interact()
@@ -187,28 +195,28 @@ class NativeOverlayService : Service() {
         place(); interact()
     }
     private fun drag(x: Float, y: Float) {
-        if (dragCenter == null) {
+        if (expanded || windowExpanded) return
+        dockMotion.cancel()
+        if (docking || dragCenter == null) {
             val current = dial?.stopAtCurrentPosition(layout) ?: layout
             dragCenter = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
             docking = false; windowExpanded = false; motionStart = null
         }
-        if (expanded) collapse()
         if (hidden || idle != null) { hidden = false; idle?.cancel(); idle = null }
         dragCenter = dragCenter!! + Offset(x, y)
         place(continuousResize = true)
     }
     private fun drop() {
-        if (dragCenter == null) return
+        if (expanded || windowExpanded || dragCenter == null || docking) return
         val safe = safeBounds(); val absolute = layout.centerOnScreen()
         val centerX = absolute.x; val centerY = absolute.y
-        dragCenter = null; docking = true
-        val padding = 40 * windowContext.resources.displayMetrics.density
-        val position = ((centerY - safe.top - padding) / (safe.height - 2 * padding).coerceAtLeast(1f)).coerceIn(0f, 1f)
+        docking = true
+        val position = overlayAnchorPosition(safe, windowContext.resources.displayMetrics.density, centerY)
         store.update { it.copy(rightEdge = centerX > safe.left + safe.width / 2f, position = position) }
         config = store.settings.value
-        layout = overlayDockPlacement(safe, windowContext.resources.displayMetrics.density, absolute, compactPlacement())
-        motionStart = layout.local(absolute)
-        renderPlacement(rebase = true); interact()
+        motionStart = null
+        dockMotion.start(absolute, compactPlacement().centerOnScreen())
+        interact()
     }
     private fun open(item: OverlayShortcut) { collapse(); OverlayLaunch.open(this, item) }
     private fun showBubble(value: OverlayNotice) {
@@ -226,6 +234,7 @@ class NativeOverlayService : Service() {
         runCatching { bubble?.place(x, y, width, height) }.onFailure { bubble?.close(); bubble = null }
     }
     private fun resetPlacement() {
+        dockMotion.cancel()
         cachedBounds = null
         dragCenter = null; docking = false; motionStart = null
         windowExpanded = expanded
@@ -250,6 +259,7 @@ class NativeOverlayService : Service() {
     }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onDestroy() {
+        dockMotion.cancel()
         scope.cancel(); dial?.close(); bubble?.close()
         if (Build.VERSION.SDK_INT >= 31 && ::windowContext.isInitialized) windowContext.unregisterComponentCallbacks(windowConfiguration)
         if (::appearance.isInitialized) appearance.unregisterOnSharedPreferenceChangeListener(preferenceListener)

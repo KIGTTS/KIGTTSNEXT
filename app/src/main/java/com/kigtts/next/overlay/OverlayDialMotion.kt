@@ -20,6 +20,11 @@ internal fun rememberOverlayDialMotion(placement: OverlayPlacement, expanded: Bo
     val clock = remember { Animatable(0f) }
     val onCollapsed by rememberUpdatedState(collapsed)
     LaunchedEffect(expanded, dragging, center, target) {
+        if (dragging) {
+            progress = 0f
+            center.value = target
+            return@LaunchedEffect
+        }
         val fromProgress = progress
         val fromCenter = center.value
         val endProgress = if (expanded) 1f else 0f

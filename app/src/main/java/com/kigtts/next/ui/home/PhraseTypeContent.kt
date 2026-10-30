@@ -23,7 +23,7 @@ internal fun PhraseTypeContent(draft:PhraseDraft,model:AppViewModel,enabled:Bool
         val shown=if(shownType==draft.type)draft else retained
         val interactive=enabled&&shownType==draft.type
         CompositionLocalProvider(LocalPageActive provides interactive) {
-            Column(Modifier.testTag("phrase-type-content/"+shownType.name),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.testTag("phrase-type-content/"+shownType.name),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                 PhraseResourceSettings(shown,model,interactive,leave)
             }
         }

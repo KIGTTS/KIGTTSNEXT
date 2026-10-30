@@ -154,18 +154,18 @@ class CategoryInteractionTest {
         pane.performTouchInput { down(handle); moveTo(second, delayMillis = 150); up() }
         assertEquals(original.id, model.phrases.value.filter { it.category == "常用" }[1].id)
     }
-    @Test fun normalAndEditingGridsSwipeGroupsWithSlidesButSingleRowOnlyScrollsItems() {
+    @Test fun normalAndEditingGridsSwipeHorizontallyAndSingleRowSwipesVertically() {
         val model = show()
-        compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("phrases-vertical").performTouchInput { swipeLeft() }
-        compose.mainClock.advanceTimeBy(112); compose.waitForIdle()
         assertEquals("生活", model.state.value.selectedCategory)
-        capture("category-slide-next-mid")
-        compose.mainClock.advanceTimeBy(1200); compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("category-content-transition").performTouchInput { swipeRight() }
         assertEquals("常用", model.state.value.selectedCategory)
         compose.runOnIdle { model.panelHeight(184f) }
         compose.onNodeWithTag("phrases-horizontal").performTouchInput { swipeLeft() }
+        assertEquals("常用", model.state.value.selectedCategory)
+        compose.onNodeWithTag("category-content-transition").performTouchInput { swipeUp() }
+        assertEquals("生活", model.state.value.selectedCategory)
+        compose.onNodeWithTag("category-content-transition").performTouchInput { swipeDown() }
         assertEquals("常用", model.state.value.selectedCategory)
         compose.runOnIdle { model.editQuickTexts() }
         compose.onNodeWithTag("editable-phrases").performTouchInput { swipeLeft() }

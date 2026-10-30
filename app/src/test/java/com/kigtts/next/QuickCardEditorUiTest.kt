@@ -67,7 +67,10 @@ class QuickCardEditorUiTest {
     @Test fun customColorUsesSharedHsvDialogAndDefaultCanBeSavedWithoutChangingText() {
         val model = show()
         compose.onNodeWithTag("phrase-detail-text").performTextReplacement("颜色正文")
-        compose.onNodeWithTag("phrase-appearance-toggle").performScrollTo().performClick()
+        compose.onNodeWithTag("phrase-appearance-toggle").assertDoesNotExist()
+        val appearance = compose.onNodeWithTag("phrase-appearance-section").getUnclippedBoundsInRoot()
+        val attachments = compose.onNodeWithTag("phrase-attachments-section").getUnclippedBoundsInRoot()
+        assertTrue("Card appearance remains expanded above attachments", appearance.bottom < attachments.top)
         compose.onNodeWithTag("phrase-color-mode").performScrollTo()
         compose.onNodeWithContentDescription("卡片颜色：自定义").performClick()
         compose.onNodeWithContentDescription("预设颜色 #6750A4").performScrollTo().performClick()

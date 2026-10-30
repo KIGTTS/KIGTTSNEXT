@@ -150,7 +150,7 @@ class OverlayUiTest {
         val after = compose.onNodeWithContentDescription("拍照").fetchSemanticsNode().boundsInRoot
         compose.runOnIdle { assertNull(opened); assertNotEquals(before, after) }
     }
-    @Test fun draggingTheExpandedFabCollapsesAndMovesInsteadOfScrollingEntrances() {
+    @Test fun draggingTheExpandedFabDoesNotMoveOrCollapseTheBall() {
         var expanded by mutableStateOf(true)
         var total = androidx.compose.ui.geometry.Offset.Zero
         var dropped = 0
@@ -162,7 +162,7 @@ class OverlayUiTest {
             swipe(center, center + androidx.compose.ui.geometry.Offset(-80f, 110f), 300)
         }
         compose.runOnIdle {
-            assertFalse(expanded); assertEquals(-80f, total.x, 3f); assertEquals(110f, total.y, 3f); assertEquals(1, dropped)
+            assertTrue(expanded); assertEquals(0f, total.x, .01f); assertEquals(0f, total.y, .01f); assertEquals(0, dropped)
         }
     }
     @Test fun labelVisibilitySwitchDoesNotRemoveEntranceIcons() {

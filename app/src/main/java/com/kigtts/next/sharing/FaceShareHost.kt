@@ -1,13 +1,11 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.sharing
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -46,9 +44,17 @@ internal fun FaceShareHost(model: AppViewModel) {
     }
     panel?.let { shown ->
         var format by remember(shown.ids) { mutableStateOf(FacePhotoFormat.COMPOSED) }
-        FaceShareSheet(if (shown.personal) "分享名片" else "分享照片", controller::hide,
-            maximumHeight = if (shown.mode == FaceMode.SEND) { if (shown.personal) 420.dp else 520.dp } else 720.dp) {
-                when (shown.mode) {
+        FaceShareSheet(if (shown.mode == FaceMode.BROWSER) "Wi-Fi 互传" else if (shown.personal) "分享名片" else "分享照片", controller::hide,
+            maximumHeight = if (shown.mode == FaceMode.SEND) { if (shown.personal) 420.dp else 520.dp } else 580.dp,
+            back = if (shown.mode == FaceMode.BROWSER) controller::returnToShare else null,
+            finish = if (shown.mode == FaceMode.BROWSER) controller::finishSending else null) {
+            AnimatedContent(shown.mode, Modifier.fillMaxWidth(), transitionSpec = {
+                val direction = if (targetState == FaceMode.BROWSER) 1 else -1
+                (fadeIn(tween(200, delayMillis = 40)) + slideInHorizontally(tween(240)) { direction * it / 12 })
+                    .togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(220)) { -direction * it / 12 }).using(null)
+            }, label = "face-share-page") { mode ->
+              Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                when (mode) {
                     FaceMode.SEND -> {
                         FaceSharePreview(if (shown.personal) identities.firstOrNull() else null,
                             shown.ids.mapNotNull { id -> catalog.cards.firstOrNull { it.id == id } }, model.stickers)
@@ -61,28 +67,13 @@ internal fun FaceShareHost(model: AppViewModel) {
                         if (peers.isEmpty() && !busy) FaceDiscoveryHelp { permission(true, controller::refreshDiscovery) }
                     }
                     FaceMode.BROWSER -> {
-                        TextButton(feedbackClick(controller::returnToShare)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null); Spacer(Modifier.width(6.dp)); Text("返回分享") }
-                        hotspot?.let { connection ->
-                            Text("1 · 连接 Wi-Fi", style = MaterialTheme.typography.titleMedium)
-                            FaceQrCode(connection.qr(), "连接热点二维码")
-                            Text(connection.ssid); Text("密码：${connection.password}", style = MaterialTheme.typography.bodyMedium)
-                            Text("2 · 扫码领取照片", style = MaterialTheme.typography.titleMedium)
-                        } ?: run {
-                            Text("在同一 Wi-Fi 下，直接扫描领取码。", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            OutlinedButton(feedbackClick { permission(false, controller::startHotspot) }, Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.WifiTethering, null); Spacer(Modifier.width(8.dp)); Text("创建临时热点")
-                            }
-                        }
-                        if (url != null) FaceQrCode(requireNotNull(url), "领取照片二维码")
-                        else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            CircularProgressIndicator(Modifier.size(24.dp)); Text("等待 Wi-Fi 连接")
-                        }
-                        Text(if (shown.personal) "对方用浏览器查看你的名片和联系方式。" else "对方用浏览器预览、选择并保存照片。", style = MaterialTheme.typography.bodyMedium)
+                        FaceWifiShareContent(hotspot, url, shown.personal) { permission(false, controller::startHotspot) }
                     }
                 }
+              }
+            }
                 if (status.isNotBlank()) Text(status, style = MaterialTheme.typography.bodyMedium)
                 if (busy) LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
-                if (shown.mode == FaceMode.BROWSER) TextButton(feedbackClick(controller::finishSending), Modifier.fillMaxWidth()) { Text("结束分享") }
         }
     }
     FaceReceiveBanner(requests.firstOrNull(), controller::approve, controller::reject)

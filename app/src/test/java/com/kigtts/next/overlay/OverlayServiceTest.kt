@@ -45,6 +45,44 @@ class OverlayServiceTest {
         ShadowSettings.setCanDrawOverlays(false); OverlayStore.get(app).update { it.copy(enabled = true) }
         assertFalse(NativeOverlayService.sync(app)); assertNull(shadowOf(app).nextStartedService)
     }
+    @Test fun expandedServiceRejectsBallDraggingAndKeepsItsAnchor() {
+        ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
+        val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+        try {
+            val service = controller.get()
+            invoke(service, "toggle")
+            val before = placement(service)
+            invoke(service, "drag", -900f, -9000f)
+            invoke(service, "drop")
+            assertEquals(before, placement(service))
+            assertTrue(state(service, "expanded"))
+        } finally { controller.destroy() }
+    }
+    @Test fun interruptedDockingCanBeDraggedAndReleasedAgainWithoutGettingStuck() {
+        ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
+        val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+        try {
+            val service = controller.get()
+            invoke(service, "drag", -200f, -9000f)
+            val top = placement(service)
+            val safe = NativeOverlayService::class.java.getDeclaredMethod("safeBounds").apply { isAccessible = true }.invoke(service) as OverlayBounds
+            assertEquals(overlayAnchorRange(safe, service.resources.displayMetrics.density).start, top.centerOnScreen().y, .01f)
+            invoke(service, "drop")
+            assertTrue(state(service, "docking"))
+            invoke(service, "drag", 100f, 120f)
+            assertFalse(state(service, "docking"))
+            invoke(service, "drop")
+            shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(5))
+            assertFalse(state(service, "docking"))
+            assertTrue(hidden(service))
+        } finally { controller.destroy() }
+    }
+    private fun placement(service: NativeOverlayService) = NativeOverlayService::class.java.getDeclaredField("layout").apply { isAccessible = true }.get(service) as OverlayPlacement
+    private fun state(service: NativeOverlayService, name: String) = (NativeOverlayService::class.java.getDeclaredField("${name}\$delegate").apply { isAccessible = true }.get(service) as androidx.compose.runtime.State<*>).value == true
+    private fun invoke(service: NativeOverlayService, name: String, vararg values: Float) {
+        NativeOverlayService::class.java.getDeclaredMethod(name, *Array(values.size) { Float::class.javaPrimitiveType!! })
+            .apply { isAccessible = true }.invoke(service, *values.toTypedArray())
+    }
     @Test fun windowUsesHardwareAccelerationAndDoesNotApplySystemInsetsTwice() {
         val params = overlayWindowParams()
         assertEquals(0, params.fitInsetsTypes)

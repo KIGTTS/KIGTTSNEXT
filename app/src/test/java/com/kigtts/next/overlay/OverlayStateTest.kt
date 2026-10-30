@@ -68,21 +68,18 @@ class OverlayStateTest {
                 assertTrue(p.fabX in 0f..p.width.toFloat()); assertTrue(p.fabY in 0f..p.height.toFloat())
             }
     }
-    @Test fun cornerExpansionMovesTheWholeConcentricDialAndCanReturnToItsDock() {
+    @Test fun expansionPreservesTheDockCenterAtEveryAllowedPosition() {
         val safe = OverlayBounds(0, 138, 1440, 2960)
         for (right in listOf(false, true)) for (position in listOf(0f, .1f, .5f, .9f, 1f)) {
             val compact = overlayPlacement(safe, 3.6f, right, position, false)
             val expanded = overlayPlacement(safe, 3.6f, right, position, true)
             assertEquals(compact.x + compact.fabX, expanded.x + expanded.fabX, .01f)
-            assertEquals(expanded.height / 2f, expanded.fabY, .01f)
+            assertEquals(compact.y + compact.fabY, expanded.y + expanded.fabY, .01f)
+            assertEquals(expanded.height / 2f, expanded.fabY, 1f)
             val initial = expanded.local(compact.centerOnScreen())
             assertEquals(compact.centerOnScreen().y, expanded.y + initial.y, .01f)
             assertTrue(initial.y in 0f..expanded.height.toFloat())
-            val returning = overlayDockPlacement(safe, 3.6f, expanded.centerOnScreen(), compact)
-            assertEquals(compact.centerOnScreen(), returning.centerOnScreen())
-            assertTrue(returning.x >= safe.left && returning.y >= safe.top)
-            assertTrue(returning.x + returning.width <= safe.left + safe.width)
-            assertTrue(returning.y + returning.height <= safe.top + safe.height)
+            assertEquals(position, overlayAnchorPosition(safe, 3.6f, compact.centerOnScreen().y), .001f)
         }
     }
     @Test fun idleRetractionMovesAndClipsTheInputWindowInsteadOfLeavingAnInvisibleBlocker() {

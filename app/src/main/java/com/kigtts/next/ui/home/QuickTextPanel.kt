@@ -34,8 +34,8 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
     val density = androidx.compose.ui.platform.LocalDensity.current
     BoxWithConstraints(modifier.padding(horizontal = 8.dp).testTag("quick-sort-pane").reorderGestures(drag, onStart = model.quickSort::begin)) {
         Column(Modifier.fillMaxSize()) {
-            CategoryContentMotion(state.selectedCategory, categories, !singleRow && drag.key == null,
-                model::category, Modifier.weight(1f)) { category, active ->
+            CategoryContentMotion(state.selectedCategory, categories, drag.key == null,
+                model::category, Modifier.weight(1f), vertical = singleRow) { category, active ->
                 QuickPhraseLayout(phrases.filter { it.category == category }, singleRow, columns, model, drag, active)
             }
             CategoryTabs(state, categories, model)

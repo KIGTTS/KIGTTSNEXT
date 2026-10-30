@@ -43,7 +43,9 @@ internal class FaceWifiServiceDiscovery(private val manager: WifiP2pManager, pri
     private fun query() {
         if (identity == null) return
         val epoch = generation
-        val query = WifiP2pDnsSdServiceRequest.newInstance(FACE_P2P_TYPE)
+        // A type-only request asks for PTR records, not the TXT record carrying our session.
+        // Request all DNS-SD records, then accept only our exact domain/token in the callback.
+        val query = WifiP2pDnsSdServiceRequest.newInstance()
         request = query
         manager.addServiceRequest(channel, query, action { success ->
             if (generation == epoch) {

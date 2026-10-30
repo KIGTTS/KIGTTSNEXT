@@ -13,10 +13,11 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.ExperimentalComposeUiApi
 
-/** Claim FAB drags before the expanded dial's scrolling, keeping stationary holds for settings. */
+/** Only the collapsed ball can move; stationary holds still open settings. */
 @Composable
 @OptIn(ExperimentalComposeUiApi::class)
-internal fun Modifier.overlayFabDrag(move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit): Modifier {
+internal fun Modifier.overlayFabDrag(move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit, enabled: Boolean = true): Modifier {
+    if (!enabled) return this
     val onMove by rememberUpdatedState(move)
     val onDrop by rememberUpdatedState(drop)
     val onInteract by rememberUpdatedState(interact)

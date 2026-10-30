@@ -47,12 +47,25 @@ class FaceWifiDirectTest {
 
     @Test fun aGroupCreatedElsewhereIsPreservedAndFailureUsesCurrentReceiveControls() = runBlocking {
         radio.group = connection(P2p.OWN, true); radio.failConnect = true
+        ReflectionHelpers.setField(radio.group, "mClients", arrayListOf(WifiP2pDevice().apply { deviceAddress = "11:22:33:44:55:66" }))
         val wifi = FaceWifiDirect(context) {}; wifi.start()
         try {
             val error = runCatching { wifi.connect(remote) }.exceptionOrNull()!!
             assertEquals(0, radio.removed)
             assertTrue(error.message!!.contains("开启面对面接收"))
             assertFalse(error.message!!.contains("面对面页面"))
+        } finally { wifi.stop() }
+    }
+
+    @Test fun anEmptyGroupRetainedByTheSystemIsReleasedBeforeJoiningTheRecipient() = runBlocking {
+        radio.group = connection(P2p.OWN, true)
+        val wifi = FaceWifiDirect(context) {}; wifi.start()
+        try {
+            assertEquals(0, radio.removed) // Merely opening sharing must not change an existing group.
+            val pending = async(start = CoroutineStart.UNDISPATCHED) { wifi.connect(remote) }
+            assertEquals(1, radio.removed); assertEquals(remote, radio.requested)
+            radio.group = connection(remote, false); announce()
+            assertEquals("192.168.49.1", withTimeout(3000) { pending.await() })
         } finally { wifi.stop() }
     }
 
@@ -76,6 +89,8 @@ class FaceWifiDirectTest {
         try {
             assertNull(wifi.address); assertEquals(0, radio.created)
             assertEquals(1, radio.serviceDiscoveries)
+            // Empty DNS-SD query requests both PTR and TXT; a service-type PTR query loses our session.
+            assertEquals("02000100", radio.requestQueries.single())
             val id = faceToken(); val key = faceToken()
             val record = mapOf("id" to id, "key" to key, "port" to "54321", "name" to "对方")
             val callback = requireNotNull(radio.txt)
@@ -126,6 +141,7 @@ class FaceWifiDirectTest {
         var removed = 0; var cancelled = 0; var requested: String? = null; var failConnect = false
         var created = 0; var ownAddress = OWN; var removedServices = 0; var removedRequests = 0; var serviceDiscoveries = 0
         var failedRequests = 0; var requestAttempts = 0
+        val requestQueries = mutableListOf<String>()
         var denyLocalAddress = false
         var txt: WifiP2pManager.DnsSdTxtRecordListener? = null
         @Implementation fun initialize(context: Context, looper: Looper, listener: WifiP2pManager.ChannelListener?) = Shadow.newInstanceOf(WifiP2pManager.Channel::class.java)
@@ -141,6 +157,7 @@ class FaceWifiDirectTest {
         @Implementation fun removeLocalService(channel: WifiP2pManager.Channel, service: WifiP2pServiceInfo, listener: WifiP2pManager.ActionListener?) { removedServices++; listener?.onSuccess() }
         @Implementation fun addServiceRequest(channel: WifiP2pManager.Channel, request: WifiP2pServiceRequest, listener: WifiP2pManager.ActionListener?) {
             requestAttempts++
+            requestQueries += ReflectionHelpers.callInstanceMethod<String>(request, "getSupplicantQuery")
             if (failedRequests > 0) { failedRequests--; listener?.onFailure(WifiP2pManager.BUSY) } else listener?.onSuccess()
         }
         @Implementation fun removeServiceRequest(channel: WifiP2pManager.Channel, request: WifiP2pServiceRequest, listener: WifiP2pManager.ActionListener?) { removedRequests++; listener?.onSuccess() }

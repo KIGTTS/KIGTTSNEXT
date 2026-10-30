@@ -57,6 +57,18 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
         withTimeout(35_000) {
             require(device.matches(Regex("(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}")))
             val active = channel ?: throw IllegalStateException("附近连接尚未就绪")
+            val existing = currentGroup(active)
+            if (existing?.isGroupOwner == true && existing.clientList.isEmpty()) {
+                // Some OEMs retain an empty autonomous group after its process dies. Only release
+                // an idle group when the user starts a transfer; preserve groups with active peers.
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    manager.removeGroup(active, action { success -> if (continuation.isActive) {
+                        if (success) continuation.resume(Unit)
+                        else continuation.resumeWithException(IllegalStateException("附近连接忙碌，请稍后重试"))
+                    } })
+                }
+                withTimeout(5_000) { while (currentGroup(active) != null) delay(150) }
+            }
             suspendCancellableCoroutine { continuation ->
                 waiter?.cancel(); waiter = continuation; waitingDevice = device
                 continuation.invokeOnCancellation { if (waiter === continuation) {
@@ -76,6 +88,9 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
             }
         }
     } finally { services?.resume() }
+    private suspend fun currentGroup(active: WifiP2pManager.Channel): WifiP2pGroup? = suspendCancellableCoroutine { continuation ->
+        manager?.requestGroupInfo(active) { if (continuation.isActive) continuation.resume(it) }
+    }
     fun stopDiscovery() { services?.stop(); channel?.let { runCatching { manager.stopPeerDiscovery(it, null) } } }
     fun stop() {
         waiter?.cancel(); waiter = null; waitingDevice = null

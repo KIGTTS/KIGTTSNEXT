@@ -710,3 +710,19 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - P2P DNS-SD now advertises the current transfer session and obtains the remote address from the framework's service callback, including when the system redacts our own address. Idle sharing no longer creates autonomous groups. Connection negotiation pauses periodic discovery; service-request BUSY failures retry. Existing unrelated P2P groups are preserved.
 - BLE optionally reads a separate cached avatar characteristic. The encoder converts to opaque sRGB and emits simple WebP without redundant ICC metadata. An actual Redmi Android 16 invocation produced a decodable 32x32 thumbnail of 446 bytes; the original Huawei encoder output included a 560-byte ICC chunk.
 - Sharing regression: 70 tests passed on configured API 29/35 runtimes, including real loopback HTTP offer/consent/media delivery, P2P callback and cancellation simulations, native thumbnail encoding/decoding and sparse-profile merging. Debug build passed. These checks do not prove two-device radio transfer; both phones need the updated build for the new P2P discovery path.
+
+## 2026-10-31 双机互传与扫码流程
+
+- 原生 DNS-SD 请求改为同时获取 PTR/TXT，回调仍校验服务域、会话和端口。序列化请求回归防止只查询 PTR 的错误再次出现；两机真实日志均已取得对方的 P2P 地址。
+- 发送时可释放系统残留的空自主组并等待移除完成；已有客户端的连接组保留，仅打开分享不会移除组。上述逻辑及原有分享全套共72项回归通过。
+- 用户在同一新版上完成红米和华为双向发送并确认成功。此项为用户实机反馈；自动化未读取或比对用户传输文件的内容。
+- 扫码页面拆成“连接网络／扫码领取”横向分页，已在同一Wi-Fi可跳过热点。二维码只调整白色外框圆角，码点和静区保持方形；进入/返回分享轻移淡入淡出，面板高度连续变化。
+
+## 2026-10-31 悬浮球交互与共享编辑UI
+
+- 保留KIGTTS现有花型、字号、图标、标签、弧形入口、上下滚动及排序。仅参考小米本地APK的raw屏幕坐标、窗口几何限制与有界回边动画；不复刻系统外观。手机窗口树确认浮球与展开面板为不同窗口，空闲输入窗口缩窄。
+- 收起状态在上下各保留展开菜单半高，展开共用原圆心；展开不可拖球，入口仍可上下滚动。松手使用独立绝对坐标动画回边，途中可再次拖动打断，不创建覆盖整段路径的透明输入窗口。
+- 扫码双页支持左右跟手切换，二维码圆角仅作用于白色外框；NFC按当前步骤提供WSC网络凭据或领取链接，离开页面撤销。实体NFC碰一碰尚未验证。
+- 快捷文本和编辑模式共用原生分页，单行为纵向分页，保留边缘跨组排序；卡片外观固定展开并移到附加内容前。
+
+- 最终145项相关回归全部通过，失败0、错误0；日志build/overlay-share-pager-verified-tests.log，汇总build/overlay-share-pager-test-results.json。包括原有弧形入口滚动/排序/最末项触摸、展开禁拖、回边中断恢复、半宽圆形绘制、API29/35扫码实图解码和NFC载荷。

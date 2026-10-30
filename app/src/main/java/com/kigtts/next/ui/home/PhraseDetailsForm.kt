@@ -22,6 +22,10 @@ import com.kigtts.next.ui.components.textMenuAnchor
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.animateEnabled
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.ChevronRight
+import com.kigtts.next.ui.settings.*
 
 @Composable
 internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, model: AppViewModel, enabled: Boolean) {
@@ -33,21 +37,22 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
     com.kigtts.next.ui.navigation.RegisterPageInput(titleFocused)
     LaunchedEffect(draft.title) { if (title.text != draft.title) title = TextFieldValue(draft.title) }
     var chooseGroup by remember { mutableStateOf(false) }
-    var appearance by rememberSaveable(draft.key) { mutableStateOf(false) }
     LaunchedEffect(enabled) { if(!enabled)chooseGroup=false }
-    com.kigtts.next.ui.components.ReadablePage(840.dp) {
-    Column(Modifier.fillMaxSize().testTag("phrase-details-form")
-        .verticalScroll(rememberScrollState()).padding(com.kigtts.next.ui.navigation.pageContentPadding()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        PhraseEditorSection("字幕与标题") {
-            RichPhraseTextField(draft, model, enabled)
+    SettingsLayout {
+        SettingsGroup("字幕与标题", modifier = Modifier.testTag("phrase-details-form")) {
+            PhraseEditorRow(SettingPosition.FIRST) { RichPhraseTextField(draft, model, enabled) }
+            PhraseEditorRow(SettingPosition.MIDDLE) {
             OutlinedTextField(title, { value -> title = value.copy(text=value.text.replace('\n',' ')); model.content.editPhrase { it.copy(title = title.text) } },
                 visualTransformation = com.kigtts.next.ui.components.rememberInputTextMotion(title, MaterialTheme.colorScheme.onSurface),
                 interactionSource = titleSource, colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, titleFocused),
                 enabled = enabled, label = { Text("缩略标题（可选）") }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("phrase-detail-title").textMenuAnchor { title=title.copy(selection=TextRange(title.selection.end)) })
+            }
             Box {
-                MotionOutlinedButton(feedbackClick { focus.clearFocus();keyboard?.hide();chooseGroup = true }, enabled = enabled,
-                    modifier = Modifier.fillMaxWidth().testTag("phrase-detail-category")) { Text("分组：" + draft.category) }
+                SettingItem("分组", draft.category, Icons.Default.Folder, SettingPosition.LAST,
+                    Modifier.testTag("phrase-detail-category"), enabled = enabled,
+                    onClick = { focus.clearFocus();keyboard?.hide();chooseGroup = true },
+                    trailing = { Icon(Icons.Default.ChevronRight, null) })
                 DropdownMenu(chooseGroup && enabled, { chooseGroup = false }) {
                     categories.forEach { group -> DropdownMenuItem(text = { Text(group) }, onClick = feedbackClick {
                         model.content.editPhrase { it.copy(category = group) }; chooseGroup = false
@@ -55,15 +60,16 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
                 }
             }
         }
-        PhraseEditorSection("附加内容") {
+        PhraseEditorSection("卡片外观", Modifier.testTag("phrase-appearance-section")) {
+            PhraseAppearanceSettings(draft, model, enabled)
+        }
+        SettingsGroup("附加内容", modifier = Modifier.testTag("phrase-attachments-section")) {
+          PhraseEditorRow(if (draft.type == QuickCardType.TEXT) SettingPosition.SINGLE else SettingPosition.FIRST) {
             PhraseTypeTabs(draft.type,enabled) { type->
                 if(type!=draft.type) { focus.clearFocus();keyboard?.hide();model.content.editPhrase { it.switchType(type) } }
             }
+          }
             PhraseTypeContent(draft,model,enabled) { focus.clearFocus();keyboard?.hide() }
         }
-        PhraseAppearanceSection(appearance,enabled,{ focus.clearFocus();keyboard?.hide();appearance=!appearance }) {
-            PhraseAppearanceSettings(draft, model, enabled&&appearance)
-        }
-    }
     }
 }

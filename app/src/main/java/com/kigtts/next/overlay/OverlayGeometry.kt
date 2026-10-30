@@ -9,15 +9,27 @@ internal data class OverlayPlacement(val x: Int, val y: Int, val width: Int, val
 internal fun OverlayPlacement.sameLocalGeometry(other: OverlayPlacement): Boolean =
     width == other.width && height == other.height && fabX == other.fabX && fabY == other.fabY
 
+/** Reserve the expanded dial's height even while collapsed; expansion never relocates the anchor. */
+internal fun overlayAnchorRange(safe: OverlayBounds, density: Float): ClosedFloatingPointRange<Float> {
+    val half = min(safe.height, (356 * density.coerceAtLeast(.1f)).roundToInt()) / 2f
+    return (safe.top + half)..(safe.top + safe.height - half)
+}
+
+internal fun overlayAnchorPosition(safe: OverlayBounds, density: Float, y: Float): Float {
+    val range = overlayAnchorRange(safe, density)
+    return ((y - range.start) / (range.endInclusive - range.start).coerceAtLeast(1f)).coerceIn(0f, 1f)
+}
+
 internal fun overlayPlacement(safe: OverlayBounds, density: Float, right: Boolean, position: Float,
     expanded: Boolean, retraction: Float = 0f): OverlayPlacement {
     val unit = density.coerceAtLeast(.1f)
+    val range = overlayAnchorRange(safe, unit)
+    val centerY = range.start + (range.endInclusive - range.start) * position.coerceIn(0f, 1f)
     if (!expanded) {
         // Clip the actual input window to the visible FAB. Translating only its
         // drawing would leave an invisible rectangle intercepting the app below.
         val half = min(28 * unit, min(safe.width, safe.height) / 2f)
         val margin = min(40 * unit, min(safe.width, safe.height) / 2f)
-        val centerY = safe.top + margin + (safe.height - 2 * margin).coerceAtLeast(0f) * position.coerceIn(0f, 1f)
         val inset = margin * (1f - retraction.coerceIn(0f, 1f))
         val centerX = if (right) safe.left + safe.width - inset else safe.left + inset
         val left = max(safe.left, (centerX - half).roundToInt())
@@ -29,11 +41,10 @@ internal fun overlayPlacement(safe: OverlayBounds, density: Float, right: Boolea
     val width = min(safe.width, (296 * unit).roundToInt())
     val height = min(safe.height, (356 * unit).roundToInt())
     val fab = min(40 * unit, min(width, height) / 2f)
-    val anchorY = safe.top + fab + (safe.height - 2 * fab).coerceAtLeast(0f) * position.coerceIn(0f, 1f)
-    val y = (anchorY - height / 2f).roundToInt().coerceIn(safe.top, safe.top + (safe.height - height).coerceAtLeast(0))
+    val y = (centerY - height / 2f).roundToInt().coerceIn(safe.top, safe.top + (safe.height - height).coerceAtLeast(0))
     val retract = fab * retraction.coerceIn(0f, 1f)
     return OverlayPlacement(if (right) safe.left + safe.width - width else safe.left, y, width, height,
-        (if (right) width - fab + retract else fab - retract).coerceIn(0f, width.toFloat()), height / 2f)
+        (if (right) width - fab + retract else fab - retract).coerceIn(0f, width.toFloat()), centerY - y)
 }
 
 internal fun dialPoint(slot: Int, right: Boolean, radius: Float): Pair<Float, Float> {

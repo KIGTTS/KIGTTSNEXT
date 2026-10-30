@@ -54,6 +54,7 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     fun viewportScrolled(amount: Float, horizontal: Boolean) {
         acceptedSlot = acceptedSlot?.translate(if (horizontal) Offset(-amount, 0f) else Offset(0f, -amount))
     }
+    fun viewportChanged() { acceptedSlot = null }
     fun translation(id: String): Offset = if (key != id) Offset.Zero else
         currentTargets().firstOrNull { it.key == id }?.let { initial + offset - it.bounds.topLeft } ?: Offset.Zero
     fun finish(cancelled: Boolean = false) {

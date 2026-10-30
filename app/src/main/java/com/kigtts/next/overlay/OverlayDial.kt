@@ -56,7 +56,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val progress = motion.progress
     SideEffect { centerChanged(motion.center) }
     val effects by animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
-    val retraction by animateFloatAsState(if (hidden && !expanded) 1f else 0f, MaterialTheme.motionScheme.slowSpatialSpec(), label = "dial-edge-hide")
+    val retraction by animateFloatAsState(if (hidden && !expanded) 1f else 0f, tween(220, easing = FastOutSlowInEasing), label = "dial-edge-hide")
     SideEffect { retracted?.invoke(retraction.coerceIn(0f, 1f)) }
     val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie12Sided) }
     val morphBounds = remember(morph) { morph.calculateMaxBounds() }
@@ -78,7 +78,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val cx = with(density) { motion.center.x.toDp() }; val cy = with(density) { motion.center.y.toDp() }
     val radius = minOf(136f, placement.height / density.density * .35f, placement.width / density.density * .46f, (placement.width / density.density - 176f).coerceAtLeast(48f))
     val isExpanded by rememberUpdatedState(expanded)
-    // Keep the ancestor input node alive while the FAB collapses during a drag.
+    // The expanded dial keeps its original vertical scrolling and endpoint resistance.
     val scroll = Modifier.pointerInput(settings.shortcuts.size) {
         detectVerticalDragGestures(onDragStart = {
             if (isExpanded) { interact(); wheel = wheel.copy(drag = currentWheelOffset); wheeling = true }
@@ -169,7 +169,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 translationX = if (retracted == null) (if (settings.rightEdge) 1 else -1) * retraction * 40.dp.toPx() else 0f
                 alpha = 1f - retraction * .48f
             }
-            .overlayFabDrag(move, drop, interact)) {
+            .overlayFabDrag(move, drop, interact, enabled = !expanded)) {
             IconActionHint(if (expanded) "收起快捷入口" else "展开快捷入口", hasLongAction = true) {
                 Surface(onClick = feedbackClick(toggle), modifier = Modifier.fillMaxSize()
                     .iconLongAction(true, configure)

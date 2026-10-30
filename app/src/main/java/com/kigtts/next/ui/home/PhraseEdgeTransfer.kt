@@ -40,7 +40,7 @@ internal fun BoxScope.PhraseEdgeTransfer(drag: ReorderDrag, category: String, ca
         val destination = latestCategories.getOrNull(latestCategories.indexOf(latestCategory) + direction)
         val id = drag.key
         if (id != null && destination != null && model.quickTexts.transferPhrase(id, destination)) {
-            armed = false; latestFeedback(); model.category(destination)
+            armed = false; drag.viewportChanged(); latestFeedback(); model.category(destination)
         }
     }
     AnimatedVisibility(target != null && drag.key != null && armed, modifier = Modifier.align(if (direction < 0) Alignment.CenterStart else Alignment.CenterEnd),

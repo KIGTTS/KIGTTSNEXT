@@ -23,6 +23,7 @@ import com.kigtts.next.ui.components.ChoiceButtonGroup
 import com.kigtts.next.ui.media.ThumbnailFramingDialog
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kigtts.next.ui.settings.SettingPosition
 
 @Composable
 internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean, leave: () -> Unit) {
@@ -42,7 +43,8 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     val state by model.state.collectAsStateWithLifecycle()
     if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    when (draft.type) {
+    if (draft.type != QuickCardType.TEXT) PhraseEditorRow(if (draft.type == QuickCardType.PAGE || entry != null) SettingPosition.MIDDLE else SettingPosition.LAST) {
+      when (draft.type) {
         QuickCardType.TEXT -> Unit
         QuickCardType.AUDIO -> MotionOutlinedButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
             modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
@@ -55,8 +57,13 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
                 modifier = Modifier.testTag("phrase-choose-page")) { Text("选择主页面") }
         }
     }
-    if (draft.type == QuickCardType.PAGE) { PhraseIconSettings(draft, model, enabled); PhraseNetworkSettings(draft, model, enabled) }
+    }
+    if (draft.type == QuickCardType.PAGE) {
+        PhraseEditorRow(SettingPosition.MIDDLE) { PhraseIconSettings(draft, model, enabled) }
+        PhraseEditorRow(if (entry == null) SettingPosition.LAST else SettingPosition.MIDDLE) { PhraseNetworkSettings(draft, model, enabled) }
+    }
     MotionColumn(if(draft.type==QuickCardType.TEXT)emptyList() else listOfNotNull(entry),{ resource,_->resource.id },enabled=enabled) { resource,interactive->
+      PhraseEditorRow(SettingPosition.LAST) {
         PhraseResourceInfo(resource,interactive,draft.type in setOf(QuickCardType.MEDIA,QuickCardType.PAGE),{ framing=true },
             { model.content.editPhrase { it.copy(mediaId=null,resources=it.resources-it.type) } })
         PhraseResourcePreview(resource,model.mediaRepository,interactive,state.appleLivePhotos,draft.audioMode,state.autoPlayback)
@@ -66,6 +73,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
                 colors=SwitchDefaults.colors().animateEnabled(interactive),
                 modifier=Modifier.testTag("phrase-auto-play"))
         }
+      }
         if(resource.kind in setOf(MediaKind.VIDEO,MediaKind.MOTION_PHOTO)) {
             Text("音频播放",style=MaterialTheme.typography.labelLarge)
             ChoiceButtonGroup("音频播放",MediaAudioMode.entries,draft.audioMode ?: MediaAudioMode.defaultFor(resource.kind),{ it.label },
