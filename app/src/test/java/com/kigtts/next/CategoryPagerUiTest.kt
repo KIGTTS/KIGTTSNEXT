@@ -59,4 +59,32 @@ class CategoryPagerUiTest {
         compose.onNodeWithTag("category-content-transition").performTouchInput { swipeLeft() }
         assertEquals("二", selected)
     }
+
+    @Test fun singleRowPagesKeepTheirVerticalGutterWhileFollowingTheHeldFinger() {
+        var selected by mutableStateOf("一")
+        compose.setContent {
+            CategoryContentMotion(selected, listOf("一", "二"), true, { selected = it },
+                Modifier.size(320.dp, 128.dp), vertical = true) { name, _ ->
+                LazyRow(Modifier.fillMaxSize().testTag("row-$name"), state = rememberLazyListState()) {
+                    items(12) { Text("卡片 $it", Modifier.size(150.dp, 128.dp)) }
+                }
+            }
+        }
+        val before = compose.onNodeWithTag("category-page-一").getUnclippedBoundsInRoot()
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("category-content-transition").performTouchInput {
+            down(Offset(width / 2f, height * .85f)); moveTo(Offset(width / 2f, height * .1f), delayMillis = 200)
+        }
+        compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
+        val during = compose.onNodeWithTag("category-page-一").getUnclippedBoundsInRoot()
+        val next = compose.onNodeWithTag("category-page-二").getUnclippedBoundsInRoot()
+        assertEquals("Single-row category pages retain a vertical gutter while held", 12f,
+            (next.top - during.bottom).value, .5f)
+        assertTrue("The single-row page must move with the finger", during.top < before.top - 48.dp)
+        assertEquals("一", selected)
+        compose.onNodeWithTag("category-content-transition").performTouchInput { up() }
+        compose.mainClock.advanceTimeBy(1200); compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+        assertEquals("二", selected)
+    }
 }

@@ -2,9 +2,12 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.foundation.interaction.*
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
@@ -32,11 +35,20 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
     val drag = rememberReorderDrag({ emptyList() }, horizontalOnly = singleRow, animateDrop = true,
         feedback = feedback, move = model.quickTexts::movePhrase)
     val density = androidx.compose.ui.platform.LocalDensity.current
+    val layouts = rememberSaveableStateHolder()
     BoxWithConstraints(modifier.padding(horizontal = 8.dp).testTag("quick-sort-pane").reorderGestures(drag, onStart = model.quickSort::begin)) {
         Column(Modifier.fillMaxSize()) {
-            CategoryContentMotion(state.selectedCategory, categories, drag.key == null,
-                model::category, Modifier.weight(1f), vertical = singleRow) { category, active ->
-                QuickPhraseLayout(phrases.filter { it.category == category }, singleRow, columns, model, drag, active)
+            // The pager changes axis with the layout. Keep the fade outside that keyed
+            // pager so rebuilding it cannot discard the outgoing list before it fades.
+            AnimatedContent(singleRow, Modifier.weight(1f).fillMaxWidth(), label = "quick-text-layout-mode",
+                transitionSpec = { fadeIn(tween(180)).togetherWith(fadeOut(tween(140))).using(null) }) { isRow ->
+                layouts.SaveableStateProvider(isRow) {
+                    CategoryContentMotion(state.selectedCategory, categories, drag.key == null && isRow == singleRow,
+                        model::category, vertical = isRow) { category, active ->
+                        QuickPhraseLayout(phrases.filter { it.category == category }, isRow, columns, model, drag,
+                            active && isRow == singleRow)
+                    }
+                }
             }
             CategoryTabs(state, categories, model)
         }

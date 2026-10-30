@@ -74,7 +74,7 @@ fun CategoryContentMotion(category: String, categories: List<String>, swipeEnabl
     }
     val area = modifier.fillMaxSize().clipToBounds().testTag("category-content-transition")
     key(vertical) {
-        if (vertical) VerticalPager(pager, area, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
+        if (vertical) VerticalPager(pager, area, pageSpacing = 12.dp, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
             key = { categories[it] }, pageContent = page)
         else HorizontalPager(pager, area, pageSpacing = 12.dp, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
             key = { categories[it] }, pageContent = page)

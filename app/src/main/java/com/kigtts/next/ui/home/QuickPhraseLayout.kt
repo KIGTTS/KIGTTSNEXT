@@ -1,7 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.*
 import androidx.compose.foundation.layout.*
@@ -75,15 +74,9 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
     if (active) ReorderAutoScroll(drag,
         { if (currentRow) row.layoutInfo.viewportSize.width.toFloat() else grid.layoutInfo.viewportSize.height.toFloat() },
         { if (currentRow) row.scrollBy(it) else grid.scrollBy(it) }, horizontal = singleRow)
-    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-    val spatial = MaterialTheme.motionScheme.fastSpatialSpec<androidx.compose.ui.unit.IntOffset>()
     Box(Modifier.fillMaxSize()) {
-    AnimatedContent(singleRow, modifier = Modifier.fillMaxSize().clipToBounds().testTag("phrases-layout-transition"),
-        label = "quick-text-layout", transitionSpec = {
-            val direction = if (targetState) -1 else 1
-            (fadeIn(effects) + slideInVertically(spatial) { direction * it / 8 })
-                .togetherWith(fadeOut(effects) + slideOutVertically(spatial) { -direction * it / 8 }).using(null)
-        }) { isRow ->
+    Box(Modifier.fillMaxSize().clipToBounds().testTag("phrases-layout-transition")) {
+        val isRow = singleRow
         val filtered = currentPhrases; val sources = currentSources; val pressed = currentPressed
         val listModifier = Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }
             .then(if (active && isRow == currentRow) Modifier else Modifier.clearAndSetSemantics {})

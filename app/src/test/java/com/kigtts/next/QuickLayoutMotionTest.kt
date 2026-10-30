@@ -2,6 +2,15 @@ package com.kigtts.next
 
 import android.app.Application
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.*
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.*
@@ -10,6 +19,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.KigttsApp
+import com.kigtts.next.ui.home.QuickTextContent
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -23,6 +33,47 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class QuickLayoutMotionTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun resizingBetweenRowAndGridFadesContentInBothDirections() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        compose.activity.viewModelStore.put("layout-fade", model)
+        val category = model.state.value.selectedCategory
+        val phrases = listOf(QuickPhrase("测试", category))
+        var singleRow by mutableStateOf(true)
+        compose.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f)) {
+                MaterialTheme {
+                    Box(Modifier.size(350.dp, 320.dp).background(Color.Magenta).testTag("layout-fade-stage")) {
+                        QuickTextContent(model.state.value, phrases, listOf(category),
+                            model, singleRow, 2)
+                    }
+                }
+            }
+        }
+        fun green(name: String): Int {
+            val file = java.io.File("build/previews/quick-layout-fade-$name.png")
+            compose.onNodeWithTag("layout-fade-stage").captureRoboImage(file.path)
+            val bitmap = requireNotNull(android.graphics.BitmapFactory.decodeFile(file.path))
+            return try { android.graphics.Color.green(bitmap.getPixel(40, 180)) } finally { bitmap.recycle() }
+        }
+        val row = green("row")
+        assertTrue(row > 100)
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { singleRow = false }
+        compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(64); compose.waitForIdle()
+        val fadingOut = green("to-grid-mid")
+        assertTrue("The outgoing single row fades instead of disappearing", fadingOut in 1 until row)
+        compose.mainClock.advanceTimeBy(300); compose.waitForIdle()
+        assertEquals(0, green("grid"))
+        compose.runOnIdle { singleRow = true }
+        compose.mainClock.advanceTimeByFrame(); compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(64); compose.waitForIdle()
+        val fadingIn = green("to-row-mid")
+        assertTrue("The returning single row fades in instead of popping in", fadingIn in 1 until row)
+        compose.mainClock.advanceTimeBy(300); compose.mainClock.autoAdvance = true
+        assertEquals(row, green("row-restored"))
+    }
+
     @Test fun singleRowCardsFillTheirViewportAndGridKeepsTheSameDefaultHeight() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "home-panel", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
