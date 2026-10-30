@@ -15,7 +15,7 @@ import androidx.compose.ui.graphics.Shape
     Surface(modifier, shape = shape, color = if (background == null) color else Color.Transparent) {
         Box {
             if (background != null) AppearanceBackdrop(background, Modifier.matchParentSize(), blur = BackgroundBlur.CARD,
-                overlay = color.copy(alpha = .72f))
+                scrimColor = color)
             content()
         }
     }

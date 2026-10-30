@@ -4,10 +4,12 @@ import com.kigtts.next.state.*
 
 /** Native option paths. Plugin entrances are merged from their live contributions. */
 internal val nativeSettingsSearchEntries = listOf(
-    SettingsSearchResult("版本", "设置 / 关于 KIGTTS / 版本", Destination.SettingsDetail(SettingsCategory.ABOUT)),
-    SettingsSearchResult("项目主页", "设置 / 关于 KIGTTS / 项目与反馈 / 项目主页", Destination.SettingsDetail(SettingsCategory.ABOUT)),
-    SettingsSearchResult("反馈问题", "设置 / 关于 KIGTTS / 项目与反馈 / 反馈问题", Destination.SettingsDetail(SettingsCategory.ABOUT)),
-    SettingsSearchResult("软件许可", "设置 / 关于 KIGTTS / 项目与反馈 / 软件许可", Destination.SettingsDetail(SettingsCategory.ABOUT)),
+    SettingsSearchResult("版本", "设置 / 关于 / 版本", Destination.SettingsDetail(SettingsCategory.ABOUT)),
+    SettingsSearchResult("项目主页", "设置 / 关于 / 帮助与反馈 / 项目主页", Destination.SettingsDetail(SettingsCategory.ABOUT)),
+    SettingsSearchResult("反馈问题", "设置 / 关于 / 帮助与反馈 / 反馈问题", Destination.SettingsDetail(SettingsCategory.ABOUT)),
+    SettingsSearchResult("用户协议", "设置 / 关于 / 协议与隐私 / 用户协议", Destination.SettingsDetail(SettingsCategory.USER_AGREEMENT)),
+    SettingsSearchResult("隐私政策", "设置 / 关于 / 协议与隐私 / 隐私政策", Destination.SettingsDetail(SettingsCategory.PRIVACY_POLICY)),
+    SettingsSearchResult("开源许可证", "设置 / 关于 / 协议与隐私 / 开源许可证", Destination.SettingsDetail(SettingsCategory.OPEN_SOURCE_LICENSES)),
     SettingsSearchResult("背景与字体", "设置 / ${SettingsCategory.APPEARANCE.title} / 背景与字体", Destination.SettingsDetail(SettingsCategory.APPEARANCE)),
     SettingsSearchResult("背景图片", "设置 / ${SettingsCategory.APPEARANCE.title} / 背景与字体 / 背景图片", Destination.SettingsDetail(SettingsCategory.APPEARANCE)),
     SettingsSearchResult("背景遮罩", "设置 / ${SettingsCategory.APPEARANCE.title} / 背景与字体 / 背景遮罩", Destination.SettingsDetail(SettingsCategory.APPEARANCE)),

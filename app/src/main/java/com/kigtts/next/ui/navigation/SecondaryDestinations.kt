@@ -90,7 +90,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.ABOUT -> AboutScreen(openLink = { url ->
                         model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url,
                             mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
-                    })
+                    }, openDocument = { model.navigate(Destination.SettingsDetail(it)) })
+                    SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY -> AboutDocumentScreen(destination.category)
+                    SettingsCategory.OPEN_SOURCE_LICENSES -> AboutLicensesScreen()
                 }
                 Destination.Plugins -> PluginsScreen(model)
                 is Destination.MediaLibrary -> MediaLibraryScreen(model, destination.target)

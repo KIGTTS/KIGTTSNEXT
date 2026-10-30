@@ -28,20 +28,26 @@ class AboutScreenUiTest {
     @Test fun settingsEntryOpensAboutAndItsLinksRemainReachable() {
         var destination by mutableStateOf<Destination?>(null)
         val urls = mutableListOf<String>()
+        val documents = mutableListOf<SettingsCategory>()
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Surface(Modifier.fillMaxSize()) {
                 if (destination == null) SettingsScreen({ destination = it })
-                else AboutScreen(openLink = urls::add, version = "0.1.0")
+                else AboutScreen(openLink = urls::add, openDocument = documents::add, version = "0.1.0")
             }
         } }
         compose.onNodeWithTag("settings-entry/about").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.ABOUT), destination) }
         compose.onNodeWithText("版本 0.1.0").assertIsDisplayed()
-        listOf("项目主页", "反馈问题", "软件许可").forEach { title ->
+        compose.onNodeWithText("LHTSTUDIO").assertDoesNotExist()
+        assertEquals("关于", SettingsCategory.ABOUT.title)
+        listOf("用户协议", "隐私政策", "开源许可证", "项目主页", "反馈问题").forEach { title ->
             compose.onNode(hasText(title) and hasClickAction()).performScrollTo().performClick()
         }
-        compose.runOnIdle { assertEquals(listOf(ABOUT_PROJECT_URL, "$ABOUT_PROJECT_URL/issues",
-            "$ABOUT_PROJECT_URL/blob/main/LICENSE"), urls) }
+        compose.runOnIdle {
+            assertEquals(listOf(ABOUT_PROJECT_URL, "$ABOUT_PROJECT_URL/issues"), urls)
+            assertEquals(listOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY,
+                SettingsCategory.OPEN_SOURCE_LICENSES), documents)
+        }
     }
 
     @Test fun searchRoutesDirectlyToTheAboutOption() {
@@ -49,11 +55,11 @@ class AboutScreenUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             SettingsSearchDialog(emptyList(), {}, { destination = it })
         } }
-        compose.onNodeWithTag("settings-search-input").performTextInput("软件许可")
-        compose.onNode(hasText("设置 / 关于 KIGTTS / 项目与反馈 / 软件许可") and hasClickAction()).performClick()
+        compose.onNodeWithTag("settings-search-input").performTextInput("开源许可证")
+        compose.onNode(hasText("设置 / 关于 / 协议与隐私 / 开源许可证") and hasClickAction()).performClick()
         compose.runOnIdle {
-            assertEquals(Destination.SettingsDetail(SettingsCategory.ABOUT), destination)
-            assertEquals("软件许可", SettingFocus.target?.title)
+            assertEquals(Destination.SettingsDetail(SettingsCategory.OPEN_SOURCE_LICENSES), destination)
+            assertEquals("开源许可证", SettingFocus.target?.title)
             SettingFocus.target = null
         }
     }
@@ -61,7 +67,7 @@ class AboutScreenUiTest {
     @Test fun tappingChangesTheBackgroundFlowersButKeepsTheWordmarkInEitherTheme() {
         var mode by mutableStateOf(ThemeMode.LIGHT)
         compose.setContent { KigttsTheme(ThemeSettings(mode = mode)) {
-            Surface(Modifier.fillMaxSize()) { AboutScreen({}, version = "0.1.0") }
+            Surface(Modifier.fillMaxSize()) { AboutScreen({}, {}, version = "0.1.0") }
         } }
         val hero = compose.onNodeWithTag("about-easter-egg")
         val logo = compose.onNodeWithTag("about-logo", useUnmergedTree = true)
@@ -88,6 +94,18 @@ class AboutScreenUiTest {
         compose.runOnIdle { mode = ThemeMode.DARK }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/previews/about-dark.png")
-        compose.onNodeWithText("软件许可").assertIsDisplayed()
+        compose.onNodeWithText("开源许可证").assertIsDisplayed()
+    }
+
+    @Test fun licenseDialogDisplaysTheBundledLicenseWithoutOpeningAWebsite() {
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Surface(Modifier.fillMaxSize()) { AboutLicensesScreen() }
+        } }
+        compose.onNodeWithText("KIGTTS · MIT License").performClick()
+        compose.waitUntil(5000) {
+            compose.onAllNodes(hasText("Permission is hereby granted", substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("关闭").performClick()
+        compose.onNode(hasText("Permission is hereby granted", substring = true)).assertDoesNotExist()
     }
 }

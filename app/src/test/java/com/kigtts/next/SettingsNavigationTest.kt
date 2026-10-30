@@ -49,7 +49,8 @@ class SettingsNavigationTest {
     @Test fun categoriesOpenThirdLevelAndPredictiveReturnCancelsAndCommitsToParent() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.navigate(Destination.Settings) }
-        SettingsCategory.entries.forEach { category ->
+        val documents = setOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY, SettingsCategory.OPEN_SOURCE_LICENSES)
+        SettingsCategory.entries.filterNot { it in documents }.forEach { category ->
             compose.onNodeWithText(category.title).performScrollTo().performClick()
             compose.runOnIdle {
                 assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
@@ -69,6 +70,17 @@ class SettingsNavigationTest {
             } else compose.onNodeWithContentDescription("返回上一页").performClick()
             compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
         }
+        compose.onNodeWithText("关于").performScrollTo().performClick()
+        documents.forEach { category ->
+            compose.onNode(hasText(category.title) and hasClickAction()).performScrollTo().performClick()
+            compose.runOnIdle {
+                assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
+                assertEquals(listOf(Destination.Home, Destination.Settings, Destination.SettingsDetail(SettingsCategory.ABOUT)), model.state.value.navigationStack)
+            }
+            compose.onNodeWithContentDescription("返回上一页").performClick()
+            compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.ABOUT), model.state.value.destination) }
+        }
+        back()
         compose.onNodeWithText("插件管理").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
         compose.onNodeWithTag("managed-list/plugins").performScrollToNode(hasTestTag("managed-item/input.voice"))

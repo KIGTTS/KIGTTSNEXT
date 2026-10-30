@@ -27,11 +27,12 @@ import com.kigtts.next.ui.identity.rememberAvatarShape
 @Composable internal fun AboutBrand(modifier: Modifier = Modifier) {
     var turns by rememberSaveable { mutableIntStateOf(0) }
     val rotation by animateFloatAsState(turns * 90f, tween(460, easing = FastOutSlowInEasing), label = "about-flower-turn")
-    val shapes = listOf("flower", "clover8", "cookie6", "soft-burst", "sun", "cookie9")
+    var shapes by rememberSaveable { mutableStateOf(randomAboutShapes()) }
     val colors = MaterialTheme.colorScheme
     BoxWithConstraints(modifier.fillMaxWidth().heightIn(max = 280.dp).aspectRatio(1.5f)
         .testTag("about-easter-egg").clickable(interactionSource = remember { MutableInteractionSource() },
-            indication = null, role = Role.Button, onClickLabel = "换个花样", onClick = feedbackClick { turns++ })) {
+            indication = null, role = Role.Button, onClickLabel = "换个花样",
+            onClick = feedbackClick { shapes = randomAboutShapes(shapes); turns++ })) {
         val unit = minOf(maxWidth / 320, maxHeight / (320f / 1.5f))
         val positions = listOf(
             Triple(unit * -22, unit * -10, unit * 72),
@@ -41,7 +42,7 @@ import com.kigtts.next.ui.identity.rememberAvatarShape
         val tints = listOf(colors.primaryContainer.copy(alpha = .65f), colors.tertiaryContainer.copy(alpha = .55f),
             colors.secondaryContainer.copy(alpha = .65f), colors.primary.copy(alpha = .16f))
         positions.forEachIndexed { index, (x, y, edge) ->
-            val shape = rememberAvatarShape(shapes[(turns + index) % shapes.size])
+            val shape = rememberAvatarShape(shapes[index])
             Box(Modifier.offset(x, y).size(edge)
                 .testTag("about-flower/$index").clearAndSetSemantics {}
                 .graphicsLayer { rotationZ = rotation + index * 18f }.clip(shape).background(tints[index]))

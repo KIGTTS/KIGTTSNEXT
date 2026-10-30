@@ -14,11 +14,12 @@ import org.robolectric.annotation.*
 class BackgroundAppearanceTest {
     private val app = ApplicationProvider.getApplicationContext<Application>()
     @Test fun secondaryPagesUseAStrongerScrimWithoutChangingHomeOrExceedingOpaque() {
-        listOf(0f, .2f, .7f, 1f).forEach { dim ->
+        listOf(0f, .2f, .35f, .7f, 1f).forEach { dim ->
             assertEquals(dim, appearanceBackgroundDim(dim, BackgroundBlur.NONE), .001f)
-            assertEquals(1f - (1f - dim) * .75f, appearanceBackgroundDim(dim, BackgroundBlur.PAGE), .001f)
-            assertTrue(appearanceBackgroundDim(dim, BackgroundBlur.CARD) in dim..1f)
+            assertEquals(1f - .8f * (1f - dim), appearanceBackgroundDim(dim, BackgroundBlur.PAGE), .001f)
+            assertEquals(1f - .8f * (1f - dim), appearanceBackgroundDim(dim, BackgroundBlur.CARD), .001f)
         }
+        assertEquals(.48f, appearanceBackgroundDim(.35f, BackgroundBlur.PAGE), .001f)
     }
     @Test fun squareCropClampsPanAndRetainsOriginalPixels() {
         val image = Bitmap.createBitmap(600, 300, Bitmap.Config.ARGB_8888)
