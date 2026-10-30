@@ -35,3 +35,17 @@ python tools/Publish-FontSource.py
 发布器已上传并核对全部 69 个公开文件（字体、许可、轮廓预览、字形图标、签名资源包与目录）的 SHA256。11 个包的签名、载荷及许可均再次校验通过，图标已渲染检查。公开下载校验记录位于 `.tools/font-source-verified.json`。
 
 2026-10-29：字体图标改为无背景的真实字形 SVG，并通过 icon.monochrome 注册为主题色图标。字重调整改为单独弹窗，字体列表使用分段列表与侧滑操作。此次只更新图标素材与目录，已发布字体包保持不变。
+
+2026-10-30：从老 KIGTTS 字体下载源迁入 12 款 OFL 字体，总计 23 款：思源黑体 CN、思源宋体 CN、得意黑、霞鹜文楷 GB 屏幕阅读版、缝合像素字体 12px 简体、小赖字体、荆南缘默体、荆南麦圆体、霞鹜漫黑、霞鹜臻楷 GB、悠哉字体、铁蒺藜体。思源两款保留 250–900 可变字重；悠哉本次收录原版 Regular。未修改字体或授权文件，不重复已有字体，不涉及旧时钟字体。
+
+迁移来源、版本、原始字体/授权 SHA256 和相对文件路径记录于 `distribution/font-sources.json`。首次迁入可指定旧源导出目录；发布后，构建器可从新字体源的镜像重建。路径限制与哈希校验同样适用于本地输入，不能用另一份字体或许可证替换。
+
+```powershell
+python tools/Build-FontSource.py --legacy-folder <旧字体资源目录>
+python tools/Build-FontKpmSource.py --private-key <本地签名私钥路径>
+python tools/Verify-FontSource.py
+python -m unittest discover -s tools/tests
+python tools/Publish-FontSource.py
+```
+
+验证工具检查每包签名、发布者、所有载荷哈希、OFL 原字节、可变轴及主题色轮廓图标，并生成字形联系表。签名字体包已存在时，构建器逐字节核对且拒绝覆盖不同内容的同版本包。

@@ -99,6 +99,210 @@
       "licenseSha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
       "previewText": "こんにちは、KIGTTS",
       "iconText": "あ"
+    },
+    {
+      "id": "source-han-sans-cn-regular",
+      "name": "思源黑体 CN",
+      "upstream": "https://github.com/adobe-fonts/source-han-sans/blob/release/Variable/TTF/Subset/SourceHanSansCN-VF.ttf",
+      "sha256": "25a01e41b5cc99893eb35a6cd2cc7611841dc19eb03cbaf7f0c1de8210f2ba0b",
+      "licenseSha256": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "2.005R",
+      "licenseUpstream": "https://github.com/adobe-fonts/source-han-sans/blob/master/LICENSE.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/source-han-sans-cn-regular/source-han-sans-cn-vf.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/source-han-sans-cn-regular/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/source-han-sans-cn-vf.ttf",
+        "license": "licenses/source-han-sans-cn.txt"
+      }
+    },
+    {
+      "id": "source-han-serif-cn-regular",
+      "name": "思源宋体 CN",
+      "upstream": "https://github.com/adobe-fonts/source-han-serif/blob/release/Variable/TTF/Subset/SourceHanSerifCN-VF.ttf",
+      "sha256": "8e052cbcdbd0f03496c9ad05da7d57901549286d5efd30f3caf66a393f6c389b",
+      "licenseSha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "2.003R",
+      "licenseUpstream": "https://github.com/adobe-fonts/source-han-serif/blob/master/LICENSE.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/source-han-serif-cn-regular/source-han-serif-cn-vf.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/source-han-serif-cn-regular/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/source-han-serif-cn-vf.ttf",
+        "license": "licenses/source-han-serif-cn.txt"
+      }
+    },
+    {
+      "id": "smiley-sans-oblique",
+      "name": "得意黑",
+      "upstream": "https://github.com/atelier-anchor/smiley-sans/releases/tag/v2.0.1",
+      "sha256": "b447d7e781f08bc95c4c9f23ba71ed2b8ebb639aa7184485c71c4ca5afcd25c4",
+      "licenseSha256": "9401f4050f1b66c26b6ccdc8b0e14a3c1cc37aac122eda84386f25854a9bec72",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "2.0.1",
+      "licenseUpstream": "https://github.com/atelier-anchor/smiley-sans/blob/main/LICENSE",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/smiley-sans-oblique/smiley-sans-oblique.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/smiley-sans-oblique/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/smiley-sans-oblique.ttf",
+        "license": "licenses/smiley-sans-OFL.txt"
+      }
+    },
+    {
+      "id": "lxgw-wenkai-gb-screen",
+      "name": "霞鹜文楷 GB 屏幕阅读版",
+      "upstream": "https://github.com/lxgw/LxgwWenKai-Screen/releases/tag/v1.522",
+      "sha256": "23ec023913e1851925eb94462c4b0ccd1d78bb89533745aaa8cc682ccd339dc0",
+      "licenseSha256": "ba38832f9d7e0ad601a1ab90d58f251ba957532885ef80dca050a611962fd8b6",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "1.522",
+      "licenseUpstream": "https://github.com/lxgw/LxgwWenKai-Screen/blob/main/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-wenkai-gb-screen/lxgw-wenkai-gb-screen.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-wenkai-gb-screen/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/lxgw-wenkai-gb-screen.ttf",
+        "license": "licenses/lxgw-wenkai-screen-OFL.txt"
+      }
+    },
+    {
+      "id": "fusion-pixel-12px-proportional-sc",
+      "name": "缝合像素字体 12px 简体",
+      "upstream": "https://github.com/TakWolf/fusion-pixel-font/releases/tag/2026.07.20",
+      "sha256": "ffa464aae492ed7a8526367debcce62603cec8157f59548cc50cebf1ed81a53f",
+      "licenseSha256": "bc518cf64b8032c07690f33cc270c35c179255a6ac8efa7c165ebae7e8f76a63",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "2026.07.20",
+      "licenseUpstream": "https://github.com/TakWolf/fusion-pixel-font/blob/master/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/fusion-pixel-12px-proportional-sc/fusion-pixel-12px-proportional-sc.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/fusion-pixel-12px-proportional-sc/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/fusion-pixel-12px-proportional-sc.ttf",
+        "license": "licenses/fusion-pixel-font-OFL.txt"
+      }
+    },
+    {
+      "id": "xiaolai-regular",
+      "name": "小赖字体（简体）",
+      "upstream": "https://github.com/lxgw/kose-font/releases/tag/v3.126",
+      "sha256": "e2f68daf0e72777a8cf58bc83de1b98634b251e537ddbfca24b0ae50d1802da2",
+      "licenseSha256": "0df7e09be4c2c850a48bd8beb9cd64b343aad49cd5d3f6cfb2ad2e3d28a56ca4",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "3.126",
+      "licenseUpstream": "https://github.com/lxgw/kose-font/blob/master/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/xiaolai-regular/xiaolai-regular.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/xiaolai-regular/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/xiaolai-regular.ttf",
+        "license": "licenses/xiaolai.txt"
+      }
+    },
+    {
+      "id": "kn-yuanmo",
+      "name": "荆南缘默体",
+      "upstream": "https://github.com/maoken-fonts/KNYuanmo/releases/tag/v0.74",
+      "sha256": "ee3c6f2e4eafd5caf4f8f8a5b20996795984834887a0586797719360a90a5cdb",
+      "licenseSha256": "34910262ca98f620280ba2c8cd2e89d4f39329c01cb51921a0813883200bc56b",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "0.74",
+      "licenseUpstream": "https://github.com/maoken-fonts/KNYuanmo/blob/v0.74/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/kn-yuanmo/kn-yuanmo-regular.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/kn-yuanmo/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/kn-yuanmo-regular.ttf",
+        "license": "licenses/kn-yuanmo.txt"
+      }
+    },
+    {
+      "id": "kn-maiyuan",
+      "name": "荆南麦圆体",
+      "upstream": "https://github.com/maoken-fonts/KNMaiyuan/releases/tag/v1.20",
+      "sha256": "94ea78c51086b1ea58c1744784b2335dea2c5ef1c5193b80e02c7d46b8e0283f",
+      "licenseSha256": "8f7498fa590ac61309b0dfa40b737bfde36b1dc407ef91c8debdf5ab37716384",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "1.20",
+      "licenseUpstream": "https://github.com/maoken-fonts/KNMaiyuan/blob/v1.20/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/kn-maiyuan/kn-maiyuan-regular.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/kn-maiyuan/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/kn-maiyuan-regular.ttf",
+        "license": "licenses/kn-maiyuan.txt"
+      }
+    },
+    {
+      "id": "lxgw-marker-gothic",
+      "name": "霞鹜漫黑",
+      "upstream": "https://github.com/lxgw/LxgwMarkerGothic/releases/tag/v1.003",
+      "sha256": "9a1e46379442856b9fc64de1d9bd4120903780990e28d99fd6415cadee78a47d",
+      "licenseSha256": "58e494ff4a5177d593a97ffc482f4069f59f54a0d4049fd29e531d3b1009e8b4",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "1.003",
+      "licenseUpstream": "https://github.com/lxgw/LxgwMarkerGothic/blob/v1.003/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-marker-gothic/lxgw-marker-gothic.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-marker-gothic/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/lxgw-marker-gothic.ttf",
+        "license": "licenses/lxgw-marker-gothic.txt"
+      }
+    },
+    {
+      "id": "lxgw-zhenkai-gb",
+      "name": "霞鹜臻楷 GB",
+      "upstream": "https://github.com/lxgw/LxgwZhenKai/releases/tag/v0.825",
+      "sha256": "40876902a7ce25268ab710ad8fe6e2b63bc002aa4b68d22fd45fc1243726ced5",
+      "licenseSha256": "02c29dec8b0f48d1c73ed28e16824dcf9c1c6c3c2870d31e2a556a880b8ade7a",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "0.825",
+      "licenseUpstream": "https://github.com/lxgw/LxgwZhenKai/blob/v0.825/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-zhenkai-gb/lxgw-zhenkai-gb.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/lxgw-zhenkai-gb/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/lxgw-zhenkai-gb.ttf",
+        "license": "licenses/lxgw-zhenkai.txt"
+      }
+    },
+    {
+      "id": "yozai",
+      "name": "悠哉字体",
+      "upstream": "https://github.com/lxgw/yozai-font/releases/tag/v0.868",
+      "sha256": "25071998a0fe6a72f54c235e714986d259633e5ff670b1a2b5e264387f3316ac",
+      "licenseSha256": "86b3a0b5162848503241d80ea9a309a6459690ba7dc547940758a6a689a53b02",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "0.868",
+      "licenseUpstream": "https://github.com/lxgw/yozai-font/blob/v0.868/OFL.txt",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/yozai/yozai-regular.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/yozai/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/yozai-regular.ttf",
+        "license": "licenses/yozai.txt"
+      }
+    },
+    {
+      "id": "tiejili-sc",
+      "name": "铁蒺藜体",
+      "upstream": "https://github.com/Buernia/Tiejili/releases/tag/1.100",
+      "sha256": "a62b797d8a3b283791700c7b1a476dda34d11843b68bcde39960db78d22052d8",
+      "licenseSha256": "ecf7bdebbd3ffcfd81187bd0e057748c4a7bc1c7150d86056409ea59a2b5cf61",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永",
+      "upstreamVersion": "1.100",
+      "licenseUpstream": "https://github.com/Buernia/Tiejili/blob/1.100/LICENSE",
+      "downloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/tiejili-sc/tiejili-sc.ttf",
+      "licenseDownloadUrl": "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/fonts/tiejili-sc/OFL.txt",
+      "legacyFiles": {
+        "font": "fonts/tiejili-sc.ttf",
+        "license": "licenses/tiejili.txt"
+      }
     }
   ]
 }

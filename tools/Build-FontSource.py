@@ -9,6 +9,7 @@ from urllib.parse import quote, unquote
 from fontTools.ttLib import TTFont
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
+from font_source_assets import original_assets, source_urls
 
 BASE = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Fonts/resolve/master/"
 LOCK = Path(__file__).resolve().parent.parent / "distribution/font-sources.json"
@@ -37,6 +38,7 @@ def outline(data, text="你好，KIGTTS"):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", default=".tools/font-source")
+    parser.add_argument("--legacy-folder", help="Optional original legacy font export; files must match the source lock")
     args = parser.parse_args()
     out = Path(args.output); out.mkdir(parents=True, exist_ok=True)
     session = requests.Session()
@@ -45,9 +47,7 @@ def main():
     for locked in json.loads(LOCK.read_text(encoding="utf-8"))["fonts"]:
         key, name = locked["id"], locked["name"]
         url = locked["upstream"]
-        if not url.startswith("https://raw.githubusercontent.com/google/fonts/"): raise ValueError("Unexpected upstream")
-        upstream, filename = url.rsplit("/", 1)
-        upstream += "/"
+        source_urls(locked)
         # Published 1.0.0 packages are immutable. Keep verified originals pinned to their upstream revision.
         if key in previous:
             entry = previous[key]
@@ -60,21 +60,17 @@ def main():
             if digest((out / f"fonts/{key}/OFL.txt").read_bytes()) != locked["licenseSha256"]: raise ValueError("Font license mismatch")
             entries.append(entry)
             continue
+        data, license_data, filename = original_assets(locked, session, args.legacy_folder)
         relative = f"fonts/{key}/{filename}"
         target = out / relative; target.parent.mkdir(parents=True, exist_ok=True)
-        r = session.get(url, timeout=(20, 120)); r.raise_for_status(); data = r.content
-        if digest(data) != locked["sha256"]: raise ValueError("Upstream font mismatch")
         target.write_bytes(data)
-        r = session.get(upstream + "OFL.txt", timeout=30); r.raise_for_status()
-        if "SIL OPEN FONT LICENSE Version 1.1" not in r.text: raise ValueError("Expected OFL 1.1 license")
-        if digest(r.content) != locked["licenseSha256"]: raise ValueError("Upstream font license mismatch")
-        target.with_name("OFL.txt").write_bytes(r.content)
+        target.with_name("OFL.txt").write_bytes(license_data)
         text = locked["previewText"]
         svg = outline(data, text); preview = f"previews/{key}.svg"
         (out / "previews").mkdir(exist_ok=True); (out / preview).write_bytes(svg)
         entries.append(dict(id=key, name=name, url=BASE + quote(relative), sha256=digest(data), bytes=len(data),
                             preview=BASE + preview, previewSha256=digest(svg), license="SIL OFL 1.1",
-                            licenseUrl=BASE + f"fonts/{key}/OFL.txt", upstream=upstream + filename, previewText=text))
+                            licenseUrl=BASE + f"fonts/{key}/OFL.txt", upstream=url, previewText=text))
     for entry in entries:
         with TTFont(out / unquote(entry["url"][len(BASE):])) as font:
             entry["axes"] = [dict(tag=a.axisTag, min=a.minValue, default=a.defaultValue, max=a.maxValue) for a in font["fvar"].axes] if "fvar" in font else []

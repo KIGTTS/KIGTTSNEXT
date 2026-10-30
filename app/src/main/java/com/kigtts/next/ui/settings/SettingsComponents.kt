@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.core.animateDpAsState
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 
@@ -105,10 +107,13 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
 internal fun ToggleSetting(title: String, summary: String, icon: ImageVector?, checked: Boolean, onChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier, position: SettingPosition = SettingPosition.SINGLE, enabled: Boolean = true,
     preserveColorWhenLocked: Boolean = false) {
-    SettingItem(title, summary, icon, position, trailing = {
-        Switch(checked, onCheckedChange = feedbackChange(onChange), enabled = enabled,
+    SettingItem(title, summary, icon, position,
+        modifier = modifier.toggleable(checked, enabled = enabled, role = Role.Switch,
+            onValueChange = feedbackChange(onChange)).semantics { contentDescription = title },
+        enabled = enabled, trailing = {
+        Switch(checked, onCheckedChange = null, enabled = enabled,
             colors = if (preserveColorWhenLocked) SwitchDefaults.colors().keepColorsWhenLocked()
                 else SwitchDefaults.colors().animateEnabled(enabled),
-            modifier = modifier.semantics { contentDescription = title })
+        )
     })
 }
