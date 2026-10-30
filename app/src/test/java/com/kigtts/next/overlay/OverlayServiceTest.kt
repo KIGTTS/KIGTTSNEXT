@@ -23,8 +23,11 @@ class OverlayServiceTest {
         ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
         val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
         try {
+            val fullWidth = placement(controller.get()).width
             shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofSeconds(5))
             assertTrue(hidden(controller.get()))
+            assertTrue("Idle hiding must shrink the native touch window, even without a Compose frame",
+                placement(controller.get()).width <= fullWidth / 2 + 1)
         } finally { controller.destroy() }
     }
     @Test fun anExpiredOrUnavailableNoticeCannotPreventIdleHideForever() {
@@ -36,6 +39,32 @@ class OverlayServiceTest {
             assertNull(OverlayHub.get(app).bubble.value)
             assertTrue("Idle hiding must resume when the notice disappears", hidden(controller.get()))
         } finally { controller.destroy() }
+    }
+    @Test @Config(sdk = [29, 35])
+    fun idleRetractionWakesOnBothEdgesAndHonorsTheAutoHideSetting() {
+        ShadowSettings.setCanDrawOverlays(true)
+        val main = shadowOf(android.os.Looper.getMainLooper())
+        for (right in listOf(true, false)) {
+            OverlayStore.get(app).update { it.copy(enabled = true, autoHide = true, rightEdge = right) }
+            val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+            try {
+                val service = controller.get()
+                val full = placement(service).width
+                main.idleFor(java.time.Duration.ofSeconds(5))
+                assertTrue(placement(service).width <= full / 2 + 1)
+                invoke(service, "interact")
+                main.idleFor(java.time.Duration.ofMillis(350))
+                assertEquals(full, placement(service).width)
+                OverlayStore.get(app).update { it.copy(autoHide = false) }
+                main.idleFor(java.time.Duration.ofSeconds(5))
+                assertFalse(hidden(service))
+                assertEquals(full, placement(service).width)
+                OverlayStore.get(app).update { it.copy(autoHide = true) }
+                main.idleFor(java.time.Duration.ofSeconds(5))
+                assertTrue(hidden(service))
+                assertTrue(placement(service).width <= full / 2 + 1)
+            } finally { controller.destroy() }
+        }
     }
     private fun hidden(service: NativeOverlayService): Boolean {
         val field = NativeOverlayService::class.java.getDeclaredField("hidden\$delegate").apply { isAccessible = true }
@@ -56,6 +85,22 @@ class OverlayServiceTest {
             invoke(service, "drop")
             assertEquals(before, placement(service))
             assertTrue(state(service, "expanded"))
+        } finally { controller.destroy() }
+    }
+    @Test @Config(sdk = [29, 35])
+    fun openingTheAppCannotShrinkTheWindowBeforeTheFlowerFinishesClosing() {
+        ShadowSettings.setCanDrawOverlays(true); OverlayStore.get(app).update { it.copy(enabled = true) }
+        val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+        try {
+            val service = controller.get()
+            invoke(service, "toggle")
+            val expanded = placement(service)
+            invoke(service, "collapse")
+            service.onConfigurationChanged(android.content.res.Configuration(service.resources.configuration))
+            assertEquals("Configuration refresh must retain the animation surface", expanded.width, placement(service).width)
+            assertEquals(expanded.height, placement(service).height)
+            invoke(service, "finishCollapse")
+            assertTrue(placement(service).width < expanded.width)
         } finally { controller.destroy() }
     }
     @Test fun interruptedDockingCanBeDraggedAndReleasedAgainWithoutGettingStuck() {

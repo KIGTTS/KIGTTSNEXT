@@ -29,6 +29,21 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class OverlayUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun fifthEntranceAtTheStartIsNotCoveredByTheInvisibleSixthLabel() {
+        var opened: String? = null
+        var right by mutableStateOf(true)
+        val entries = (1..7).map { OverlayShortcut("entry-$it", "快捷入口名称 $it", "extension") }
+        compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.size(296.dp, 356.dp)) {
+            OverlayDial(OverlaySettings(rightEdge = right, shortcuts = entries),
+                OverlayPlacement(0, 0, 888, 1068, if (right) 768f else 120f, 534f), true, false,
+                {}, { _, _ -> }, {}, {}, { opened = it.id }, {})
+        } } }
+        for (edge in listOf(true, false)) {
+            compose.runOnIdle { right = edge; opened = null }
+            compose.onNodeWithContentDescription(entries[4].title).performTouchInput { click() }
+            compose.runOnIdle { assertEquals("Fifth entrance on ${if (edge) "right" else "left"} edge", entries[4].id, opened) }
+        }
+    }
     @Test fun fifthSubtitleBoardRemainsClickableWhileTheFirstPageBouncesAtItsTopEdge() {
         var opened: String? = null
         val defaults = defaultOverlayShortcuts()
@@ -85,7 +100,7 @@ class OverlayUiTest {
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
             Box(Modifier.size(28.dp, 56.dp).clipToBounds().testTag("half-fab-window")) {
                 OverlayDial(OverlaySettings(rightEdge = right), OverlayPlacement(0, 0, 84, 168, if (right) 84f else 0f, 84f), false, true,
-                    {}, { _, _ -> }, {}, {}, {}, {}, retracted = {})
+                    {}, { _, _ -> }, {}, {}, {}, {}, edgeRetraction = 1f)
             }
         } }
         for (edge in listOf(true, false)) {

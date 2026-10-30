@@ -9,6 +9,7 @@ import android.view.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import androidx.compose.ui.geometry.Offset
 
 /** Geometry already applies absolute system-bar/cutout insets; WindowManager must not apply them again. */
 internal fun overlayWindowParams() = WindowManager.LayoutParams(80, 80, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -30,18 +31,20 @@ internal fun overlayWindowParams() = WindowManager.LayoutParams(80, 80, WindowMa
     }
 }
 
-internal class OverlayWindow(context: Context, private val wm: WindowManager, outside: () -> Unit, private val failed: () -> Unit = {}) {
+internal class OverlayWindow(context: Context, private val wm: WindowManager, outside: () -> Unit, private val failed: () -> Unit = {},
+    private val transitionAnchor: (() -> Offset)? = null) {
     private val owner = OverlayViewOwner()
     private val view = ComposeView(context).apply {
         setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
         setOnTouchListener { _, event -> if (event.action == MotionEvent.ACTION_OUTSIDE) { outside(); true } else false }
     }
     private val params = overlayWindowParams()
+    private val resizeCover = if (Build.VERSION.SDK_INT in 29..30 && transitionAnchor != null) OverlayResizeCover(context, wm) else null
     private var attached = false
     private var settling: ValueAnimator? = null
     private val resizeGate = OverlayResizeGate()
     private val updates = OverlayFrameUpdates({ view.postOnAnimation(it) }) {
-        if (attached) try { wm.updateViewLayout(view, params) }
+        if (attached && resizeCover?.preparing != true) try { wm.updateViewLayout(view, params) }
         catch (_: RuntimeException) { close(); failed() }
     }
     private var target: android.graphics.Rect? = null
@@ -52,9 +55,13 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         // Do not paint new local FAB coordinates into the old-sized surface.
         view.viewTreeObserver.addOnPreDrawListener {
             view.getLocationOnScreen(screenLocation)
-            val draw = !attached || resizeGate.canDraw(
+            val draw = resizeCover?.preparing != true && (!attached || resizeGate.canDraw(
                 sizeMatches = view.width == params.width && view.height == params.height,
-                positionMatches = screenLocation[0] == params.x && screenLocation[1] == params.y)
+                positionMatches = screenLocation[0] == params.x && screenLocation[1] == params.y))
+            if (draw) resizeCover?.drawn(view, matches = {
+                view.getLocationOnScreen(screenLocation)
+                view.width == params.width && view.height == params.height && screenLocation[0] == params.x && screenLocation[1] == params.y
+            }, reveal = { params.alpha = 1f; updates.flush() })
             if (!draw) view.postInvalidateOnAnimation()
             draw
         }
@@ -73,6 +80,9 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         val fromX = params.x; val fromY = params.y
         val canAnimate = animate && attached && params.width == width && params.height == height
         val resized = params.width != width || params.height != height
+        if (resized && attached && !continuousResize && resizeCover?.begin(view, params, transitionAnchor!!.invoke()) { updates.flush() } == true) {
+            params.alpha = 0f
+        }
         if (resized) resizeGate.resizing(continuousResize)
         params.width = width; params.height = height
         if (canAnimate && (fromX != x || fromY != y)) {
@@ -93,7 +103,7 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
             } else { wm.addView(view, params); attached = true }
         }
     }
-    fun close() { updates.close(); settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
+    fun close() { updates.close(); resizeCover?.close(); settling?.cancel(); settling = null; if (attached) { runCatching { wm.removeViewImmediate(view) }; attached = false }; view.disposeComposition(); owner.destroy() }
 }
 
 /** A ROM can constrain overlay size permanently (IME, rotation, split screen). Never stop drawing forever. */

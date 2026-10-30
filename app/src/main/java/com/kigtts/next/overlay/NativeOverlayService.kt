@@ -45,7 +45,11 @@ class NativeOverlayService : Service() {
     private var theme by mutableStateOf(ThemeSettings())
     private var haptics by mutableStateOf(true)
     private var windowExpanded = false
-    private var retraction = 0f
+    private var retraction by mutableFloatStateOf(0f)
+    private val edgeMotion = OverlayEdgeMotion { value ->
+        retraction = value
+        if (!windowExpanded && dragCenter == null && !docking) place(continuousResize = true)
+    }
     private var dragCenter by mutableStateOf<Offset?>(null)
     private var motionStart by mutableStateOf<Offset?>(null)
     private var docking by mutableStateOf(false)
@@ -81,19 +85,15 @@ class NativeOverlayService : Service() {
         com.kigtts.next.ui.components.MaterialSymbols.initialize(this)
         appearance = getSharedPreferences("appearance", MODE_PRIVATE); feedback = getSharedPreferences("interaction", MODE_PRIVATE)
         appearance.registerOnSharedPreferenceChangeListener(preferenceListener); feedback.registerOnSharedPreferenceChangeListener(preferenceListener)
-        dial = OverlayWindow(windowContext, wm, { collapse() }, { store.update { it.copy(enabled = false) }; stopSelf() }).also { host -> host.content {
+        dial = OverlayWindow(windowContext, wm, { collapse() }, { store.update { it.copy(enabled = false) }; stopSelf() },
+            transitionAnchor = { visibleFabCenter }).also { host -> host.content {
             KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
                 OverlayDial(config, renderedLayout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
                     { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) }, ::finishCollapse, { id, direction ->
                         val before = store.settings.value.shortcuts.indexOfFirst { it.id == id }
                         store.move(id, direction)
                         before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
-                    }, retracted = { value ->
-                        if (retraction != value) {
-                            retraction = value
-                            if (!windowExpanded && dragCenter == null && !docking) place(continuousResize = true)
-                        }
-                    }, initialCenter = motionStart,
+                    }, edgeRetraction = retraction, initialCenter = motionStart,
                     collapsedCenter = if (windowExpanded) renderedLayout.local(compactPlacement().centerOnScreen()) else null,
                     dragging = dragCenter != null, centerChanged = { visibleFabCenter = it })
             } }
@@ -165,13 +165,15 @@ class NativeOverlayService : Service() {
         if (rebase || !layout.sameLocalGeometry(renderedLayout)) renderedLayout = layout
     }
     private fun interact() {
-        hidden = false; armIdle()
+        hidden = false; edgeMotion.animateTo(0f); armIdle()
     }
     private fun armIdle() {
         idle?.cancel(); idle = null
-        if (!expanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) idle = scope.launch {
+        if (!expanded && !windowExpanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) idle = scope.launch {
             delay(3500)
-            if (!expanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) hidden = true
+            if (!expanded && !windowExpanded && dragCenter == null && !docking && config.autoHide && hub.bubble.value == null) {
+                hidden = true; edgeMotion.animateTo(1f)
+            }
         }
     }
     private fun toggle() { if (expanded) collapse() else {
@@ -180,6 +182,7 @@ class NativeOverlayService : Service() {
         val absolute = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
         val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
         dragCenter = null; docking = false; windowExpanded = true
+        edgeMotion.snapTo(0f)
         layout = target; motionStart = target.local(absolute)
         renderPlacement(rebase = true)
         expanded = true; interact()
@@ -203,6 +206,7 @@ class NativeOverlayService : Service() {
             docking = false; windowExpanded = false; motionStart = null
         }
         if (hidden || idle != null) { hidden = false; idle?.cancel(); idle = null }
+        edgeMotion.snapTo(0f)
         dragCenter = dragCenter!! + Offset(x, y)
         place(continuousResize = true)
     }
@@ -234,12 +238,18 @@ class NativeOverlayService : Service() {
         runCatching { bubble?.place(x, y, width, height) }.onFailure { bubble?.close(); bubble = null }
     }
     private fun resetPlacement() {
+        val absolute = Offset(layout.x.toFloat(), layout.y.toFloat()) + visibleFabCenter
         dockMotion.cancel()
         cachedBounds = null
         dragCenter = null; docking = false; motionStart = null
-        windowExpanded = expanded
-        place()
-        if (!expanded) armIdle()
+        // Launching an activity can update the window configuration during collapse.
+        // Keep the full drawing surface until the morph's completion callback releases it.
+        if (windowExpanded || expanded) {
+            windowExpanded = true
+            layout = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
+            motionStart = layout.local(absolute)
+            renderPlacement(rebase = true)
+        } else { place(); armIdle() }
     }
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); resetPlacement() }
     private fun foreground() {
@@ -258,8 +268,13 @@ class NativeOverlayService : Service() {
         return START_NOT_STICKY
     }
     override fun onBind(intent: Intent?): IBinder? = null
+    override fun dump(fd: java.io.FileDescriptor, writer: java.io.PrintWriter, args: Array<out String>) {
+        writer.println("Overlay: enabled=${config.enabled} autoHide=${config.autoHide} expanded=$expanded windowExpanded=$windowExpanded")
+        writer.println("Idle: active=${idle?.isActive == true} hidden=$hidden retraction=$retraction dragging=${dragCenter != null} docking=$docking notice=${hub.bubble.value != null}")
+        writer.println("Placement: $layout rendered=$renderedLayout")
+    }
     override fun onDestroy() {
-        dockMotion.cancel()
+        dockMotion.cancel(); edgeMotion.close()
         scope.cancel(); dial?.close(); bubble?.close()
         if (Build.VERSION.SDK_INT >= 31 && ::windowContext.isInitialized) windowContext.unregisterComponentCallbacks(windowConfiguration)
         if (::appearance.isInitialized) appearance.unregisterOnSharedPreferenceChangeListener(preferenceListener)
