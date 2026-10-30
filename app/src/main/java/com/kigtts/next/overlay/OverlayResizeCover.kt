@@ -4,17 +4,16 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
-import androidx.annotation.RequiresApi
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.roundToInt
 
 /** Android 10/11 can latch a resized buffer and its new window origin in separate frames. */
-@RequiresApi(29)
 internal class OverlayResizeCover(private val context: Context, private val wm: WindowManager) {
     private val main = Handler(Looper.getMainLooper())
     private var cover: ImageView? = null
@@ -25,6 +24,7 @@ internal class OverlayResizeCover(private val context: Context, private val wm: 
     private var generation = 0
 
     fun begin(view: View, params: WindowManager.LayoutParams, anchor: Offset, ready: () -> Unit): Boolean {
+        if (Build.VERSION.SDK_INT < 29) return false
         if (active && !revealing) return true
         if (active) close()
         if (!view.isAttachedToWindow || !view.isHardwareAccelerated || view.width == 0 || view.height == 0) return false
@@ -58,6 +58,7 @@ internal class OverlayResizeCover(private val context: Context, private val wm: 
     }
 
     fun drawn(view: View, matches: () -> Boolean, reveal: () -> Unit) {
+        if (Build.VERSION.SDK_INT < 29) return
         if (!active || preparing || committing || revealing) return
         committing = true
         val current = generation
