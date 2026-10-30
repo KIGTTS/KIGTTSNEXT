@@ -5,14 +5,15 @@ import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
 import android.os.*
+import android.util.Base64
 import org.json.JSONObject
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/** BLE exchanges a small session descriptor. Photos always travel over local Wi-Fi. */
+/** BLE exchanges a session descriptor and tiny avatar; shared media travels over local Wi-Fi. */
 @SuppressLint("MissingPermission")
 internal class FaceBluetoothDiscovery(private val context: Context, private val descriptor: () -> JSONObject,
-    private val found: (FacePeer) -> Unit) {
+    private val found: (FacePeer) -> Unit, private val avatar: () -> ByteArray? = { null }) {
     private val manager = context.getSystemService(BluetoothManager::class.java)
     private val adapter get() = manager?.adapter
     private val handler = Handler(Looper.getMainLooper())
@@ -30,8 +31,11 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
             server = manager.openGattServer(context, object : BluetoothGattServerCallback() {
                 override fun onMtuChanged(device: BluetoothDevice, value: Int) { mtu[device.address] = value }
                 override fun onCharacteristicReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, characteristic: BluetoothGattCharacteristic) {
-                    if (characteristic.uuid != CHARACTERISTIC) return
-                    val bytes = descriptor().toString().toByteArray(Charsets.UTF_8)
+                    val bytes = when (characteristic.uuid) {
+                        CHARACTERISTIC -> descriptor().toString().toByteArray(Charsets.UTF_8)
+                        AVATAR -> avatar()?.takeIf { it.size <= 480 } ?: byteArrayOf()
+                        else -> return
+                    }
                     if (offset > bytes.size) server?.sendResponse(device, requestId, BluetoothGatt.GATT_INVALID_OFFSET, offset, null)
                     else server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset,
                         bytes.copyOfRange(offset, minOf(bytes.size, offset + (mtu[device.address] ?: 23) - 1)))
@@ -39,6 +43,7 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
             })
             val service = BluetoothGattService(SERVICE, BluetoothGattService.SERVICE_TYPE_PRIMARY)
             service.addCharacteristic(BluetoothGattCharacteristic(CHARACTERISTIC, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ))
+            service.addCharacteristic(BluetoothGattCharacteristic(AVATAR, BluetoothGattCharacteristic.PROPERTY_READ, BluetoothGattCharacteristic.PERMISSION_READ))
             server?.addService(service)
             val callback = object : AdvertiseCallback() { }
             advertising = callback
@@ -61,6 +66,7 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
     }
     private fun connect(result: ScanResult, epoch: Int) {
         var connection: BluetoothGatt? = null
+        var peer: FacePeer? = null
         fun finish() { connection?.let { connections -= it; runCatching { it.disconnect(); it.close() } } }
         val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
@@ -76,14 +82,21 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
             }
             @Deprecated("Android 12 callback")
             override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-                @Suppress("DEPRECATION") read(characteristic.value, status)
+                @Suppress("DEPRECATION") read(gatt, characteristic, characteristic.value, status)
             }
-            override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int) { read(value, status) }
-            private fun read(bytes: ByteArray?, status: Int) {
+            override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, value: ByteArray, status: Int) { read(gatt, characteristic, value, status) }
+            private fun read(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, bytes: ByteArray?, status: Int) {
+                var pendingAvatar = false
                 try {
                     if (generation != epoch || status != BluetoothGatt.GATT_SUCCESS || bytes == null || bytes.size > 2048) return
-                    found(faceBluetoothPeer(JSONObject(String(bytes, Charsets.UTF_8)), result.device.address, result.rssi))
-                } catch (_: Exception) { } finally { finish() }
+                    if (characteristic.uuid == CHARACTERISTIC) {
+                        peer = faceBluetoothPeer(JSONObject(String(bytes, Charsets.UTF_8)), result.device.address, result.rssi)
+                        found(requireNotNull(peer))
+                        gatt.getService(SERVICE)?.getCharacteristic(AVATAR)?.let { pendingAvatar = gatt.readCharacteristic(it) }
+                    } else if (characteristic.uuid == AVATAR && bytes.size in 1..480) {
+                        peer?.copy(avatar = Base64.encodeToString(bytes, Base64.NO_WRAP))?.let(found)
+                    }
+                } catch (_: Exception) { } finally { if (!pendingAvatar) finish() }
             }
         }
         runCatching { connection = result.device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE); connection?.let { connections += it } }
@@ -100,5 +113,6 @@ internal class FaceBluetoothDiscovery(private val context: Context, private val 
     companion object {
         val SERVICE: UUID = UUID.fromString("431db230-f93c-4f40-a736-9db1c6657915")
         val CHARACTERISTIC: UUID = UUID.fromString("431db231-f93c-4f40-a736-9db1c6657915")
+        val AVATAR: UUID = UUID.fromString("431db232-f93c-4f40-a736-9db1c6657915")
     }
 }

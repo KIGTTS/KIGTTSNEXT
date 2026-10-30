@@ -1,6 +1,7 @@
 package com.kigtts.next.sharing
 
 import android.content.Context
+import android.util.Log
 import com.kigtts.next.cards.CardRepository
 import com.kigtts.next.identity.IdentityRepository
 import kotlinx.coroutines.*
@@ -35,12 +36,13 @@ internal class FaceShareController(private val context: Context, private val sco
             mergeFacePeer(it, peer) else it } }
     })
     @Volatile private var advertisedHosts = emptyList<String>()
-    private val wifi = FaceWifiDirect(context, message)
+    private val wifi = FaceWifiDirect(context, ::found, message)
     private val lan = FaceLanDiscovery(context, ::found) { id -> mutablePeers.update { it.filterNot { peer -> peer.id == id } } }
     private val ble = FaceBluetoothDiscovery(context, {
         faceBluetoothDescriptor(sessionId, profile(), session?.server?.port ?: 0, session?.peerToken ?: "", wifi.address, advertisedHosts)
-    }, ::found)
+    }, ::found, { bluetoothAvatar })
     @Volatile private var avatar: String? = null
+    @Volatile private var bluetoothAvatar: ByteArray? = null
     private var avatarAsset: String? = null
     private var generation = 0
     private val sessionLock = Mutex()
@@ -68,6 +70,8 @@ internal class FaceShareController(private val context: Context, private val sco
     }
     private fun found(peer: FacePeer) {
         if (peer.id == sessionId) return
+        if (Log.isLoggable("FaceTransfer", Log.DEBUG))
+            Log.d("FaceTransfer", "Discovered addresses=${facePeerHosts(peer)} port=${peer.port} p2p=${peer.p2p != null} profile=${peer.profile != null}")
         mutablePeers.update { before ->
             val old = before.firstOrNull { it.id == peer.id }
             (before.filterNot { it.id == peer.id } + mergeFacePeer(old, peer)).sortedByDescending { it.signal }.take(64)
@@ -81,6 +85,9 @@ internal class FaceShareController(private val context: Context, private val sco
         val created = withContext(Dispatchers.IO) {
             avatarAsset = identities.current?.avatar
             avatar = avatarAsset?.let(cards.stickers::imageFile)?.let(::faceAvatarData)
+            bluetoothAvatar = faceBluetoothAvatar(avatar)
+            if (Log.isLoggable("FaceTransfer", Log.DEBUG))
+                Log.d("FaceTransfer", "Identity avatar configured=${avatarAsset != null} encoded=${avatar != null}")
             FacePhotoSession(File(context.cacheDir, "face-share/${faceToken()}"), ::profile, webIcons::icon) { offer, assets ->
                 media.receive(offer, assets)
                 val pictures = assets.filterNot { it.format == "PROFILE" }
@@ -101,6 +108,7 @@ internal class FaceShareController(private val context: Context, private val sco
                 val currentAvatar = identities.current?.avatar
                 if (currentAvatar != avatarAsset) {
                     avatar = withContext(Dispatchers.IO) { currentAvatar?.let(cards.stickers::imageFile)?.let(::faceAvatarData) }
+                    bluetoothAvatar = withContext(Dispatchers.IO) { faceBluetoothAvatar(avatar) }
                     avatarAsset = currentAvatar
                 }
                 val address = if (hotspot.details.value != null) addresses.firstOrNull { it.endsWith(".1") } ?: addresses.firstOrNull() else addresses.firstOrNull()
@@ -142,7 +150,7 @@ internal class FaceShareController(private val context: Context, private val sco
         if (!receiving.value && panel.value?.mode != FaceMode.SEND) return
         val active = session ?: return
         lan.start(sessionId, profile().optString("nickname"), active.server.port, active.peerToken)
-        runCatching { wifi.start(receiving.value && !busy.value) }
+        runCatching { wifi.start(FaceLanIdentity(sessionId, profile().optString("nickname"), active.server.port, active.peerToken)) }
         runCatching { ble.start(true) }
     }
     fun refreshDiscovery() { if (!mutableBusy.value) { stopDiscovery(); startDiscovery() } }
@@ -160,7 +168,10 @@ internal class FaceShareController(private val context: Context, private val sco
                 mutableStatus.value = "正在连接 ${peer.name}"
                 val target = peers.value.firstOrNull { it.id == peer.id && it.token == peer.token } ?: peer
                 val resolved = profiles.resolve(target) ?: run {
-                    val device = target.p2p ?: error("无法连接对方，请确认对方已开启面对面接收，并连接同一 Wi-Fi；也可以使用扫码领取")
+                    val device = target.p2p ?: withTimeoutOrNull(5_000) {
+                        peers.first { list -> list.any { it.id == target.id && it.token == target.token && it.p2p != null } }
+                            .first { it.id == target.id && it.token == target.token }.p2p
+                    } ?: error("无法连接对方，请确认 Wi-Fi 允许设备互访，或使用扫码领取")
                     val address = wifi.connect(device)
                     profiles.resolve(target.copy(host = address, hosts = emptyList()))
                         ?: error("对方暂时无法接收，请重新查找或使用扫码领取")
@@ -175,7 +186,10 @@ internal class FaceShareController(private val context: Context, private val sco
             } catch (_: TimeoutCancellationException) {
                 mutableStatus.value = "发送未完成"; message("连接或接收超时，请重新查找对方后再试")
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { mutableStatus.value = "发送未完成"; message(error.message ?: "未能连接对方，请重试") }
+            catch (error: Exception) {
+                Log.w("FaceTransfer", "Send failed (${error.javaClass.simpleName})", error)
+                mutableStatus.value = "发送未完成"; message(error.message ?: "未能连接对方，请重试")
+            }
             finally { mutableBusy.value = false }
         }
     }

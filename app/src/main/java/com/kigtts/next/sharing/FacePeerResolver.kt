@@ -1,6 +1,7 @@
 package com.kigtts.next.sharing
 
 import android.os.SystemClock
+import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -37,7 +38,11 @@ internal class FacePeerResolver(private val scope: CoroutineScope, private val o
                 ensureActive()
                 try { return@withContext facePeerProfile(peer.copy(host = host), request(peer, host)) }
                 catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { /* Another discovered local address may still be reachable. */ }
+                catch (failure: Exception) {
+                    // Never log capability URLs, tokens, or personal profile contents.
+                    if (Log.isLoggable("FaceTransfer", Log.DEBUG))
+                        Log.d("FaceTransfer", "Profile probe $host:${peer.port} failed (${failure.javaClass.simpleName})")
+                }
             }
             null
         }

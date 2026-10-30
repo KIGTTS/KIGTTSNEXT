@@ -704,3 +704,9 @@ LED选择组修复：此前ButtonGroup仍使用连接式首中尾形状，已改
 - Wi-Fi Direct只公布本机地址；双方接收开启时，发送端只退出本会话自建的组再加入对方，匹配目标连接广播，取消时终止协商。过时页面提示改为设置接收、同Wi-Fi或扫码选项。
 - 首轮70项定向回归通过（背景10项、分享60项），包含API29/35身份解析/重试/旧结果隔离和Wi-Fi Direct状态，以及实际HTTP确认和字节传输、发现栏头像像素及花型变化；最后的发现取消/超时提示/本机地址刷新另复测分享60项通过。
 - 日志 `build/face-identity-background-tests.log`、`build/face-identity-final-tests.log`，汇总 `build/face-identity-background-test-results.json`。上述无线状态回归使用系统服务替身，不能代替两台实体手机与实际路由器连接验收。
+
+## 2026-10-31 Nearby transport diagnosis and fallback
+- Both phones discover each other through BLE, but the infrastructure Wi-Fi path is not mutually reachable: Huawei HTTP probes time out to Redmi; Redmi's system-level probe cannot resolve Huawei's neighbor address. The desktop can reach both devices. This establishes a connectivity failure before any offer/consent exchange; it does not establish the router's exact policy.
+- P2P DNS-SD now advertises the current transfer session and obtains the remote address from the framework's service callback, including when the system redacts our own address. Idle sharing no longer creates autonomous groups. Connection negotiation pauses periodic discovery; service-request BUSY failures retry. Existing unrelated P2P groups are preserved.
+- BLE optionally reads a separate cached avatar characteristic. The encoder converts to opaque sRGB and emits simple WebP without redundant ICC metadata. An actual Redmi Android 16 invocation produced a decodable 32x32 thumbnail of 446 bytes; the original Huawei encoder output included a 560-byte ICC chunk.
+- Sharing regression: 70 tests passed on configured API 29/35 runtimes, including real loopback HTTP offer/consent/media delivery, P2P callback and cancellation simulations, native thumbnail encoding/decoding and sparse-profile merging. Debug build passed. These checks do not prove two-device radio transfer; both phones need the updated build for the new P2P discovery path.
