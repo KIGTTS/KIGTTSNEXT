@@ -87,6 +87,10 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.WEB -> WebSettingsScreen()
                     SettingsCategory.BACKUP_RESTORE -> BackupRestoreScreen(model)
                     SettingsCategory.CAMERA -> CameraSettingsScreen()
+                    SettingsCategory.ABOUT -> AboutScreen(openLink = { url ->
+                        model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url,
+                            mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
+                    })
                 }
                 Destination.Plugins -> PluginsScreen(model)
                 is Destination.MediaLibrary -> MediaLibraryScreen(model, destination.target)

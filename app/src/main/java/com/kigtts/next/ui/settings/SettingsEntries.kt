@@ -23,6 +23,7 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         "audio" to ("音频" to ""),
         "content" to ("内容" to ""),
         "extensions" to ("功能与扩展" to ""),
+        "about" to ("关于与反馈" to ""),
     )
     fun category(id: String, category: SettingsCategory, icon: ImageVector) =
         SettingsLink(id, category.title, category.summary, icon, Destination.SettingsDetail(category))
@@ -37,6 +38,7 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
             category("backup", SettingsCategory.BACKUP_RESTORE, Icons.Default.SettingsBackupRestore)),
         "extensions" to listOf(SettingsLink("plugins", "插件管理", "管理插件", Icons.Default.Extension, Destination.Plugins),
             category("experimental", SettingsCategory.EXPERIMENTAL, Icons.Default.Science)),
+        "about" to listOf(category("about", SettingsCategory.ABOUT, Icons.Default.Info)),
     )
     data class Feature(val pluginId: String, val entry: SettingsEntry)
     val features = registry?.plugins.orEmpty().flatMap { plugin ->

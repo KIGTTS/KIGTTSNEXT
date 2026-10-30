@@ -8,4 +8,5 @@ enum class SettingsCategory(val title: String, val summary: String) {
     WEB("网页", "管理网页登录信息"),
     BACKUP_RESTORE("备份与还原", "导入、导出快捷文本及其它兼容格式"),
     CAMERA("拍照", "拍立得相机与照片导入"),
+    ABOUT("关于 KIGTTS", "版本与项目信息"),
 }
