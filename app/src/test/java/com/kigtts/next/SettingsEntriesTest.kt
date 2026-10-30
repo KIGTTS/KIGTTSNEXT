@@ -47,7 +47,7 @@ class SettingsEntriesTest {
             SettingsEntry("manager", "语音识别", "manager", PluginIcon.MIC, "audio", "音频", "聆听字幕与语音输入")),
             listOf(DrawerEntry("old-manager", "旧服务入口", "manager", PluginIcon.MIC)))))
         val cards = settingsCards(registry, PluginContext("", ""))
-        assertEquals(listOf("sharing", "appearance", "audio", "content", "extensions"), cards.map { it.id })
+        assertEquals(listOf("sharing", "appearance", "audio", "content", "extensions", "about"), cards.map { it.id })
         val audio = cards.single { it.id == "audio" }
         assertEquals("音频", audio.title); assertEquals(1, audio.links.size)
         assertEquals("语音识别", audio.links.single().title)
@@ -62,7 +62,10 @@ class SettingsEntriesTest {
         val appearance = cards.single { it.id == "appearance" }
         assertEquals("外观与交互", appearance.title)
         assertEquals(listOf("外观", "操作反馈", "悬浮窗", "其它外观"), appearance.links.map { it.title })
-        assertEquals("小工具", cards.last().title); assertEquals("计算器", cards.last().links.single().title)
+        assertEquals("小工具", cards.single { it.id == "utilities" }.title)
+        assertEquals("计算器", cards.single { it.id == "utilities" }.links.single().title)
+        assertEquals("about", cards.last().id)
+        assertEquals("about", cards.last().links.last().id)
     }
     @Test fun legacyPagesMigrateToExtensionsAndKeepConfigurationReachableWithMissingRequirement() {
         val plugin = plugin("test.legacy", legacy = listOf(

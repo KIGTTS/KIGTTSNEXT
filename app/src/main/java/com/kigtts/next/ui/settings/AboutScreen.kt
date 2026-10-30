@@ -27,9 +27,7 @@ internal fun AboutScreen(openLink: (String) -> Unit, openDocument: (SettingsCate
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("about-brand")
             .settingFocus("版本"), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                AboutBrand(Modifier.requiredWidth(maxWidth + 32.dp))
-            }
+            AboutBrand()
             Text("让想说的话，更好地被看见。", style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text("版本 $installedVersion", style = MaterialTheme.typography.labelLarge,

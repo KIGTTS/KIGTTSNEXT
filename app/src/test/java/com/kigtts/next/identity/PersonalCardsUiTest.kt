@@ -30,7 +30,7 @@ class PersonalCardsUiTest {
     @Test fun singleProfileKeepsInformationAndContactEntriesUsableWithoutPresetControls() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         compose.activity.viewModelStore.put("personal-test", model)
-        val second = model.identities.create().copy(nickname = "我的名片", bio = "很高兴认识你", contacts = listOf(ContactLink("微信", "example")))
+        val second = model.identities.create().copy(nickname = "我的名片", bio = "很高兴认识你", contacts = listOf(ContactLink("微信", "example")), tags = listOf("摄影", "开发"))
         model.identities.save(second)
         model.navigate(Destination.PersonalCards)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
@@ -47,18 +47,20 @@ class PersonalCardsUiTest {
         compose.onNodeWithText("编辑磁贴").assertDoesNotExist()
         compose.onNodeWithText("编辑标签").assertDoesNotExist()
         compose.onNodeWithTag("edit-personal-information").performClick()
-        compose.runOnIdle { assertEquals(Destination.PersonalInformationEditor, model.state.value.destination) }
-        compose.onNodeWithText("头像与昵称").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(Destination.PersonalCards, model.state.value.destination) }
+        compose.onRoot().captureRoboImage("build/previews/personal-edit-mode.png")
+        compose.onNodeWithTag("profile-tag-remove/摄影").assertExists().performClick()
+        compose.onNodeWithTag("profile-edit-information").performClick()
         compose.onNodeWithText("昵称").performTextReplacement("新的昵称")
         compose.onNodeWithText("保存").performClick()
+        compose.onNodeWithTag("edit-personal-information").performClick()
         compose.waitUntil(5000) { model.identities.current?.nickname == "新的昵称" }
         assertEquals("新的昵称", model.identities.current?.nickname)
         assertEquals(second.id, model.identities.current?.id)
         assertEquals(1, model.identities.items.value.size)
-        compose.onNodeWithText("编辑磁贴").assertExists()
-        compose.onNodeWithTag("page-back").performClick()
-        compose.runOnIdle { assertEquals(Destination.PersonalCards, model.state.value.destination) }
-        compose.onNodeWithText("编辑磁贴").assertDoesNotExist()
+        assertEquals(listOf("开发"), model.identities.current?.tags)
+        compose.onNodeWithTag("profile-add-tile").assertDoesNotExist()
+        compose.onNodeWithTag("profile-tag-remove/开发").assertDoesNotExist()
         compose.onNodeWithText("分享名片").performScrollTo().performClick()
         assertTrue(model.faceShare.panel.value!!.personal)
         assertEquals(listOf(second.designId), model.faceShare.panel.value!!.ids)

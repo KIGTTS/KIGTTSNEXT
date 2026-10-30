@@ -42,4 +42,12 @@ class AboutDocumentsTest {
         }
         assertEquals(AvatarFrames.names.keys, seen)
     }
+
+    @Test fun oneFlowerChangesWithoutReplacingAnyNeighbor() {
+        val random = Random(17)
+        val flowers = randomAboutShapes(random = random, count = 6)
+        val next = changeAboutShape(flowers, 3, random)
+        assertEquals(6, next.distinct().size)
+        flowers.indices.forEach { if (it == 3) assertNotEquals(flowers[it], next[it]) else assertEquals(flowers[it], next[it]) }
+    }
 }

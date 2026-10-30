@@ -21,7 +21,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Home -> "KIGTTS"
             Destination.Settings -> "设置"
             Destination.PersonalCards -> "个人信息"
-            Destination.PersonalInformationEditor -> "编辑个人信息"
+            Destination.PersonalInformationEditor -> "个人信息"
             Destination.ContactFavorites -> "扩列收藏夹"
             Destination.Fonts -> "字体"
             is Destination.SettingsDetail -> destination.category.title
@@ -60,6 +60,12 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         return
     }
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
+    if (destination == Destination.SettingsDetail(SettingsCategory.ABOUT)) {
+        AboutPage(model::navigateBack, openLink = { url ->
+            model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url, mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
+        }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme)
+        return
+    }
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         subtitle = if (destination == Destination.Plugins) "管理已安装的插件" else null,

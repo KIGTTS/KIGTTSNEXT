@@ -1,6 +1,9 @@
 package com.kigtts.next.ui.identity
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,12 +15,15 @@ import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.*
 import com.kigtts.next.sharing.LocalFaceShare
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.platform.testTag
+import com.kigtts.next.ui.components.feedbackClick
 
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
     modifier: Modifier = Modifier, interactive: Boolean = true, backgroundColor: Long = 0xFF245E63,
-    hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null, backgroundInk: Int? = null) {
+    hasImage: Boolean = true, backgroundPixels: android.graphics.Bitmap? = null, backgroundInk: Int? = null,
+    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}) {
     var contact by remember { mutableStateOf<ContactLink?>(null) }
     val faceShare = LocalFaceShare.current
     val sampledInk = remember(backgroundPixels) { backgroundPixels?.let(::identityInk) }
@@ -28,17 +34,35 @@ import androidx.compose.material.icons.filled.WifiTethering
         val compact = maxWidth < 300.dp
         val padding = if (compact) 12.dp else 20.dp
         CompositionLocalProvider(LocalContentColor provides ink) {
-            PersonalContactButtons(identity.contacts, interactive, { contact = it },
-                Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 56.dp).fillMaxWidth())
-            if (interactive && faceShare != null) PersonalCardActionButton("开启面对面", "personal-face-share", true,
+            Crossfade(editing, Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 56.dp).fillMaxWidth(),
+                tween(180), label = "profile-contact-edit") { edit ->
+                if (edit) PersonalCardActionButton("编辑联系方式", "profile-edit-contacts", true, editInformation) {
+                    Icon(Icons.Default.ContactPage, null, Modifier.size(22.dp), tint = Color.White)
+                } else PersonalContactButtons(identity.contacts, interactive, { contact = it })
+            }
+            AnimatedVisibility(editing, Modifier.align(Alignment.TopEnd).padding(8.dp), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+                PersonalCardActionButton("编辑名片背景", "profile-edit-background", true, editBackground) {
+                    Icon(Icons.Default.Wallpaper, null, Modifier.size(22.dp), tint = Color.White)
+                }
+            }
+            if (!editing && interactive && faceShare != null) PersonalCardActionButton("开启面对面", "personal-face-share", true,
                 { faceShare.send(listOf(identity.designId)) }, Modifier.align(Alignment.TopEnd).padding(8.dp)) {
                 Icon(Icons.Default.WifiTethering, "开启面对面", tint = Color.White, modifier = Modifier.size(22.dp))
             }
-            Row(Modifier.align(Alignment.BottomStart).padding(padding), verticalAlignment = Alignment.CenterVertically,
+            Row(Modifier.align(Alignment.BottomStart).padding(padding).animateContentSize(tween(220))
+                .then(if (editing) Modifier.clickable(onClickLabel = "编辑头像与昵称", onClick = feedbackClick(editInformation))
+                    .testTag("profile-edit-information") else Modifier), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp), identity.avatarFrame)
                 Column(Modifier.weight(1f)) {
-                    Text(identity.nickname.ifBlank { "我的名片" }, color = ink, style = MaterialTheme.typography.titleLarge.copy(shadow = shadow), maxLines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(identity.nickname.ifBlank { "我的名片" }, Modifier.weight(1f, fill = false), color = ink,
+                            style = MaterialTheme.typography.titleLarge.copy(shadow = shadow), maxLines = 1)
+                        AnimatedVisibility(editing, enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
+                            exit = fadeOut(tween(140)) + shrinkHorizontally(tween(220))) {
+                            Icon(Icons.Default.Edit, "编辑资料", Modifier.padding(start = 8.dp).size(18.dp))
+                        }
+                    }
                     if (identity.bio.isNotBlank()) Text(identity.bio, color = ink.copy(alpha = .86f), style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow), maxLines = 2)
                 }
             }

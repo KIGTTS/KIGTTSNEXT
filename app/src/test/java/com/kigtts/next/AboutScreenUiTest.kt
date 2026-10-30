@@ -64,37 +64,35 @@ class AboutScreenUiTest {
         }
     }
 
-    @Test fun tappingChangesTheBackgroundFlowersButKeepsTheWordmarkInEitherTheme() {
+    @Test fun tappingOneFlowerChangesOnlyThatFlowerAndKeepsTheWordmarkAndLinks() {
         var mode by mutableStateOf(ThemeMode.LIGHT)
         compose.setContent { KigttsTheme(ThemeSettings(mode = mode)) {
-            Surface(Modifier.fillMaxSize()) { AboutScreen({}, {}, version = "0.1.0") }
+            AboutPage({}, {}, {}, version = "0.1.0")
         } }
-        val hero = compose.onNodeWithTag("about-easter-egg")
+        fun states() = (0..5).map { compose.onNodeWithTag("about-flower/$it").fetchSemanticsNode().config[
+            androidx.compose.ui.semantics.SemanticsProperties.StateDescription] }
         val logo = compose.onNodeWithTag("about-logo", useUnmergedTree = true)
         val restingBounds = logo.getUnclippedBoundsInRoot()
-        hero.captureRoboImage("build/previews/about-flowers-resting.png")
-        val before = BitmapFactory.decodeFile("build/previews/about-flowers-resting.png")
-        hero.performTouchInput { click() }
+        val before = states()
+        compose.onNodeWithTag("about-flower/2").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick) { it() }
         compose.waitForIdle()
-        hero.captureRoboImage("build/previews/about-flowers-moving.png")
-        val moving = BitmapFactory.decodeFile("build/previews/about-flowers-moving.png")
-        var changed = 0
-        for (y in 0 until before.height step 3) for (x in 0 until before.width step 3) {
-            if (before.getPixel(x, y) != moving.getPixel(x, y)) changed++
+        val after = states()
+        (0..5).forEach { if (it == 2) assertNotEquals(before[it], after[it]) else assertEquals(before[it], after[it]) }
+        // A real tap on unused toolbar/background space reaches the backdrop rather than
+        // changing all flowers, and no transparent overlay can swallow the actual controls.
+        compose.onNodeWithTag("immersive-page").performTouchInput {
+            click(androidx.compose.ui.geometry.Offset(width * .08f, height * .20f))
         }
-        assertTrue("A tap must visibly change the decorative silhouettes: $changed pixels changed", changed > 100)
-        assertEquals(restingBounds, logo.getUnclippedBoundsInRoot())
-        compose.onNodeWithContentDescription("KIGTTS 横版字标").assertExists()
-        // Repeated clicks keep the same wordmark and layout.
-        hero.performClick()
-        hero.performClick()
         compose.waitForIdle()
+        assertNotEquals(after[0], states()[0])
+        assertEquals(after[2], states()[2])
         assertEquals(restingBounds, logo.getUnclippedBoundsInRoot())
         compose.onRoot().captureRoboImage("build/previews/about-light.png")
+        compose.onNode(hasText("用户协议") and hasClickAction()).performScrollTo().assertIsDisplayed()
         compose.runOnIdle { mode = ThemeMode.DARK }
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/previews/about-dark.png")
-        compose.onNodeWithText("开源许可证").assertIsDisplayed()
+        compose.onNodeWithContentDescription("KIGTTS 横版字标").assertExists()
     }
 
     @Test fun licenseDialogDisplaysTheBundledLicenseWithoutOpeningAWebsite() {

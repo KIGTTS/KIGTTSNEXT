@@ -11,6 +11,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.first
 
 @Composable
@@ -75,7 +76,7 @@ fun CategoryContentMotion(category: String, categories: List<String>, swipeEnabl
     key(vertical) {
         if (vertical) VerticalPager(pager, area, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
             key = { categories[it] }, pageContent = page)
-        else HorizontalPager(pager, area, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
+        else HorizontalPager(pager, area, pageSpacing = 12.dp, userScrollEnabled = swipeEnabled, pageNestedScrollConnection = childScroll,
             key = { categories[it] }, pageContent = page)
     }
 }

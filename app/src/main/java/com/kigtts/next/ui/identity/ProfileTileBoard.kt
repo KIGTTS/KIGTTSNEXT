@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.identity
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.*
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -91,12 +92,18 @@ import kotlin.math.roundToInt
                         shape = if (tile.kind == ProfileTileKind.TITLE) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.extraLarge,
                         color = if (tile.kind == ProfileTileKind.TITLE) MaterialTheme.colorScheme.surface.copy(alpha = 0f) else MaterialTheme.colorScheme.surfaceContainerHigh,
                         shadowElevation = elevation) { ProfileTileContent(tile, contact, image, editing) }
-                    if (editing) {
-                        IconButton(feedbackClick { remove(tile) }, Modifier.align(Alignment.TopStart).then(if (tile.kind == ProfileTileKind.TITLE) Modifier else Modifier.offset((-6).dp, (-6).dp))
+                    AnimatedVisibility(editing, Modifier.align(Alignment.TopStart),
+                        enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),
+                        exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .85f)) {
+                        IconButton(feedbackClick { remove(tile) }, Modifier.then(if (tile.kind == ProfileTileKind.TITLE) Modifier else Modifier.offset((-6).dp, (-6).dp))
                             .size(32.dp).testTag("tile-remove/${tile.id}")) { Icon(Icons.Default.RemoveCircle, "移除磁贴", Modifier.size(22.dp)) }
-                        if (tile.kind != ProfileTileKind.TITLE) ProfileTileResizeHandle(tile, motion, geometry, { columns, rows ->
+                    }
+                    AnimatedVisibility(editing && tile.kind != ProfileTileKind.TITLE, Modifier.align(Alignment.BottomEnd),
+                        enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),
+                        exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .85f)) {
+                        ProfileTileResizeHandle(tile, motion, geometry, { columns, rows ->
                             latestChange(latestTiles.map { if (it.id == tile.id) it.copy(columns = columns, rows = rows) else it })
-                        }, Modifier.align(Alignment.BottomEnd))
+                        }, Modifier)
                     }
                 }
             } }

@@ -48,6 +48,8 @@ class CategoryPagerUiTest {
         }
         compose.mainClock.advanceTimeBy(32); compose.waitForIdle()
         val during = compose.onNodeWithTag("category-page-一").getUnclippedBoundsInRoot()
+        val next = compose.onNodeWithTag("category-page-二").getUnclippedBoundsInRoot()
+        assertEquals("Adjacent category pages retain a visible gutter while held", 12f, (next.left - during.right).value, .5f)
         assertTrue("The held page must move with the finger", during.left < before.left - 100.dp)
         assertEquals("一", selected)
         compose.onNodeWithTag("category-content-transition").performTouchInput { up() }

@@ -1,12 +1,15 @@
 package com.kigtts.next.ui.identity
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -16,7 +19,9 @@ import com.kigtts.next.identity.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.settings.*
+import com.kigtts.next.ui.navigation.*
 import kotlinx.coroutines.*
+import org.json.JSONObject
 
 @Composable
 internal fun PersonalInformationEntry(model: AppViewModel) {
@@ -32,30 +37,91 @@ internal fun PersonalInformationEntry(model: AppViewModel) {
 }
 
 @Composable
-internal fun PersonalCardsScreen(model: AppViewModel) {
+internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean = false) {
     val items by model.identities.items.collectAsStateWithLifecycle()
+    val card = items.firstOrNull()
+    var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
+    val draftSaver = remember(card?.id) { Saver<IdentityCard?, String>(
+        save = { it?.let { value -> PersonalProfile.from(value).json().toString() } },
+        restore = { text -> card?.let { PersonalProfile.from(JSONObject(text)).on(it) } }) }
+    var draft by rememberSaveable(card?.id, stateSaver = draftSaver) { mutableStateOf(card) }
+    var information by remember { mutableStateOf(false) }
+    var tags by remember { mutableStateOf(false) }
+    var addingTile by remember { mutableStateOf(false) }
+    var tileEditor by remember { mutableStateOf<ProfileTile?>(null) }
+    var working by remember { mutableStateOf(false) }
     var contact by remember { mutableStateOf<ContactLink?>(null) }
+    val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
-    com.kigtts.next.ui.navigation.RegisterPageActions(listOf(
-        com.kigtts.next.ui.navigation.ToolbarAction("edit-personal-information", "编辑", Icons.Default.Edit) {
-            model.navigate(Destination.PersonalInformationEditor)
-        }))
+    LaunchedEffect(card, editing) { if (!editing) draft = card }
+    fun persist(done: () -> Unit) {
+        val value = draft ?: return
+        if (working) return
+        working = true
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    model.identities.save(PersonalProfile.from(value).on(model.identities.current ?: value))
+                }
+                done()
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) { model.message(error.message ?: "未能保存，请重试") }
+            finally { working = false }
+        }
+    }
+    fun finish() { persist { editing = false } }
+    fun begin() {
+        if (card != null) { draft = card; editing = true; return }
+        if (working) return
+        working = true
+        scope.launch {
+            try { draft = withContext(Dispatchers.IO) { model.identities.create() }; editing = true; information = true }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) { model.message(error.message ?: "未能创建名片") }
+            finally { working = false }
+        }
+    }
+    RegisterPageActions(listOf(ToolbarAction("edit-personal-information", if (editing) "完成编辑" else "编辑",
+        if (editing) Icons.Default.Check else Icons.Default.Edit) { if (editing) finish() else begin() }))
+    RegisterPageLoading(working)
+    RegisterPageBackGuard(editing && draft != null, ::finish)
+    BackHandler(editing && draft != null, ::finish)
     SettingsLayout {
-        items.firstOrNull()?.let { card ->
-            PersonalCardView(card, model.stickers, Modifier.fillMaxWidth().testTag("personal-card-${card.id}"))
-            ProfileTags(card.tags)
-            ProfileTileBoard(card.tiles, card.contacts, { profileImageFile(model.stickers, it) },
+        (if (editing) draft else card)?.let { displayed ->
+            PersonalCardView(displayed, model.stickers, Modifier.fillMaxWidth().testTag("personal-card-${displayed.id}"),
+                editing = editing, editInformation = { information = true }, editBackground = {
+                    persist { model.navigate(Destination.CardEditor(displayed.designId)) }
+                })
+            ProfileEditableTags(displayed.tags, editing, { draft = displayed.copy(tags = it) }, { tags = true })
+            ProfileTileBoard(displayed.tiles, displayed.contacts, { profileImageFile(model.stickers, it) },
+                editing = editing, change = { draft = displayed.copy(tiles = it) }, edit = { tileEditor = it },
+                remove = { removed -> draft = displayed.copy(tiles = displayed.tiles.filterNot { it.id == removed.id }) },
                 openContact = { contact = it }, openLink = { url ->
                     safeProfileLink(url)?.let { runCatching { uriHandler.openUri(it) } }
                 })
+            AnimatedVisibility(editing, enter = fadeIn(tween(180)) + expandVertically(tween(220)),
+                exit = fadeOut(tween(140)) + shrinkVertically(tween(220))) {
+                OutlinedButton(feedbackClick { if (displayed.tiles.size < 24) addingTile = true else model.message("最多添加 24 个磁贴") },
+                    Modifier.fillMaxWidth().testTag("profile-add-tile")) { Icon(Icons.Default.Add, null); Text("添加磁贴") }
+            }
             SettingsGroup("我的名片") {
                 SettingItem("分享名片", "", Icons.Default.Share, SettingPosition.SINGLE,
-                    onClick = { model.faceShare.openSend(listOf(card.designId)) })
+                    onClick = { if (editing) persist { model.faceShare.openSend(listOf(displayed.designId)) }
+                        else model.faceShare.openSend(listOf(displayed.designId)) })
             }
-        } ?: Text("用一张名片介绍自己", Modifier.padding(24.dp), style = MaterialTheme.typography.titleLarge)
+        } ?: FilledTonalButton(feedbackClick(::begin), Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Text("设置我的名片") }
         SettingsGroup("我的收藏") {
             SettingItem("扩列收藏夹", "", Icons.Default.Bookmarks, SettingPosition.SINGLE,
                 onClick = { model.navigate(Destination.ContactFavorites) })
+        }
+    }
+    draft?.let { value ->
+        if (information) PersonalInformationDialog(value, model.stickers, { information = false }) { updated -> draft = updated; information = false }
+        if (tags) ProfileTagsEditor(value.tags, { tags = false }) { draft = value.copy(tags = it); tags = false }
+        if (addingTile || tileEditor != null) ProfileTileEditor(tileEditor, value.contacts, model.stickers,
+            { addingTile = false; tileEditor = null }) { updated ->
+            draft = value.copy(tiles = if (value.tiles.any { it.id == updated.id }) value.tiles.map { if (it.id == updated.id) updated else it } else value.tiles + updated)
+            addingTile = false; tileEditor = null
         }
     }
     contact?.let { PersonalContactDialog(it) { contact = null } }

@@ -2,6 +2,7 @@ package com.kigtts.next.ui.identity
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,10 +21,13 @@ import com.kigtts.next.ui.cards.PolaroidCanvas
 import com.kigtts.next.ui.cards.rememberCardImage
 
 @Composable
-internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepository, modifier: Modifier = Modifier, interactive: Boolean = true) {
+internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepository, modifier: Modifier = Modifier, interactive: Boolean = true,
+    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}) {
     val designs by stickers.identityDesigns.items.collectAsState()
     val card = designs.firstOrNull { it.id == identity.designId }
-    Surface(modifier.aspectRatio(16f / 9f), shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+    Surface(modifier.aspectRatio(16f / 9f).then(if (editing) Modifier.clickable(onClickLabel = "编辑名片背景",
+        onClick = com.kigtts.next.ui.components.feedbackClick(editBackground)) else Modifier),
+        shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
         BoxWithConstraints {
             val height = with(LocalDensity.current) { maxHeight.roundToPx() }
             val pixels = card?.let { rememberIdentityBackground(it, identity, stickers, height) }
@@ -31,7 +35,8 @@ internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepositor
             card?.let { PolaroidCanvas(it, stickers::imageFile, Modifier.fillMaxSize(), frame = stickers.frameStyle(it), paperElevation = 0.dp,
                 photoContent = { if (pixels != null) IdentityBackgroundPreview(pixels) else IdentityLiveBackground(it, painter) }) }
             PersonalCardOverlay(identity, stickers, Modifier.matchParentSize(), interactive,
-                backgroundColor = card?.frameColor ?: 0xFF245E63, hasImage = card?.imageId != null, backgroundPixels = pixels)
+                backgroundColor = card?.frameColor ?: 0xFF245E63, hasImage = card?.imageId != null, backgroundPixels = pixels,
+                editing = editing, editInformation = editInformation, editBackground = editBackground)
         }
     }
 }

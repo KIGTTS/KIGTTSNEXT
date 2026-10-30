@@ -50,14 +50,15 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         (formal + legacy).filterNot { it.cardId == "backup" }
             .mapNotNull { routedSettingsEntry(plugin, it, context) }.map { Feature(plugin.descriptor.id, it) }
     }.sortedWith(compareBy({ it.entry.order }, { it.pluginId }, { it.entry.id }))
-    val ids = reserved.keys + features.map { it.entry.cardId }.distinct().filterNot(reserved::containsKey)
+    // Custom plugin sections precede About, which is always the last settings entry.
+    val ids = (reserved.keys - "about") + features.map { it.entry.cardId }.distinct().filterNot(reserved::containsKey) + "about"
     return ids.mapNotNull { id ->
         val entries = features.filter { it.entry.cardId == id }
         val pluginLinks = entries.sortedBy { if (it.pluginId == "tools.package-store") 0 else 1 }.map { (pluginId, entry) ->
             SettingsLink("plugin/$pluginId/${entry.id}", entry.label, entry.summary, if (entry.icon == com.kigtts.plugin.api.PluginIcon.NONE && entry.symbol == null) null else entry.icon.vector(entry.symbol),
                 Destination.PluginPage(pluginId, entry.pageId), entry.badge)
         }
-        val links = if (id == "extensions") pluginLinks + native[id].orEmpty() else native[id].orEmpty() + pluginLinks
+        val links = if (id in setOf("extensions", "about")) pluginLinks + native[id].orEmpty() else native[id].orEmpty() + pluginLinks
         if (links.isEmpty()) null else {
             val heading = reserved[id] ?: (entries.first().entry.cardTitle.ifBlank { "扩展" } to "")
             SettingsCard(id, heading.first, heading.second, links)
