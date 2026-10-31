@@ -63,7 +63,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
             change(position)
         }
     }
-    BoxWithConstraints(modifier) {
+    Box(modifier) {
         val alpha by androidx.compose.animation.core.animateFloatAsState(if (dial) 0f else 1f,
             tween(120), label = "zoom-presets-opacity")
         val rail = if (bounds != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds)
