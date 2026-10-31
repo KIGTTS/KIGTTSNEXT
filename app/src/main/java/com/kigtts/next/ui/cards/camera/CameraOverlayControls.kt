@@ -21,7 +21,7 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.excludeCameraPull
 import com.kigtts.plugin.api.PolaroidFormat
 
-/** Camera chrome follows the portrait geometry; landscape moves the top edge to the left. */
+/** Portrait actions stay at the top right; landscape actions gather at the bottom left. */
 @Composable
 internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: List<PolaroidFormat>,
     filter: PhotoFilter, enabled: Boolean, vertical: Boolean, filtersExpanded: Boolean,

@@ -50,7 +50,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         latestZoom(optimistic)
         feedback.move(position * 600f)
     }
-    fun dragModifier(wheel: Boolean) = Modifier.pointerInput(range, vertical, enabled, wheel) {
+    fun dragModifier() = Modifier.pointerInput(range, vertical, enabled) {
         if (!enabled) return@pointerInput
         var position = 0f
         detectDragGestures(onDragStart = {
@@ -59,8 +59,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         }, onDragEnd = { dragging = false; feedback.finish() },
             onDragCancel = { dragging = false; feedback.finish(true) }) { pointer, delta ->
             pointer.consume()
-            val distance = if (wheel) { if (vertical) -delta.y else delta.x }
-                else if (vertical) -delta.y else delta.x
+            val distance = if (vertical) delta.y else -delta.x
             position = (position + distance / travel).coerceIn(0f, 1f)
             change(position)
         }
@@ -71,7 +70,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         val rail = if (bounds != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds)
             else Modifier.matchParentSize()
         Box(rail.testTag("camera-zoom-rail"), contentAlignment = Alignment.Center) {
-            Surface(Modifier.alpha(alpha).excludeCameraPull().then(dragModifier(false)), shape = CircleShape,
+            Surface(Modifier.alpha(alpha).excludeCameraPull().then(dragModifier()), shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {
                 val buttons: @Composable () -> Unit = {
                     stops.forEach { factor ->
@@ -94,7 +93,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                 CameraZoomDial(value, range, vertical, Modifier.fillMaxSize().testTag("camera-zoom-dial"))
                 val touch = if (vertical) Modifier.align(Alignment.CenterEnd).fillMaxWidth(.4f).fillMaxHeight()
                     else Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.4f)
-                Box(touch.excludeCameraPull().then(dragModifier(true)).testTag("camera-zoom-slider").semantics {
+                Box(touch.excludeCameraPull().then(dragModifier()).testTag("camera-zoom-slider").semantics {
                     contentDescription = "变焦轮盘"
                     progressBarRangeInfo = ProgressBarRangeInfo(cameraZoomPosition(value, range), 0f..1f)
                     setProgress { change(it); true }

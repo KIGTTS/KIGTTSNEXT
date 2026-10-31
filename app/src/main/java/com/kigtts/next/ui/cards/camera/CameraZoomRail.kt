@@ -10,6 +10,7 @@ internal fun cameraZoomRange(minimum: Float, maximum: Float): ClosedFloatingPoin
 
 /** Stops come solely from the bound camera's reported range, never assumed physical lenses. */
 internal fun cameraZoomStops(range: ClosedFloatingPointRange<Float>) = (listOf(range.start, 1f, 2f, 5f)).filter { it in range }.distinct().sorted()
+internal fun cameraZoomDialStops(range: ClosedFloatingPointRange<Float>) = (cameraZoomStops(range) + range.endInclusive).distinct().sorted()
 internal fun zoomLabel(value: Float): String = String.format(Locale.ROOT, "%.1f×", value)
 
 internal fun cameraZoomPosition(ratio: Float, range: ClosedFloatingPointRange<Float>): Float {

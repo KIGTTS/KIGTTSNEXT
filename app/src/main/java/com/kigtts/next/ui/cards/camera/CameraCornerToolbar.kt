@@ -30,7 +30,7 @@ internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEn
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!active) it.keepColorsWhenLocked() else it }
     Box(Modifier.fillMaxSize().then(if (applyInsets) Modifier.safeDrawingPadding() else Modifier).padding(horizontal = 8.dp, vertical = 8.dp)
         .testTag("camera-corner-toolbar")) {
-        Box(Modifier.align(if (vertical) Alignment.TopEnd else Alignment.TopStart).size(44.dp).excludeCameraPull()) {
+        Box(Modifier.align(Alignment.TopStart).size(44.dp).excludeCameraPull()) {
             ToolButton("返回", Icons.Default.ArrowBack, back, Modifier.fillMaxSize().testTag("camera-cancel"),
                 size = 44.dp, shapes = shape, colors = colors, enabled = active && !busy)
             AnimatedVisibility(loading, Modifier.align(Alignment.Center), enter = fadeIn(), exit = fadeOut()) {

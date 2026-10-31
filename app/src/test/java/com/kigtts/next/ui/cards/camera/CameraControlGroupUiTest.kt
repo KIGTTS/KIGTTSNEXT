@@ -42,10 +42,16 @@ class CameraControlGroupUiTest {
         }
         val back = compose.onNodeWithTag("camera-cancel").fetchSemanticsNode().boundsInRoot
         boxes.forEach { assertFalse("Back must have its own corner", it.overlaps(back)) }
+        if (vertical) {
+            val strip = compose.onNodeWithTag("camera-switch-strip").fetchSemanticsNode().boundsInRoot
+            val root = compose.onRoot().fetchSemanticsNode().boundsInRoot
+            assertTrue("Landscape controls belong at the bottom left", strip.bottom > root.bottom * .9f)
+            assertTrue("Back stays at the top left", back.right < root.width * .2f && back.bottom < strip.top)
+        }
         tags.forEach { compose.onNodeWithTag(it).performTouchInput { click() } }
         assertArrayEquals(intArrayOf(1, 1, 1, 1, 1), clicks)
         compose.onRoot().captureRoboImage("build/previews/camera-connected-${if (vertical) "landscape" else "portrait"}.png")
     }
     @Test fun portraitGroupsFiveActionsAtTheTopRight() = check(false)
-    @Test fun landscapeGroupsFiveActionsAtTheTopLeft() = check(true)
+    @Test fun landscapeGroupsFiveActionsAtTheBottomLeft() = check(true)
 }

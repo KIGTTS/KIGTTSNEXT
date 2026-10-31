@@ -5,6 +5,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CameraZoomDialGeometryTest {
+    @Test fun dialLabelsIncludeTheActualMaximumWithoutDuplicates() {
+        assertEquals(listOf(.6f, 1f, 2f, 4f), cameraZoomDialStops(.6f..4f))
+        assertEquals(listOf(1f, 2f, 5f), cameraZoomDialStops(1f..5f))
+    }
+
     @Test fun portraitAndLandscapeExposeTheSameShallowArcInsideThePhoto() {
         val portrait = cameraZoomDialGeometry(Size(360f, 480f), false)
         val landscape = cameraZoomDialGeometry(Size(480f, 360f), true)

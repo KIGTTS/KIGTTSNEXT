@@ -33,7 +33,7 @@ internal fun BoxScope.CameraControlGroup(vertical: Boolean, count: Int,
                 LocalMinimumInteractiveComponentSize provides 44.dp) { item(index) }
         }
     }
-    val modifier = Modifier.align(if (vertical) Alignment.TopStart else Alignment.TopEnd)
+    val modifier = Modifier.align(if (vertical) Alignment.BottomStart else Alignment.TopEnd)
         .padding(8.dp).testTag("camera-switch-strip").excludeCameraPull()
     if (vertical) Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) { content() }
     else Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) { content() }

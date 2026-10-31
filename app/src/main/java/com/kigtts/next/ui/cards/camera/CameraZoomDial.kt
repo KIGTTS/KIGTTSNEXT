@@ -38,10 +38,12 @@ internal fun CameraZoomDial(value: Float, range: ClosedFloatingPointRange<Float>
             drawLine(Color.White.copy(alpha = if (major) .9f else .48f), point(angle, radius - 8.dp.toPx()),
                 point(angle, radius - (if (major) 23.dp else 16.dp).toPx()), (if (major) 1.5.dp else 1.dp).toPx())
         }
-        cameraZoomStops(range).forEach { stop ->
+        cameraZoomDialStops(range).forEach { stop ->
             val angle = origin + (cameraZoomPosition(stop, range) - progress) * 145f
+            drawLine(Color.White.copy(alpha = .96f), point(angle, radius - 5.dp.toPx()),
+                point(angle, radius - 31.dp.toPx()), 2.5.dp.toPx())
             val text = measurer.measure(zoomLabel(stop), labelStyle)
-            val at = point(angle, radius - 42.dp.toPx())
+            val at = point(angle, radius - 48.dp.toPx())
             withTransform({ rotate(angle - origin, pivot = at) }) {
                 drawText(text, topLeft = at - Offset(text.size.width / 2f, text.size.height / 2f))
             }

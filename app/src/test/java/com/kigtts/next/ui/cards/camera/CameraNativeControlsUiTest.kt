@@ -50,15 +50,18 @@ class CameraNativeControlsUiTest {
         compose.onNodeWithTag("camera-zoom-stop/1").performClick()
         compose.mainClock.autoAdvance = false
         val start = compose.onNodeWithTag("camera-zoom-stop/1").fetchSemanticsNode().boundsInRoot.center
-        compose.onRoot().performTouchInput { down(start); moveTo(start + androidx.compose.ui.geometry.Offset(100f, 0f), 120) }
+        compose.onRoot().performTouchInput { down(start); moveTo(start - androidx.compose.ui.geometry.Offset(100f, 0f), 120) }
         compose.mainClock.advanceTimeBy(180); compose.waitForIdle()
         compose.onNodeWithTag("camera-zoom-dial").assertIsDisplayed()
         compose.onNodeWithTag("camera-zoom-dial").assertWidthIsEqualTo(360.dp).assertHeightIsEqualTo(480.dp)
         assertTrue("Zoom must update before release", ratio > 1f && changes > 2)
         compose.onRoot().captureRoboImage("build/previews/camera-zoom-dial-portrait.png")
         val current = ratio
-        compose.onRoot().performTouchInput { moveTo(start + androidx.compose.ui.geometry.Offset(200f, 0f), 120) }
+        compose.onRoot().performTouchInput { moveTo(start - androidx.compose.ui.geometry.Offset(200f, 0f), 120) }
         assertTrue(ratio > current)
+        val higher = ratio
+        compose.onRoot().performTouchInput { moveTo(start - androidx.compose.ui.geometry.Offset(100f, 0f), 120) }
+        assertTrue("Dragging the wheel back must reduce zoom", ratio < higher)
         compose.onRoot().performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1100); compose.waitForIdle()
         compose.onNodeWithTag("camera-zoom-dial").assertDoesNotExist()
@@ -78,7 +81,7 @@ class CameraNativeControlsUiTest {
         compose.onNodeWithTag("camera-zoom-stop/1.2").assertIsDisplayed()
         compose.mainClock.autoAdvance = false
         val start = compose.onNodeWithTag("camera-zoom-stop/2").fetchSemanticsNode().boundsInRoot.center
-        compose.onRoot().performTouchInput { down(start); moveTo(start - androidx.compose.ui.geometry.Offset(0f, 100f), 120) }
+        compose.onRoot().performTouchInput { down(start); moveTo(start + androidx.compose.ui.geometry.Offset(0f, 100f), 120) }
         compose.mainClock.advanceTimeBy(180); compose.waitForIdle()
         compose.onNodeWithTag("camera-zoom-dial").assertIsDisplayed()
         compose.onNodeWithTag("camera-zoom-dial").assertWidthIsEqualTo(520.dp).assertHeightIsEqualTo(300.dp)
@@ -87,6 +90,10 @@ class CameraNativeControlsUiTest {
         compose.onRoot().performTouchInput { up() }
         compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(cameraZoomPosition(3f, 1.2f..4f)) }
         assertEquals(3f, ratio, .001f)
+        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(1f) }
+        assertEquals(4f, ratio, .001f)
+        compose.mainClock.advanceTimeBy(180); compose.waitForIdle()
+        compose.onRoot().captureRoboImage("build/previews/camera-zoom-dial-maximum.png")
         compose.mainClock.autoAdvance = true
     }
 }
