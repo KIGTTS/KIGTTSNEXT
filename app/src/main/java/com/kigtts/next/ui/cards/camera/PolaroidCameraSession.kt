@@ -262,8 +262,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                     motionTicket?.let { motion?.exposureStarted(it) }
                 }
                 val clip = motionTicket?.let { ticket -> motion?.finish(ticket,
-                    PhotoFilters.coefficients(requireNotNull(photo).filter, strength), lut.takeIf { photo?.processed != null }, strength,
-                    if (photo?.processed != null) effects else com.kigtts.next.media.color.PhotoEffects.NONE) }
+                    PhotoFilters.coefficients(requireNotNull(photo).filter, strength), lut, strength, effects) }
                 if (clip != null) photo = requireNotNull(photo).withMotion(clip)
                 currentCoroutineContext().ensureActive()
                 if (epoch == generation) {

@@ -68,7 +68,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     }
     val items = listOfNotNull(flashButton, filterButton, motionButton, formatButton,
         settingsButton.takeIf { showSettings })
-    CameraControlGroup(vertical, items.size) { index -> items[index]() }
+    CameraControlGroup(vertical, items.indices.map { it != 0 || flashAvailable }) { index -> items[index]() }
     Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
         else Modifier.matchParentSize()) {
     // Keep both rails accessible, including while chrome is moving outside the viewfinder.

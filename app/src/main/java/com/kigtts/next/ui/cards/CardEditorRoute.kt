@@ -19,7 +19,7 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
         CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },
-            cameraImageId = photo?.imageId, cameraOriginalImageId = photo?.originalImageId,
+            cameraImageId = photo?.imageId, cameraOriginalImageId = photo?.originalImageId, cameraPhotoStyle = photo?.photoStyle,
             cameraFrameStyleId = photo?.frameStyleId, cameraRequestVersion = photo?.version ?: 0L,
             cameraPhotoX = photo?.photoX ?: .5, cameraPhotoY = photo?.photoY ?: .5, cameraPhotoZoom = photo?.photoZoom ?: 1.0,
             identity = personal, personalDesign = designs.firstOrNull { it.id == destination.cardId },

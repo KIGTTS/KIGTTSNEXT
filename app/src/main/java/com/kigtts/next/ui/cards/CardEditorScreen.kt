@@ -35,7 +35,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
     identity: IdentityCard? = null, personalDesign: PolaroidCard? = null,
     savePersonal: ((PolaroidCard, IdentityCard) -> PolaroidCard)? = null,
-    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null) {
+    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val identityFrames by stickers.identityFrames.items.collectAsStateWithLifecycle()
     val privateDesigns by stickers.identityDesigns.items.collectAsStateWithLifecycle()
@@ -81,7 +81,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     LaunchedEffect(persisted) { if (!dirty) { draft = persisted; baseline = persisted } }
     LaunchedEffect(cameraRequestVersion, cameraImageId) {
         if (cameraRequestVersion != 0L && cameraRequestVersion != handledCameraVersion && cameraImageId != null) {
-            draft = draft.copy(imageId = cameraImageId, originalImageId = cameraOriginalImageId, photoX = cameraPhotoX, photoY = cameraPhotoY, photoZoom = cameraPhotoZoom,
+            draft = draft.copy(imageId = cameraImageId, originalImageId = cameraOriginalImageId, photoStyle = cameraPhotoStyle, photoX = cameraPhotoX, photoY = cameraPhotoY, photoZoom = cameraPhotoZoom,
                 frameStyleId = if (persisted.frameStyleId == "identity.banner") "identity.banner" else cameraFrameStyleId ?: draft.frameStyleId)
             selectedId = null; mode = CardEditorMode.CROP
             handledCameraVersion = cameraRequestVersion
@@ -112,7 +112,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         else work {
             val image = withContext(Dispatchers.IO) { try { stickers.importImage(selection.uri) } finally { selection.release() } }
             if (overlayImport) addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, width = .32))
-            else draft = draft.copy(imageId = image.id, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0)
+            else draft = draft.copy(imageId = image.id, originalImageId = null, photoStyle = null, photoX = .5, photoY = .5, photoZoom = 1.0)
         }
     }, message)
     val enabled = active && !busy && !photo.processing && !savedReturn
@@ -175,9 +175,10 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             }, designTools = { CardDesignTools(cards, draft, enabled, { draft = it }, message) },
             backgroundTools = personalDraft?.let { person -> {
                 com.kigtts.next.ui.identity.IdentityBackgroundTools(draft, person, enabled, { draft = it }, { personalDraft = it },
-                    { overlayImport = false; photo.gallery() }, { selectPhoto?.invoke { chosen -> draft = draft.copy(imageId = chosen.imageId, originalImageId = null, photoX = .5, photoY = .5, photoZoom = 1.0) } },
+                    { overlayImport = false; photo.gallery() }, { selectPhoto?.invoke { chosen -> draft = draft.copy(imageId = chosen.imageId, originalImageId = null, photoStyle = chosen.photoStyle, photoX = .5, photoY = .5, photoZoom = 1.0) } },
                     { paperColor = true }, { maskColor = true }, identityFrames)
-            } }, captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) })
+            } }, captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) },
+            filterTools = { CardPhotoFilterTools(draft, stickers, enabled, { draft = it }, message) })
     }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact, personal = identity != null) },
         imageFile = stickers::imageFile, insertElement = { layer ->
             addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false

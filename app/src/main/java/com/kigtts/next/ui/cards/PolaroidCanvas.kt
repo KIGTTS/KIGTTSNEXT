@@ -114,10 +114,11 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * (frame?.photoCornerRadius ?: 0.0).toFloat()))
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
-                val image = card.imageId?.takeIf { photoContent == null }?.let {
+                val source = card.imageId?.takeIf { photoContent == null }?.let {
                     val loaded = rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))
                     photoOverride ?: loaded
                 }
+                val image = rememberCardPhotoStyle(source, card.imageId.orEmpty(), card.photoStyle, imageFile)
                 if (photoContent != null || image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize(), photoContent)
             }
             backgroundDecoration()

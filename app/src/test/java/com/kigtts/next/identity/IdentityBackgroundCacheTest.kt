@@ -46,6 +46,7 @@ class IdentityBackgroundCacheTest {
             val cache = f.stickers.identityBackgrounds; val key = cache.key(card, person)
             assertEquals(key, cache.key(card.copy(title = "文字", layers = listOf(CardLayer(kind = CardLayerKind.TEXT, text = "贴纸"))), person.copy(bio = "简介")))
             assertNotEquals(key, cache.key(card.copy(photoX = .7), person))
+            assertNotEquals(key, cache.key(card.copy(photoStyle = PolaroidPhotoStyle(filter = "BW")), person))
             assertNotEquals(key, cache.key(card, person.copy(gradient = true)))
             assertNotEquals(key, cache.key(card, person.copy(pattern = "grid")))
             val source = requireNotNull(f.stickers.imageFile(image.id))
@@ -74,6 +75,15 @@ class IdentityBackgroundCacheTest {
             assertEquals("每帧姿态变化不可重新解码", 1, decodes)
             cache.prepare(card.copy(photoX = .9), IdentityCard(designId = card.id))
             assertEquals("准备新姿态也应复用照片素材", 1, decodes)
+            val filtered = card.copy(photoStyle = PolaroidPhotoStyle(filter = "BW"))
+            val treated = cache.prepare(filtered, IdentityCard(designId = card.id))
+            val gray = Bitmap.createBitmap(400, 225, Bitmap.Config.ARGB_8888)
+            try {
+                treated.draw(Canvas(gray), 400f, 225f, filtered)
+                val color = gray.getPixel(200, 100)
+                assertEquals(Color.red(color), Color.blue(color))
+            } finally { gray.recycle() }
+            assertEquals("作为名片背景的拍立得也应用当前滤镜", 2, decodes)
         } finally { f.scope.cancel() }
     }
 }

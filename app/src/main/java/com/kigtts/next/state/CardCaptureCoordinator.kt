@@ -10,7 +10,8 @@ import java.io.File
 import java.util.UUID
 
 data class CapturedCardPhoto(val cardId: String, val imageId: String, val originalImageId: String,
-    val frameStyleId: String, val version: Long, val photoX: Double = .5, val photoY: Double = .5, val photoZoom: Double = 1.0)
+    val frameStyleId: String, val version: Long, val photoX: Double = .5, val photoY: Double = .5, val photoZoom: Double = 1.0,
+    val photoStyle: PolaroidPhotoStyle? = null)
 data class CardPrintRequest(val requestId: String, val card: PolaroidCard, val cards: List<PolaroidCard> = listOf(card))
 data class CardFrameRequest(val requestId: String, val original: File, val display: File, val motion: CameraMotionClip? = null,
     val fromCamera: Boolean = false)
@@ -131,7 +132,8 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         return true
     }
     fun captured(destination: Destination.CardCamera, original: File, display: File, format: PolaroidFormat,
-        print: Boolean = false, motion: CameraMotionClip? = null, fromCamera: Boolean = true, photoX: Double = .5, photoY: Double = .5, photoZoom: Double = 1.0): Boolean {
+        print: Boolean = false, motion: CameraMotionClip? = null, fromCamera: Boolean = true, photoX: Double = .5, photoY: Double = .5, photoZoom: Double = 1.0,
+        photoStyle: CapturedPhotoStyle? = null): Boolean {
         fun discardFiles() { original.delete(); if (display != original) display.delete(); motion?.video?.delete() }
         if (pending) {
             listOfNotNull(original, display, motion?.video).filterNot { it.canonicalPath in inFlightFiles }.forEach { it.delete() }
@@ -146,9 +148,11 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 var motionFailed = false
+                var savedStyle: PolaroidPhotoStyle? = null
                 val imported = withContext(Dispatchers.IO) {
                     val source = stickers.importResource(original)
                     val shown = if (display.canonicalFile == original.canonicalFile) source else stickers.importResource(display)
+                    savedStyle = photoStyle?.persist(stickers)
                     motion?.let { clip ->
                         try { requireNotNull(saveMotion) { "实况存储尚未就绪" }.invoke(shown.id, clip) }
                         catch (cancel: CancellationException) { throw cancel }
@@ -166,7 +170,8 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                         synchronized(stickers) {
                             val targetAlbum = desiredAlbum.takeIf { id -> cards.albums.value.any { it.id == id } } ?: CardRepository.DEFAULT_ALBUM
                             cards.createPhoto(PolaroidCard(title = "", imageId = imported.second.id,
-                                originalImageId = imported.first.id, frameStyleId = frameStyleId, photoX = photoX, photoY = photoY, photoZoom = photoZoom), facts, targetAlbum)
+                                originalImageId = imported.first.id, frameStyleId = frameStyleId, photoX = photoX, photoY = photoY, photoZoom = photoZoom,
+                                photoStyle = savedStyle), facts, targetAlbum)
                         }
                     }
                     if (state().destination == destination && print) {
@@ -174,7 +179,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                         return@launch
                     }
                 } else photo.value = CapturedCardPhoto(destination.cardId, imported.second.id, imported.first.id,
-                    frameStyleId, (photo.value?.version ?: 0) + 1, photoX, photoY, photoZoom)
+                    frameStyleId, (photo.value?.version ?: 0) + 1, photoX, photoY, photoZoom, savedStyle)
                 if (state().destination == destination) back()
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) {

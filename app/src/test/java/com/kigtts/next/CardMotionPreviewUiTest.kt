@@ -3,6 +3,8 @@ package com.kigtts.next
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
@@ -56,5 +58,28 @@ class CardMotionPreviewUiTest {
         compose.runOnIdle { preview.playback.finishScrub(); fixture.end() }; frames(30)
         compose.onNodeWithTag("play-motion-photo").assertIsEnabled()
         assertFalse(preview.opened); assertFalse(fixture.playing); assertEquals(1, fixture.released)
+        fun contrast(): Int {
+            val output = File("build/previews/card-motion-controls-fade.png").apply { parentFile?.mkdirs() }
+            val window = compose.onNodeWithTag("card-preview-window")
+            val bounds = window.fetchSemanticsNode().boundsInRoot
+            val point = compose.onNodeWithTag("card-motion-controls").fetchSemanticsNode().boundsInRoot.center
+            window.captureRoboImage(output.absolutePath)
+            val image = BitmapFactory.decodeFile(output.absolutePath)
+            return try {
+                val x = ((point.x - bounds.left) / bounds.width * image.width).toInt()
+                val y = ((point.y - bounds.top) / bounds.height * image.height).toInt()
+                val color = image.getPixel(x, y)
+                val background = image.getPixel(2, y)
+                kotlin.math.abs(android.graphics.Color.red(color) - android.graphics.Color.red(background)) +
+                    kotlin.math.abs(android.graphics.Color.green(color) - android.graphics.Color.green(background)) +
+                    kotlin.math.abs(android.graphics.Color.blue(color) - android.graphics.Color.blue(background))
+            } finally { image.recycle() }
+        }
+        val opened = contrast()
+        compose.onNodeWithTag("close-card-preview").performClick()
+        frames(5)
+        val exiting = contrast()
+        assertTrue("Playback fades against the changing scrim: $opened -> $exiting", exiting < opened - 8)
+        assertTrue("Exit keeps the playback control alive until the fade ends", exiting > 0)
     }
 }

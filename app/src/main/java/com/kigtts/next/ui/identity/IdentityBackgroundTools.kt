@@ -26,7 +26,7 @@ import com.kigtts.plugin.api.*
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton("仅用主色", Icons.Default.FormatColorFill, {
-                change(card.copy(imageId = null, originalImageId = null, frameColor = primary))
+                change(card.copy(imageId = null, originalImageId = null, photoStyle = null, frameColor = primary))
             }, Modifier.weight(1f), enabled = enabled)
             PillButton("背景颜色", Icons.Default.Palette, backgroundColor, Modifier.weight(1f), enabled = enabled)
         }

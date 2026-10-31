@@ -108,15 +108,16 @@ class CardWorkspaceUiTest {
         assertEquals(saved, card.layers.single())
         compose.onNodeWithTag("card-layer-flip-x/" + layer.id).performClick()
         assertTrue(card.layers.single().flipX)
-        val rotationBounds = compose.onNodeWithTag("card-layer-rotate/" + layer.id).fetchSemanticsNode().boundsInRoot
-        val mirrorBounds = compose.onNodeWithTag("card-layer-flip-y/" + layer.id).fetchSemanticsNode().boundsInRoot
-        assertTrue(rotationBounds.bottom <= mirrorBounds.top)
+        compose.onNodeWithTag("card-layer-rotate/" + layer.id).assertDoesNotExist()
+        compose.onNodeWithTag("card-layer-flip-y/" + layer.id).assertDoesNotExist()
+        compose.onNodeWithTag("card-layer-delete/" + layer.id).assertExists()
         val beforeRotation = card.layers.single()
-        compose.onNodeWithTag("card-layer-rotate/" + layer.id).assertExists().performTouchInput {
+        compose.onNodeWithTag("card-layer-scale/" + layer.id).assertExists().performTouchInput {
             swipe(center, center + Offset(18f, -24f), durationMillis = 400)
         }
         val rotated = card.layers.single()
         assertTrue(kotlin.math.abs(rotated.rotation - beforeRotation.rotation) > 1.0)
+        assertNotEquals(beforeRotation.width, rotated.width)
         assertEquals(beforeRotation.x, rotated.x, 0.0)
         assertEquals(beforeRotation.y, rotated.y, 0.0)
         compose.onNodeWithTag("card-layer-scale/" + layer.id).assertExists().performClick()

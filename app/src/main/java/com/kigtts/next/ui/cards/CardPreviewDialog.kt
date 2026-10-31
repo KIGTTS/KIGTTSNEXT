@@ -108,7 +108,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                     motion?.let { CardMotionVideo(it, controlsEnabled && reveal >= .999f, Modifier.fillMaxSize()) }
                 }
             }
-            motion?.let { CardMotionControls(it, controlsEnabled, Modifier.widthIn(max = 480.dp).fillMaxWidth()) }
+            motion?.let { CardMotionControls(it, controlsEnabled, Modifier.widthIn(max = 480.dp).fillMaxWidth().graphicsLayer { alpha = reveal }) }
             Row(Modifier.widthIn(max = 480.dp).fillMaxWidth().graphicsLayer { alpha = reveal }
                 .testTag("card-preview-actions"), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {

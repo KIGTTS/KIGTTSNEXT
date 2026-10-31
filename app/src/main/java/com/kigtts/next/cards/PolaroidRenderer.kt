@@ -47,7 +47,10 @@ internal object PolaroidRenderer {
         canvas.save();canvas.clipPath(photoPath)
         if(transparentPhoto)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
             if(card.imageId!=null || !isFullPhotoPaper(card))canvas.drawColor(0xFFB0B0B0.toInt())
-            card.imageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)} finally {bitmap.recycle()}}}
+            card.imageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {
+                renderCardPhotoStyle(bitmap,card.photoStyle,repository::imageFile)
+                PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)
+            } finally {bitmap.recycle()}}}
         };canvas.restore()
         if(options.includeFrame&&frame.borderWidth>0&&frame.borderColor!=null) {
             val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
@@ -99,10 +102,13 @@ internal object PolaroidRenderer {
     private fun decode(repository:StickerRepository,id:String,maximumEdge:Int=2048):Bitmap?=repository.imageFile(id)?.let {file->
         val image=repository.images.value.firstOrNull {it.id==id} ?: return@let null
         var sample=1;while(maxOf(image.width,image.height)/sample>maximumEdge || image.width.toLong()*image.height/sample/sample>24_000_000)sample*=2
-        val bitmap=file.inputStream().use {stream->BitmapFactory.decodeStream(stream,null,BitmapFactory.Options().apply {inSampleSize=sample})} ?: return@let null
+        val bitmap=file.inputStream().use {stream->BitmapFactory.decodeStream(stream,null,BitmapFactory.Options().apply {inSampleSize=sample;inMutable=true})} ?: return@let null
         val exif=runCatching {file.inputStream().use {ExifInterface(it)}}.getOrNull()
         val matrix=Matrix().apply {exif?.let {if(it.isFlipped)postScale(-1f,1f);postRotate(it.rotationDegrees.toFloat())}}
-        try {Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,matrix,true).also {if(it!==bitmap)bitmap.recycle()}}
+        try {Bitmap.createBitmap(bitmap,0,0,bitmap.width,bitmap.height,matrix,true).let { rotated ->
+            if(rotated!==bitmap)bitmap.recycle()
+            if(rotated.isMutable)rotated else rotated.copy(Bitmap.Config.ARGB_8888,true).also {rotated.recycle()}
+        }}
         catch(error:Throwable) {bitmap.recycle();throw error}}
     private fun drawText(canvas:Canvas,value:String,x:Float,y:Float,width:Int,size:Float,color:Int,bold:Boolean) {
         val paint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply {textSize=size;this.color=color;typeface=if(bold)Typeface.DEFAULT_BOLD else Typeface.DEFAULT}

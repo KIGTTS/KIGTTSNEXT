@@ -122,7 +122,7 @@ class PolaroidDesignStore(private val root: File) {
         if (next.optString("default") == id) next.remove("default")
         commit(next)
     }
-    @Synchronized fun referencedImages(): Set<String> = state.value.presets.flatMap { it.design.layers.mapNotNull(CardLayer::imageId) }.toSet()
+    @Synchronized fun referencedImages(): Set<String> = state.value.presets.flatMap { it.design.layers.mapNotNull(CardLayer::imageId) + listOfNotNull(it.design.photoStyle?.lutImageId) }.toSet()
     @Synchronized fun requiredFields(): Set<PhotoTextField> = state.value.presets.firstOrNull { it.id == state.value.defaultId }?.bindings?.values?.map { it.field }?.toSet().orEmpty()
     @Synchronized fun apply(card: PolaroidCard, presetId: String? = state.value.defaultId): PolaroidCard {
         val preset = state.value.presets.firstOrNull { it.id == presetId } ?: return card

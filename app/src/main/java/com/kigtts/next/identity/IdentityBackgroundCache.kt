@@ -2,6 +2,8 @@ package com.kigtts.next.identity
 
 import android.graphics.*
 import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.cards.hasPhotoTreatment
+import com.kigtts.next.cards.renderCardPhotoStyle
 import com.kigtts.next.media.MediaBitmapDecoder
 import com.kigtts.next.media.thumbnail.ThumbnailMemoryCache
 import com.kigtts.plugin.api.PolaroidCard
@@ -25,7 +27,7 @@ internal class IdentityBackgroundCache(private val repository: StickerRepository
         val image = card.imageId?.let(repository::imageFile)
         val border = repository.identityFrames.items.value.firstOrNull { it.id == identity.cardFrameId }?.imageId?.let(repository::imageFile)
         val input = listOf("v2", image?.absolutePath, image?.lastModified(), image?.length(), card.frameColor,
-            card.photoX, card.photoY, card.photoZoom, card.photoBackdrop, identity.pattern, identity.gradient,
+            card.photoX, card.photoY, card.photoZoom, card.photoBackdrop, card.photoStyle, identity.pattern, identity.gradient,
             identity.gradientColor.takeIf { identity.gradient }, identity.cardFrameId, border?.absolutePath, border?.lastModified(), border?.length()).joinToString("|")
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
         val hex = "0123456789abcdef"
@@ -70,9 +72,18 @@ internal class IdentityBackgroundCache(private val repository: StickerRepository
     }
     private fun prepareLocked(card: PolaroidCard, identity: IdentityCard): IdentityBackgroundPainter {
         val file = card.imageId?.let(repository::imageFile)
-        val stamp = "${file?.absolutePath}|${file?.lastModified()}|${file?.length()}"
+        val stamp = "${file?.absolutePath}|${file?.lastModified()}|${file?.length()}|${card.photoStyle}"
         fun cached(suffix: String, make: () -> Bitmap?): Bitmap? = sources[stamp + suffix] ?: make()?.also { sources.put(stamp + suffix, it) }
-        val photo = file?.let { cached("photo") { decode(it, 3072) } }
+        val photo = file?.let { cached("photo") {
+            decode(it, 3072)?.let { decoded ->
+                if (card.photoStyle?.hasPhotoTreatment() != true) decoded else {
+                    val treated = decoded.copy(Bitmap.Config.ARGB_8888, true)
+                    decoded.recycle()
+                    try { renderCardPhotoStyle(treated, card.photoStyle, repository::imageFile); treated }
+                    catch (failure: Throwable) { treated.recycle(); throw failure }
+                }
+            }
+        } }
         fun blurred(source: Bitmap, maximum: Int, sigma: Float): Bitmap {
             val factor = minOf(1f, maximum.toFloat() / maxOf(source.width, source.height))
             val scaled = Bitmap.createScaledBitmap(source, (source.width * factor).toInt().coerceAtLeast(1), (source.height * factor).toInt().coerceAtLeast(1), true)

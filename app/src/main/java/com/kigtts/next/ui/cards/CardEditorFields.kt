@@ -23,10 +23,12 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
     frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit, textEditing: Boolean = false,
     updateTextLayer: (CardLayer) -> Unit = {}, finishText: () -> Unit = {},
     showTabs: Boolean = true, stickerLibrary: @Composable () -> Unit = {},
-    designTools: @Composable () -> Unit = {}, captureFields: @Composable () -> Unit = {}, backgroundTools: (@Composable () -> Unit)? = null) {
+    designTools: @Composable () -> Unit = {}, captureFields: @Composable () -> Unit = {}, backgroundTools: (@Composable () -> Unit)? = null,
+    filterTools: @Composable () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (showTabs) CardEditorTabs(mode, selectMode)
         if (mode == CardEditorMode.CROP) { if (backgroundTools != null) backgroundTools() else CardCropTools(card, enabled, change, camera, gallery, frameColor, frames) }
+        else if (mode == CardEditorMode.FILTER) filterTools()
         else if (mode == CardEditorMode.FRAME) { CardFrameTools(card, enabled, change, frameColor, frames); designTools() }
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -52,6 +52,7 @@ class CardBurstCoordinator internal constructor(private val cards: CardRepositor
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try {
                 var snapshot: FrozenPhotoFacts? = null
+                val recipes = mutableMapOf<CapturedPhotoStyle, com.kigtts.plugin.api.PolaroidPhotoStyle>()
                 val imported = photos.map { shot ->
                     val existing = saved[shot.original.path]
                     val card = existing ?: run {
@@ -64,7 +65,7 @@ class CardBurstCoordinator internal constructor(private val cards: CardRepositor
                             synchronized(stickers) {
                                 val target = album.takeIf { id -> cards.albums.value.any { it.id == id } } ?: CardRepository.DEFAULT_ALBUM
                                 cards.createPhoto(PolaroidCard(title = "", imageId = shown.id, originalImageId = source.id,
-                                    frameStyleId = "instax.${shot.format.name.lowercase()}.classic"), frozen, target)
+                                    frameStyleId = "instax.${shot.format.name.lowercase()}.classic", photoStyle = shot.photoStyle?.let { recipes.getOrPut(it) { it.persist(stickers) } }), frozen, target)
                             }
                         }.also { saved[shot.original.path] = it }
                     }

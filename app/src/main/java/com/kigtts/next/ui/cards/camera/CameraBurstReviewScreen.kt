@@ -82,7 +82,8 @@ internal fun CameraBurstReviewScreen(review: CardBurstReview, busy: Boolean, sav
 
 @Composable
 internal fun BurstPhotoImage(shot: PolaroidCameraCapture, modifier: Modifier, crop: Boolean, maximum: Int) {
-    val image = rememberCardImage(shot.displayFile, maximum)
+    val source = rememberCardImage(shot.displayFile, maximum)
+    val image = com.kigtts.next.ui.cards.rememberCardPhotoStyle(source, shot.original.path, null, { null }, shot.photoStyle)
     Box(modifier.background(if (crop) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent), contentAlignment = Alignment.Center) {
         if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = if (crop) ContentScale.Crop else ContentScale.Fit)
         else Icon(Icons.Default.Photo, "照片加载中", Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

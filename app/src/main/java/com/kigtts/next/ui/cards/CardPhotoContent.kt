@@ -19,7 +19,7 @@ import com.kigtts.next.ui.media.BlurredBackdrop
 import com.kigtts.plugin.api.PhotoBackdropMode
 import com.kigtts.plugin.api.PolaroidCard
 
-private class PhotoPixelsMemory(var image: ImageBitmap?)
+private class PhotoPixelsMemory(var image: ImageBitmap?, var style: com.kigtts.plugin.api.PolaroidPhotoStyle?)
 private class PhotoBlend(val previous: ImageBitmap?, val current: ImageBitmap?) {
     val opacity = Animatable(if (previous === current) 1f else 0f)
     var complete by mutableStateOf(previous === current)
@@ -29,10 +29,13 @@ private class PhotoBlend(val previous: ImageBitmap?, val current: ImageBitmap?) 
 @Composable
 internal fun CardPhotoContent(card: PolaroidCard, image: ImageBitmap?, width: Float, height: Float) {
     key(card.id, card.imageId) {
-        val memory = remember { PhotoPixelsMemory(image) }
+        val memory = remember { PhotoPixelsMemory(image, card.photoStyle) }
         // Create both layers and their initial alpha in the same composition. Resetting
         // a live layer from an effect can expose one empty frame before its underlay exists.
-        val blend = remember(image) { PhotoBlend(memory.image, image).also { memory.image = image } }
+        val blend = remember(image) {
+            PhotoBlend(if (memory.image != null && memory.style != card.photoStyle) image else memory.image, image)
+                .also { memory.image = image; memory.style = card.photoStyle }
+        }
         LaunchedEffect(blend) {
             blend.opacity.animateTo(1f, tween(180))
             blend.complete = true

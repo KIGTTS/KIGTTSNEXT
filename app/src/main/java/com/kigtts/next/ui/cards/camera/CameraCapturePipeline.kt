@@ -9,7 +9,7 @@ import kotlinx.coroutines.*
 import java.io.File
 import java.util.UUID
 
-/** Produces an owned high-resolution photo, preserving its original JPEG until the host imports both copies. */
+/** Capture never renders the recipe into the JPEG. Preview and export apply it independently. */
 internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCapture, front: Boolean,
     format: PolaroidFormat, filter: PhotoFilter, message: (String) -> Unit, strength: Float = 1f,
     lut: com.kigtts.next.media.color.CubeLut? = null,
@@ -17,7 +17,7 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
     exposureStarted: () -> Unit = {}): PolaroidCameraCapture {
     val directory = File(context.cacheDir, "polaroid-camera")
     val id = UUID.randomUUID().toString()
-    val original = File(directory, "$id-original.jpg"); val processed = File(directory, "$id-filtered.jpg")
+    val original = File(directory, "$id-original.jpg")
     val started = SystemClock.elapsedRealtime()
     val capturedAt = System.currentTimeMillis()
     try {
@@ -25,15 +25,12 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
         capture.captureJpeg(context, original, front, exposureStarted)
         val captured = SystemClock.elapsedRealtime()
         Log.d(CAMERA_LOG_TAG, "JPEG ready after ${captured - started}ms,bytes=${original.length()},resolution=${capture.resolutionInfo?.resolution}")
-        val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(original, processed, filter, strength, lut, effects) } }
-        catch (cancel: CancellationException) { throw cancel }
-        catch (_: OutOfMemoryError) { message("原图已保留，本次未应用滤镜"); null }
-        catch (_: Exception) { message("原图已保留，本次未应用滤镜"); null }
         currentCoroutineContext().ensureActive()
         Log.d(CAMERA_LOG_TAG, "Photo handoff after ${SystemClock.elapsedRealtime() - started}ms,filter=$filter,strength=$strength,processing=${SystemClock.elapsedRealtime() - captured}ms")
-        return PolaroidCameraCapture(original, filtered, format, if (filtered == null) PhotoFilter.ORIGINAL else filter, capturedAt = capturedAt)
+        return PolaroidCameraCapture(original, null, format, filter, capturedAt = capturedAt,
+            photoStyle = com.kigtts.next.cards.CapturedPhotoStyle(filter, strength, lut, effects))
     } catch (failure: Throwable) {
-        original.delete(); processed.delete()
+        original.delete()
         throw failure
     }
 }
@@ -41,11 +38,7 @@ internal suspend fun capturePolaroidPhoto(context: Context, capture: ImageCaptur
 internal suspend fun processBurstPhoto(photo: PolaroidCameraCapture, filter: PhotoFilter, strength: Float,
     lut: com.kigtts.next.media.color.CubeLut?, effects: com.kigtts.next.media.color.PhotoEffects,
     message: (String) -> Unit): PolaroidCameraCapture {
-    val output = File(photo.original.parentFile, photo.original.nameWithoutExtension + "-filtered.jpg")
-    val filtered = try { withContext(Dispatchers.Default) { PhotoFilterWriter.write(photo.original, output, filter, strength, lut, effects) } }
-    catch (cancel: CancellationException) { output.delete(); throw cancel }
-    catch (_: OutOfMemoryError) { output.delete(); message("原图已保留，本次未应用滤镜"); null }
-    catch (_: Exception) { output.delete(); message("原图已保留，本次未应用滤镜"); null }
-    return PolaroidCameraCapture(photo.original, filtered, photo.format,
-        if (filtered == null) PhotoFilter.ORIGINAL else filter, capturedAt = photo.capturedAt)
+    currentCoroutineContext().ensureActive()
+    return PolaroidCameraCapture(photo.original, null, photo.format, filter, photo.motion, photo.capturedAt,
+        com.kigtts.next.cards.CapturedPhotoStyle(filter, strength, lut, effects))
 }

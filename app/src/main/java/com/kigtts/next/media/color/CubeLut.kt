@@ -49,6 +49,21 @@ class CubeLut internal constructor(val title: String, val size: Int, val domainM
         return Bitmap.createBitmap(pixels, tiles * size, tiles * size, Bitmap.Config.ARGB_8888)
     }
     companion object {
+        fun fromAtlas(image: Bitmap, size: Int, minimum: List<Float>, maximum: List<Float>): CubeLut {
+            require(size in 2..65 && minimum.size == 3 && maximum.size == 3)
+            require((0..2).all { minimum[it].isFinite() && maximum[it].isFinite() && maximum[it] > minimum[it] })
+            val tiles = ceil(sqrt(size.toDouble())).toInt()
+            require(image.width == tiles * size && image.height == tiles * size)
+            val pixels = IntArray(image.width * image.height)
+            image.getPixels(pixels, 0, image.width, 0, 0, image.width, image.height)
+            val values = FloatArray(size * size * size * 3)
+            for (b in 0 until size) for (g in 0 until size) for (r in 0 until size) {
+                val color = pixels[(b / tiles * size + g) * image.width + b % tiles * size + r]
+                val offset = ((b * size + g) * size + r) * 3
+                for (channel in 0..2) values[offset + channel] = (color ushr (16 - channel * 8) and 255) / 255f
+            }
+            return CubeLut("自定义 LUT", size, minimum.toFloatArray(), maximum.toFloatArray(), values)
+        }
         const val MAX_BYTES = 16L * 1024 * 1024
         fun readBinary(file: java.io.File): CubeLut {
             require(file.length() in 1..MAX_BYTES)

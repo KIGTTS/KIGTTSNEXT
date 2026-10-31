@@ -69,6 +69,7 @@ private fun importDesigns(model: AppViewModel, archive: ResourceArchive) {
             snapshot.cards.forEach { card ->
                 val id = UUID.randomUUID().toString(); cardIds += id
                 edits += StickerEdit.PutCard(card.copy(id = id, imageId = image(card.imageId), originalImageId = image(card.originalImageId),
+                    photoStyle = card.photoStyle?.let { it.copy(lutImageId = image(it.lutImageId)) },
                     frameStyleId = frames[card.frameStyleId] ?: card.frameStyleId,
                     layers = card.layers.map { it.copy(id = UUID.randomUUID().toString(), imageId = image(it.imageId)) }))
             }

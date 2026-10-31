@@ -84,7 +84,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
             val remaining = it.images.map { image -> image.id }.toSet()
             stickerRequire(identityFrames.items.value.mapNotNull { frame -> frame.imageId }.all { it in remaining }, message="图片仍用于名片边框")
             stickerRequire(identityDesigns.items.value.all { card ->
-                listOfNotNull(card.imageId, card.originalImageId).plus(card.layers.mapNotNull { layer -> layer.imageId }).all { image -> image in remaining }
+                listOfNotNull(card.imageId, card.originalImageId, card.photoStyle?.lutImageId).plus(card.layers.mapNotNull { layer -> layer.imageId }).all { image -> image in remaining }
             }, message="图片仍用于个人名片，请先更换名片背景或贴纸")
             stickerRequire(designs.referencedImages().all { image -> image in remaining }, message="图片仍用于相框预设，请先删除对应预设")
             PolaroidFrames.validate(it,frames)

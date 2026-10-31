@@ -104,7 +104,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
         else if (!destination.systemCamera)
         CardCameraScreen(
             onCapture = { shot -> check(model.cardCapture.captured(destination, shot.original, shot.displayFile,
-                shot.format, print = destination.cardId == null, motion = shot.motion)) { "照片正在处理，请稍候重试" } },
+                shot.format, print = destination.cardId == null, motion = shot.motion, photoStyle = shot.photoStyle)) { "照片正在处理，请稍候重试" } },
             onCancel = model::navigateBack, message = model::message,
             initialFormat = destination.cardId?.let { id -> model.cards.cards.value.firstOrNull { it.id == id } }
                 ?.let { model.stickers.frameStyle(it).format }, suspended = print != null || importing || copying,

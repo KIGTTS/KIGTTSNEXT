@@ -50,26 +50,31 @@ class CameraOverlayAnimationUiTest {
             }
         } }
         compose.waitForIdle()
+        compose.onNodeWithTag("camera-flash").assertDoesNotExist()
+        fun extent(): Float = bounds("camera-switch-strip").let { if (vertical) it.height else it.width }
+        val collapsed = extent()
         val adjacent = bounds("camera-settings")
         compose.mainClock.autoAdvance = false
         compose.runOnIdle { available = true }
         advance(96)
         assertEquals("Other actions keep their positions while the lens reports flash capability", adjacent, bounds("camera-settings"))
-        val flash = bounds("camera-flash")
-        assertEquals("Flash enters without a one-axis wipe", flash.width, flash.height, 1f)
-        assertRoundSilhouette("flash-${if (vertical) "landscape" else "portrait"}-enter", flash, dark = false)
+        val entering = extent()
+        compose.onNodeWithTag("camera-flash").assertExists()
+        compose.onNodeWithTag("overlay-root").captureRoboImage("build/previews/camera-flash-${if (vertical) "landscape" else "portrait"}-enter.png")
         advance(600)
-        val settled = bounds("camera-flash")
+        val expanded = extent()
+        assertTrue("The group grows continuously", entering > collapsed && entering < expanded)
         compose.runOnIdle { available = false }
-        advance(64)
-        assertRoundSilhouette("flash-${if (vertical) "landscape" else "portrait"}-exit", settled, dark = false)
+        advance(96)
+        assertTrue("The group shrinks continuously", extent() > collapsed && extent() < expanded)
         compose.runOnIdle { available = true }
         advance(600)
         compose.onNodeWithTag("camera-flash").assertIsEnabled()
         assertEquals(adjacent, bounds("camera-settings"))
         compose.runOnIdle { available = false }
         advance(600)
-        compose.onNodeWithTag("camera-flash").assertIsDisplayed().assertIsNotEnabled()
+        compose.onNodeWithTag("camera-flash").assertDoesNotExist()
+        assertEquals(collapsed, extent(), 1f)
     }
 
     @Test fun countdownKeepsCenteredRoundBackingThroughEntryTickCancelAndImmediateRestart() {

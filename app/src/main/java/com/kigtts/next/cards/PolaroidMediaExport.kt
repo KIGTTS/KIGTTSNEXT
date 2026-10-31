@@ -22,7 +22,7 @@ fun exportPolaroidStill(stickers: StickerRepository, card: PolaroidCard, include
 /** Both quick-text media and ordinary sharing use this one design-aware export path. */
 suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard, includeFrame: Boolean = true,
     includeStickers: Boolean = true, maximumHeight: Int = 1500): File {
-    val motion = withContext(Dispatchers.IO) { CardMotionRepository(stickers).get(card.imageId) }
+    val motion = withContext(Dispatchers.IO) { CardMotionRepository(stickers).get(card.imageId)?.withPhotoStyle(card.photoStyle, stickers::imageFile) }
         ?: return withContext(Dispatchers.IO) { exportPolaroidStill(stickers, card, includeFrame, includeStickers, maximumHeight) }
     val options = PolaroidExportOptions(includeFrame, includeStickers)
     val directory = File(stickers.context.cacheDir, "cards/motion-" + UUID.randomUUID())

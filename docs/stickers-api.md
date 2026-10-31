@@ -20,7 +20,7 @@
 - `libraries`：有稳定 ID 的自定义图库，列表次序就是图库排序。
 - `items`：`id/libraryId/name/imageId`，同一图片可以用于多张贴纸或名片。
 - `images`：`id/mime/bytes/width/height/version`，没有 URI 或路径。
-- `cards`：`PolaroidCard(id,title,description,imageId,layers,frameColor,photoX,photoY,photoZoom,photoBackdrop,frameStyleId,originalImageId)`。`imageId` 是显示图，`originalImageId` 可保留内建相机未加滤镜的原始 JPEG；两者都纳入资源引用检查。
+- `cards`：`PolaroidCard(id,title,description,imageId,layers,frameColor,photoX,photoY,photoZoom,photoBackdrop,frameStyleId,originalImageId,photoStyle)`。`imageId` 是照片源，`originalImageId` 可保留旧相机未加滤镜的原始 JPEG；两者都纳入资源引用检查。可选 `photoStyle: PolaroidPhotoStyle` 保存滤镜、强度及四项特效，`null` 表示旧式已处理照片；旧构造及复制 ABI 保留。自定义 LUT 用 `lutImageId` 引用 PNG 图集，连同阶数及 DOMAIN 保存；资源导入重映射该引用，禁止删除使用中的图集。新照片不预先生成滤镜 JPEG，预览、静态及实况导出在原图上应用同一份参数。
 - `albums`：`PolaroidAlbum(id,name,cardIds)`，是拍立得卡片的相册，与贴纸图库、原始图片资源分开；相册列表顺序和各册的 `cardIds` 分别保存相册顺序与照片顺序。
 
 `Query.scope` 可选 `ALL/LIBRARIES/ITEMS/IMAGES/CARDS`，`libraryId` 筛选图库及其贴纸；`offset` 起点、`limit` 为 1–50。`ALL` 对各集合使用相同的分页区间，`total` 是这些集合中的最大长度；按 `nextOffset` 继续查询并合并各集合。分类型查询的 `total` 则是该集合长度。传入 `revision` 可避免把不同版本的分页结果混在一起。`changes(afterRevision)` 是失效通知，收到通知后重新读取。

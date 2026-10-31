@@ -16,6 +16,7 @@ internal object StickerEdits {
         value.images.forEach {stickerRequire(it.mime.startsWith("image/")&&it.bytes in 1..StickerImages.MAX_BYTES&&it.width in 1..32768&&it.height in 1..32768&&it.width.toLong()*it.height<=80_000_000,message="图片信息不合法")}
         value.items.forEach {name(it.name);stickerRequire(it.libraryId in libraries&&it.imageId in images,message="贴纸的图库或图片不存在")}
         value.cards.forEach {card->name(card.title,allowEmpty=true);stickerRequire(card.description.length<=8192&&card.layers.size<=64&&card.frameColor in 0..0xFFFFFFFFL,message="拍立得内容过大或颜色不合法")
+            card.photoStyle?.let { validateCardPhotoStyle(it,images) }
             stickerRequire(card.photoX.isFinite()&&card.photoY.isFinite()&&card.photoZoom.isFinite()&&card.photoX in 0.0..1.0&&card.photoY in 0.0..1.0&&card.photoZoom in 1.0..8.0,message="照片构图位置或缩放不合法")
             stickerRequire(card.frameStyleId.matches(Regex("[a-z][a-z0-9.-]{1,95}"))&&!card.frameStyleId.contains(".."),message="边框标识不合法")
             stickerRequire(card.imageId==null||card.imageId in images,message="拍立得图片不存在")
