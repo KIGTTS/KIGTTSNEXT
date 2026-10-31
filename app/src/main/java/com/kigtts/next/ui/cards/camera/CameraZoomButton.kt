@@ -17,7 +17,7 @@ import com.kigtts.next.ui.components.*
 /** Equal diameter and zero button text padding keep the ratio in one line without shrinking its touch target. */
 @Composable
 internal fun CameraZoomButton(label: String, description: String, enabled: Boolean, click: () -> Unit,
-    modifier: Modifier = Modifier, textTag: String? = null) {
+    modifier: Modifier = Modifier, textTag: String? = null, selected: Boolean = true) {
     val press = rememberImmediateButtonPress(remember { MutableInteractionSource() })
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
     FilledTonalIconButton(onClick = feedbackClick { press.click(); click() },
@@ -25,7 +25,9 @@ internal fun CameraZoomButton(label: String, description: String, enabled: Boole
             .semantics { contentDescription = description },
         enabled = enabled, interactionSource = press.native,
         shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(12.dp)),
-        colors = IconButtonDefaults.filledTonalIconButtonColors().animateEnabled(enabled)) {
+        colors = IconButtonDefaults.filledTonalIconButtonColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else androidx.compose.ui.graphics.Color.Transparent,
+            contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).animateEnabled(enabled)) {
         Text(label, if (textTag != null) Modifier.testTag(textTag) else Modifier,
             maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge)
     }

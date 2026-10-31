@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
     controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {},
-    header: @Composable () -> Unit = {}, photoAspect: Float? = null) {
+    header: @Composable (Boolean) -> Unit = {}, photoAspect: Float? = null) {
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding().padding(horizontal = 12.dp).testTag("polaroid-camera")) {
         if (cameraSideControls(maxWidth.value, maxHeight.value)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -19,7 +19,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
                     val stageWidth = photoAspect?.let { minOf(maxWidth, maxHeight * it + 128.dp) } ?: maxWidth
                     Box(Modifier.width(stageWidth).fillMaxHeight().testTag("camera-stage")) {
                         preview(Modifier.fillMaxSize().padding(vertical = 4.dp), true)
-                        header()
+                        header(true)
                         Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
                     }
                 }
@@ -30,7 +30,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
             // bounds fixed anchors the corner actions and the centre of every crop.
             Box(Modifier.fillMaxWidth().weight(1f).testTag("camera-stage")) {
                 preview(Modifier.fillMaxSize().padding(vertical = 4.dp), false)
-                header()
+                header(false)
                 Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) { error() }
             }
             controls(false)

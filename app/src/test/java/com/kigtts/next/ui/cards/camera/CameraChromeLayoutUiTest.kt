@@ -42,7 +42,7 @@ class CameraChromeLayoutUiTest {
                 CameraOverlayControls(format, listOf(PolaroidFormat.MINI, PolaroidFormat.SQUARE), PhotoFilter.ORIGINAL,
                     true, vertical, false, {}, { clicks++ }, {}, {}, layout = layout)
                 CameraZoomRail(ratio, 1f, 4f, true, { ratio = it }, vertical,
-                    Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom).excludeCameraPull())
+                    Modifier.matchParentSize(), bounds = layout.zoom)
             })
     }
 
@@ -53,7 +53,7 @@ class CameraChromeLayoutUiTest {
         val zoom = compose.onNodeWithTag("camera-zoom-rail").fetchSemanticsNode().boundsInRoot
         assertTrue(strip.bottom < photo.top); assertTrue(zoom.top > photo.bottom)
         compose.onNodeWithTag("camera-settings").performClick(); assertEquals(1, clicks)
-        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(cameraZoomPosition(2f, 1f..4f)) }
+        compose.onNodeWithTag("camera-zoom-stop/2").performClick()
         assertEquals(2f, ratio, .001f)
         assertSame(nativeView, compose.activity.findViewById<View>(nativeView!!.id))
     }
@@ -78,11 +78,11 @@ class CameraChromeLayoutUiTest {
         compose.runOnIdle { format = PolaroidFormat.MINI }
         repeat(8) { compose.mainClock.advanceTimeByFrame(); compose.waitForIdle() }
         val intermediate = compose.onNodeWithTag("camera-switch-strip").fetchSemanticsNode().boundsInRoot
-        assertTrue(kotlin.math.abs(initial.top - intermediate.top) > 1f)
+        assertEquals("The corner group stays fixed while the viewfinder morphs", initial, intermediate)
         repeat(25) { compose.mainClock.advanceTimeByFrame(); compose.waitForIdle() }
         val photo = compose.onNodeWithTag("camera-photo-window").fetchSemanticsNode().boundsInRoot
         val final = compose.onNodeWithTag("camera-switch-strip").fetchSemanticsNode().boundsInRoot
-        assertTrue(final.top >= photo.top - 1f && final.bottom <= photo.bottom + 1f)
+        assertEquals(initial, final)
         assertSame(retained, nativeView); assertSame(retained, compose.activity.findViewById<View>(retained!!.id))
         compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("camera-settings").performClick(); assertEquals(1, clicks)

@@ -38,8 +38,8 @@ class CameraOverlayAnimationUiTest {
         compose.mainClock.advanceTimeBy(milliseconds); compose.waitForIdle()
     }
 
-    @Test fun portraitFlashFadesAsAWholeCircleWithoutMovingAdjacentActions() = flashPresence(false)
-    @Test fun landscapeFlashFadesAsAWholeCircleWithoutMovingAdjacentActions() = flashPresence(true)
+    @Test fun portraitFlashCapabilityChangesWithoutMovingTheConnectedGroup() = flashPresence(false)
+    @Test fun landscapeFlashCapabilityChangesWithoutMovingTheConnectedGroup() = flashPresence(true)
 
     private fun flashPresence(vertical: Boolean) {
         var available by mutableStateOf(false)
@@ -69,7 +69,7 @@ class CameraOverlayAnimationUiTest {
         assertEquals(adjacent, bounds("camera-settings"))
         compose.runOnIdle { available = false }
         advance(600)
-        compose.onNodeWithTag("camera-flash").assertDoesNotExist()
+        compose.onNodeWithTag("camera-flash").assertIsDisplayed().assertIsNotEnabled()
     }
 
     @Test fun countdownKeepsCenteredRoundBackingThroughEntryTickCancelAndImmediateRestart() {

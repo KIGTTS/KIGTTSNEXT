@@ -38,15 +38,14 @@ class CameraFilterZoomUiTest {
                     CameraOverlayControls(PolaroidFormat.SQUARE, listOf(PolaroidFormat.SQUARE), filter, true, vertical, expanded,
                         {}, {}, { expanded = !expanded }, { filter = it }, layout = layout)
                     CameraZoomRail(ratio, .6f, 8f, true, { ratio = it }, vertical,
-                        Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom))
+                        Modifier.matchParentSize(), bounds = layout.zoom)
                 })
         } }
         val paper = compose.onNodeWithTag("camera-photo-window").fetchSemanticsNode().boundsInRoot
         val rail = compose.onNodeWithTag("camera-zoom-rail").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("camera-filter-toggle").performClick()
-        compose.onNodeWithTag("camera-filter-toggle").assertDoesNotExist()
-        compose.onNodeWithTag("camera-zoom-slider").assertIsDisplayed().assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.SetProgress) { it(.7f) }
+        compose.onNodeWithTag("camera-filter-toggle").assertIsDisplayed()
+        compose.onNodeWithTag("camera-zoom-stop/2").assertIsDisplayed().assertIsEnabled().performClick()
         assertTrue(ratio > 1f)
         val filters = compose.onNodeWithTag("camera-filters").fetchSemanticsNode().boundsInRoot
         val slider = compose.onNodeWithTag("camera-filter-strength").fetchSemanticsNode().boundsInRoot

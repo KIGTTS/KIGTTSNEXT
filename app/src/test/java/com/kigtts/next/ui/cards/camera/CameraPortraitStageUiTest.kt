@@ -74,7 +74,7 @@ class CameraPortraitStageUiTest {
             compose.waitForIdle()
             val photo = bounds("camera-photo-window")
             assertEquals(format.geometry.photoAspectRatio, ((photo.right - photo.left) / (photo.bottom - photo.top)).toDouble(), .01)
-            compose.onNodeWithTag("camera-zoom-current").assertIsDisplayed()
+            compose.onNodeWithTag("camera-zoom-stop/1").assertIsDisplayed()
             compose.onNodeWithTag("camera-cancel").performClick()
             compose.onNodeWithTag("camera-settings").performClick()
             assertSame(originalView, retained)

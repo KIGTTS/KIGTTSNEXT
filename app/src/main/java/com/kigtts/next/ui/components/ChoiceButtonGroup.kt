@@ -9,7 +9,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
 import androidx.compose.animation.core.*
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 
 /** Connected M3E shapes share press expansion without replacing the active pointer owner. */
@@ -43,7 +42,7 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
                 if (icon != null) Spacer(Modifier.width(6.dp))
                 Text(label(option),maxLines=if(compactLabels)2 else 1,
                     textAlign=androidx.compose.ui.text.style.TextAlign.Center,
-                    fontSize=if(compactLabels)12.sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                    style=MaterialTheme.typography.labelLarge)
             }
         } }
     }

@@ -463,6 +463,21 @@
     "dependencies": {
       "service.speech-recognition": "^0.8.1"
     },
+    "file": "engine.streaming-asr-0.8.5.kigplugin",
+    "category": "音频",
+    "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n让说话过程中的文字逐步呈现，可搭配语音识别服务用于聆听字幕与连续语音输入。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "识别包导入、下载、推理设置与管理操作放回页面分组，顶栏更清爽。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
     "file": "engine.streaming-asr-0.8.3.kigplugin",
     "category": "音频",
     "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",

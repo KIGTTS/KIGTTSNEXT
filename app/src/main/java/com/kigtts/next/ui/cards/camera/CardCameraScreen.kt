@@ -123,11 +123,11 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         else if (filtersExpanded && !session.countingDown) filtersExpanded = false
         else { session.unbind(); onCancel() }
     }
-    val header: @Composable () -> Unit = {
+    val header: @Composable (Boolean) -> Unit = { vertical ->
         CameraCornerToolbar(active, session.busy, granted && !locked, session.loading || session.busy || morphing,
-            leave, options::showSettings, applyInsets = !granted)
+            leave, options::showSettings, applyInsets = !granted, vertical = vertical, showSettings = !granted)
     }
-    if (!granted) { Box(Modifier.fillMaxSize()) { CameraPermissionPanel(request, pageActive); header() }; return }
+    if (!granted) { Box(Modifier.fillMaxSize()) { CameraPermissionPanel(request, pageActive); header(false) }; return }
     // Configuration is available during startup/morphing; only capture/focus require a fresh streamed frame.
     val interactive = active && !locked
     val preview = rememberCameraPreviewContent(view, session) { modifier, vertical ->
@@ -140,7 +140,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                 options::showSettings, { filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
-                }, options.filterStrength, options::setFilterStrength, layout, showSettings = false,
+                }, options.filterStrength, options::setFilterStrength, layout,
                 customLuts = customLuts, selectedLut = selectedLut,
                 selectLut = { selectedLut = it; filter = PhotoFilter.CUSTOM },
                 importLut = { importLut.launch(arrayOf("*/*")) }, motionButton = {
@@ -150,7 +150,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                 }, effects = options.effects, changeEffects = options::setEffects)
             CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
                 displayReady && interactive, session::zoomTo, vertical,
-                Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.zoom).excludeCameraPull())
+                Modifier.matchParentSize(), bounds = layout.zoom)
             }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))

@@ -32,11 +32,11 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null,
     effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
     changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}) {
-    val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
     val formatButton: @Composable () -> Unit = {
+        val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
         ToolButton("画幅：" + format.cameraLabel(formats.size == 3) + "，点按切换", when (format) {
             PolaroidFormat.MINI -> Icons.Default.CropPortrait
             PolaroidFormat.WIDE -> Icons.Default.CropLandscape
@@ -45,38 +45,30 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
     }
     val flashButton: @Composable () -> Unit = {
-        CameraOverlayPresence(flashAvailable, Modifier.size(48.dp)) {
+        val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
             ToolButton("闪光灯：" + flash.label + "，点按切换", when (flash) {
                 CameraFlash.OFF -> Icons.Default.FlashOff
                 CameraFlash.AUTO -> Icons.Default.FlashAuto
                 CameraFlash.ON -> Icons.Default.FlashOn
             }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape,
                 colors = if (flashAvailable) colors else colors.keepColorsWhenLocked(), enabled = enabled && flashAvailable)
-        }
     }
     val settingsButton: @Composable () -> Unit = {
+        val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
         if (showSettings) ToolButton("相机设置", Icons.Default.Tune, openSettings,
             Modifier.testTag("camera-settings"), size = 44.dp,
             shapes = shape, colors = colors, enabled = enabled)
     }
     val filterButton: @Composable () -> Unit = {
+        val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
         ToolButton("滤镜", Icons.Default.PhotoFilter, toggleFilters,
             Modifier.testTag("camera-filter-toggle")
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
     }
-    val items: @Composable () -> Unit = {
-        if (vertical) { motionButton?.invoke(); settingsButton(); flashButton(); formatButton() }
-        else { formatButton(); flashButton(); settingsButton(); motionButton?.invoke() }
-    }
-    val strip = (if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.controls)
-        else if (vertical) Modifier.align(Alignment.CenterStart).width(56.dp).fillMaxHeight()
-        else Modifier.align(Alignment.TopCenter).height(56.dp).fillMaxWidth())
-        .testTag("camera-switch-strip").excludeCameraPull()
-    if (vertical) Column(strip.padding(vertical = 6.dp),
-        verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.CenterHorizontally) { items() }
-    else Row(strip.padding(horizontal = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { items() }
+    val items = listOfNotNull(flashButton, filterButton, motionButton, formatButton,
+        settingsButton.takeIf { showSettings })
+    CameraControlGroup(vertical, items.size) { index -> items[index]() }
     Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
         else Modifier.matchParentSize()) {
     // Keep both rails accessible, including while chrome is moving outside the viewfinder.
@@ -95,8 +87,5 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             }
         }
     }
-    if (!filtersExpanded) Box(Modifier.align(Alignment.BottomEnd)
-        .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = if (vertical) 8.dp else zoomClearance.dp)
-        .excludeCameraPull()) { filterButton() }
     }
 }

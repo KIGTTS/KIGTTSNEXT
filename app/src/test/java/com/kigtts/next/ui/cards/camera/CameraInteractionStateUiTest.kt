@@ -88,7 +88,7 @@ class CameraInteractionStateUiTest {
         assertEquals(1, factories)
     }
 
-    @Test fun zoomRailUsesActualRangeAndUpdatesThroughNativeSliderAndCommonStops() {
+    @Test fun zoomPresetsRespectActualRangeAndDisableDuringCapture() {
         var ratio by mutableFloatStateOf(1f)
         var enabled by mutableStateOf(true)
         compose.setContent { KigttsTheme(ThemeSettings()) {
@@ -96,13 +96,11 @@ class CameraInteractionStateUiTest {
         } }
         compose.onNodeWithTag("camera-zoom-stop/2").assertIsEnabled().performClick()
         assertEquals(2f, ratio, .001f)
-        compose.onNodeWithTag("camera-zoom-slider").performSemanticsAction(SemanticsActions.SetProgress) { it(10f) }
-        assertEquals(4f, ratio, .001f)
-        compose.onNodeWithTag("camera-zoom-value", useUnmergedTree = true).assertTextEquals("4.0×")
+        compose.onNodeWithTag("camera-zoom-value", useUnmergedTree = true).assertTextEquals("2.0×")
         compose.onNodeWithTag("camera-zoom-stop/1").performClick()
         assertEquals(1f, ratio, .001f)
         compose.runOnIdle { enabled = false }
-        compose.onNodeWithTag("camera-zoom-slider").assertIsNotEnabled()
+        compose.onNodeWithTag("camera-zoom-slider").assertDoesNotExist()
         compose.onNodeWithTag("camera-zoom-stop/2").assertIsNotEnabled()
         compose.onNodeWithTag("camera-zoom-stop/0").assertDoesNotExist()
     }

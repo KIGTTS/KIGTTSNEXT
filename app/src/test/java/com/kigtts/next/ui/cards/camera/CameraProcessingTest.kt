@@ -19,7 +19,7 @@ class CameraProcessingTest {
     }
     @Test fun nativeZoomStopsRespectCameraReportedHardwareBounds() {
         assertEquals(listOf(1f, 2f), cameraZoomStops(requireNotNull(cameraZoomRange(1f, 4f))))
-        assertEquals(listOf(2f), cameraZoomStops(requireNotNull(cameraZoomRange(1.2f, 3f))))
+        assertEquals(listOf(1.2f, 2f), cameraZoomStops(requireNotNull(cameraZoomRange(1.2f, 3f))))
         assertNull(cameraZoomRange(1f, 1f)); assertNull(cameraZoomRange(Float.NaN, 4f))
         assertNull(cameraZoomRange(2f, 1f)); assertNull(cameraZoomRange(.6f, Float.POSITIVE_INFINITY))
     }

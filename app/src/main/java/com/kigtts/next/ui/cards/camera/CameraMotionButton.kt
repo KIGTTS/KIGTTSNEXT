@@ -28,7 +28,7 @@ internal fun CameraMotionButton(requested: Boolean, available: Boolean, ready: B
     Box(Modifier.size(44.dp).excludeCameraPull()) {
         ToolButton("实况照片：$status", if (requested) Icons.Default.MotionPhotosOn else Icons.Default.MotionPhotosOff,
             { change(!requested) }, Modifier.size(44.dp).testTag("camera-motion").semantics { selected = requested },
-            shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(10.dp)),
+            shapes = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: CircleShape, RoundedCornerShape(10.dp)),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
                 containerColor = if (requested) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
                 contentColor = if (requested) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface)

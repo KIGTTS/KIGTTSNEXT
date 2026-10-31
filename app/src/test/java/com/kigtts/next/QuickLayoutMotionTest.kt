@@ -40,10 +40,11 @@ class QuickLayoutMotionTest {
         val phrases = listOf(QuickPhrase("测试", category))
         var singleRow by mutableStateOf(true)
         compose.setContent {
+            val state by model.state.collectAsState()
             CompositionLocalProvider(LocalDensity provides Density(1f)) {
                 MaterialTheme {
                     Box(Modifier.size(350.dp, 320.dp).background(Color.Magenta).testTag("layout-fade-stage")) {
-                        QuickTextContent(model.state.value, phrases, listOf(category),
+                        QuickTextContent(state, phrases, listOf(category),
                             model, singleRow, 2)
                     }
                 }

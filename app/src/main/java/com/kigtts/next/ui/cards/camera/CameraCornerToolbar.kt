@@ -22,14 +22,15 @@ import com.kigtts.next.ui.navigation.excludeCameraPull
 /** Floating safe-area actions only: this layer neither paints an app bar nor takes viewport height. */
 @Composable
 internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEnabled: Boolean, loading: Boolean,
-    back: () -> Unit, settings: () -> Unit, applyInsets: Boolean = true, extraAction: @Composable () -> Unit = {}) {
+    back: () -> Unit, settings: () -> Unit, applyInsets: Boolean = true,
+    vertical: Boolean = false, showSettings: Boolean = true, extraAction: @Composable () -> Unit = {}) {
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!active) it.keepColorsWhenLocked() else it }
     Box(Modifier.fillMaxSize().then(if (applyInsets) Modifier.safeDrawingPadding() else Modifier).padding(horizontal = 8.dp, vertical = 8.dp)
         .testTag("camera-corner-toolbar")) {
-        Box(Modifier.align(Alignment.TopStart).size(44.dp).excludeCameraPull()) {
+        Box(Modifier.align(if (vertical) Alignment.TopEnd else Alignment.TopStart).size(44.dp).excludeCameraPull()) {
             ToolButton("返回", Icons.Default.ArrowBack, back, Modifier.fillMaxSize().testTag("camera-cancel"),
                 size = 44.dp, shapes = shape, colors = colors, enabled = active && !busy)
             AnimatedVisibility(loading, Modifier.align(Alignment.Center), enter = fadeIn(), exit = fadeOut()) {
@@ -38,7 +39,7 @@ internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEn
         }
         Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             extraAction()
-            ToolButton("相机设置", Icons.Default.Tune, settings,
+            if (showSettings) ToolButton("相机设置", Icons.Default.Tune, settings,
                 Modifier.testTag("camera-settings").excludeCameraPull(),
                 size = 44.dp, shapes = shape, colors = colors, enabled = active && configurationEnabled)
         }

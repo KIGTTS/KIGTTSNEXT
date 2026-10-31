@@ -60,7 +60,7 @@
     "repository": "https://github.com/KIGTTS/plugin-streaming-asr",
     "id": "engine.streaming-asr",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
+    "sourceCommit": "3ab42f73fd5f674a5e592f2a0ddead60a401b9b4",
     "directory": "streaming-asr"
   },
   {
