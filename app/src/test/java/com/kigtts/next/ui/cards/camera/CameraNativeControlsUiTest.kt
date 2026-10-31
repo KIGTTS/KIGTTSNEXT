@@ -39,7 +39,8 @@ class CameraNativeControlsUiTest {
         var ratio by mutableFloatStateOf(1f); var changes = 0
         compose.setContent { KigttsTheme(ThemeSettings()) {
             CameraZoomRail(ratio, .6f, 4f, true, { ratio = it; changes++ }, false,
-                Modifier.size(360.dp, 640.dp), androidx.compose.ui.geometry.Rect(20f, 550f, 340f, 598f))
+                Modifier.size(360.dp, 640.dp), androidx.compose.ui.geometry.Rect(20f, 550f, 340f, 598f),
+                viewport = androidx.compose.ui.geometry.Rect(0f, 70f, 360f, 550f))
         } }
         val button = compose.onNodeWithTag("camera-zoom-stop/0.6").fetchSemanticsNode().boundsInRoot
         assertEquals("Presets remain circular in the real 48dp rail", button.width, button.height, 1f)
@@ -52,6 +53,7 @@ class CameraNativeControlsUiTest {
         compose.onRoot().performTouchInput { down(start); moveTo(start + androidx.compose.ui.geometry.Offset(100f, 0f), 120) }
         compose.mainClock.advanceTimeBy(180); compose.waitForIdle()
         compose.onNodeWithTag("camera-zoom-dial").assertIsDisplayed()
+        compose.onNodeWithTag("camera-zoom-dial").assertWidthIsEqualTo(360.dp).assertHeightIsEqualTo(480.dp)
         assertTrue("Zoom must update before release", ratio > 1f && changes > 2)
         compose.onRoot().captureRoboImage("build/previews/camera-zoom-dial-portrait.png")
         val current = ratio
@@ -69,7 +71,8 @@ class CameraNativeControlsUiTest {
         var ratio by mutableFloatStateOf(1.2f)
         compose.setContent { KigttsTheme(ThemeSettings()) {
             CameraZoomRail(ratio, 1.2f, 4f, true, { ratio = it }, true, Modifier.size(700.dp, 300.dp),
-                androidx.compose.ui.geometry.Rect(630f, 30f, 686f, 270f))
+                androidx.compose.ui.geometry.Rect(630f, 30f, 686f, 270f),
+                viewport = androidx.compose.ui.geometry.Rect(90f, 0f, 610f, 300f))
         } }
         compose.onNodeWithTag("camera-zoom-stop/1").assertDoesNotExist()
         compose.onNodeWithTag("camera-zoom-stop/1.2").assertIsDisplayed()
@@ -78,6 +81,7 @@ class CameraNativeControlsUiTest {
         compose.onRoot().performTouchInput { down(start); moveTo(start - androidx.compose.ui.geometry.Offset(0f, 100f), 120) }
         compose.mainClock.advanceTimeBy(180); compose.waitForIdle()
         compose.onNodeWithTag("camera-zoom-dial").assertIsDisplayed()
+        compose.onNodeWithTag("camera-zoom-dial").assertWidthIsEqualTo(520.dp).assertHeightIsEqualTo(300.dp)
         assertTrue(ratio > 1.2f)
         compose.onRoot().captureRoboImage("build/previews/camera-zoom-dial-landscape.png")
         compose.onRoot().performTouchInput { up() }

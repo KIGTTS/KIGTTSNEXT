@@ -150,7 +150,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                 }, effects = options.effects, changeEffects = options::setEffects)
             CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
                 displayReady && interactive, session::zoomTo, vertical,
-                Modifier.matchParentSize(), bounds = layout.zoom)
+                Modifier.matchParentSize(), bounds = layout.zoom, viewport = layout.photo)
             }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))

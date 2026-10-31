@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -26,7 +27,8 @@ import kotlin.math.ln
 /** Presets stay mounted while the dial is shown, so the active finger never loses its owner. */
 @Composable
 internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enabled: Boolean,
-    zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null) {
+    zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null,
+    viewport: Rect? = null) {
     val range = cameraZoomRange(minimum, maximum) ?: return
     val reported = ratio.takeIf(Float::isFinite)?.coerceIn(range) ?: range.start
     var dragging by remember { mutableStateOf(false) }
@@ -57,7 +59,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         }, onDragEnd = { dragging = false; feedback.finish() },
             onDragCancel = { dragging = false; feedback.finish(true) }) { pointer, delta ->
             pointer.consume()
-            val distance = if (wheel) { if (vertical) delta.x else -delta.y }
+            val distance = if (wheel) { if (vertical) -delta.y else delta.x }
                 else if (vertical) -delta.y else delta.x
             position = (position + distance / travel).coerceIn(0f, 1f)
             change(position)
@@ -86,15 +88,18 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
             }
         }
         AnimatedVisibility(dial && enabled, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
-            Box {
+            // Relax the full-stage animation constraints before positioning the photograph-sized dial.
+            Box(Modifier.fillMaxSize()) {
+            Box(if (viewport != null) Modifier.cameraChromeBounds(viewport).clipToBounds() else Modifier.fillMaxSize()) {
                 CameraZoomDial(value, range, vertical, Modifier.fillMaxSize().testTag("camera-zoom-dial"))
-                val touch = if (vertical) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.45f)
-                    else Modifier.align(Alignment.CenterEnd).fillMaxWidth(.48f).fillMaxHeight(.7f)
+                val touch = if (vertical) Modifier.align(Alignment.CenterEnd).fillMaxWidth(.4f).fillMaxHeight()
+                    else Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.4f)
                 Box(touch.excludeCameraPull().then(dragModifier(true)).testTag("camera-zoom-slider").semantics {
                     contentDescription = "变焦轮盘"
                     progressBarRangeInfo = ProgressBarRangeInfo(cameraZoomPosition(value, range), 0f..1f)
                     setProgress { change(it); true }
                 })
+            }
             }
         }
     }

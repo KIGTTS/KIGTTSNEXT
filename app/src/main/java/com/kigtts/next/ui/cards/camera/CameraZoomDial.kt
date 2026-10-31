@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
@@ -23,10 +24,7 @@ internal fun CameraZoomDial(value: Float, range: ClosedFloatingPointRange<Float>
         shadow = Shadow(Color.Black.copy(alpha = .8f), Offset(0f, 1f), blurRadius = 5f))
     val accent = MaterialTheme.colorScheme.primaryContainer
     Canvas(modifier) {
-        val radius = if (vertical) minOf(size.height * .92f, size.width * .56f) else minOf(size.width * .8f, size.height * .48f)
-        val center = if (vertical) Offset(size.width / 2f, size.height + radius * .35f)
-            else Offset(size.width + radius * .32f, size.height / 2f)
-        val origin = if (vertical) 270f else 180f
+        val (radius, center, origin) = cameraZoomDialGeometry(size, vertical)
         val progress = cameraZoomPosition(value, range)
         fun point(angle: Float, r: Float): Offset {
             val radians = Math.toRadians(angle.toDouble())
@@ -44,7 +42,9 @@ internal fun CameraZoomDial(value: Float, range: ClosedFloatingPointRange<Float>
             val angle = origin + (cameraZoomPosition(stop, range) - progress) * 145f
             val text = measurer.measure(zoomLabel(stop), labelStyle)
             val at = point(angle, radius - 42.dp.toPx())
-            drawText(text, topLeft = at - Offset(text.size.width / 2f, text.size.height / 2f))
+            withTransform({ rotate(angle - origin, pivot = at) }) {
+                drawText(text, topLeft = at - Offset(text.size.width / 2f, text.size.height / 2f))
+            }
         }
         drawLine(accent, point(origin, radius - 4.dp.toPx()), point(origin, radius - 28.dp.toPx()), 3.dp.toPx())
         val text = measurer.measure(zoomLabel(value), valueStyle)
