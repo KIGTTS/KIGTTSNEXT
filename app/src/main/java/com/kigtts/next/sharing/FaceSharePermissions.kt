@@ -32,7 +32,7 @@ internal fun rememberFacePermissionRequest(message: (String) -> Unit, notificati
     if (prompt) MotionAlertDialog({ prompt = false; action = null }, title = { Text(if (nearby) "发现附近设备" else "创建临时热点") },
         icon = { Icon(Icons.Default.WifiTethering, null) }, text = {
             Text(if (nearby && notifications) "允许使用附近设备，以发现对方并传送照片。通知用于提示接收请求。"
-                else if (nearby) "允许使用附近设备，以发现对方并传送照片。" else "允许使用附近设备，为对方创建用于领取照片的 Wi-Fi。")
+                else if (nearby) "允许使用附近设备，以发现对方并传送照片。" else "允许使用附近设备，为面对面互传创建临时 Wi-Fi。")
         }, confirmButton = { TextButton(dialogFeedbackClick { prompt = false; launcher.launch(permissions) }) { Text("继续") } },
         dismissButton = { TextButton(dialogFeedbackClick { prompt = false; action = null }) { Text("取消") } })
     return { discover, next ->

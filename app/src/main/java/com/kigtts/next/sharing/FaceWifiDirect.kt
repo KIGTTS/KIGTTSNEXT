@@ -13,7 +13,7 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
     private val manager = context.getSystemService(WifiP2pManager::class.java)
     private var channel: WifiP2pManager.Channel? = null
     private var receiver: BroadcastReceiver? = null
-    private var waiter: CancellableContinuation<String>? = null
+    private var waiter: CancellableContinuation<String?>? = null
     private var waitingDevice: String? = null
     var address: String? = null; private set
     private var services: FaceWifiServiceDiscovery? = null
@@ -28,7 +28,12 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
                 if (intent.action == WifiP2pManager.WIFI_P2P_CONNECTION_CHANGED_ACTION) {
                     refreshAddress(connection)
                     manager.requestGroupInfo(connection) { group ->
-                        if (group?.isGroupOwner == true) group.owner?.deviceAddress?.takeIf { it != "02:00:00:00:00:00" }?.let { address = it }
+                        if (group?.isGroupOwner == true) {
+                            group.owner?.deviceAddress?.takeIf { it != "02:00:00:00:00:00" }?.let { address = it }
+                            if (waitingDevice != null && group.clientList.any { it.deviceAddress.equals(waitingDevice, true) }) {
+                                waiter?.takeIf { it.isActive }?.resume(null); waiter = null; waitingDevice = null
+                            }
+                        }
                         else if (waitingDevice != null && group?.owner?.deviceAddress.equals(waitingDevice, true))
                             manager.requestConnectionInfo(connection) { info ->
                                 if (info.groupFormed && !info.isGroupOwner) info.groupOwnerAddress?.hostAddress?.let { host ->
@@ -52,7 +57,8 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
             manager?.requestDeviceInfo(connection) { address = it?.deviceAddress?.takeIf { value -> value != "02:00:00:00:00:00" } }
         }
     }
-    suspend fun connect(device: String): String = try {
+    /** Null means this phone owns the formed group; discover the selected client's address next. */
+    suspend fun connect(device: String): String? = try {
         services?.pause()
         withTimeout(35_000) {
             require(device.matches(Regex("(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}")))
@@ -80,6 +86,8 @@ internal class FaceWifiDirect(private val context: Context, private val found: (
                         manager.requestConnectionInfo(active) { info ->
                             if (continuation.isActive) info.groupOwnerAddress?.hostAddress?.let { host -> waiter = null; waitingDevice = null; continuation.resume(host) }
                         }
+                    } else if (group?.isGroupOwner == true && group.clientList.any { it.deviceAddress.equals(device, true) }) {
+                        waiter = null; waitingDevice = null; continuation.resume(null)
                     } else manager.connect(active, WifiP2pConfig().apply { deviceAddress = device; groupOwnerIntent = 0 }, action { success ->
                         if (!success && continuation.isActive) { waiter = null; waitingDevice = null
                             continuation.resumeWithException(IllegalStateException("无法建立附近连接，请确认对方已开启面对面接收；也可以连接同一 Wi-Fi 或使用扫码领取")) }

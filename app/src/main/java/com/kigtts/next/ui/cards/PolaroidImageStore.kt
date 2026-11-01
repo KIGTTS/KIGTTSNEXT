@@ -8,15 +8,18 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import com.kigtts.next.media.MediaBitmapDecoder
 import com.kigtts.next.media.thumbnail.ThumbnailMemoryCache
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import java.io.File
 
 /** One bounded process cache; eviction does not recycle pixels already held by a visible card. */
-internal class PolaroidImageStore(maxBytes: Int = 16 * 1024 * 1024,
+internal class PolaroidImageStore(maxBytes: Int = 32 * 1024 * 1024,
     private val decode: (File, Int) -> Bitmap? = { file, maximum -> MediaBitmapDecoder.decode(file, maximum) }) {
     private val memory = ThumbnailMemoryCache(maxBytes)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private val loading = HashMap<String, Deferred<Bitmap?>>()
+    private val decoders = Semaphore(2)
     private var closed = false
     val memoryBytes: Int get() = memory.size()
     private fun key(file: File, maximum: Int) = file.absolutePath + "|" + file.lastModified() + "|" + file.length() + "|" + maximum
@@ -34,7 +37,7 @@ internal class PolaroidImageStore(maxBytes: Int = 16 * 1024 * 1024,
             if (closed) return null
             memory[key]?.let { return it }
             loading[key] ?: scope.async(start = CoroutineStart.LAZY) {
-                val decoded = runCatching { decode(file, maximum) }.getOrNull()
+                val decoded = decoders.withPermit { runCatching { decode(file, maximum) }.getOrNull() }
                 // Bitmap decoding can finish after cancellation; it must not refill a closed cache.
                 if (decoded != null) synchronized(lock) { if (!closed) memory.put(key, decoded) }
                 decoded

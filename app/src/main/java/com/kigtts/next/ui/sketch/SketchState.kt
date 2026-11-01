@@ -29,7 +29,7 @@ class SketchState {
         private set
     var background by mutableStateOf(0xFFFFFFFFL)
         private set
-    var pattern by mutableStateOf(SketchPaperPattern.PLAIN)
+    var pattern by mutableStateOf(SketchPaperPattern.DOTS)
         private set
     var viewportZoom by mutableFloatStateOf(1f)
         internal set
@@ -117,5 +117,10 @@ class SketchState {
         if (activeStroke != null || previousErasePoint != null) revision++
         activeStroke = null; previousErasePoint = null
     }
-    fun clear() { endStroke(); strokes.clear(); revision++ }
+    fun clear() {
+        endStroke(); strokes.clear()
+        viewportZoom = 1f; viewportPan = Offset.Zero
+        eraserCursor = null
+        revision++
+    }
 }

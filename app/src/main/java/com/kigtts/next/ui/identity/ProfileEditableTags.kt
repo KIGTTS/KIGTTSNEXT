@@ -19,7 +19,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.updateTransition
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.graphicsLayer
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.components.reorder.*
 
@@ -39,7 +42,10 @@ import com.kigtts.next.ui.components.reorder.*
         if (a >= 0 && b >= 0 && a != b) { next.add(b, next.removeAt(a)); latestChange(next); feedback.step() }
     }
     val drop = rememberReorderDrop(drag)
-    val editPadding by animateDpAsState(if (editing) 8.dp else 0.dp, tween(220), label = "tag-edit-padding")
+    val edit = updateTransition(editing, label = "tag-edit")
+    val editFraction by edit.animateFloat({ tween(220) }, label = "tag-edit-fraction") { if (it) 1f else 0f }
+    val editPadding = 8.dp * editFraction
+    val changingMode = edit.currentState != edit.targetState
     DisposableEffect(editing) { onDispose { drag.finish(cancelled = true); drag.key?.let(drag::completeDrop) } }
     LookaheadScope {
         val lookahead = this
@@ -49,7 +55,8 @@ import com.kigtts.next.ui.components.reorder.*
             tags.forEach { tag -> key(tag) {
                 DisposableEffect(tag) { onDispose { bounds.remove(tag) } }
                 Box(Modifier.align(Alignment.CenterVertically).zIndex(if (drag.key == tag) 1f else 0f)
-                    .animateBounds(lookahead, boundsTransform = { _, _ -> tween(if (drag.key == tag) 0 else 220) })
+                    .then(if (changingMode) Modifier else Modifier.animateBounds(lookahead,
+                        boundsTransform = { _, _ -> tween(if (drag.key == tag) 0 else 220) }))
                     .onGloballyPositioned { bounds[tag] = it }.testTag("profile-tag/$tag")) {
                     Box(Modifier.reorderTranslation(tag, drag, drop).padding(end = editPadding).semantics {
                         if (editing) customActions = listOf(-1 to "前移", 1 to "后移").map { (step, label) ->
@@ -64,19 +71,22 @@ import com.kigtts.next.ui.components.reorder.*
                             shadowElevation = if (drag.key == tag) 4.dp else 0.dp) {
                             Text(tag, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
                         }
-                        androidx.compose.animation.AnimatedVisibility(editing, Modifier.align(Alignment.TopEnd).offset(10.dp, (-10).dp),
-                            enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .7f),
-                            exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .7f)) {
-                            IconButton(feedbackClick { latestChange(latestTags - tag) }, Modifier.size(24.dp).testTag("profile-tag-remove/$tag")) {
+                        if (editing || editFraction > 0f) Box(Modifier.align(Alignment.TopEnd).offset(10.dp, (-10).dp)
+                            .graphicsLayer { alpha = editFraction; scaleX = .7f + .3f * editFraction; scaleY = scaleX }) {
+                            IconButton(feedbackClick { latestChange(latestTags - tag) }, Modifier.size(24.dp).testTag("profile-tag-remove/$tag"), enabled = editing) {
                                 Icon(Icons.Default.Cancel, "删除标签：$tag", Modifier.size(20.dp).background(MaterialTheme.colorScheme.surface, CircleShape))
                             }
                         }
                     }
                 }
             } }
-            AnimatedVisibility(editing, Modifier.align(Alignment.CenterVertically), enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
-                exit = fadeOut(tween(140)) + shrinkHorizontally(tween(220))) {
-                OutlinedButton(feedbackClick(add), Modifier.height(36.dp).testTag("profile-add-tag"), contentPadding = PaddingValues(horizontal = 12.dp)) {
+            if (editing || editFraction > 0f) Box(Modifier.align(Alignment.CenterVertically).clipToBounds()
+                .layout { measurable, constraints ->
+                    val child = measurable.measure(constraints)
+                    layout((child.width * editFraction).toInt(), child.height) { child.placeRelative(0, 0) }
+                }.graphicsLayer { alpha = editFraction }) {
+                OutlinedButton(feedbackClick(add), Modifier.height(36.dp).testTag("profile-add-tag"), enabled = editing,
+                    contentPadding = PaddingValues(horizontal = 12.dp)) {
                     Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text("标签")
                 }
             }

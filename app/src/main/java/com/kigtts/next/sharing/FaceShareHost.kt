@@ -43,6 +43,8 @@ internal fun FaceShareHost(model: AppViewModel) {
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) controller.startDiscovery()
     }
     panel?.let { shown ->
+        var connection by remember { mutableStateOf(false) }
+        if (connection) FaceConnectionDialog(controller) { connection = false }
         var format by remember(shown.ids) { mutableStateOf(FacePhotoFormat.COMPOSED) }
         FaceShareSheet(if (shown.mode == FaceMode.BROWSER) "Wi-Fi 互传" else if (shown.personal) "分享名片" else "分享照片", controller::hide,
             maximumHeight = if (shown.mode == FaceMode.SEND) { if (shown.personal) 420.dp else 520.dp } else 580.dp,
@@ -63,7 +65,7 @@ internal fun FaceShareHost(model: AppViewModel) {
                         FaceDiscoveryBar(peers, busy,
                             share = { controller.shareSystem(format.original, format.composed) },
                             wifi = { controller.prepareBrowser(format.original, format.composed) },
-                            send = { controller.send(it, format.original, format.composed) })
+                            send = { controller.send(it, format.original, format.composed) }, connection = { connection = true })
                         if (peers.isEmpty() && !busy) FaceDiscoveryHelp { permission(true, controller::refreshDiscovery) }
                     }
                     FaceMode.BROWSER -> {

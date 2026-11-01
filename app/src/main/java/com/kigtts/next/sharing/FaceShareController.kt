@@ -174,8 +174,18 @@ internal class FaceShareController(private val context: Context, private val sco
                         peers.first { list -> list.any { it.id == target.id && it.token == target.token && it.p2p != null } }
                             .first { it.id == target.id && it.token == target.token }.p2p
                     } ?: error("无法连接对方，请确认 Wi-Fi 允许设备互访，或使用扫码领取")
+                    mutableStatus.value = "正在建立附近直连，请留意系统连接提示"
                     val address = wifi.connect(device)
-                    profiles.resolve(target.copy(host = address, hosts = emptyList()))
+                    (if (address != null) profiles.resolve(target.copy(host = address, hosts = emptyList()))
+                    else withTimeoutOrNull(12_000) {
+                        var connected: FacePeer? = null
+                        while (connected == null) {
+                            val updated = peers.value.firstOrNull { it.id == target.id && it.token == target.token } ?: target
+                            connected = profiles.resolve(updated)
+                            if (connected == null) delay(500)
+                        }
+                        connected
+                    })
                         ?: error("对方暂时无法接收，请重新查找或使用扫码领取")
                 }
                 found(resolved)
@@ -213,12 +223,25 @@ internal class FaceShareController(private val context: Context, private val sco
             finally { mutableBusy.value = false }
         }
     }
-    fun startHotspot() { hotspot.start() }
+    fun connectionMessage(value: String) { message(value) }
+    fun startHotspot() {
+        if (!receiving.value && panel.value == null) return
+        val epoch = generation
+        scope.launch {
+            if (epoch != generation || (!receiving.value && panel.value == null)) return@launch
+            try {
+                ensureSession()
+                if (epoch == generation && (receiving.value || panel.value != null)) hotspot.start()
+            }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (_: Exception) { message("面对面未能开启，请重试") }
+        }
+    }
     fun approve(id: String, auto: Boolean) { val active = session; scope.launch(Dispatchers.IO) { active?.approve(id, auto) } }
     fun reject(id: String) { val active = session; scope.launch(Dispatchers.IO) { active?.reject(id) } }
     fun finishSending() {
         generation++; transfer?.cancel(); starting?.cancel(); starting = null; FaceTransferClient.cancel(clientSession)
-        session?.endBrowserShare(); hotspot.stop()
+        session?.endBrowserShare(); if (!receiving.value) hotspot.stop()
         mutablePanel.value = null; mutableBusy.value = false; mutableStatus.value = ""; mutableProgress.value = 0f; mutableUrl.value = null
         if (receiving.value) startDiscovery()
         else if (session?.hasActiveOffers == true) stopDiscovery()

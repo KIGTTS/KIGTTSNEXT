@@ -52,9 +52,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     selectedLayer: String? = null, editable: Boolean = false, selectLayer: (String?) -> Unit = {},
     updateLayer: (CardLayer) -> Unit = {}, photoEditable: Boolean = false,
     onPhotoChange: (PolaroidCard) -> Unit = {}, onPhotoEnd: () -> Unit = {}, frame: PolaroidFrameStyle? = null,
-    decodeMaximum: Int = 1200, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null,
+    decodeMaximum: Int = 2048, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null,
     removeLayer: (String) -> Unit = {}, configureLayer: ((CardLayer) -> Unit)? = null, configurableLayer: (CardLayer) -> Boolean = { false },
-    backgroundDecoration: @Composable () -> Unit = {}, photoContent: (@Composable () -> Unit)? = null) {
+    backgroundDecoration: @Composable () -> Unit = {}, photoContent: (@Composable () -> Unit)? = null,
+    viewScale: Float = 1f) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
@@ -115,8 +116,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
                 val source = card.imageId?.takeIf { photoContent == null }?.let {
-                    val loaded = rememberCardImage(imageFile(it), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))
-                    photoOverride ?: loaded
+                    val loaded = rememberCardImage(imageFile(it), cardPhotoDecodeSize(
+                        canvasWidthPx * (geometry.photoWidth / geometry.paperWidth).toFloat(),
+                        canvasWidthPx * (geometry.photoHeight / geometry.paperWidth).toFloat(), card.photoZoom, viewScale, decodeMaximum))
+                    photoOverride?.takeIf { warm -> loaded == null || maxOf(warm.width, warm.height) > maxOf(loaded.width, loaded.height) } ?: loaded
                 }
                 val image = rememberCardPhotoStyle(source, card.imageId.orEmpty(), card.photoStyle, imageFile)
                 if (photoContent != null || image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize(), photoContent)
@@ -130,7 +133,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .border(width * frame.borderWidth.toFloat(), Color(requireNotNull(frame.borderColor)),
                     RoundedCornerShape(width * frame.photoCornerRadius.toFloat())))
             frame?.overlayImageId?.let { imageId ->
-                rememberCardImage(imageFile(imageId), cardImageDecodeSize(canvasWidthPx, minOf(1200, decodeMaximum)))?.let { overlay ->
+                rememberCardImage(imageFile(imageId), cardImageDecodeSize(maxOf(canvasWidthPx, canvasHeightPx) * viewScale, decodeMaximum))?.let { overlay ->
                     Image(overlay, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
                 }
             }
@@ -163,7 +166,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 var textControlWidth by remember(layer.id) { mutableStateOf(72.dp) }
                 val layerWidth = width * layer.width.toFloat()
                 val isSelected = editable && selectedLayer == layer.id
-                val image = layer.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize((canvasWidthPx * layer.width).toFloat(), minOf(512, decodeMaximum))) }
+                val image = layer.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize((canvasWidthPx * layer.width).toFloat() * viewScale, minOf(2048, decodeMaximum))) }
                 val mirrored = Modifier.graphicsLayer { scaleX = if (layer.flipX) -1f else 1f; scaleY = if (layer.flipY) -1f else 1f }
                 Box(Modifier.align(Alignment.Center).offset {
                     IntOffset(((layer.x - .5) * canvasWidthPx).roundToInt(),
@@ -198,13 +201,4 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
             } }
         }
     }
-}
-
-/** Pinch gestures cross a few decode buckets rather than cancelling/restarting image IO every frame. */
-internal fun cardImageDecodeSize(pixels: Float, maximum: Int): Int = when {
-    pixels <= 128f -> minOf(128, maximum)
-    pixels <= 256f -> minOf(256, maximum)
-    pixels <= 512f -> minOf(512, maximum)
-    pixels <= 1024f -> minOf(1024, maximum)
-    else -> maximum
 }

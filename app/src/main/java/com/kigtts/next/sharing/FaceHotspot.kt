@@ -21,29 +21,35 @@ internal class FaceHotspot(private val context: Context, private val error: (Str
     private var reservation: WifiManager.LocalOnlyHotspotReservation? = null
     private val mutable = MutableStateFlow<HotspotDetails?>(null); val details = mutable.asStateFlow()
     private var generation = 0
-    private var starting = false
+    private val mutableStarting = MutableStateFlow(false); val starting = mutableStarting.asStateFlow()
+    private val handler = Handler(Looper.getMainLooper())
+    private var timeout: Runnable? = null
     @SuppressLint("MissingPermission")
     fun start() {
-        if (starting || reservation != null) return
-        starting = true
+        if (mutableStarting.value || reservation != null) return
+        mutableStarting.value = true
         val epoch = ++generation
+        timeout = Runnable { if (epoch == generation && mutableStarting.value) {
+            stop(); error("热点创建超时，请重试或使用附近直连")
+        } }.also { handler.postDelayed(it, 20_000) }
         try {
             context.getSystemService(WifiManager::class.java).startLocalOnlyHotspot(object : WifiManager.LocalOnlyHotspotCallback() {
                 override fun onStarted(value: WifiManager.LocalOnlyHotspotReservation) {
                     if (epoch != generation) { value.close(); return }
-                    starting = false
+                    finishStarting()
                     reservation = value
                     val ssid: String; val password: String
                     if (Build.VERSION.SDK_INT >= 30) { ssid = value.softApConfiguration.ssid.orEmpty(); password = value.softApConfiguration.passphrase.orEmpty() }
                     else { @Suppress("DEPRECATION") val config = value.wifiConfiguration; ssid = config?.SSID.orEmpty().trim('"'); password = config?.preSharedKey.orEmpty().trim('"') }
                     mutable.value = HotspotDetails(ssid, password)
                 }
-                override fun onStopped() { if (epoch == generation) { reservation = null; mutable.value = null } }
-                override fun onFailed(reason: Int) { if (epoch == generation) { starting = false; error("热点未能开启，请确认 Wi-Fi 已打开，或改用同一 Wi-Fi") } }
+                override fun onStopped() { if (epoch == generation) { finishStarting(); reservation = null; mutable.value = null } }
+                override fun onFailed(reason: Int) { if (epoch == generation) { finishStarting(); error("热点未能开启，请确认 Wi-Fi 已打开，或改用附近直连") } }
             }, Handler(Looper.getMainLooper()))
-        } catch (_: Exception) { starting = false; error("热点未能开启，请检查附近设备权限和 Wi-Fi 开关") }
+        } catch (_: Exception) { finishStarting(); error("热点未能开启，请检查附近设备权限和 Wi-Fi 开关") }
     }
-    fun stop() { generation++; starting = false; reservation?.close(); reservation = null; mutable.value = null }
+    private fun finishStarting() { mutableStarting.value = false; timeout?.let(handler::removeCallbacks); timeout = null }
+    fun stop() { generation++; finishStarting(); reservation?.close(); reservation = null; mutable.value = null }
 }
 
 internal fun localWifiAddresses(context: Context): List<String> {

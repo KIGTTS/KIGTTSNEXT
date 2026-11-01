@@ -51,6 +51,7 @@ class NativeOverlayService : Service() {
         if (!windowExpanded && dragCenter == null && !docking) place(continuousResize = true)
     }
     private var dragCenter by mutableStateOf<Offset?>(null)
+    private val isDragging by derivedStateOf { dragCenter != null }
     private var motionStart by mutableStateOf<Offset?>(null)
     private var docking by mutableStateOf(false)
     private val dockMotion = OverlayDockMotion({ center ->
@@ -95,7 +96,7 @@ class NativeOverlayService : Service() {
                         before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
                     }, edgeRetraction = retraction, initialCenter = motionStart,
                     collapsedCenter = if (windowExpanded) renderedLayout.local(compactPlacement().centerOnScreen()) else null,
-                    dragging = dragCenter != null, centerChanged = { visibleFabCenter = it })
+                    dragging = isDragging, centerChanged = { visibleFabCenter = it })
             } }
         } }
         place(); interact()

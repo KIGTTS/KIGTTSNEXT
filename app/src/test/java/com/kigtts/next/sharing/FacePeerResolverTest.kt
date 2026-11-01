@@ -15,6 +15,19 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [29, 35])
 class FacePeerResolverTest {
+    @Test fun reachableAddressIsProbedWithoutWaitingForTheFirstStaleAddress() = runBlocking {
+        val source = peer().copy(hosts = listOf("192.168.1.2", "192.168.49.2"))
+        val slowEntered = CountDownLatch(1); val fastEntered = CountDownLatch(1)
+        val resolver = FacePeerResolver(this, faceToken(), {}) { _, host ->
+            if (host == "192.168.1.2") {
+                slowEntered.countDown()
+                assertTrue("可用地址不应被前一个地址阻塞", fastEntered.await(2, TimeUnit.SECONDS))
+                throw IOException("stale")
+            }
+            assertTrue(slowEntered.await(2, TimeUnit.SECONDS)); fastEntered.countDown(); profile(source)
+        }
+        try { assertEquals("192.168.49.2", resolver.resolve(source)?.host) } finally { resolver.clear() }
+    }
     private fun peer() = FacePeer(faceToken(), "KIGTTS 用户", port = 12345, token = faceToken())
     private fun profile(peer: FacePeer) = JSONObject().put("id", peer.id).put("protocol", 1)
         .put("nickname", "真正的昵称").put("avatar", "avatar-data").put("avatarFrame", "flower")

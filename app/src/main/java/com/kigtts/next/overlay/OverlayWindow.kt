@@ -54,10 +54,11 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
         // Geometry and WindowManager resize arrive through separate frame phases.
         // Do not paint new local FAB coordinates into the old-sized surface.
         view.viewTreeObserver.addOnPreDrawListener {
-            view.getLocationOnScreen(screenLocation)
-            val draw = resizeCover?.preparing != true && (!attached || resizeGate.canDraw(
-                sizeMatches = view.width == params.width && view.height == params.height,
-                positionMatches = screenLocation[0] == params.x && screenLocation[1] == params.y))
+            val draw = resizeCover?.preparing != true && (!attached || !resizeGate.waiting || run {
+                view.getLocationOnScreen(screenLocation)
+                resizeGate.canDraw(sizeMatches = view.width == params.width && view.height == params.height,
+                    positionMatches = screenLocation[0] == params.x && screenLocation[1] == params.y)
+            })
             if (draw) resizeCover?.drawn(view, matches = {
                 view.getLocationOnScreen(screenLocation)
                 view.width == params.width && view.height == params.height && screenLocation[0] == params.x && screenLocation[1] == params.y
@@ -109,6 +110,7 @@ internal class OverlayWindow(context: Context, private val wm: WindowManager, ou
 /** A ROM can constrain overlay size permanently (IME, rotation, split screen). Never stop drawing forever. */
 internal class OverlayResizeGate {
     private var frames = 0
+    val waiting get() = frames > 0
     fun resizing(continuous: Boolean = false) { frames = if (continuous) 0 else 3 }
     fun canDraw(sizeMatches: Boolean, positionMatches: Boolean = true): Boolean {
         if (sizeMatches && positionMatches) frames = 0

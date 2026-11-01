@@ -1,65 +1,78 @@
 package com.kigtts.next.theme
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.material3.ColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.lerp
 
 /** Animate all roles together, including foregrounds and plugin page colors. */
 @Composable
 fun animatedColorScheme(target: ColorScheme): ColorScheme {
-    @Composable fun color(value: Color, role: String) =
-        animateColorAsState(value, tween(450, easing = FastOutSlowInEasing), label = role).value
+    var current by remember { mutableStateOf(target) }
+    LaunchedEffect(target) {
+        val from = current
+        if (from === target) return@LaunchedEffect
+        animate(0f, 1f, animationSpec = tween(450, easing = FastOutSlowInEasing)) { fraction, _ ->
+            current = interpolateTheme(from, target, fraction)
+        }
+    }
+    return current
+}
+
+/** One animation clock for every role; interrupted transitions start at the visible palette. */
+internal fun interpolateTheme(from: ColorScheme, target: ColorScheme, fraction: Float): ColorScheme {
+    if (fraction <= 0f) return from
+    if (fraction >= 1f) return target
     return target.copy(
-        primary = color(target.primary, "primary"),
-        onPrimary = color(target.onPrimary, "onPrimary"),
-        primaryContainer = color(target.primaryContainer, "primaryContainer"),
-        onPrimaryContainer = color(target.onPrimaryContainer, "onPrimaryContainer"),
-        inversePrimary = color(target.inversePrimary, "inversePrimary"),
-        secondary = color(target.secondary, "secondary"),
-        onSecondary = color(target.onSecondary, "onSecondary"),
-        secondaryContainer = color(target.secondaryContainer, "secondaryContainer"),
-        onSecondaryContainer = color(target.onSecondaryContainer, "onSecondaryContainer"),
-        tertiary = color(target.tertiary, "tertiary"),
-        onTertiary = color(target.onTertiary, "onTertiary"),
-        tertiaryContainer = color(target.tertiaryContainer, "tertiaryContainer"),
-        onTertiaryContainer = color(target.onTertiaryContainer, "onTertiaryContainer"),
-        background = color(target.background, "background"),
-        onBackground = color(target.onBackground, "onBackground"),
-        surface = color(target.surface, "surface"),
-        onSurface = color(target.onSurface, "onSurface"),
-        surfaceVariant = color(target.surfaceVariant, "surfaceVariant"),
-        onSurfaceVariant = color(target.onSurfaceVariant, "onSurfaceVariant"),
-        surfaceTint = color(target.surfaceTint, "surfaceTint"),
-        inverseSurface = color(target.inverseSurface, "inverseSurface"),
-        inverseOnSurface = color(target.inverseOnSurface, "inverseOnSurface"),
-        error = color(target.error, "error"),
-        onError = color(target.onError, "onError"),
-        errorContainer = color(target.errorContainer, "errorContainer"),
-        onErrorContainer = color(target.onErrorContainer, "onErrorContainer"),
-        outline = color(target.outline, "outline"),
-        outlineVariant = color(target.outlineVariant, "outlineVariant"),
-        scrim = color(target.scrim, "scrim"),
-        surfaceBright = color(target.surfaceBright, "surfaceBright"),
-        surfaceDim = color(target.surfaceDim, "surfaceDim"),
-        surfaceContainer = color(target.surfaceContainer, "surfaceContainer"),
-        surfaceContainerHigh = color(target.surfaceContainerHigh, "surfaceContainerHigh"),
-        surfaceContainerHighest = color(target.surfaceContainerHighest, "surfaceContainerHighest"),
-        surfaceContainerLow = color(target.surfaceContainerLow, "surfaceContainerLow"),
-        surfaceContainerLowest = color(target.surfaceContainerLowest, "surfaceContainerLowest"),
-        primaryFixed = color(target.primaryFixed, "primaryFixed"),
-        primaryFixedDim = color(target.primaryFixedDim, "primaryFixedDim"),
-        onPrimaryFixed = color(target.onPrimaryFixed, "onPrimaryFixed"),
-        onPrimaryFixedVariant = color(target.onPrimaryFixedVariant, "onPrimaryFixedVariant"),
-        secondaryFixed = color(target.secondaryFixed, "secondaryFixed"),
-        secondaryFixedDim = color(target.secondaryFixedDim, "secondaryFixedDim"),
-        onSecondaryFixed = color(target.onSecondaryFixed, "onSecondaryFixed"),
-        onSecondaryFixedVariant = color(target.onSecondaryFixedVariant, "onSecondaryFixedVariant"),
-        tertiaryFixed = color(target.tertiaryFixed, "tertiaryFixed"),
-        tertiaryFixedDim = color(target.tertiaryFixedDim, "tertiaryFixedDim"),
-        onTertiaryFixed = color(target.onTertiaryFixed, "onTertiaryFixed"),
-        onTertiaryFixedVariant = color(target.onTertiaryFixedVariant, "onTertiaryFixedVariant"),
+        primary = lerp(from.primary, target.primary, fraction),
+        onPrimary = lerp(from.onPrimary, target.onPrimary, fraction),
+        primaryContainer = lerp(from.primaryContainer, target.primaryContainer, fraction),
+        onPrimaryContainer = lerp(from.onPrimaryContainer, target.onPrimaryContainer, fraction),
+        inversePrimary = lerp(from.inversePrimary, target.inversePrimary, fraction),
+        secondary = lerp(from.secondary, target.secondary, fraction),
+        onSecondary = lerp(from.onSecondary, target.onSecondary, fraction),
+        secondaryContainer = lerp(from.secondaryContainer, target.secondaryContainer, fraction),
+        onSecondaryContainer = lerp(from.onSecondaryContainer, target.onSecondaryContainer, fraction),
+        tertiary = lerp(from.tertiary, target.tertiary, fraction),
+        onTertiary = lerp(from.onTertiary, target.onTertiary, fraction),
+        tertiaryContainer = lerp(from.tertiaryContainer, target.tertiaryContainer, fraction),
+        onTertiaryContainer = lerp(from.onTertiaryContainer, target.onTertiaryContainer, fraction),
+        background = lerp(from.background, target.background, fraction),
+        onBackground = lerp(from.onBackground, target.onBackground, fraction),
+        surface = lerp(from.surface, target.surface, fraction),
+        onSurface = lerp(from.onSurface, target.onSurface, fraction),
+        surfaceVariant = lerp(from.surfaceVariant, target.surfaceVariant, fraction),
+        onSurfaceVariant = lerp(from.onSurfaceVariant, target.onSurfaceVariant, fraction),
+        surfaceTint = lerp(from.surfaceTint, target.surfaceTint, fraction),
+        inverseSurface = lerp(from.inverseSurface, target.inverseSurface, fraction),
+        inverseOnSurface = lerp(from.inverseOnSurface, target.inverseOnSurface, fraction),
+        error = lerp(from.error, target.error, fraction),
+        onError = lerp(from.onError, target.onError, fraction),
+        errorContainer = lerp(from.errorContainer, target.errorContainer, fraction),
+        onErrorContainer = lerp(from.onErrorContainer, target.onErrorContainer, fraction),
+        outline = lerp(from.outline, target.outline, fraction),
+        outlineVariant = lerp(from.outlineVariant, target.outlineVariant, fraction),
+        scrim = lerp(from.scrim, target.scrim, fraction),
+        surfaceBright = lerp(from.surfaceBright, target.surfaceBright, fraction),
+        surfaceDim = lerp(from.surfaceDim, target.surfaceDim, fraction),
+        surfaceContainer = lerp(from.surfaceContainer, target.surfaceContainer, fraction),
+        surfaceContainerHigh = lerp(from.surfaceContainerHigh, target.surfaceContainerHigh, fraction),
+        surfaceContainerHighest = lerp(from.surfaceContainerHighest, target.surfaceContainerHighest, fraction),
+        surfaceContainerLow = lerp(from.surfaceContainerLow, target.surfaceContainerLow, fraction),
+        surfaceContainerLowest = lerp(from.surfaceContainerLowest, target.surfaceContainerLowest, fraction),
+        primaryFixed = lerp(from.primaryFixed, target.primaryFixed, fraction),
+        primaryFixedDim = lerp(from.primaryFixedDim, target.primaryFixedDim, fraction),
+        onPrimaryFixed = lerp(from.onPrimaryFixed, target.onPrimaryFixed, fraction),
+        onPrimaryFixedVariant = lerp(from.onPrimaryFixedVariant, target.onPrimaryFixedVariant, fraction),
+        secondaryFixed = lerp(from.secondaryFixed, target.secondaryFixed, fraction),
+        secondaryFixedDim = lerp(from.secondaryFixedDim, target.secondaryFixedDim, fraction),
+        onSecondaryFixed = lerp(from.onSecondaryFixed, target.onSecondaryFixed, fraction),
+        onSecondaryFixedVariant = lerp(from.onSecondaryFixedVariant, target.onSecondaryFixedVariant, fraction),
+        tertiaryFixed = lerp(from.tertiaryFixed, target.tertiaryFixed, fraction),
+        tertiaryFixedDim = lerp(from.tertiaryFixedDim, target.tertiaryFixedDim, fraction),
+        onTertiaryFixed = lerp(from.onTertiaryFixed, target.onTertiaryFixed, fraction),
+        onTertiaryFixedVariant = lerp(from.onTertiaryFixedVariant, target.onTertiaryFixedVariant, fraction),
     )
 }

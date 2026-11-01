@@ -17,6 +17,25 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35])
 class SketchInfiniteCanvasTest {
+    @Test fun newCanvasUsesDotsButRestoringExistingPaperKeepsItsStyle() {
+        val state = SketchState()
+        assertEquals(SketchPaperPattern.DOTS, state.pattern)
+        val saved = SketchDocument(200, 400, 0xFFFFFFFFL, emptyList(), SketchPaperPattern.GRID)
+        state.restore(saved)
+        assertEquals(saved, state.document())
+    }
+
+    @Test fun clearingOffscreenInkResetsTheViewButKeepsThePaperAndPen() {
+        val state = drawing()
+        state.setPaperPattern(SketchPaperPattern.GRID)
+        state.navigate(IntSize(200, 400), Offset(100f, 200f), Offset(450f, 900f), 3f)
+        state.clear()
+        assertTrue(state.strokes.isEmpty())
+        assertEquals(1f, state.viewportZoom)
+        assertEquals(Offset.Zero, state.viewportPan)
+        assertEquals(SketchPaperPattern.GRID, state.pattern)
+        assertEquals(0xFFFF0000L, state.color)
+    }
     private fun drawing() = SketchState().apply {
         initializeCanvas(IntSize(200, 400)); color = 0xFFFF0000L; penSize = 12f
         sample(Offset(-100f, -50f), 1f, false, false, 1f, 200f, 400f)
@@ -57,7 +76,7 @@ class SketchInfiniteCanvasTest {
     }
 
     @Test fun exportAddsProtectionToOffscreenInkAndIgnoresDistantEraserTravel() {
-        val document = drawing().document()
+        val document = drawing().document().copy(pattern = SketchPaperPattern.PLAIN)
         val bounds = sketchExportBounds(document)
         assertEquals(-130f, bounds.left, .01f); assertEquals(-80f, bounds.top, .01f)
         assertEquals(330f, bounds.right, .01f); assertEquals(480f, bounds.bottom, .01f)

@@ -21,6 +21,20 @@ import java.util.concurrent.TimeUnit
 @RunWith(RobolectricTestRunner::class) @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [29, 35], shadows = [FaceWifiDirectTest.P2p::class])
 class FaceWifiDirectTest {
+    @Test fun senderCanBecomeGroupOwnerAndReuseItsConnectedRecipient() = runBlocking {
+        val wifi = FaceWifiDirect(context) {}; wifi.start()
+        try {
+            val pending = async(start = CoroutineStart.UNDISPATCHED) { wifi.connect(remote) }
+            radio.group = connection(P2p.OWN, true).apply {
+                ReflectionHelpers.setField(this, "mClients", arrayListOf(WifiP2pDevice().apply { deviceAddress = remote }))
+            }
+            announce()
+            assertNull(withTimeout(3000) { pending.await() })
+            radio.requested = null
+            assertNull(wifi.connect(remote))
+            assertNull("已经连上时无需重复配对", radio.requested)
+        } finally { wifi.stop() }
+    }
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val radio = Shadow.extract<P2p>(context.getSystemService(WifiP2pManager::class.java))
     private val remote = "aa:bb:cc:dd:ee:ff"

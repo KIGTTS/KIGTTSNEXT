@@ -104,7 +104,10 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                         Handler(Looper.getMainLooper()).post { drawn.value() }
                     }
                 }) {
-                    PolaroidCanvas(card, imageFile, Modifier.fillMaxSize(), frame = frame, photoOverride = warmImage)
+                    // Promote only when a zoom bucket changes, not on every pinch event.
+                    val imageScale by remember(viewer) { derivedStateOf { kotlin.math.ceil(viewer.zoom * 2f) / 2f } }
+                    PolaroidCanvas(card, imageFile, Modifier.fillMaxSize(), frame = frame, photoOverride = warmImage,
+                        decodeMaximum = 4096, viewScale = imageScale)
                     motion?.let { CardMotionVideo(it, controlsEnabled && reveal >= .999f, Modifier.fillMaxSize()) }
                 }
             }

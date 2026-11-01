@@ -23,6 +23,24 @@ import org.robolectric.annotation.*
 @GraphicsMode(GraphicsMode.Mode.NATIVE) @LooperMode(LooperMode.Mode.PAUSED)
 class AppearanceControlsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun customColorRowFadesAndResizesBeforeLeavingTheGroup() {
+        var settings by mutableStateOf(ThemeSettings(background = "a".repeat(64) + ".jpg", backgroundSeed = 0xff00696e))
+        compose.setContent { KigttsTheme(settings) { Surface { ThemeColorSettings(settings) { settings = it } } } }
+        val full = compose.onNodeWithTag("custom-theme-color").getUnclippedBoundsInRoot().let { it.bottom - it.top }
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithContentDescription("取色：背景图").performClick()
+        compose.waitForIdle(); compose.mainClock.advanceTimeByFrame(); compose.mainClock.advanceTimeBy(90); compose.waitForIdle()
+        compose.onNodeWithTag("custom-theme-color").assertIsDisplayed()
+        val partial = compose.onNodeWithTag("custom-theme-color").getBoundsInRoot().let { it.bottom - it.top }
+        assertTrue("退出时收缩，不能直接移除条目", partial > androidx.compose.ui.unit.Dp(0f) && partial < full)
+        compose.mainClock.advanceTimeBy(250); compose.waitForIdle()
+        compose.onNodeWithTag("custom-theme-color").assertDoesNotExist()
+        compose.onNodeWithContentDescription("取色：自定义").performClick()
+        compose.waitForIdle(); compose.mainClock.advanceTimeByFrame(); compose.mainClock.advanceTimeBy(90); compose.waitForIdle()
+        compose.onNodeWithTag("custom-theme-color").assertIsDisplayed()
+        assertTrue(compose.onNodeWithTag("custom-theme-color").getBoundsInRoot().let { it.bottom - it.top } < full)
+        compose.mainClock.autoAdvance = true
+    }
     @Test fun themeSourcesAreExclusiveAndBackgroundChoiceKeepsCustomSeed() {
         var state = ThemeSettings(background = "a".repeat(64) + ".jpg", backgroundSeed = 0xff4a8c42)
         compose.setContent { var settings by remember { mutableStateOf(state) }

@@ -26,6 +26,8 @@ import com.kigtts.next.ui.components.LocalCornerRadius
 
 fun themeColors(settings: ThemeSettings, wallpaperColors: ColorScheme? = null,
     isDark: Boolean = settings.mode.usesDark(true)): ColorScheme {
+    if (wallpaperColors != null && settings.contrast == ContrastLevel.DEFAULT && !(settings.deeperDark && isDark))
+        return wallpaperColors
     val seed = wallpaperColors?.primary?.toArgb() ?: settings.effectiveSeed.toInt()
     val scheme = SchemeTonalSpot(Hct.fromInt(seed), isDark, settings.contrast.value.toDouble(), SpecVersion.SPEC_2025, DynamicScheme.Platform.PHONE)
     val c = MaterialDynamicColors()
@@ -80,27 +82,28 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
     val dark = settings.mode.usesDark(isSystemInDarkTheme())
     val appearanceFont = rememberAppearanceFont(settings.font, settings.fontWeight)
     SystemBarAppearance(dark)
-    val (colors, controls) = remember(settings.effectiveSeed, settings.contrast, settings.deeperDark, settings.wallpaperEnabled, configuration, dark) {
-        val wallpaper = if (settings.wallpaperEnabled && Build.VERSION.SDK_INT >= 31) {
+    val wallpaper = remember(settings.wallpaperEnabled, configuration, dark) {
+        if (settings.wallpaperEnabled && Build.VERSION.SDK_INT >= 31) {
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else null
-        val colors = themeColors(settings, wallpaper, dark)
-        colors to compactControlPalette(settings, wallpaper, dark, colors)
     }
+    val (colors, controls) = rememberThemePalette(ThemePaletteKey(settings.effectiveSeed, settings.contrast, settings.deeperDark, dark, wallpaper))
     val radius by animateFloatAsState(settings.cornerRadius,tween(220,easing=FastOutSlowInEasing),label="theme-corner-radius")
-    val shapes = Shapes(
+    val shapes = remember(radius) { Shapes(
         extraSmall = RoundedCornerShape((radius * .3f).coerceAtLeast(4f).dp),
         small = RoundedCornerShape((radius * .6f).coerceAtLeast(4f).dp),
         medium = RoundedCornerShape(radius.dp), large = RoundedCornerShape((radius + 4).coerceAtMost(24f).dp),
         extraLarge = RoundedCornerShape((radius + 8).coerceAtMost(24f).dp),
-    )
+    ) }
+    val typography = remember(appearanceFont) { Typography(
+        displayMedium = TextStyle(fontSize = 38.sp, lineHeight = 50.sp, fontWeight = FontWeight.Bold),
+        titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
+        titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
+    ).withFont(appearanceFont) }
+    val motion = remember { MotionScheme.expressive() }
     MaterialExpressiveTheme(
-        colorScheme = animatedColorScheme(colors), shapes = shapes, motionScheme = MotionScheme.expressive(),
-        typography = Typography(
-            displayMedium = TextStyle(fontSize = 38.sp, lineHeight = 50.sp, fontWeight = FontWeight.Bold),
-            titleLarge = TextStyle(fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
-            titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
-        ).withFont(appearanceFont), content = { CompositionLocalProvider(LocalCornerRadius provides radius.dp,
+        colorScheme = animatedColorScheme(colors), shapes = shapes, motionScheme = motion,
+        typography = typography, content = { CompositionLocalProvider(LocalCornerRadius provides radius.dp,
             LocalAppearanceFont provides appearanceFont,
             LocalCompactControlPalette provides animatedCompactControlPalette(controls), content = content) },
     )

@@ -30,6 +30,25 @@ import org.robolectric.annotation.*
 class ProfileEditingUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun tagEditControlsAppearWhileTheirSpacingIsStillChanging() {
+        var editing by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.width(360.dp).padding(16.dp)) { ProfileEditableTags(listOf("摄影", "开发"), editing, {}, {}) }
+        } }
+        val start = compose.onNodeWithTag("profile-tag-body/摄影", true).getUnclippedBoundsInRoot().top
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { editing = true }
+        compose.waitForIdle()
+        compose.mainClock.advanceTimeByFrame(); compose.mainClock.advanceTimeBy(100); compose.waitForIdle()
+        compose.onNodeWithTag("profile-tag-remove/摄影").assertIsDisplayed()
+        compose.onNodeWithTag("profile-add-tag").assertIsDisplayed()
+        val middle = compose.onNodeWithTag("profile-tag-body/摄影", true).getUnclippedBoundsInRoot().top
+        compose.mainClock.advanceTimeBy(300); compose.waitForIdle()
+        val end = compose.onNodeWithTag("profile-tag-body/摄影", true).getUnclippedBoundsInRoot().top
+        assertTrue("控件出现时仍在同时腾出间距", middle > start && middle < end)
+        compose.mainClock.autoAdvance = true
+    }
+
     @Test fun editingTagBodiesAlignWithTheAddButtonWhileDeleteBadgesStayAbove() {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.width(360.dp).padding(16.dp)) { ProfileEditableTags(listOf("摄影", "开发"), true, {}, {}) }

@@ -30,20 +30,6 @@ import com.kigtts.next.R
 import com.kigtts.next.ui.components.*
 import kotlin.math.roundToInt
 
-/** Uses the actual M3E shape catalog, not an approximated star or polygon. */
-private class DialShape(private val morph: Morph, private val bounds: FloatArray, private val progress: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val path = Path()
-        fun x(value: Float) = (value - bounds[0]) / (bounds[2] - bounds[0]) * size.width
-        fun y(value: Float) = (value - bounds[1]) / (bounds[3] - bounds[1]) * size.height
-        morph.asCubics(progress).forEachIndexed { index, cubic ->
-            if (index == 0) path.moveTo(x(cubic.anchor0X), y(cubic.anchor0Y))
-            path.cubicTo(x(cubic.control0X), y(cubic.control0Y), x(cubic.control1X), y(cubic.control1Y), x(cubic.anchor1X), y(cubic.anchor1Y))
-        }
-        path.close(); return Outline.Generic(path)
-    }
-}
-
 @Composable
 internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement, expanded: Boolean, hidden: Boolean,
     toggle: () -> Unit, move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit,
@@ -54,13 +40,11 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     val hostView = LocalView.current
     val hostLocation = remember { IntArray(2) }
     val motion = rememberOverlayDialMotion(placement, expanded, dragging, initialCenter, collapsedCenter, collapsed)
-    val progress = motion.progress
-    SideEffect { centerChanged(motion.center) }
-    val effects by animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
+    val onCenter by rememberUpdatedState(centerChanged)
+    LaunchedEffect(motion) { snapshotFlow { motion.center }.collect { onCenter(it) } }
+    val effects = animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
     val retraction = edgeRetraction ?: animateFloatAsState(if (hidden && !expanded) 1f else 0f,
         tween(220, easing = FastOutSlowInEasing), label = "dial-edge-hide").value
-    val morph = remember { Morph(MaterialShapes.Circle, MaterialShapes.Cookie12Sided) }
-    val morphBounds = remember(morph) { morph.calculateMaxBounds() }
     var wheel by remember { mutableStateOf(OverlayWheelPosition()) }
     var sorting by remember { mutableStateOf<String?>(null) }
     var sortCenter by remember { mutableStateOf<Offset?>(null) }
@@ -76,7 +60,6 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     LaunchedEffect(settings.shortcuts.size) {
         wheel = wheel.copy(first = wheel.first.coerceIn(0, (settings.shortcuts.size - 5).coerceAtLeast(0)))
     }
-    val cx = with(density) { motion.center.x.toDp() }; val cy = with(density) { motion.center.y.toDp() }
     val radius = minOf(136f, placement.height / density.density * .35f, placement.width / density.density * .46f, (placement.width / density.density - 176f).coerceAtLeast(48f))
     val isExpanded by rememberUpdatedState(expanded)
     // The expanded dial keeps its original vertical scrolling and endpoint resistance.
@@ -93,12 +76,13 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     // rendered absolute anchor stable even when one frame still has the previous placement.
     Box(Modifier.fillMaxSize().drawWithContent {
         val resizing = hostView.width != placement.width || hostView.height != placement.height
-        hostView.getLocationOnScreen(hostLocation)
+        if (resizing) hostView.getLocationOnScreen(hostLocation)
         translate(left = if (resizing) (placement.x - hostLocation[0]).toFloat() else 0f, top = if (resizing) (placement.y - hostLocation[1]).toFloat() else 0f) {
             this@drawWithContent.drawContent()
         }
     }.then(scroll)) {
-        if (expanded || effects > .001f) {
+        val entrancesVisible by remember(expanded) { derivedStateOf { expanded || effects.value > .001f } }
+        if (entrancesVisible) {
             val count = settings.shortcuts.size
             settings.shortcuts.forEachIndexed { index, item ->
                 val slot = index - wheel.first + (5 - count).coerceAtLeast(0) / 2f
@@ -113,8 +97,8 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 val radians = Math.toRadians(angle.toDouble())
                 val dx = (if (settings.rightEdge) -1 else 1) * kotlin.math.cos(radians).toFloat() * radius
                 val dy = kotlin.math.sin(radians).toFloat() * radius
-                val x = cx + (dx * progress).dp
-                val y = cy + (dy * progress).dp
+                val x = with(density) { placement.fabX.toDp() } + dx.dp
+                val y = with(density) { placement.fabY.toDp() } + dy.dp
                 val settling = sorting != null || reorderMotion > .001f
                 val displayedX: Dp
                 val displayedY: Dp
@@ -130,20 +114,24 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 } ?: Offset.Zero else Offset.Zero
                 val releasedDelta by animateOffsetAsState(pointerDelta, if (held) snap() else MaterialTheme.motionScheme.defaultSpatialSpec(), label = "entrance-drop")
                 val followDelta = if (held) pointerDelta else releasedDelta
-                val labelLift = (kotlin.math.sign(angle) * ((kotlin.math.abs(angle) - 36f) / 36f).coerceIn(0f, 1f) * 8f * progress).dp
-                Row(Modifier.zIndex(if (held) 2f else edgeAlpha).offset(x = displayedX - 24.dp, y = displayedY - 24.dp)
+                val labelLift = kotlin.math.sign(angle) * ((kotlin.math.abs(angle) - 36f) / 36f).coerceIn(0f, 1f) * 8f
+                Row(Modifier.zIndex(if (held) 2f else edgeAlpha).offset {
+                    if (settling && !wheeling) IntOffset((displayedX - 24.dp).roundToPx(), (displayedY - 24.dp).roundToPx())
+                    else IntOffset((motion.center.x + dx.dp.toPx() * motion.progress - 24.dp.toPx()).roundToInt(),
+                        (motion.center.y + dy.dp.toPx() * motion.progress - 24.dp.toPx()).roundToInt())
+                }
                     .widthIn(max = 160.dp)
                     .graphicsLayer {
                         translationX = if (settings.rightEdge) -(size.width - 48.dp.toPx()) else 0f
                         translationX += followDelta.x
                         translationY = followDelta.y
                         transformOrigin = TransformOrigin(if (settings.rightEdge) 1f - 24.dp.toPx() / size.width else 24.dp.toPx() / size.width, .5f)
-                        alpha = effects * if (held) 1f else edgeAlpha * if (item.enabled) 1f else .45f; scaleX = .45f + .55f * progress; scaleY = scaleX
+                        alpha = effects.value * if (held) 1f else edgeAlpha * if (item.enabled) 1f else .45f; scaleX = .45f + .55f * motion.progress; scaleY = scaleX
                     },
                     verticalAlignment = Alignment.CenterVertically) {
                     @Composable fun Label() {
                         Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.offset(y = labelLift).widthIn(max = 104.dp)) {
+                            contentColor = MaterialTheme.colorScheme.onSurface, modifier = Modifier.offset { IntOffset(0, (labelLift.dp.toPx() * motion.progress).roundToInt()) }.widthIn(max = 104.dp)) {
                             Text(item.title, Modifier.padding(horizontal = 8.dp, vertical = 6.dp), style = MaterialTheme.typography.labelMedium,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
@@ -164,31 +152,8 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                 }
             }
         }
-        val fabSize = (56f + 8f * progress.coerceIn(0f, 1f)).dp
-        // The native touch window becomes half-width at the edge. Keep a full-size square
-        // child and clip it at that window; measuring against the narrow host makes an oval.
-        Box(Modifier.zIndex(3f).offset(x = cx - fabSize / 2, y = cy - fabSize / 2)
-            .wrapContentSize(Alignment.TopStart, unbounded = true).size(fabSize)
-            .graphicsLayer {
-                translationX = if (edgeRetraction == null) (if (settings.rightEdge) 1 else -1) * retraction * 40.dp.toPx() else 0f
-                alpha = 1f - retraction * .48f
-            }
-            .overlayFabDrag(move, drop, interact, enabled = !expanded)) {
-            IconActionHint(if (expanded) "收起快捷入口" else "展开快捷入口", hasLongAction = true) {
-                Surface(onClick = feedbackClick(toggle), modifier = Modifier.fillMaxSize()
-                    .iconLongAction(true, configure)
-                    .semantics { contentDescription = if (expanded) "收起快捷入口" else "展开快捷入口" }
-                    .graphicsLayer { rotationZ = progress * 90f },
-                    shape = DialShape(morph, morphBounds, progress.coerceIn(0f, 1f)),
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Close, null, Modifier.size(28.dp).graphicsLayer { rotationZ = -progress * 90f; alpha = effects })
-                        Icon(painterResource(R.drawable.overlay_logo), null, Modifier.size(28.dp).graphicsLayer { rotationZ = -progress * 90f; alpha = 1f - effects })
-                    }
-                }
-            }
-        }
+        OverlayFab(motion, expanded, settings.rightEdge, retraction, edgeRetraction != null, effects,
+            toggle, move, drop, interact, configure)
     }
 }
 

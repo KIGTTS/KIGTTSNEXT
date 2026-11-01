@@ -12,7 +12,7 @@ import com.kigtts.plugin.api.PolaroidPhotoStyle
 import kotlinx.coroutines.*
 import java.io.File
 
-private val styledPhotos = ThumbnailMemoryCache(16 * 1024 * 1024)
+private val styledPhotos = ThumbnailMemoryCache(32 * 1024 * 1024)
 
 /** Cancel superseded slider work; keep the last rendered pixels until the newest recipe is ready. */
 @Composable internal fun rememberCardPhotoStyle(image: ImageBitmap?, owner: Any, style: PolaroidPhotoStyle?,
@@ -20,6 +20,7 @@ private val styledPhotos = ThumbnailMemoryCache(16 * 1024 * 1024)
     val active = captured?.let { it.effects.active || it.filter != com.kigtts.next.ui.cards.camera.PhotoFilter.ORIGINAL && it.strength > 0f }
         ?: (style?.hasPhotoTreatment() == true)
     var rendered by remember(owner) { mutableStateOf<ImageBitmap?>(null) }
+    var recipe by remember(owner) { mutableStateOf<Any?>(null) }
     val files = rememberUpdatedState(imageFile)
     LaunchedEffect(image, style, captured, active) {
         if (!active) { rendered = image; return@LaunchedEffect }
@@ -43,8 +44,14 @@ private val styledPhotos = ThumbnailMemoryCache(16 * 1024 * 1024)
             }).asImageBitmap()
         }
         try {
-            rendered = render(512)
-            if (maxOf(source.width, source.height) > 512) { delay(160); rendered = render(1200) }
+            val nextRecipe = captured ?: style
+            // A sharper LOD must not temporarily replace an already sharp treatment with 512px.
+            if (rendered == null || recipe != nextRecipe) rendered = render(512)
+            recipe = nextRecipe
+            if (maxOf(source.width, source.height) > 512) {
+                delay(160)
+                rendered = render(maxOf(source.width, source.height))
+            }
         } catch (cancel: CancellationException) { throw cancel }
         catch (failure: Exception) { android.util.Log.w("KigPhotoStyle", "Preview treatment unavailable", failure) }
     }

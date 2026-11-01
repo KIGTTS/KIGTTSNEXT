@@ -16,6 +16,26 @@ import kotlin.coroutines.CoroutineContext
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class FaceReceivingTest {
+    @Test fun closingShareBeforeHotspotStartupDoesNotReopenTheSession() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val queued = ArrayDeque<Runnable>()
+        val dispatcher = object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) { queued.add(block) }
+        }
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val model = testAppModel(context)
+        val controller = FaceShareController(context, scope, model.cards, model.identities, {})
+        try {
+            controller.openSend(emptyList())
+            controller.startHotspot()
+            assertEquals(1, queued.size)
+            controller.finishSending()
+            queued.removeFirst().run()
+            assertTrue("关闭后的热点请求不得重新创建后台会话", scope.coroutineContext[Job]!!.children.none())
+            assertFalse(controller.hotspot.starting.value)
+            assertNull(controller.hotspot.details.value)
+        } finally { controller.stop(); scope.cancel() }
+    }
     @Test fun incomingAlertIsHighPriorityAndRemovedOnDecisionOrSessionEnd() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val manager = context.getSystemService(NotificationManager::class.java)
