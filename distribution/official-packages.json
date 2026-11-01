@@ -7,6 +7,18 @@
     "tags": [
       "工具"
     ],
+    "file": "tools.package-store-0.16.9.kigplugin",
+    "notes": "修复照片信息贴纸等新资源被误判为不兼容的问题。请同时更新 KIGTTS 主程序。",
+    "module": "package-store"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
     "file": "tools.package-store-0.16.8.kigplugin",
     "notes": "下载完成后直接确认安装或添加，取消后可再次操作；安装成功会清理下载缓存。新增字体资源，列表采用相邻圆角，单色图标跟随主题色。",
     "module": "package-store"

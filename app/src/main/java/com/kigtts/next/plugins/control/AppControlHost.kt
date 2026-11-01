@@ -51,6 +51,8 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
     private fun perform(owner: String, command: AppCommand): AppReply {
         if (command == AppCommand.Describe) return data {
             put("protocol", 1)
+            put("pluginApi", PLUGIN_API_VERSION)
+            put("minimumPluginApi", MIN_PLUGIN_API_VERSION)
             put("operations", JsonArray(listOf("state", "navigate", "text", "automatic-read", "speak", "stop-speech", "setting", "plugin-action", "deliver-resource", "browser-capture", "browser-session", "overlay").map(::JsonPrimitive)))
             put("navigation", JsonArray(listOf("home", "settings", "plugins", "quick-text", "media", "sketch", "cards").map(::JsonPrimitive)))
             put("settings", JsonArray(settingKeys.map(::JsonPrimitive)))
