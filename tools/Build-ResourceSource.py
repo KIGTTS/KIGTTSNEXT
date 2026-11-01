@@ -9,6 +9,16 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/"
 
+def add_artwork(folder, assets, module, name, local, width, height, alt):
+    if not local.is_relative_to(ROOT) or not local.is_file(): raise ValueError("Artwork must exist in the workspace")
+    content = local.read_bytes()
+    digest = module.digest(content)
+    relative = f"artwork/{name}-{digest[:12]}{local.suffix}"
+    target = folder / relative
+    target.parent.mkdir(exist_ok=True)
+    target.write_bytes(content)
+    assets[name] = dict(url=BASE + relative, sha256=digest, bytes=len(content), width=width, height=height, alt=alt)
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", default=".tools/resource-source")
@@ -48,15 +58,16 @@ def main():
         releases = [release] + [old for old in history if old["version"] != release["version"]]
         package = dict(id=definition["id"], name=entry["name"], summary=entry["summary"], resourceType=definition["resourceType"],
             category="外观", icon=dict(symbol=entry["symbol"]), license=entry["license"], releases=releases)
+        if icon := entry.get("icon"):
+            name = definition["id"].removeprefix("resources.") + "-icon"
+            add_artwork(folder, assets, module, name, (ROOT / icon["file"]).resolve(), icon["width"], icon["height"], icon["alt"])
+            package["icon"] = dict(image=name)
         if entry.get("description"): package["description"] = entry["description"]
         packages.append(package)
         local = (ROOT / "distribution/resources/previews" / entry["preview"]).resolve()
         if not local.is_relative_to(ROOT / "distribution/resources/previews"): raise ValueError("Preview escapes artwork folder")
         name = local.stem
-        preview_hash = module.digest(local.read_bytes())
-        preview_path = f"artwork/{name}-{preview_hash[:12]}{local.suffix}"
-        target = folder / preview_path; target.parent.mkdir(exist_ok=True); target.write_bytes(local.read_bytes())
-        assets[name] = dict(url=BASE + preview_path, sha256=preview_hash, bytes=local.stat().st_size, width=entry["width"], height=entry["height"], alt=package["name"] + "预览")
+        add_artwork(folder, assets, module, name, local, entry["width"], entry["height"], package["name"] + "预览")
         package["thumbnails"] = [name]
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.resources", name="KIGTTS 资源", description="为字幕与照片添加新的风格。",
         homepage="https://github.com/KIGTTS/KPM", updatedAt=datetime.now(timezone.utc).isoformat(timespec="seconds"), linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
