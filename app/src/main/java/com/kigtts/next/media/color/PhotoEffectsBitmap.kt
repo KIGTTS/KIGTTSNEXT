@@ -10,8 +10,9 @@ internal suspend fun applyPhotoEffects(image: Bitmap, effects: PhotoEffects) {
     if (!effects.active) return
     require(image.isMutable)
     val width = image.width; val height = image.height
+    // Bloom strength changes the blend, not its sampling distance. Keep its full halo even at 1%.
     val radius = if (effects.aberration > 0f || effects.bloom > 0f)
-        (ceil(height * maxOf(.01f * effects.aberration, .008f * effects.bloom)).toInt() + 1).coerceAtMost(height) else 0
+        (ceil(height * maxOf(.01f * effects.aberration, if (effects.bloom > 0f) .008f else 0f)).toInt() + 1).coerceAtMost(height) else 0
     val band = minOf(32, height)
     val source = IntArray(width * (band + 2 * radius))
     val carry = IntArray(width * radius)
@@ -36,7 +37,7 @@ internal suspend fun applyPhotoEffects(image: Bitmap, effects: PhotoEffects) {
             val yy = y + row; val uvX = (x + .5f) / width; val uvY = (yy + .5f) / height
             val dx = uvX - .5f; val dy = uvY - .5f; val edge = (dx * dx + dy * dy) * 2f
             val smooth = ((edge - .15f) / .7f).coerceIn(0f, 1f).let { it * it * (3 - 2 * it) }
-            val n = filmGrain(floor(uvX * 2048).toInt(), floor(uvY * 2048).toInt())
+            val n = if (effects.grain > 0f) filmGrain(floor(uvX * 2048).toInt(), floor(uvY * 2048).toInt()) else 0f
             val original = source[(yy - top) * width + x]
             var color = original and -0x1000000
             for (channel in 0..2) {

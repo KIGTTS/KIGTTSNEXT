@@ -66,6 +66,16 @@ class PolaroidSystemAlbumTest {
         album.save(card.id); assertEquals(2, publication.published.size)
         publication.missing = true; album.save(card.id); assertEquals(3, publication.published.size)
     }
+    @Test fun lowStrengthBloomCanExportToTheGalleryAndKeepsTheOriginal() = runBlocking {
+        val card = photo().copy(photoStyle = PolaroidPhotoStyle(bloom = .12f))
+        repo.apply(listOf(StickerEdit.PutCard(card)))
+        val original = repo.imageFile(card.imageId!!)!!.readBytes()
+        assertEquals(0, album().synchronize())
+        assertEquals(1, publication.published.size)
+        assertEquals(0, album().synchronize())
+        assertEquals(1, publication.published.size)
+        assertArrayEquals(original, repo.imageFile(card.imageId!!)!!.readBytes())
+    }
     private class Publication : GalleryImagePublication {
         val published = mutableListOf<ByteArray>(); val removed = mutableListOf<Uri>(); var fail = false; var missing = false
         override fun publish(image: File, folder: String, takenAt: Long): Uri {

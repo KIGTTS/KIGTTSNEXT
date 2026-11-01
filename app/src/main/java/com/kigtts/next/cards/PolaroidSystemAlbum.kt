@@ -84,7 +84,8 @@ internal fun galleryPolaroidHeight(stickers: StickerRepository, card: PolaroidCa
 
 internal fun observePolaroidSystemAlbum(scope: CoroutineScope, cards: CardRepository, message: (String) -> Unit) {
     scope.launch {
-        combine(cards.stickers.snapshot, cards.stickers.frameStyles) { _, _ -> Unit }.collect {
+        // Resource-library or album-order edits cannot change a rendered photograph.
+        combine(cards.stickers.cards, cards.stickers.frameStyles) { _, _ -> Unit }.collect {
             if (cards.systemAlbum.synchronize() > 0) message("部分拍立得未能保存到系统相册，可在照片预览中重试")
         }
     }
