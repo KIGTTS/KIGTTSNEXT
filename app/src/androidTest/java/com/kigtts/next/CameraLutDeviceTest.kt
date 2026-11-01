@@ -29,6 +29,7 @@ class CameraLutDeviceTest {
         try {
             programs += link(CameraPreviewShader.VERTEX, CameraPreviewShader.FRAGMENT)
             programs += link(MotionPaperShaders.VERTEX, MotionPaperShaders.PAPER)
+            assertMotionPaperColors(programs[1])
             val program = link("attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}",
                 "precision highp float;uniform vec3 source;" + LutShader.GLSL + "void main(){gl_FragColor=vec4(applyLut(source),1.);}")
             programs += program; GLES20.glUseProgram(program)
