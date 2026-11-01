@@ -9,6 +9,13 @@ import java.security.spec.X509EncodedKeySpec
 import java.util.zip.ZipFile
 
 data class ResourceArchive(val directory: File, val manifest: ResourcePackageManifest, val content: ResourcePackageContent) {
+    internal val photoStickerDefaults by lazy {
+        val path = com.kigtts.next.cards.generators.PhotoStickerDefaults.FILE
+        if (path !in manifest.files) emptyMap() else {
+            require(manifest.resourceType == ResourceType.STICKERS && manifest.apiVersion >= 34)
+            com.kigtts.next.cards.generators.PhotoStickerDefaults.read(file(path), generators.items)
+        }
+    }
     val cardFrames: PersonalCardFramePackage by lazy {
         require(manifest.resourceType == ResourceType.CARD_FRAME && manifest.apiVersion >= 30)
         require("card-frames.json" in manifest.files)
@@ -94,6 +101,7 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
 }
 
 private fun ResourceArchive.validate() {
+    photoStickerDefaults
     require(content.schemaVersion == 1 && content.filters.size <= 32 && content.imageFiles.size <= 2048 && content.frames.size <= 128)
     content.payload?.let(::file); content.filters.forEach { file(it.path) }; content.imageFiles.values.forEach(::file)
     when (manifest.resourceType) {

@@ -15,3 +15,9 @@ python tools/Build-ResourcePackage.py distribution/resources/classic-frames --ou
 当前导入 PNG/JPEG/WebP 等位图，图层与图像映射保留后续混合 SVG 的扩展位置。不要把 SVG 当作已支持的照片数据发布。
 
 API30 新增 `card-borders/` 名片边框与 `word-stickers/` 参数字贴原创示例。名片边框安装到独立名片资源库，字贴可在选中后通过齿轮调整文字/颜色/字号。字体可随参数包嵌入，参见 SDK 协议。
+
+`info-stickers/` 收录 14 种原创信息贴纸，API34 在放置时默认填入当前相片的拍摄信息，并保留手动编辑。字体使用重命名的 OFL 常用字子集，原始许可与来源哈希一并保留。可用 `python tools/Build-InfoStickerPack.py` 重建素材和商店预览。
+
+`remi-stickers/` 按作者文档收录 22 张 1024px PNG，原始像素、透明度与 SHA256 保留于 `origins.json`。Remi 图像权利归原作者，不适用原创资源的 CC0 或字体 OFL。
+
+源条目、介绍、预览尺寸与各包许可集中在 `distribution/resource-projects.json`。构建器保留已发布的版本和哈希，不能用同版本替换其它字节。

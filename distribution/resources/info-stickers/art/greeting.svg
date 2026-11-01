@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 550"><text x="600" y="280" font-family="InfoSerif" font-size="120" data-fit-width="1024" text-anchor="middle" fill="{{ink}}">{{greeting}}</text><text x="600" y="410" font-family="InfoSans" font-size="48" data-fit-width="1024" text-anchor="middle" fill="{{ink}}">{{date}}</text></svg>

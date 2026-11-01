@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "projects": [
+    {"project":"distribution/resources/classic-frames","name":"经典相框","summary":"三种简洁的相纸配色，为照片换一种心情。","symbol":"crop_square","license":"CC0-1.0","preview":"classic-frames.svg","width":1200,"height":800},
+    {"project":".tools/resource-projects/soft-colors","name":"柔和色彩","summary":"轻柔的暖色调，让日常照片多一点温度。","symbol":"filter","license":"CC0-1.0","preview":"soft-colors.svg","width":480,"height":900},
+    {"project":"distribution/resources/card-borders","name":"名片边框","summary":"细线、花瓣与电路，为你的名片添一道轮廓。","symbol":"id_card","license":"CC0-1.0","preview":"card-borders.svg","width":1200,"height":800},
+    {"project":"distribution/resources/word-stickers","name":"彩色字贴","summary":"写下文字，挑选颜色，做一张自己的字贴。","symbol":"text_fields","license":"CC0-1.0","preview":"word-stickers.svg","width":1200,"height":800},
+    {"project":"distribution/resources/info-stickers","name":"照片信息贴纸","summary":"14 种时刻、日历、星期、地点和天气样式，读取相片信息，也能自己改。","symbol":"calendar_month","license":"CC0-1.0; SIL OFL-1.1 (fonts)","preview":"info-stickers.png","width":1600,"height":1800,"description":"添加贴纸时默认使用相片的拍摄日期、时间、地点与天气；缺失的信息显示未知。选中后点齿轮，可修改文字和颜色。\n\n包含 14 种原创透明矢量版式。嵌入的常用字字体子集按 SIL OFL 1.1 提供，布局与图形按 CC0 1.0 提供。"},
+    {"project":"distribution/resources/remi-stickers","name":"偶域 Remi","summary":"打招呼、比心、钓鱼和晕乎乎……22 张 Remi 表情，保留 1024 像素原图。","symbol":"sentiment_very_satisfied","license":"原作者保留权利","preview":"remi-stickers.png","width":1200,"height":1000,"description":"来自[Remi 表情包](https://jafq11jkbyg.feishu.cn/docx/DPIxd0bRRoLxrixSuDccNvUYnbd)，文档署名“开源人形”。\n\n收录 22 张 1024×1024 PNG，保留原图像素与透明度；原本有背景的款式保留背景。\n\n角色与图像权利归原作者，使用范围以原作者说明为准。本包不额外授予商用或改作授权，其他资源的 CC0 与字体 OFL 不适用于本包。"}
+  ]
+}

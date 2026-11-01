@@ -8,7 +8,8 @@ import java.io.File
 import java.util.UUID
 import org.json.JSONObject
 
-internal data class GeneratedSticker(val spec: VectorStickerGenerator, val directory: File, val values: Map<String, String>)
+internal data class GeneratedSticker(val spec: VectorStickerGenerator, val directory: File, val values: Map<String, String>,
+    val photoFields: Map<String, PhotoStickerField> = emptyMap(), val templateEntry: Boolean = false)
 
 /** Fonts, templates and per-instance values are owned independently of plugin installation. */
 internal class GeneratedStickers(private val stickers: StickerRepository) {
@@ -20,7 +21,9 @@ internal class GeneratedStickers(private val stickers: StickerRepository) {
         val id = record.getString("template"); require(id.matches(Regex("[a-f0-9-]{36}")))
         val directory = File(root, id); val spec = PluginJson.decodeFromString<VectorStickerGenerator>(File(directory,"spec.json").readText())
         val values = record.getJSONObject("values").let { json -> json.keys().asSequence().associateWith { json.getString(it) } }
-        GeneratedSticker(spec, directory, values)
+        val defaults = File(directory, PhotoStickerDefaults.FILE).takeIf { it.isFile }
+            ?.let { PhotoStickerDefaults.read(it, listOf(spec))[spec.id] }.orEmpty()
+        GeneratedSticker(spec, directory, values, defaults, record.optBoolean("templateEntry", false))
     }.getOrNull()
     fun install(archive: ResourceArchive): List<Pair<String, String>> = archive.generators.items.map { spec ->
         val directory = File(root, UUID.randomUUID().toString()).apply { mkdirs() }
@@ -32,10 +35,13 @@ internal class GeneratedStickers(private val stickers: StickerRepository) {
             }
             val local = spec.copy(template = template.name, fonts = fonts)
             File(directory, "spec.json").writeText(PluginJson.encodeToString(local), Charsets.UTF_8)
-            local.name to generate(GeneratedSticker(local, directory, emptyMap()), emptyMap())
+            val fields = archive.photoStickerDefaults[spec.id].orEmpty()
+            if (fields.isNotEmpty()) File(directory, PhotoStickerDefaults.FILE).writeText(JSONObject()
+                .put("schemaVersion", 1).put("generators", JSONObject().put(spec.id, JSONObject(fields.mapValues { it.value.name }))).toString(), Charsets.UTF_8)
+            local.name to generate(GeneratedSticker(local, directory, emptyMap(), fields), emptyMap(), templateEntry = true)
         } catch (failure: Exception) { directory.deleteRecursively(); throw failure }
     }
-    @Synchronized fun generate(source: GeneratedSticker, values: Map<String, String>): String {
+    @Synchronized fun generate(source: GeneratedSticker, values: Map<String, String>, templateEntry: Boolean = false): String {
         val normalized = VectorStickerRenderer.values(source.spec, values)
         val bitmap = VectorStickerRenderer.render(source.spec, File(source.directory, source.spec.template),
             source.spec.fonts.mapValues { File(source.directory, it.value) }, normalized)
@@ -43,7 +49,7 @@ internal class GeneratedStickers(private val stickers: StickerRepository) {
         try {
             temporary.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             val image = stickers.importResource(temporary)
-            val json = JSONObject().put("template", source.directory.name).put("values", JSONObject(normalized))
+            val json = JSONObject().put("template", source.directory.name).put("values", JSONObject(normalized)).put("templateEntry", templateEntry)
             check(prefs.edit().putString(image.id, json.toString()).commit()) { "贴纸参数未能保存" }
             return image.id
         } finally { temporary.delete(); bitmap.recycle() }

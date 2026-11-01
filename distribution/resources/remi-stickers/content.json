@@ -1,0 +1,347 @@
+{
+  "snapshot": {
+    "revision": 0,
+    "libraries": [
+      {
+        "id": "remi",
+        "name": "偶域 Remi"
+      }
+    ],
+    "items": [
+      {
+        "id": "remi-01",
+        "libraryId": "remi",
+        "name": "打招呼",
+        "imageId": "remi-image-01"
+      },
+      {
+        "id": "remi-02",
+        "libraryId": "remi",
+        "name": "害羞",
+        "imageId": "remi-image-02"
+      },
+      {
+        "id": "remi-03",
+        "libraryId": "remi",
+        "name": "找不同",
+        "imageId": "remi-image-03"
+      },
+      {
+        "id": "remi-04",
+        "libraryId": "remi",
+        "name": "礼物",
+        "imageId": "remi-image-04"
+      },
+      {
+        "id": "remi-05",
+        "libraryId": "remi",
+        "name": "计划",
+        "imageId": "remi-image-05"
+      },
+      {
+        "id": "remi-06",
+        "libraryId": "remi",
+        "name": "空画廊",
+        "imageId": "remi-image-06"
+      },
+      {
+        "id": "remi-07",
+        "libraryId": "remi",
+        "name": "中秋",
+        "imageId": "remi-image-07"
+      },
+      {
+        "id": "remi-08",
+        "libraryId": "remi",
+        "name": "开心",
+        "imageId": "remi-image-08"
+      },
+      {
+        "id": "remi-09",
+        "libraryId": "remi",
+        "name": "不行",
+        "imageId": "remi-image-09"
+      },
+      {
+        "id": "remi-10",
+        "libraryId": "remi",
+        "name": "拜托",
+        "imageId": "remi-image-10"
+      },
+      {
+        "id": "remi-11",
+        "libraryId": "remi",
+        "name": "谢谢",
+        "imageId": "remi-image-11"
+      },
+      {
+        "id": "remi-12",
+        "libraryId": "remi",
+        "name": "震惊",
+        "imageId": "remi-image-12"
+      },
+      {
+        "id": "remi-13",
+        "libraryId": "remi",
+        "name": "委屈",
+        "imageId": "remi-image-13"
+      },
+      {
+        "id": "remi-14",
+        "libraryId": "remi",
+        "name": "无语",
+        "imageId": "remi-image-14"
+      },
+      {
+        "id": "remi-15",
+        "libraryId": "remi",
+        "name": "比心",
+        "imageId": "remi-image-15"
+      },
+      {
+        "id": "remi-16",
+        "libraryId": "remi",
+        "name": "钓鱼",
+        "imageId": "remi-image-16"
+      },
+      {
+        "id": "remi-17",
+        "libraryId": "remi",
+        "name": "钓鱼（岸边）",
+        "imageId": "remi-image-17"
+      },
+      {
+        "id": "remi-18",
+        "libraryId": "remi",
+        "name": "厨帽",
+        "imageId": "remi-image-18"
+      },
+      {
+        "id": "remi-19",
+        "libraryId": "remi",
+        "name": "装傻",
+        "imageId": "remi-image-19"
+      },
+      {
+        "id": "remi-20",
+        "libraryId": "remi",
+        "name": "托脸",
+        "imageId": "remi-image-20"
+      },
+      {
+        "id": "remi-21",
+        "libraryId": "remi",
+        "name": "晕乎乎",
+        "imageId": "remi-image-21"
+      },
+      {
+        "id": "remi-22",
+        "libraryId": "remi",
+        "name": "贱笑",
+        "imageId": "remi-image-22"
+      }
+    ],
+    "images": [
+      {
+        "id": "remi-image-01",
+        "mime": "image/png",
+        "bytes": 730128,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-02",
+        "mime": "image/png",
+        "bytes": 855090,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-03",
+        "mime": "image/png",
+        "bytes": 963441,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-04",
+        "mime": "image/png",
+        "bytes": 781319,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-05",
+        "mime": "image/png",
+        "bytes": 794583,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-06",
+        "mime": "image/png",
+        "bytes": 863263,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-07",
+        "mime": "image/png",
+        "bytes": 775513,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-08",
+        "mime": "image/png",
+        "bytes": 751522,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-09",
+        "mime": "image/png",
+        "bytes": 741731,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-10",
+        "mime": "image/png",
+        "bytes": 747517,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-11",
+        "mime": "image/png",
+        "bytes": 656798,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-12",
+        "mime": "image/png",
+        "bytes": 820264,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-13",
+        "mime": "image/png",
+        "bytes": 718046,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-14",
+        "mime": "image/png",
+        "bytes": 714818,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-15",
+        "mime": "image/png",
+        "bytes": 781065,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-16",
+        "mime": "image/png",
+        "bytes": 905418,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-17",
+        "mime": "image/png",
+        "bytes": 872599,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-18",
+        "mime": "image/png",
+        "bytes": 759176,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-19",
+        "mime": "image/png",
+        "bytes": 680165,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-20",
+        "mime": "image/png",
+        "bytes": 1083753,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-21",
+        "mime": "image/png",
+        "bytes": 1193992,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      },
+      {
+        "id": "remi-image-22",
+        "mime": "image/png",
+        "bytes": 994869,
+        "width": 1024,
+        "height": 1024,
+        "version": 1
+      }
+    ]
+  },
+  "imageFiles": {
+    "remi-image-01": "images/remi-01.png",
+    "remi-image-02": "images/remi-02.png",
+    "remi-image-03": "images/remi-03.png",
+    "remi-image-04": "images/remi-04.png",
+    "remi-image-05": "images/remi-05.png",
+    "remi-image-06": "images/remi-06.png",
+    "remi-image-07": "images/remi-07.png",
+    "remi-image-08": "images/remi-08.png",
+    "remi-image-09": "images/remi-09.png",
+    "remi-image-10": "images/remi-10.png",
+    "remi-image-11": "images/remi-11.png",
+    "remi-image-12": "images/remi-12.png",
+    "remi-image-13": "images/remi-13.png",
+    "remi-image-14": "images/remi-14.png",
+    "remi-image-15": "images/remi-15.png",
+    "remi-image-16": "images/remi-16.png",
+    "remi-image-17": "images/remi-17.png",
+    "remi-image-18": "images/remi-18.png",
+    "remi-image-19": "images/remi-19.png",
+    "remi-image-20": "images/remi-20.png",
+    "remi-image-21": "images/remi-21.png",
+    "remi-image-22": "images/remi-22.png"
+  }
+}

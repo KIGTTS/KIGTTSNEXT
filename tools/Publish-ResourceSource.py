@@ -63,7 +63,7 @@ def main():
         api = HubApi()
         response = requests.get(BASE + "index.json", timeout=(10, 25))
         if response.status_code == 404:
-            api.create_dataset("KIGTTS-Resources", "LHTSTUDIO", chinese_name="KIGTTS 资源", license="CC0-1.0", description="KIGTTS 相框、滤镜与其它可添加资源。")
+            api.create_dataset("KIGTTS-Resources", "LHTSTUDIO", chinese_name="KIGTTS 资源", license="other", description="KIGTTS 相框、滤镜与其它可添加资源；各包遵循各自许可。")
         else:
             response.raise_for_status()
             previous = response.json()

@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "clock",
+      "name": "简约时刻",
+      "template": "art/clock.svg",
+      "width": 1024,
+      "height": 400,
+      "parameters": [
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "calendar",
+      "name": "日历方章",
+      "template": "art/calendar.svg",
+      "width": 512,
+      "height": 768,
+      "parameters": [
+        {
+          "id": "day",
+          "label": "日",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "month",
+          "label": "月",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "year",
+          "label": "年",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 8
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "time-place",
+      "name": "时地竖线",
+      "template": "art/time-place.svg",
+      "width": 1024,
+      "height": 360,
+      "parameters": [
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "place",
+          "label": "拍摄地点",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "location",
+      "name": "定位横章",
+      "template": "art/location.svg",
+      "width": 1024,
+      "height": 470,
+      "parameters": [
+        {
+          "id": "place",
+          "label": "拍摄地点",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "weather",
+      "name": "天气一刻",
+      "template": "art/weather.svg",
+      "width": 1024,
+      "height": 400,
+      "parameters": [
+        {
+          "id": "weather",
+          "label": "拍摄天气",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 20
+        },
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "weekday",
+      "name": "星期徽章",
+      "template": "art/weekday.svg",
+      "width": 900,
+      "height": 600,
+      "parameters": [
+        {
+          "id": "weekday",
+          "label": "星期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 8
+        },
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf",
+        "InfoSerif": "fonts/InfoSerif.ttf"
+      }
+    },
+    {
+      "id": "weekday-script",
+      "name": "手写星期",
+      "template": "art/weekday-script.svg",
+      "width": 1200,
+      "height": 450,
+      "parameters": [
+        {
+          "id": "weekday",
+          "label": "星期（英文）",
+          "kind": "TEXT",
+          "default": "Unknown",
+          "maxLength": 12
+        },
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf",
+        "InfoScript": "fonts/InfoScript.ttf"
+      }
+    },
+    {
+      "id": "vertical-date",
+      "name": "竖排日期",
+      "template": "art/vertical-date.svg",
+      "width": 440,
+      "height": 1024,
+      "parameters": [
+        {
+          "id": "month",
+          "label": "月",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "day",
+          "label": "日",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "year",
+          "label": "年",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 8
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSerif": "fonts/InfoSerif.ttf"
+      }
+    },
+    {
+      "id": "film",
+      "name": "胶片铭牌",
+      "template": "art/film.svg",
+      "width": 1200,
+      "height": 430,
+      "parameters": [
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "place",
+          "label": "拍摄地点",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "record-strip",
+      "name": "记录长条",
+      "template": "art/record-strip.svg",
+      "width": 1536,
+      "height": 300,
+      "parameters": [
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "place",
+          "label": "拍摄地点",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "weather",
+          "label": "拍摄天气",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 20
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "memorial",
+      "name": "纪念日期",
+      "template": "art/memorial.svg",
+      "width": 1024,
+      "height": 700,
+      "parameters": [
+        {
+          "id": "day",
+          "label": "日",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "month",
+          "label": "月",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "year",
+          "label": "年",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 8
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSerif": "fonts/InfoSerif.ttf"
+      }
+    },
+    {
+      "id": "report",
+      "name": "拍摄简报",
+      "template": "art/report.svg",
+      "width": 1200,
+      "height": 700,
+      "parameters": [
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "time",
+          "label": "拍摄时间",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 12
+        },
+        {
+          "id": "place",
+          "label": "拍摄地点",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "weather",
+          "label": "拍摄天气",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 20
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    },
+    {
+      "id": "greeting",
+      "name": "你好世界",
+      "template": "art/greeting.svg",
+      "width": 1200,
+      "height": 550,
+      "parameters": [
+        {
+          "id": "date",
+          "label": "拍摄日期",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 16
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        },
+        {
+          "id": "greeting",
+          "label": "问候",
+          "kind": "TEXT",
+          "default": "你好世界",
+          "maxLength": 8
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf",
+        "InfoSerif": "fonts/InfoSerif.ttf"
+      }
+    },
+    {
+      "id": "date-dash",
+      "name": "日期刻度",
+      "template": "art/date-dash.svg",
+      "width": 1200,
+      "height": 320,
+      "parameters": [
+        {
+          "id": "year",
+          "label": "年",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 8
+        },
+        {
+          "id": "month",
+          "label": "月",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "day",
+          "label": "日",
+          "kind": "TEXT",
+          "default": "未知",
+          "maxLength": 4
+        },
+        {
+          "id": "ink",
+          "label": "文字颜色",
+          "kind": "COLOR",
+          "default": "#FFFFFF"
+        },
+        {
+          "id": "accent",
+          "label": "点缀颜色",
+          "kind": "COLOR",
+          "default": "#E2BA60"
+        }
+      ],
+      "fonts": {
+        "InfoSans": "fonts/InfoSans.ttf"
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 """Load hash-pinned originals, including an explicitly selected legacy font export."""
 import hashlib
+import re
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -16,6 +17,17 @@ def source_urls(locked):
         license_url = locked["licenseDownloadUrl"]
         if not all(url.startswith(FONT_MIRROR + "fonts/" + locked["id"] + "/") for url in (font_url, license_url)):
             raise ValueError("Unexpected legacy font mirror")
+    elif "licenseUpstream" in locked:
+        license_url = locked["licenseUpstream"]
+        license_parsed = urlparse(license_url)
+        parts = parsed.path.strip("/").split("/")
+        license_parts = license_parsed.path.strip("/").split("/")
+        if (parsed.hostname != "raw.githubusercontent.com" or len(parts) < 4
+                or not re.fullmatch(r"[a-f0-9]{40}", parts[2])
+                or license_parsed.scheme != "https" or license_parsed.hostname != parsed.hostname
+                or license_parts[:3] != parts[:3] or len(license_parts) < 4):
+            raise ValueError("Font and license must use the same pinned upstream revision")
+        font_url = upstream
     else:
         if not upstream.startswith("https://raw.githubusercontent.com/google/fonts/"):
             raise ValueError("Unexpected upstream")

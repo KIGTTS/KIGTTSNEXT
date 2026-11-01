@@ -170,7 +170,9 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             stickerLibrary = {
                 StickerLibraryPanel(catalog.libraries, catalog.items, stickerLibraryId, { stickerLibraryId = it },
                     stickers::imageFile, enabled, addLibrary = openLibrary, editLibrary = {},
-                    selectItem = { addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = it.imageId, width = .32)) },
+                    selectItem = { item -> work {
+                        addLayer(preparePhotoSticker(CardLayer(kind = CardLayerKind.IMAGE, imageId = item.imageId, width = .32), draft, cards, stickers))
+                    } },
                     itemMenu = {}, modifier = Modifier.fillMaxWidth().height(240.dp), showLibraryActions = false)
             }, designTools = { CardDesignTools(cards, draft, enabled, { draft = it }, message) },
             backgroundTools = personalDraft?.let { person -> {
@@ -181,7 +183,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             filterTools = { CardPhotoFilterTools(draft, stickers, enabled, { draft = it }, message) })
     }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact, personal = identity != null) },
         imageFile = stickers::imageFile, insertElement = { layer ->
-            addLayer(layer); mode = CardEditorMode.STICKERS; textEditing = false
+            work { addLayer(preparePhotoSticker(layer, draft, cards, stickers)); mode = CardEditorMode.STICKERS; textEditing = false }
         }, avoidTools = identity != null)
     if (active) generatorLayer?.let { layer -> generators.get(layer.imageId)?.let { source ->
         GeneratedStickerDialog(layer, source, stickers, { generatorLayer = null }, ::updateLayer)

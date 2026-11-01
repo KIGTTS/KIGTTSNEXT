@@ -303,6 +303,98 @@
         "font": "fonts/tiejili-sc.ttf",
         "license": "licenses/tiejili.txt"
       }
+    },
+    {
+      "id": "liujianmaocao",
+      "name": "刘建毛草",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/liujianmaocao/LiuJianMaoCao-Regular.ttf",
+      "sha256": "cab396b91a5b7c0b4005a35891180d06e6751f5ac261fe680aec65c1ae209033",
+      "licenseSha256": "ff56684b0212481e7c3886c26d5a655de9b211c8119e5ccc756138a97b066acc",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "zhimangxing",
+      "name": "志莽行书",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/zhimangxing/ZhiMangXing-Regular.ttf",
+      "sha256": "644e0cae9b40f0b10ab729a01bd32032e3973bac22be3dccae01bf6ae7fde969",
+      "licenseSha256": "10947328199e369a3e6b4a67e8e5507ed99d5bbb264a1f156415aa9b665e4d15",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "iansui",
+      "name": "芫荽",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/iansui/Iansui-Regular.ttf",
+      "sha256": "6e6340d80d618a42b48ade9370c34fa37a8210750c6fbc8efe65f23716538a2b",
+      "licenseSha256": "ba756a625db54032da8e4c8e58a19519964b93fac04267ec15e14ee8c5cc82a5",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "huninn",
+      "name": "jf open 粉圆",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/huninn/Huninn-Regular.ttf",
+      "sha256": "1bd770a5ffc0c06723b567686f8b5db5abf9ab54227f3bbc4e6fd648f4698805",
+      "licenseSha256": "d71824aeb09afc4c2cac01acab5c3db79796e927ba37be40d69fb62a412639b6",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "chironheihk",
+      "name": "昭源黑体 HK",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/chironheihk/ChironHeiHK[wght].ttf",
+      "sha256": "0d788ded72dc88f478818182179af4c7cd143df0bf86557d29729ab132333930",
+      "licenseSha256": "68b9a31cc191bb8f5f428f191209f7d08c6b5b0d4816a293e5bd230724e84f10",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "chocolateclassicalsans",
+      "name": "Chocolate Classical Sans",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/chocolateclassicalsans/ChocolateClassicalSans-Regular.ttf",
+      "sha256": "e6345f3d92c7a9b7044c31a87d9b61f50220b08c0f1dcc2736e94c2aa587ce03",
+      "licenseSha256": "2e07464fdfc781cd68f976fcfab13ad30913c04465571c33eaddc7db20f74ad6",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "wdxllubrifontsc",
+      "name": "WDXL Lubrifont 简体",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/wdxllubrifontsc/WDXLLubrifontSC-Regular.ttf",
+      "sha256": "0134ed261d56aab8fa1860df677858c5d0d3ca899b2aa5430581c458a752e914",
+      "licenseSha256": "048eba87d28b5d74c432cfa38ca44737e86a5508cf912c1b2cc211c45944e1d9",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "lxgwwenkaitc",
+      "name": "霞鹜文楷 TC",
+      "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/lxgwwenkaitc/LXGWWenKaiTC-Regular.ttf",
+      "sha256": "4fcc5aec11cbbf737b0cfab7b63796f7f280087a7a656b2f13342cd5e5318d95",
+      "licenseSha256": "4fff27d35db0e22cd81d58da6f20e09f415cf354a3338e3cf1fc0eb9222c7174",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "chill-round-gothic",
+      "name": "寒蝉全圆体",
+      "upstream": "https://raw.githubusercontent.com/Warren2060/ChillRoundGothic/53505f0818983d2fcdda00dc66e051ad13e81ffb/ttf/ChillRoundGothic_Regular.ttf",
+      "licenseUpstream": "https://raw.githubusercontent.com/Warren2060/ChillRoundGothic/53505f0818983d2fcdda00dc66e051ad13e81ffb/License.txt",
+      "sha256": "b73776f591bae1b64a949ff9b527614919bfff7c6987367e68e57ad0af6468cc",
+      "licenseSha256": "bdefa7c6496762298804550255762c4532124282910e976db960b24d04665ad4",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
+    },
+    {
+      "id": "cubic-11",
+      "name": "俐方体 11 号",
+      "upstream": "https://raw.githubusercontent.com/ACh-K/Cubic-11/4c566f7d6cc5c05ee360fe9cff56b5da1fcafd4d/fonts/ttf/Cubic_11.ttf",
+      "licenseUpstream": "https://raw.githubusercontent.com/ACh-K/Cubic-11/4c566f7d6cc5c05ee360fe9cff56b5da1fcafd4d/OFL.txt",
+      "sha256": "0193f5f033612496df6b45ee92ac3b335bc6a5a24ff95da55ca87b33e57dcf62",
+      "licenseSha256": "2b6e5938e5cffa0b9e183bd05f8c363e174e7ebed1a0556e2855fd1707fa2188",
+      "previewText": "你好，KIGTTS",
+      "iconText": "永"
     }
   ]
 }

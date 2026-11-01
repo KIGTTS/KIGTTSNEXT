@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import jsonschema
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/"
@@ -18,7 +19,8 @@ def main():
     folder.mkdir(parents=True, exist_ok=True)
     spec = importlib.util.spec_from_file_location("resource_builder", ROOT / "tools/Build-ResourcePackage.py")
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
-    projects = [(ROOT / "distribution/resources/classic-frames", "经典相框", "三种简洁的相纸配色，为照片换一种心情。", "crop_square")]
+    config = json.loads((ROOT / "distribution/resource-projects.json").read_text(encoding="utf-8"))
+    assert config["schemaVersion"] == 1
     # Original 3D LUT. Blue-major, green, red order follows the .cube specification.
     filters = ROOT / ".tools/resource-projects/soft-colors"; filters.mkdir(parents=True, exist_ok=True)
     (filters / "package.json").write_text(json.dumps(dict(id="resources.soft-colors", name="柔和色彩", version="1.0.0", versionCode=1, resourceType="FILTER"), ensure_ascii=False), encoding="utf-8")
@@ -29,30 +31,38 @@ def main():
             for r in range(5):
                 lines.append(f"{r/4*.96+.04:.6f} {g/4*.97+.02:.6f} {b/4*.95+.01:.6f}")
     (filters / "soft-warm.cube").write_text("\n".join(lines)+"\n", encoding="utf-8")
-    projects.append((filters, "柔和色彩", "轻柔的暖色调，让日常照片多一点温度。", "filter"))
-    projects += [(ROOT / "distribution/resources/card-borders", "名片边框", "细线、花瓣与电路，为你的名片添一道轮廓。", "id_card"),
-                 (ROOT / "distribution/resources/word-stickers", "彩色字贴", "写下文字，挑选颜色，做一张自己的字贴。", "text_fields")]
     packages = []
-    for project, name, summary, symbol in projects:
+    assets = {}
+    previous = json.loads((folder / "index.json").read_text(encoding="utf-8")) if (folder / "index.json").is_file() else {}
+    previous_packages = {p["id"]: p for p in previous.get("packages", [])}
+    for entry in config["projects"]:
+        project = (ROOT / entry["project"]).resolve()
+        if not project.is_relative_to(ROOT): raise ValueError("Project escapes workspace")
         definition = json.loads((project / "package.json").read_text(encoding="utf-8"))
         filename = f"{definition['id']}-{definition['version']}.kigresource"
         release = module.build(project, folder / filename, args.private_key)
         release.update(mirrors=[dict(name="魔搭", url=BASE + filename + "?view=false")], notes="首次发布。", permissions=[], permissionPurposes={})
-        packages.append(dict(id=definition["id"], name=name, summary=summary, resourceType=definition["resourceType"],
-            category="外观", icon=dict(symbol=symbol), license="CC0-1.0", releases=[release]))
-    assets = {}
-    for package, name, width, height in zip(packages, ("classic-frames", "soft-colors", "card-borders", "word-stickers"), (1200, 480, 1200, 1200), (800, 900, 800, 800)):
-        local = ROOT / f"distribution/resources/previews/{name}.svg"
+        history = previous_packages.get(definition["id"], {}).get("releases", [])
+        for old in history:
+            if old["version"] == release["version"] and old["sha256"] != release["sha256"]: raise ValueError("Published release differs")
+        releases = [release] + [old for old in history if old["version"] != release["version"]]
+        package = dict(id=definition["id"], name=entry["name"], summary=entry["summary"], resourceType=definition["resourceType"],
+            category="外观", icon=dict(symbol=entry["symbol"]), license=entry["license"], releases=releases)
+        if entry.get("description"): package["description"] = entry["description"]
+        packages.append(package)
+        local = (ROOT / "distribution/resources/previews" / entry["preview"]).resolve()
+        if not local.is_relative_to(ROOT / "distribution/resources/previews"): raise ValueError("Preview escapes artwork folder")
+        name = local.stem
         preview_hash = module.digest(local.read_bytes())
-        preview_path = f"artwork/{name}-{preview_hash[:12]}.svg"
+        preview_path = f"artwork/{name}-{preview_hash[:12]}{local.suffix}"
         target = folder / preview_path; target.parent.mkdir(exist_ok=True); target.write_bytes(local.read_bytes())
-        assets[name] = dict(url=BASE + preview_path, sha256=preview_hash, bytes=local.stat().st_size, width=width, height=height, alt=package["name"] + "预览")
+        assets[name] = dict(url=BASE + preview_path, sha256=preview_hash, bytes=local.stat().st_size, width=entry["width"], height=entry["height"], alt=package["name"] + "预览")
         package["thumbnails"] = [name]
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.resources", name="KIGTTS 资源", description="为字幕与照片添加新的风格。",
-        homepage="https://github.com/KIGTTS/KPM", updatedAt="2026-10-26T00:00:00Z", linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
+        homepage="https://github.com/KIGTTS/KPM", updatedAt=datetime.now(timezone.utc).isoformat(timespec="seconds"), linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
     jsonschema.Draft202012Validator(json.loads((ROOT / "distribution/kpm-catalog.schema.json").read_text(encoding="utf-8"))).validate(catalog)
     (folder / "index.json").write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
-    (folder / "README.md").write_text("# KIGTTS 资源\n\n在商店添加相框、滤镜、名片边框与可调字贴。\n\n这里的原创资源与预览按 [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) 提供。\n", encoding="utf-8", newline="\n")
+    (folder / "README.md").write_text("---\nlicense: other\n---\n# KIGTTS 资源\n\n在商店添加相框、滤镜、名片边框与贴纸。每个包按自己的许可提供；字体和第三方素材不统一套用 CC0。\n\n" + "\n".join(f"- {p['name']}：{p['license']}" for p in packages) + "\n\nRemi 来源：[原作者文档](https://jafq11jkbyg.feishu.cn/docx/DPIxd0bRRoLxrixSuDccNvUYnbd)，权利归原作者。\n", encoding="utf-8", newline="\n")
     print(f"Prepared {len(packages)} signed resource packages -> {folder}")
 
 if __name__ == "__main__": main()

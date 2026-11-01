@@ -59,12 +59,18 @@ internal object VectorStickerRenderer {
             val x = node.getAttribute("x").ifBlank { "0" }.toFloat(); val y = node.getAttribute("y").ifBlank { "0" }.toFloat()
             require(x.isFinite() && y.isFinite() && kotlin.math.abs(x) < 100000 && kotlin.math.abs(y) < 100000)
             val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize = size; typeface = faces[node.getAttribute("font-family")] ?: Typeface.DEFAULT }
-            val value = node.textContent.take(512); val length = paint.measureText(value)
+            val value = node.textContent.take(512)
+            node.getAttribute("data-fit-width").takeIf(String::isNotBlank)?.let { raw ->
+                val width = raw.toFloat(); require(width.isFinite() && width in 1f..8192f)
+                val natural = paint.measureText(value)
+                if (natural > width) paint.textSize *= width / natural
+            }
+            val length = paint.measureText(value)
             val start = x - when (node.getAttribute("text-anchor")) { "middle" -> length / 2; "end" -> length; else -> 0f }
             val path = Path(); paint.getTextPath(value, 0, value.length, start, y, path)
             val replacement = document.createElementNS("http://www.w3.org/2000/svg", "path")
             for (i in 0 until node.attributes.length) { val attr = node.attributes.item(i)
-                if (attr.nodeName !in setOf("x", "y", "font-size", "font-family", "text-anchor")) replacement.setAttribute(attr.nodeName, attr.nodeValue) }
+                if (attr.nodeName !in setOf("x", "y", "font-size", "font-family", "text-anchor", "data-fit-width")) replacement.setAttribute(attr.nodeName, attr.nodeValue) }
             replacement.setAttribute("d", pathData(path)); node.parentNode.replaceChild(replacement, node)
         }
         val out = java.io.StringWriter(); TransformerFactory.newInstance().newTransformer().transform(DOMSource(document), StreamResult(out))

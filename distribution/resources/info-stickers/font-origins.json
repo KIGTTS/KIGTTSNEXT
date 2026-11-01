@@ -1,0 +1,23 @@
+[
+  {
+    "family": "InfoSans",
+    "upstream": "https://raw.githubusercontent.com/google/fonts/e7db6ca603fd4862010383ff17ffd6cc4ffac1c0/ofl/notosanssc/NotoSansSC[wght].ttf",
+    "originalSha256": "a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da",
+    "licenseSha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+    "subsetSha256": "34bb06a3a9ce225f7219b424ea0320189dc00b77b587a57b8273258fa79ed34f"
+  },
+  {
+    "family": "InfoSerif",
+    "upstream": "https://raw.githubusercontent.com/google/fonts/a4c0b21f839d7ac65a7d8b49eb81bddd110774a3/ofl/notoserifsc/NotoSerifSC[wght].ttf",
+    "originalSha256": "050080d9255a86808f2945bffac582b31ef32bc36411ce29563b4961670c66f9",
+    "licenseSha256": "5e0da210fb04058a8c0087985d2d456b931c2579811a49655721d3cf0c36b6d6",
+    "subsetSha256": "91db3d99b70556090f8657c329c9fc47283b5cb866f106e393e6c29d71c5db7e"
+  },
+  {
+    "family": "InfoScript",
+    "upstream": "https://raw.githubusercontent.com/google/fonts/6c1dbe27dcf7d817d4b62cec033ba77fa8e2a5ec/ofl/pacifico/Pacifico-Regular.ttf",
+    "originalSha256": "5b6c0d5334a7bf77dea52b975c5a0c408878c0f7115ed5b6fb151f634b7bf701",
+    "licenseSha256": "a47e5daeda73568969395c656823102678f2eefb0d7d7ecb47aac4cc17e42204",
+    "subsetSha256": "57b5eeb3227afb221b42acfb1a52c4ce95412e61660690e504e5032e07eed7a0"
+  }
+]

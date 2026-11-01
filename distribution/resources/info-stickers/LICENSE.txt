@@ -1,0 +1,4 @@
+Original sticker layouts and SVG artwork: CC0 1.0 Universal.
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Embedded font subsets retain their individual SIL OFL 1.1 licenses in licenses/. Font software is not CC0.

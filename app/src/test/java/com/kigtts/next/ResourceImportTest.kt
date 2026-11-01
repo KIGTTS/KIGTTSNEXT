@@ -137,18 +137,28 @@ class ResourceImportTest {
         assertEquals(frameStyles, model.stickers.frameStyles.value)
         assertNotNull(model.stickers.identityFrames.items.value.firstOrNull { it.name == "资源名片边框" }?.imageId)
         assertTrue(model.cards.cards.value.isEmpty())
-        val template = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 64"><rect width="128" height="64" fill="{{ink}}"/></svg>""".toByteArray()
+        val template = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 64"><rect width="128" height="64" fill="{{ink}}"/><text x="10" y="40" font-size="20">{{time}}</text></svg>""".toByteArray()
         val generators = StickerGenerators(items = listOf(VectorStickerGenerator("label", "参数字贴", "label.svg", 128, 64,
-            listOf(StickerParameter("ink", "颜色", StickerParameterKind.COLOR, "#00696E")))))
-        val (sticker, author) = signed(mapOf("label.svg" to template, "generators.json" to PluginJson.encodeToString(generators).toByteArray()), ResourcePackageContent(), ResourceType.STICKERS, api = 30)
+            listOf(StickerParameter("ink", "颜色", StickerParameterKind.COLOR, "#00696E"),
+                StickerParameter("time", "时间", StickerParameterKind.TEXT, "未知")))))
+        val payload = mapOf("label.svg" to template, "generators.json" to PluginJson.encodeToString(generators).toByteArray(),
+            "photo-defaults.json" to """{"schemaVersion":1,"generators":{"label":{"time":"TIME"}}}""".toByteArray())
+        val (sticker, author) = signed(payload, ResourcePackageContent(), ResourceType.STICKERS, api = 34)
         importResource(model, ResourceArchive.read(sticker, File(app.cacheDir, "generated-sticker"), author))
         val store = com.kigtts.next.cards.generators.GeneratedStickers(model.stickers)
         val item = model.stickers.snapshot.value.items.first { it.name == "参数字贴" }
         val original = store.get(item.imageId)!!
-        val changed = store.generate(original, mapOf("ink" to "#FF0000"))
+        assertTrue(original.templateEntry)
+        assertEquals(com.kigtts.next.cards.generators.PhotoStickerField.TIME, original.photoFields["time"])
+        val changed = store.generate(original, original.values + mapOf("ink" to "#FF0000", "time" to "12:34"))
         assertNotEquals(item.imageId, changed)
         assertEquals("#00696E", store.get(item.imageId)!!.values["ink"])
+        assertEquals("未知", store.get(item.imageId)!!.values["time"])
         assertEquals("#FF0000", store.get(changed)!!.values["ink"])
+        assertEquals("12:34", store.get(changed)!!.values["time"])
+        assertFalse(store.get(changed)!!.templateEntry)
+        val (old, oldAuthor) = signed(payload, ResourcePackageContent(), ResourceType.STICKERS, api = 33)
+        assertTrue(runCatching { ResourceArchive.read(old, File(app.cacheDir, "old-photo-defaults"), oldAuthor) }.isFailure)
         assertTrue(model.cards.cards.value.isEmpty())
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
     }

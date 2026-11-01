@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "generators": {
+    "clock": {
+      "time": "TIME",
+      "date": "DATE"
+    },
+    "calendar": {
+      "day": "DAY",
+      "month": "MONTH",
+      "year": "YEAR"
+    },
+    "time-place": {
+      "time": "TIME",
+      "place": "LOCATION"
+    },
+    "location": {
+      "place": "LOCATION",
+      "date": "DATE",
+      "time": "TIME"
+    },
+    "weather": {
+      "weather": "WEATHER",
+      "date": "DATE"
+    },
+    "weekday": {
+      "weekday": "WEEKDAY",
+      "date": "DATE"
+    },
+    "weekday-script": {
+      "weekday": "WEEKDAY_EN",
+      "date": "DATE"
+    },
+    "vertical-date": {
+      "month": "MONTH",
+      "day": "DAY",
+      "year": "YEAR"
+    },
+    "film": {
+      "date": "DATE",
+      "time": "TIME",
+      "place": "LOCATION"
+    },
+    "record-strip": {
+      "date": "DATE",
+      "time": "TIME",
+      "place": "LOCATION",
+      "weather": "WEATHER"
+    },
+    "memorial": {
+      "day": "DAY",
+      "month": "MONTH",
+      "year": "YEAR"
+    },
+    "report": {
+      "date": "DATE",
+      "time": "TIME",
+      "place": "LOCATION",
+      "weather": "WEATHER"
+    },
+    "greeting": {
+      "date": "DATE"
+    },
+    "date-dash": {
+      "year": "YEAR",
+      "month": "MONTH",
+      "day": "DAY"
+    }
+  }
+}

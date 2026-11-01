@@ -1,0 +1,13 @@
+{
+  "id": "resources.info-stickers",
+  "name": "照片信息贴纸",
+  "version": "1.0.0",
+  "versionCode": 1,
+  "resourceType": "STICKERS",
+  "licenses": [
+    "LICENSE.txt",
+    "licenses/InfoSans-OFL.txt",
+    "licenses/InfoSerif-OFL.txt",
+    "licenses/InfoScript-OFL.txt"
+  ]
+}

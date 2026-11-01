@@ -39,6 +39,10 @@ def build(project, output, private_key):
             paths.append(item["template"])
             paths.extend(item.get("fonts", {}).values())
     paths.extend(definition.get("licenses", []))
+    photo_defaults = project / "photo-defaults.json"
+    if photo_defaults.is_file():
+        if not generators.is_file(): raise ValueError("Photo defaults require sticker generators")
+        paths.append("photo-defaults.json")
     card_frames = project / "card-frames.json"
     if definition["resourceType"] == "CARD_FRAME":
         descriptor = json.loads(card_frames.read_text(encoding="utf-8"))
@@ -46,6 +50,7 @@ def build(project, output, private_key):
         payload["card-frames.json"] = card_frames.read_bytes()
         paths.extend(item["artwork"] for item in descriptor["items"])
     api_version = 30 if generators.is_file() or definition["resourceType"] == "CARD_FRAME" else 29
+    if photo_defaults.is_file(): api_version = 34
     if definition["resourceType"] == "FONT":
         api_version = 32
         assert content.get("payload") and not any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles"))

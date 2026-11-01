@@ -57,6 +57,17 @@ class FontSourceAssetsTest(unittest.TestCase):
         url = "https://raw.githubusercontent.com/google/fonts/abc/ofl/example/Example[wght].ttf"
         self.assertEqual((url, url.rsplit("/", 1)[0] + "/OFL.txt", "Example[wght].ttf"), source_urls(dict(upstream=url)))
 
+    def test_independent_font_requires_same_commit_and_repository_license(self):
+        base = "https://raw.githubusercontent.com/example/font/" + "a" * 40 + "/"
+        locked = dict(upstream=base + "fonts/original.ttf", licenseUpstream=base + "LICENSE.txt")
+        self.assertEqual((locked["upstream"], locked["licenseUpstream"], "original.ttf"), source_urls(locked))
+        for url in (base.replace("a" * 40, "main") + "fonts/original.ttf",
+                    base.replace("example/font", "someone/font") + "fonts/original.ttf"):
+            with self.assertRaisesRegex(ValueError, "pinned"):
+                source_urls(dict(locked, upstream=url))
+        with self.assertRaisesRegex(ValueError, "pinned"):
+            source_urls(dict(locked, licenseUpstream=locked["licenseUpstream"].replace("https:", "http:")))
+
 
 if __name__ == "__main__":
     unittest.main()
