@@ -56,8 +56,14 @@ internal object PolaroidPhotoFacts {
 
     /** An already enabled capture fact is saved even when the current paper preset does not show it. */
     suspend fun enrichCapture(context: Context, facts: FrozenPhotoFacts, fields: Set<PhotoTextField>,
-        access: PhotoFactsAccess = AndroidPhotoFactsAccess(context), now: Long = System.currentTimeMillis()): FrozenPhotoFacts =
-        enrich(context, facts, fields + PhotoFactsConsent.rememberedFields(context), access, now)
+        access: PhotoFactsAccess = AndroidPhotoFactsAccess(context), now: Long = System.currentTimeMillis()): FrozenPhotoFacts {
+        val settings = PhotoServiceSettings(context)
+        val capture = settings.captureFacts(facts, now)
+        if (facts.fromCamera && !settings.recordCapture) return capture
+        val requested = if (facts.fromCamera) fields + setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER)
+            else fields + PhotoFactsConsent.rememberedFields(context)
+        return enrich(context, capture, requested, access, now)
+    }
 }
 
 internal fun validPhotoCoordinates(latitude: Double?, longitude: Double?) =

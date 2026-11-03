@@ -91,6 +91,49 @@ class PhotoFactsPermissionTest {
         assertTrue(access.calls.containsAll(listOf("locate", "place", "weather")))
     }
 
+    @Test fun disabledCaptureRecordingSkipsQueriesEvenWhenThePaperRequestsWeather() = runTest {
+        val settings = PhotoServiceSettings(app)
+        app.getSharedPreferences("polaroid-facts", 0).edit().putBoolean("location", true).putBoolean("weather", true).commit()
+        assertTrue(settings.recordCapture)
+        settings.recordCapture = false
+        val access = Access(true)
+        val facts = FrozenPhotoFacts(System.currentTimeMillis(), latitude = 31.23, longitude = 121.47, fromCamera = true)
+        val result = PolaroidPhotoFacts.enrichCapture(app, facts, setOf(PhotoTextField.LOCATION, PhotoTextField.WEATHER), access)
+        assertTrue(access.calls.isEmpty())
+        assertNull(result.latitude); assertNull(result.longitude)
+        assertEquals(facts.capturedAt, result.capturedAt)
+        assertEquals("未知", result.text(PhotoTextField.WEATHER))
+    }
+
+    @Test fun fixedLocationOnlyAppliesToNewCapturesAndDoesNotRequestDevicePosition() = runTest {
+        val settings = PhotoServiceSettings(app)
+        settings.recordCapture = true
+        settings.saveLocation("展会", 31.23, 121.47)
+        val time = System.currentTimeMillis()
+        val access = Access(false)
+        val result = PolaroidPhotoFacts.enrichCapture(app, FrozenPhotoFacts(time, fromCamera = true), emptySet(), access, time)
+        assertEquals("展会", result.location); assertEquals("晴", result.weather)
+        assertFalse(access.calls.any { it in setOf("locate", "permission") })
+        val imported = FrozenPhotoFacts(time)
+        val importedAccess = Access(false)
+        assertEquals(imported, PolaroidPhotoFacts.enrichCapture(app, imported, setOf(PhotoTextField.WEATHER), importedAccess, time))
+        assertTrue(importedAccess.calls.isEmpty())
+    }
+
+    @Test fun changingWeatherSourcesRequiresItsOwnConsent() = runBlocking {
+        app.getSharedPreferences("polaroid-facts", 0).edit().putBoolean("weather", true).commit()
+        val previous = PhotoServiceConfig(PhotoPlaceSource.SYSTEM, PhotoWeatherSource.OPEN_METEO)
+        assertTrue(PhotoFactsConsent.request(app, "weather", previous))
+        val next = PhotoServiceConfig(PhotoPlaceSource.SYSTEM, PhotoWeatherSource.SENIVERSE)
+        val request = async(start = CoroutineStart.UNDISPATCHED) { PhotoFactsConsent.request(app, "weather", next) }
+        try {
+            assertEquals("心知天气", PhotoFactsConsent.pending.value?.service)
+            PhotoFactsConsent.pending.value!!.result.complete(false)
+            assertFalse(request.await())
+            assertNull(PhotoFactsConsent.pending.value)
+        } finally { request.cancel() }
+    }
+
     @Test fun oldExifCoordinatesStillResolveWithoutRequestingDeviceLocation() = runTest {
         val access = Access(false)
         val result = PolaroidPhotoFacts.enrich(app, FrozenPhotoFacts(1, latitude = 31.23, longitude = 121.47),

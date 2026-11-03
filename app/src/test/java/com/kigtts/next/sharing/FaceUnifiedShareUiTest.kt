@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -12,6 +13,7 @@ import com.kigtts.next.identity.ProfileTileKind
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.CardPreviewDialog
+import com.kigtts.next.ui.settings.*
 import com.kigtts.plugin.api.PolaroidCard
 import org.junit.Assert.*
 import org.junit.Rule
@@ -26,6 +28,30 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class FaceUnifiedShareUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun receivingSettingsKeepTheirListGapAndDoNotOfferHotspotCreation() {
+        val model = testAppModel(compose.activity.application)
+        compose.activity.viewModelStore.put("receiving-settings", model)
+        try {
+            compose.setContent { KigttsTheme(ThemeSettings()) {
+                SettingsGroup("面对面") {
+                    FaceReceivingSetting(model, SettingPosition.FIRST)
+                    SettingItem("扩列收藏夹", "", null, SettingPosition.LAST, Modifier.testTag("favorites"))
+                }
+            } }
+            fun checkRows() {
+                val receiver = compose.onNodeWithContentDescription("面对面接收").getUnclippedBoundsInRoot()
+                val favorites = compose.onNodeWithTag("favorites").getUnclippedBoundsInRoot()
+                assertEquals(2f, favorites.top.value - receiver.bottom.value, .01f)
+                compose.onNodeWithText("连接设备").assertDoesNotExist()
+                compose.onNodeWithText("创建临时热点").assertDoesNotExist()
+            }
+            checkRows()
+            compose.runOnIdle { model.faceShare.setReceiving(true) }
+            compose.onNodeWithContentDescription("面对面接收").assertIsOn()
+            checkRows()
+        } finally { compose.runOnIdle { model.faceShare.stop() } }
+    }
 
     @Test fun resolvedPeerShowsItsNicknamePhotoAndActualAvatarShapeAfterSparseUpdates() {
         val file = java.io.File(compose.activity.cacheDir, "discovery-avatar.jpg")
@@ -85,6 +111,8 @@ class FaceUnifiedShareUiTest {
             compose.onNodeWithTag("face-system-share").assertIsDisplayed()
             compose.onNodeWithTag("face-wifi-share").assertIsDisplayed()
             compose.onNodeWithTag("face-share").captureRoboImage("build/previews/face-unified-photo-share.png")
+            compose.onNodeWithTag("face-connection").performClick()
+            compose.onNodeWithText("创建临时热点").assertIsDisplayed()
         } finally { compose.runOnIdle { model.faceShare.stop() } }
     }
 

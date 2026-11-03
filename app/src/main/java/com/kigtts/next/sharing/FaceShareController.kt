@@ -225,13 +225,13 @@ internal class FaceShareController(private val context: Context, private val sco
     }
     fun connectionMessage(value: String) { message(value) }
     fun startHotspot() {
-        if (!receiving.value && panel.value == null) return
+        if (panel.value == null) return
         val epoch = generation
         scope.launch {
-            if (epoch != generation || (!receiving.value && panel.value == null)) return@launch
+            if (epoch != generation || panel.value == null) return@launch
             try {
                 ensureSession()
-                if (epoch == generation && (receiving.value || panel.value != null)) hotspot.start()
+                if (epoch == generation && panel.value != null) hotspot.start()
             }
             catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { message("面对面未能开启，请重试") }

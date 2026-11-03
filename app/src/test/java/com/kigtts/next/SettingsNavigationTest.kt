@@ -50,7 +50,7 @@ class SettingsNavigationTest {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.navigate(Destination.Settings) }
         val documents = setOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY, SettingsCategory.OPEN_SOURCE_LICENSES)
-        SettingsCategory.entries.filterNot { it in documents }.forEach { category ->
+        SettingsCategory.entries.filterNot { it in documents || it == SettingsCategory.PHOTO_WEATHER }.forEach { category ->
             compose.onNodeWithText(category.title).performScrollTo().performClick()
             compose.runOnIdle {
                 assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
@@ -70,6 +70,15 @@ class SettingsNavigationTest {
             } else compose.onNodeWithContentDescription("返回上一页").performClick()
             compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
         }
+        compose.onNodeWithText(SettingsCategory.CAMERA.title).performScrollTo().performClick()
+        compose.onNodeWithText(SettingsCategory.PHOTO_WEATHER.title).performScrollTo().performClick()
+        compose.runOnIdle {
+            assertEquals(Destination.SettingsDetail(SettingsCategory.PHOTO_WEATHER), model.state.value.destination)
+            assertEquals(listOf(Destination.Home, Destination.Settings, Destination.SettingsDetail(SettingsCategory.CAMERA)), model.state.value.navigationStack)
+        }
+        back()
+        compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.CAMERA), model.state.value.destination) }
+        back()
         compose.onNodeWithText("关于").performScrollTo().performClick()
         documents.forEach { category ->
             compose.onNode(hasText(category.title) and hasClickAction()).performScrollTo().performClick()

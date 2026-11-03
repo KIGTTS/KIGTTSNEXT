@@ -16,6 +16,26 @@ import kotlin.coroutines.CoroutineContext
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class FaceReceivingTest {
+    @Test fun receivingAloneCannotCreateAHotspot() {
+        val context = ApplicationProvider.getApplicationContext<android.app.Application>()
+        val queued = ArrayDeque<Runnable>()
+        val dispatcher = object : CoroutineDispatcher() {
+            override fun dispatch(context: CoroutineContext, block: Runnable) { queued.add(block) }
+        }
+        val scope = CoroutineScope(SupervisorJob() + dispatcher)
+        val model = testAppModel(context)
+        val controller = FaceShareController(context, scope, model.cards, model.identities, {})
+        try {
+            controller.setReceiving(true)
+            val discoveryWork = queued.size
+            controller.startHotspot()
+            assertEquals("接收开关不得额外启动热点任务", discoveryWork, queued.size)
+            assertTrue(controller.receiving.value)
+            assertNull(controller.panel.value)
+            assertFalse(controller.hotspot.starting.value)
+        } finally { controller.stop(); scope.cancel() }
+    }
+
     @Test fun closingShareBeforeHotspotStartupDoesNotReopenTheSession() {
         val context = ApplicationProvider.getApplicationContext<android.app.Application>()
         val queued = ArrayDeque<Runnable>()

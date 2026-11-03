@@ -22,9 +22,10 @@ internal interface PhotoFactsAccess {
 }
 
 internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFactsAccess {
-    override suspend fun consent(kind: String) = PhotoFactsConsent.request(context, kind)
+    private val settings = PhotoServiceSettings(context).snapshot()
+    override suspend fun consent(kind: String) = PhotoFactsConsent.request(context, kind, settings)
     override suspend fun locationPermission(): Boolean {
-        if (!PhotoFactsConsent.request(context, "location")) return false
+        if (!PhotoFactsConsent.request(context, "location", settings)) return false
         fun has(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
         val prefs = context.getSharedPreferences("polaroid-facts", 0)
         if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION) && prefs.getBoolean("location-permission-v2", false)) return true
@@ -35,6 +36,12 @@ internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFact
     }
     override suspend fun currentLocation() = PhotoCaptureLocation(context).current()
     override suspend fun place(latitude: Double, longitude: Double): String? {
+        if (settings.placeSource == PhotoPlaceSource.AMAP) {
+            return PhotoAmapLocation.read(latitude, longitude, settings.amapKey)?.name
+        }
+        if (settings.placeSource == PhotoPlaceSource.OFFLINE) {
+            return withContext(Dispatchers.IO) { PhotoPlaceIndex.nearby(context, latitude, longitude) }
+        }
         val address = try { if (!Geocoder.isPresent()) null else if (Build.VERSION.SDK_INT >= 33) {
             withTimeoutOrNull(2000) { suspendCancellableCoroutine<android.location.Address?> { continuation ->
                 Geocoder(context, Locale.getDefault()).getFromLocation(latitude, longitude, 1, object : Geocoder.GeocodeListener {
@@ -52,5 +59,5 @@ internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFact
             listOfNotNull(it.adminArea, it.locality, it.subLocality).filter(String::isNotBlank).distinct().joinToString(" · ").takeIf(String::isNotBlank)
         } ?: withContext(Dispatchers.IO) { PhotoPlaceIndex.nearby(context, latitude, longitude) }
     }
-    override suspend fun weather(facts: FrozenPhotoFacts) = PhotoWeatherSnapshot.read(facts)
+    override suspend fun weather(facts: FrozenPhotoFacts) = PhotoWeatherSources.read(settings, facts)
 }

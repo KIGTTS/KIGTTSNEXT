@@ -8,6 +8,7 @@ enum class SettingsCategory(val title: String, val summary: String) {
     WEB("网页", "管理网页登录信息"),
     BACKUP_RESTORE("备份与还原", "导入、导出快捷文本及其它兼容格式"),
     CAMERA("拍照", "拍立得相机与照片导入"),
+    PHOTO_WEATHER("天气设置", "位置与天气数据源"),
     ABOUT("关于", "版本、协议与隐私"),
     USER_AGREEMENT("用户协议", ""),
     PRIVACY_POLICY("隐私政策", ""),

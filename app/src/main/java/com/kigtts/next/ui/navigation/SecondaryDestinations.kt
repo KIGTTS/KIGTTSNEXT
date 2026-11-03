@@ -94,7 +94,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)
                     SettingsCategory.WEB -> WebSettingsScreen()
                     SettingsCategory.BACKUP_RESTORE -> BackupRestoreScreen(model)
-                    SettingsCategory.CAMERA -> CameraSettingsScreen()
+                    SettingsCategory.CAMERA -> CameraSettingsScreen { model.navigate(Destination.SettingsDetail(SettingsCategory.PHOTO_WEATHER)) }
+                    SettingsCategory.PHOTO_WEATHER -> PhotoWeatherSettingsScreen()
                     SettingsCategory.ABOUT -> AboutScreen(openLink = { url ->
                         model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url,
                             mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
