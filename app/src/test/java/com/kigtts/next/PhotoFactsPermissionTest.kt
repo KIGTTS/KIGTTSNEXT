@@ -124,14 +124,16 @@ class PhotoFactsPermissionTest {
         app.getSharedPreferences("polaroid-facts", 0).edit().putBoolean("weather", true).commit()
         val previous = PhotoServiceConfig(PhotoPlaceSource.SYSTEM, PhotoWeatherSource.OPEN_METEO)
         assertTrue(PhotoFactsConsent.request(app, "weather", previous))
-        val next = PhotoServiceConfig(PhotoPlaceSource.SYSTEM, PhotoWeatherSource.SENIVERSE)
-        val request = async(start = CoroutineStart.UNDISPATCHED) { PhotoFactsConsent.request(app, "weather", next) }
-        try {
-            assertEquals("心知天气", PhotoFactsConsent.pending.value?.service)
-            PhotoFactsConsent.pending.value!!.result.complete(false)
-            assertFalse(request.await())
-            assertNull(PhotoFactsConsent.pending.value)
-        } finally { request.cancel() }
+        for (source in listOf(PhotoWeatherSource.SENIVERSE, PhotoWeatherSource.UAPI)) {
+            val next = PhotoServiceConfig(PhotoPlaceSource.SYSTEM, source)
+            val request = async(start = CoroutineStart.UNDISPATCHED) { PhotoFactsConsent.request(app, "weather", next) }
+            try {
+                assertEquals(source.label, PhotoFactsConsent.pending.value?.service)
+                PhotoFactsConsent.pending.value!!.result.complete(false)
+                assertFalse(request.await())
+                assertNull(PhotoFactsConsent.pending.value)
+            } finally { request.cancel() }
+        }
     }
 
     @Test fun oldExifCoordinatesStillResolveWithoutRequestingDeviceLocation() = runTest {

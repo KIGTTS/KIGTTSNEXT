@@ -45,4 +45,14 @@ class PhotoWeatherSettingsUiTest {
         assertEquals(PhotoWeatherSource.SENIVERSE, PhotoServiceSettings(compose.activity).weatherSource)
         compose.onRoot().captureRoboImage("build/previews/photo-weather-settings.png")
     }
+
+    @Test fun uapiCanBeSelectedAndReselectedWithoutOpeningAKeyDialog() {
+        compose.setContent { KigttsTheme(ThemeSettings()) { PhotoWeatherSettingsScreen() } }
+        compose.onNodeWithText("UAPI").performScrollTo().performClick()
+        assertEquals(PhotoWeatherSource.UAPI, PhotoServiceSettings(compose.activity).weatherSource)
+        compose.onNodeWithText("UAPI").performClick()
+        compose.onNodeWithText("API Key").assertDoesNotExist()
+        compose.onNodeWithText("免密钥 · 城市天气实况").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/previews/photo-weather-uapi.png")
+    }
 }

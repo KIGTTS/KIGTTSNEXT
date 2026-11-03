@@ -17,13 +17,17 @@ internal object PhotoPlaceIndex {
         }.also { cached = it }
     }
     fun nearby(context: Context, latitude: Double, longitude: Double, locale: Locale = Locale.getDefault()): String? {
+        val name = city(context, latitude, longitude, locale) ?: return null
+        return if (locale.language == "zh") "$name 附近" else "Near $name"
+    }
+    /** Plain city name for explicit weather queries; never fall back to the requester's IP. */
+    fun city(context: Context, latitude: Double, longitude: Double, locale: Locale = Locale.SIMPLIFIED_CHINESE): String? {
         if (!validPhotoCoordinates(latitude, longitude)) return null
         val nearest = places(context).asSequence()
             .filter { abs(it.latitude - latitude) < .3 && abs(it.longitude - longitude) < .5 }
             .map { it to distance(latitude, longitude, it.latitude, it.longitude) }.minByOrNull { it.second }
             ?.takeIf { it.second <= 25 }?.first ?: return null
-        val name = if (locale.language == "zh") nearest.local else nearest.name
-        return if (locale.language == "zh") "$name 附近" else "Near $name"
+        return if (locale.language == "zh") nearest.local else nearest.name
     }
     private fun distance(lat: Double, lon: Double, otherLat: Double, otherLon: Double): Double {
         val a = sin(Math.toRadians(otherLat - lat) / 2).pow(2) + cos(Math.toRadians(lat)) * cos(Math.toRadians(otherLat)) * sin(Math.toRadians(otherLon - lon) / 2).pow(2)

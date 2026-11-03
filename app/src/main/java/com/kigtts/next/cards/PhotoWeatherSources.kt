@@ -12,15 +12,17 @@ import kotlin.math.roundToInt
 internal object PhotoWeatherSources {
     private const val CURRENT_WINDOW = 3 * 60 * 60 * 1000L
     suspend fun read(settings: PhotoServiceConfig, facts: FrozenPhotoFacts,
-        now: Long = System.currentTimeMillis(), fetch: PhotoJsonFetch = PhotoServiceHttp::get): String? {
+        now: Long = System.currentTimeMillis(), city: String? = null, fetch: PhotoJsonFetch = PhotoServiceHttp::get): String? {
         if (!validPhotoCoordinates(facts.latitude, facts.longitude)) return null
         if (settings.weatherSource == PhotoWeatherSource.OPEN_METEO) return PhotoWeatherSnapshot.read(facts)
         val at = facts.capturedAt ?: return null
         // Current-only sources must not silently supply today's weather for an old photo.
         if (now - at !in -600_000L..CURRENT_WINDOW) return null
         val source = settings.weatherSource
-        val key = settings.key(source).takeIf(String::isNotBlank) ?: return null
+        val key = settings.key(source)
+        if (source.requiresKey && key.isBlank()) return null
         return when (source) {
+            PhotoWeatherSource.UAPI -> PhotoUapiWeather.read(city, at, now, fetch)
             PhotoWeatherSource.AMAP -> {
                 val city = PhotoAmapLocation.read(facts.latitude!!, facts.longitude!!, key, fetch)?.adcode ?: return null
                 fetch(PhotoServiceHttp.query("https://restapi.amap.com/v3/weather/weatherInfo", "key" to key,
@@ -49,10 +51,10 @@ internal object PhotoWeatherSources {
         val weather = result.optJSONObject("now") ?: return null
         return caption(weather.optString("text"), weather.optString("temperature").toDoubleOrNull())
     }
-    private fun matchesCapture(observed: Long?, captured: Long, now: Long): Boolean = observed != null &&
+    internal fun matchesCapture(observed: Long?, captured: Long, now: Long): Boolean = observed != null &&
         captured > 0 && now - captured in -600_000L..CURRENT_WINDOW && now - observed in -600_000L..CURRENT_WINDOW &&
         abs(observed - captured) <= CURRENT_WINDOW
-    private fun caption(text: String, temperature: Double?): String? {
+    internal fun caption(text: String, temperature: Double?): String? {
         if (text.isBlank() || text == "null" || text.length > 50 || temperature == null || !temperature.isFinite() || temperature !in -100.0..70.0) return null
         return "$text ${temperature.roundToInt()}°C"
     }

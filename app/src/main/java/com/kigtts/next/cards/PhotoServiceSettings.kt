@@ -6,10 +6,11 @@ internal enum class PhotoPlaceSource(val label: String) {
     SYSTEM("系统优先"), OFFLINE("离线地名"), AMAP("高德地图")
 }
 
-internal enum class PhotoWeatherSource(val label: String, val description: String) {
+internal enum class PhotoWeatherSource(val label: String, val description: String, val requiresKey: Boolean = false) {
     OPEN_METEO("Open-Meteo", "免密钥 · 支持历史天气"),
-    AMAP("高德天气", "中国地区实况 · 需要 Web 服务 Key"),
-    SENIVERSE("心知天气", "城市天气实况 · 需要 API Key")
+    UAPI("UAPI", "免密钥 · 城市天气实况"),
+    AMAP("高德天气", "中国地区实况 · 需要 Web 服务 Key", true),
+    SENIVERSE("心知天气", "城市天气实况 · 需要 API Key", true)
 }
 
 internal data class PhotoManualLocation(val name: String, val latitude: Double, val longitude: Double)
@@ -19,7 +20,7 @@ internal class PhotoServiceConfig(val placeSource: PhotoPlaceSource, val weather
     fun key(source: PhotoWeatherSource) = when (source) {
         PhotoWeatherSource.AMAP -> amapKey
         PhotoWeatherSource.SENIVERSE -> seniverseKey
-        PhotoWeatherSource.OPEN_METEO -> ""
+        PhotoWeatherSource.OPEN_METEO, PhotoWeatherSource.UAPI -> ""
     }
 }
 

@@ -52,7 +52,7 @@ import com.kigtts.next.ui.components.feedbackClick
                 SettingItem(source.label, source.description, Icons.Default.Cloud,
                     if (index == 0) SettingPosition.FIRST else if (index == PhotoWeatherSource.entries.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
                     Modifier.selectable(selected, role = Role.RadioButton, onClick = feedbackClick {
-                        if (selected && source != PhotoWeatherSource.OPEN_METEO) editingKey = source
+                        if (selected && source.requiresKey) editingKey = source
                         else { preferences.weatherSource = source; weather = source }
                     }), trailing = { RadioButton(selected, null) })
             }

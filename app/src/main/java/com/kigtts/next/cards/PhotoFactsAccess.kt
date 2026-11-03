@@ -59,5 +59,10 @@ internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFact
             listOfNotNull(it.adminArea, it.locality, it.subLocality).filter(String::isNotBlank).distinct().joinToString(" · ").takeIf(String::isNotBlank)
         } ?: withContext(Dispatchers.IO) { PhotoPlaceIndex.nearby(context, latitude, longitude) }
     }
-    override suspend fun weather(facts: FrozenPhotoFacts) = PhotoWeatherSources.read(settings, facts)
+    override suspend fun weather(facts: FrozenPhotoFacts): String? {
+        val city = if (settings.weatherSource == PhotoWeatherSource.UAPI && validPhotoCoordinates(facts.latitude, facts.longitude)) {
+            withContext(Dispatchers.IO) { PhotoPlaceIndex.city(context, facts.latitude!!, facts.longitude!!) }
+        } else null
+        return PhotoWeatherSources.read(settings, facts, city = city)
+    }
 }
