@@ -17,5 +17,6 @@ internal fun profileSharingFiles(identity: IdentityCard, stickers: StickerReposi
             tiles.getJSONObject(i).put("file", target.name)
         }
     }
+    profileWebAppearance(identity, stickers, directory, manifest, files)
     return files + File(directory, "profile.json").also { it.writeText(manifest.toString(), Charsets.UTF_8) }
 }

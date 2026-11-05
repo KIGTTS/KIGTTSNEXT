@@ -130,8 +130,12 @@ internal class FaceShareController(private val context: Context, private val sco
         transfer = scope.launch {
             try {
                 val active = ensureSession()
-                val prepared = withContext(Dispatchers.IO) { media.prepare(current.ids, original, composed, active.root) }
+                val (prepared, appearance) = withContext(Dispatchers.IO) {
+                    media.prepare(current.ids, original, composed, active.root) to
+                        FaceWebAppearance.prepare(context, File(active.root, "web-appearance/${faceToken()}"))
+                }
                 if (epoch != generation) return@launch
+                active.webAppearance = appearance
                 active.assets.clear(); active.assets.putAll(prepared.associateBy { it.id })
                 mutablePanel.value = current.copy(mode = FaceMode.BROWSER); mutableStatus.value = ""
                 if (!receiving.value) stopDiscovery()

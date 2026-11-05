@@ -18,7 +18,7 @@ internal class PhotoHttpResponse(private val output: OutputStream) {
         val reason = when (status) { 200 -> "OK"; 202 -> "Accepted"; 400 -> "Bad Request"; 403 -> "Forbidden"; 404 -> "Not Found"; 409 -> "Conflict"; else -> "Unavailable" }
         val head = buildString {
             append("HTTP/1.1 $status $reason\r\nContent-Type: $mime\r\nConnection: close\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n")
-            append("Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'\r\n")
+            append("Content-Security-Policy: default-src 'none'; img-src 'self' data:; font-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'\r\n")
             length?.let { append("Content-Length: $it\r\n") }
             extra.forEach { (key, value) -> require('\r' !in value && '\n' !in value); append("$key: $value\r\n") }
             append("\r\n")

@@ -26,7 +26,9 @@ import kotlinx.coroutines.*
         FaceSharePreview(identities.first(), emptyList(), model.stickers)
     } else if (session.kind == "photos") {
         val manifest = remember(session) { JSONObject(File(session.root, "share.json").readText()).getJSONArray("files") }
-        val images = remember(session) { (0 until minOf(3, manifest.length())).map { File(session.root, manifest.getJSONObject(it).getString("path")) } }
+        val images = remember(session) { (0 until manifest.length()).map { manifest.getJSONObject(it) }
+            .filter { !webAppearanceAsset(it.optString("name")) && it.optString("name").substringAfterLast('.').lowercase() in setOf("jpg", "jpeg", "png", "webp", "gif", "heic", "heif") }
+            .take(3).map { File(session.root, it.getString("path")) } }
         Box(Modifier.fillMaxWidth().height(230.dp).testTag("cloud-native-photos"), contentAlignment = Alignment.Center) {
             images.indices.reversed().forEach { index ->
                 ProfileTileImage(images[index], Modifier.width(240.dp).height(210.dp).graphicsLayer {
@@ -45,7 +47,7 @@ import kotlinx.coroutines.*
 
 @Composable internal fun ColumnScope.CloudNativeReceived(model: AppViewModel, session: CloudNativeSession) {
     val scope = rememberCoroutineScope()
-    val shown = session.files.filter { session.kind != "profile" || it.name == "profile.pdf" }
+    val shown = session.files.filter { !webAppearanceAsset(it.name) && (session.kind != "profile" || it.name == "profile.pdf") }
     if (session.files.isEmpty()) {
         Column(Modifier.fillMaxWidth().height(220.dp), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center) {

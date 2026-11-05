@@ -162,12 +162,17 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         withContext(Dispatchers.IO) {
             val root = storage.file(folder).apply { mkdirs() }
             try {
-                val resources = files.mapIndexed { index, source ->
+                val sharedFiles = files.toMutableList()
+                val appearance = files.firstOrNull { it.name == "profile.json" }?.let {
+                    JSONObject(it.readText()).optJSONObject("appearance")
+                } ?: shareWebAppearance(context, root, sharedFiles)
+                val resources = sharedFiles.mapIndexed { index, source ->
                     val name = "${index}.${source.extension.lowercase().takeIf { it.matches(Regex("[a-z0-9]{1,12}")) } ?: "bin"}"
                     source.copyTo(File(root, name))
                     JSONObject().put("path", name).put("name", source.name).put("bytes", source.length())
                 }
                 File(root, "share.json").writeText(JSONObject().put("schema", 1).put("kind", kind).put("title", title.take(160))
+                    .put("appearance", appearance)
                     .put("files", JSONArray(resources)).toString(), Charsets.UTF_8)
             } catch (error: Exception) { root.deleteRecursively(); throw error }
         }
