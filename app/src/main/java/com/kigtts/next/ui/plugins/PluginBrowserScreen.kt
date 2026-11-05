@@ -47,6 +47,7 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
     } }
     val devices = remember(web) { WebPagePrivileges(web, model.pluginManager.permissions, "plugin:$owner:$pageId",
         model.registry.plugin(owner)?.descriptor?.name ?: owner, scope, { currentActive }, gate::authorize).also { it.install() } }
+    val sharing = remember(web) { if (document.root != null) com.kigtts.next.sharing.WebSharingTransfer(model, owner, web, scope) { currentActive }.also { it.install() } else null }
     LaunchedEffect(web) { web.loadUrl(document.url) }
     LaunchedEffect(web, ready, contextUpdate) { if (ready) contextUpdate?.let { web.evaluateJavascript(it, null) } }
     LaunchedEffect(webTheme, ready) { if (ready) web.applyKigttsTheme() }
@@ -54,7 +55,7 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
     DisposableEffect(web, lifecycle) {
         val observer = LifecycleEventObserver { _, event -> if (event == Lifecycle.Event.ON_STOP) { devices.pause(); web.onPause() } else if (event == Lifecycle.Event.ON_START && currentActive) { web.onResume(); devices.resume() } }
         lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer); devices.close(); web.stopLoading(); web.destroy() }
+        onDispose { lifecycle.removeObserver(observer); sharing?.close(); devices.close(); web.stopLoading(); web.destroy() }
     }
     AndroidView(factory = { web }, modifier = Modifier.fillMaxSize().testTag("plugin-browser"))
 }

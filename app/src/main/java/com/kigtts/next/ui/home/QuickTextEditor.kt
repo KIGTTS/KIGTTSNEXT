@@ -31,6 +31,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     var addGroup by remember { mutableStateOf(false) }
     var editGroup by remember { mutableStateOf<String?>(null) }
     var deleting by remember { mutableStateOf<QuickPhrase?>(null) }
+    var menu by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val feedback = rememberDragFeedback()
@@ -46,7 +47,8 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 }, Modifier.testTag("quick-edit-done"))
                 Text("编辑快捷文本", Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.titleMedium)
             }
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane").reorderGestures(drag)) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane")
+                .reorderGestures(drag, onStationaryHold = { menu = it.menuTarget() })) {
                 val columns = quickPhraseColumns(maxWidth.value, minimum = if (landscape) 1 else 2)
                 Column(Modifier.fillMaxSize()) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
@@ -62,6 +64,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
         }
     }
     if (addGroup) AddCategoryDialog(categories, model) { addGroup = false }
+    QuickTextContextMenu(menu, model, { menu = null }, { editGroup = it })
     editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
     deleting?.let { phrase ->
         MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除这条快捷文本？") },

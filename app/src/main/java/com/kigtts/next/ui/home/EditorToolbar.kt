@@ -39,6 +39,13 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
         androidx.activity.compose.BackHandler(menu) { menu = false }
         DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
             val media = model.mediaRepository.get(state.mediaId)
+            if (state.mediaId == null || media?.kind == MediaKind.AUDIO) {
+                DropdownMenuItem(text = { Text("添加到快捷文本") },
+                    leadingIcon = { Icon(Icons.Default.Add, null) },
+                    enabled = state.editorText.isNotBlank(),
+                    onClick = feedbackClick { menu = false; model.addEditorToQuickText() },
+                    modifier = Modifier.testTag("subtitle-add-quick-text"))
+            }
             if (media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)) MediaScale.entries.forEach { mode ->
                 DropdownMenuItem(text = { Text(mode.label) }, leadingIcon = { if (media?.scale == mode) Icon(Icons.Default.Check, null) },
                     onClick = feedbackClick { model.mediaScale(mode); menu = false }, modifier = Modifier.testTag("media-scale-" + mode.name.lowercase()))

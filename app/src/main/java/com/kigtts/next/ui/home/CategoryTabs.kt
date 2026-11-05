@@ -50,6 +50,8 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
     })
     val drop = rememberReorderDrop(drag)
     val editingNow by rememberUpdatedState(editing)
+    var menu by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
+    var menuEdit by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(state.selectedCategory,categories,drag.key) {
         if(drag.key!=null)return@LaunchedEffect
         val index=categories.indexOf(state.selectedCategory)
@@ -63,7 +65,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         SlotActions(UiSlot.TAB_START, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
         LazyRow(Modifier.weight(1f).testTag("category-tabs").reorderGestures(drag,
-            onStart = { editingNow || model.quickSort.begin() }),
+            onStart = { editingNow || model.quickSort.begin() }, onStationaryHold = { menu = it.menuTarget(group = true) }),
             state = list, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             itemsIndexed(categories, key = { _, name -> "category/" + name }) { index, category ->
                 val previous = categories.getOrNull(index - 1); val next = categories.getOrNull(index + 1)
@@ -104,4 +106,6 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
         SlotActions(UiSlot.TAB_END, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)
     }
     ReorderAutoScroll(drag, { list.layoutInfo.viewportSize.width.toFloat() }, { list.scrollBy(it) }, horizontal = true)
+    QuickTextContextMenu(menu, model, { menu = null }, { if (editing) editGroup(it) else menuEdit = it })
+    menuEdit?.let { EditCategoryDialog(it, categories, model) { menuEdit = null } }
 }

@@ -104,10 +104,9 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
         job = scope.launch {
             try {
                 when (current.kind) {
-                    ExternalFileType.QUICK_TEXT_BACKUP -> when (val result = model.quickTextBackup.prepareImport(context.contentResolver, Uri.fromFile(file))) {
-                        is QuickTextReply.Prepared -> model.navigate(Destination.QuickTextReview(result.value.token))
-                        is QuickTextReply.Failure -> error(result.message)
-                        else -> error("无法准备导入")
+                    ExternalFileType.QUICK_TEXT_BACKUP -> {
+                        model.quickTextBackup.offerImport(context.contentResolver, Uri.fromFile(file))
+                        model.navigate(Destination.SettingsDetail(SettingsCategory.BACKUP_RESTORE))
                     }
                     ExternalFileType.LEGACY_BACKUP -> {
                         model.navigate(Destination.SettingsDetail(SettingsCategory.BACKUP_RESTORE))

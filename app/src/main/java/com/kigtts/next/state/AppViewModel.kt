@@ -69,7 +69,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
     internal val contactFavorites by lazy { com.kigtts.next.identity.ContactFavorites.get(application) }
     init { com.kigtts.next.identity.warmIdentityBackground(viewModelScope, stickers, identities) }
-    private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message) }
+    private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message, { sharing.shareMedia(it) }) }
     internal val faceShare get() = faceShareDelegate.value
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)
     val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
@@ -101,6 +101,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     internal val quickTextBackup by lazy { QuickTextBackup(this) }
+    internal val sharing by lazy { com.kigtts.next.sharing.SharingCoordinator(this, viewModelScope) }
     internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, cards, viewModelScope, ::message)
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
@@ -151,7 +152,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         hostRuntime?.legacyPiperStartupChecked ?: java.util.concurrent.atomic.AtomicBoolean(false),
         hasPacks = { LegacyPiperPacks.exists(application.filesDir, pluginManager.paths.data) },
         missing = { buildSet {
-            if (pluginManager.status.none { "speech-service" in it.installed.manifest.capabilities }) add(MissingPiperComponent.SERVICE)
+            if (registry.plugins.none { it.tts?.info?.role == TtsRole.SERVICE }) add(MissingPiperComponent.SERVICE)
             if (pluginManager.status.none { it.installed.manifest.id == "engine.piper" }) add(MissingPiperComponent.ENGINE)
         } }, install = ::openSpeechPluginStore)
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
@@ -179,7 +180,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
 
-    fun externalIntent(intent: android.content.Intent?) { externalFiles.accept(intent); externalLinks.accept(intent) }
+    fun externalIntent(intent: android.content.Intent?) { if (sharing.accept(intent)) return; externalFiles.accept(intent); externalLinks.accept(intent) }
 
     private fun update(transform: (AppState) -> AppState) {
         mutableState.update(transform)
@@ -243,6 +244,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun quickImageCard(mediaId: String, title: String) {
         editPhraseDetails(null, state.value.selectedCategory)
         content.editPhrase { it.switchType(QuickCardType.MEDIA).attach(QuickCardType.MEDIA, mediaId).copy(text = title) }
+    }
+    fun addEditorToQuickText() {
+        val current = state.value
+        if (current.editorText.isBlank() || current.mediaId != null && mediaRepository.get(current.mediaId)?.kind != com.kigtts.next.media.MediaKind.AUDIO) return
+        editPhraseDetails(null, current.selectedCategory)
+        content.editPhrase { it.copy(text = current.editorText) }
     }
     fun closeSidePage() { update { it.copy(sidePage = null) } }
     fun closePanel() { update { it.copy(panel = null, quickTextEditing = false) } }
@@ -366,6 +373,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
+        if (runCatching { sharing.handle(pluginId, actionId, inputs) }.getOrElse { message(it.message ?: "分享暂不可用"); true }) {
+            complete?.invoke(true); return
+        }
         if (runCatching { audioDevices.handle(plugin, actionId, inputs) }.getOrElse { message(it.message ?: "音频设置失败"); true }) {
             update { it.copy(pluginRevision = it.pluginRevision + 1) }; complete?.invoke(true); return
         }
@@ -434,6 +444,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 update { it.copy(busyPlugins = it.busyPlugins - pluginId) }
                 complete?.invoke(accepted)
                 sourceLinks.deliver()
+                sharing.deliver()
             }
         }
     }
@@ -464,6 +475,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         synthesisGuidance.refresh()
         if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
         pluginCatalogReady = true
+        sharing.deliver()
         externalFiles.pluginsChanged()
         legacyPiperGuidance.onStartup()
         sourceLinks.deliver()
@@ -475,7 +487,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             message("请在语音识别服务中选用识别引擎"); return
         }
         if (tts && plugin.tts?.info?.role != TtsRole.SERVICE && registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE }) {
-            message("请在语音合成服务中选择引擎和声音"); return
+            message("请在朗读设置中选择引擎和声音"); return
         }
         viewModelScope.launch {
             speech.stopAll()
@@ -501,6 +513,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         if (faceShareDelegate.isInitialized()) faceShare.dispose()
         super.onCleared()
         storeBootstrap.close()
+        sharing.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
         audioDevices.close()
         captionOutput.close()

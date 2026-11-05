@@ -59,6 +59,9 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
             put("plugins", buildJsonArray { manager.registry.plugins.forEach { plugin ->
                 add(buildJsonObject { put("id", plugin.descriptor.id); put("name", plugin.descriptor.name)
                     put("version", plugin.descriptor.version); put("kind", "native"); put("enabled", true)
+                    if (plugin.descriptor.id in manager.builtinIds) {
+                        put("builtin", true); put("installed", true); put("apiVersion", PLUGIN_API_VERSION)
+                    }
                     manager.status.firstOrNull { it.installed.manifest.id == plugin.descriptor.id }?.installed?.let {
                         put("versionCode", it.manifest.versionCode); put("apiVersion", it.manifest.apiVersion)
                         put("installed", true); put("publisherSha256", it.publisherSha256)

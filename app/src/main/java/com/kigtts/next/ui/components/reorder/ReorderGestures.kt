@@ -78,8 +78,9 @@ fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Bool
 }
 
 /** Detect on the stable list container so item placement never interrupts the pointer. */
-fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }, handlesOnly: Boolean = false, onStart: () -> Boolean = { true }) = onGloballyPositioned { drag.origin = it.positionInRoot() }
-    .pointerInput(drag, handlesOnly) {
+fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }, handlesOnly: Boolean = false,
+    onStart: () -> Boolean = { true }, onStationaryHold: ((ReorderTarget) -> Unit)? = null) = onGloballyPositioned { drag.origin = it.positionInRoot() }
+    .pointerInput(drag, handlesOnly, onStationaryHold != null) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             if (!canStart()) return@awaitEachGesture
@@ -111,6 +112,26 @@ fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true
                         event.changes.forEach { it.consume() }
                     } while (event.changes.any { it.pressed })
                     return@awaitEachGesture
+                }
+                // Context actions share the deliberate hold with sorting. Do not lift or
+                // move the item until the finger actually leaves the touch-slop circle.
+                if (!handle && onStationaryHold != null) {
+                    var moved = false
+                    while (true) {
+                        val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == start.id } ?: break
+                        val delta = change.position - start.position
+                        if (!change.pressed) {
+                            change.consume()
+                            if (delta.getDistance() <= viewConfiguration.touchSlop)
+                                onStationaryHold(item.copy(bounds = item.bounds.translate(drag.origin)))
+                            break
+                        }
+                        change.consume()
+                        if (delta.getDistance() > viewConfiguration.touchSlop) {
+                            initialDelta = delta; moved = true; break
+                        }
+                    }
+                    if (!moved) return@awaitEachGesture
                 }
                 drag.begin(item, start.position)
                 drag.drag(initialDelta)

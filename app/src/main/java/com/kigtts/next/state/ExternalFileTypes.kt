@@ -17,7 +17,8 @@ internal object ExternalFileTypes {
     }
 
     fun inspect(file: File, displayName: String): ExternalFileType {
-        detect(displayName).takeUnless { it == ExternalFileType.UNKNOWN }?.let { return it }
+        val declared = detect(displayName)
+        if (!displayName.endsWith(".kigcard", true) && declared != ExternalFileType.UNKNOWN) return declared
         val zipped = file.inputStream().use { it.read() == 0x50 && it.read() == 0x4b }
         if (!zipped) return if (file.length() <= MAX_METADATA) legacy(file.readText(Charsets.UTF_8)) else ExternalFileType.UNKNOWN
         return ZipFile(file).use { zip ->

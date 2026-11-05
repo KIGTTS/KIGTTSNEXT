@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.navigation.RegisterPageLoading
 import com.kigtts.plugin.api.QuickTextReply
+import com.kigtts.next.plugins.quicktext.groups
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,6 +27,8 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var exportPath by rememberSaveable { mutableStateOf<String?>(null) }
+    var exportGroups by remember { mutableStateOf(false) }
+    val importing by backup.pendingImport.collectAsStateWithLifecycle()
     RegisterPageLoading(busy)
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         val path = exportPath; exportPath = null
@@ -42,11 +45,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
         if (uri != null) scope.launch {
             busy = true
             try {
-                when (val reply = backup.prepareImport(resolver, uri)) {
-                    is QuickTextReply.Prepared -> model.navigate(Destination.QuickTextReview(reply.value.token))
-                    is QuickTextReply.Failure -> model.message(reply.message)
-                    else -> model.message("无法准备导入")
-                }
+                backup.offerImport(resolver, uri)
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { model.message(error.message ?: "导入失败") }
             finally { busy = false }
@@ -56,20 +55,11 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     val formats = remember(model.registry, state.pluginRevision) { backupSettingsCards(model.registry, model.context()) }
     SettingsLayout {
         SettingsGroup("快捷文本", "包含分组、文字和媒体附件；导入前会显示修改预览。") {
-            SettingItem("导入快捷文本", "选择 KIGTTS .kigcards 备份", Icons.Default.FileDownload, SettingPosition.FIRST,
+            SettingItem("导入快捷文本", "选择文件和要还原的分组", Icons.Default.FileDownload, SettingPosition.FIRST,
                 Modifier.testTag("backup-import"), enabled = !busy, onClick = { load.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) })
-            SettingItem("导出快捷文本", "保存完整快捷文本库", Icons.Default.FileUpload, SettingPosition.LAST,
+            SettingItem("导出快捷文本", "选择要备份的分组", Icons.Default.FileUpload, SettingPosition.LAST,
                 Modifier.testTag("backup-export"), enabled = !busy && exportPath == null, onClick = {
-                    busy = true
-                    scope.launch {
-                        try {
-                            val file = backup.prepareExport()
-                            exportPath = "exports/${file.name}"
-                            save.launch("KIGTTS-快捷文本.kigcards")
-                        } catch (cancel: CancellationException) { throw cancel }
-                        catch (error: Exception) { model.message(error.message ?: "导出失败") }
-                        finally { busy = false }
-                    }
+                    exportGroups = true
                 })
         }
         LegacyBackupImport(model.legacyImports)
@@ -81,4 +71,31 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
             }
         } }
     }
+    if (exportGroups) QuickBackupGroupPicker("选择要导出的分组", model.quickTexts.groups(), "导出", { exportGroups = false }) { selected ->
+        exportGroups = false; busy = true
+        scope.launch {
+            try {
+                val file = backup.prepareExport(groupIds = selected.toList())
+                exportPath = "exports/${file.name}"; save.launch("KIGTTS-快捷文本.kigcard")
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) { model.message(error.message ?: "导出失败") }
+            finally { busy = false }
+        }
+    }
+    importing?.let { selection -> QuickBackupGroupPicker("选择要还原的分组", selection.groups, "继续", {
+        backup.discardImport(selection); backup.clearPending()
+    }) { selected ->
+        backup.clearPending(); busy = true
+        scope.launch {
+            try {
+                when (val reply = backup.importSelected(selection, selected)) {
+                    is QuickTextReply.Prepared -> model.navigate(Destination.QuickTextReview(reply.value.token))
+                    is QuickTextReply.Failure -> model.message(reply.message)
+                    else -> model.message("无法准备导入")
+                }
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (error: Exception) { model.message(error.message ?: "导入失败") }
+            finally { busy = false }
+        }
+    } }
 }

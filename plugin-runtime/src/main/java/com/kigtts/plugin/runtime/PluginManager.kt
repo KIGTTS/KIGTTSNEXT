@@ -14,6 +14,7 @@ data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
 class PluginManager(private val context: Context, private val builtins: List<KigPlugin>) {
+    val builtinIds: Set<String> = builtins.map { it.descriptor.id }.toSet()
     val applicationContext: Context get() = context.applicationContext
     @Volatile var onNotificationsUnavailable: (String) -> Unit = {}
     val paths = PluginPaths(context)
@@ -43,12 +44,15 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     val uiChanges: kotlinx.coroutines.flow.SharedFlow<String> = uiInvalidations
     private val mutation = Mutex()
     private val loaded = linkedMapOf<String, Pair<Int, RemotePlugin>>()
+    private val builtinBrokers = mutableListOf<HostSpeechBroker>()
+    private var builtinsAttached = false
     @Volatile var status: List<PluginStatus> = emptyList()
         private set
     suspend fun reload() = mutation.withLock { reloadLocked() }
     suspend fun workers() = mutation.withLock { loaded.map { (id, entry) -> WorkerStatus(id, entry.first, entry.second.alive) } }
     suspend fun restart(id: String) = mutation.withLock { paths.validateId(id);unload(id);reloadLocked() }
     suspend fun refreshContext(context: PluginContext): Boolean = mutation.withLock {
+        if (builtinsAttached) builtins.forEach { it.contributions(context) }
         readiness.observe(context)
         var changed = false
         for ((_, proxy) in loaded.values) {
@@ -67,7 +71,21 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         changed
     }
     private suspend fun reloadLocked() {
-        val installed = withContext(Dispatchers.IO) { packages.installed() }
+        if (!builtinsAttached) {
+            for (plugin in builtins) {
+                val broker = HostSpeechBroker(plugin.descriptor.id, registry, paths)
+                try {
+                    withContext(Dispatchers.IO) { plugin.attach(ScopedEnvironment(context, paths.storage(plugin.descriptor.id),
+                        File(context.filesDir, "builtin-assets/${plugin.descriptor.id}").apply { mkdirs() }, false,
+                        speechBroker = BuiltinSpeechBroker(plugin.descriptor.id, registry, broker))) }
+                    builtinBrokers += broker
+                } catch (error: Exception) { broker.close(); throw error }
+            }
+            builtinsAttached = true
+        }
+        // A previous standalone build may still be installed. Keep its data and package,
+        // but never start a second service or expose it as an independently managed plugin.
+        val installed = withContext(Dispatchers.IO) { packages.installed().filterNot { info -> builtins.any { it.descriptor.id == info.manifest.id } } }
         loaded.filterValues { !it.second.alive }.keys.toList().forEach { unload(it) }
         loaded.keys.filter { id -> safeMode() || installed.none { it.manifest.id == id && it.enabled } }.toList().forEach { unload(it) }
         val statuses = installed.map { info ->
@@ -118,6 +136,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     }
     suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false) = mutation.withLock {
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
+        require(builtins.none { it.descriptor.id == id }) { "此功能已内置，请在设置中打开朗读设置" }
         unload(id)
         try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
         finally { reloadLocked() }
@@ -143,5 +162,9 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         try { withContext(Dispatchers.IO) { ResourceImporter.import(paths.storage(id), open(), directory, name, zip) } }
         finally { reloadLocked() }
     }
-    suspend fun close() = mutation.withLock { readiness.close(); loaded.keys.toList().forEach { unload(it) } }
+    suspend fun close() = mutation.withLock {
+        readiness.close(); loaded.keys.toList().forEach { unload(it) }
+        if (builtinsAttached) builtins.forEach { it.close() }
+        builtinBrokers.forEach { it.close() }; builtinBrokers.clear(); builtinsAttached = false
+    }
 }

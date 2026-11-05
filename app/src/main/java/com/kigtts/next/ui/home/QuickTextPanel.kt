@@ -36,7 +36,10 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
         feedback = feedback, move = model.quickTexts::movePhrase)
     val density = androidx.compose.ui.platform.LocalDensity.current
     val layouts = rememberSaveableStateHolder()
-    BoxWithConstraints(modifier.padding(horizontal = 8.dp).testTag("quick-sort-pane").reorderGestures(drag, onStart = model.quickSort::begin)) {
+    var menu by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
+    var editGroup by remember { mutableStateOf<String?>(null) }
+    BoxWithConstraints(modifier.padding(horizontal = 8.dp).testTag("quick-sort-pane").reorderGestures(drag,
+        onStart = model.quickSort::begin, onStationaryHold = { menu = it.menuTarget() })) {
         Column(Modifier.fillMaxSize()) {
             // The pager changes axis with the layout. Keep the fade outside that keyed
             // pager so rebuilding it cannot discard the outgoing list before it fades.
@@ -55,6 +58,8 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
         PhraseEdgeTransfer(drag, state.selectedCategory, categories, with(density) { maxWidth.toPx() }, model, enabled = !singleRow)
         QuickPhraseDragOverlay(drag, phrases, singleRow, columns, model)
     }
+    QuickTextContextMenu(menu, model, { menu = null }, { editGroup = it })
+    editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
 }
 
 @Composable

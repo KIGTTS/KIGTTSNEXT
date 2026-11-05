@@ -12,7 +12,7 @@ import java.lang.ref.WeakReference
 
 /** The UI and external manager must share exactly one worker owner in the main process. */
 class HostPluginRuntime private constructor(private val application: Application) {
-    val manager = PluginManager(application, emptyList())
+    val manager = PluginManager(application, listOf(com.kigtts.engines.speechservice.SpeechServicePlugin()))
     val recovery = com.kigtts.next.recovery.CrashRecovery(application)
     internal val legacyPiperStartupChecked = java.util.concurrent.atomic.AtomicBoolean(false)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))

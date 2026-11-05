@@ -97,4 +97,10 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
         groupState.value = ordered
         save()
     }
+    fun removeCategory(name: String): Boolean {
+        if (name !in groupState.value || groupState.value.size <= 1) return false
+        itemState.value = itemState.value.filterNot { it.category == name }
+        groupState.value -= name; iconState.value -= name; idState.value -= name
+        save(); return true
+    }
 }

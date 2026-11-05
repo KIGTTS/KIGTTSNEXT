@@ -54,4 +54,21 @@ class QuickTextBackupTest {
         assertThrows(IllegalArgumentException::class.java) { model.pluginManager.paths.packageDirectory(PluginPaths.HOST_BACKUP_ID) }
         assertTrue(model.pluginManager.paths.storage(PluginPaths.HOST_BACKUP_ID).root.isDirectory)
     }
+    @Test fun selectedGroupsAndUnsavedDraftExportWithoutMutatingTheLibrary() = runBlocking {
+        val model = AppViewModel(app, emptyList())
+        val groups = model.quickTexts.categories.value
+        val chosen = groups.first()
+        model.quickTexts.add("仅选中的分组", chosen)
+        val backup = QuickTextBackup(model)
+        val before = model.phrases.value.toList()
+        val groupId = requireNotNull(model.quickTexts.categoryIds.value[chosen])
+        val archive = backup.prepareExport(listOf(groupId))
+        val selection = QuickArchiveSelection.read(archive)
+        assertEquals(listOf(groupId), selection.groups.map { it.id })
+        assertTrue(selection.entries.all { it.groupId == groupId })
+        val draft = PhraseDraft("test", null, "尚未保存的文字", "草稿", chosen, null)
+        val exported = QuickArchiveSelection.read(backup.exportDraft(draft))
+        assertEquals("尚未保存的文字", exported.entries.single().text)
+        assertEquals(before, model.phrases.value)
+    }
 }

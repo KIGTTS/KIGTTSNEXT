@@ -14,7 +14,8 @@ import java.io.File
 private const val SHARE_LOG_TAG = "FaceTransfer"
 
 internal class FaceShareController(private val context: Context, private val scope: CoroutineScope,
-    private val cards: CardRepository, private val identities: IdentityRepository, private val message: (String) -> Unit) {
+    private val cards: CardRepository, private val identities: IdentityRepository, private val message: (String) -> Unit,
+    private val outgoing: ((List<String>) -> Unit)? = null) {
     private val mutablePanel = MutableStateFlow<FacePanel?>(null); val panel = mutablePanel.asStateFlow()
     private val mutablePeers = MutableStateFlow<List<FacePeer>>(emptyList()); val peers = mutablePeers.asStateFlow()
     private val mutableRequests = MutableStateFlow<List<FaceOffer>>(emptyList()); val requests = mutableRequests.asStateFlow()
@@ -50,6 +51,7 @@ internal class FaceShareController(private val context: Context, private val sco
     private val sessionLock = Mutex()
     private fun profile() = (identities.current?.publicJson() ?: JSONObject().put("nickname", "KIGTTS 用户")).put("id", sessionId).put("avatar", avatar ?: "")
     fun openSend(ids: List<String>) {
+        outgoing?.let { it(ids.distinct()); return }
         generation++; starting?.cancel(); starting = null
         val selected = ids.distinct()
         mutablePanel.value = FacePanel(selected, FaceMode.SEND, personal = identities.current?.designId?.let { selected.singleOrNull() == it } == true)
