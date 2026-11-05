@@ -57,15 +57,18 @@ internal fun faceContactDialog(link: ContactLink, id: String): String {
 
 internal fun faceProfileMarkup(json: JSONObject, cover: FaceAsset?, path: String, icon: (ContactLink) -> String, media: List<FaceAsset> = emptyList()): String {
     val person = PublicIdentityProfile.from(json)
-    val avatar = person.avatar?.takeIf { it.matches(Regex("[A-Za-z0-9+/=]{1,65535}")) }?.let {
-        val clip = AvatarFrames.svgPath(person.avatarFrame)
-        """<svg class="avatar" viewBox="0 0 1 1" role="img" aria-label="头像"><defs><clipPath id="avatar-clip" clipPathUnits="objectBoundingBox"><path d="$clip"/></clipPath></defs><image href="data:image/jpeg;base64,$it" width="1" height="1" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatar-clip)"/></svg>"""
-    } ?: "<div class=\"avatar avatar-fallback\" aria-hidden=\"true\">${faceHtml(person.name.take(1))}</div>"
+    val identity = if (cover != null) "" else {
+        val avatar = person.avatar?.takeIf { it.matches(Regex("[A-Za-z0-9+/=]{1,65535}")) }?.let {
+            val clip = AvatarFrames.svgPath(person.avatarFrame)
+            """<svg class="avatar" viewBox="0 0 1 1" role="img" aria-label="头像"><defs><clipPath id="avatar-clip" clipPathUnits="objectBoundingBox"><path d="$clip"/></clipPath></defs><image href="data:image/jpeg;base64,$it" width="1" height="1" preserveAspectRatio="xMidYMid slice" clip-path="url(#avatar-clip)"/></svg>"""
+        } ?: "<div class=\"avatar avatar-fallback\" aria-hidden=\"true\">${faceHtml(person.name.take(1))}</div>"
+        "$avatar<h1>${faceHtml(person.name)}</h1>" + person.bio.takeIf(String::isNotBlank)?.let { "<p class=\"bio\">${faceHtml(it)}</p>" }.orEmpty()
+    }
     val contacts = person.contacts.mapIndexed { i, link ->
         val label = faceHtml(link.label.ifBlank { "联系方式" })
         """<button class="contact-link" data-contact="contact-$i">${icon(link)}<span class="contact-label"><strong>$label</strong><small>${faceHtml(link.value)}</small></span><span aria-hidden="true">↗</span></button>""" + faceContactDialog(link, "contact-$i")
     }.joinToString("")
-    return """<header class="profile"><div class="brand">KIGTTS · 面对面</div>${cover?.let { "<img class=\"profile-cover\" src=\"${path}file/${it.id}\" alt=\"个人名片\">" }.orEmpty()}$avatar<h1>${faceHtml(person.name)}</h1>${person.bio.takeIf(String::isNotBlank)?.let { "<p class=\"bio\">${faceHtml(it)}</p>" }.orEmpty()}${faceWebTiles(person, path, media, icon)}${if (contacts.isNotBlank()) "<section class=\"profile-group\"><h2>联系方式</h2><nav class=\"contact-links\" aria-label=\"联系方式\">$contacts</nav></section>" else ""}</header>"""
+    return """<header class="profile"><div class="brand">KIGTTS · 面对面</div>${cover?.let { "<img class=\"profile-cover\" src=\"${path}file/${it.id}\" alt=\"个人名片\">" }.orEmpty()}$identity${faceWebTiles(person, path, media, icon)}${if (contacts.isNotBlank()) "<section class=\"profile-group\"><h2>联系方式</h2><nav class=\"contact-links\" aria-label=\"联系方式\">$contacts</nav></section>" else ""}</header>"""
 }
 
 internal const val faceProfileStyles = """
