@@ -5,10 +5,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-internal data class CloudSharingSetupState(val busy: Boolean = false, val error: String? = null)
+internal data class CloudSharingSetupState(val busy: Boolean = false, val error: String? = null,
+    val progress: Float? = null)
 /** One explicit choice precedes downloading, installation and all outgoing cloud use. */
 internal class CloudSharingSetup(private val preferences: SharedPreferences, private val scope: CoroutineScope,
-    private val ready: () -> Boolean, private val installed: () -> Boolean, private val install: suspend () -> Unit) {
+    private val ready: () -> Boolean, private val installed: () -> Boolean,
+    private val install: suspend (progress: (Float?) -> Unit) -> Unit,
+    private val installTimeoutMillis: Long = 60_000) {
     private val mutable = MutableStateFlow<CloudSharingSetupState?>(null)
     val state = mutable.asStateFlow()
     val enabled get() = preferences.getBoolean("cloud", false)
@@ -27,24 +30,33 @@ internal class CloudSharingSetup(private val preferences: SharedPreferences, pri
     }
     fun useCloud() {
         if (job?.isActive == true) return
-        mutable.value = CloudSharingSetupState(busy = true)
+        mutable.value = CloudSharingSetupState(busy = true, progress = 0f)
         job = scope.launch {
             try {
-                install()
+                withTimeout(installTimeoutMillis) {
+                    val attempt = currentCoroutineContext()[Job]!!
+                    install { value ->
+                        if (attempt.isActive) mutable.value = CloudSharingSetupState(busy = true,
+                            progress = value?.coerceIn(0f, 1f))
+                    }
+                }
+                currentCoroutineContext().ensureActive()
                 check(ready()) { "云共享暂时无法启动，可以先使用系统分享" }
                 preferences.edit().putBoolean("cloud", true).apply()
                 mutable.value = null; pending?.complete(true); pending = null
+            } catch (timeout: TimeoutCancellationException) {
+                mutable.value = CloudSharingSetupState(error = "启用超时，请重试或使用系统分享")
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { mutable.value = CloudSharingSetupState(error = error.message ?: "安装未完成，请重试") }
         }
     }
     fun useSystem() {
-        if (mutable.value?.busy == true) return
+        job?.cancel(); job = null
         preferences.edit().putBoolean("cloud", false).apply()
         mutable.value = null; pending?.complete(false); pending = null
     }
     fun dismiss() {
-        if (mutable.value?.busy == true) return
+        job?.cancel(); job = null
         mutable.value = null; pending?.cancel(); pending = null
     }
     fun close() { job?.cancel(); pending?.cancel(); pending = null }

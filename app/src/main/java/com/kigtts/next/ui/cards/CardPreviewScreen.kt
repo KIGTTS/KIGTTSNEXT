@@ -21,7 +21,7 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val saved = catalog.cards.firstOrNull { it.id == cardId }
-    if (saved == null) { androidx.compose.material3.Text("这张拍立得已移除", Modifier.padding(24.dp)); return }
+    if (saved == null) { androidx.compose.material3.Text("这张照片已移除", Modifier.padding(24.dp)); return }
     var view by remember(cardId) { mutableStateOf(saved) }
     var busy by remember { mutableStateOf(false) }
     LaunchedEffect(saved) { view = saved }
@@ -36,8 +36,8 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     RegisterPageLoading(busy || actions.busy)
     RegisterPageActions(buildList {
         add(ToolbarAction("save-card-preview", "保存到系统相册", Icons.Default.Download, enabled, click = { actions.cardAction(saved, CardMenuAction.SAVE) }))
-        if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑拍立得", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
-        add(ToolbarAction("share-card-preview", "分享拍立得", Icons.Default.Share, enabled, click = { face?.send(listOf(cardId)) ?: actions.share(saved) }))
+        if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑图片", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
+        add(ToolbarAction("share-card-preview", "分享照片", Icons.Default.Share, enabled, click = { face?.send(listOf(cardId)) ?: actions.share(saved) }))
         if (receipt != null) add(ToolbarAction("sender-card-preview", "发送者名片", Icons.Default.AccountCircle, enabled, click = { senderInfo = true }))
         add(ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
             click = { actions.cardAction(saved, CardMenuAction.QUICK) })) })
@@ -48,7 +48,7 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
         scope.launch {
             try {
                 withContext(Dispatchers.IO) { synchronized(stickers) {
-                    val current = requireNotNull(cards.cards.value.firstOrNull { it.id == cardId }) { "拍立得已移除" }
+                    val current = requireNotNull(cards.cards.value.firstOrNull { it.id == cardId }) { "照片已移除" }
                     check(current.imageId == candidate.imageId) { "照片已更新，请重新调整" }
                     cards.update(current.copy(photoX = candidate.photoX, photoY = candidate.photoY, photoZoom = candidate.photoZoom))
                 } }

@@ -16,7 +16,7 @@ import com.kigtts.next.ui.navigation.ToolbarAction
 fun SecondarySidePage(page: SidePage, close: () -> Unit, sketch: SketchState, shareRequest: Int,
     shareConsumed: () -> Unit, shareSketch: () -> Unit, message: (String) -> Unit, model: AppViewModel) {
     if (page == SidePage.CARDS) {
-        CardPageScaffold(page.label, close, backLabel = "返回大字幕") { CardHostScreen(model) }
+        com.kigtts.next.ui.album.AlbumHost(model, close)
         return
     }
     if (page == SidePage.SKETCH) {

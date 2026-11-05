@@ -23,7 +23,7 @@ fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, ca
     width: Float, model: AppViewModel, columns: Int = 2) {
     PhraseEdgeTransfer(drag, category, categories, width, model)
     val picked = phrases.firstOrNull { it.id == drag.key }
-    val position = rememberReorderDrop(drag)
+    val position = rememberReorderDrop(drag, fadeOverlay = true)
     val elevation by animateDpAsState(if (picked != null && !drag.settling) 8.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "phrase-drag-elevation")
     val scale by animateFloatAsState(if (picked != null && !drag.settling) 1.015f else 1f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "phrase-drag-scale")
     val density = LocalDensity.current
@@ -36,6 +36,7 @@ fun BoxScope.PhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, ca
                 .graphicsLayer {
                     translationX = position.value.x; translationY = position.value.y
                     scaleX = scale; scaleY = scale
+                    alpha = drag.overlayAlpha
                 }.testTag("dragged-phrase").clearAndSetSemantics {}, elevation = elevation, repository = model.mediaRepository)
     }
 }

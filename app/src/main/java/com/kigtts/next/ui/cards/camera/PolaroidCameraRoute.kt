@@ -36,10 +36,23 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.isActive
 
-/** Saving, camera suspension and printing stay in the native camera scene until its paper is delivered. */
+/** New captures save in the background; older replacement requests retain their editor handoff. */
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera) {
+    if (destination.cardId == null && !destination.systemCamera) {
+        // A new camera visit starts with the gallery icon, independent of earlier queued saves.
+        val gallery = remember { CameraVisitGalleryPreview() }
+        val save: (List<PolaroidCameraCapture>) -> Unit = { shots ->
+            model.cameraSaves.enqueue(shots, onSaved = gallery.capture())
+        }
+        CardCameraScreen(onCapture = { save(listOf(it)) },
+            onCancel = model::navigateBack, message = model::message,
+            onGallery = { model.navigate(Destination.Cards) },
+            onBurst = save,
+            onVideo = { file, timeLapse -> model.saveCameraVideo(file, timeLapse, gallery.capture()) }, galleryPreview = gallery.uri)
+        return
+    }
     val request by model.cardCapture.printRequest.collectAsStateWithLifecycle()
     val copying by model.cardCapture.processing.collectAsStateWithLifecycle()
     val frameRequest by model.cardCapture.frameRequest.collectAsStateWithLifecycle()

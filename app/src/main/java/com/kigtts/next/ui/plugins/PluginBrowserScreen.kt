@@ -47,7 +47,7 @@ internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: S
     } }
     val devices = remember(web) { WebPagePrivileges(web, model.pluginManager.permissions, "plugin:$owner:$pageId",
         model.registry.plugin(owner)?.descriptor?.name ?: owner, scope, { currentActive }, gate::authorize).also { it.install() } }
-    val sharing = remember(web) { if (document.root != null) com.kigtts.next.sharing.WebSharingTransfer(model, owner, web, scope) { currentActive }.also { it.install() } else null }
+    val sharing = remember(web) { if (document.root != null) com.kigtts.next.sharing.WebSharingTransfer(model, owner, web, scope, active = { currentActive }).also { it.install() } else null }
     LaunchedEffect(web) { web.loadUrl(document.url) }
     LaunchedEffect(web, ready, contextUpdate) { if (ready) contextUpdate?.let { web.evaluateJavascript(it, null) } }
     LaunchedEffect(webTheme, ready) { if (ready) web.applyKigttsTheme() }

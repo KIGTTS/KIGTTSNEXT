@@ -58,55 +58,39 @@ class CardPageChromeTest {
         ViewCompat.dispatchApplyWindowInsets(root.getChildAt(0), insets)
     }
 
-    @Test fun portraitSideAndDeeperEntryKeepTheLargeFlexibleTitle() {
+    @Test fun portraitSideAndDeeperEntryUseTheDeviceAlbum() {
         val model = show()
+        fun checkAlbum() {
+            compose.onNodeWithTag("device-album").assertIsDisplayed()
+            compose.onNodeWithTag("album-title").assertIsDisplayed()
+            compose.onNodeWithContentDescription("系统相册").assertIsDisplayed()
+        }
         compose.runOnIdle { model.openSidePage(SidePage.CARDS) }
-        compose.onNodeWithTag("large-page-bar").assertIsDisplayed()
-        compose.onNodeWithTag("small-page-bar").assertDoesNotExist()
-        compose.onNodeWithTag("page-back").performClick()
+        checkAlbum()
+        compose.onNodeWithContentDescription("返回").performClick()
         compose.runOnIdle { model.navigate(Destination.Cards) }
-        compose.onNodeWithTag("large-page-bar").assertIsDisplayed()
-        compose.onNodeWithTag("small-page-bar").assertDoesNotExist()
-        compose.onNodeWithTag("page-back").performClick()
+        checkAlbum()
+        compose.onNodeWithContentDescription("返回").performClick()
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
     }
 
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
-    fun bothLandscapeEntriesUseOneLineCoverStatusAndRetainPredictiveReturn() {
+    fun theDeviceAlbumStaysUsableInLandscapeAndRetainsPredictiveReturn() {
         val model = show(); systemInsets()
-        fun checkChrome() {
-            compose.onNodeWithTag("large-page-bar").assertDoesNotExist()
-            val barNode = compose.onNodeWithTag("small-page-bar")
-            val bar = barNode.getUnclippedBoundsInRoot()
-            val page = compose.onNodeWithTag("immersive-page").getUnclippedBoundsInRoot()
-            val body = compose.onNodeWithTag("polaroid-home").getUnclippedBoundsInRoot()
-            val back = compose.onNodeWithTag("page-back").getUnclippedBoundsInRoot()
-            assertEquals(0f, bar.top.value, .5f)
-            assertEquals(88f, (bar.bottom - bar.top).value, .5f)
-            assertTrue(back.top.value >= 24f)
-            assertEquals("The album rail avoids status icons without reserving the whole app bar", page.top.value + 24f, body.top.value, .5f)
-            assertTrue("Only system safe insets reduce the browser", (body.bottom - body.top) >= page.bottom - page.top - 49.dp)
-            val title = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-            compose.onNodeWithTag("page-title").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(title) }
-            assertEquals(1, title.single().lineCount)
-            val output = File("build/previews/immersive-polaroid-small-bar.png").apply { parentFile.mkdirs() }
-            barNode.captureRoboImage(output.absolutePath)
-            val image = output.inputStream().use { requireNotNull(BitmapFactory.decodeStream(it)) }
-            try {
-                val density = image.height / (bar.bottom - bar.top).value
-                val statusColor = image.getPixel(2, 2)
-                assertEquals("The immersive page continues behind transparent window chrome", image.getPixel(2, (32 * density).toInt()), statusColor)
-                assertNotEquals(android.graphics.Color.BLACK, statusColor)
-                assertEquals(255, android.graphics.Color.alpha(statusColor))
-            } finally { image.recycle() }
+        fun checkAlbum() {
+            compose.onNodeWithTag("device-album").assertIsDisplayed()
+            val title = compose.onNodeWithTag("album-title").getUnclippedBoundsInRoot()
+            val body = compose.onNodeWithTag("device-album").getUnclippedBoundsInRoot()
+            assertTrue(title.top.value >= 24f)
+            assertTrue(body.top >= title.bottom)
         }
         compose.runOnIdle { model.openSidePage(SidePage.CARDS) }
-        checkChrome()
-        compose.onNodeWithTag("page-back").performClick()
+        checkAlbum()
+        compose.onNodeWithContentDescription("返回").performClick()
         val parent = Destination.PluginPage("tools.cloud-agent", "chat")
         compose.runOnIdle { model.navigate(parent); model.navigate(Destination.Cards) }
-        checkChrome()
+        checkAlbum()
         val dispatcher = compose.activity.onBackPressedDispatcher
         compose.runOnIdle {
             dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 100f, 0f, BackEventCompat.EDGE_LEFT))

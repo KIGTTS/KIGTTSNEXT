@@ -31,7 +31,7 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
 /** Retire only after reaching the off-screen endpoint; interrupted/re-entered pages reuse their pose. */
 @Composable
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
-    parentPreview: Float, finished: () -> Unit, vertical: Boolean = entry.cameraRequestId != null,
+    parentPreview: Float, finished: () -> Unit, vertical: Boolean = false,
     cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) {
     var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
     val memory = remember(entry) { PageMotionMemory(if (mounted) {

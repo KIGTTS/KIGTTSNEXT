@@ -50,6 +50,7 @@ fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories:
 @Composable
 private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: LandscapePanelMotion) {
     val open = state.panel != null
+    val openSystemCamera = systemCameraShortcut(model::message)
     val progress = ((motion.width - LandscapePanelGeometry.COLLAPSED) / (motion.geometry.widthFor(1) - LandscapePanelGeometry.COLLAPSED)).coerceIn(0f, 1f)
     val context = model.context()
     val longPress = remember(context, state.pluginRevision) { model.registry.gestureActions(PluginGesture.QUICK_TEXT_LONG_PRESS, context).firstOrNull() }
@@ -62,11 +63,11 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        ToolButton(if (open) "编辑快捷文本" else "拍立得", if (open) Icons.Default.Edit else Icons.Default.PhotoLibrary,
-            { if (open) model.editQuickTexts() else model.openSidePage(SidePage.CARDS) },
+        ToolButton(if (open) "编辑快捷文本" else "相机", if (open) Icons.Default.Edit else Icons.Default.PhotoCamera,
+            { if (open) model.editQuickTexts() else model.cardCapture.open(systemCamera = false) },
             Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start"), shapes = shape, size = sideSize,
-            onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
-            iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.Edit, progress))
+            onLongClick = openSystemCamera.takeUnless { open },
+            iconBlend = ToolIconBlend(Icons.Default.PhotoCamera, Icons.Default.Edit, progress))
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
             SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,
                 revision = state.pluginRevision, visible = open && progress > .001f)

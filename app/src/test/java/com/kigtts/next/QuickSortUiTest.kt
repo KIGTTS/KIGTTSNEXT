@@ -190,20 +190,20 @@ class QuickSortUiTest {
         assertEquals(model.phrases.value.map { it.id }, restored.phrases.value.map { it.id })
         assertEquals(model.categories.value, restored.categories.value)
     }
-    @Test fun holdingPolaroidButtonOpensCameraDirectly() {
+    @Test fun holdingCameraButtonOpensTheSystemCamera() {
         val model = show()
         compose.runOnIdle { model.closePanel() }
         compose.onNodeWithTag("dock-end").performTouchInput { longClick() }
-        assertTrue(model.state.value.destination is Destination.CardCamera)
+        assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivity.action)
     }
-    @Test fun homeHorizontalSwipeOpensTheRealPolaroidScene() {
+    @Test fun homeHorizontalSwipeOpensTheCamera() {
         val model = show()
         compose.runOnIdle { model.closePanel() }
         compose.onNodeWithTag("page-layer/0/home").performTouchInput {
-            swipe(Offset(width * .75f, height * .5f), Offset(width * .25f, height * .5f), 400)
+            swipe(Offset(width * .75f, height * .25f), Offset(width * .25f, height * .25f), 400)
         }
         compose.waitForIdle()
-        assertEquals(SidePage.CARDS, model.state.value.sidePage)
-        compose.onNodeWithTag("secondary-cards").assertIsDisplayed()
+        assertTrue("After swipe: ${model.state.value.destination}, editing=${model.state.value.editing}, full=${model.state.value.forcedFullscreen}", model.state.value.destination is Destination.CardCamera)
+        compose.onNodeWithText("允许使用相机后，就可以拍摄照片").assertIsDisplayed()
     }
 }

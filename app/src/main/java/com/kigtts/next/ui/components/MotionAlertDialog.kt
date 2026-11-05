@@ -38,7 +38,8 @@ private val LocalDialogActions = compositionLocalOf<DialogActions?> { null }
 fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable () -> Unit,
     modifier: Modifier = Modifier, dismissButton: (@Composable () -> Unit)? = null,
     icon: (@Composable () -> Unit)? = null, title: (@Composable () -> Unit)? = null,
-    text: (@Composable () -> Unit)? = null, dismissEnabled: Boolean = true) {
+    text: (@Composable () -> Unit)? = null, dismissEnabled: Boolean = true,
+    onNavigateUp: (() -> Unit)? = null) {
     var opened by rememberSaveable { mutableStateOf(false) }
     val state = remember { SeekableTransitionState(opened) }
     val transition = rememberTransition(state, "alert-dialog")
@@ -70,9 +71,15 @@ fun MotionAlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable (
             (view.parent as? DialogWindowProvider)?.window?.apply { setWindowAnimations(0); setDimAmount(0f) }
             onDispose { }
         }
-        PredictiveBackHandler(!closing && dismissEnabled) { events ->
-            try { events.collect { state.seekTo(it.progress, false) }; close { dismiss() } }
-            catch (cancel: CancellationException) { if (!closing) scope.launch { state.animateTo(true) }; throw cancel }
+        PredictiveBackHandler(!closing && (dismissEnabled || onNavigateUp != null)) { events ->
+            if (onNavigateUp != null) {
+                events.collect { }
+                keyboard?.hide()
+                onNavigateUp()
+            } else {
+                try { events.collect { state.seekTo(it.progress, false) }; close { dismiss() } }
+                catch (cancel: CancellationException) { if (!closing) scope.launch { state.animateTo(true) }; throw cancel }
+            }
         }
         ProvideIconTextContextMenu(enabled = LocalIconTextMenuEnabled.current) {
         CompositionLocalProvider(LocalDialogActions provides DialogActions({ closing }, ::close),

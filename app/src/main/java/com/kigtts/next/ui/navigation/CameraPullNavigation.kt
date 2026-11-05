@@ -27,6 +27,7 @@ internal class CameraPullState(private val scope: CoroutineScope, private val op
     var cameraRequestId by mutableStateOf<String?>(null); private set
     var parentIdentity by mutableStateOf<String?>(null); private set
     var visible by mutableFloatStateOf(1f); private set
+    var horizontal by mutableStateOf(false); private set
     private var mode = CameraPullMode.ENTER
     private var extent = 1f
     private var distance = 0f
@@ -65,11 +66,11 @@ internal class CameraPullState(private val scope: CoroutineScope, private val op
         paused = false; settling = true
         settle(1f)
     }
-    fun begin(mode: CameraPullMode, parent: String, camera: String?, extent: Float): Boolean {
+    fun begin(mode: CameraPullMode, parent: String, camera: String?, extent: Float, horizontal: Boolean = false): Boolean {
         if (!acceptingGesture || blocked || extent <= 0f) return false
         val carried = if (active) visible else null
         generation++; settlement?.cancel(); settlement = null; settling = false; paused = false
-        this.mode = mode; this.extent = extent; distance = 0f; parentIdentity = parent
+        this.mode = mode; this.extent = extent; this.horizontal = horizontal; distance = 0f; parentIdentity = parent
         visible = if (mode == CameraPullMode.ENTER) 0f else carried ?: 1f
         startVisible = visible
         cameraRequestId = if (mode == CameraPullMode.ENTER) open() else camera
@@ -121,6 +122,8 @@ internal fun RegisterCameraPullGuard(blocked: Boolean) {
 }
 
 class CameraPagePose internal constructor(private val state: CameraPullState, private val camera: Boolean) {
-    val position get() = if (camera) state.visible - 1f else .08f * state.visible
+    val position get() = if (state.horizontal) {
+        if (camera) 1f - state.visible else -.08f * state.visible
+    } else if (camera) state.visible - 1f else .08f * state.visible
     val allowUnderlayResumeMovement get() = !camera && state.active && state.acceptingGesture && !state.blocked
 }

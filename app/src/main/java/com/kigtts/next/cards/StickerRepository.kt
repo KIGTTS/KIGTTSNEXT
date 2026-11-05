@@ -91,7 +91,7 @@ class StickerRepository(val context:Context,val paths:PluginPaths,val media:Medi
             cardPermissions.check(state.value,it,frameState.value,frames)}
     }
     @Synchronized fun framePlan(edits:List<StickerEdit>)=PolaroidFrames.apply(frameState.value,edits)
-    fun frameStyle(card:PolaroidCard)=frameState.value.firstOrNull {it.id==card.frameStyleId} ?: PolaroidFrames.defaults.first()
+    fun frameStyle(card:PolaroidCard)=photoFrame(card,frameState.value)
     @Synchronized fun apply(edits:List<StickerEdit>,expectedRevision:Long?=null):StickerSnapshot {
         val planned=plan(edits,expectedRevision)
         return replace(planned,state.value.revision,frames=framePlan(edits))

@@ -3,6 +3,9 @@ package com.kigtts.next.ui.cards.camera
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,6 +21,18 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 
+@Composable
+internal fun cameraShutterAccent(): Color =
+    if (LocalCameraShutterOverlay.current) Color.White else MaterialTheme.colorScheme.primary
+
+@Composable
+internal fun cameraRecordAccent(): Color {
+    val colors = MaterialTheme.colorScheme
+    // The recording mark sits on a dark backing when the controls cover the viewfinder.
+    return if (LocalCameraShutterOverlay.current && colors.error.luminance() < colors.errorContainer.luminance())
+        colors.errorContainer else colors.error
+}
+
 /** The pointer owner stays mounted and enabled through a long press and its final release. */
 @Composable
 internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: Boolean,
@@ -30,6 +45,8 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
     val feedback = LocalHapticFeedback.current
     val corner by animateDpAsState(if (pressed || burstHeld) 20.dp else 38.dp, tween(130), label = "shutter-shape")
     val colors = MaterialTheme.colorScheme
+    val overlay = LocalCameraShutterOverlay.current
+    val fill = cameraShutterAccent()
     val label = when { burstHeld -> "松开结束连拍"; burstRunning -> "正在准备照片"; countingDown -> "取消倒计时"; else -> "拍照" }
     fun longPress() { start.value?.let { feedback.performHapticFeedback(HapticFeedbackType.LongPress); it() } }
     Surface(modifier.size(76.dp).semantics {
@@ -47,12 +64,13 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
                 try { tryAwaitRelease() } finally { pressed = false; end.value() }
             })
     }, shape = RoundedCornerShape(corner),
-        color = if (enabled || busy) colors.primary else colors.onSurface.copy(alpha = .12f),
-        contentColor = if (enabled || busy) colors.onPrimary else colors.onSurface.copy(alpha = .38f)) {
+        border = BorderStroke(3.dp, fill.copy(alpha = if (enabled || busy) 1f else .35f)),
+        color = if (enabled || busy) fill else fill.copy(alpha = .35f),
+        contentColor = if (overlay) Color.Black else colors.onPrimary) {
         androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
             if (burstRunning) Text("$count", style = MaterialTheme.typography.headlineMedium)
-            else Icon(when { countingDown -> Icons.Default.TimerOff; busy -> Icons.Default.HourglassEmpty; else -> Icons.Default.CameraAlt },
-                null, Modifier.size(38.dp))
+            else if (countingDown || busy) Icon(if (countingDown) Icons.Default.TimerOff else Icons.Default.HourglassEmpty, null, Modifier.size(30.dp))
+            else Icon(Icons.Default.PhotoCamera, null, Modifier.size(32.dp))
         }
     }
 }

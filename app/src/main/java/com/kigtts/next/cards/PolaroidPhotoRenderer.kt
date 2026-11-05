@@ -8,6 +8,11 @@ import com.kigtts.plugin.api.PolaroidCard
 /** Foreground pose is measured against the photograph window; backdrop always fills that window. */
 internal object PolaroidPhotoRenderer {
     fun draw(canvas:Canvas,source:Bitmap,window:RectF,paint:Paint,card:PolaroidCard) {
+        PhotoFrameSpec.from(card.frameStyleId)?.crop?.let { crop ->
+            val (left, top, right, bottom) = crop.pixels(source.width, source.height)
+            canvas.drawBitmap(source, Rect(left, top, right, bottom), window, paint)
+            return
+        }
         if(card.photoBackdrop==PhotoBackdropMode.BLUR) {
             val backdrop=GaussianBackdrop.blur(source,maximum=128,sigma=5f)
             try {val scale=maxOf(window.width()/backdrop.width,window.height()/backdrop.height)

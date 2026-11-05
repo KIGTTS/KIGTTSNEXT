@@ -51,20 +51,18 @@ class CameraGuidesUiTest {
         compose.runOnIdle { grid = CameraGrid.OFF }
         assertTrue(guideRed() < .01f)
     }
-    @Test fun settingsUseNativeConnectedChoicesAndRespectUnavailableFlash() {
+    @Test fun settingsTilesChangeValuesAndHideUnavailableFlash() {
         val prefs = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("camera-ui-test", 0)
         prefs.edit().clear().commit()
         val options = CameraOptions(prefs).apply { showSettings() }
         compose.setContent { KigttsTheme(ThemeSettings()) { CameraSettingsPanel(options, flashAvailable = false) } }
-        compose.onNodeWithText("当前镜头不支持闪光灯").assertExists()
-        compose.onNodeWithText("自动").assertIsNotEnabled()
-        compose.onNodeWithText("方格").performClick()
+        compose.onNodeWithText("闪光灯").assertDoesNotExist()
+        compose.onNodeWithText("辅助线", substring = true).performClick()
         assertEquals(CameraGrid.SQUARE, options.grid)
-        compose.onNodeWithText("10 秒").performScrollTo().performClick()
+        compose.onNodeWithText("倒计时", substring = true).performClick()
+        compose.onNodeWithText("倒计时", substring = true).performClick()
         assertEquals(10, options.timerSeconds)
-        compose.onNodeWithText("完成").performClick()
-        compose.waitForIdle()
-        assertFalse(options.settingsVisible)
+        compose.runOnIdle { options.hideSettings() }
         compose.onNodeWithText("相机设置").assertDoesNotExist()
     }
 }

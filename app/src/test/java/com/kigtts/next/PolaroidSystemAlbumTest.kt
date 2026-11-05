@@ -76,6 +76,45 @@ class PolaroidSystemAlbumTest {
         assertEquals(1, publication.published.size)
         assertArrayEquals(original, repo.imageFile(card.imageId!!)!!.readBytes())
     }
+    @Test fun cameraJpegKeepsOriginalBytesAndWatermarkAddsSpaceOutsideAllFourCorners() = runBlocking {
+        val source = temporary.newFile("camera.jpg")
+        val bitmap = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888)
+        val colors = listOf(Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW)
+        val canvas = Canvas(bitmap)
+        colors.forEachIndexed { i, color ->
+            val x = i % 2 * 400f; val y = i / 2 * 300f
+            canvas.drawRect(x, y, x + 400f, y + 300f, Paint().apply { this.color = color })
+        }
+        source.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 98, it) }; bitmap.recycle()
+        val image = repo.importImage(Uri.fromFile(source))
+        val card = PolaroidCard(title = "", imageId = image.id, frameStyleId = PhotoFrameSpec(800, 600).id)
+        val album = album()
+        album.encodings.set(card.id, CameraPhotoEncoding.JPEG)
+        repo.apply(listOf(StickerEdit.PutCard(card)))
+        album.save(card.id)
+        assertArrayEquals(source.readBytes(), publication.published.single())
+
+        val spec = PhotoFrameSpec(800, 600, "classic")
+        repo.apply(listOf(StickerEdit.PutCard(card.copy(frameStyleId = spec.id))))
+        album.save(card.id)
+        val data = publication.published.last()
+        assertEquals(0xff, data[0].toInt() and 255)
+        assertEquals(0xd8, data[1].toInt() and 255)
+        val result = requireNotNull(BitmapFactory.decodeByteArray(data, 0, data.size))
+        try {
+            val g = spec.geometry(); val scale = result.height / g.paperHeight
+            assertEquals(4.0 / 3, (g.photoRight - g.photoLeft) / (g.photoBottom - g.photoTop), .001)
+            assertTrue(g.paperWidth > g.photoRight && g.paperHeight > g.photoBottom)
+            colors.forEachIndexed { i, expected ->
+                val x = if (i % 2 == 0) g.photoLeft + 1 else g.photoRight - 1
+                val y = if (i < 2) g.photoTop + 1 else g.photoBottom - 1
+                val pixel = result.getPixel((x * scale).toInt(), (y * scale).toInt())
+                for (shift in listOf(0, 8, 16))
+                    assertTrue(kotlin.math.abs((pixel shr shift and 255) - (expected shr shift and 255)) <= 8)
+            }
+            assertArrayEquals(source.readBytes(), repo.imageFile(image.id)!!.readBytes())
+        } finally { result.recycle() }
+    }
     private class Publication : GalleryImagePublication {
         val published = mutableListOf<ByteArray>(); val removed = mutableListOf<Uri>(); var fail = false; var missing = false
         override fun publish(image: File, folder: String, takenAt: Long): Uri {

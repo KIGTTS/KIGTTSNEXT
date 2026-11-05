@@ -35,14 +35,14 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
     identity: IdentityCard? = null, personalDesign: PolaroidCard? = null,
     savePersonal: ((PolaroidCard, IdentityCard) -> PolaroidCard)? = null,
-    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null) {
+    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null, onSaved: ((PolaroidCard) -> Unit)? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val identityFrames by stickers.identityFrames.items.collectAsStateWithLifecycle()
     val privateDesigns by stickers.identityDesigns.items.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val persisted = if (identity != null) personalDesign ?: privateDesigns.firstOrNull { it.id == cardId } else catalog.cards.firstOrNull { it.id == cardId }
-    if (persisted == null) { Text("这张拍立得已移除", Modifier.padding(24.dp)); return }
+    if (persisted == null) { Text("这张照片已移除", Modifier.padding(24.dp)); return }
     if (cardId in readOnly) {
         Text("接收的照片只能查看和分享", Modifier.padding(24.dp))
         return
@@ -52,7 +52,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     var personalDraft by remember(identity?.id) { mutableStateOf(identity) }
     var personalBaseline by remember(identity?.id) { mutableStateOf(identity) }
     var maskColor by remember { mutableStateOf(false) }
-    val noun = if (identity == null) "拍立得" else "名片"
+    val noun = if (identity == null) "照片" else "名片"
     var selectedId by rememberSaveable(cardId) { mutableStateOf<String?>(null) }
     var handledCameraVersion by rememberSaveable(cardId) { mutableLongStateOf(0L) }
     var mode by rememberSaveable(cardId) { mutableStateOf(CardEditorMode.CROP) }
@@ -68,6 +68,8 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     var savedReturn by rememberSaveable(cardId) { mutableStateOf(false) }
     var overlayImport by rememberSaveable { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var cropOpen by rememberSaveable(cardId) { mutableStateOf(false) }
+    val viewport = remember(cardId, draft.frameStyleId) { PhotoEditorViewport() }
     val scope = rememberCoroutineScope()
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
@@ -99,20 +101,21 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }
     fun updateLayer(layer: CardLayer) { draft = draft.copy(layers = draft.layers.map { if (it.id == layer.id) layer else it }) }
     fun addLayer(layer: CardLayer) {
-        if (draft.layers.size >= 64) { message("一张拍立得最多添加 64 个元素"); return }
+        if (draft.layers.size >= 64) { message("一张照片最多添加 64 个元素"); return }
         draft = draft.copy(layers = draft.layers + layer); selectedId = layer.id
     }
     fun putPhotoField(layer: CardLayer) {
         if (draft.layers.any { it.id == layer.id }) updateLayer(layer)
         else if (draft.layers.size < 64) draft = draft.copy(layers = draft.layers + layer)
-        else message("一张拍立得最多添加 64 个元素")
+        else message("一张照片最多添加 64 个元素")
     }
     val photo = rememberCardPhotoSources({ selection ->
         if (busy) { selection.release(); message("正在处理图片，请稍后重试") }
         else work {
             val image = withContext(Dispatchers.IO) { try { stickers.importImage(selection.uri) } finally { selection.release() } }
             if (overlayImport) addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, width = .32))
-            else draft = draft.copy(imageId = image.id, originalImageId = null, photoStyle = null, photoX = .5, photoY = .5, photoZoom = 1.0)
+            else draft = draft.copy(imageId = image.id, originalImageId = null, photoStyle = null, photoX = .5, photoY = .5, photoZoom = 1.0,
+                frameStyleId = if (identity == null) PhotoFrameSpec(image.width, image.height, PhotoFrameSpec.from(draft.frameStyleId)?.style ?: "none").id else draft.frameStyleId)
         }
     }, message)
     val enabled = active && !busy && !photo.processing && !savedReturn
@@ -122,11 +125,11 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         val candidate = draft; val previous = baseline
         work {
             val saved = withContext(Dispatchers.IO) { synchronized(stickers) {
-                check((if (identity != null) stickers.identityDesigns.get(cardId) else cards.cards.value.firstOrNull { it.id == cardId }) == previous) { "拍立得已在其它位置更新，请重新打开后保存" }
+                check((if (identity != null) stickers.identityDesigns.get(cardId) else cards.cards.value.firstOrNull { it.id == cardId }) == previous) { "照片已在其它位置更新，请重新打开后保存" }
                 val clean = candidate.copy(title = candidate.title.trim(), layers = candidate.layers.filterNot { it.kind == CardLayerKind.TEXT && it.text.isBlank() })
-                if (personalDraft != null && savePersonal != null) savePersonal(clean, requireNotNull(personalDraft)) else cards.update(clean)
+                if (personalDraft != null && savePersonal != null) savePersonal(clean, requireNotNull(personalDraft)) else { cards.documents.update(clean) }
             } }
-            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = true; message("已保存$noun")
+            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = onSaved == null; message("已保存$noun"); onSaved?.invoke(saved)
         }
     }
     LaunchedEffect(active, savedReturn, discard) {
@@ -140,14 +143,14 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
         try { events.collect { }; if (!savedReturn && !busy) backFromEditor() } catch (_: CancellationException) { }
     }
-    CardEditorPanelScaffold(polaroidPaperGeometry(draft, frames.firstOrNull { it.id == draft.frameStyleId }).aspectRatio.toFloat(),
+    CardEditorPanelScaffold(polaroidPaperGeometry(draft, stickers.frameStyle(draft)).aspectRatio.toFloat(),
         enabled, textEditing, ::cancelAdjustment, preview = { paperModifier ->
-            Box(paperModifier.aspectRatio(polaroidPaperGeometry(draft, frames.firstOrNull { it.id == draft.frameStyleId }).aspectRatio.toFloat())) {
+            Box(paperModifier.aspectRatio(polaroidPaperGeometry(draft, stickers.frameStyle(draft)).aspectRatio.toFloat())) {
             PolaroidCanvas(draft, stickers::imageFile, Modifier.fillMaxSize(),
                 if (mode == CardEditorMode.STICKERS) selectedId else null, enabled && mode == CardEditorMode.STICKERS,
                 { if (it == null) cancelAdjustment() else { selectedId = it; if (draft.layers.none { layer -> layer.id == it && layer.kind == CardLayerKind.TEXT }) textEditing = false } },
-                ::updateLayer, photoEditable = enabled && mode == CardEditorMode.CROP,
-                onPhotoChange = { draft = it }, frame = frames.firstOrNull { it.id == draft.frameStyleId },
+                ::updateLayer, photoEditable = identity != null && enabled && mode == CardEditorMode.CROP,
+                onPhotoChange = { draft = it }, frame = stickers.frameStyle(draft),
                 configurableLayer = { layer -> generators.contains(layer.imageId) },
                 configureLayer = { layer -> if (generators.get(layer.imageId) != null) generatorLayer = layer },
                 removeLayer = { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }); selectedId = null },
@@ -156,9 +159,9 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 backgroundColor = draft.frameColor, hasImage = draft.imageId != null, backgroundInk = backgroundPainter?.ink) }
             }
         }, tools = {
-        if (conflict) Text("此拍立得已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
+        if (conflict) Text("此照片已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
         CardEditorFields(draft, enabled, { draft = it },
-            camera = { overlayImport = false; openCamera() }, gallery = { overlayImport = false; photo.gallery() },
+            openCrop = { cropOpen = true },
             addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { cancelAdjustment() },
             addImage = { overlayImport = true; photo.gallery() }, addQrCode = { qrDialog = true }, frameColor = { paperColor = true },
             selected = selected, editText = { textEditing = true }, layerColor = { textColor = true },
@@ -184,7 +187,26 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }, categories = { compact, openTools -> CardEditorTabs(mode, { mode = it; cancelAdjustment(); openTools() }, compact, personal = identity != null) },
         imageFile = stickers::imageFile, insertElement = { layer ->
             work { addLayer(preparePhotoSticker(layer, draft, cards, stickers)); mode = CardEditorMode.STICKERS; textEditing = false }
-        }, avoidTools = identity != null)
+        }, avoidTools = identity != null, photoViewport = viewport.takeIf { identity == null },
+        transformPhoto = enabled && selected == null)
+    if (active && cropOpen && identity == null) {
+        val id = draft.imageId
+        if (id != null) {
+            val source = rememberCardImage(stickers.imageFile(id), 2048)
+            val styled = rememberCardPhotoStyle(source, id, draft.photoStyle, stickers::imageFile)
+            val spec = remember(draft.frameStyleId) { PhotoFrameSpec.from(draft.frameStyleId) }
+            PhotoCropDialog(styled ?: source, spec?.crop ?: PhotoCrop.Full, { cropOpen = false }) { crop, width, height ->
+                if (crop != (spec?.crop ?: PhotoCrop.Full)) {
+                    val (left, top, right, bottom) = crop.pixels(width, height)
+                    val style = spec?.style ?: draft.frameStyleId
+                    draft = draft.copy(frameStyleId = PhotoFrameSpec(right - left, bottom - top, style,
+                        crop.takeUnless { it == PhotoCrop.Full }).id, photoX = .5, photoY = .5, photoZoom = 1.0,
+                        photoBackdrop = PhotoBackdropMode.GRAY)
+                }
+                cropOpen = false
+            }
+        }
+    }
     if (active) generatorLayer?.let { layer -> generators.get(layer.imageId)?.let { source ->
         GeneratedStickerDialog(layer, source, stickers, { generatorLayer = null }, ::updateLayer)
     } }

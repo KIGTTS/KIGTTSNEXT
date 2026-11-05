@@ -27,7 +27,7 @@ internal fun CameraZoomButton(label: String, description: String, enabled: Boole
         shapes = IconButtonDefaults.shapes(CircleShape, RoundedCornerShape(12.dp)),
         colors = IconButtonDefaults.filledTonalIconButtonColors(
             containerColor = if (selected) MaterialTheme.colorScheme.surfaceContainerHighest else androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).animateEnabled(enabled)) {
+            contentColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface).keepColorsWhenLocked()) {
         Text(label, if (textTag != null) Modifier.testTag(textTag) else Modifier,
             maxLines = 1, softWrap = false, style = MaterialTheme.typography.labelLarge)
     }

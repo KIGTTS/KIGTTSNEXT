@@ -7,6 +7,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.ui.components.*
@@ -20,11 +22,17 @@ import kotlinx.coroutines.withContext
         value = withContext(Dispatchers.IO) { runCatching { installedPluginDetails(model, id) }.getOrNull() }
         failed = value == null
     }
-    MotionAlertDialog(dismiss, title = { Text(if (license) "开源许可" else info?.name ?: "关于插件") },
+    MotionAlertDialog(dismiss, onNavigateUp = if (license) ({ license = false }) else null,
         text = {
-            Column(Modifier.fillMaxWidth().heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            ModalPageTransition(license, { if (it) 1 else 0 }, Modifier.fillMaxWidth()) { showingLicense ->
+              Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(if (showingLicense) "开源许可" else info?.name ?: "关于插件",
+                    Modifier.semantics { heading() }, color = AlertDialogDefaults.titleContentColor,
+                    style = MaterialTheme.typography.headlineSmall)
+                Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 info?.let { detail ->
-                    if (license) SelectionContainer { Text(detail.licenseText.ifBlank { detail.license.ifBlank { "插件包未附许可说明" } }) }
+                    if (showingLicense) SelectionContainer { Text(detail.licenseText.ifBlank { detail.license.ifBlank { "插件包未附许可说明" } }) }
                     else {
                         Text(listOf("v${detail.version}", detail.author).filter(String::isNotBlank).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (detail.description.isNotBlank()) ChatRichText(detail.description)
@@ -33,6 +41,11 @@ import kotlinx.coroutines.withContext
                         if (detail.licenseText.isNotBlank()) TextButton(feedbackClick { license = true }) { Text("查看开源许可") }
                     }
                 } ?: if (failed) Text("暂时无法读取插件信息") else CircularProgressIndicator()
+                }
+              }
             }
-        }, confirmButton = { MotionTextButton(dialogFeedbackClick { if (license) license = false else dismiss() }) { Text(if (license) "返回" else "关闭") } })
+        }, confirmButton = {
+            if (license) MotionTextButton(feedbackClick { license = false }) { Text("返回") }
+            else MotionTextButton(dialogFeedbackClick(dismiss)) { Text("关闭") }
+        })
 }

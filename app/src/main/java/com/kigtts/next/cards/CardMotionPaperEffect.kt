@@ -23,7 +23,9 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
     private inner class Program : BaseGlShaderProgram(false, 2) {
         private val paper = GlProgram(MotionPaperShaders.VERTEX, MotionPaperShaders.PAPER)
         private val blur = GlProgram(MotionPaperShaders.VERTEX, MotionPaperShaders.GAUSSIAN)
-        private val output = MotionPaperGeometry.create(frame, overlay.width.coerceAtLeast(2) / 2 * 2,
+        private val crop = PhotoFrameSpec.from(card.frameStyleId)?.crop
+        private val blurred = crop == null && card.photoBackdrop == PhotoBackdropMode.BLUR
+        private val output = MotionPaperGeometry.create(card, frame, overlay.width.coerceAtLeast(2) / 2 * 2,
             overlay.height.coerceAtLeast(2) / 2 * 2, includeFrame)
         private var overlayTexture = 0; private var xTexture = 0; private var yTexture = 0
         private var xFbo = 0; private var yFbo = 0; private var blurWidth = 1; private var blurHeight = 1
@@ -40,7 +42,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
         }
         override fun configure(inputWidth: Int, inputHeight: Int): Size {
             releaseBuffers()
-            val foreground = output.foreground(card, inputWidth, inputHeight)
+            val foreground = output.foreground(card, inputWidth, inputHeight, crop)
             val photo = output.photo
             val cover = maxOf(photo.width() / inputWidth, photo.height() / inputHeight)
             paper.setFloatsUniform("uOutputSize", floatArrayOf(output.width.toFloat(), output.height.toFloat()))
@@ -49,7 +51,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             paper.setFloatsUniform("uBackdrop", floatArrayOf(photo.centerX() - inputWidth * cover / 2f,
                 photo.centerY() - inputHeight * cover / 2f, inputWidth * cover, inputHeight * cover))
             paper.setFloatsUniform("uRadius", floatArrayOf(output.radius))
-            paper.setFloatsUniform("uBlurred", floatArrayOf(if (card.photoBackdrop == PhotoBackdropMode.BLUR) 1f else 0f))
+            paper.setFloatsUniform("uBlurred", floatArrayOf(if (blurred) 1f else 0f))
             (0..2).forEach { row -> paper.setFloatsUniform("uRow$row", colorMatrix.copyOfRange(row * 5, row * 5 + 4)) }
             paper.setFloatsUniform("uBias", floatArrayOf(colorMatrix[4] / 255f, colorMatrix[9] / 255f, colorMatrix[14] / 255f))
             paper.setFloatsUniform("uEffects", effects.values())
@@ -66,13 +68,13 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
         }
         override fun drawFrame(inputTexId: Int, presentationTimeUs: Long) {
             val framebuffer = IntArray(1); GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, framebuffer, 0)
-            if (card.photoBackdrop == PhotoBackdropMode.BLUR) {
+            if (blurred) {
                 drawBlur(inputTexId, xFbo, floatArrayOf(1f / blurWidth, 0f))
                 drawBlur(xTexture, yFbo, floatArrayOf(0f, 1f / blurHeight))
             }
             GlUtil.focusFramebufferUsingCurrentContext(framebuffer[0], output.width, output.height); paper.use()
             paper.setSamplerTexIdUniform("uVideo", inputTexId, 0)
-            paper.setSamplerTexIdUniform("uBlur", if (card.photoBackdrop == PhotoBackdropMode.BLUR) yTexture else inputTexId, 1)
+            paper.setSamplerTexIdUniform("uBlur", if (blurred) yTexture else inputTexId, 1)
             paper.setSamplerTexIdUniform("uOverlay", overlayTexture, 2)
             val lutSampler = lutTexture ?: run {
                 val program = IntArray(1); GLES20.glGetIntegerv(GLES20.GL_CURRENT_PROGRAM, program, 0)

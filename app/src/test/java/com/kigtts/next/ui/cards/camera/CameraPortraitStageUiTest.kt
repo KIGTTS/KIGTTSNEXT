@@ -28,7 +28,7 @@ import org.robolectric.annotation.*
 class CameraPortraitStageUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun ratioMorphKeepsTheToolbarShutterAndPhotoCentreFixedInTallAndShortPortraitWindows() {
+    @Test fun ratioMorphKeepsTheToolbarShutterAndZoomFixedInTallAndShortPortraitWindows() {
         var format by mutableStateOf(PolaroidFormat.MINI)
         var width by mutableStateOf(393.dp); var height by mutableStateOf(820.dp)
         var retained: PreviewView? = null; var backs = 0; var settings = 0
@@ -47,7 +47,7 @@ class CameraPortraitStageUiTest {
                         })
                 }, controls = { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical,
                     showCancel = false, gallery = {}) },
-                    header = { CameraCornerToolbar(true, false, true, false, { backs++ }, { settings++ }, applyInsets = false) },
+                    header = { CameraCornerToolbar(true, false, true, { backs++ }, { settings++ }, applyInsets = false) },
                     photoAspect = format.geometry.photoAspectRatio.toFloat())
             }
         } }
@@ -57,6 +57,8 @@ class CameraPortraitStageUiTest {
             val stage = bounds("camera-stage")
             val back = bounds("camera-cancel"); val settingsBounds = bounds("camera-settings")
             val shutter = bounds("camera-shutter")
+            val zoom = bounds("camera-zoom-stop/1")
+            val photoTop = bounds("camera-photo-window").top.value
             assertEquals(stage.top.value + 8f, back.top.value, 1f)
             compose.mainClock.autoAdvance = false
             compose.runOnIdle { format = if (format == PolaroidFormat.MINI) PolaroidFormat.SQUARE else PolaroidFormat.MINI }
@@ -66,9 +68,10 @@ class CameraPortraitStageUiTest {
                 assertEquals(back, bounds("camera-cancel")); assertEquals(settingsBounds, bounds("camera-settings"))
                 assertEquals(shutter, bounds("camera-shutter"))
                 val photo = bounds("camera-photo-window")
-                assertEquals((stage.top + stage.bottom).value / 2f, (photo.top + photo.bottom).value / 2f, 1f)
+                assertEquals(photoTop, photo.top.value, 2f)
+                assertEquals(zoom, bounds("camera-zoom-stop/1"))
                 assertEquals((stage.left + stage.right).value / 2f, (photo.left + photo.right).value / 2f, 1f)
-                assertTrue(photo.bottom < shutter.top)
+                assertTrue(photo.bottom.value <= shutter.top.value + 1f)
             }
             compose.mainClock.autoAdvance = true
             compose.waitForIdle()
@@ -82,7 +85,7 @@ class CameraPortraitStageUiTest {
         switchAndCheck()
         compose.onRoot().captureRoboImage("build/previews/camera-square-centred-portrait.png")
         switchAndCheck()
-        compose.runOnIdle { width = 360.dp; height = 560.dp }
+        compose.runOnIdle { width = 360.dp; height = 650.dp }
         switchAndCheck(); switchAndCheck()
         assertEquals(4, backs); assertEquals(4, settings)
     }

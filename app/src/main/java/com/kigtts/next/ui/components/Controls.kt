@@ -56,6 +56,7 @@ fun ToolButton(
     onLongClick: (() -> Unit)? = null,
     iconBlend: ToolIconBlend? = null,
     badge: com.kigtts.plugin.api.PluginBadge? = null,
+    overlay: @Composable () -> Unit = {},
 ) {
     val animatedIconSize = animateDpAsState(if (busy) size / 2 else iconSize,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "tool-icon-size")
@@ -70,6 +71,7 @@ fun ToolButton(
             if (iconBlend == null) AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
             else BlendedToolIcon(iconBlend, animatedIconSize.value)
             }
+            overlay()
             AnimatedVisibility(busy, enter = fadeIn(), exit = fadeOut()) {
                 CircularProgressIndicator(Modifier.size(size - 4.dp), strokeWidth = 2.dp)
             }

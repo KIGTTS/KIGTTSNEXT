@@ -19,7 +19,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val current = navigation.current
     val scope = rememberCoroutineScope()
     val pull = remember(model) { CameraPullState(scope, {
-        model.cardCapture.open(); (model.state.value.destination as? Destination.CardCamera)?.requestId
+        model.cardCapture.open(systemCamera = false); (model.state.value.destination as? Destination.CardCamera)?.requestId
     }, model::navigateBack, { (model.state.value.destination as? Destination.CardCamera)?.requestId }) }
     val latestNavigation = rememberUpdatedState(navigation)
     val latestDrawer = rememberUpdatedState(drawerActive)
@@ -33,8 +33,11 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val parent = camera?.let { navigation.wanted.lastOrNull { page -> page.depth == it.depth - 1 } }
     CompositionLocalProvider(LocalCameraPullState provides pull, LocalHomeSwipeExclusions provides swipeExclusions) {
     Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer,
-        if (quickSwipe && state.forcedFullscreen) ({ model.exitSubtitleFullscreen(); model.openPanel(HomePanel.QUICK_TEXT) }) else null,
-        pagesEnabled = !state.forcedFullscreen) {
+        when {
+            quickSwipe && state.forcedFullscreen -> ({ model.exitSubtitleFullscreen(); model.openPanel(HomePanel.QUICK_TEXT) })
+            else -> null
+        },
+        pagesEnabled = !state.forcedFullscreen, leftPageEnabled = false) {
         val value = latestState.value
         value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
             !value.voiceInputActive && (!value.forcedFullscreen || quickSwipe) &&
@@ -42,9 +45,12 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     }.cameraPullNavigation(pull) {
         val value = latestNavigation.value; val foreground = value.current
         if (latestDrawer.value || value.outgoingAbove || latestProgress.value > 0f) null
+        else if (foreground.scene == PageScene.Home && latestState.value.let {
+                it.sidePage == null && !it.editing && !it.quickTextEditing && !it.voiceInputActive && !it.forcedFullscreen
+            }) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity, horizontal = true)
         else if (foreground.isCardsBrowser) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity)
         else foreground.cameraRequestId?.let { request -> value.wanted.getOrNull(value.wanted.lastIndex - 1)?.let {
-            CameraPullOrigin(CameraPullMode.EXIT, it.identity, request)
+            CameraPullOrigin(CameraPullMode.EXIT, it.identity, request, horizontal = true)
         } }
     }) {
         navigation.pages.forEach { entry -> key(entry) {
@@ -60,7 +66,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                     // Covered pages remain wanted. Only a truly retired visit loses its draft/ACK
                     // registry; reopening the same plugin page must not replay an old save return.
                     if(latestNavigation.value.wanted.none {it.identity==entry.identity})holder.removeState(entry.identity)
-                }, vertical = entry == camera || entry == parent,
+                }, vertical = pull.active && !pull.horizontal && (entry == camera || entry == parent),
                 cameraPose = cameraPose,
                 drawerPose = if (sideDrawer.active && (entry.scene == PageScene.Home || entry.scene == PageScene.Side(sideDrawer.page!!)))
                     remember(entry, sideDrawer) { SideDrawerPose(sideDrawer, entry.scene != PageScene.Home) } else null) {

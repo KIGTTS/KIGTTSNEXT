@@ -27,7 +27,7 @@ import java.io.File
     LaunchedEffect(request.library) { if (request.library == ArtworkLibrary.SKETCHES) works = withContext(Dispatchers.IO) { sketches.list() } }
     val entries = when (request.library) {
         ArtworkLibrary.POLAROIDS -> photos.filter { it.frameStyleId != "identity.banner" }.map { card ->
-            ArtworkChoice(card.id, card.title.ifBlank { "拍立得" }, albums.firstOrNull { card.id in it.cardIds }?.name.orEmpty()) }
+            ArtworkChoice(card.id, card.title.ifBlank { "照片" }, albums.firstOrNull { card.id in it.cardIds }?.name.orEmpty()) }
         ArtworkLibrary.PERSONAL_CARDS -> identities.filter { identity -> designs.any { it.id == identity.designId } }.map { ArtworkChoice(it.id, it.nickname.ifBlank { "名片" }) }
         ArtworkLibrary.SKETCHES -> works.map { ArtworkChoice(it.id, "画板作品") }
     }

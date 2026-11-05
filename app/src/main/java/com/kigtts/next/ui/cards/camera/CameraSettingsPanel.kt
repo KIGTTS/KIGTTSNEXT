@@ -1,53 +1,109 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards.camera
 
+import android.graphics.Bitmap
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.ui.components.*
-import com.kigtts.next.ui.settings.*
+import com.kigtts.next.media.CameraPhotoEncoding
+import com.kigtts.next.ui.components.ModalPageTransition
+import com.kigtts.next.ui.components.feedbackClick
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-@Composable
-internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
-    availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null) {
+@Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
+    availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
+    watermarkPreview: () -> Bitmap? = { null }) {
     if (!options.settingsVisible) return
-    MotionAlertDialog(onDismissRequest = options::hideSettings, title = { Text("相机设置") },
-        confirmButton = {
-            val finish = rememberDialogClose()
-            MotionTextButton(feedbackClick { finish(options::hideSettings) }) { Text("完成") }
-        }, text = {
-            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                SettingsGroup("构图") {
-                    SettingItem("辅助线", "", Icons.Default.Grid3x3, SettingPosition.FIRST) {
-                        ChoiceButtonGroup("辅助线", CameraGrid.entries, options.grid, { it.label }, options::setGrid,
-                            enabled = enabled, compactLabels = true)
-                    }
-                    ToggleSetting("水平仪", "帮助保持画面水平", Icons.Default.Straighten, options.level,
-                        options::setLevel, position = SettingPosition.LAST, enabled = enabled)
-                }
-                SettingsGroup("拍摄") {
-                    SettingItem("照片处理", "", Icons.Default.AutoAwesome, SettingPosition.FIRST) {
-                        val choices = CameraProcessing.entries.filter { it in availableProcessing }
-                        ChoiceButtonGroup("照片处理", choices, options.processing.takeIf { it in choices } ?: CameraProcessing.STANDARD,
-                            { it.label }, options::setProcessing, enabled = enabled, compactLabels = true)
-                    }
-                    SettingItem("闪光灯", if (flashAvailable) "" else "当前镜头不支持闪光灯",
-                        Icons.Default.FlashOn, SettingPosition.MIDDLE) {
-                        ChoiceButtonGroup("闪光灯", CameraFlash.entries, options.flash, { it.label }, options::setFlash,
-                            enabled = enabled && flashAvailable, compactLabels = true)
-                    }
-                    SettingItem("倒计时", "", Icons.Default.Timer, SettingPosition.LAST) {
-                        ChoiceButtonGroup("倒计时", CameraOptions.TIMERS, options.timerSeconds,
-                            { if (it == 0) "关闭" else "$it 秒" }, options::setTimer,
-                            enabled = enabled, compactLabels = true)
-                    }
-                }
+    var watermarkPage by remember { mutableStateOf(false) }
+    var snapshot by remember { mutableStateOf<Bitmap?>(null) }
+    ModalBottomSheet(options::hideSettings, containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        scrimColor = Color.Black.copy(alpha = .26f),
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = !watermarkPage)) {
+        BackHandler(watermarkPage) { watermarkPage = false }
+        ModalPageTransition(watermarkPage, { if (it) 1 else 0 }) { watermark ->
+            if (watermark) CameraWatermarkPage(options, snapshot, enabled) { watermarkPage = false }
+            else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual) {
+                snapshot = watermarkPreview()
+                watermarkPage = true
+            }
+        }
+    }
+}
+
+@Composable private fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
+    availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, openWatermark: () -> Unit) {
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Default.Tune, null, Modifier.size(22.dp))
+                Text("相机设置", style = MaterialTheme.typography.titleLarge)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CameraTile("画幅", options.framingAspect.label, Icons.Default.AspectRatio,
+                    enabled && options.mode != CameraMode.SCAN, Modifier.weight(1f)) {
+                    options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) }
+                CameraTile("倒计时", if (options.timerSeconds == 0) "关闭" else "${options.timerSeconds} 秒", Icons.Default.Timer, enabled, Modifier.weight(1f)) {
+                    options.setTimer(CameraOptions.TIMERS[(CameraOptions.TIMERS.indexOf(options.timerSeconds) + 1) % CameraOptions.TIMERS.size]) }
+                CameraTile("辅助线", options.grid.label, Icons.Default.Grid3x3, enabled, Modifier.weight(1f)) {
+                    options.setGrid(CameraGrid.entries[(options.grid.ordinal + 1) % CameraGrid.entries.size]) }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CameraTile("水平仪", if (options.level) "开启" else "关闭", Icons.Default.Straighten, enabled, Modifier.weight(1f)) { options.setLevel(!options.level) }
+                if (flashAvailable) CameraTile("闪光灯", options.flash.label, Icons.Default.FlashOn, enabled, Modifier.weight(1f)) {
+                    options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size]) }
+                val processing = availableProcessing.toList()
+                CameraTile("照片处理", options.processing.label, Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO, Modifier.weight(1f)) {
+                    options.setProcessing(processing[(processing.indexOf(options.processing).coerceAtLeast(0) + 1) % processing.size]) }
+            }
+            if (options.mode == CameraMode.PHOTO) {
+                CameraOutputTiles(options, enabled, openWatermark)
                 manual?.let { CameraManualPanel(it, enabled) }
             }
-        })
+        }
+}
+
+@Composable private fun CameraOutputTiles(options: CameraOptions, enabled: Boolean, openWatermark: () -> Unit) {
+    val heifAvailable by produceState<Boolean?>(null) {
+        value = withContext(Dispatchers.IO) { CameraPhotoEncoding.heifAvailable }
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CameraTile("照片格式", options.encoding.label, Icons.Default.Image,
+            enabled && (heifAvailable == true || options.encoding == CameraPhotoEncoding.HEIF), Modifier.weight(1f)) {
+            options.chooseEncoding(if (options.encoding == CameraPhotoEncoding.JPEG) CameraPhotoEncoding.HEIF else CameraPhotoEncoding.JPEG)
+        }
+        CameraTile("边框水印", cameraWatermarkLabel(options.watermark), Icons.Default.FilterFrames,
+            enabled, Modifier.weight(1f), openWatermark)
+        Spacer(Modifier.weight(1f))
+    }
+    val hint = when {
+        heifAvailable == false -> "此设备不支持保存 HEIF"
+        options.motion -> "选择 HEIF 会关闭实况"
+        options.encoding == CameraPhotoEncoding.HEIF -> "实况照片使用 JPEG"
+        else -> null
+    }
+    if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
+@Composable private fun CameraTile(title: String, value: String, icon: ImageVector, enabled: Boolean, modifier: Modifier, click: () -> Unit) {
+    Surface(onClick = feedbackClick(click), modifier = modifier, enabled = enabled, shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Column(Modifier.padding(horizontal = 6.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(icon, null, Modifier.size(26.dp)); Text(title, style = MaterialTheme.typography.labelLarge)
+            Text(value, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        }
+    }
 }

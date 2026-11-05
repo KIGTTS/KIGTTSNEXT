@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
 
+internal val CameraZoomDialBackdrop = Color.Black.copy(alpha = .64f)
+
 /** Only a few dozen vector ticks are drawn; no bitmap is rebuilt as the camera reports zoom. */
 @Composable
 internal fun CameraZoomDial(value: Float, range: ClosedFloatingPointRange<Float>, vertical: Boolean, modifier: Modifier) {
@@ -30,7 +32,7 @@ internal fun CameraZoomDial(value: Float, range: ClosedFloatingPointRange<Float>
             val radians = Math.toRadians(angle.toDouble())
             return center + Offset(cos(radians).toFloat(), sin(radians).toFloat()) * r
         }
-        drawCircle(Color.Black.copy(alpha = .64f), radius, center)
+        drawCircle(CameraZoomDialBackdrop, radius, center)
         drawCircle(Color.White.copy(alpha = .12f), radius - 1.dp.toPx(), center, style = Stroke(1.dp.toPx()))
         for (tick in 0..60) {
             val angle = origin + (tick / 60f - progress) * 145f

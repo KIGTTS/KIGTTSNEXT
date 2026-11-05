@@ -136,6 +136,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.sharing.FaceShareHost(model)
             com.kigtts.next.sharing.CloudShareLinkHost(model)
             com.kigtts.next.sharing.CloudSharingSetupHost(model)
+            com.kigtts.next.sharing.CloudNativeHost(model)
             CompositionLocalProvider(LocalIconTextMenuEnabled provides false) {
             HomeExitHandler(model.homeExit, state.destination == Destination.Home && !navigation.returningHome &&
                 !state.voiceInputActive && !state.webCanGoBack && !state.subtitleExpanded && state.sidePage == null &&

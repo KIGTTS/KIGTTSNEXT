@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-06",
+  "designSize": [
+    1080,
+    1920
+  ],
+  "scale": 2,
+  "fonts": {
+    "heavy": "SourceHanSansCN-Heavy",
+    "medium": "SourceHanSans-Medium",
+    "regular": "SourceHanSans-Regular",
+    "heavy-latin": "GoogleSans-Bold",
+    "medium-latin": "GoogleSans-Medium",
+    "regular-latin": "GoogleSans-Regular"
+  },
+  "lettering": "Outlined; English and digits use Google Sans",
+  "contentSha256": "197f88c59fd13f3758c7f84cfdd4ab274aec0ebd6819f0156105bb0ace60796b",
+  "outputs": [
+    {
+      "file": "KIGTTS-update-2026-11-06.svg",
+      "bytes": 280656,
+      "sha256": "63530d88246f253cbebfd9e7a320c1a972206e3fbc3f3d55882ac7be396553a8"
+    },
+    {
+      "file": "KIGTTS-update-2026-11-06.png",
+      "bytes": 515976,
+      "sha256": "9208ada1c223c0db783bb1d1f0c79b72b36f05a58a224576ba0f823a5533929c"
+    },
+    {
+      "file": "KIGTTS-update-2026-11-06.jpg",
+      "bytes": 1210720,
+      "sha256": "26cd6fbcb3b66fcfd4c816692537b61b732362c9526a45654d6d07936b026378"
+    },
+    {
+      "file": "KIGTTS-update-2026-11-06-share.jpg",
+      "bytes": 441462,
+      "sha256": "657bf5866e67c814c76b13e01a290805ea12906337a2201875c8f1997c2523fe"
+    }
+  ]
+}

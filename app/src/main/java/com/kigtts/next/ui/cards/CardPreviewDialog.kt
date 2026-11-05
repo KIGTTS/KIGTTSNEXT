@@ -122,7 +122,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
             Box {
                 MotionIconButton(feedbackClick { menu = true }, enabled = controlsEnabled,
                     colors = IconButtonDefaults.iconButtonColors(contentColor = androidx.compose.ui.graphics.Color.White)) {
-                    Icon(Icons.Default.MoreVert, "拍立得操作")
+                    Icon(Icons.Default.MoreVert, "照片操作")
                 }
                 DropdownMenu(menu && controlsEnabled, { menu = false }) {
                     if (receipt != null) DropdownMenuItem({ Text("发送者名片") }, onClick = feedbackClick { menu = false; senderInfo = true },

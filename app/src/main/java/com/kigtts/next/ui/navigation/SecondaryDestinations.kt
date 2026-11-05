@@ -33,15 +33,15 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.QuickTextReview -> "修改预览"
             is Destination.ContentEditor -> model.content.editorDraft.value?.let { if(it.html)it.currentTitle else "文本编辑器" } ?: "内容编辑器"
             is Destination.PhraseEditor -> if (destination.adding) "添加快捷文本" else "编辑快捷文本"
-            is Destination.CardEditor -> "编辑拍立得"
-            is Destination.CardPreview -> "拍立得预览"
-            Destination.Cards -> "拍立得"
+            is Destination.CardEditor -> "编辑图片"
+            is Destination.CardPreview -> "照片预览"
+            Destination.Cards -> "相册"
             is Destination.CardCamera -> "拍摄"
             is Destination.StickerReview -> "修改预览"
             is Destination.StickerLibrary -> "贴纸库"
         }
     if (destination == Destination.Cards) {
-        CardPageScaffold(title, model::navigateBack) { CardHostScreen(model) }
+        com.kigtts.next.ui.album.AlbumHost(model, model::navigateBack)
         return
     }
     if (destination is Destination.CardCamera) {

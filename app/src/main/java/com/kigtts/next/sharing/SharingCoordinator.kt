@@ -12,19 +12,28 @@ import java.util.UUID
 
 /** Optional providers receive only the files the user explicitly chose to share. */
 internal class SharingCoordinator(private val model: AppViewModel, private val scope: CoroutineScope) {
+    val deviceKey = UUID.randomUUID().toString().replace("-", "")
     private val context get() = model.getApplication<Application>()
     val setup: CloudSharingSetup = CloudSharingSetup(context.getSharedPreferences("sharing", 0), scope,
         ready = { provider("sharing/open-v1") != null },
         installed = { model.pluginManager.status.any { it.installed.manifest.id == CLOUD_SHARING_ID } },
-        install = {
+        install = { progress ->
             val existing = model.pluginManager.status.firstOrNull { it.installed.manifest.id == CLOUD_SHARING_ID }
-            if (existing == null) {
+            // A failed package must be replaced; re-enabling it cannot repair its bytecode.
+            if (existing == null || existing.error != null) {
                 val (file, preview) = withContext(Dispatchers.IO) {
-                    CloudSharingDownload(model.pluginManager.paths.packages, model.pluginManager.packages::inspect).download()
+                    CloudSharingDownload(model.pluginManager.paths.packages, model.pluginManager.packages::inspect).download(progress)
                 }
+                progress(null)
                 try { model.pluginManager.install(file, preview.publisherSha256) }
                 finally { withContext(Dispatchers.IO) { file.delete() } }
-            } else model.pluginManager.enable(CLOUD_SHARING_ID, true)
+            } else {
+                progress(null)
+                model.pluginManager.enable(CLOUD_SHARING_ID, true)
+            }
+            check(model.pluginManager.status.firstOrNull { it.installed.manifest.id == CLOUD_SHARING_ID }?.error == null) {
+                "云共享未能启动，请重试或使用系统分享"
+            }
             model.pluginManager.status.firstOrNull { it.installed.manifest.id == CLOUD_SHARING_ID }?.let {
                 model.pluginManager.permissions.set("$CLOUD_SHARING_ID:${it.installed.publisherSha256}", "network", com.kigtts.plugin.runtime.PermissionAccess.ALLOW)
             }
@@ -35,6 +44,19 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     private var invitation: String? = null
     private val mutableNfc = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val nfc = mutableNfc.asStateFlow()
+    private val mutablePanel = kotlinx.coroutines.flow.MutableStateFlow<CloudNativePanel?>(null)
+    val nativePanel = mutablePanel.asStateFlow()
+    fun dismissNative() { mutablePanel.value = null }
+    fun nativePage(owner: String, pageId: String): CloudNativePanel? {
+        if (!isProvider(owner) || "sharing/native-v1" !in model.registry.plugin(owner)!!.contributions.automationActions) return null
+        val block = model.pluginPage(owner, pageId)?.blocks?.filterIsInstance<com.kigtts.plugin.api.PageBlock.Browser>()?.singleOrNull() ?: return null
+        if (block.mainPage != "native.html" || block.root == null || block.url != null) return null
+        return CloudNativePanel(owner, pageId, block)
+    }
+    fun showNative(owner: String, pageId: String): Boolean {
+        val panel = nativePage(owner, pageId) ?: return false
+        mutablePanel.value = panel; return true
+    }
     fun dismissNfc() { mutableNfc.value = null }
     fun accept(intent: android.content.Intent?): Boolean = CloudShareLinks.from(intent)?.let(::open) ?: false
     fun open(raw: String): Boolean {
@@ -48,7 +70,10 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         if (provider?.descriptor?.id in model.state.value.busyPlugins) return
         invitation = null
         if (provider != null) model.invoke(provider.descriptor.id, "sharing/open-v1", mapOf("url" to url))
-        else model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url, mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
+        else scope.launch {
+            if (setup.ensure()) provider("sharing/open-v1")?.let { model.invoke(it.descriptor.id, "sharing/open-v1", mapOf("url" to url)) }
+            else model.message("请先启用云共享，再打开这份分享")
+        }
     }
     fun handle(owner: String, action: String, inputs: Map<String, String>): Boolean {
         if (action !in setOf("sharing/system-link-v1", "sharing/nfc-v1")) return false

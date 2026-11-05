@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +33,43 @@ import org.robolectric.shadows.ShadowDialog
 class MotionDialogTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private fun step(ms: Long) { compose.mainClock.advanceTimeBy(ms); compose.waitForIdle() }
+    @Test fun modalPagesSlideInOppositeDirectionsAndSystemBackKeepsTheSameWindow() {
+        var child by mutableStateOf(false)
+        var dismissed = false
+        compose.mainClock.autoAdvance = false
+        compose.setContent { MaterialTheme {
+            MotionAlertDialog({ dismissed = true }, onNavigateUp = if (child) ({ child = false }) else null,
+                text = { ModalPageTransition(child, { if (it) 1 else 0 }, Modifier.fillMaxWidth()) { visible ->
+                    Box(Modifier.fillMaxWidth().height(128.dp).padding(horizontal = 48.dp)) {
+                        Text(if (visible) "子页" else "首页", Modifier.testTag(if (visible) "child" else "parent"))
+                    }
+                } }, confirmButton = { TextButton({ child = true }) { Text("进入") } })
+        } }
+        step(16); step(16); step(500)
+        val dialog = ShadowDialog.getLatestDialog() as ComponentDialog
+        val parent = compose.onNodeWithTag("parent")
+        val childNode = compose.onNodeWithTag("child")
+        val left = parent.fetchSemanticsNode().boundsInRoot.left
+        compose.runOnIdle { child = true }
+        repeat(4) {
+            if (!childNode.isDisplayed()) step(16)
+        }
+        val enteringChild = childNode.fetchSemanticsNode().boundsInRoot.left
+        assertTrue("Child should enter from the right: $enteringChild vs $left", enteringChild > left)
+        step(500)
+        parent.assertDoesNotExist()
+        assertEquals(left, childNode.fetchSemanticsNode().boundsInRoot.left, .5f)
+        compose.runOnIdle { dialog.onBackPressedDispatcher.onBackPressed() }
+        repeat(4) {
+            if (!parent.isDisplayed()) step(16)
+        }
+        val enteringParent = parent.fetchSemanticsNode().boundsInRoot.left
+        assertTrue("Parent should enter from the left: $enteringParent vs $left", enteringParent < left)
+        step(500)
+        childNode.assertDoesNotExist()
+        assertFalse(dismissed)
+        assertSame(dialog, ShadowDialog.getLatestDialog())
+    }
     @Test fun contentAndBoundsAnimateAndConfirmWaitsUntilExitFinishesOnce() {
         val shown = mutableStateOf(true); var confirmed = 0
         compose.mainClock.autoAdvance = false

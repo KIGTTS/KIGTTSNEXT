@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -32,7 +33,8 @@ import java.io.File
 internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expandTools: Boolean,
     clearSelection: () -> Unit, preview: @Composable (Modifier) -> Unit, tools: @Composable () -> Unit,
     categories: (@Composable (Boolean, () -> Unit) -> Unit)? = null,
-    imageFile: (String) -> File? = { null }, insertElement: (CardLayer) -> Unit = {}, avoidTools: Boolean = false) {
+    imageFile: (String) -> File? = { null }, insertElement: (CardLayer) -> Unit = {}, avoidTools: Boolean = false,
+    photoViewport: PhotoEditorViewport? = null, transformPhoto: Boolean = false) {
     val scope = rememberCoroutineScope()
     val toolsScroll = rememberScrollState()
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -67,12 +69,19 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                 sheet.animateTo(CardToolsPosition.PARTIAL, tween(220)) }; Unit }
             val elementDrag = remember { CardEditorElementDrag() }
             val paperWidth = minOf((maxWidth - 40.dp).coerceAtLeast(1.dp), 340.dp)
+            val stageWidth = maxWidth
             val stageHeight = maxHeight
             CompositionLocalProvider(LocalCardElementDrag provides elementDrag) {
             Box(Modifier.fillMaxSize().cardElementDragRoot(elementDrag, enabled, wide,
                 collapse = { scope.launch { sheet.animateTo(CardToolsPosition.COLLAPSED, tween(220)) } }, insert = insertElement)) {
             val photoTop = if (floatingHeader) 64.dp else 0.dp
-            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { clearSelection() } }
+            val pivot = with(density) {
+                if (wide) Offset(end / 2f, (stageHeight + photoTop).toPx() / 2f)
+                else Offset(stageWidth.toPx() / 2f, end / 2f)
+            }
+            Box(Modifier.fillMaxSize()
+                .then(if (photoViewport != null && transformPhoto) Modifier.photoEditorViewport(photoViewport, pivot) else Modifier)
+                .pointerInput(Unit) { detectTapGestures { clearSelection() } }
                 .testTag("card-editor-preview"), contentAlignment = Alignment.Center) {
                 preview(Modifier.width(paperWidth).graphicsLayer {
                     // The tools overlay the paper. Its viewport remains stable while the sheet moves.
@@ -85,6 +94,12 @@ internal fun CardEditorPanelScaffold(aspectRatio: Float, enabled: Boolean, expan
                     scaleY = scaleX
                     if (wide) { translationX = offset / 2f - full / 2f; translationY = photoTop.toPx() / 2f }
                     else translationY = offset / 2f - full / 2f
+                    if (photoViewport != null) {
+                        scaleX *= photoViewport.scale
+                        scaleY = scaleX
+                        translationX += photoViewport.translation.x
+                        translationY += photoViewport.translation.y
+                    }
                 }.onGloballyPositioned { elementDrag.paper = it.boundsInRoot() })
             }
             val shape = homeCardShape().let { if (wide) it.copy(topEnd = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))

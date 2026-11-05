@@ -70,7 +70,7 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
             EditablePhraseCard(phrase, { edit(phrase) }, { delete(phrase) }, neighbors,
                 Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null,
                     placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                    .then(if (drag.key == phrase.id) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
+                    .then(if (drag.key == phrase.id && !drag.landed) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier)
                     .then(actions).testTag("edit-phrase-" + phrase.id),
                     grip = if (active) Modifier.reorderGrip(phrase.id, drag) else Modifier, repository = model.mediaRepository)
         }

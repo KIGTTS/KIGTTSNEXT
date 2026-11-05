@@ -8,6 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.WifiTethering
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,12 +26,12 @@ import com.kigtts.next.ui.identity.rememberAvatarShape
 
 @Composable
 internal fun FaceDiscoveryBar(peers: List<FacePeer>, busy: Boolean, share: () -> Unit, wifi: () -> Unit, send: (FacePeer) -> Unit,
-    connection: (() -> Unit)? = null) {
+    connection: (() -> Unit)? = null, wifiLabel: String = "Wi-Fi 互传", connectionLabel: String = "连接设备") {
     LazyRow(Modifier.fillMaxWidth().testTag("face-discovery-bar"), horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically) {
         item("share") { DiscoveryAction("分享", Icons.Default.Share, busy, share) }
-        item("wifi") { DiscoveryAction("Wi-Fi 互传", Icons.Default.Wifi, busy, wifi) }
-        if (connection != null) item("connection") { DiscoveryAction("连接设备", Icons.Default.WifiTethering, busy, connection) }
+        item("wifi") { DiscoveryAction(wifiLabel, if (wifiLabel == "二维码") Icons.Default.QrCode else Icons.Default.Wifi, busy, wifi) }
+        if (connection != null) item("connection") { DiscoveryAction(connectionLabel, if (connectionLabel == "碰一碰") Icons.Default.Nfc else Icons.Default.WifiTethering, busy, connection) }
         item("divider") { VerticalDivider(Modifier.height(58.dp).padding(bottom = 20.dp)) }
         items(peers, key = { "peer-${it.id}" }) { peer ->
             Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -55,7 +57,7 @@ internal fun FaceDiscoveryBar(peers: List<FacePeer>, busy: Boolean, share: () ->
 private fun DiscoveryAction(label: String, icon: ImageVector, busy: Boolean, action: () -> Unit) {
     Column(Modifier.width(76.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(feedbackClick { if (!busy) action() }, Modifier.size(64.dp).testTag(when (label) {
-            "分享" -> "face-system-share"; "连接设备" -> "face-connection"; else -> "face-wifi-share" })
+            "分享" -> "face-system-share"; "连接设备", "碰一碰" -> "face-connection"; else -> "face-wifi-share" })
             .semantics { if (busy) disabled() },
             shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurface) {
             Box(contentAlignment = Alignment.Center) { Icon(icon, label, Modifier.size(28.dp)) }

@@ -28,11 +28,14 @@ import kotlin.math.ln
 @Composable
 internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enabled: Boolean,
     zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null,
-    viewport: Rect? = null) {
+    dialVisibilityChanged: (Boolean) -> Unit = {}) {
     val range = cameraZoomRange(minimum, maximum) ?: return
     val reported = ratio.takeIf(Float::isFinite)?.coerceIn(range) ?: range.start
     var dragging by remember { mutableStateOf(false) }
     var dial by remember { mutableStateOf(false) }
+    val latestVisibility by rememberUpdatedState(dialVisibilityChanged)
+    LaunchedEffect(dial, enabled) { latestVisibility(dial && enabled) }
+    DisposableEffect(Unit) { onDispose { latestVisibility(false) } }
     var optimistic by remember { mutableFloatStateOf(reported) }
     // CameraX reports zoom asynchronously; keep the dial at the requested value through release.
     val value = if (dial) optimistic else reported
@@ -82,14 +85,15 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                     }
                 }
                 // Opacity keeps the original touch owner and geometry throughout a drag.
-                if (vertical) Column(Modifier.padding(vertical = 4.dp)) { buttons() }
-                else Row(Modifier.padding(horizontal = 4.dp)) { buttons() }
+                if (vertical) Column { buttons() } else Row { buttons() }
             }
         }
         AnimatedVisibility(dial && enabled, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
-            // Relax the full-stage animation constraints before positioning the photograph-sized dial.
             Box(Modifier.fillMaxSize()) {
-            Box(if (viewport != null) Modifier.cameraChromeBounds(viewport).clipToBounds() else Modifier.fillMaxSize()) {
+            val dialModifier = if (bounds == null) Modifier.fillMaxSize()
+                else if (vertical) Modifier.fillMaxHeight().width((bounds.right + 8f).dp)
+                else Modifier.fillMaxWidth().height((bounds.bottom + 12f).dp)
+            Box(dialModifier.clipToBounds()) {
                 CameraZoomDial(value, range, vertical, Modifier.fillMaxSize().testTag("camera-zoom-dial"))
                 val touch = if (vertical) Modifier.align(Alignment.CenterEnd).fillMaxWidth(.4f).fillMaxHeight()
                     else Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.4f)

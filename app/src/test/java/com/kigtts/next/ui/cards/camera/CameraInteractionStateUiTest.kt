@@ -61,7 +61,7 @@ class CameraInteractionStateUiTest {
         assertEquals("Control changes must retain the same AndroidView", 1, factories)
     }
 
-    @Test fun movingThePreviewPreservesItsNativeViewAndRefreshesFormatListAndRotationInputs() {
+    @Test fun resizingThePreviewPreservesItsNativeViewAndRefreshesFormatListAndRotationInputs() {
         var vertical by mutableStateOf(false)
         var factories = 0
         compose.setContent { KigttsTheme(ThemeSettings()) {
@@ -78,8 +78,9 @@ class CameraInteractionStateUiTest {
                     Text("$rotation", Modifier.testTag("test-preview-rotation"))
                 }
             }
-            if (vertical) Row { preview(Modifier.size(320.dp, 340.dp), true) }
-            else Column { preview(Modifier.size(340.dp, 320.dp), false) }
+            Box(Modifier.size(if (vertical) 320.dp else 340.dp, if (vertical) 340.dp else 320.dp)) {
+                preview(Modifier.fillMaxSize(), vertical)
+            }
         } }
         compose.onNodeWithTag("camera-format").assertContentDescriptionContains("画幅：矩形，点按切换")
         compose.runOnIdle { vertical = true }
@@ -111,10 +112,11 @@ class CameraInteractionStateUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             CameraSettingsPanel(options, true, availableProcessing = setOf(CameraProcessing.STANDARD, CameraProcessing.HDR))
         } }
-        compose.onNodeWithContentDescription("照片处理：HDR").performScrollTo().assertIsEnabled().performClick()
+        val tile = compose.onNodeWithText("照片处理", substring = true)
+        tile.performScrollTo().assertIsEnabled().performClick()
         assertEquals(CameraProcessing.HDR, options.processing)
-        compose.onNodeWithContentDescription("照片处理：夜景").assertDoesNotExist()
-        compose.onNodeWithContentDescription("照片处理：自动优化").assertDoesNotExist()
+        tile.performClick()
+        assertEquals(CameraProcessing.STANDARD, options.processing)
     }
 
     @Test fun nativeFilterStrengthChangesTheEffectiveMatrixAndRemainsSelectedAcrossOriginalMode() {

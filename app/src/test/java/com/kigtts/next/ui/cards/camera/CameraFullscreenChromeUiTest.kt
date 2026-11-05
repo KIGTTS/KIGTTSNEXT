@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,14 +33,16 @@ class CameraFullscreenChromeUiTest {
     @Test fun theFloatingHeaderHasNoTitleBackgroundOrReservedContentHeight() {
         val previewColor = Color(0xFF123456)
         var safeVertical = 0; var reservedControls = 0f
-        compose.setContent { KigttsTheme(ThemeSettings()) {
+        var background = Color.Unspecified
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            background = MaterialTheme.colorScheme.background
             val density = LocalDensity.current
             safeVertical = WindowInsets.safeDrawing.getTop(density) + WindowInsets.safeDrawing.getBottom(density)
             reservedControls = with(density) { (92.dp + 8.dp).toPx() }
             Box(Modifier.size(360.dp, 640.dp).testTag("test-camera-fullscreen")) {
                 CameraPageLayout({ modifier, _ -> Box(modifier.background(previewColor).testTag("test-fullscreen-preview")) },
                     { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {}) },
-                    header = { CameraCornerToolbar(true, false, true, false, {}, {}, applyInsets = false) {
+                    header = { CameraCornerToolbar(true, false, true, {}, {}, applyInsets = false) {
                         CameraMotionButton(false, true, true, false, true, {})
                     } })
             }
@@ -62,25 +65,30 @@ class CameraFullscreenChromeUiTest {
             assertEquals(previewColor.red, sampled.red, .01f)
             assertEquals(previewColor.green, sampled.green, .01f)
             assertEquals(previewColor.blue, sampled.blue, .01f)
+            val dockY = ((preview.bottom - root.top) / root.height * pixels.height).toInt() + 8
+            val outside = Color(pixels.getPixel(4, dockY))
+            assertEquals(background.red, outside.red, .01f)
+            assertEquals(background.green, outside.green, .01f)
+            assertEquals(background.blue, outside.blue, .01f)
         } finally { pixels.recycle() }
     }
 
     @Test fun cornerActionsUseCurrentCallbacksAndSavingOnlyLocksTheNecessaryActions() {
         var busy by mutableStateOf(false); var countdown by mutableStateOf(false)
-        var loading by mutableStateOf(false); var active by mutableStateOf(true)
+        var active by mutableStateOf(true)
         var backs = 0; var settings = 0
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            CameraCornerToolbar(active, busy, !busy && !countdown, loading, { backs++ }, { settings++ })
+            CameraCornerToolbar(active, busy, !busy && !countdown, { backs++ }, { settings++ })
         } }
         compose.onNodeWithTag("camera-cancel").performClick(); assertEquals(1, backs)
         compose.onNodeWithTag("camera-settings").performClick(); assertEquals(1, settings)
         compose.runOnIdle { countdown = true }
         compose.onNodeWithTag("camera-cancel").assertIsEnabled()
         compose.onNodeWithTag("camera-settings").assertIsNotEnabled()
-        compose.runOnIdle { busy = true; loading = true }
+        compose.runOnIdle { busy = true }
         compose.onNodeWithTag("camera-cancel").assertIsNotEnabled()
-        compose.onNodeWithTag("camera-header-loading").assertExists()
-        compose.runOnIdle { busy = false; countdown = false; loading = false }
+        compose.onNodeWithTag("camera-header-loading").assertDoesNotExist()
+        compose.runOnIdle { busy = false; countdown = false }
         compose.onNodeWithTag("camera-settings").performClick(); assertEquals(2, settings)
         compose.runOnIdle { active = false }
         compose.onNodeWithTag("camera-cancel").assertIsNotEnabled()
@@ -97,7 +105,7 @@ class CameraFullscreenChromeUiTest {
             Box(Modifier.size(800.dp, 300.dp).testTag("test-camera-fullscreen")) {
                 CameraPageLayout({ modifier, _ -> Box(modifier.testTag("test-fullscreen-preview")) },
                     { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {}) },
-                    header = { CameraCornerToolbar(true, false, true, false, {}, {}, applyInsets = false) {
+                    header = { CameraCornerToolbar(true, false, true, {}, {}, applyInsets = false) {
                         CameraMotionButton(false, true, true, false, true, {})
                     } })
             }

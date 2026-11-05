@@ -14,6 +14,16 @@ import org.robolectric.annotation.Config
 class CameraOptionsTest {
     private val prefs = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("camera-test", 0)
     @Before fun reset() { prefs.edit().clear().commit() }
+    @Test fun scanFramesAtFourByThreeWithoutOverwritingThePhotoPreference() {
+        val options = CameraOptions(prefs)
+        options.chooseAspect(CameraAspect.WIDE)
+        options.chooseMode(CameraMode.SCAN)
+        assertEquals(.75f, options.framingAspect.ratio(400, 800), .001f)
+        assertEquals(4f / 3f, options.framingAspect.ratio(800, 400), .001f)
+        assertEquals(CameraAspect.WIDE, CameraOptions(prefs).aspect)
+        options.chooseMode(CameraMode.PHOTO)
+        assertEquals(CameraAspect.WIDE, options.framingAspect)
+    }
     @Test fun cameraChoicesSurviveReopeningButTheSettingsDialogDoesNot() {
         val options = CameraOptions(prefs)
         options.setGrid(CameraGrid.SQUARE); options.setLevel(false); options.setFlash(CameraFlash.AUTO)

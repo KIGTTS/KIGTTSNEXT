@@ -19,11 +19,12 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
     private val render: suspend (PolaroidCard) -> File = { exportPolaroidMedia(stickers, it, maximumHeight = galleryPolaroidHeight(stickers, it)) },
     private val permission: suspend () -> Boolean = { requestGalleryWrite(context) }) {
     private val preferences = context.getSharedPreferences("polaroid-system-album", Context.MODE_PRIVATE)
+    val encodings = CameraAlbumEncoding(stickers)
     private val gate = Mutex()
     private var permissionDeclined = false
 
     suspend fun synchronize(): Int = withContext(Dispatchers.IO) { gate.withLock {
-        val photos = stickers.cards.value.filter { it.imageId != null && it.frameStyleId != "identity.banner" }
+        val photos = stickers.cards.value.filter { it.imageId != null && it.frameStyleId != "identity.banner" && !PhotoDocumentsDrafts.isDraft(context, it.id) }
         val pending = photos.filter { receipt(it.id)?.optString("fingerprint") != fingerprint(it) }
         if (pending.isEmpty() || permissionDeclined) return@withLock 0
         if (!permission()) { permissionDeclined = true; return@withLock 0 }
@@ -39,7 +40,7 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
 
     suspend fun save(cardId: String): Uri = gate.withLock {
         check(permission()) { "未允许保存到系统相册" }; permissionDeclined = false
-        val card = requireNotNull(stickers.cards.value.firstOrNull { it.id == cardId }) { "这张拍立得已移除" }
+        val card = requireNotNull(stickers.cards.value.firstOrNull { it.id == cardId }) { "这张照片已移除" }
         publish(card, force = true) ?: error("照片已更新，请重新保存")
     }
 
@@ -50,26 +51,40 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
             if (!force || previousUri != null && publication.exists(previousUri)) return@withContext previousUri
         }
         if (stickers.cards.value.firstOrNull { it.id == card.id } != card) return@withContext null
-        val image = render(card)
+        val frame = PhotoFrameSpec.from(card.frameStyleId)
+        val motion = CardMotionRepository(stickers).get(card.imageId) != null
+        val untouched = frame?.style == "none" && frame.crop == null && card.photoStyle == null && card.layers.isEmpty() &&
+            card.title.isEmpty() && card.description.isEmpty() && !motion && card.photoZoom == 1.0 && card.photoX == .5 && card.photoY == .5
+        val original = if (untouched) requireNotNull(card.imageId?.let(stickers::imageFile)) else null
+        val format = encodings.get(card.id)
+        val staged = !motion && format != null && (format == CameraPhotoEncoding.HEIF || original == null)
+        val image = if (staged) encodings.stage(card, requireNotNull(format), original) else original ?: render(card)
         try {
             // An edit or removal during export must not publish a stale frame or recreate a deleted card.
             if (stickers.cards.value.firstOrNull { it.id == card.id } != card || fingerprint(card) != hash) return@withContext null
-            val uri = publication.publish(image, "拍立得", stickers.cardCreatedAt(card.id))
+            val uri = publication.publish(image, if (frame != null) "相机" else "拍立得",
+                stickers.designs.facts(card.id).capturedAt ?: stickers.cardCreatedAt(card.id))
             // Complete the receipt and replacement even if the UI owner is cancelled after MediaStore committed.
             withContext(NonCancellable) {
-                if (!preferences.edit().putString(card.id, JSONObject().put("uri", uri.toString()).put("fingerprint", hash).toString()).commit()) {
+                if (!preferences.edit().putString(card.id, JSONObject().put("uri", uri.toString()).put("fingerprint", hash)
+                        .put("heif", image.extension.equals("heic", true) || image.extension.equals("heif", true)).toString()).commit()) {
                     publication.remove(uri); error("未能记录系统相册保存状态")
                 }
                 previousUri?.takeIf { it != uri }?.let { runCatching { publication.remove(it) } }
             }
             uri
         } finally {
-            if (image.name.endsWith("MP.jpg", true) && image.canonicalFile.parentFile == File(stickers.root, "exports").canonicalFile) image.delete()
+            if (staged && image != original ||
+                image.name.endsWith("MP.jpg", true) && image.canonicalFile.parentFile == File(stickers.root, "exports").canonicalFile) image.delete()
         }
     }
+    fun cardFor(uri: Uri): String? = preferences.all.keys.firstOrNull { receipt(it)?.optString("uri") == uri.toString() }
+    fun uriFor(id: String): Uri? = receipt(id)?.optString("uri")?.takeIf(String::isNotBlank)?.let(Uri::parse)
+    fun isHeif(id: String): Boolean = receipt(id)?.optBoolean("heif") == true
     private fun receipt(id: String): JSONObject? = runCatching { preferences.getString(id, null)?.let(::JSONObject) }.getOrNull()
     private fun fingerprint(card: PolaroidCard): String {
-        val source = "hd-v1/" + PluginJson.encodeToString(card) + PluginJson.encodeToString(stickers.frameStyle(card))
+        val source = "hd-v1/" + PluginJson.encodeToString(card) + PluginJson.encodeToString(stickers.frameStyle(card)) +
+            (encodings.get(card.id)?.let { "/${it.name}" } ?: "")
         return MessageDigest.getInstance("SHA-256").digest(source.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
     }
 }
@@ -86,7 +101,7 @@ internal fun observePolaroidSystemAlbum(scope: CoroutineScope, cards: CardReposi
     scope.launch {
         // Resource-library or album-order edits cannot change a rendered photograph.
         combine(cards.stickers.cards, cards.stickers.frameStyles) { _, _ -> Unit }.collect {
-            if (cards.systemAlbum.synchronize() > 0) message("部分拍立得未能保存到系统相册，可在照片预览中重试")
+            if (cards.systemAlbum.synchronize() > 0) message("部分照片未能保存到系统相册")
         }
     }
 }

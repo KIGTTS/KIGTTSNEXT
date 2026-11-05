@@ -21,7 +21,7 @@ import com.kigtts.next.theme.*
 @Composable
 fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modifier,
     backLabel: String = "返回上一页", actions: List<ToolbarAction> = emptyList(),
-    subtitle: String? = "下滑进行拍照", avoidKeyboard: Boolean = true, content: @Composable () -> Unit) {
+    subtitle: String? = "下滑进行拍照", avoidKeyboard: Boolean = true, compactBar: Boolean = false, content: @Composable () -> Unit) {
     val host = remember { PageToolbarActions() }
     val chrome = remember { CardPageChromeState() }
     val barState = rememberTopAppBarState()
@@ -41,8 +41,9 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
     BoxWithConstraints(modifier.fillMaxSize()) {
         background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
         val landscape = maxWidth > maxHeight
-        LaunchedEffect(forceCompact, landscape, barState.heightOffsetLimit) {
-            if (!landscape && barState.heightOffsetLimit > -Float.MAX_VALUE) {
+        val smallBar = landscape || compactBar
+        LaunchedEffect(forceCompact, smallBar, barState.heightOffsetLimit) {
+            if (!smallBar && barState.heightOffsetLimit > -Float.MAX_VALUE) {
                 Animatable(barState.heightOffset).animateTo(if (forceCompact) barState.heightOffsetLimit else 0f, tween(220)) {
                     barState.heightOffset = value
                 }
@@ -50,12 +51,12 @@ fun CardPageScaffold(title: String, back: () -> Unit, modifier: Modifier = Modif
         }
         CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
             LocalCardPageChrome provides chrome, LocalCardWindowLandscape provides landscape) {
-            Scaffold(Modifier.fillMaxSize().then(if (!landscape) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier)
+            Scaffold(Modifier.fillMaxSize().then(if (!smallBar) Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier)
                 .testTag("immersive-page"), containerColor = if(background==null)MaterialTheme.colorScheme.background else Color.Transparent,
                 contentWindowInsets = (if (avoidKeyboard) WindowInsets.safeDrawing else WindowInsets.systemBars.union(WindowInsets.displayCutout))
                     .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom),
                 topBar = {
-                    if (landscape) TopAppBar(title = { Column {
+                    if (smallBar) TopAppBar(title = { Column {
                         PageBarTitle(title, true, host.loading)
                         subtitle?.let { Text(it, Modifier.testTag("page-subtitle").cameraPullEntryRegion(),
                             style = MaterialTheme.typography.labelMedium, maxLines = 1,

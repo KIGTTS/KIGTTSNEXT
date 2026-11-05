@@ -15,7 +15,7 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
     val designs by model.stickers.identityDesigns.items.collectAsStateWithLifecycle()
     var photoSelected by remember { mutableStateOf<((PolaroidCard) -> Unit)?>(null) }
     val personal = identities.firstOrNull { it.designId == destination.cardId }
-    CardPageScaffold(if (personal != null) "编辑名片背景" else "编辑拍立得", model::navigateBack, subtitle = null, avoidKeyboard = false) {
+    CardPageScaffold(if (personal != null) "编辑名片背景" else "编辑图片", model::navigateBack, subtitle = null, avoidKeyboard = false, compactBar = true) {
         CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },
@@ -34,7 +34,7 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
             }, selectPhoto = { photoSelected = it })
     }
     photoSelected?.let { selected ->
-        com.kigtts.next.ui.artwork.LibraryArtworkSelector(model, ArtworkSelectionRequest(ArtworkLibrary.POLAROIDS, "选择拍立得"),
+        com.kigtts.next.ui.artwork.LibraryArtworkSelector(model, ArtworkSelectionRequest(ArtworkLibrary.POLAROIDS, "选择照片"),
             { photoSelected = null }) { ids ->
             ids.firstOrNull()?.let { id -> model.cards.cards.value.firstOrNull { it.id == id }?.let(selected) }
             photoSelected = null

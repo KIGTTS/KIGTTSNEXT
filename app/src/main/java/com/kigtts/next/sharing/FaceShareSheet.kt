@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.sharing
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -28,7 +29,8 @@ internal fun FaceShareSheet(title: String, dismiss: () -> Unit, maximumHeight: D
     back: (() -> Unit)? = null, finish: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    ModalBottomSheet(dismiss, sheetState = state) {
+    ModalBottomSheet(dismiss, sheetState = state, properties = ModalBottomSheetProperties(shouldDismissOnBackPress = back == null)) {
+        BackHandler(back != null) { back?.invoke() }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val height = animateDpAsState(minOf(maximumHeight, maxHeight * .86f), tween(240), label = "face-sheet-height").value
             Column(Modifier.fillMaxWidth().height(height).navigationBarsPadding().testTag("face-share")) {

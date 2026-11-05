@@ -1,12 +1,15 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
@@ -26,7 +29,14 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
     var deleting by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
     val density = LocalDensity.current
     val view = LocalView.current
-    target?.let { selected ->
+    var displayed by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
+    val reveal = remember { Animatable(0f) }
+    LaunchedEffect(target) {
+        if (target != null) displayed = target
+        reveal.animateTo(if (target != null) 1f else 0f, tween(if (target != null) 160 else 120))
+        if (target == null) displayed = null
+    }
+    displayed?.let { selected ->
         val gap = with(density) { 8.dp.roundToPx() }
         val position = remember(selected, gap, view) { object : PopupPositionProvider {
             override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
@@ -39,9 +49,13 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
                             .coerceAtMost(maxOf(gap, windowSize.height - popupContentSize.height - gap)) })
             }
         } }
-        Popup(position, dismiss, PopupProperties(focusable = true)) {
+        Popup(position, dismiss, PopupProperties(focusable = target != null)) {
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.testTag("quick-text-context-menu")) {
+                tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.testTag("quick-text-context-menu").graphicsLayer {
+                    alpha = reveal.value
+                    scaleX = .94f + .06f * reveal.value; scaleY = scaleX
+                    translationY = with(density) { 6.dp.toPx() } * (1f - reveal.value)
+                }) {
                 Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
                     IconButton(onClick = feedbackClick { dismiss(); model.sharing.shareQuickText(selected.key, selected.group) }) {
                         Icon(Icons.Default.Share, "分享", Modifier.size(22.dp))

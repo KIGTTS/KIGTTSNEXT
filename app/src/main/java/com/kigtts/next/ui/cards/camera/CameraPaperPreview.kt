@@ -31,15 +31,16 @@ import com.kigtts.plugin.api.PolaroidFormat
 internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filter: PhotoFilter,
     session: PolaroidCameraSession, sizeChanged: (IntSize) -> Unit, modifier: Modifier = Modifier,
     displayReady: Boolean = session.ready, morphChanged: (Boolean) -> Unit = {},
-    options: CameraOptions? = null, rotation: Int = Surface.ROTATION_0, active: Boolean = true,
+    options: CameraOptions? = null, rotation: Int = Surface.ROTATION_0, active: Boolean = true, showGuides: Boolean = true,
     filterStrength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
     verticalChrome: Boolean = false, headerOverlay: Boolean = false,
     chrome: @Composable BoxScope.(CameraChromeLayout) -> Unit = {},
     streamTransition: CameraStreamTransition? = null,
+    aspectRatio: Float = format.geometry.photoAspectRatio.toFloat(),
     overlay: @Composable BoxScope.() -> Unit = {}) {
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
-    val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength)
+    val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength, aspectRatio)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
     val resolvedLut = remember(filter, lut) { PhotoFilters.lut(filter, lut) }
     val effects = options?.effects ?: com.kigtts.next.media.color.PhotoEffects.NONE
@@ -77,9 +78,10 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val fitted = cameraPhotoWindow(maxWidth.value, maxHeight.value, motion.ratio.value)
         val layout = rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
-            cameraPhotoWindow(maxWidth.value, maxHeight.value, format.geometry.photoAspectRatio.toFloat()), verticalChrome,
-            headerInset = if (headerOverlay) 56f else 0f)
-        Box(Modifier.size(fitted.width.dp, fitted.height.dp).clip(RoundedCornerShape(16.dp)).background(Color.Black)
+            cameraPhotoWindow(maxWidth.value, maxHeight.value, aspectRatio), verticalChrome,
+            headerInset = if (headerOverlay) 56f else 0f, anchorPortrait = LocalCameraPortraitAnchor.current,
+            shutterInset = LocalCameraShutterInset.current.value)
+        Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp)).background(Color.Black)
             .testTag("camera-photo-window")) {
             AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().onSizeChanged(sizeChanged).cameraPullViewfinder())
             motion.snapshot?.let { snapshot ->
@@ -89,7 +91,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
                 BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = streamTransition.alpha.value }
                     .testTag("camera-stream-cover"))
             }
-            options?.let {
+            options?.takeIf { showGuides }?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
             }
             CameraFocusOverlay(session.focusTarget, session.exposureIndex, if (session.manual.automaticExposure) session.exposureRange else 0..0,

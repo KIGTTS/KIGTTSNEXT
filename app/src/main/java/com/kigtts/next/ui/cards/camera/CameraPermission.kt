@@ -42,7 +42,7 @@ internal fun cameraPermission(active: Boolean): Pair<Boolean, () -> Unit> {
 internal fun CameraPermissionPanel(request: () -> Unit, active: Boolean) {
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("允许使用相机后，就可以拍摄拍立得照片")
+        Text("允许使用相机后，就可以拍摄照片")
         Spacer(Modifier.height(16.dp))
         MotionOutlinedButton(feedbackClick(request), enabled = active) { Text("允许使用相机") }
         MotionOutlinedButton(feedbackClick {

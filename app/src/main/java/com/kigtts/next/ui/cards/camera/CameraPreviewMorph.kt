@@ -19,19 +19,19 @@ internal class CameraPreviewMorph(ratio: Float) {
 /** One small cached frame per format change. The final live STREAMING frame releases the cover. */
 @Composable
 internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidFormat, filter: PhotoFilter,
-    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f): CameraPreviewMorph {
-    val motion = remember(view) { CameraPreviewMorph(format.geometry.photoAspectRatio.toFloat()) }
+    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f, aspectRatio: Float = format.geometry.photoAspectRatio.toFloat()): CameraPreviewMorph {
+    val motion = remember(view) { CameraPreviewMorph(aspectRatio) }
     val ready = rememberUpdatedState(displayReady); val changed = rememberUpdatedState(morphChanged)
-    var last by remember(view) { mutableStateOf(format) }
-    LaunchedEffect(format, view) {
-        if (last == format) return@LaunchedEffect
-        last = format
+    var last by remember(view) { mutableStateOf(aspectRatio) }
+    LaunchedEffect(aspectRatio, view) {
+        if (last == aspectRatio) return@LaunchedEffect
+        last = aspectRatio
         motion.snapshot = cameraPreviewSnapshot(view) ?: motion.snapshot
         changed.value(true)
         try {
             coroutineScope {
                 launch { motion.alpha.animateTo(if (motion.snapshot != null) 1f else 0f, tween(75)) }
-                motion.ratio.animateTo(format.geometry.photoAspectRatio.toFloat(), tween(280, easing = FastOutSlowInEasing))
+                motion.ratio.animateTo(aspectRatio, tween(280, easing = FastOutSlowInEasing))
             }
             // Let both Compose measurement and AndroidView layout reach the final rectangle.
             withFrameNanos { }; withFrameNanos { }

@@ -3,6 +3,7 @@ package com.kigtts.next.ui.home
 import com.kigtts.next.ui.components.MotionTextButton
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.runtime.saveable.Saver
 import com.kigtts.next.ui.components.MaterialSymbolPicker
@@ -57,6 +58,11 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
                         Text("分组图标", style = MaterialTheme.typography.titleSmall)
                     }
                     MotionTextButton({ more = true }, Modifier.testTag("category-more-icons")) { Text("更多与搜索") }
+                }
+                if (original != null) MotionTextButton(onClick = feedbackClick { model.sharing.shareQuickText(original, true) },
+                    modifier = Modifier.fillMaxWidth().testTag("share-category")) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Share, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp)); Text("分享分组")
                 }
                 LazyVerticalGrid(GridCells.Adaptive(48.dp), Modifier.fillMaxWidth().height(224.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

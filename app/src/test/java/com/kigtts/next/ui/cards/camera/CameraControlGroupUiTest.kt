@@ -30,7 +30,7 @@ class CameraControlGroupUiTest {
                     flashAvailable = true, cycleFlash = { clicks[0]++ }, motionButton = {
                         CameraMotionButton(false, true, true, false, true, { clicks[2]++ })
                     })
-                CameraCornerToolbar(true, false, true, false, {}, {}, applyInsets = false,
+                CameraCornerToolbar(true, false, true, {}, {}, applyInsets = false,
                     vertical = vertical, showSettings = false)
             }
         } }

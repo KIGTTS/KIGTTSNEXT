@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
+import android.net.Uri
 import androidx.camera.view.PreviewView
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,18 +26,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
-private data class CameraBoundRequest(val format: PolaroidFormat, val front: Boolean, val rotation: Int, val retry: Int,
+private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, val front: Boolean, val rotation: Int, val retry: Int,
     val processing: CameraProcessing, val motion: Boolean)
 
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
-    onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null) {
+    onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
+    onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
     val active = pageActive && !suspended && lifecycle.isAtLeast(Lifecycle.State.STARTED)
+    CameraStatusBar(pageActive && !suspended)
     val configuration = LocalConfiguration.current
     val formats = cameraFormats(configuration.screenWidthDp, configuration.screenHeightDp, configuration.smallestScreenWidthDp)
     var format by rememberSaveable { mutableStateOf(initialFormat?.takeIf { it in formats } ?: formats.first()) }
@@ -73,17 +76,31 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val (granted, request) = cameraPermission(pageActive)
     val rotation = rememberCameraDisplayRotation(view)
     // Intermediate animated sizes are not read by the rest of the page on every frame.
-    val viewport by remember(format, rotation) { derivedStateOf { cameraViewportKey(viewSize, format.geometry.photoAspectRatio, rotation) } }
-    val desired = CameraBoundRequest(format, front, rotation, retry, options.processing, options.motion)
-    val locked = session.busy || session.countingDown
-    val displayReady by remember(session, rotation) { derivedStateOf {
+    val modern = onVideo != null
+    val aspect = if (modern) options.framingAspect.ratio(configuration.screenWidthDp, configuration.screenHeightDp) else format.geometry.photoAspectRatio.toFloat()
+    val mode = if (modern) options.mode else CameraMode.PHOTO
+    val processing = if (mode == CameraMode.PHOTO) options.processing else CameraProcessing.STANDARD
+    val motion = options.motion && mode == CameraMode.PHOTO
+    val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
+    val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion)
+    val locked = session.busy || session.countingDown || session.video.active || session.video.finishing
+    val configurationLocked = session.countingDown || session.video.active || session.video.finishing || !modern && session.busy
+    var openGalleryWhenReady by remember { mutableStateOf(false) }
+    var zoomDialVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(openGalleryWhenReady, session.busy, active) {
+        if (openGalleryWhenReady && !session.busy && active) {
+            openGalleryWhenReady = false
+            onGallery(format)
+        }
+    }
+    val displayReady by remember(session, desired) { derivedStateOf {
         session.ready && !session.loading && !morphing && bound?.let {
-            it.format == format && it.front == front && it.rotation == rotation && it.retry == retry && it.processing == options.processing && it.motion == options.motion
+            it == desired
         } == true
     } }
     LaunchedEffect(options.flash, session.ready, locked) { if (!locked) session.setFlash(options.flash) }
     LaunchedEffect(formats, locked) {
-        if (!locked && format !in formats) { morphing = true; format = formats.first() }
+        if (!locked && format !in formats) format = formats.first()
     }
     LaunchedEffect(active, granted, viewport, desired, locked, morphing) {
         if (!active || !granted) { bound = null; session.unbind() }
@@ -93,7 +110,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             streamTransition.cover()
             coroutineContext.ensureActive()
             bound = null
-            session.bind(view, front, rotation, options.processing, options.motion)
+            session.bind(view, front, rotation, processing, motion, mode)
             coroutineContext.ensureActive()
             bound = desired
         }
@@ -101,76 +118,94 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     LaunchedEffect(active, displayReady, bound) {
         if (active && displayReady) streamTransition.reveal()
     }
-    DisposableEffect(session) { onDispose { session.unbind() } }
+    DisposableEffect(session) { onDispose { session.close() } }
     LaunchedEffect(session.countingDown) { if (session.countingDown) filtersExpanded = false }
-    RegisterPageLoading(session.loading || session.busy || morphing)
-    val interceptBack = pageActive && (session.busy || filtersExpanded && !session.countingDown)
+    val interceptBack = pageActive && (session.busy || session.video.active || filtersExpanded && !session.countingDown)
     val backAction = {
-        if (session.busy) message("照片正在保存，请稍候") else filtersExpanded = false
+        if (session.video.active) session.video.stop()
+        else if (session.busy) message("正在拍摄，请稍候") else filtersExpanded = false
     }
     RegisterPageBackGuard(interceptBack, backAction)
-    RegisterCameraPullGuard(session.busy || options.settingsVisible || filtersExpanded || morphing)
+    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || filtersExpanded || morphing)
     PredictiveBackHandler(interceptBack) { events ->
         try { events.collect { }; backAction() } catch (_: CancellationException) { }
     }
-    RegisterCameraShutterKeys(active && granted && !options.settingsVisible) {
-        if (session.countingDown) session.cancelCountdown()
-        else if (!locked && displayReady && viewport.matchesPhotoRatio)
-            session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut, effects = options.effects)
-    }
+    val shutter = rememberCameraCaptureAction(session, mode, displayReady && viewport.matchesPhotoRatio,
+        format, filter, options, lut, onCapture, onVideo, message)
+    RegisterCameraShutterKeys(active && granted && !options.settingsVisible) { shutter() }
     val leave = {
-        if (session.busy) message("照片正在保存，请稍候")
+        if (session.video.active) session.video.stop()
+        else if (session.busy) message("正在拍摄，请稍候")
         else if (filtersExpanded && !session.countingDown) filtersExpanded = false
         else { session.unbind(); onCancel() }
     }
     val header: @Composable (Boolean) -> Unit = { vertical ->
-        CameraCornerToolbar(active, session.busy, granted && !locked, session.loading || session.busy || morphing,
+        CameraCornerToolbar(active, session.busy, granted && !configurationLocked,
             leave, options::showSettings, applyInsets = !granted, vertical = vertical, showSettings = !granted)
     }
     if (!granted) { Box(Modifier.fillMaxSize()) { CameraPermissionPanel(request, pageActive); header(false) }; return }
     // Configuration is available during startup/morphing; only capture/focus require a fresh streamed frame.
-    val interactive = active && !locked
+    val interactive = active && !configurationLocked
     val preview = rememberCameraPreviewContent(view, session) { modifier, vertical ->
         CameraPaperPreview(view, format, filter, session, { viewSize = it }, modifier,
             displayReady = displayReady, morphChanged = { morphing = it },
-            options = options, rotation = rotation, active = active, filterStrength = options.filterStrength, lut = lut,
-            verticalChrome = vertical, headerOverlay = true, streamTransition = streamTransition, chrome = { layout ->
+            options = options, rotation = rotation, active = active, showGuides = mode != CameraMode.SCAN,
+            filterStrength = options.filterStrength, lut = lut,
+            verticalChrome = vertical, headerOverlay = true, streamTransition = streamTransition, aspectRatio = aspect, chrome = { layout ->
             CameraOverlayControls(format, formats, filter, interactive, vertical, filtersExpanded,
-                { morphing = true; format = nextCameraFormat(formats, format) },
+                { if (modern) options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) else format = nextCameraFormat(formats, format) },
                 options::showSettings, { filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
                 }, options.filterStrength, options::setFilterStrength, layout,
                 customLuts = customLuts, selectedLut = selectedLut,
                 selectLut = { selectedLut = it; filter = PhotoFilter.CUSTOM },
-                importLut = { importLut.launch(arrayOf("*/*")) }, motionButton = {
+                importLut = { importLut.launch(arrayOf("*/*")) }, showMotion = mode == CameraMode.PHOTO,
+                showFilters = mode != CameraMode.SCAN, showFormat = mode != CameraMode.SCAN, motionButton = {
                     CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
                         options.motion && (session.loading || session.motionAvailable && !session.motionReady),
-                        active && granted && !locked, options::setMotion)
-                }, effects = options.effects, changeEffects = options::setEffects)
+                        active && granted && !locked && mode == CameraMode.PHOTO, options::setMotion)
+                }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.label.takeIf { modern })
             CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
-                displayReady && interactive, session::zoomTo, vertical,
-                Modifier.matchParentSize(), bounds = layout.zoom, viewport = layout.photo)
+                active && displayReady && (!session.busy || modern), session::zoomTo, vertical,
+                Modifier.matchParentSize(), bounds = layout.zoom, dialVisibilityChanged = { zoomDialVisible = it })
             }) {
             CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))
             CameraBurstStatus(session.burst, Modifier.align(Alignment.Center))
+            if (mode == CameraMode.SCAN) CameraScanOverlay(session.scanned, session::clearScan)
         }
     }
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
-    val controls: @Composable (Boolean) -> Unit = { vertical ->
-        CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
+    val controls = rememberCameraControlsContent { vertical ->
+        val bar: @Composable () -> Unit = { CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
             leave,
-            { session.capture(format, filter, onCapture, delaySeconds = options.timerSeconds, strength = options.filterStrength, lut = lut, effects = options.effects) },
+            shutter,
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
-            gallery = { onGallery(format) }, systemCamera = { onSystemCamera(format) },
-            burstStart = onBurst?.let { complete -> { if (displayReady && !locked)
-                session.startBurst(format, filter, complete, options.filterStrength, lut, options.effects) } },
+            gallery = { if (modern && session.busy) { openGalleryWhenReady = true; session.burst.stop() } else onGallery(format) },
+            galleryPreview = galleryPreview, configurationLocked = configurationLocked,
+            systemCamera = if (modern) null else ({ onSystemCamera(format) }),
+            burstStart = onBurst?.takeIf { mode == CameraMode.PHOTO }?.let { complete -> { if (displayReady && !locked) {
+                val output = CameraPhotoOutput(options.watermark, options.encoding)
+                session.startBurst(format, filter, { shots -> complete(if (modern) shots.map { it.withOutput(output) } else shots) },
+                    options.filterStrength, lut, options.effects)
+            } } },
             burstEnd = session.burst::stop, burstRunning = session.burst.running,
-            burstHeld = session.burst.held, burstCount = session.burst.count)
+            burstHeld = session.burst.held, burstCount = session.burst.count,
+            queueShutter = modern && mode == CameraMode.PHOTO && options.timerSeconds == 0,
+            shutter = when {
+                mode.recordsVideo -> ({ VideoShutter(session.video.active, session.video.finishing,
+                    active && !session.video.finishing && (displayReady || session.video.active), shutter) })
+                mode == CameraMode.SCAN -> ({ ScanShutterIndicator() })
+                else -> null
+            })
+        }
+        if (modern) CameraModeControls(mode, { filtersExpanded = false; options.chooseMode(it) }, interactive,
+            vertical, session.video.active, session.video.durationMs, controls = bar) else bar()
     }
-    CameraPageLayout(preview, controls, error, header, format.geometry.photoAspectRatio.toFloat())
+    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible)
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable, enabled = interactive,
-        availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing, manual = session.manual)
+        availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
+        manual = session.manual, watermarkPreview = { cameraPreviewSnapshot(view) })
 }

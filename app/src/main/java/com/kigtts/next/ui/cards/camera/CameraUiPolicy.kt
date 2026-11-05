@@ -16,6 +16,12 @@ internal fun cameraPhotoWindow(width: Float, height: Float, ratio: Float): Size 
 
 internal fun cameraSideControls(width: Float, height: Float) = width > height * 1.25f
 
+internal fun cameraOverlaysShutter(width: Float, height: Float, photoAspect: Float?): Boolean {
+    if (width <= 0f || height <= 0f || photoAspect == null || !photoAspect.isFinite()) return false
+    val relative = photoAspect / (width / height)
+    return relative in .85f..(1f / .85f)
+}
+
 internal fun cameraExposureAt(y: Float, height: Float, range: IntRange): Int {
     if (height <= 0 || !height.isFinite() || !y.isFinite() || range.isEmpty()) return 0
     return (range.last - (y / height).coerceIn(0f, 1f) * (range.last - range.first)).roundToInt().coerceIn(range)

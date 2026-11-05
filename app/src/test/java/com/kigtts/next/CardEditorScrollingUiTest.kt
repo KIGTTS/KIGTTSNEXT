@@ -169,12 +169,13 @@ class CardEditorScrollingUiTest {
         // real window to exercise overflow, then retain the keyboard and rotation checks below.
         var width by mutableStateOf(400.dp); var height by mutableStateOf(620.dp)
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            Box(Modifier.size(width, height)) { CardPageScaffold("编辑拍立得", {}, subtitle = null) {
+            Box(Modifier.size(width, height)) { CardPageScaffold("编辑图片", {}, subtitle = null, compactBar = true) {
                 CardEditorScreen(cards, stickers, card.id, {})
             } }
         } }
-        dragContent(true)
-        assertTrue(position() > 20f)
+        compose.onNodeWithTag("small-page-bar").assertIsDisplayed()
+        compose.onNodeWithText("裁剪照片", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("换照片", substring = true).assertDoesNotExist()
         compose.onNodeWithTag("card-editor-tab/TEXT").performClick()
         compose.onNodeWithTag("card-title").performScrollTo().performTextReplacement("保留的草稿")
         compose.runOnIdle {

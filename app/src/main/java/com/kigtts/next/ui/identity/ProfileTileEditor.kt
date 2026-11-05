@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.*
@@ -52,13 +53,17 @@ import java.io.File
     } }
     val names = linkedMapOf(ProfileTileKind.LINK to "链接", ProfileTileKind.CONTACT to "社媒", ProfileTileKind.TITLE to "标题",
         ProfileTileKind.TEXT to "文字", ProfileTileKind.IMAGE to "图片 / GIF")
-    MotionAlertDialog(close, title = { Text(if (tile == null) "添加磁贴" else "编辑磁贴") }, text = {
+    val keyboard = LocalSoftwareKeyboardController.current
+    val changeKind = { keyboard?.hide(); kind = null; error = null }
+    MotionAlertDialog(close, title = { Text(if (tile == null) "添加磁贴" else "编辑磁贴") },
+        onNavigateUp = if (tile == null && kind != null && !working) changeKind else null, text = {
+      ModalPageTransition(kind, { if (it == null) 0 else 1 }, Modifier.fillMaxWidth()) { displayedKind ->
         Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (kind == null) names.forEach { (value, name) -> OutlinedButton(feedbackClick { kind = value }, Modifier.fillMaxWidth()) { Text(name) } }
+            if (displayedKind == null) names.forEach { (value, name) -> OutlinedButton(feedbackClick { kind = value }, Modifier.fillMaxWidth()) { Text(name) } }
             else {
-                Text(names[kind] ?: "状态", style = MaterialTheme.typography.titleSmall)
-                if (kind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(if (kind == ProfileTileKind.TITLE) "标题" else "名称") }, singleLine = true)
-                when (kind) {
+                Text(names[displayedKind] ?: "状态", style = MaterialTheme.typography.titleSmall)
+                if (displayedKind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(if (displayedKind == ProfileTileKind.TITLE) "标题" else "名称") }, singleLine = true)
+                when (displayedKind) {
                     ProfileTileKind.CONTACT -> ProfileTileContactField(social, contact, contacts,
                         { social = it; contact = ""; error = null }, { social = null; contact = it.value; error = null })
                     ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text("网址") }, singleLine = true)
@@ -69,10 +74,11 @@ import java.io.File
                     ProfileTileKind.TITLE -> Unit
                     else -> OutlinedTextField(text, { text = it.take(400) }, Modifier.fillMaxWidth(), label = { Text("内容") }, minLines = 2)
                 }
-                if (tile == null) TextButton(feedbackClick { kind = null }) { Text("更换类型") }
+                if (tile == null) TextButton(feedbackClick(changeKind), enabled = !working) { Text("更换类型") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
+      }
     }, confirmButton = { if (kind != null) TextButton(feedbackClick {
         if (working) return@feedbackClick
         val selected = kind ?: return@feedbackClick

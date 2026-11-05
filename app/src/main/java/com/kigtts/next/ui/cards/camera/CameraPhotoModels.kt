@@ -3,6 +3,9 @@ package com.kigtts.next.ui.cards.camera
 import com.kigtts.plugin.api.PolaroidFormat
 import java.io.Closeable
 import java.io.File
+import com.kigtts.next.media.CameraPhotoEncoding
+
+internal data class CameraPhotoOutput(val watermark: String, val encoding: CameraPhotoEncoding)
 
 enum class PhotoFilter(val label: String) {
     ORIGINAL("原画"), BW("黑白"), WARM("暖色"), COOL("冷色"), VINTAGE("复古"),
@@ -14,9 +17,11 @@ enum class PhotoFilter(val label: String) {
 class PolaroidCameraCapture internal constructor(val original: File, val processed: File?,
     val format: PolaroidFormat, val filter: PhotoFilter, val motion: CameraMotionClip? = null,
     val capturedAt: Long = System.currentTimeMillis(),
-    val photoStyle: com.kigtts.next.cards.CapturedPhotoStyle? = null) : Closeable {
+    val photoStyle: com.kigtts.next.cards.CapturedPhotoStyle? = null,
+    internal val output: CameraPhotoOutput? = null) : Closeable {
     val displayFile: File get() = processed ?: original
-    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip, capturedAt, photoStyle)
+    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip, capturedAt, photoStyle, output)
+    internal fun withOutput(value: CameraPhotoOutput) = PolaroidCameraCapture(original, processed, format, filter, motion, capturedAt, photoStyle, value)
     fun discard() { motion?.video?.delete(); processed?.takeIf { it != original }?.delete(); original.delete() }
     override fun close() = discard()
 }

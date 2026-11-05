@@ -9,7 +9,8 @@ import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onGloballyPositioned
 import kotlin.math.abs
 
-internal data class CameraPullOrigin(val mode: CameraPullMode, val parent: String, val camera: String? = null)
+internal data class CameraPullOrigin(val mode: CameraPullMode, val parent: String, val camera: String? = null,
+    val horizontal: Boolean = false)
 
 /** Central title/viewfinder regions exclude album rails, FABs, shutter/zoom controls and system edges. */
 internal fun cameraPullSafeStart(x: Float, y: Float, width: Float, height: Float, density: Float): Boolean {
@@ -20,12 +21,15 @@ internal fun cameraPullSafeStart(x: Float, y: Float, width: Float, height: Float
 @Composable
 internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () -> CameraPullOrigin?): Modifier {
     val latest = rememberUpdatedState(origin)
+    val exclusions = LocalHomeSwipeExclusions.current
     return onGloballyPositioned { state.rootCoordinates = it }.pointerInput(Unit) {
         awaitEachGesture {
             val first = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
             val candidate = latest.value() ?: return@awaitEachGesture
+            if (candidate.horizontal && (first.position.x < 24 * density || first.position.x > size.width - 24 * density ||
+                    candidate.mode == CameraPullMode.ENTER && exclusions?.contains(first.position) == true)) return@awaitEachGesture
             val entry = candidate.mode == CameraPullMode.ENTER && state.entryStart(first.position)
-            if (!state.acceptingGesture || state.blocked || state.excludedStart(first.position) || !entry && !cameraPullSafeStart(first.position.x, first.position.y,
+            if (!state.acceptingGesture || state.blocked || state.excludedStart(first.position) || !entry && !candidate.horizontal && !cameraPullSafeStart(first.position.x, first.position.y,
                     size.width.toFloat(), size.height.toFloat(), density)) return@awaitEachGesture
             val nativeViewfinder = candidate.mode == CameraPullMode.EXIT && state.nativeViewfinderStart(first.position)
             val paused = state.pauseSettlement()
@@ -35,7 +39,7 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
             try {
                 do {
                     // A registered heading claims at slop before the app bar's native collapse drag.
-                    val event = awaitPointerEvent(if (entry) PointerEventPass.Initial else PointerEventPass.Main)
+                    val event = awaitPointerEvent(if (entry || candidate.horizontal && candidate.mode == CameraPullMode.ENTER) PointerEventPass.Initial else PointerEventPass.Main)
                     val change = event.changes.firstOrNull { it.id == first.id } ?: break
                     if (event.changes.count { it.pressed } > 1) { cancelled = true; break }
                     velocity.addPosition(change.uptimeMillis, change.position)
@@ -45,19 +49,25 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
                         // exposure/zoom controls and every other native slider keep their gesture.
                         if (!entry && !nativeViewfinder && change.isConsumed && (delta.x != 0f || delta.y != 0f)) break
                         dx += delta.x; dy += delta.y
-                        if (abs(dx) > viewConfiguration.touchSlop && abs(dx) > abs(dy)) break
-                        val directed = if (candidate.mode == CameraPullMode.ENTER) dy else -dy
-                        if (directed > viewConfiguration.touchSlop && abs(dy) > abs(dx) * 1.2f) {
-                            claimed = state.begin(candidate.mode, candidate.parent, candidate.camera, size.height.toFloat())
+                        val distance = if (candidate.horizontal) -dx else dy
+                        val cross = if (candidate.horizontal) dy else dx
+                        if (abs(cross) > viewConfiguration.touchSlop && abs(cross) > abs(distance)) break
+                        val directed = if (candidate.mode == CameraPullMode.ENTER) distance else -distance
+                        if (directed > viewConfiguration.touchSlop && abs(distance) > abs(cross) * 1.2f) {
+                            claimed = state.begin(candidate.mode, candidate.parent, candidate.camera,
+                                (if (candidate.horizontal) size.width else size.height).toFloat(), candidate.horizontal)
                             if (!claimed) break
-                            state.drag(dy)
+                            state.drag(distance)
                         }
-                    } else state.drag(delta.y)
+                    } else state.drag(if (candidate.horizontal) -delta.x else delta.y)
                     if (claimed) event.changes.forEach { it.consume() }
                     released = !change.pressed
                 } while (!released)
             } finally {
-                if (claimed) state.finish(cancelled || !released, if (released) velocity.calculateVelocity().y else 0f)
+                if (claimed) state.finish(cancelled || !released, if (released) {
+                    val speed = velocity.calculateVelocity()
+                    if (candidate.horizontal) -speed.x else speed.y
+                } else 0f)
                 else if (paused) state.resumeSettlement()
             }
         }

@@ -3,6 +3,7 @@ package com.kigtts.next.ui.cards
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
@@ -15,9 +16,13 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.kigtts.next.cards.PhotoFrameSpec
 import com.kigtts.next.ui.media.BlurredBackdrop
 import com.kigtts.plugin.api.PhotoBackdropMode
 import com.kigtts.plugin.api.PolaroidCard
+import kotlin.math.roundToInt
 
 private class PhotoPixelsMemory(var image: ImageBitmap?, var style: com.kigtts.plugin.api.PolaroidPhotoStyle?)
 private class PhotoBlend(val previous: ImageBitmap?, val current: ImageBitmap?) {
@@ -57,6 +62,16 @@ private fun PhotoPixels(card: PolaroidCard, pixels: ImageBitmap?, width: Float, 
         if (pixels == null) {
             Icon(Icons.Default.Image, "拍立得照片", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
+            val crop = remember(card.frameStyleId) { PhotoFrameSpec.from(card.frameStyleId)?.crop }
+            if (crop != null) {
+                val (left, top, right, bottom) = remember(pixels, crop) { crop.pixels(pixels.width, pixels.height) }
+                Canvas(Modifier.fillMaxSize()) {
+                    if (size.width > 0f && size.height > 0f) drawImage(pixels,
+                        srcOffset = IntOffset(left, top), srcSize = IntSize(right - left, bottom - top),
+                        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()))
+                }
+                return@Box
+            }
             if (card.photoBackdrop == PhotoBackdropMode.BLUR)
                 BlurredBackdrop(pixels.asAndroidBitmap(), Modifier.fillMaxSize())
             Image(pixels, card.title, Modifier.fillMaxSize().graphicsLayer {

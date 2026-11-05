@@ -18,7 +18,7 @@ import com.kigtts.next.ui.components.reorder.*
 @Composable
 internal fun QuickPhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase>, singleRow: Boolean,
     columns: Int, model: AppViewModel) {
-    val position = rememberReorderDrop(drag)
+    val position = rememberReorderDrop(drag, fadeOverlay = true)
     val density = LocalDensity.current
     val picked = phrases.firstOrNull { it.id == drag.key }
     val neighbors = remember(phrases, picked?.category, drag.key, columns, singleRow) {
@@ -33,7 +33,7 @@ internal fun QuickPhraseDragOverlay(drag: ReorderDrag, phrases: List<QuickPhrase
     picked?.let { phrase ->
         PhraseTile(phrase, {}, neighbors, false, false, remember { MutableInteractionSource() },
             Modifier.size(with(density) { drag.floatingBounds.width.toDp() }, with(density) { drag.floatingBounds.height.toDp() })
-                .graphicsLayer { translationX = position.value.x; translationY = position.value.y },
+                .graphicsLayer { translationX = position.value.x; translationY = position.value.y; alpha = drag.overlayAlpha },
             model.mediaRepository, elevation = elevation)
     }
 }

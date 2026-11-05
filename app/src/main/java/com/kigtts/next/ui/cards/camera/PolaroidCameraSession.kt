@@ -31,9 +31,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     var focusTarget by mutableStateOf<CameraFocusTarget?>(null); private set
     var exposureIndex by mutableIntStateOf(0); private set
     var exposureRange by mutableStateOf(0..0); private set
-    var zoomRatio by mutableFloatStateOf(1f); private set
-    var minZoomRatio by mutableFloatStateOf(1f); private set
-    var maxZoomRatio by mutableFloatStateOf(1f); private set
+    private val zoomState = CameraZoomState()
+    val zoomRatio get() = zoomState.ratio
+    val minZoomRatio get() = zoomState.minimum
+    val maxZoomRatio get() = zoomState.maximum
     var availableProcessing by mutableStateOf(setOf(CameraProcessing.STANDARD)); private set
     private var binding: CameraBinding? = null
     private val previewColors = CameraPreviewColors()
@@ -43,6 +44,9 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     val motionAvailable: Boolean get() = motionBuffer?.failed == false
     val motionReady: Boolean get() = motionBuffer?.ready == true
     private var captureJob: Job? = null
+    private var exposingPhoto = false
+    private var nextExposure: (() -> Unit)? = null
+    private var deferredZoom: Float? = null
     private var observer: Observer<CameraState>? = null
     private var zoomObserver: Observer<ZoomState>? = null
     private var capabilitiesJob: Job? = null
@@ -53,16 +57,26 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var boundFront = false
     private var delivering = false
     private var preferredFlash = CameraFlash.OFF
+    val video = CameraVideoSession(context, message)
+    var scanned by mutableStateOf<String?>(null); private set
+    private var scanEnabled = false
+    private var dismissedCode: String? = null
+    private val barcode = CameraBarcodeReader { text -> ContextCompat.getMainExecutor(context).execute {
+        if (scanEnabled && scanned == null && text != dismissedCode) scanned = text
+    } }
+    fun clearScan() { dismissedCode = scanned; scanned = null }
+    fun startVideo(audio: Boolean, timeLapse: Boolean, saved: (File, Boolean) -> Unit) = video.start(binding?.motionCapture?.output, audio, timeLapse, saved)
+    fun close() { unbind(); barcode.close() }
     private val countdown = CameraCountdownState(scope)
     val burst = CameraBurstCapture(scope)
     val manual = CameraManualController(context, message, ::clearFocus)
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
     suspend fun bind(view: PreviewView, front: Boolean, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
-        motion: Boolean = false) {
+        motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO) {
         if (delivering || countingDown) return
         val previous = binding
-        unbind(); val epoch = generation; loading = true; error = null
+        unbind(keepFlashAvailability = true, keepZoomState = true); val epoch = generation; loading = true; error = null
         val started = SystemClock.elapsedRealtime()
         try {
             if (previous != null) {
@@ -79,7 +93,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             boundFront = selector == CameraSelector.DEFAULT_FRONT_CAMERA
             require(cameras.hasCamera(selector)) { "没有可用相机" }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
-                manual.metadataCallback(), motion, previewColors) { failure ->
+                manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo, barcode = barcode.takeIf { mode == CameraMode.SCAN }) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
                         error = "实时滤镜暂时不可用，请重试"
@@ -90,9 +104,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             if (epoch != generation) { attached.release(); return }
             // Adopt before checking cancellation: catch/unbind can then release the newly created session.
             binding = attached
+            scanEnabled = mode == CameraMode.SCAN
             currentCoroutineContext().ensureActive()
-            if (attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
-            attached.motionCapture?.let { video ->
+            if (mode == CameraMode.PHOTO && attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
+            attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
                     CameraMotionRecorder(context, video.output), scope, message).also { it.start() }
             }
@@ -104,10 +119,22 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             exposureRange = if (exposure.isExposureCompensationSupported)
                 exposure.exposureCompensationRange.let { it.lower..it.upper } else 0..0
             exposureIndex = exposure.exposureCompensationIndex
+            val initialZoom = attached.camera.cameraInfo.zoomState.value
+            var restoringZoom = initialZoom != null
+            val requestedZoom = initialZoom?.let { zoomState.attach(boundFront, it.minZoomRatio, it.maxZoomRatio) }
             zoomObserver = Observer<ZoomState> { state -> if (generation == epoch) {
-                zoomRatio = state.zoomRatio; minZoomRatio = state.minZoomRatio; maxZoomRatio = state.maxZoomRatio
+                zoomState.observed(state.zoomRatio, state.minZoomRatio, state.maxZoomRatio, restoringZoom)
             } }
                 .also { attached.camera.cameraInfo.zoomState.observe(owner, it) }
+            if (requestedZoom != null) {
+                val restore = attached.camera.cameraControl.setZoomRatio(requestedZoom)
+                restore.addListener({ if (generation == epoch) {
+                    restoringZoom = false
+                    attached.camera.cameraInfo.zoomState.value?.let {
+                        zoomState.observed(it.zoomRatio, it.minZoomRatio, it.maxZoomRatio, false)
+                    }
+                } }, ContextCompat.getMainExecutor(context))
+            }
             observer = Observer<CameraState> { state ->
                 if (generation == epoch) {
                     ready = state.type == CameraState.Type.OPEN
@@ -119,7 +146,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                     }
                 }
             }.also { attached.camera.cameraInfo.cameraState.observe(owner, it) }
-            Log.d(CAMERA_LOG_TAG, "Leaf ready after ${SystemClock.elapsedRealtime() - started}ms,processing=$processing,resolution=${attached.capture.resolutionInfo?.resolution}")
+            Log.d(CAMERA_LOG_TAG, "Leaf ready after ${SystemClock.elapsedRealtime() - started}ms,processing=$processing,resolution=${attached.capture?.resolutionInfo?.resolution}")
             capabilitiesJob = scope.launch {
                 try {
                     // Discover optional vendor choices after normal preview readiness; no forced HDR/night startup.
@@ -131,7 +158,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (failure: Exception) { Log.d(CAMERA_LOG_TAG, "Optional processing discovery unavailable", failure) }
             }
-        } catch (cancel: CancellationException) { if (epoch == generation) unbind(); throw cancel }
+        } catch (cancel: CancellationException) { if (epoch == generation) unbind(keepFlashAvailability = true, keepZoomState = true); throw cancel }
         catch (failure: Exception) { if (epoch == generation) {
             unbind(); error = "相机暂时无法打开，请重试"
             Log.w(CAMERA_LOG_TAG, "Camera leaf startup failed", failure)
@@ -173,16 +200,17 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         } catch (failure: Exception) { resetFailedFocus(); Log.w(CAMERA_LOG_TAG, "Exposure adjustment failed", failure) }
     }
     fun zoomBy(scale: Float) {
-        if (!ready || busy || countingDown || !scale.isFinite() || scale <= 0f) return
+        if (!ready || countingDown || !scale.isFinite() || scale <= 0f) return
         zoomTo(zoomRatio * scale)
     }
     fun zoomTo(ratio: Float) {
         val camera = binding?.camera ?: return
-        if (!ready || busy || countingDown || !ratio.isFinite()) return
+        if (!ready || countingDown || !ratio.isFinite()) return
         val zoom = camera.cameraInfo.zoomState.value ?: return
         val requested = ratio.coerceIn(zoom.minZoomRatio, zoom.maxZoomRatio)
+        if (busy) { deferredZoom = requested; zoomState.ratio = requested; return }
         if (focusTarget != null) clearFocus()
-        runCatching { camera.cameraControl.setZoomRatio(requested); zoomRatio = requested }
+        runCatching { camera.cameraControl.setZoomRatio(requested); zoomState.ratio = requested }
             .onFailure { Log.w(CAMERA_LOG_TAG, "Zoom adjustment failed", it) }
     }
     fun clearFocus() {
@@ -213,24 +241,34 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     fun startBurst(format: PolaroidFormat, filter: PhotoFilter, complete: (List<PolaroidCameraCapture>) -> Unit,
         strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
         effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
-        val current = binding ?: return
+        val capture = binding?.capture ?: return
         if (!ready || busy || countingDown) return
         val epoch = generation; val front = boundFront
         focusJob?.cancel(); focusJob = null; busy = true
         val started = burst.start(capture = {
             manual.awaitConfigured()
-            capturePolaroidPhoto(context, current.capture, front, format, PhotoFilter.ORIGINAL, message)
+            capturePolaroidPhoto(context, capture, front, format, PhotoFilter.ORIGINAL, message)
         }, process = { processBurstPhoto(it, filter, strength, PhotoFilters.lut(filter, lut), effects, message) },
             hasSpace = { context.cacheDir.usableSpace > 64L * 1024 * 1024 }, message = message,
             complete = { shots ->
-                complete(shots); if (epoch == generation) delivering = true
-            }, finished = { if (epoch == generation) { busy = delivering; if (!delivering) clearFocus() } })
+                complete(shots); if (epoch == generation) delivering = false
+            }, finished = { if (epoch == generation) {
+                busy = delivering
+                if (!delivering) { clearFocus(); applyDeferredZoom() }
+            } })
         if (!started) busy = false
     }
     fun capture(format: PolaroidFormat, filter: PhotoFilter, complete: (PolaroidCameraCapture) -> Unit,
         delaySeconds: Int = 0, strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
-        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) {
-        if (!ready || busy || countingDown || delaySeconds !in listOf(0, 3, 10)) return
+        effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
+        allowNextExposure: Boolean = false) {
+        if (!ready || countingDown || delaySeconds !in listOf(0, 3, 10)) return
+        if (busy) {
+            if (allowNextExposure && delaySeconds == 0 && exposingPhoto && nextExposure == null) {
+                nextExposure = { capture(format, filter, complete, delaySeconds, strength, lut, effects, allowNextExposure) }
+            }
+            return
+        }
         val current = binding ?: return
         val epoch = generation
         // Freeze manual focus/EV from the initial shutter tap through the eventual exposure.
@@ -245,7 +283,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         lut: com.kigtts.next.media.color.CubeLut?, effects: com.kigtts.next.media.color.PhotoEffects) {
         val camera = binding?.capture ?: return
         if (!ready || busy) return
-        busy = true; val epoch = generation
+        busy = true; exposingPhoto = true; val epoch = generation
         // Do not restore compensation while HDR/night is still exposing or processing the photograph.
         focusJob?.cancel(); focusJob = null
         val front = boundFront
@@ -267,24 +305,35 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 currentCoroutineContext().ensureActive()
                 if (epoch == generation) {
                     complete(photo)
-                    delivered = true; delivering = true
+                    delivered = true; delivering = false
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) { if (epoch == generation) message("拍照未完成，请重试") }
             finally {
                 if (!delivered) { motion?.abort(motionTicket); photo?.discard() }
                 if (epoch == generation) {
+                    exposingPhoto = false
                     busy = delivering
+                    val queued = nextExposure
+                    nextExposure = null
                     if (!delivering) {
-                        clearFocus()
                         motion?.start()
+                        applyDeferredZoom()
+                        if (queued != null && ready) queued()
+                        else clearFocus()
                     }
                 }
             }
         }
     }
-    fun unbind() {
-        generation++; burst.cancel(); captureJob?.cancel(); captureJob = null
+    private fun applyDeferredZoom() {
+        val zoom = deferredZoom ?: return
+        deferredZoom = null
+        zoomTo(zoom)
+    }
+    fun unbind(keepFlashAvailability: Boolean = false, keepZoomState: Boolean = false) {
+        nextExposure = null; exposingPhoto = false; deferredZoom = null
+        video.stop(); scanEnabled = false; scanned = null; dismissedCode = null; generation++; burst.cancel(); captureJob?.cancel(); captureJob = null
         capabilitiesJob?.cancel(); capabilitiesJob = null
         countdown.cancel()
         motionBuffer?.close(); motionBuffer = null
@@ -294,8 +343,9 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             zoomObserver?.let { attached.camera.cameraInfo.zoomState.removeObserver(it) }
             attached.release() }
         observer = null; zoomObserver = null; binding = null; exposureRange = 0..0
-        flashAvailable = false; flashMode = CameraFlash.OFF
-        zoomRatio = 1f; minZoomRatio = 1f; maxZoomRatio = 1f
+        if (!keepFlashAvailability) flashAvailable = false
+        flashMode = CameraFlash.OFF
+        if (!keepZoomState) zoomState.clear()
         availableProcessing = setOf(CameraProcessing.STANDARD)
         ready = false; loading = false; busy = delivering
     }

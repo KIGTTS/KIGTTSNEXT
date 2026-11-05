@@ -22,7 +22,7 @@ import com.kigtts.plugin.api.*
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton("图片", Icons.Default.PhotoLibrary, gallery, Modifier.weight(1f), enabled = enabled)
-            PillButton("拍立得", Icons.Default.PhotoCamera, polaroids, Modifier.weight(1f), enabled = enabled)
+            PillButton("相册", Icons.Default.PhotoCamera, polaroids, Modifier.weight(1f), enabled = enabled)
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton("仅用主色", Icons.Default.FormatColorFill, {

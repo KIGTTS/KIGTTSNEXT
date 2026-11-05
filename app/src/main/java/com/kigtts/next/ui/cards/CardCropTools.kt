@@ -12,36 +12,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
+import com.kigtts.next.cards.PhotoFrameSpec
 
 @Composable
-internal fun CardCropTools(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
-    camera: () -> Unit, gallery: () -> Unit, frameColor: () -> Unit, frames: List<PolaroidFrameStyle>) {
-    val currentFrame = frames.firstOrNull { it.id == card.frameStyleId }
-    val format = polaroidFormat(card, currentFrame)
+internal fun CardCropTools(enabled: Boolean, openCrop: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PillButton("拍照", Icons.Default.CameraAlt, camera, Modifier.weight(1f), enabled = enabled)
-            PillButton("换照片", Icons.Default.PhotoLibrary, gallery, Modifier.weight(1f), enabled = enabled)
-        }
-        Text("相纸规格", style = MaterialTheme.typography.titleSmall)
-        ChoiceButtonGroup("相纸规格", editablePolaroidFormats, format,
-            { when (it) { PolaroidFormat.MINI -> "Mini"; PolaroidFormat.WIDE -> "Wide"; else -> "Square" } },
-            { change(selectPolaroidFormat(card, it, frames)) }, enabled = enabled)
-        Text("留白背景", style = MaterialTheme.typography.titleSmall)
-        ChoiceButtonGroup("留白背景", PhotoBackdropMode.entries, card.photoBackdrop,
-            { if (it == PhotoBackdropMode.GRAY) "灰色" else "模糊" }, { change(card.copy(photoBackdrop = it)) }, enabled = enabled)
-        PillButton("重置照片位置", Icons.Default.RestartAlt, { change(card.copy(photoX = .5, photoY = .5, photoZoom = 1.0)) }, enabled = enabled)
-        Text("双指移动和缩放照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        PillButton("裁剪照片", Icons.Default.Crop, openCrop, enabled = enabled)
+        Text("双指缩放和平移预览", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
     frameColor: () -> Unit, frames: List<PolaroidFrameStyle>) {
-    val currentFrame = frames.firstOrNull { it.id == card.frameStyleId }
+    val spec = PhotoFrameSpec.from(card.frameStyleId)
+    val currentFrame = frames.firstOrNull { it.id == (spec?.style ?: card.frameStyleId) }
     val format = polaroidFormat(card, currentFrame)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("边框样式", style = MaterialTheme.typography.titleSmall)
+        Text("边框水印", style = MaterialTheme.typography.titleSmall)
+        if (spec != null) {
+            val choices = listOf("none", "classic", "night", "slim", "soft") + frames.filter { it.owner != null }.map { it.id }
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                choices.forEach { id -> FilterChip(id == spec.style, feedbackClick { change(card.copy(frameStyleId = spec.copy(style = id).id,
+                    photoX = .5, photoY = .5, photoZoom = 1.0)) }, label = { Text(if (id == "none") "无水印" else frames.firstOrNull { it.id == id }?.name ?: id) }, enabled = enabled) }
+            }
+            PillButton("边条颜色", Icons.Default.Palette, frameColor, enabled = enabled)
+            Text("边条加在照片外侧，保留完整画面", style = MaterialTheme.typography.bodySmall)
+            return@Column
+        }
         val choices = frames.filter { it.format == format }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val width = maxOf(maxWidth, 104.dp * choices.size)

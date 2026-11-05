@@ -19,6 +19,6 @@ internal fun sharePolaroid(context: Context, image: File) {
         type = if (image.extension.equals("png", true)) "image/png" else "image/jpeg"
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        clipData = android.content.ClipData.newRawUri("拍立得", uri)
-    }, "分享拍立得"))
+        clipData = android.content.ClipData.newRawUri("照片", uri)
+    }, "分享照片"))
 }

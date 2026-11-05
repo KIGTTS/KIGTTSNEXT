@@ -24,7 +24,7 @@ internal interface GalleryImagePublication {
 /** Copies encoded bytes (including GIF animation and Motion Photo trailers) without re-encoding. */
 internal class GalleryImages(private val context: Context) : GalleryImagePublication {
     override fun publish(image: File, folder: String, takenAt: Long): Uri {
-        require(folder in setOf("拍立得", "图片"))
+        require(folder in setOf("拍立得", "图片", "相机"))
         require(image.isFile && image.length() > 0) { "图片不存在" }
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(image.path, bounds)
@@ -41,11 +41,12 @@ internal class GalleryImages(private val context: Context) : GalleryImagePublica
         var legacy: File? = null
         try {
             val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, name); put(MediaStore.Images.Media.MIME_TYPE, bounds.outMimeType)
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                put(MediaStore.Images.Media.MIME_TYPE, if (extension == "heic") "image/heic" else bounds.outMimeType)
                 put(MediaStore.Images.Media.WIDTH, bounds.outWidth); put(MediaStore.Images.Media.HEIGHT, bounds.outHeight)
                 put(MediaStore.Images.Media.DATE_TAKEN, takenAt)
                 if (Build.VERSION.SDK_INT >= 29) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/KIGTTS/$folder")
+                    put(MediaStore.Images.Media.RELATIVE_PATH, if (folder == "相机") "DCIM/KIGTTS" else "Pictures/KIGTTS/$folder")
                     put(MediaStore.Images.Media.IS_PENDING, 1)
                 } else {
                     @Suppress("DEPRECATION")

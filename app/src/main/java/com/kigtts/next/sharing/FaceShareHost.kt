@@ -1,8 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.sharing
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -50,11 +48,7 @@ internal fun FaceShareHost(model: AppViewModel) {
             maximumHeight = if (shown.mode == FaceMode.SEND) { if (shown.personal) 420.dp else 520.dp } else 580.dp,
             back = if (shown.mode == FaceMode.BROWSER) controller::returnToShare else null,
             finish = if (shown.mode == FaceMode.BROWSER) controller::finishSending else null) {
-            AnimatedContent(shown.mode, Modifier.fillMaxWidth(), transitionSpec = {
-                val direction = if (targetState == FaceMode.BROWSER) 1 else -1
-                (fadeIn(tween(200, delayMillis = 40)) + slideInHorizontally(tween(240)) { direction * it / 12 })
-                    .togetherWith(fadeOut(tween(140)) + slideOutHorizontally(tween(220)) { -direction * it / 12 }).using(null)
-            }, label = "face-share-page") { mode ->
+            ModalPageTransition(shown.mode, { if (it == FaceMode.BROWSER) 1 else 0 }, Modifier.fillMaxWidth()) { mode ->
               Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 when (mode) {
                     FaceMode.SEND -> {

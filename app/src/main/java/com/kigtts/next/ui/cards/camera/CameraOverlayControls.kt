@@ -31,13 +31,14 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     showSettings: Boolean = true, customLuts: List<CameraLutChoice> = emptyList(), selectedLut: String? = null,
     selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null,
     effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
-    changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}) {
+    changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}, aspectLabel: String? = null,
+    showFilters: Boolean = true, showMotion: Boolean = motionButton != null, showFormat: Boolean = true) {
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
     val formatButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-        ToolButton("画幅：" + format.cameraLabel(formats.size == 3) + "，点按切换", when (format) {
+        ToolButton("画幅：" + (aspectLabel ?: format.cameraLabel(formats.size == 3)) + "，点按切换", if (aspectLabel != null) Icons.Default.AspectRatio else when (format) {
             PolaroidFormat.MINI -> Icons.Default.CropPortrait
             PolaroidFormat.WIDE -> Icons.Default.CropLandscape
             else -> Icons.Default.CropSquare
@@ -55,8 +56,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     }
     val settingsButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-        if (showSettings) ToolButton("相机设置", Icons.Default.Tune, openSettings,
-            Modifier.testTag("camera-settings"), size = 44.dp,
+        CameraSettingsButton(openSettings,
+            Modifier.testTag("camera-settings"),
             shapes = shape, colors = colors, enabled = enabled)
     }
     val filterButton: @Composable () -> Unit = {
@@ -64,11 +65,17 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
         ToolButton("滤镜", Icons.Default.PhotoFilter, toggleFilters,
             Modifier.testTag("camera-filter-toggle")
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
-            size = 44.dp, shapes = shape, colors = colors, enabled = enabled)
+            size = 44.dp, shapes = shape, colors = colors, enabled = enabled && showFilters)
     }
-    val items = listOfNotNull(flashButton, filterButton, motionButton, formatButton,
-        settingsButton.takeIf { showSettings })
-    CameraControlGroup(vertical, items.indices.map { it != 0 || flashAvailable }) { index -> items[index]() }
+    CameraControlGroup(vertical, listOf(flashAvailable, showFilters, showMotion, showFormat, showSettings)) { index ->
+        when (index) {
+            0 -> flashButton()
+            1 -> filterButton()
+            2 -> motionButton?.invoke()
+            3 -> formatButton()
+            4 -> settingsButton()
+        }
+    }
     Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
         else Modifier.matchParentSize()) {
     // Keep both rails accessible, including while chrome is moving outside the viewfinder.

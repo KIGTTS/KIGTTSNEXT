@@ -72,7 +72,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message, { sharing.shareMedia(it) }) }
     internal val faceShare get() = faceShareDelegate.value
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)
-    val cardUi = CardWorkspace(::navigate, { openSidePage(SidePage.CARDS) },
+    val cardUi = CardWorkspace(::navigate, { navigate(Destination.Cards) },
         { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } }, { id -> !cards.isReadOnly(id) })
     val stickerPlugins = hostRuntime?.stickerPlugins ?: com.kigtts.next.plugins.stickers.StickerHost(stickers, pluginManager.paths,
         { target, id -> cardUi.open(target, id) }, { state.value.editingCardId() }, { owner -> agentAccess.consume(owner) })
@@ -89,6 +89,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null))))
     val state = mutableState.asStateFlow()
     init { audioDevices.onChanged = { update { it.copy(pluginRevision = it.pluginRevision + 1) } } }
+    val cameraSaves = CameraSaveQueue(cards, stickers, viewModelScope, ::message, saveMotion = { imageId, clip ->
+        cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix, clip.lut, clip.lutStrength, clip.effects)
+    })
+    fun saveCameraVideo(file: java.io.File, timeLapse: Boolean, onSaved: (android.net.Uri) -> Unit = {}) { viewModelScope.launch {
+        try { onSaved(com.kigtts.next.media.saveCameraVideo(getApplication(), file, timeLapse)) }
+        catch (cancel: CancellationException) { throw cancel }
+        catch (_: Exception) { message("视频未能保存，原文件已保留") }
+    } }
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
         { id -> cardUi.focusCard(id, openPreview = false) }, saveMotion = { imageId, clip ->
@@ -198,6 +206,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
         recognitionServiceId = selectedAsrId, locale = getApplication<Application>().resources.configuration.locales[0].toLanguageTag()) }
     fun navigate(destination: Destination) {
+        if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
         if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {
             message("接收的照片只能查看和分享")
             return
@@ -237,7 +246,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(destination = Destination.Home, panel = panel, panelHeight = dragHeight ?: it.lastExpandedPanelHeight) }
     }
     fun openSidePage(page: SidePage) {
-        if (page == SidePage.CARDS && state.value.destination != Destination.Home) { navigate(Destination.Cards); return }
+        if (page == SidePage.CARDS) { navigate(Destination.Cards); return }
         navigationHistory.clear()
         update { it.copy(destination = Destination.Home, navigationStack = emptyList(), sidePage = page, editing = false) }
     }

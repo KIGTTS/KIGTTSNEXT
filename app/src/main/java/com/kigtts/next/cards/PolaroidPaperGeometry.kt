@@ -4,6 +4,7 @@ import com.kigtts.plugin.api.*
 import com.kigtts.next.ui.cards.polaroidFormat
 
 internal fun polaroidPaperGeometry(card: PolaroidCard, frame: PolaroidFrameStyle? = null): PolaroidGeometry {
+    PhotoFrameSpec.from(card.frameStyleId)?.let { return it.geometry() }
     val regular = polaroidFormat(card, frame).geometry
     if (card.frameStyleId != "identity.banner" && !card.frameStyleId.startsWith("received.")) return regular
     val banner = card.frameStyleId in setOf("identity.banner", "received.banner")
@@ -12,4 +13,4 @@ internal fun polaroidPaperGeometry(card: PolaroidCard, frame: PolaroidFrameStyle
     return PolaroidGeometry(width, height, 0.0, 0.0, width, height, 0.0, height + 10, width, 3.2, height + 20, 2.0, true)
 }
 
-internal fun isFullPhotoPaper(card: PolaroidCard) = card.frameStyleId == "identity.banner" || card.frameStyleId.startsWith("received.")
+internal fun isFullPhotoPaper(card: PolaroidCard) = PhotoFrameSpec.from(card.frameStyleId)?.style == "none" || card.frameStyleId == "identity.banner" || card.frameStyleId.startsWith("received.")

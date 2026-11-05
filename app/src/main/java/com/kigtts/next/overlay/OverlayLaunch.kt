@@ -76,7 +76,7 @@ internal fun AppViewModel.overlayLink(intent: Intent?) {
             } else item.action?.let { invoke(item.owner, it) }
         } else when (item.target) {
             "home" -> { closeSidePage(); navigate(Destination.Home) }
-            "camera" -> { openSidePage(SidePage.CARDS); cardCapture.open() }
+            "camera" -> cardCapture.open(systemCamera = false)
             "cards" -> openSidePage(SidePage.CARDS)
             "sketch" -> openSidePage(SidePage.SKETCH)
             "quick-text" -> { navigate(Destination.Home); openPanel(HomePanel.QUICK_TEXT) }

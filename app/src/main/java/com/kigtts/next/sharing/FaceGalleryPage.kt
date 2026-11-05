@@ -7,7 +7,7 @@ internal fun faceGallery(profile: JSONObject, assets: List<FaceAsset>, path: Str
     val palette = faceWebTheme(theme)
     val photos = assets.filterNot { it.format == "PROFILE" }
     val personal = photos.isNotEmpty() && photos.all { it.format == "BANNER" }
-    val files = if (personal) "" else photos.joinToString("") { asset -> """<article><button class="photo" data-photo="${asset.id}"><img loading="lazy" src="${path}file/${asset.id}" alt="照片"></button><label><input type="checkbox" value="${asset.id}" checked>${if (asset.variant == "original") "原图" else "拍立得成片"}</label></article>""" }
+    val files = if (personal) "" else photos.joinToString("") { asset -> """<article><button class="photo" data-photo="${asset.id}"><img loading="lazy" src="${path}file/${asset.id}" alt="照片"></button><label><input type="checkbox" value="${asset.id}" checked>${if (asset.variant == "original") "原图" else "编辑后的照片"}</label></article>""" }
     val intro = faceProfileMarkup(profile, assets.firstOrNull { it.format == "BANNER" }, path, icon, assets.filter { it.format == "PROFILE" })
     val actions = if (personal) """<section class="card-download"><a href="${path}file/${photos.first().id}?download=1" download>保存名片图片</a></section>"""
         else """<p class="page-note">选择喜欢的照片，保存到你的设备。</p><main>${files}</main><footer><button id="all">全选 / 取消全选</button><button id="download">保存所选</button></footer>"""

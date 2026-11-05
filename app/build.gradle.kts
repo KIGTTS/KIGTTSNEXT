@@ -92,6 +92,7 @@ android {
     kotlin { jvmToolchain(17) }
     testOptions { unitTests.isIncludeAndroidResources = true }
     sourceSets.getByName("androidTest").assets.srcDir(layout.buildDirectory.dir("plugin-test-assets"))
+    sourceSets.getByName("androidTest").manifest.srcFile("src/test/AndroidManifest.xml")
     if (providers.gradleProperty("pluginIntegration").orNull == "true") {
         sourceSets.getByName("test").java.srcDir("src/pluginIntegrationTest/java")
     }
@@ -138,6 +139,7 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraX")
     implementation("androidx.camera:camera-view:$cameraX")
     implementation("androidx.camera:camera-extensions:$cameraX")
+    implementation("androidx.heifwriter:heifwriter:1.1.0")
     implementation("com.google.zxing:core:3.5.4")
     implementation("org.commonmark:commonmark:0.24.0")
     implementation("org.commonmark:commonmark-ext-gfm-tables:0.24.0")

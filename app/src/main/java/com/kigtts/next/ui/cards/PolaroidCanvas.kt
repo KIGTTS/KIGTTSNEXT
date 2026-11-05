@@ -17,6 +17,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.ClipOp
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
@@ -74,7 +77,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
     val elevation by animateDpAsState(if (transforming) 10.dp else 3.dp, label = "polaroid-elevation")
     Surface(modifier.sharedPolaroidPhoto(card.id).aspectRatio(geometry.aspectRatio.toFloat()).onSizeChanged { size = it }.testTag("polaroid/" + card.id),
-        shape = RoundedCornerShape(6.dp), color = paper, shadowElevation = paperElevation ?: elevation) {
+        shape = RoundedCornerShape(if (com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId) != null) 0.dp else 6.dp), color = paper, shadowElevation = paperElevation ?: elevation) {
         BoxWithConstraints(Modifier.fillMaxSize().then(if (editable && selectedLayer != null) Modifier.pointerInput(card.id) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
@@ -134,7 +137,13 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     RoundedCornerShape(width * frame.photoCornerRadius.toFloat())))
             frame?.overlayImageId?.let { imageId ->
                 rememberCardImage(imageFile(imageId), cardImageDecodeSize(maxOf(canvasWidthPx, canvasHeightPx) * viewScale, decodeMaximum))?.let { overlay ->
-                    Image(overlay, null, Modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+                    Image(overlay, null, Modifier.fillMaxSize().drawWithContent {
+                        if (com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId) != null) {
+                            val scale = size.width / geometry.paperWidth.toFloat()
+                            clipRect((geometry.photoLeft * scale).toFloat(), (geometry.photoTop * scale).toFloat(),
+                                (geometry.photoRight * scale).toFloat(), (geometry.photoBottom * scale).toFloat(), ClipOp.Difference) { this@drawWithContent.drawContent() }
+                        } else drawContent()
+                    }, contentScale = ContentScale.FillBounds)
                 }
             }
             if (card.layers.any { it.kind == CardLayerKind.PHOTO_INFO }) {

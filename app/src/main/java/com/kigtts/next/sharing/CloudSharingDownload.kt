@@ -14,7 +14,8 @@ import java.util.UUID
 internal const val CLOUD_SHARING_ID = "cloud.sharing"
 private const val PUBLISHER = "b5927c76c21539ef99352707c215b3ce48f3fed937a6f995d39a3c677a052ab5"
 internal class CloudSharingDownload(private val directory: File, private val inspect: (File) -> PackagePreview) {
-    suspend fun download(): Pair<File, PackagePreview> {
+    suspend fun download(progress: (Float) -> Unit = {}): Pair<File, PackagePreview> {
+        progress(0f)
         val info = JSONObject(read("https://app.kigtts.lhtstudio.com/plugins/cloud-sharing.json", 16 * 1024).toString(Charsets.UTF_8))
         val version = info.getString("version")
         val code = info.getInt("versionCode")
@@ -24,7 +25,7 @@ internal class CloudSharingDownload(private val directory: File, private val ins
             size in 1..8L * 1024 * 1024 && hash.matches(Regex("[a-f0-9]{64}"))) { "云共享下载信息无效" }
         val file = File(directory.apply { mkdirs() }, ".cloud-sharing-${UUID.randomUUID()}.kigplugin")
         try {
-            val bytes = read("https://app.kigtts.lhtstudio.com/plugins/cloud.sharing-$version.kigplugin", size)
+            val bytes = read("https://app.kigtts.lhtstudio.com/plugins/cloud.sharing-$version.kigplugin", size, progress)
             require(bytes.size.toLong() == size && MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) } == hash) { "云共享下载校验失败" }
             file.writeBytes(bytes)
             val preview = inspect(file)
@@ -36,7 +37,7 @@ internal class CloudSharingDownload(private val directory: File, private val ins
             return file to preview
         } catch (error: Throwable) { file.delete(); throw error }
     }
-    private suspend fun read(url: String, limit: Long): ByteArray {
+    private suspend fun read(url: String, limit: Long, progress: ((Float) -> Unit)? = null): ByteArray {
         val uri = URI(url)
         require(uri.scheme == "https" && uri.host == "app.kigtts.lhtstudio.com" && uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null)
         val connection = uri.toURL().openConnection() as HttpURLConnection
@@ -48,11 +49,17 @@ internal class CloudSharingDownload(private val directory: File, private val ins
             require(connection.contentLengthLong <= limit)
             return connection.inputStream.use { input -> java.io.ByteArrayOutputStream().use { output ->
                 val buffer = ByteArray(64 * 1024)
+                var previousPercent = -1
                 while (true) {
                     currentCoroutineContext().ensureActive()
                     val count = input.read(buffer); if (count < 0) break
                     require(output.size() + count <= limit) { "下载文件过大" }
                     output.write(buffer, 0, count)
+                    val percent = (output.size() * 100L / limit).toInt()
+                    if (percent != previousPercent) {
+                        previousPercent = percent
+                        progress?.invoke(output.size().toFloat() / limit)
+                    }
                 }
                 output.toByteArray()
             } }

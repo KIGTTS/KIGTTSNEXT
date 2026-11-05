@@ -22,6 +22,8 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     var moveProvider: ((String, String) -> Unit)? = null
     var key by mutableStateOf<String?>(null); private set
     var settling by mutableStateOf(false); private set
+    var landed by mutableStateOf(false); internal set
+    var overlayAlpha by mutableFloatStateOf(1f); internal set
     var offset by mutableStateOf(Offset.Zero); private set
     var origin = Offset.Zero
     val handles = mutableMapOf<String, Rect>()
@@ -36,6 +38,7 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     fun targetBounds(id: String) = currentTargets().firstOrNull { it.key == id }?.bounds
     fun begin(item: ReorderTarget, point: Offset) {
         settling = false
+        landed = false; overlayAlpha = 1f
         key = item.key; initial = item.bounds.topLeft; touch = point; offset = Offset.Zero; pickedBounds = item.bounds
         acceptedSlot = null
         feedback?.start(0f)
@@ -116,11 +119,14 @@ fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true
                 // Context actions share the deliberate hold with sorting. Do not lift or
                 // move the item until the finger actually leaves the touch-slop circle.
                 if (!handle && onStationaryHold != null) {
+                    drag.feedback?.start(0f)
                     var moved = false
-                    while (true) {
+                    var released = false
+                    try { while (true) {
                         val change = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == start.id } ?: break
                         val delta = change.position - start.position
                         if (!change.pressed) {
+                            released = true
                             change.consume()
                             if (delta.getDistance() <= viewConfiguration.touchSlop)
                                 onStationaryHold(item.copy(bounds = item.bounds.translate(drag.origin)))
@@ -130,7 +136,7 @@ fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true
                         if (delta.getDistance() > viewConfiguration.touchSlop) {
                             initialDelta = delta; moved = true; break
                         }
-                    }
+                    } } finally { if (!moved) drag.feedback?.finish(cancelled = !released) }
                     if (!moved) return@awaitEachGesture
                 }
                 drag.begin(item, start.position)

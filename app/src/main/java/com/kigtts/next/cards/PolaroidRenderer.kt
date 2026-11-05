@@ -56,7 +56,10 @@ internal object PolaroidRenderer {
             val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
             canvas.drawPath(photoPath,line)
         }
-        if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)} finally {bitmap.recycle()}}}
+        if(options.includeFrame)frame.overlayImageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {canvas.save()
+            if (PhotoFrameSpec.from(card.frameStyleId) != null) canvas.clipOutRect(imageArea)
+            canvas.drawBitmap(bitmap,null,RectF(0f,0f,width.toFloat(),height.toFloat()),paint)
+            canvas.restore()} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         if(options.includeFrame) {
         if(card.layers.any {it.kind==CardLayerKind.PHOTO_INFO})polaroidCaption(card,geometry,captionWidth,width.toFloat(),

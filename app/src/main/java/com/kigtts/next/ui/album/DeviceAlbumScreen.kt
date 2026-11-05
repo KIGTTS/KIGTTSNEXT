@@ -1,0 +1,163 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+package com.kigtts.next.ui.album
+
+import android.content.Intent
+import android.net.Uri
+import android.provider.MediaStore
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import com.kigtts.next.media.*
+import com.kigtts.next.ui.components.feedbackClick
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
+
+/** A MediaStore gallery, shared by the camera, the application and Android's image picker intents. */
+@Composable internal fun DeviceAlbumScreen(onBack: () -> Unit, onEdit: (Uri) -> Unit,
+    onCamera: (() -> Unit)? = null, message: (String) -> Unit = {},
+    choose: ((List<AlbumMedia>) -> Unit)? = null, multiple: Boolean = false,
+    initialUri: Uri? = null, imagesOnly: Boolean = false, videosOnly: Boolean = false,
+    requestedUri: Uri? = null, requestConsumed: () -> Unit = {}, saving: Boolean = false) {
+    val context = LocalContext.current
+    val repository = remember(context) { DeviceAlbum(context.applicationContext) }
+    var albumId by rememberSaveable { mutableStateOf("all") }
+    var choosingAlbum by rememberSaveable { mutableStateOf(false) }
+    var zoom by rememberSaveable { mutableIntStateOf(0) }
+    var all by remember { mutableStateOf(emptyList<AlbumMedia>()) }
+    var loading by remember { mutableStateOf(true) }
+    var revision by remember { mutableIntStateOf(0) }
+    var readable by remember { mutableStateOf(DeviceAlbum.canRead(context, imagesOnly)) }
+    var failure by remember { mutableStateOf<String?>(null) }
+    var selected by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var selecting by rememberSaveable { mutableStateOf(false) }
+    var preview by remember { mutableStateOf<Uri?>(initialUri) }
+    LaunchedEffect(requestedUri) { if (requestedUri != null) { preview = requestedUri; requestConsumed() } }
+    val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        readable = DeviceAlbum.canRead(context, imagesOnly); revision++
+    }
+    LaunchedEffect(repository, revision, imagesOnly, videosOnly) {
+        repository.changes.collectLatest {
+            delay(120)
+            try { all = repository.load(imagesOnly, videosOnly); failure = null }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (_: SecurityException) { failure = "请允许访问要查看的照片" }
+            catch (_: Exception) { failure = "相册暂时无法读取，点按重试" }
+            finally { loading = false }
+        }
+    }
+    val allLabel = if (imagesOnly) "全部照片" else if (videosOnly) "全部视频" else "全部"
+    val albums = remember(all, allLabel) { albumCollections(all, allLabel) }
+    val album = albums.firstOrNull { it.id == albumId } ?: albums.first()
+    val photos = album.media
+    val grid = key(album.id) { rememberLazyGridState() }
+    val checked = remember(selected) { selected.toSet() }
+    fun toggle(media: AlbumMedia) {
+        val id = media.uri.toString()
+        selected = if (id in checked) selected - id else selected + id
+    }
+    fun selectAlbum(choice: AlbumCollection) { albumId = choice.id; choosingAlbum = false }
+    fun back() {
+        when {
+            choosingAlbum -> choosingAlbum = false
+            selecting -> { selecting = false; selected = emptyList() }
+            else -> onBack()
+        }
+    }
+    BackHandler(choosingAlbum || selecting) { back() }
+    Scaffold(topBar = {
+        TopAppBar(title = {
+            if (choosingAlbum) Text("选择相册")
+            else AlbumTitle(album, albums, ::selectAlbum)
+        }, navigationIcon = { IconButton(feedbackClick(::back)) { Icon(Icons.Default.ArrowBack, "返回") } },
+            actions = {
+                if (!choosingAlbum) {
+                    if (choose == null && !selecting) IconButton(feedbackClick { openSystemAlbum(context, message) }) {
+                        Icon(Icons.Default.OpenInNew, "系统相册")
+                    }
+                    if (onCamera != null && !selecting) IconButton(feedbackClick(onCamera)) { Icon(Icons.Default.CameraAlt, "相机") }
+                    if (choose == null) IconButton(feedbackClick { selecting = !selecting; selected = emptyList() }) {
+                        Icon(if (selecting) Icons.Default.Close else Icons.Default.Checklist, if (selecting) "取消选择" else "选择照片")
+                    } else if (multiple) TextButton(feedbackClick { choose(all.filter { it.uri.toString() in checked }) },
+                        enabled = selected.isNotEmpty()) { Text(if (selected.isEmpty()) "完成" else "完成 (${selected.size})") }
+                }
+            })
+    }, bottomBar = {
+        if (!choosingAlbum && selecting) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly) {
+            val allChecked = photos.isNotEmpty() && photos.all { it.uri.toString() in checked }
+            TextButton(feedbackClick {
+                val ids = photos.map { it.uri.toString() }.toSet()
+                selected = (if (allChecked) checked - ids else checked + ids).toList()
+            }, enabled = photos.isNotEmpty()) { Text(if (allChecked) "取消全选" else "全选") }
+            Button(feedbackClick { shareAlbumMedia(context, all.filter { it.uri.toString() in checked }) },
+                enabled = selected.isNotEmpty()) { Icon(Icons.Default.Share, null); Text("分享 (${selected.size})") }
+        }
+    }) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding).testTag("device-album")) {
+            if (!readable) TextButton(feedbackClick { request.launch(DeviceAlbum.permissions(imagesOnly)) },
+                Modifier.fillMaxWidth()) { Text("查看设备上的照片和视频") }
+            if (failure != null) TextButton(feedbackClick { revision++ }, Modifier.fillMaxWidth()) { Text(failure.orEmpty()) }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+            Crossfade(choosingAlbum, Modifier.fillMaxSize(), label = "album-level") { collections ->
+                if (collections) AlbumCollectionGrid(albums, onPinchOpen = ::selectAlbum) { choice ->
+                    zoom = 0
+                    selectAlbum(choice)
+                }
+                else AlbumPhotoGrid(photos, grid, loading, zoom, { zoom = it }, { choosingAlbum = true },
+                    selecting || choose != null && multiple, checked,
+                    tapPhoto = { media ->
+                        if (selecting || choose != null && multiple) toggle(media)
+                        else if (choose != null) choose(listOf(media)) else preview = media.uri
+                    }, holdPhoto = if (choose != null && !multiple) null else ({ media ->
+                        selecting = choose == null
+                        toggle(media)
+                    }), modifier = Modifier.fillMaxSize())
+            }
+            androidx.compose.animation.AnimatedVisibility(saving, enter = fadeIn(), exit = fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter)) {
+                LinearProgressIndicator(Modifier.fillMaxWidth().testTag("album-saving"))
+            }
+            }
+        }
+    }
+    preview?.let { uri ->
+        val available = if (photos.any { it.uri == uri }) photos else all
+        AlbumPreview(available, uri, { preview = null }, onEdit, message, removed = { revision++; preview = null })
+    }
+}
+
+internal fun shareAlbumMedia(context: android.content.Context, photos: List<AlbumMedia>) {
+    if (photos.isEmpty()) return
+    val multiple = photos.size > 1
+    val intent = Intent(if (multiple) Intent.ACTION_SEND_MULTIPLE else Intent.ACTION_SEND).apply {
+        type = if (photos.all { !it.video }) "image/*" else if (photos.all { it.video }) "video/*" else "*/*"
+        if (multiple) putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(photos.map { it.uri })) else putExtra(Intent.EXTRA_STREAM, photos.first().uri)
+        clipData = android.content.ClipData.newUri(context.contentResolver, "照片", photos.first().uri).apply { photos.drop(1).forEach { addItem(android.content.ClipData.Item(it.uri)) } }
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(intent, "分享"))
+}
+
+private fun openSystemAlbum(context: android.content.Context, message: (String) -> Unit) {
+    val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY)
+    val targets = context.packageManager.queryIntentActivities(intent, 0).filter { it.activityInfo.packageName != context.packageName }
+    val target = targets.firstOrNull() ?: run { message("未找到其它相册应用"); return }
+    runCatching { context.startActivity(intent.setClassName(target.activityInfo.packageName, target.activityInfo.name)) }
+        .onFailure { message("未能打开系统相册") }
+}

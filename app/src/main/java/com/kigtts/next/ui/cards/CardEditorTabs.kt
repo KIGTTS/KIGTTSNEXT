@@ -24,7 +24,7 @@ internal fun CardEditorTabs(mode: CardEditorMode, select: (CardEditorMode) -> Un
     PrimaryTabRow(options.indexOf(mode).coerceAtLeast(0), Modifier.testTag("card-editor-tabs"), containerColor = Color.Transparent, divider = {}) {
         options.forEach { option -> Tab(option == mode, feedbackClick { select(option) },
             modifier = Modifier.testTag("card-editor-tab/" + option.name),
-            text = { Text(when (option) { CardEditorMode.CROP -> if (personal) "背景" else "裁剪"; CardEditorMode.FILTER -> "滤镜"; CardEditorMode.FRAME -> "边框"; CardEditorMode.STICKERS -> "贴纸"; CardEditorMode.TEXT -> "文字" }) },
+            text = { Text(when (option) { CardEditorMode.CROP -> if (personal) "背景" else "裁剪"; CardEditorMode.FILTER -> "滤镜"; CardEditorMode.FRAME -> "水印"; CardEditorMode.STICKERS -> "贴纸"; CardEditorMode.TEXT -> "文字" }) },
             icon = if (compact) null else ({ Icon(when (option) { CardEditorMode.FILTER -> Icons.Default.Tune; CardEditorMode.CROP -> Icons.Default.Crop; CardEditorMode.FRAME -> Icons.Default.CropOriginal
                 CardEditorMode.STICKERS -> Icons.Default.Collections; CardEditorMode.TEXT -> Icons.Default.TextFields }, null, Modifier.size(22.dp)) })) }
     }

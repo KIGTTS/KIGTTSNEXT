@@ -27,7 +27,7 @@ internal class IdentityBackgroundCache(private val repository: StickerRepository
         val image = card.imageId?.let(repository::imageFile)
         val border = repository.identityFrames.items.value.firstOrNull { it.id == identity.cardFrameId }?.imageId?.let(repository::imageFile)
         val input = listOf("v2", image?.absolutePath, image?.lastModified(), image?.length(), card.frameColor,
-            card.photoX, card.photoY, card.photoZoom, card.photoBackdrop, card.photoStyle, identity.pattern, identity.gradient,
+            card.photoX, card.photoY, card.photoZoom, card.photoBackdrop, card.photoStyle, IdentityPatterns.cacheKey(identity.pattern), identity.gradient,
             identity.gradientColor.takeIf { identity.gradient }, identity.cardFrameId, border?.absolutePath, border?.lastModified(), border?.length()).joinToString("|")
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8))
         val hex = "0123456789abcdef"

@@ -87,7 +87,7 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
                     sources[index], Modifier.width(164.dp).fillParentMaxHeight()
                         .animateItem(fadeInSpec = null, fadeOutSpec = null,
                             placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                        .then(if (drag.key == phrase.id) Modifier.alpha(0f) else Modifier), model.mediaRepository, hidden = drag.key == phrase.id)
+                        .then(if (drag.key == phrase.id && !drag.landed) Modifier.alpha(0f) else Modifier), model.mediaRepository, hidden = drag.key == phrase.id && !drag.landed)
             }
         } else LazyVerticalGrid(GridCells.Fixed(columns), state = grid, modifier = listModifier.testTag("phrases-vertical"),
             verticalArrangement = Arrangement.spacedBy(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -100,7 +100,7 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
                     pressed[index], neighbors.any { pressed.getOrElse(it) { false } }, sources[index],
                     Modifier.height(QuickPhraseHeight).animateItem(fadeInSpec = null, fadeOutSpec = null,
                         placementSpec = if (drag.key == phrase.id) null else MaterialTheme.motionScheme.defaultSpatialSpec())
-                        .then(if (drag.key == phrase.id) Modifier.alpha(0f) else Modifier), model.mediaRepository, hidden = drag.key == phrase.id)
+                        .then(if (drag.key == phrase.id && !drag.landed) Modifier.alpha(0f) else Modifier), model.mediaRepository, hidden = drag.key == phrase.id && !drag.landed)
             }
         }
     }

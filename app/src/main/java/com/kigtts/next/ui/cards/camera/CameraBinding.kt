@@ -21,20 +21,20 @@ import kotlinx.coroutines.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal data class CameraBinding(val camera: Camera, val preview: Preview, val capture: ImageCapture,
+internal data class CameraBinding(val camera: Camera, val preview: Preview, val capture: ImageCapture?,
     val lease: CameraSessionLease, val processing: CameraProcessing = CameraProcessing.STANDARD,
-    val motionCapture: VideoCapture<Recorder>? = null, val previewEffect: CameraPreviewEffect? = null) {
-    fun release() { try { lease.close() } finally { try { preview.setSurfaceProvider(null) } finally { previewEffect?.close() } } }
+    val motionCapture: VideoCapture<Recorder>? = null, val previewEffect: CameraPreviewEffect? = null, val analysis: ImageAnalysis? = null) {
+    fun release() { analysis?.clearAnalyzer(); try { lease.close() } finally { try { preview.setSurfaceProvider(null) } finally { previewEffect?.close() } } }
 }
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCameraProvider, owner: LifecycleOwner,
     selector: CameraSelector, view: PreviewView, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
     metadata: CameraCaptureSession.CaptureCallback? = null, motion: Boolean = false,
-    previewColors: CameraPreviewColors = CameraPreviewColors(), previewFailure: (Throwable) -> Unit = {}): CameraBinding {
-    val viewport = requireNotNull(view.viewPort) { "相机预览尚未就绪" }
+    previewColors: CameraPreviewColors = CameraPreviewColors(), videoMode: Boolean = false, barcode: CameraBarcodeReader? = null, previewFailure: (Throwable) -> Unit = {}): CameraBinding {
+    val viewport = requireNotNull(view.getViewPort(rotation)) { "相机预览尚未就绪" }
     // Ordinary capture does not initialize a vendor extension or wait for its metadata discovery.
-    val requestedProcessing = if (motion) CameraProcessing.STANDARD else processing
+    val requestedProcessing = if (motion || videoMode || barcode != null) CameraProcessing.STANDARD else processing
     val manager = if (requestedProcessing == CameraProcessing.STANDARD) null else try { ExtensionsManager.getInstanceAsync(context, provider).awaitCamera(context) }
         catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
     val available = requestedProcessing.extensionMode?.let { mode -> runCatching { manager?.isExtensionAvailable(selector, mode) == true }.getOrDefault(false) } ?: false
@@ -44,8 +44,13 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
     var skipVideo = false
     var skipPreviewEffect = false
     // Preserve high-resolution/quality preference. Only the explicitly selected OEM mode may precede normal fallback.
-    val videoQualities = if (motion) listOf(Quality.FHD, Quality.HD, null) else listOf(null)
-    for (quality in videoQualities) for (mode in modes) for (highResolution in listOf(true, false)) {
+    val videoQualities = when {
+        videoMode -> listOf(Quality.FHD, Quality.HD, Quality.SD)
+        motion -> listOf(Quality.FHD, Quality.HD, null)
+        else -> listOf(null)
+    }
+    val photoMode = !videoMode && barcode == null
+    for (quality in videoQualities) for (mode in modes) for (highResolution in if (photoMode) listOf(true, false) else listOf(false)) {
         currentCoroutineContext().ensureActive()
         if (mode != null && skipExtensions) continue
         if (quality != null && skipVideo) continue
@@ -58,44 +63,47 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
         val resolution = ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
             .setAllowedResolutionMode(if (highResolution) ResolutionSelector.PREFER_HIGHER_RESOLUTION_OVER_CAPTURE_RATE else ResolutionSelector.PREFER_CAPTURE_RATE_OVER_HIGHER_RESOLUTION)
             .setResolutionFilter { sizes, _ -> sizes.filter { it.width.toLong() * it.height <= PhotoFilterWriter.MAX_PIXELS } }.build()
-        val capture = ImageCapture.Builder().setTargetRotation(rotation).setJpegQuality(98)
-            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY).setResolutionSelector(resolution).build()
+        val capture = if (photoMode) ImageCapture.Builder().setTargetRotation(rotation).setJpegQuality(98)
+            .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY).setResolutionSelector(resolution).build() else null
         val video = quality?.let { selected ->
             val recorder = Recorder.Builder().setQualitySelector(QualitySelector.from(selected)).build()
             VideoCapture.Builder(recorder).setTargetRotation(rotation)
                 .setMirrorMode(MirrorMode.MIRROR_MODE_ON_FRONT_ONLY).build()
         }
+        val analysis = barcode?.let { reader -> ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(android.util.Size(640, 480), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)).build())
+            .build().also { it.setAnalyzer(reader.executor, reader) } }
         preview.setSurfaceProvider(view.surfaceProvider)
         val label = "mode=${mode ?: "standard"},highResolution=$highResolution,rotation=$rotation,motion=${quality ?: "off"}"
         var attached: CameraBinding? = null
         var effect: CameraPreviewEffect? = null
         var lease: CameraSessionLease? = null
         try {
-            effect = if (skipPreviewEffect) null else CameraPreviewEffect(previewColors, previewFailure)
+            effect = if (skipPreviewEffect || !photoMode) null else CameraPreviewEffect(previewColors, previewFailure)
             val session = if (mode != null) ExtensionSessionConfig.Builder(mode, requireNotNull(manager))
-                .addUseCase(preview).addUseCase(capture).setViewPort(viewport).apply { effect?.let(::addEffect) }.build()
-            else SessionConfig(listOfNotNull(preview, capture, video), viewport, listOfNotNull(effect))
+                .addUseCase(preview).addUseCase(requireNotNull(capture)).setViewPort(viewport).apply { effect?.let(::addEffect) }.build()
+            else SessionConfig(listOfNotNull(preview, capture, video, analysis), viewport, listOfNotNull(effect))
             // The SessionConfig overload must be paired with unbind(the exact same instance).
             // unbind(vararg UseCase) creates a LegacySessionConfig and is ignored for these sessions.
             val owned = CameraSessionLease(session) { provider.unbind(it) }; lease = owned
             Log.d(CAMERA_LOG_TAG, "Binding $label")
             val camera = provider.bindToLifecycle(owner, selector, session)
             attached = CameraBinding(camera, preview, capture, owned,
-                CameraProcessing.entries.firstOrNull { it.extensionMode == mode } ?: CameraProcessing.STANDARD, video, effect)
+                CameraProcessing.entries.firstOrNull { it.extensionMode == mode } ?: CameraProcessing.STANDARD, video, effect, analysis)
             return finishCameraStartup(attached, { it.release() }) {
                 awaitCameraReady(camera.cameraInfo.cameraState, view.previewStreamState)
                 Log.d(CAMERA_LOG_TAG, "OPEN and STREAMING $label")
             }
         } catch (cancel: CancellationException) {
-            try { lease?.close() } finally { preview.setSurfaceProvider(null); effect?.close() }
+            try { analysis?.clearAnalyzer(); lease?.close() } finally { preview.setSurfaceProvider(null); effect?.close() }
             Log.d(CAMERA_LOG_TAG, "Binding cancelled; session released $label")
             throw cancel
         } catch (error: Exception) {
-            try { lease?.close() } finally { preview.setSurfaceProvider(null); effect?.close() }; failure = error
+            try { analysis?.clearAnalyzer(); lease?.close() } finally { preview.setSurfaceProvider(null); effect?.close() }; failure = error
             Log.w(CAMERA_LOG_TAG, "Binding failed; session released $label", error)
             // A runtime OEM failure is not fixed by trying every OEM mode with the same device.
             if (mode != null && error is CameraStartupException) skipExtensions = true
-            if (quality != null && error is CameraStartupException) skipVideo = true
+            if (motion && !videoMode && quality != null && error is CameraStartupException) skipVideo = true
             if (effect?.failure != null) skipPreviewEffect = true
             attached?.let { previous ->
                 withTimeoutOrNull(2_000) { awaitCameraClosed(previous.camera.cameraInfo.cameraState) }

@@ -29,4 +29,12 @@ class CameraUiPolicyTest {
         assertEquals(-2, cameraExposureAt(150f, 100f, range))
         assertEquals(0, cameraExposureAt(Float.NaN, 100f, range))
     }
+
+    @Test fun shutterOverlaysOnlyWhenTheViewfinderCanUseMostOfTheWindow() {
+        assertTrue(cameraOverlaysShutter(390f, 800f, .5f))
+        assertFalse(cameraOverlaysShutter(390f, 800f, .75f))
+        assertTrue(cameraOverlaysShutter(800f, 390f, 2f))
+        assertTrue(cameraOverlaysShutter(620f, 650f, 1f))
+        assertFalse(cameraOverlaysShutter(800f, 390f, 1f))
+    }
 }

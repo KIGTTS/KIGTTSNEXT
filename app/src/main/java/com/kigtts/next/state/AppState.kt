@@ -5,7 +5,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 
 enum class HomePanel(val label: String) { QUICK_TEXT("快捷文本") }
-enum class SidePage(val label: String) { SKETCH("画板"), CARDS("拍立得") }
+enum class SidePage(val label: String) { SKETCH("画板"), CARDS("相册") }
 sealed interface Destination {
     data object Home : Destination
     data object Settings : Destination

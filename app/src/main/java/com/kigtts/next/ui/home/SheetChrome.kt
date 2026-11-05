@@ -33,6 +33,7 @@ import com.kigtts.plugin.api.PluginGesture
 @Composable
 fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, editPhrases: () -> Unit) {
     val open = state.panel != null
+    val openSystemCamera = systemCameraShortcut(model::message)
     val progress = ((motion.height - HomePanelSizes.COLLAPSED) /
         (HomePanelSizes.PEEK - HomePanelSizes.COLLAPSED)).coerceIn(0f, 1f)
     val sideSize = (48f - 16f * progress).dp
@@ -64,11 +65,11 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
-                    4 -> ToolButton(if (open) "收起快捷文本" else "拍立得", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoLibrary,
-                        { if (open) model.closePanel() else model.openSidePage(SidePage.CARDS) },
+                    4 -> ToolButton(if (open) "收起快捷文本" else "相机", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoCamera,
+                        { if (open) model.closePanel() else model.cardCapture.open(systemCamera = false) },
                         Modifier.width(width).testTag("dock-end").homePreviewRegion("dock-end"), sources[4], shapes, size = sideSize,
-                        onLongClick = if (!open) ({ model.cardCapture.open() }) else null,
-                        iconBlend = ToolIconBlend(Icons.Default.PhotoLibrary, Icons.Default.ExpandMore, progress))
+                        onLongClick = openSystemCamera.takeUnless { open },
+                        iconBlend = ToolIconBlend(Icons.Default.PhotoCamera, Icons.Default.ExpandMore, progress))
                 }
                 if (index < 4) Spacer(Modifier.width((when (index) { 0 -> a; 3 -> b; else -> 1f } * 6f).dp))
             } }

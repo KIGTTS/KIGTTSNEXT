@@ -30,7 +30,7 @@ data class OverlaySettings(
 fun defaultOverlayShortcuts() = listOf(
     OverlayShortcut("home", "字幕板", "subtitles"),
     OverlayShortcut("camera", "拍照", "photo_camera", "camera"),
-    OverlayShortcut("cards", "拍立得", "photo_library", "cards"),
+    OverlayShortcut("cards", "相册", "photo_library", "cards"),
     OverlayShortcut("sketch", "画板", "draw", "sketch"),
 )
 

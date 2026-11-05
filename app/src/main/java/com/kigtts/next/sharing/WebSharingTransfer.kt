@@ -16,11 +16,13 @@ import java.util.UUID
 
 /** Streaming, acknowledged chunks avoid the WebView URL/download size limits. Local sharing pages only. */
 internal class WebSharingTransfer(private val model: AppViewModel, private val owner: String,
-    private val web: WebView, private val scope: CoroutineScope, private val active: () -> Boolean) : AutoCloseable {
+    private val web: WebView, private val scope: CoroutineScope, private val active: () -> Boolean,
+    private val completed: ((File, String, String?) -> Unit)? = null) : AutoCloseable {
     private val mutex = Mutex()
     private var output: FileOutputStream? = null
     private var target: File? = null
     private var relative: String? = null
+    private var transferKey: String? = null
     private var expected = 0L
     private var count = 0L
     private var closed = false
@@ -50,6 +52,7 @@ internal class WebSharingTransfer(private val model: AppViewModel, private val o
                 check(output == null)
                 val name = input.getString("name").also { require(it.matches(Regex("[^/\\\\:\\p{Cntrl}]{1,160}")) && it !in setOf(".", "..")) }
                 expected = input.getLong("bytes").also { require(it in 1..512L*1024*1024) }; count = 0
+                transferKey = input.optString("key").takeIf { it.length in 1..80 }
                 relative = "incoming/${UUID.randomUUID()}/$name"
                 target = model.pluginManager.paths.storage(owner).file(relative!!).also { it.parentFile!!.mkdirs() }
                 output = FileOutputStream(target)
@@ -63,7 +66,8 @@ internal class WebSharingTransfer(private val model: AppViewModel, private val o
             "finish" -> {
                 check(output != null && count == expected); output!!.close(); output = null
                 val file = requireNotNull(target); val path = requireNotNull(relative); target = null; relative = null
-                scope.launch(Dispatchers.Main) { model.sharing.received(owner, file, path) }
+                val key = transferKey; transferKey = null
+                scope.launch(Dispatchers.Main) { completed?.invoke(file, path, key) ?: model.sharing.received(owner, file, path) }
             }
             "cancel" -> abort()
             else -> error("Unknown transfer operation")

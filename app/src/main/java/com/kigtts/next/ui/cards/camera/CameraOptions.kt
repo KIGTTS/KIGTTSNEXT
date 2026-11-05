@@ -2,7 +2,10 @@ package com.kigtts.next.ui.cards.camera
 
 import android.content.SharedPreferences
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
+import com.kigtts.next.media.CameraPhotoEncoding
 import com.kigtts.next.media.color.PhotoEffects
 
 internal enum class CameraFlash(val label: String) { OFF("关闭"), AUTO("自动"), ON("开启") }
@@ -15,7 +18,22 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
     private var motionEnabled by mutableStateOf(preferences.getBoolean("motion", false))
+    var encoding by mutableStateOf(CameraPhotoEncoding.read(preferences.getString(ENCODING_KEY, null))); private set
     private var selectedStrength by mutableFloatStateOf(preferences.getFloat("filter-strength", 1f).takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f)
+    var aspect by mutableStateOf(enumPreference("aspect", CameraAspect.STANDARD)); private set
+    var mode by mutableStateOf(CameraMode.PHOTO); private set
+    val framingAspect get() = if (mode == CameraMode.SCAN) CameraAspect.STANDARD else aspect
+    var watermark by mutableStateOf(preferences.getString("watermark", "none") ?: "none"); private set
+    var watermarkStyle by mutableStateOf(watermark.takeUnless { it == "none" }
+        ?: preferences.getString("watermark-style", "classic").orEmpty()); private set
+    fun chooseAspect(value: CameraAspect) { aspect = value; preferences.edit().putString("aspect", value.name).apply() }
+    fun chooseMode(value: CameraMode) { mode = value }
+    fun chooseWatermark(value: String) {
+        watermark = value
+        preferences.edit().putString("watermark", value).apply {
+            if (value != "none") { watermarkStyle = value; putString("watermark-style", value) }
+        }.apply()
+    }
     val grid get() = selectedGrid
     val level get() = showLevel
     val flash get() = selectedFlash
@@ -37,7 +55,16 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     fun setLevel(value: Boolean) { showLevel = value; preferences.edit().putBoolean("level", value).apply() }
     fun setFlash(value: CameraFlash) { selectedFlash = value; preferences.edit().putString("flash", value.name).apply() }
     fun setProcessing(value: CameraProcessing) { selectedProcessing = value; preferences.edit().putString("processing", value.name).apply() }
-    fun setMotion(value: Boolean) { motionEnabled = value; preferences.edit().putBoolean("motion", value).apply() }
+    fun chooseEncoding(value: CameraPhotoEncoding) {
+        encoding = value
+        if (value == CameraPhotoEncoding.HEIF) motionEnabled = false
+        preferences.edit().putString(ENCODING_KEY, value.name).putBoolean("motion", motionEnabled).apply()
+    }
+    fun setMotion(value: Boolean) {
+        motionEnabled = value
+        if (value) encoding = CameraPhotoEncoding.JPEG
+        preferences.edit().putBoolean("motion", value).putString(ENCODING_KEY, encoding.name).apply()
+    }
     fun setFilterStrength(value: Float) {
         if (!value.isFinite()) return
         selectedStrength = value.coerceIn(0f, 1f); preferences.edit().putFloat("filter-strength", selectedStrength).apply()
@@ -48,11 +75,18 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     }
     fun showSettings() { settingsVisible = true }
     fun hideSettings() { settingsVisible = false }
-    companion object { val TIMERS = listOf(0, 3, 10) }
+    companion object {
+        val TIMERS = listOf(0, 3, 10)
+        const val ENCODING_KEY = "photo-encoding"
+    }
 }
 
 @Composable
 internal fun rememberCameraOptions(): CameraOptions {
     val context = LocalContext.current.applicationContext
-    return remember(context) { CameraOptions(context.getSharedPreferences("polaroid_camera", 0)) }
+    val preferences = remember(context) { context.getSharedPreferences("polaroid_camera", 0) }
+    return rememberSaveable(saver = Saver<CameraOptions, String>(
+        save = { it.mode.name },
+        restore = { saved -> CameraOptions(preferences).apply { chooseMode(CameraMode.valueOf(saved)) } },
+    )) { CameraOptions(preferences) }
 }

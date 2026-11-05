@@ -17,7 +17,7 @@ import com.kigtts.plugin.api.*
 
 @Composable
 internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
-    camera: () -> Unit, gallery: () -> Unit, addText: () -> Unit, addSticker: () -> Unit, addImage: () -> Unit, addQrCode: () -> Unit,
+    openCrop: () -> Unit, addText: () -> Unit, addSticker: () -> Unit, addImage: () -> Unit, addQrCode: () -> Unit,
     frameColor: () -> Unit, selected: CardLayer?, editText: () -> Unit, layerColor: () -> Unit,
     deleteLayer: () -> Unit, forwardLayer: () -> Unit, mode: CardEditorMode, selectMode: (CardEditorMode) -> Unit,
     frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit, textEditing: Boolean = false,
@@ -27,7 +27,7 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
     filterTools: @Composable () -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (showTabs) CardEditorTabs(mode, selectMode)
-        if (mode == CardEditorMode.CROP) { if (backgroundTools != null) backgroundTools() else CardCropTools(card, enabled, change, camera, gallery, frameColor, frames) }
+        if (mode == CardEditorMode.CROP) { if (backgroundTools != null) backgroundTools() else CardCropTools(card.imageId != null && enabled, openCrop) }
         else if (mode == CardEditorMode.FILTER) filterTools()
         else if (mode == CardEditorMode.FRAME) { CardFrameTools(card, enabled, change, frameColor, frames); designTools() }
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

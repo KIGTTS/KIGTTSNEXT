@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.collectLatest
 
 /** Keep the floating card until it reaches its final slot; reveal the list in the same frame. */
 @Composable
-fun rememberReorderDrop(drag: ReorderDrag): State<Offset> {
+fun rememberReorderDrop(drag: ReorderDrag, fadeOverlay: Boolean = false): State<Offset> {
     val settling = drag.settling
     val animation = remember(drag.key, settling) { Animatable(drag.floatingBounds.topLeft, Offset.VectorConverter) }
     // A deterministic drop tween avoids a spring overshoot that looks like a second
@@ -24,6 +24,12 @@ fun rememberReorderDrop(drag: ReorderDrag): State<Offset> {
             withFrameNanos { }
             snapshotFlow { drag.targetBounds(id)?.topLeft ?: drag.floatingBounds.topLeft }.collectLatest { destination ->
                 animation.animateTo(destination, spatial)
+                if (fadeOverlay) {
+                    // Restore the clipped list before fading the unclipped foreground.
+                    drag.landed = true
+                    val fade = Animatable(drag.overlayAlpha)
+                    fade.animateTo(0f, tween(130)) { drag.overlayAlpha = value }
+                }
                 drag.completeDrop(id)
             }
         }

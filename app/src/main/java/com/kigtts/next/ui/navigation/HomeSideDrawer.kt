@@ -57,12 +57,13 @@ class SideDrawerPose internal constructor(private val state: HomeSideDrawer, pri
 /** Let text selection, media gestures and scrolling children claim first. */
 @Composable
 internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, leftAction: (() -> Unit)? = null,
-    pagesEnabled: Boolean = true, available: () -> Boolean): Modifier {
+    pagesEnabled: Boolean = true, leftPageEnabled: Boolean = true, available: () -> Boolean): Modifier {
     val exclusions = LocalHomeSwipeExclusions.current
     val origin = remember { arrayOf(Offset.Zero) }
     val latest by rememberUpdatedState(available)
     val latestLeft by rememberUpdatedState(leftAction)
     val latestPagesEnabled by rememberUpdatedState(pagesEnabled)
+    val latestLeftPageEnabled by rememberUpdatedState(leftPageEnabled)
     return onGloballyPositioned { origin[0] = it.positionInRoot() }.pointerInput(state, exclusions) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
@@ -86,7 +87,7 @@ internal fun Modifier.homeSideDrawer(state: HomeSideDrawer, leftAction: (() -> U
                         if (abs(dx) > viewConfiguration.touchSlop && abs(dx) > abs(dy) * 1.2f) {
                             if (!latest()) break
                             shortcut = dx < 0f && latestLeft != null
-                            claimed = shortcut || latestPagesEnabled && state.begin(dx, size.width.toFloat())
+                            claimed = shortcut || latestPagesEnabled && (dx > 0f || latestLeftPageEnabled) && state.begin(dx, size.width.toFloat())
                             if (!claimed) break
                         }
                     } else if (shortcut) dx += delta.x else state.drag(delta.x)

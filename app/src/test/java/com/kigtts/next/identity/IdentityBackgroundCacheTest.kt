@@ -13,6 +13,30 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [26, 35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class IdentityBackgroundCacheTest {
+    @Test fun newPatternsStayOnTheRightAndMatchBetweenEditorAndExport() = runBlocking {
+        val f = CardPrintCoordinatorTest.Fixture()
+        try {
+            val card = PolaroidCard(title = "", frameStyleId = "identity.banner", frameColor = 0xFF20272B)
+            val cache = f.stickers.identityBackgrounds
+            for (pattern in listOf("contours", "pcb")) {
+                val profile = IdentityCard(designId = card.id, pattern = pattern)
+                val bake = cache.load(card, profile, 512)
+                val live = Bitmap.createBitmap(bake.width, bake.height, Bitmap.Config.ARGB_8888)
+                try {
+                    cache.prepare(card, profile).draw(Canvas(live), live.width.toFloat(), live.height.toFloat(), card)
+                    assertTrue(bake.sameAs(live))
+                    val base = card.frameColor.toInt()
+                    assertTrue((0 until live.width / 4 step 5).all { x -> (0 until live.height step 5).all { y -> live.getPixel(x, y) == base } })
+                    assertTrue((live.width * 3 / 4 until live.width).any { x -> (0 until live.height).any { y -> live.getPixel(x, y) != base } })
+                    if (android.os.Build.VERSION.SDK_INT == 35) {
+                        File("build/previews/identity-$pattern.png").apply { parentFile?.mkdirs() }.outputStream().use {
+                            live.compress(Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                    }
+                } finally { live.recycle() }
+            }
+        } finally { f.scope.cancel() }
+    }
     @Test fun losslessBakePreservesFineDetailsAndReopensFromDiskAtDisplayResolution() = runBlocking {
         val f = CardPrintCoordinatorTest.Fixture()
         try {
