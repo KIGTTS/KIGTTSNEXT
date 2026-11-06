@@ -71,6 +71,10 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     val currentPreview by rememberUpdatedState(parentPreview)
     val currentPose by rememberUpdatedState(cameraPose)
     val currentDrawerPose by rememberUpdatedState(drawerPose)
+    val settled by remember(animation) { derivedStateOf {
+        currentRole == PageRole.FOREGROUND && currentProgress == 0f && currentPreview == 0f &&
+            abs(currentPose?.position ?: currentDrawerPose?.position ?: animation.value) <= .00001f
+    } }
     val layer = Modifier.fillMaxSize().graphicsLayer {
         val position = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - currentPreview)
         if (controlled) memory.overridePosition = position
@@ -101,7 +105,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
             }
         }
     Surface(layer, color = MaterialTheme.colorScheme.background) {
-        CompositionLocalProvider(LocalPageActive provides interactive) {
+        CompositionLocalProvider(LocalPageActive provides interactive, LocalPageSettled provides (interactive && settled)) {
             Box {
                 content()
                 val shade = MaterialTheme.colorScheme.scrim

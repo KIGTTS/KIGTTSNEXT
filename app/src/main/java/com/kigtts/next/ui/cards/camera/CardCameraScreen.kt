@@ -38,7 +38,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
-    val active = pageActive && !suspended && lifecycle.isAtLeast(Lifecycle.State.STARTED)
+    val pageSettled = LocalPageSettled.current
+    var entered by remember { mutableStateOf(false) }
+    LaunchedEffect(pageSettled) { if (pageSettled) entered = true }
+    val active = pageActive && entered && !suspended && lifecycle.isAtLeast(Lifecycle.State.STARTED)
     CameraStatusBar(pageActive && !suspended)
     val configuration = LocalConfiguration.current
     val formats = cameraFormats(configuration.screenWidthDp, configuration.screenHeightDp, configuration.smallestScreenWidthDp)
@@ -73,7 +76,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     } }
     val streamTransition = remember(view) { CameraStreamTransition(view) }
     DisposableEffect(streamTransition) { onDispose { streamTransition.close() } }
-    val (granted, request) = cameraPermission(pageActive)
+    val (granted, request) = cameraPermission(pageActive && entered)
     val rotation = rememberCameraDisplayRotation(view)
     // Intermediate animated sizes are not read by the rest of the page on every frame.
     val modern = onVideo != null

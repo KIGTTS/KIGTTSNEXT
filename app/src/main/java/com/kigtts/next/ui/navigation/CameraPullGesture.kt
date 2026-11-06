@@ -38,8 +38,10 @@ internal fun Modifier.cameraPullNavigation(state: CameraPullState, origin: () ->
             var dx = 0f; var dy = 0f
             try {
                 do {
-                    // A registered heading claims at slop before the app bar's native collapse drag.
-                    val event = awaitPointerEvent(if (entry || candidate.horizontal && candidate.mode == CameraPullMode.ENTER) PointerEventPass.Initial else PointerEventPass.Main)
+                    // Use the same child-first rule as homeSideDrawer: pagers, subtitle
+                    // input and sliders keep consumed drags. Only a registered heading
+                    // takes priority over its app bar; an already claimed pull stays owned.
+                    val event = awaitPointerEvent(if (entry || claimed) PointerEventPass.Initial else PointerEventPass.Main)
                     val change = event.changes.firstOrNull { it.id == first.id } ?: break
                     if (event.changes.count { it.pressed } > 1) { cancelled = true; break }
                     velocity.addPosition(change.uptimeMillis, change.position)

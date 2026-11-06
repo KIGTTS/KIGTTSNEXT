@@ -91,6 +91,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
                 BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = streamTransition.alpha.value }
                     .testTag("camera-stream-cover"))
             }
+            CameraViewfinderPlaceholder(!displayReady && motion.snapshot == null && streamTransition?.snapshot == null)
             options?.takeIf { showGuides }?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
             }
