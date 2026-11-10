@@ -1,8 +1,6 @@
 package com.kigtts.next.ui.cards.camera
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
@@ -13,6 +11,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 
 internal data class CameraChromeLayout(val photo: Rect, val controls: Rect, val zoom: Rect)
+
+internal const val CAMERA_HEADER_CLEARANCE = 52f
+internal const val CAMERA_PREVIEW_SIDE_INSET = 12f
 
 private const val CAMERA_CHROME_GAP = 8f
 private const val CAMERA_CHROME_EDGE = 4f
@@ -31,7 +32,7 @@ internal fun cameraControlsOutside(width: Float, height: Float, photo: Size, ver
 internal fun cameraChromeLayout(width: Float, height: Float, photo: Size, vertical: Boolean,
     controlsProgress: Float, headerInset: Float = 0f, anchorTop: Float? = null, shutterInset: Float = 0f): CameraChromeLayout {
     val left = ((width - photo.width) / 2).coerceAtLeast(0f)
-    val top = (anchorTop ?: (height - photo.height) / 2).coerceAtLeast(0f)
+    val top = (anchorTop ?: (headerInset + height - photo.height) / 2).coerceAtLeast(headerInset)
     val window = Rect(left, top, left + photo.width, top + photo.height)
     fun move(from: Float, to: Float, progress: Float) = from + (to - from) * progress.coerceIn(0f, 1f)
     val controls: Rect
@@ -43,6 +44,8 @@ internal fun cameraChromeLayout(width: Float, height: Float, photo: Size, vertic
         val cornerReserve = (headerInset * 2f - controlsLeft).coerceIn(0f, headerInset)
         val controlsTop = maxOf(top, cornerReserve).coerceAtMost(window.bottom)
         controls = Rect(controlsLeft, controlsTop, controlsLeft + size, window.bottom)
+    } else if (headerInset > 0f) {
+        controls = Rect(minOf(width, 56f), 4f, width, minOf(height, headerInset))
     } else {
         val controlsHeight = minOf(CAMERA_CONTROLS_SIZE, height)
         val outsideTop = (top - CAMERA_CHROME_GAP - controlsHeight).coerceAtLeast(CAMERA_CHROME_EDGE + headerInset)
@@ -64,15 +67,24 @@ internal fun cameraChromeLayout(width: Float, height: Float, photo: Size, vertic
 
 @Composable
 internal fun rememberCameraChromeLayout(width: Float, height: Float, photo: Size, targetPhoto: Size,
-    vertical: Boolean, headerInset: Float = 0f, anchorPortrait: Boolean = false, shutterInset: Float = 0f): CameraChromeLayout {
-    val preferredTop = if (!vertical && anchorPortrait)
-        (height - cameraPhotoWindow(width, height, .75f).height) / 2 else null
-    fun anchor(photoHeight: Float) = preferredTop?.coerceIn(0f, (height - photoHeight).coerceAtLeast(0f))
+    vertical: Boolean, headerInset: Float = 0f, portraitAnchor: Float = 0f, shutterInset: Float = 0f,
+    photoWidthLimit: Float = width, fullFrameProgress: Float = 0f, targetHeaderInset: Float = headerInset,
+    fullFrame: Boolean = false): CameraChromeLayout {
+    // An existing letterbox already gives the header room; do not add the inset to it a second time.
+    val preferredTop = (height - cameraPhotoWindow(photoWidthLimit, height, .75f).height) / 2
+    fun anchor(photoHeight: Float, inset: Float, fullProgress: Float): Float {
+        val space = (height - photoHeight).coerceAtLeast(inset)
+        val center = (space / 2).coerceAtLeast(inset)
+        val standard = if (vertical) center else center + (preferredTop.coerceIn(inset, space) - center) * portraitAnchor
+        return standard + (inset - standard) * fullProgress
+    }
     // The decision uses the final ratio once; intermediate animation sizes cannot toggle the placement back and forth.
-    val outside = cameraControlsOutside(width, height, targetPhoto, vertical, headerInset, anchor(targetPhoto.height))
+    val outside = cameraControlsOutside(width, height, targetPhoto, vertical, targetHeaderInset,
+        anchor(targetPhoto.height, targetHeaderInset, if (fullFrame) 1f else 0f))
     val controls by animateFloatAsState(if (outside) 1f else 0f,
-        tween(280, easing = FastOutSlowInEasing), label = "camera-controls-placement")
-    return cameraChromeLayout(width, height, photo, vertical, controls, headerInset, anchor(photo.height), shutterInset)
+        CameraFramingMotion, label = "camera-controls-placement")
+    return cameraChromeLayout(width, height, photo, vertical, controls, headerInset,
+        anchor(photo.height, headerInset, fullFrameProgress), shutterInset)
 }
 
 internal fun Modifier.cameraChromeBounds(rect: Rect): Modifier = offset(rect.left.dp, rect.top.dp)

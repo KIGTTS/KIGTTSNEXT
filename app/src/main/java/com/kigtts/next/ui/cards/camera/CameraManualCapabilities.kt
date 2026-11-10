@@ -11,10 +11,21 @@ import kotlin.math.roundToLong
 
 internal data class CameraManualCapabilities(val exposure: LongRange? = null, val sensitivity: IntRange? = null,
     val maximumFocus: Float = 0f, val maximumFrameDuration: Long? = null, val frameDurationWritable: Boolean = false,
-    val reason: String? = null) {
+    val reason: String? = null, val whiteBalance: List<CameraWhiteBalance> = emptyList()) {
     val shutterAvailable get() = exposure?.let { it.first > 0 && it.last >= it.first } == true &&
         sensitivity?.let { it.first > 0 && it.last >= it.first } == true
     val focusAvailable get() = maximumFocus.isFinite() && maximumFocus > 0f
+}
+
+internal enum class CameraWhiteBalance(val mode: Int, val label: String) {
+    AUTO(CaptureRequest.CONTROL_AWB_MODE_AUTO, "自动"),
+    DAYLIGHT(CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT, "日光"),
+    CLOUDY(CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT, "阴天"),
+    SHADE(CaptureRequest.CONTROL_AWB_MODE_SHADE, "阴影"),
+    INCANDESCENT(CaptureRequest.CONTROL_AWB_MODE_INCANDESCENT, "白炽灯"),
+    FLUORESCENT(CaptureRequest.CONTROL_AWB_MODE_FLUORESCENT, "荧光灯"),
+    WARM_FLUORESCENT(CaptureRequest.CONTROL_AWB_MODE_WARM_FLUORESCENT, "暖荧光灯"),
+    TWILIGHT(CaptureRequest.CONTROL_AWB_MODE_TWILIGHT, "暮光");
 }
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
@@ -34,9 +45,13 @@ internal fun readCameraManualCapabilities(context: Context, camera: Camera, proc
         val focus = characteristics.get(CameraCharacteristics.LENS_INFO_MINIMUM_FOCUS_DISTANCE) ?: 0f
         val canFocus = characteristics.get(CameraCharacteristics.CONTROL_AF_AVAILABLE_MODES)?.contains(CaptureRequest.CONTROL_AF_MODE_OFF) == true &&
             keys.containsAll(listOf(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.LENS_FOCUS_DISTANCE))
+        val awbModes = characteristics.get(CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES)
         CameraManualCapabilities(if (canExpose) requireNotNull(exposure).let { it.lower..minOf(it.upper, maxFrame ?: it.upper) } else null,
             if (canExpose) requireNotNull(sensitivity).let { it.lower..it.upper } else null,
-            if (canFocus) focus else 0f, maxFrame, CaptureRequest.SENSOR_FRAME_DURATION in keys)
+            if (canFocus) focus else 0f, maxFrame, CaptureRequest.SENSOR_FRAME_DURATION in keys,
+            whiteBalance = CameraWhiteBalance.entries.filter {
+                CaptureRequest.CONTROL_AWB_MODE in keys && awbModes?.contains(it.mode) == true
+            })
     }.getOrElse { CameraManualCapabilities(reason = "当前镜头不支持手动调整") }
 }
 

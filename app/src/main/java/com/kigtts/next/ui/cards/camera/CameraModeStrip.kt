@@ -42,7 +42,7 @@ import kotlinx.coroutines.delay
     val feedback by rememberUpdatedState(LocalHapticFeedback.current)
     var wake by remember { mutableIntStateOf(0) }
     var expanded by remember { mutableStateOf(true) }
-    LaunchedEffect(pager) {
+    LaunchedEffect(pager, modes) {
         snapshotFlow { pager.isScrollInProgress to pager.settledPage }.collect { (moving, page) ->
             if (!moving) {
                 modes.getOrNull(page)?.takeIf { it != latestMode }?.let {
@@ -104,7 +104,7 @@ import kotlinx.coroutines.delay
         Box(strip, contentAlignment = Alignment.Center) {
             if (vertical) VerticalPager(pager, Modifier.width(48.dp).requiredHeight(available),
                 contentPadding = PaddingValues(vertical = padding), pageSize = PageSize.Fixed(96.dp),
-                pageSpacing = 8.dp, userScrollEnabled = enabled, pageContent = item)
+                pageSpacing = 8.dp, reverseLayout = true, userScrollEnabled = enabled, pageContent = item)
             else HorizontalPager(pager, Modifier.requiredWidth(available).height(48.dp),
                 contentPadding = PaddingValues(horizontal = padding), pageSize = PageSize.Fixed(96.dp),
                 pageSpacing = 8.dp, userScrollEnabled = enabled, pageContent = item)
@@ -112,7 +112,7 @@ import kotlinx.coroutines.delay
     }
 }
 
-private fun Modifier.verticalModeLabel(): Modifier = layout { label, bounds ->
+internal fun Modifier.verticalModeLabel(): Modifier = layout { label, bounds ->
     val text = label.measure(Constraints(minWidth = bounds.minHeight, maxWidth = bounds.maxHeight,
         minHeight = bounds.minWidth, maxHeight = bounds.maxWidth))
     layout(text.height, text.width) {

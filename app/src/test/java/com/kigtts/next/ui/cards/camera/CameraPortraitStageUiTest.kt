@@ -60,6 +60,7 @@ class CameraPortraitStageUiTest {
             val zoom = bounds("camera-zoom-stop/1")
             val photoTop = bounds("camera-photo-window").top.value
             assertEquals(stage.top.value + 8f, back.top.value, 1f)
+            assertTrue(photoTop >= maxOf(back.bottom.value, settingsBounds.bottom.value) + 4f)
             compose.mainClock.autoAdvance = false
             compose.runOnIdle { format = if (format == PolaroidFormat.MINI) PolaroidFormat.SQUARE else PolaroidFormat.MINI }
             repeat(24) {
@@ -68,6 +69,7 @@ class CameraPortraitStageUiTest {
                 assertEquals(back, bounds("camera-cancel")); assertEquals(settingsBounds, bounds("camera-settings"))
                 assertEquals(shutter, bounds("camera-shutter"))
                 val photo = bounds("camera-photo-window")
+                assertTrue(photo.top >= maxOf(back.bottom, settingsBounds.bottom))
                 assertEquals(photoTop, photo.top.value, 2f)
                 assertEquals(zoom, bounds("camera-zoom-stop/1"))
                 assertEquals((stage.left + stage.right).value / 2f, (photo.left + photo.right).value / 2f, 1f)

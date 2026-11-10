@@ -93,7 +93,9 @@ class CameraModeStripUiTest {
             CameraModeStrip(mode, { mode = it }, true, true)
         } }
         centered(mode, true)
-        compose.onNodeWithTag("camera-mode-strip").performTouchInput { swipeUp(durationMillis = 500) }
+        assertTrue(compose.onNodeWithTag("camera-mode/TIME_LAPSE").fetchSemanticsNode().boundsInRoot.center.y <
+            compose.onNodeWithTag("camera-mode/PHOTO").fetchSemanticsNode().boundsInRoot.center.y)
+        compose.onNodeWithTag("camera-mode-strip").performTouchInput { swipeDown(durationMillis = 500) }
         compose.waitForIdle()
         assertEquals(CameraMode.TIME_LAPSE, mode)
         centered(mode, true)

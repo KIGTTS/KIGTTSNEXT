@@ -10,8 +10,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-internal class CameraPreviewMorph(ratio: Float) {
+internal val CameraFramingMotion = tween<Float>(320, easing = FastOutSlowInEasing)
+
+internal class CameraPreviewMorph(ratio: Float, fullFrame: Boolean) {
     val ratio = Animatable(ratio)
+    val fullFrameProgress = Animatable(if (fullFrame) 1f else 0f)
     val alpha = Animatable(0f)
     var snapshot by mutableStateOf<Bitmap?>(null)
 }
@@ -19,20 +22,25 @@ internal class CameraPreviewMorph(ratio: Float) {
 /** One small cached frame per format change. The final live STREAMING frame releases the cover. */
 @Composable
 internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidFormat, filter: PhotoFilter,
-    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f, aspectRatio: Float = format.geometry.photoAspectRatio.toFloat()): CameraPreviewMorph {
-    val motion = remember(view) { CameraPreviewMorph(aspectRatio) }
+    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f,
+    aspectRatio: Float = format.geometry.photoAspectRatio.toFloat(), fullFrame: Boolean = false): CameraPreviewMorph {
+    val motion = remember(view) { CameraPreviewMorph(aspectRatio, fullFrame) }
     val ready = rememberUpdatedState(displayReady); val changed = rememberUpdatedState(morphChanged)
-    var last by remember(view) { mutableStateOf(aspectRatio) }
-    LaunchedEffect(aspectRatio, view) {
-        if (last == aspectRatio) return@LaunchedEffect
-        last = aspectRatio
+    val stageSettled = rememberUpdatedState(LocalCameraStageSettled.current)
+    val framing = aspectRatio to fullFrame
+    var last by remember(view) { mutableStateOf(framing) }
+    LaunchedEffect(framing, view) {
+        if (last == framing) return@LaunchedEffect
+        last = framing
         motion.snapshot = cameraPreviewSnapshot(view) ?: motion.snapshot
         changed.value(true)
         try {
             coroutineScope {
                 launch { motion.alpha.animateTo(if (motion.snapshot != null) 1f else 0f, tween(75)) }
-                motion.ratio.animateTo(aspectRatio, tween(280, easing = FastOutSlowInEasing))
+                launch { motion.ratio.animateTo(aspectRatio, CameraFramingMotion) }
+                launch { motion.fullFrameProgress.animateTo(if (fullFrame) 1f else 0f, CameraFramingMotion) }
             }
+            snapshotFlow { stageSettled.value }.first { it }
             // Let both Compose measurement and AndroidView layout reach the final rectangle.
             withFrameNanos { }; withFrameNanos { }
         } finally { changed.value(false) }

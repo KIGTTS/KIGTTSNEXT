@@ -5,6 +5,9 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.CompositionLocalProvider
@@ -21,7 +24,7 @@ internal val LocalCameraControlShape = staticCompositionLocalOf<RoundedCornerSha
 
 /** The outer corners form one capsule; adjacent corners remain connected in either orientation. */
 @Composable
-internal fun BoxScope.CameraControlGroup(vertical: Boolean, visible: List<Boolean>,
+internal fun BoxScope.CameraControlGroup(vertical: Boolean, visible: List<Boolean>, reserveBack: Boolean = false,
     item: @Composable (Int) -> Unit) {
     val first = visible.indexOfFirst { it }; val last = visible.indexOfLast { it }
     val content: @Composable () -> Unit = {
@@ -46,7 +49,11 @@ internal fun BoxScope.CameraControlGroup(vertical: Boolean, visible: List<Boolea
         }
     }
     val modifier = Modifier.align(if (vertical) Alignment.BottomStart else Alignment.TopEnd)
-        .padding(8.dp).testTag("camera-switch-strip").excludeCameraPull()
+        .then(if (!reserveBack) Modifier else if (vertical) Modifier.padding(top = CAMERA_HEADER_CLEARANCE.dp)
+            .verticalScroll(rememberScrollState(), reverseScrolling = true)
+        else Modifier.padding(start = 54.dp).horizontalScroll(rememberScrollState(), reverseScrolling = true))
+        .padding(horizontal = 8.dp).padding(top = if (reserveBack && !vertical) 4.dp else 8.dp, bottom = 8.dp)
+        .testTag("camera-switch-strip").excludeCameraPull()
     if (vertical) Column(modifier) { content() }
     else Row(modifier) { content() }
 }

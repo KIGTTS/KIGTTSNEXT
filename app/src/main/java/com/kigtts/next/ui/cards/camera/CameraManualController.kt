@@ -23,6 +23,7 @@ internal class CameraManualController(private val context: Context, private val 
     var focusDiopters by mutableFloatStateOf(0f); private set
     var shutterNanos by mutableStateOf<Long?>(null); private set
     var sensorIso by mutableIntStateOf(0); private set
+    var whiteBalance by mutableStateOf(CameraWhiteBalance.AUTO); private set
     val automaticExposure get() = shutterNanos == null
     private val epoch = AtomicLong()
     private val metadataLock = Any()
@@ -48,9 +49,10 @@ internal class CameraManualController(private val context: Context, private val 
     }
     internal fun attach(value: CameraManualCapabilities, submit: ((CaptureRequestOptions?) -> ListenableFuture<Void?>)?) {
         version++; capabilities = value; sender = submit; pending = null
-        manualFocus = false; focusDiopters = 0f; shutterNanos = null; sensorIso = 0
+        resetValues()
     }
     internal fun record(value: CameraMeteringSample) { sample.set(value) }
+    fun meteringSample(): CameraMeteringSample? = sample.get()
     fun focusMode(enabled: Boolean) {
         if (enabled && !capabilities.focusAvailable) return
         beforeChange(); manualFocus = enabled
@@ -77,10 +79,31 @@ internal class CameraManualController(private val context: Context, private val 
         if (shutterNanos == null) return
         shutterNanos = value.coerceIn(range); apply()
     }
+    fun sensitivityAt(value: Int) {
+        val range = capabilities.sensitivity ?: return
+        if (automaticExposure) return
+        sensorIso = value.coerceIn(range); apply()
+    }
+    fun selectWhiteBalance(value: CameraWhiteBalance) {
+        if (value != CameraWhiteBalance.AUTO && value !in capabilities.whiteBalance) return
+        if (whiteBalance == value) return
+        whiteBalance = value; apply()
+    }
+    fun reset() {
+        beforeChange()
+        resetValues()
+        apply()
+    }
+    private fun resetValues() {
+        manualFocus = false; focusDiopters = 0f; shutterNanos = null; sensorIso = 0; whiteBalance = CameraWhiteBalance.AUTO
+    }
     private fun apply() {
         val send = sender ?: return
         val ticket = ++version; val generation = epoch.get()
-        val options = if (!manualFocus && automaticExposure) null else CaptureRequestOptions.Builder().apply {
+        val options = if (!manualFocus && automaticExposure && whiteBalance == CameraWhiteBalance.AUTO) null else CaptureRequestOptions.Builder().apply {
+            if (whiteBalance != CameraWhiteBalance.AUTO) {
+                setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, whiteBalance.mode)
+            }
             if (manualFocus) {
                 setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
                 setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, focusDiopters)
@@ -102,7 +125,7 @@ internal class CameraManualController(private val context: Context, private val 
         } catch (_: Exception) { if (version == ticket) failed() }
     }
     private fun failed() {
-        version++; manualFocus = false; shutterNanos = null; focusDiopters = 0f; sensorIso = 0
+        version++; resetValues()
         pending = runCatching { sender?.invoke(null) }.getOrNull()
         message("手动设置未能应用，正在恢复自动")
     }
@@ -115,6 +138,6 @@ internal class CameraManualController(private val context: Context, private val 
     fun unbind() {
         synchronized(metadataLock) { epoch.incrementAndGet(); sample.set(null) }; version++
         runCatching { sender?.invoke(null) }; sender = null; pending = null
-        capabilities = CameraManualCapabilities(); manualFocus = false; shutterNanos = null; focusDiopters = 0f; sensorIso = 0
+        capabilities = CameraManualCapabilities(); resetValues()
     }
 }

@@ -29,8 +29,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     var flashAvailable by mutableStateOf(false); private set
     var flashMode by mutableStateOf(CameraFlash.OFF); private set
     var focusTarget by mutableStateOf<CameraFocusTarget?>(null); private set
-    var exposureIndex by mutableIntStateOf(0); private set
-    var exposureRange by mutableStateOf(0..0); private set
+    val exposure = CameraExposureCompensation()
+    var histogram by mutableStateOf<CameraHistogram?>(null); private set
     private val zoomState = CameraZoomState()
     val zoomRatio get() = zoomState.ratio
     val minZoomRatio get() = zoomState.minimum
@@ -93,7 +93,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             boundFront = selector == CameraSelector.DEFAULT_FRONT_CAMERA
             require(cameras.hasCamera(selector)) { "没有可用相机" }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
-                manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo, barcode = barcode.takeIf { mode == CameraMode.SCAN }) { failure ->
+                manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo,
+                barcode = barcode.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
                         error = "实时滤镜暂时不可用，请重试"
@@ -104,9 +105,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             if (epoch != generation) { attached.release(); return }
             // Adopt before checking cancellation: catch/unbind can then release the newly created session.
             binding = attached
+            histogram = attached.histogram
             scanEnabled = mode == CameraMode.SCAN
             currentCoroutineContext().ensureActive()
-            if (mode == CameraMode.PHOTO && attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
+            if (mode.takesPhotos && attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
                     CameraMotionRecorder(context, video.output), scope, message).also { it.start() }
@@ -115,10 +117,11 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             flashAvailable = attached.camera.cameraInfo.hasFlashUnit()
             applyFlash()
             manual.bind(attached.camera, attached.processing)
-            val exposure = attached.camera.cameraInfo.exposureState
-            exposureRange = if (exposure.isExposureCompensationSupported)
-                exposure.exposureCompensationRange.let { it.lower..it.upper } else 0..0
-            exposureIndex = exposure.exposureCompensationIndex
+            val exposureState = attached.camera.cameraInfo.exposureState
+            exposure.attach(if (exposureState.isExposureCompensationSupported)
+                exposureState.exposureCompensationRange.let { it.lower..it.upper } else 0..0,
+                exposureState.exposureCompensationStep.toFloat())
+            if (exposure.index != exposureState.exposureCompensationIndex) applyExposure(attached.camera)
             val initialZoom = attached.camera.cameraInfo.zoomState.value
             var restoringZoom = initialZoom != null
             val requestedZoom = initialZoom?.let { zoomState.attach(boundFront, it.minZoomRatio, it.maxZoomRatio) }
@@ -188,16 +191,28 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     }
     fun setExposure(index: Int) {
         val camera = binding?.camera ?: return
-        if (!ready || busy || countingDown || !manual.automaticExposure || focusTarget == null || exposureRange == 0..0) return
-        val selected = index.coerceIn(exposureRange); val request = ++exposureVersion; val focus = focusVersion
-        exposureIndex = selected; refreshFocusTimeout()
+        if (!ready || busy || countingDown || !manual.automaticExposure || focusTarget == null || exposure.range == 0..0) return
+        exposure.chooseFocusOffset(index)
+        refreshFocusTimeout()
+        applyExposure(camera)
+    }
+    fun setGlobalExposure(index: Int) {
+        val camera = binding?.camera ?: return
+        if (!ready || busy || countingDown || !manual.automaticExposure || exposure.range == 0..0) return
+        exposure.chooseBaseline(index)
+        if (focusTarget != null) refreshFocusTimeout()
+        applyExposure(camera)
+    }
+    private fun applyExposure(camera: Camera) {
+        if (exposure.range == 0..0) return
+        val request = ++exposureVersion
         try {
-            val future = camera.cameraControl.setExposureCompensationIndex(selected)
+            val future = camera.cameraControl.setExposureCompensationIndex(exposure.index)
             future.addListener({
-                if (request == exposureVersion && focus == focusVersion && binding?.camera === camera && runCatching { future.get() }.isFailure)
-                    resetFailedFocus()
+                if (request == exposureVersion && binding?.camera === camera && runCatching { future.get() }.isFailure)
+                    Log.w(CAMERA_LOG_TAG, "Exposure compensation not accepted")
             }, ContextCompat.getMainExecutor(context))
-        } catch (failure: Exception) { resetFailedFocus(); Log.w(CAMERA_LOG_TAG, "Exposure adjustment failed", failure) }
+        } catch (failure: Exception) { Log.w(CAMERA_LOG_TAG, "Exposure adjustment failed", failure) }
     }
     fun zoomBy(scale: Float) {
         if (!ready || countingDown || !scale.isFinite() || scale <= 0f) return
@@ -214,11 +229,13 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             .onFailure { Log.w(CAMERA_LOG_TAG, "Zoom adjustment failed", it) }
     }
     fun clearFocus() {
-        focusVersion++; exposureVersion++; focusJob?.cancel(); focusJob = null
-        focusTarget = null; exposureIndex = 0
+        val hadFocus = focusTarget != null
+        val changedExposure = exposure.focusOffset != 0
+        focusVersion++; focusJob?.cancel(); focusJob = null
+        focusTarget = null; exposure.clearFocus()
         binding?.camera?.let { camera ->
-            runCatching { camera.cameraControl.cancelFocusAndMetering() }
-            if (exposureRange != 0..0) runCatching { camera.cameraControl.setExposureCompensationIndex(0) }
+            if (hadFocus) runCatching { camera.cameraControl.cancelFocusAndMetering() }
+            if (changedExposure && manual.automaticExposure) applyExposure(camera)
         }
     }
     private fun refreshFocusTimeout() {
@@ -342,7 +359,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         binding?.let { attached -> observer?.let { attached.camera.cameraInfo.cameraState.removeObserver(it) }
             zoomObserver?.let { attached.camera.cameraInfo.zoomState.removeObserver(it) }
             attached.release() }
-        observer = null; zoomObserver = null; binding = null; exposureRange = 0..0
+        observer = null; zoomObserver = null; binding = null; histogram = null; exposureVersion++
+        exposure.detach(keepBaseline = true)
         if (!keepFlashAvailability) flashAvailable = false
         flashMode = CameraFlash.OFF
         if (!keepZoomState) zoomState.clear()

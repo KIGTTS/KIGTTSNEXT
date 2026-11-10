@@ -2,6 +2,7 @@ package com.kigtts.next.cards
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.exifinterface.media.ExifInterface
 import com.kigtts.next.media.MediaKind
 import com.kigtts.plugin.api.*
 import java.io.File
@@ -20,7 +21,8 @@ internal class StickerImages(private val owner:StickerRepository) {
             file.inputStream().use {stream->BitmapFactory.decodeStream(stream,null,bounds)}
             stickerRequire(bounds.outWidth>0&&bounds.outHeight>0&&bounds.outWidth<=32768&&bounds.outHeight<=32768&&bounds.outWidth.toLong()*bounds.outHeight<=80_000_000,message="请选择可读取的图片")
             val mime=bounds.outMimeType.orEmpty();stickerRequire(mime in supported,message="此图片格式暂不支持")
-            return owner.addImage(StickerImage(id,mime,file.length(),bounds.outWidth,bounds.outHeight,System.currentTimeMillis()))
+            val (width, height) = stickerDisplayDimensions(file, bounds.outWidth, bounds.outHeight)
+            return owner.addImage(StickerImage(id,mime,file.length(),width,height,System.currentTimeMillis()))
         } catch(error:OutOfMemoryError) {directory.deleteRecursively();throw StickerFault(StickerError.TOO_LARGE,"设备暂时无法读取这张图片，请换一张较小的图片")}
         catch(error:Exception) {directory.deleteRecursively();throw error}
     }
@@ -45,4 +47,10 @@ internal class StickerImages(private val owner:StickerRepository) {
         const val MAX_BYTES=32L*1024*1024
         private val supported=setOf("image/jpeg","image/png","image/webp","image/gif","image/bmp","image/heif","image/heic","image/avif")
     }
+}
+
+/** Match the orientation used by the photo renderer without allocating or rewriting the original. */
+internal fun stickerDisplayDimensions(file: File, encodedWidth: Int, encodedHeight: Int): Pair<Int, Int> {
+    val rotation = runCatching { ExifInterface(file).rotationDegrees }.getOrDefault(0)
+    return if (rotation == 90 || rotation == 270) encodedHeight to encodedWidth else encodedWidth to encodedHeight
 }

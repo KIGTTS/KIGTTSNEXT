@@ -37,10 +37,11 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     chrome: @Composable BoxScope.(CameraChromeLayout) -> Unit = {},
     streamTransition: CameraStreamTransition? = null,
     aspectRatio: Float = format.geometry.photoAspectRatio.toFloat(),
+    fullFrame: Boolean = false, photoSideInset: Float = 0f,
     overlay: @Composable BoxScope.() -> Unit = {}) {
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
-    val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength, aspectRatio)
+    val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength, aspectRatio, fullFrame)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
     val resolvedLut = remember(filter, lut) { PhotoFilters.lut(filter, lut) }
     val effects = options?.effects ?: com.kigtts.next.media.color.PhotoEffects.NONE
@@ -76,11 +77,17 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         onDispose { view.setOnTouchListener(null) }
     }
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val fitted = cameraPhotoWindow(maxWidth.value, maxHeight.value, motion.ratio.value)
+        val headerClearance = if (headerOverlay) minOf(CAMERA_HEADER_CLEARANCE, maxHeight.value * .5f) else 0f
+        val fullFrameProgress = motion.fullFrameProgress.value
+        val headerInset = headerClearance * (1f - fullFrameProgress)
+        val targetHeaderInset = if (fullFrame) 0f else headerClearance
+        val photoWidth = maxWidth.value - minOf(2 * photoSideInset, maxWidth.value * .5f)
+        val fitted = cameraPhotoWindow(photoWidth, maxHeight.value - headerInset, motion.ratio.value)
         val layout = rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
-            cameraPhotoWindow(maxWidth.value, maxHeight.value, aspectRatio), verticalChrome,
-            headerInset = if (headerOverlay) 56f else 0f, anchorPortrait = LocalCameraPortraitAnchor.current,
-            shutterInset = LocalCameraShutterInset.current.value)
+            cameraPhotoWindow(photoWidth, maxHeight.value - targetHeaderInset, aspectRatio), verticalChrome,
+            headerInset = headerInset, portraitAnchor = LocalCameraPortraitAnchor.current,
+            shutterInset = LocalCameraShutterInset.current.value, photoWidthLimit = photoWidth,
+            fullFrameProgress = fullFrameProgress, targetHeaderInset = targetHeaderInset, fullFrame = fullFrame)
         Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp)).background(Color.Black)
             .testTag("camera-photo-window")) {
             AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().onSizeChanged(sizeChanged).cameraPullViewfinder())
@@ -95,7 +102,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
             options?.takeIf { showGuides }?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
             }
-            CameraFocusOverlay(session.focusTarget, session.exposureIndex, if (session.manual.automaticExposure) session.exposureRange else 0..0,
+            CameraFocusOverlay(session.focusTarget, session.exposure.focusOffset, if (session.manual.automaticExposure) session.exposure.focusRange else 0..0,
                 enabled.value && displayReady, session::setExposure)
             CameraCountdownOverlay(session.countdownSeconds)
             overlay()

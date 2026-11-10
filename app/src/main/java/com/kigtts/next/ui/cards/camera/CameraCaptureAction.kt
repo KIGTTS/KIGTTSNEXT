@@ -38,7 +38,7 @@ import java.io.File
                     permissionPending = true; microphone.launch(Manifest.permission.RECORD_AUDIO)
                 } else session.startVideo(audio, mode == CameraMode.TIME_LAPSE, video)
             }
-            mode == CameraMode.PHOTO -> {
+            mode.takesPhotos -> {
                 val output = CameraPhotoOutput(options.watermark, options.encoding)
                 session.capture(format, filter, { photo(if (video != null) it.withOutput(output) else it) }, options.timerSeconds,
                     options.filterStrength, lut, options.effects, allowNextExposure = video != null)

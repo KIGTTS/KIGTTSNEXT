@@ -32,7 +32,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     selectLut: (String) -> Unit = {}, importLut: () -> Unit = {}, motionButton: @Composable (() -> Unit)? = null,
     effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE,
     changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}, aspectLabel: String? = null,
-    showFilters: Boolean = true, showMotion: Boolean = motionButton != null, showFormat: Boolean = true) {
+    showFilters: Boolean = true, showMotion: Boolean = motionButton != null, showFormat: Boolean = true,
+    reserveBack: Boolean = false) {
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
@@ -67,7 +68,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
                 .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled && showFilters)
     }
-    CameraControlGroup(vertical, listOf(flashAvailable, showFilters, showMotion, showFormat, showSettings)) { index ->
+    CameraControlGroup(vertical, listOf(flashAvailable, showFilters, showMotion, showFormat, showSettings), reserveBack) { index ->
         when (index) {
             0 -> flashButton()
             1 -> filterButton()

@@ -81,7 +81,7 @@ private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> U
         Column(Modifier.fillMaxSize().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.LightMode, null, Modifier.size(16.dp), tint = yellow)
             VerticalSlider(state, Modifier.weight(1f).fillMaxWidth().cameraSliderPressFeedback().testTag("camera-exposure")
-                .semantics { contentDescription = "曝光补偿" }, reverseDirection = true, interactionSource = source,
+                .semantics { contentDescription = "对焦曝光补偿" }, reverseDirection = true, interactionSource = source,
                 colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = yellow,
                     inactiveTrackColor = Color.White.copy(alpha = .7f), activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent))
         }

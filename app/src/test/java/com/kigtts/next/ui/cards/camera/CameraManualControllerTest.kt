@@ -78,6 +78,27 @@ class CameraManualControllerTest {
         assertEquals(.5f, shutterFraction(shutterAt(.5f, range), range), .0001f)
     }
 
+    @Test fun proIsoAndWhiteBalanceUseOneRequestWithoutDroppingTheManualShutter() {
+        val requests = mutableListOf<CaptureRequestOptions?>()
+        val controller = controller()
+        controller.attach(capabilities().copy(whiteBalance = listOf(CameraWhiteBalance.AUTO, CameraWhiteBalance.DAYLIGHT))) {
+            requests += it; Futures.immediateFuture<Void?>(null)
+        }
+        controller.record(CameraMeteringSample(20_000_000L, 800, null, null))
+        controller.setManualShutter(true); controller.sensitivityAt(2000)
+        controller.selectWhiteBalance(CameraWhiteBalance.DAYLIGHT)
+        val options = requireNotNull(requests.last())
+        assertEquals(2000, requireNotNull(options.getCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY)))
+        assertEquals(20_000_000L, requireNotNull(options.getCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME)))
+        assertEquals(CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT, requireNotNull(options.getCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE)))
+        controller.selectWhiteBalance(CameraWhiteBalance.SHADE)
+        assertSame(options, requests.last())
+        controller.reset()
+        assertNull(requests.last())
+        assertTrue(controller.automaticExposure)
+        assertEquals(CameraWhiteBalance.AUTO, controller.whiteBalance)
+    }
+
     @Test fun captureWaitsForTheRealRequestAcknowledgementBeforeItMayProceed() = runTest(dispatcher) {
         val applied = SettableFuture.create<Void?>(); val controller = controller()
         controller.attach(capabilities()) { applied }

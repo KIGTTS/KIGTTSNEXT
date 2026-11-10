@@ -1,8 +1,9 @@
 package com.kigtts.next.ui.cards.camera
 
 internal enum class CameraMode(val label: String) {
-    SCAN("扫码"), VIDEO("录像"), PHOTO("拍照"), TIME_LAPSE("延时摄影");
+    SCAN("扫码"), PRO("专业"), VIDEO("录像"), PHOTO("拍照"), TIME_LAPSE("延时摄影");
     val recordsVideo get() = this == VIDEO || this == TIME_LAPSE
+    val takesPhotos get() = this == PHOTO || this == PRO
 }
 
 /** Camera crops follow device orientation; no paper size is involved. */

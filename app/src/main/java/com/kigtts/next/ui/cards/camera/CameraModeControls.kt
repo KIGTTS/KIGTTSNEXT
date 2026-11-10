@@ -18,15 +18,18 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 
 @Composable internal fun CameraModeControls(mode: CameraMode, change: (CameraMode) -> Unit, enabled: Boolean,
-    vertical: Boolean, recording: Boolean, duration: Long, allowVideo: Boolean = true, controls: @Composable () -> Unit) {
+    vertical: Boolean, recording: Boolean, duration: Long, allowVideo: Boolean = true,
+    parameters: @Composable () -> Unit = {}, controls: @Composable () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val overlay = LocalCameraShutterOverlay.current
     val idleInk = if (overlay) Color.White.copy(alpha = .84f) else colors.onSurfaceVariant
     if (vertical) Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+        parameters()
         CameraModeStrip(mode, change, enabled, true, allowVideo)
         controls()
     } else Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         if (recording) Text("${duration / 60000}:${(duration / 1000 % 60).toString().padStart(2, '0')}", color = idleInk, modifier = Modifier.padding(6.dp))
+        parameters()
         CameraModeStrip(mode, change, enabled, false, allowVideo)
         controls()
     }

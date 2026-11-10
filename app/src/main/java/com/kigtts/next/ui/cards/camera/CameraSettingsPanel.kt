@@ -65,10 +65,11 @@ import kotlinx.coroutines.withContext
                 if (flashAvailable) CameraTile("闪光灯", options.flash.label, Icons.Default.FlashOn, enabled, Modifier.weight(1f)) {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size]) }
                 val processing = availableProcessing.toList()
-                CameraTile("照片处理", options.processing.label, Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO, Modifier.weight(1f)) {
+                CameraTile("照片处理", if (options.mode == CameraMode.PRO) CameraProcessing.STANDARD.label else options.processing.label,
+                    Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO, Modifier.weight(1f)) {
                     options.setProcessing(processing[(processing.indexOf(options.processing).coerceAtLeast(0) + 1) % processing.size]) }
             }
-            if (options.mode == CameraMode.PHOTO) {
+            if (options.mode.takesPhotos) {
                 CameraOutputTiles(options, enabled, openWatermark)
                 manual?.let { CameraManualPanel(it, enabled) }
             }
