@@ -43,6 +43,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
     if (destination.cardId == null && !destination.systemCamera) {
         // A new camera visit starts with the gallery icon, independent of earlier queued saves.
         val gallery = remember { CameraVisitGalleryPreview() }
+        val saving by model.cameraSaves.count.collectAsStateWithLifecycle()
         val save: (List<PolaroidCameraCapture>) -> Unit = { shots ->
             model.cameraSaves.enqueue(shots, onSaved = gallery.capture())
         }
@@ -50,7 +51,8 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
             onCancel = model::navigateBack, message = model::message,
             onGallery = { model.navigate(Destination.Cards) },
             onBurst = save,
-            onVideo = { file, timeLapse -> model.saveCameraVideo(file, timeLapse, gallery.capture()) }, galleryPreview = gallery.uri)
+            onVideo = { file, timeLapse -> model.saveCameraVideo(file, timeLapse, gallery.capture()) },
+            galleryPreview = gallery.uri, gallerySaving = saving > 0)
         return
     }
     val request by model.cardCapture.printRequest.collectAsStateWithLifecycle()

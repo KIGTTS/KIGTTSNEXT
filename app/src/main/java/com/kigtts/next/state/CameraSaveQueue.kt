@@ -10,6 +10,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /** Camera ownership ends at enqueue, not after metadata, rendering or MediaStore has completed. */
 class CameraSaveQueue internal constructor(private val cards: CardRepository, private val stickers: StickerRepository,
@@ -21,12 +22,14 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
     private val queued = MutableStateFlow(0); val count = queued.asStateFlow()
     private val saved = MutableStateFlow<Uri?>(null); val latest = saved.asStateFlow()
     init {
-        scope.launch {
+        // One IO worker owns expensive still rendering and publication. Capture can continue
+        // immediately; serialize work to avoid multiple full-size bitmaps competing for memory.
+        scope.launch(Dispatchers.IO.limitedParallelism(1)) {
             try { for (pending in work) {
                 try { save(pending) }
                 catch (cancel: CancellationException) { throw cancel }
                 catch (_: Exception) { message("照片未能保存，原图已保留") }
-                finally { queued.value = (queued.value - 1).coerceAtLeast(0) }
+                finally { queued.update { (it - 1).coerceAtLeast(0) } }
             } } finally { work.close() }
         }
     }
@@ -37,14 +40,14 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
             if (!reported) { reported = true; message("HEIF 未能保存，已改用 JPEG") }
         }
         shots.forEach { shot ->
-            queued.value++
+            queued.update { it + 1 }
             val format = if (shot.motion != null) CameraPhotoEncoding.JPEG else shot.output?.encoding ?: encoding
             if (!work.trySend(Pending(shot, shot.output?.watermark ?: watermark, format, reportFallback, onSaved)).isSuccess) {
-                queued.value--; message("照片未能加入保存队列，原图已保留")
+                queued.update { (it - 1).coerceAtLeast(0) }; message("照片未能加入保存队列，原图已保留")
             }
         }
     }
-    private suspend fun save(pending: Pending) = withContext(Dispatchers.IO) {
+    private suspend fun save(pending: Pending) {
         val shot = pending.shot
         val original = stickers.importResource(shot.original)
         val shown = if (shot.displayFile == shot.original) original else stickers.importResource(shot.displayFile)

@@ -34,7 +34,7 @@ private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, v
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
-    onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null) {
+    onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -206,7 +206,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
             gallery = { if (modern && session.busy) { openGalleryWhenReady = true; session.burst.stop() } else onGallery(format) },
-            galleryPreview = galleryPreview, configurationLocked = configurationLocked,
+            galleryPreview = galleryPreview, configurationLocked = configurationLocked, gallerySaving = gallerySaving,
             systemCamera = if (modern) null else ({ onSystemCamera(format) }),
             burstStart = onBurst?.takeIf { mode == CameraMode.PHOTO }?.let { complete -> { if (displayReady && !locked) {
                 val output = CameraPhotoOutput(options.watermark, options.encoding)
@@ -215,7 +215,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             } } },
             burstEnd = session.burst::stop, burstRunning = session.burst.running,
             burstHeld = session.burst.held, burstCount = session.burst.count,
-            queueShutter = modern && mode.takesPhotos && options.timerSeconds == 0,
+            queueShutter = modern && mode.takesPhotos && options.timerSeconds == 0 && !session.motionAvailable,
             shutter = when {
                 mode.recordsVideo -> ({ VideoShutter(session.video.active, session.video.finishing,
                     active && !session.video.finishing && (displayReady || session.video.active), shutter) })

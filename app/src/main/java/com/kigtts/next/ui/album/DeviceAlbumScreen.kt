@@ -33,7 +33,7 @@ import kotlinx.coroutines.delay
     onCamera: (() -> Unit)? = null, message: (String) -> Unit = {},
     choose: ((List<AlbumMedia>) -> Unit)? = null, multiple: Boolean = false,
     initialUri: Uri? = null, imagesOnly: Boolean = false, videosOnly: Boolean = false,
-    requestedUri: Uri? = null, requestConsumed: () -> Unit = {}, saving: Boolean = false) {
+    requestedUri: Uri? = null, requestConsumed: () -> Unit = {}) {
     val context = LocalContext.current
     val repository = remember(context) { DeviceAlbum(context.applicationContext) }
     var albumId by rememberSaveable { mutableStateOf("all") }
@@ -128,10 +128,6 @@ import kotlinx.coroutines.delay
                         selecting = choose == null
                         toggle(media)
                     }), modifier = Modifier.fillMaxSize())
-            }
-            androidx.compose.animation.AnimatedVisibility(saving, enter = fadeIn(), exit = fadeOut(),
-                modifier = Modifier.align(Alignment.TopCenter)) {
-                LinearProgressIndicator(Modifier.fillMaxWidth().testTag("album-saving"))
             }
             }
         }

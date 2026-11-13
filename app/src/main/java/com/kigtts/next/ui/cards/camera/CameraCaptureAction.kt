@@ -41,7 +41,7 @@ import java.io.File
             mode.takesPhotos -> {
                 val output = CameraPhotoOutput(options.watermark, options.encoding)
                 session.capture(format, filter, { photo(if (video != null) it.withOutput(output) else it) }, options.timerSeconds,
-                    options.filterStrength, lut, options.effects, allowNextExposure = video != null)
+                    options.filterStrength, lut, options.effects, allowNextExposure = video != null && !session.motionAvailable)
             }
             else -> Unit
         }

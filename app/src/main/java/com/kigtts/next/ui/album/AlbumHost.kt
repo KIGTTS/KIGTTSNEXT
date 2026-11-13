@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
     val scope = rememberCoroutineScope()
     var opening by remember { mutableStateOf(false) }
     val request by model.cardUi.previewRequest.collectAsStateWithLifecycle()
-    val saving by model.cameraSaves.count.collectAsStateWithLifecycle()
     val active = LocalPageActive.current
     var requestedUri by remember { mutableStateOf<Uri?>(null) }
     LaunchedEffect(active, request) {
@@ -36,7 +35,7 @@ import kotlinx.coroutines.launch
             finally { opening = false }
         }
     }, onCamera = { model.cardCapture.open(systemCamera = false) }, message = model::message, requestedUri = requestedUri,
-        requestConsumed = { requestedUri = null }, saving = saving > 0)
+        requestConsumed = { requestedUri = null })
     if (opening) MotionAlertDialog(onDismissRequest = {}, title = { Text("正在打开图片") },
         text = { CircularProgressIndicator() }, confirmButton = {})
 }

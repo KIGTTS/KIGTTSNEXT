@@ -39,19 +39,26 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
     gallery: (() -> Unit)? = null, systemCamera: (() -> Unit)? = null,
     burstStart: (() -> Unit)? = null, burstEnd: () -> Unit = {}, burstRunning: Boolean = false,
     burstHeld: Boolean = false, burstCount: Int = 0, shutter: (@Composable () -> Unit)? = null,
-    queueShutter: Boolean = false, galleryPreview: Uri? = null, configurationLocked: Boolean = locked) {
+    queueShutter: Boolean = false, galleryPreview: Uri? = null, configurationLocked: Boolean = locked,
+    gallerySaving: Boolean = false) {
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
-        if (showCancel || gallery != null) ToolButton(if (gallery != null) "相册" else "取消拍摄",
+        if (showCancel || gallery != null) Box(Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterStart)
+            .padding(6.dp).size(56.dp), contentAlignment = Alignment.Center) {
+            ToolButton(if (gallery != null) "相册" else "取消拍摄",
             if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
-            Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterStart).padding(12.dp)
-                .testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
+            Modifier.testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
             colors = tonal,
             enabled = active && if (gallery != null) !configurationLocked else !busy,
             onLongClick = if (gallery != null) systemCamera else null,
             overlay = { if (gallery != null) CameraGalleryThumbnail(galleryPreview) })
+            if (gallery != null) AnimatedVisibility(gallerySaving, enter = fadeIn(), exit = fadeOut()) {
+                CircularProgressIndicator(Modifier.size(54.dp).testTag("camera-gallery-saving"), strokeWidth = 2.dp,
+                    color = cameraShutterAccent(), trackColor = cameraShutterAccent().copy(alpha = .20f))
+            }
+        }
         if (shutter != null) Box(Modifier.align(Alignment.Center).testTag("camera-video-shutter")) { shutter() }
         else CameraShutterButton(active && (burstRunning || queueShutter && canCapture ||
             !busy && (countingDown || !locked && canCapture)), busy && !queueShutter,
