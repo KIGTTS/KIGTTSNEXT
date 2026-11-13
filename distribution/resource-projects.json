@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "projects": [
-    {"project":"distribution/resources/classic-frames","name":"经典相框","summary":"三种简洁的相纸配色，为照片换一种心情。","symbol":"crop_square","license":"CC0-1.0","preview":"classic-frames.svg","width":1200,"height":800},
+    {"project":"distribution/resources/amber-watermark","name":"琥珀相机水印","summary":"暖色边框搭配 KIGTTS 字标，可显示时间和拍摄参数。","symbol":"branding_watermark","license":"CC0-1.0","preview":"amber-watermark.svg","width":1200,"height":800},
     {"project":".tools/resource-projects/soft-colors","name":"柔和色彩","summary":"轻柔的暖色调，让日常照片多一点温度。","symbol":"filter","license":"CC0-1.0","preview":"soft-colors.svg","width":480,"height":900},
     {"project":"distribution/resources/card-borders","name":"名片边框","summary":"细线、花瓣与电路，为你的名片添一道轮廓。","symbol":"id_card","license":"CC0-1.0","preview":"card-borders.svg","width":1200,"height":800},
     {"project":"distribution/resources/word-stickers","name":"彩色字贴","summary":"写下文字，挑选颜色，做一张自己的字贴。","symbol":"text_fields","license":"CC0-1.0","preview":"word-stickers.svg","width":1200,"height":800},

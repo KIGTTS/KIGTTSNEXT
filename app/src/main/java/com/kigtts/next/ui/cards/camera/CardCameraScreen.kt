@@ -34,7 +34,8 @@ private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, v
 fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
-    onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false) {
+    onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false,
+    watermarkStore: (() -> Unit)? = null) {
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -233,5 +234,5 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame)
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
-        manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) })
+        manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) }, watermarkStore = watermarkStore)
 }

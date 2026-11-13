@@ -87,16 +87,17 @@ class PolaroidSystemAlbumTest {
         }
         source.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 98, it) }; bitmap.recycle()
         val image = repo.importImage(Uri.fromFile(source))
-        val card = PolaroidCard(title = "", imageId = image.id, frameStyleId = PhotoFrameSpec(800, 600).id)
+        val card = PolaroidCard(title = "", imageId = image.id, originalImageId = image.id, frameStyleId = PhotoFrameSpec(800, 600).id)
         val album = album()
         album.encodings.set(card.id, CameraPhotoEncoding.JPEG)
         repo.apply(listOf(StickerEdit.PutCard(card)))
         album.save(card.id)
         assertArrayEquals(source.readBytes(), publication.published.single())
 
-        val spec = PhotoFrameSpec(800, 600, "classic")
+        val style = CameraWatermarkLibrary(repo.context).choices().first { it.id == "classic" }.defaults
+        val spec = PhotoFrameSpec(800, 600, style.encode())
         repo.apply(listOf(StickerEdit.PutCard(card.copy(frameStyleId = spec.id))))
-        album.save(card.id)
+        album.save(card.id, embedOriginal = true)
         val data = publication.published.last()
         assertEquals(0xff, data[0].toInt() and 255)
         assertEquals(0xd8, data[1].toInt() and 255)
@@ -113,6 +114,16 @@ class PolaroidSystemAlbumTest {
                     assertTrue(kotlin.math.abs((pixel shr shift and 255) - (expected shr shift and 255)) <= 8)
             }
             assertArrayEquals(source.readBytes(), repo.imageFile(image.id)!!.readBytes())
+            val container = temporary.newFile("with-original.jpg").apply { writeBytes(data) }
+            val restored = File(temporary.root, "restored.jpg")
+            val metadata = requireNotNull(EmbeddedPhotoOriginal.extract(container, restored))
+            assertArrayEquals(source.readBytes(), restored.readBytes())
+            assertEquals(spec, PhotoFrameSpec.from(EmbeddedCameraEdit.decode(metadata.recipe)!!.frame))
+            val cards = CardRepository(repo.context, repo)
+            cards.documents.releasePublished(card.copy(frameStyleId = spec.id))
+            assertNull(repo.imageFile(image.id))
+            assertTrue(repo.cards.value.isEmpty())
+            assertEquals(2, publication.published.size)
         } finally { result.recycle() }
     }
     private class Publication : GalleryImagePublication {

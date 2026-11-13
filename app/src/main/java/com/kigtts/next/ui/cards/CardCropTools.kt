@@ -9,10 +9,14 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
-import com.kigtts.next.cards.PhotoFrameSpec
+import com.kigtts.next.cards.*
+import com.kigtts.next.ui.cards.camera.CameraWatermarkControls
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun CardCropTools(enabled: Boolean, openCrop: () -> Unit) {
@@ -26,30 +30,30 @@ internal fun CardCropTools(enabled: Boolean, openCrop: () -> Unit) {
 internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
     frameColor: () -> Unit, frames: List<PolaroidFrameStyle>) {
     val spec = PhotoFrameSpec.from(card.frameStyleId)
-    val currentFrame = frames.firstOrNull { it.id == (spec?.style ?: card.frameStyleId) }
-    val format = polaroidFormat(card, currentFrame)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("边框水印", style = MaterialTheme.typography.titleSmall)
         if (spec != null) {
-            val choices = listOf("none", "classic", "night", "slim", "soft") + frames.filter { it.owner != null }.map { it.id }
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                choices.forEach { id -> FilterChip(id == spec.style, feedbackClick { change(card.copy(frameStyleId = spec.copy(style = id).id,
-                    photoX = .5, photoY = .5, photoZoom = 1.0)) }, label = { Text(if (id == "none") "无水印" else frames.firstOrNull { it.id == id }?.name ?: id) }, enabled = enabled) }
+            val context = LocalContext.current
+            val choices by produceState(emptyList<CameraWatermarkAsset>(), context) {
+                value = withContext(Dispatchers.IO) { CameraWatermarkLibrary(context).choices() }
             }
-            PillButton("边条颜色", Icons.Default.Palette, frameColor, enabled = enabled)
-            Text("边条加在照片外侧，保留完整画面", style = MaterialTheme.typography.bodySmall)
+            var selectedId by remember(card.id) { mutableStateOf<String?>(null) }
+            val watermark = spec.watermark
+            val active = selectedId ?: choices.firstOrNull { it.defaults == watermark }?.id
+                ?: choices.firstOrNull { it.defaults.layout == watermark?.layout }?.id
+            fun set(value: CameraWatermarkStyle?) = change(card.copy(
+                frameStyleId = spec.copy(style = value?.encode() ?: "none").id))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(spec.style == "none", feedbackClick { selectedId = null; set(null) }, label = { Text("无水印") }, enabled = enabled)
+                choices.forEach { asset -> FilterChip(asset.id == active, feedbackClick {
+                    if (asset.id != active) { selectedId = asset.id; set(asset.defaults) }
+                }, label = { Text(asset.name) }, enabled = enabled) }
+            }
+            if (watermark != null) CameraWatermarkControls(watermark, enabled, { set(it) })
             return@Column
         }
-        val choices = frames.filter { it.format == format }
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val width = maxOf(maxWidth, 104.dp * choices.size)
-            Row(Modifier.horizontalScroll(rememberScrollState())) {
-                ChoiceButtonGroup("边框样式", choices.map { it.id }, card.frameStyleId,
-                    { id -> choices.first { it.id == id }.name },
-                    { change(card.copy(frameStyleId = it)) }, Modifier.width(width), enabled = enabled)
-            }
-        }
-        if (currentFrame?.color == null)
-            PillButton("纸框颜色", Icons.Default.Palette, frameColor, enabled = enabled)
+        val frame = frames.firstOrNull { it.id == card.frameStyleId }
+        Text(frame?.name ?: "旧版边框", style = MaterialTheme.typography.bodyMedium)
+        if (frame?.color == null) PillButton("纸框颜色", Icons.Default.Palette, frameColor, enabled = enabled)
     }
 }

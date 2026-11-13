@@ -36,7 +36,8 @@ internal class GalleryImages(private val context: Context) : GalleryImagePublica
             else -> error("暂不支持保存这种图片")
         }
         val resolver = context.contentResolver
-        val name = "KIGTTS-${UUID.randomUUID()}.$extension"
+        val name = "KIGTTS-${UUID.randomUUID()}" +
+            if (extension == "jpg" && image.name.endsWith("MP.jpg", ignoreCase = true)) "MP.jpg" else ".$extension"
         var uri: Uri? = null
         var legacy: File? = null
         try {

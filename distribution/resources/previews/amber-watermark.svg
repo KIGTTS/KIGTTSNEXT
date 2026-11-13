@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="琥珀相机水印">
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#29404d"/><stop offset="1" stop-color="#f5b97b"/>
+    </linearGradient>
+    <clipPath id="window"><rect x="218" y="130" width="764" height="480"/></clipPath>
+  </defs>
+  <rect width="1200" height="800" rx="48" fill="#f4e5d1"/>
+  <rect x="198" y="110" width="804" height="558" rx="14" fill="#ffdfb6"/>
+  <g clip-path="url(#window)">
+    <rect x="218" y="130" width="764" height="480" fill="url(#sky)"/>
+    <circle cx="711" cy="337" r="76" fill="#ffd3a2"/>
+    <path d="M218 528 407 319 541 469 641 419 830 531 982 470V610H218Z" fill="#7d6660"/>
+    <path d="M218 577 434 443 578 559 732 486 982 565V610H218Z" fill="#4d5660"/>
+  </g>
+  <text x="218" y="645" fill="#182124" font-family="sans-serif" font-size="22" font-weight="700">KIGTTS</text>
+  <text x="982" y="640" text-anchor="end" fill="#182124" font-family="sans-serif" font-size="17">24mm · ƒ/1.6 · 1/250s · ISO 100</text>
+  <text x="982" y="658" text-anchor="end" fill="#182124" font-family="sans-serif" font-size="12">2026.11.13  09:41</text>
+</svg>

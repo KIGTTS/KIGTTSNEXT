@@ -22,6 +22,7 @@ internal class CameraAlbumEncoding(private val stickers: StickerRepository) {
 
     fun set(id: String, encoding: CameraPhotoEncoding) { preferences.edit().putString(id, encoding.name).apply() }
     fun get(id: String): CameraPhotoEncoding? = preferences.getString(id, null)?.let { CameraPhotoEncoding.read(it) }
+    fun remove(id: String) { preferences.edit().remove(id).apply() }
 
     fun stage(card: PolaroidCard, encoding: CameraPhotoEncoding, original: File?): File {
         val heif = encoding == CameraPhotoEncoding.HEIF && CameraPhotoEncoding.heifAvailable

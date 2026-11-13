@@ -20,6 +20,10 @@ class CardRepository(private val context:Context,val stickers:StickerRepository)
         designs.freeze(card.id,facts)
         create(designs.apply(card),albumId)
     }
+    internal fun createCameraPhoto(card: PolaroidCard, facts: FrozenPhotoFacts): PolaroidCard = synchronized(stickers) {
+        designs.freeze(card.id, facts)
+        create(card)
+    }
     fun cardsInAlbum(albumId:String):List<PolaroidCard> = synchronized(stickers) {
         val value=stickers.snapshot.value;val album=value.albums.firstOrNull {it.id==albumId} ?: return@synchronized emptyList()
         val indexed=value.cards.associateBy {it.id};album.cardIds.mapNotNull {indexed[it]}

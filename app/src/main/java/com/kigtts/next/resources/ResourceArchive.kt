@@ -40,11 +40,19 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
             }
         }
     }
+    // Continue using the store's FRAME section; the descriptor marks the new data-only format.
+    internal val cameraWatermark by lazy {
+        val path = content.payload?.takeIf { manifest.resourceType == ResourceType.FRAME }
+        path?.let {
+            require(it.endsWith(".xml", true) && content.frames.isEmpty() && content.imageFiles.isEmpty())
+            com.kigtts.next.cards.CameraWatermarkAsset.parse(com.kigtts.next.cards.CameraWatermarkLibrary.read(file(it)))
+        }
+    }
     fun file(path: String): File = File(directory, path).also { require(safe(path) && it.isFile) { "资源文件不存在" } }
     val count: Int get() = when (manifest.resourceType) {
         ResourceType.CARD_FRAME -> cardFrames.items.size
         ResourceType.FILTER -> content.filters.size
-        ResourceType.FRAME -> content.frames.size
+        ResourceType.FRAME -> if (cameraWatermark != null) 1 else content.frames.size
         ResourceType.STICKERS -> (content.snapshot?.items?.size ?: 0) + generators.items.size
         ResourceType.PHOTOS -> content.snapshot?.cards?.size ?: 0
         else -> 1
@@ -114,7 +122,8 @@ private fun ResourceArchive.validate() {
         ResourceType.CARD_FRAME -> require(cardFrames.items.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.QUICK_TEXT, ResourceType.VOICE -> require(content.payload != null && content.snapshot == null && content.frames.isEmpty() && content.filters.isEmpty())
         ResourceType.FILTER -> require(content.filters.isNotEmpty() && content.payload == null && content.snapshot == null && content.frames.isEmpty())
-        ResourceType.FRAME -> require(content.frames.isNotEmpty() && content.payload == null && content.filters.isEmpty() && content.snapshot == null)
+        ResourceType.FRAME -> require((cameraWatermark != null || content.frames.isNotEmpty() && content.payload == null) &&
+            content.filters.isEmpty() && content.snapshot == null)
         ResourceType.PHOTOS -> require(content.snapshot?.cards?.isNotEmpty() == true && content.payload == null && content.filters.isEmpty())
         ResourceType.STICKERS -> require((content.snapshot?.items?.isNotEmpty() == true || generators.items.isNotEmpty()) && content.snapshot?.cards.isNullOrEmpty() && content.payload == null && content.filters.isEmpty() && content.frames.isEmpty())
     }

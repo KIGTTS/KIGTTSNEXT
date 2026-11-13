@@ -52,7 +52,9 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
             onGallery = { model.navigate(Destination.Cards) },
             onBurst = save,
             onVideo = { file, timeLapse -> model.saveCameraVideo(file, timeLapse, gallery.capture()) },
-            galleryPreview = gallery.uri, gallerySaving = saving > 0)
+            galleryPreview = gallery.uri, gallerySaving = saving > 0,
+            watermarkStore = if (model.registry.plugins.any { it.descriptor.id == com.kigtts.next.plugins.control.STORE_ID && model.registry.available(it) })
+                ({ model.openSpeechPluginStore("水印") }) else null)
         return
     }
     val request by model.cardCapture.printRequest.collectAsStateWithLifecycle()

@@ -128,6 +128,19 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 if (photoContent != null || image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize(), photoContent)
             }
             backgroundDecoration()
+            com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId)?.watermark?.let { watermark ->
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val sourceId = card.originalImageId ?: card.imageId
+                val facts by produceState(com.kigtts.next.cards.WatermarkFacts(), sourceId) {
+                    value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val file = sourceId?.let(imageFile)
+                        com.kigtts.next.cards.watermarkFacts(file, com.kigtts.next.cards.PolaroidPhotoFacts.read(file, false))
+                    }
+                }
+                androidx.compose.foundation.Canvas(Modifier.matchParentSize().testTag("camera-watermark-paper")) {
+                    drawIntoCanvas { com.kigtts.next.cards.drawCameraWatermark(context, it.nativeCanvas, watermark, geometry, facts, this.size.width, this.size.height) }
+                }
+            }
             if (editable && current.value.layers.any { it.id == selectedId.value && (it.x !in 0.0..1.0 || it.y !in 0.0..1.0) })
                 Text("松手删除贴纸", Modifier.align(Alignment.TopCenter).padding(12.dp), color = MaterialTheme.colorScheme.error)
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier

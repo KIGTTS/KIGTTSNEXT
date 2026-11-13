@@ -62,6 +62,11 @@ internal object PolaroidRenderer {
             canvas.restore()} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         if(options.includeFrame) {
+        PhotoFrameSpec.from(card.frameStyleId)?.watermark?.let { style ->
+            drawCameraWatermark(repository.context, canvas, style, geometry,
+                watermarkFacts((card.originalImageId ?: card.imageId)?.let(repository::imageFile), repository.designs.facts(card.id)),
+                width.toFloat(), height.toFloat())
+        }
         if(card.layers.any {it.kind==CardLayerKind.PHOTO_INFO})polaroidCaption(card,geometry,captionWidth,width.toFloat(),
             if(dark)Color.WHITE else 0xFF202020.toInt(),if(dark)0xFFDDDDDD.toInt() else 0xFF4A4A4A.toInt()).draw(canvas)
         else {

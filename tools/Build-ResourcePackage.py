@@ -50,6 +50,14 @@ def build(project, output, private_key):
         payload["card-frames.json"] = card_frames.read_bytes()
         paths.extend(item["artwork"] for item in descriptor["items"])
     api_version = 30 if generators.is_file() or definition["resourceType"] == "CARD_FRAME" else 29
+    if definition["resourceType"] == "FRAME" and content.get("payload"):
+        api_version = 34
+        watermark = content["payload"]
+        if not safe(watermark) or not watermark.lower().endswith(".xml") or any(content.get(k) for k in ("frames", "filters", "snapshot", "imageFiles")):
+            raise ValueError("Camera watermark packages require a single XML payload")
+        watermark_file = (project / watermark).resolve()
+        if not watermark_file.is_relative_to(project) or not 1 <= watermark_file.stat().st_size <= 4096:
+            raise ValueError("Camera watermark XML is too large")
     if photo_defaults.is_file(): api_version = 34
     if definition["resourceType"] == "FONT":
         api_version = 32

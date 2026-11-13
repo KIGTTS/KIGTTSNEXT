@@ -7,6 +7,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import com.kigtts.next.media.CameraPhotoEncoding
 import com.kigtts.next.media.color.PhotoEffects
+import com.kigtts.next.cards.CameraWatermarkAsset
+import com.kigtts.next.cards.CameraWatermarkLibrary
+import com.kigtts.next.cards.CameraWatermarkStyle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal enum class CameraFlash(val label: String) { OFF("关闭"), AUTO("自动"), ON("开启") }
 internal enum class CameraGrid(val label: String) { OFF("关闭"), THIRDS("三分线"), SQUARE("方格") }
@@ -23,16 +28,32 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     var aspect by mutableStateOf(enumPreference("aspect", CameraAspect.STANDARD)); private set
     var mode by mutableStateOf(CameraMode.PHOTO); private set
     val framingAspect get() = if (mode == CameraMode.SCAN) CameraAspect.STANDARD else aspect
-    var watermark by mutableStateOf(preferences.getString("watermark", "none") ?: "none"); private set
-    var watermarkStyle by mutableStateOf(watermark.takeUnless { it == "none" }
-        ?: preferences.getString("watermark-style", "classic").orEmpty()); private set
+    var watermarks by mutableStateOf(emptyList<CameraWatermarkAsset>()); private set
+    var watermarkEnabled by mutableStateOf(preferences.getBoolean("watermark-enabled-v1", false)); private set
+    var watermarkStyle by mutableStateOf(preferences.getString("watermark-asset-v1", "standard") ?: "standard"); private set
+    private var watermarkEdits by mutableStateOf(emptyMap<String, CameraWatermarkStyle>())
+    val activeWatermark get() = watermarks.firstOrNull { it.id == watermarkStyle } ?: watermarks.firstOrNull()
+    val watermark get() = activeWatermark?.takeIf { watermarkEnabled }?.let { watermarkSettings(it).encode() } ?: "none"
+    val watermarkLabel get() = activeWatermark?.takeIf { watermarkEnabled }?.name ?: "关闭"
     fun chooseAspect(value: CameraAspect) { aspect = value; preferences.edit().putString("aspect", value.name).apply() }
     fun chooseMode(value: CameraMode) { mode = value }
-    fun chooseWatermark(value: String) {
-        watermark = value
-        preferences.edit().putString("watermark", value).apply {
-            if (value != "none") { watermarkStyle = value; putString("watermark-style", value) }
-        }.apply()
+    fun loadWatermarks(assets: List<CameraWatermarkAsset>) {
+        watermarks = assets
+        watermarkEdits = assets.mapNotNull { asset ->
+            preferences.getString("watermark-config-${asset.id}", null)?.let(CameraWatermarkStyle::decode)?.let { asset.id to it }
+        }.toMap()
+    }
+    fun chooseWatermark(value: String?) {
+        if (value != null && watermarks.none { it.id == value }) return
+        if (value != null) watermarkStyle = value
+        watermarkEnabled = value != null
+        preferences.edit().putString("watermark-asset-v1", watermarkStyle).putBoolean("watermark-enabled-v1", watermarkEnabled).apply()
+    }
+    fun watermarkSettings(asset: CameraWatermarkAsset) = watermarkEdits[asset.id]?.takeIf { it.layout == asset.defaults.layout } ?: asset.defaults
+    fun editWatermark(asset: CameraWatermarkAsset, style: CameraWatermarkStyle, persist: Boolean = true) {
+        require(style.layout == asset.defaults.layout && CameraWatermarkStyle.decode(style.encode()) == style)
+        watermarkEdits = watermarkEdits + (asset.id to style)
+        if (persist) preferences.edit().putString("watermark-config-${asset.id}", style.encode()).apply()
     }
     val grid get() = selectedGrid
     val level get() = showLevel
@@ -85,8 +106,13 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
 internal fun rememberCameraOptions(): CameraOptions {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { context.getSharedPreferences("polaroid_camera", 0) }
-    return rememberSaveable(saver = Saver<CameraOptions, String>(
+    val options = rememberSaveable(saver = Saver<CameraOptions, String>(
         save = { it.mode.name },
         restore = { saved -> CameraOptions(preferences).apply { chooseMode(CameraMode.valueOf(saved)) } },
     )) { CameraOptions(preferences) }
+    val open = options.settingsVisible
+    LaunchedEffect(context, options, open) {
+        if (open || options.watermarks.isEmpty()) options.loadWatermarks(withContext(Dispatchers.IO) { CameraWatermarkLibrary(context).choices() })
+    }
+    return options
 }

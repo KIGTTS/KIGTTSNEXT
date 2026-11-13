@@ -2,79 +2,150 @@
 package com.kigtts.next.ui.cards.camera
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.cards.PolaroidFrames
-import com.kigtts.next.cards.PhotoFrameSpec
+import com.kigtts.next.cards.*
 import com.kigtts.next.ui.components.feedbackClick
-
-private val watermarkChoices = listOf("classic" to "浅色", "night" to "深色", "slim" to "细边")
-
-internal fun cameraWatermarkLabel(style: String): String =
-    watermarkChoices.firstOrNull { it.first == style }?.second ?: "关闭"
+import kotlin.math.roundToInt
 
 @Composable
-internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enabled: Boolean, back: () -> Unit) {
-    val showing = options.watermark != "none"
-    val selected = options.watermarkStyle.takeIf { style -> watermarkChoices.any { it.first == style } } ?: "classic"
-    val preview = remember(snapshot) { snapshot?.asImageBitmap() }
+internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enabled: Boolean,
+    store: (() -> Unit)?, edit: (CameraWatermarkAsset) -> Unit, back: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
-            IconButton(feedbackClick(back), Modifier.align(Alignment.CenterStart)) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回相机设置")
-            }
-            Text("边框水印", style = MaterialTheme.typography.titleLarge)
-        }
+        WatermarkHeader("边框水印", back, store)
+        val active = options.activeWatermark
         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             listOf("关闭", "开启").forEachIndexed { i, label ->
-                SegmentedButton(selected = showing == (i == 1), enabled = enabled,
-                    onClick = feedbackClick { options.chooseWatermark(if (i == 1) selected else "none") },
+                SegmentedButton(selected = options.watermarkEnabled == (i == 1), enabled = enabled && active != null,
+                    onClick = feedbackClick { options.chooseWatermark(active?.id.takeIf { i == 1 }) },
                     shape = SegmentedButtonDefaults.itemShape(i, 2), label = { Text(label) })
             }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(watermarkChoices, key = { it.first }) { (id, label) ->
-                val current = id == selected
-                val style = PolaroidFrames.defaults.first { it.id == id }
-                val paper = Color(style.color ?: 0xFFFAFAFA)
-                Column(Modifier.width(124.dp).clip(RoundedCornerShape(16.dp))
-                    .background(if (current && showing) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .selectable(selected = current && showing, enabled = enabled, role = Role.RadioButton,
-                        onClick = feedbackClick { options.chooseWatermark(id) }).padding(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    BoxWithConstraints(Modifier.fillMaxWidth().height(132.dp), contentAlignment = Alignment.Center) {
-                        val frame = PhotoFrameSpec(preview?.width ?: 4, preview?.height ?: 3, id).geometry()
-                        val size = cameraPhotoWindow(maxWidth.value, maxHeight.value, (frame.paperWidth / frame.paperHeight).toFloat())
-                        val unit = size.width / frame.paperWidth
-                        Box(Modifier.size(size.width.dp, size.height.dp).background(paper)) {
-                            val window = Modifier.offset((frame.photoLeft * unit).dp, (frame.photoTop * unit).dp)
-                                .size(((frame.photoRight - frame.photoLeft) * unit).dp, ((frame.photoBottom - frame.photoTop) * unit).dp)
-                            if (preview != null) Image(preview, null, window, contentScale = ContentScale.Fit)
-                            else Box(window.background(Brush.linearGradient(listOf(
-                                MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.primary))))
-                        }
+            items(options.watermarks, key = { it.id }) { asset ->
+                val selected = options.watermarkEnabled && active?.id == asset.id
+                Column(Modifier.width(140.dp).clip(RoundedCornerShape(16.dp))
+                    .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .selectable(selected, enabled = enabled, role = Role.RadioButton, onClick = feedbackClick { options.chooseWatermark(asset.id) })
+                    .testTag("camera-watermark/${asset.id}").padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    WatermarkPreview(options.watermarkSettings(asset), snapshot, 132.dp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(asset.name, Modifier.weight(1f).padding(start = 6.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        IconButton(feedbackClick { edit(asset) }, Modifier.size(40.dp), enabled = enabled) { Icon(Icons.Default.Edit, "编辑${asset.name}") }
                     }
-                    Text(label, style = MaterialTheme.typography.labelLarge)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraOptions, snapshot: Bitmap?, enabled: Boolean, back: () -> Unit) {
+    val style = options.watermarkSettings(asset)
+    fun change(value: CameraWatermarkStyle) = options.editWatermark(asset, value)
+    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        WatermarkHeader(asset.name, back)
+        WatermarkPreview(style, snapshot, 170.dp, Modifier.padding(horizontal = 20.dp))
+        Column(Modifier.padding(horizontal = 20.dp)) {
+            CameraWatermarkControls(style, enabled, ::change,
+                drag = { options.editWatermark(asset, it, persist = false) }, finishDrag = { change(options.watermarkSettings(asset)) })
+            TextButton(feedbackClick { change(asset.defaults) }, enabled = enabled) { Text("恢复默认") }
+        }
+    }
+}
+
+@Composable
+internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boolean, change: (CameraWatermarkStyle) -> Unit,
+    drag: (CameraWatermarkStyle) -> Unit = change, finishDrag: (() -> Unit)? = null) {
+            WatermarkChoices("背景", WatermarkPalette.entries, style.palette, { it.label }, enabled) { change(style.copy(palette = it)) }
+            WatermarkChoices("位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
+            Text("内容大小", style = MaterialTheme.typography.titleSmall)
+            Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
+                enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
+            WatermarkToggle("显示时间", style.showTime, enabled) { change(style.copy(showTime = it)) }
+            WatermarkToggle("显示日期", style.showDate, enabled) { change(style.copy(showDate = it)) }
+            if (style.layout == WatermarkLayout.CLASSIC) {
+                WatermarkToggle("显示拍摄参数", style.showExposure, enabled) { change(style.copy(showExposure = it)) }
+                Text("边框宽度", style = MaterialTheme.typography.titleSmall)
+                Slider(style.edge.toFloat(), { drag(style.copy(edge = it.roundToInt())) },
+                    enabled = enabled, valueRange = 0f..12f, steps = 11, onValueChangeFinished = finishDrag)
+            }
+            if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle("内容居中", style.center, enabled) { change(style.copy(center = it)) }
+            WatermarkToggle("显示 KIGTTS 标志", style.showLogo, enabled) { change(style.copy(showLogo = it)) }
+}
+
+@Composable private fun WatermarkHeader(title: String, back: () -> Unit, store: (() -> Unit)? = null) {
+    Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+        IconButton(feedbackClick(back), Modifier.align(Alignment.CenterStart)) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+        }
+        Text(title, style = MaterialTheme.typography.titleLarge)
+        if (store != null) IconButton(feedbackClick(store), Modifier.align(Alignment.CenterEnd)) {
+            Icon(Icons.Default.Storefront, "从商店获取水印")
+        }
+    }
+}
+
+@Composable private fun <T> WatermarkChoices(title: String, values: List<T>, selected: T, name: (T) -> String, enabled: Boolean, select: (T) -> Unit) {
+    Text(title, style = MaterialTheme.typography.titleSmall)
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+        values.forEachIndexed { index, value ->
+            SegmentedButton(value == selected, feedbackClick { select(value) }, SegmentedButtonDefaults.itemShape(index, values.size),
+                enabled = enabled, icon = {}, label = { Text(name(value)) })
+        }
+    }
+}
+
+@Composable private fun WatermarkToggle(label: String, checked: Boolean, enabled: Boolean, set: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f))
+        Switch(checked, set, enabled = enabled)
+    }
+}
+
+@Composable internal fun WatermarkPreview(style: CameraWatermarkStyle, snapshot: Bitmap?, height: Dp, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val preview = remember(snapshot) { snapshot?.asImageBitmap() }
+    val geometry = remember(preview, style) { PhotoFrameSpec(preview?.width ?: 4, preview?.height ?: 3, style.encode()).geometry() }
+    BoxWithConstraints(modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
+        val size = cameraPhotoWindow(maxWidth.value, maxHeight.value, geometry.aspectRatio.toFloat())
+        val unit = size.width / geometry.paperWidth
+        Box(Modifier.size(size.width.dp, size.height.dp).background(Color(style.palette.color))) {
+            val photo = Modifier.offset((geometry.photoLeft * unit).dp, (geometry.photoTop * unit).dp)
+                .size((geometry.photoWidth * unit).dp, (geometry.photoHeight * unit).dp)
+            if (preview != null) Image(preview, null, photo, contentScale = ContentScale.Fit)
+            else Box(photo.background(Brush.linearGradient(listOf(Color(0xFF8ABACA), Color(0xFF486B76), Color(0xFFE0AB74)))))
+            Canvas(Modifier.matchParentSize()) {
+                drawIntoCanvas { drawCameraWatermark(context, it.nativeCanvas, style, geometry,
+                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100"), this.size.width, this.size.height) }
             }
         }
     }

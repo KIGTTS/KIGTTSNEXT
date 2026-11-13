@@ -27,6 +27,11 @@ internal suspend fun importResource(model: AppViewModel, archive: ResourceArchiv
             }
         }
         ResourceType.CARD_FRAME -> withContext(Dispatchers.IO) { model.stickers.identityFrames.install(archive) }
+        ResourceType.FRAME -> withContext(Dispatchers.IO) {
+            requireNotNull(archive.cameraWatermark) { "旧版边框不再支持，请获取相机边框水印" }
+            com.kigtts.next.cards.CameraWatermarkLibrary(model.getApplication())
+                .install(archive.manifest.id, archive.file(requireNotNull(archive.content.payload)))
+        }
         ResourceType.VOICE -> model.externalFiles.importVoice(archive.file(requireNotNull(archive.content.payload)))
         ResourceType.FILTER -> withContext(Dispatchers.IO) {
             val library = com.kigtts.next.ui.cards.camera.CameraLutLibrary(model.getApplication())

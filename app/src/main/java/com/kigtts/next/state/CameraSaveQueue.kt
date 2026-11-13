@@ -1,8 +1,9 @@
 package com.kigtts.next.state
 
 import android.net.Uri
+import android.util.Log
 import com.kigtts.next.cards.*
-import com.kigtts.next.media.CameraPhotoEncoding
+import com.kigtts.next.media.*
 import com.kigtts.next.ui.cards.camera.PolaroidCameraCapture
 import com.kigtts.next.ui.cards.camera.CameraMotionClip
 import com.kigtts.plugin.api.PolaroidCard
@@ -28,7 +29,14 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
             try { for (pending in work) {
                 try { save(pending) }
                 catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { message("照片未能保存，原图已保留") }
+                catch (failure: Exception) {
+                    Log.w("KigCameraSave", "Could not publish photo", failure)
+                    message("照片未能保存，原图已保留")
+                }
+                catch (failure: OutOfMemoryError) {
+                    Log.w("KigCameraSave", "Insufficient memory for photo processing", failure)
+                    message("照片未能保存，原图已保留")
+                }
                 finally { queued.update { (it - 1).coerceAtLeast(0) } }
             } } finally { work.close() }
         }
@@ -49,28 +57,39 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
     }
     private suspend fun save(pending: Pending) {
         val shot = pending.shot
+        if (pending.watermark == "none" && pending.encoding == CameraPhotoEncoding.JPEG && shot.motion == null &&
+            shot.displayFile == shot.original && shot.photoStyle?.requiresRendering() != true) {
+            check(requestGalleryWrite(stickers.context)) { "未允许保存到系统相册" }
+            val uri = GalleryImages(stickers.context).publish(shot.original, "相机", shot.capturedAt)
+            shot.discard()
+            notifySaved(pending, uri)
+            return
+        }
         val original = stickers.importResource(shot.original)
         val shown = if (shot.displayFile == shot.original) original else stickers.importResource(shot.displayFile)
         val card = PolaroidCard(title = "", imageId = shown.id, originalImageId = original.id,
             frameStyleId = PhotoFrameSpec(shown.width, shown.height, pending.watermark).id,
             photoStyle = shot.photoStyle?.persist(stickers)?.takeIf { it.hasPhotoTreatment() })
-        val facts = PolaroidPhotoFacts.read(shot.original, true, shot.capturedAt)
+        val facts = PhotoServiceSettings(stickers.context).captureFacts(
+            PolaroidPhotoFacts.read(shot.original, true, shot.capturedAt), System.currentTimeMillis())
         shot.motion?.let { saveMotion?.invoke(shown.id, it) }
         cards.systemAlbum.encodings.set(card.id, pending.encoding)
-        cards.createPhoto(card, facts)
-        // All inputs are now durable in the app's non-destructive library. Publish off the camera thread.
-        val uri = cards.systemAlbum.save(card.id)
+        cards.documents.hold(card.id)
+        cards.createCameraPhoto(card, facts)
+        // Publish the self-contained photo first; never remove the source before MediaStore commits.
+        val uri = cards.systemAlbum.save(card.id, embedOriginal = true)
+        val usedHeif = cards.systemAlbum.isHeif(card.id)
+        shot.discard()
+        runCatching {
+            cards.documents.releasePublished(card)
+            if (shot.motion != null) CardMotionRepository(stickers).prune()
+        }.onFailure { Log.w("KigCameraSave", "Could not remove the published photo's scratch files", it) }
+        notifySaved(pending, uri)
+        if (pending.encoding == CameraPhotoEncoding.HEIF && !usedHeif) pending.reportFallback()
+    }
+
+    private suspend fun notifySaved(pending: Pending, uri: Uri) {
         saved.value = uri
         withContext(Dispatchers.Main.immediate) { pending.onSaved(uri) }
-        if (pending.encoding == CameraPhotoEncoding.HEIF && !cards.systemAlbum.isHeif(card.id)) pending.reportFallback()
-        shot.discard()
-        // Location/weather can finish later without delaying the next exposure.
-        scope.launch(Dispatchers.IO) {
-            try {
-                val enriched = PolaroidPhotoFacts.enrichCapture(stickers.context, facts, cards.designs.requiredFields())
-                synchronized(stickers) { if (stickers.cards.value.any { it.id == card.id }) cards.designs.freeze(card.id, enriched) }
-            } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { /* Metadata is optional; the saved photograph remains usable. */ }
-        }
     }
 }

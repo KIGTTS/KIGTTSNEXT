@@ -29,7 +29,10 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
         if (showTabs) CardEditorTabs(mode, selectMode)
         if (mode == CardEditorMode.CROP) { if (backgroundTools != null) backgroundTools() else CardCropTools(card.imageId != null && enabled, openCrop) }
         else if (mode == CardEditorMode.FILTER) filterTools()
-        else if (mode == CardEditorMode.FRAME) { CardFrameTools(card, enabled, change, frameColor, frames); designTools() }
+        else if (mode == CardEditorMode.FRAME) {
+            CardFrameTools(card, enabled, change, frameColor, frames)
+            if (com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId) == null) designTools()
+        }
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 PillButton("添加文字", Icons.Default.TextFields, addText,

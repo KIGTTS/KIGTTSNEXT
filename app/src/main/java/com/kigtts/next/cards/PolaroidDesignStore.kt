@@ -76,6 +76,12 @@ class PolaroidDesignStore(private val root: File) {
             .put("location", facts.location).put("weather", facts.weather).put("camera", facts.fromCamera))
         commit(next)
     }
+    @Synchronized internal fun forgetFacts(cardId: String) {
+        if (!hasFacts(cardId)) return
+        val next = JSONObject(json.toString())
+        next.optJSONObject("photos")?.remove(cardId)
+        commit(next)
+    }
     @Synchronized fun bind(cardId: String, layer: CardLayer, field: PhotoTextField) {
         val next = JSONObject(json.toString()); val all = next.optJSONObject("bindings") ?: JSONObject().also { next.put("bindings", it) }
         val card = all.optJSONObject(cardId) ?: JSONObject().also { all.put(cardId, it) }

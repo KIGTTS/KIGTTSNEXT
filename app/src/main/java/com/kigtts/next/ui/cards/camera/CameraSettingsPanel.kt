@@ -24,17 +24,25 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
-    watermarkPreview: () -> Bitmap? = { null }) {
+    watermarkPreview: () -> Bitmap? = { null }, watermarkStore: (() -> Unit)? = null) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
+    var lastEdited by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
     var snapshot by remember { mutableStateOf<Bitmap?>(null) }
     ModalBottomSheet(options::hideSettings, containerColor = MaterialTheme.colorScheme.surfaceContainer,
         scrimColor = Color.Black.copy(alpha = .26f),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = !watermarkPage)) {
-        BackHandler(watermarkPage) { watermarkPage = false }
-        ModalPageTransition(watermarkPage, { if (it) 1 else 0 }) { watermark ->
-            if (watermark) CameraWatermarkPage(options, snapshot, enabled) { watermarkPage = false }
+        BackHandler(watermarkPage) { if (editing != null) editing = null else watermarkPage = false }
+        val page = if (watermarkPage) if (editing != null) 2 else 1 else 0
+        ModalPageTransition(page, { it }) { shown ->
+            if (shown == 2) lastEdited?.let { asset ->
+                CameraWatermarkEditor(asset, options, snapshot, enabled) { editing = null }
+            }
+            else if (shown == 1) CameraWatermarkPage(options, snapshot, enabled,
+                watermarkStore?.let { store -> { options.hideSettings(); store() } },
+                { lastEdited = it; editing = it }) { watermarkPage = false }
             else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual) {
                 snapshot = watermarkPreview()
                 watermarkPage = true
@@ -85,7 +93,7 @@ import kotlinx.coroutines.withContext
             enabled && (heifAvailable == true || options.encoding == CameraPhotoEncoding.HEIF), Modifier.weight(1f)) {
             options.chooseEncoding(if (options.encoding == CameraPhotoEncoding.JPEG) CameraPhotoEncoding.HEIF else CameraPhotoEncoding.JPEG)
         }
-        CameraTile("边框水印", cameraWatermarkLabel(options.watermark), Icons.Default.FilterFrames,
+        CameraTile("边框水印", options.watermarkLabel, Icons.Default.FilterFrames,
             enabled, Modifier.weight(1f), openWatermark)
         Spacer(Modifier.weight(1f))
     }

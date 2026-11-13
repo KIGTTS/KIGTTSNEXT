@@ -14,6 +14,7 @@ import java.util.UUID
 /** Capture owns only the original and a recipe; the small LUT atlas is an ordinary portable resource. */
 data class CapturedPhotoStyle(val filter: PhotoFilter = PhotoFilter.ORIGINAL, val strength: Float = 1f,
     val lut: CubeLut? = null, val effects: PhotoEffects = PhotoEffects.NONE) {
+    internal fun requiresRendering() = effects.active || filter != PhotoFilter.ORIGINAL && strength > 0f
     fun persist(stickers: StickerRepository): PolaroidPhotoStyle {
         val custom = lut?.takeIf { filter == PhotoFilter.CUSTOM }
         val imageId = custom?.let {

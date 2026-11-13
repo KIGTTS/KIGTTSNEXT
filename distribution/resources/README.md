@@ -2,15 +2,17 @@
 
 资源包可包含快捷文本、照片集、滤镜、语音包、照片边框或贴纸包。添加后由相应资料库管理，不会创建插件条目。快捷文本每次添加都会生成新的条目与分组。
 
-`classic-frames/` 是一个可直接打包的原创相框项目，按 CC0 1.0 提供。
+`amber-watermark/` 是一个可直接打包的原创相机水印项目，按 CC0 1.0 提供。旧 `classic-frames/` 不再上架，新版仅保留旧照片的显示兼容。
 
 ```powershell
-python tools/Build-ResourcePackage.py distribution/resources/classic-frames --output build/resource-packages/classic-frames-1.0.0.kigresource --private-key <私钥DER路径>
+python tools/Build-ResourcePackage.py distribution/resources/amber-watermark --output build/resource-packages/amber-watermark-1.0.0.kigresource --private-key <私钥DER路径>
 ```
 
-打包器返回源目录需要的精确哈希、大小与发布者。为其补充 HTTPS `mirrors` 后放入 `schemaVersion: 2, kind: RESOURCES` 的源目录。包项填写 `resourceType`；发布格式为 `RESOURCE`、`apiVersion: 29`。详见 SDK 的 [资源协议](../../.sdk/docs/resource-packages.md)。
+打包器返回源目录需要的精确哈希、大小与发布者。为其补充 HTTPS `mirrors` 后放入 `schemaVersion: 2, kind: RESOURCES` 的源目录。包项填写 `resourceType`；发布格式为 `RESOURCE`，API 版本以打包器输出为准。详见 SDK 的 [资源协议](../../.sdk/docs/resource-packages.md)。
 
-原生快捷文本备份填入 `payload`（`.kigcards`）；语音包填入 `.kigvpk`，Piper 语音包同时声明 `service.speech-synthesis` 与 `engine.piper` 的实际前置依赖。LUT 使用 `filters: [{path: "filters/sample.cube"}]`。相框用 `frames`，照片集和贴纸包用 `snapshot`，本地图像用 `imageFiles` 映射资源 ID 与相对路径。
+原生快捷文本备份填入 `payload`（`.kigcards`）；语音包填入 `.kigvpk`，Piper 语音包同时声明 `service.speech-synthesis` 与 `engine.piper` 的实际前置依赖。LUT 使用 `filters: [{path: "filters/sample.cube"}]`。相机水印用 `resourceType: "FRAME"`，在 `payload` 指定一份最多 4 KB 的 UTF-8 XML。照片集和贴纸包用 `snapshot`，本地图像用 `imageFiles` 映射资源 ID 与相对路径。
+
+水印 XML 根节点为 `watermark`，必填 `version="1"`、`id`、`name`、`layout`。布局支持 `STANDARD`、`CHECK_IN`、`CLASSIC`；位置支持 `TOP`、`BOTTOM`；配色支持 `LIGHT`、`DARK`、`WARM`、`COOL`。边条和边宽按照片短边比例添加，不裁剪照片。其余可选参数见示例，不允许脚本、外部引用或嵌套节点。需要支持该 XML 水印的主程序版本。
 
 当前导入 PNG/JPEG/WebP 等位图，图层与图像映射保留后续混合 SVG 的扩展位置。不要把 SVG 当作已支持的照片数据发布。
 

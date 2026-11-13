@@ -86,13 +86,21 @@ class ResourceImportTest {
         assertEquals(copies.size, copies.map { it.id }.distinct().size)
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
     }
-    @Test fun dataFrameImportDoesNotCreatePluginAndEachImportGetsNewIdentity() = runBlocking {
+    private fun signedWatermark(id: String, name: String) = signed(
+        mapOf("watermark.xml" to """<watermark version="1" id="$id" name="$name" layout="CLASSIC"/>""".toByteArray()),
+        ResourcePackageContent(payload = "watermark.xml"), ResourceType.FRAME)
+
+    @Test fun cameraWatermarkImportReplacesItsAssetWithoutCreatingAPlugin() = runBlocking {
         val model = AppViewModel(app, emptyList())
-        val (file, publisher) = signed(emptyMap(), ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "资源相框"))), ResourceType.FRAME)
+        val legacy = model.stickers.frameStyles.value
+        val (file, publisher) = signedWatermark("test-frame", "资源水印")
         repeat(2) { index -> importResource(model, ResourceArchive.read(file, File(app.cacheDir, "frame-$index"), publisher)) }
-        val frames = model.stickers.frameStyles.value.filter { it.name == "资源相框" }
-        assertTrue(frames.size >= 2)
-        assertEquals(frames.size, frames.map { it.id }.distinct().size)
+        val frames = com.kigtts.next.cards.CameraWatermarkLibrary(app).choices()
+        assertEquals(listOf("standard", "check-in", "classic"), frames.take(3).map { it.id })
+        assertEquals(1, frames.count { it.name == "资源水印" && it.id.startsWith("kpm-") })
+        assertEquals(legacy, model.stickers.frameStyles.value)
+        val (old, owner) = signed(emptyMap(), ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "旧版相框"))), ResourceType.FRAME)
+        assertTrue(runCatching { importResource(model, ResourceArchive.read(old, File(app.cacheDir, "old-frame"), owner)) }.isFailure)
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
     }
     @Test fun slowImportCanLeaveDialogAndStillReportsCompletionWithoutStartingAnotherImport() = runBlocking {
@@ -100,7 +108,7 @@ class ResourceImportTest {
         val dispatcher = StandardTestDispatcher()
         val scope = CoroutineScope(SupervisorJob() + dispatcher)
         val installs = ResourceInstalls(model, scope)
-        val (archive, publisher) = signed(emptyMap(), ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "后台相框"))), ResourceType.FRAME)
+        val (archive, publisher) = signedWatermark("background-frame", "后台水印")
         val owner = "test.resource-owner"
         val file = model.pluginManager.paths.storage(owner).file("resource.kigresource")
         archive.copyTo(file, overwrite = true)
@@ -124,7 +132,7 @@ class ResourceImportTest {
             }
             assertTrue(completed)
             assertNull(installs.prompt.value)
-            assertTrue(model.stickers.frameStyles.value.any { it.name == "后台相框" })
+            assertTrue(com.kigtts.next.cards.CameraWatermarkLibrary(app).choices().any { it.name == "后台水印" })
         } finally { scope.cancel() }
     }
     @Test fun personalFramesImportIntoTheirOwnLibraryAndGeneratorInstancesKeepIndependentValues() = runBlocking {

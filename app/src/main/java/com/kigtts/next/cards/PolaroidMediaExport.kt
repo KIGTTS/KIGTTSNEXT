@@ -4,7 +4,7 @@ package com.kigtts.next.cards
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Handler
-import android.os.Looper
+import android.os.HandlerThread
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.transformer.*
@@ -44,11 +44,19 @@ suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard,
     } finally { overlay?.recycle(); withContext(NonCancellable + Dispatchers.IO) { directory.deleteRecursively() } }
 }
 
-private suspend fun transform(stickers: StickerRepository, source: CardMotionClip, effect: CardMotionPaperEffect, output: File) =
-    withContext(Dispatchers.Main.immediate) {
+private suspend fun transform(stickers: StickerRepository, source: CardMotionClip, effect: CardMotionPaperEffect, output: File) {
+    // Transformer must be accessed from one Looper. Keep its setup, callbacks and teardown off UI.
+    val thread = HandlerThread("KigPhotoMotionExport").apply { start() }
+    val handler = Handler(thread.looper)
+    val dispatcher = object : CoroutineDispatcher() {
+        override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) {
+            check(handler.post(block)) { "实况处理线程已关闭" }
+        }
+    }
+    try { withContext(dispatcher) {
         var current: Transformer? = null
         try { suspendCancellableCoroutine<Unit> { continuation ->
-            val transformer = Transformer.Builder(stickers.context).setVideoMimeType(MimeTypes.VIDEO_H264)
+            val transformer = Transformer.Builder(stickers.context).setLooper(thread.looper).setVideoMimeType(MimeTypes.VIDEO_H264)
                 .addListener(object : Transformer.Listener {
                     override fun onCompleted(composition: Composition, exportResult: ExportResult) { if (continuation.isActive) continuation.resume(Unit) }
                     override fun onError(composition: Composition, exportResult: ExportResult, exportException: ExportException) {
@@ -56,10 +64,10 @@ private suspend fun transform(stickers: StickerRepository, source: CardMotionCli
                     }
                 }).build()
             current = transformer
-            continuation.invokeOnCancellation { Handler(Looper.getMainLooper()).post { transformer.cancel(); output.delete() } }
             try {
                 transformer.start(EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(source.video)))
                     .setEffects(Effects(emptyList(), listOf(effect))).build(), output.absolutePath)
             } catch (failure: Exception) { transformer.cancel(); if (continuation.isActive) continuation.resumeWithException(failure) }
-        } } finally { withContext(NonCancellable + Dispatchers.Main.immediate) { current?.cancel() } }
-    }
+        } } finally { current?.cancel() }
+    } } finally { thread.quitSafely() }
+}

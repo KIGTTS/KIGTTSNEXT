@@ -50,21 +50,20 @@ class AlbumActivity : ComponentActivity() {
                 val id = editor
                 if (id != null) CardPageScaffold("编辑图片", { if (editing) finish() else editor = null }, subtitle = null, avoidKeyboard = false, compactBar = true) {
                     CardEditorScreen(host.cards, host.stickers, id, { failure = it }, onSaved = { card ->
-                        scope.launch {
-                            try {
-                                val uri = withContext(Dispatchers.IO) {
-                                    val output = @Suppress("DEPRECATION") (intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT))
-                                    if (output != null) {
-                                        require(output.scheme == "content") { "无法写入此保存位置" }
-                                        val file = exportPolaroidMedia(host.stickers, card, maximumHeight = com.kigtts.next.cards.galleryPolaroidHeight(host.stickers, card))
-                                        requireNotNull(contentResolver.openOutputStream(output, "w")).use { target -> file.inputStream().use { it.copyTo(target) } }
-                                        output
-                                    } else host.cards.systemAlbum.save(card.id)
-                                }
-                                if (editing) { returnImages(listOf(uri)); finish() } else editor = null
-                            } catch (cancel: CancellationException) { throw cancel }
-                            catch (error: Exception) { failure = error.message ?: "未能保存图片" }
+                        val uri = withContext(Dispatchers.IO) {
+                            val output = @Suppress("DEPRECATION") (intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT))
+                            if (output != null && host.cards.documents.isEmbedded(card.id)) {
+                                require(output.scheme == "content") { "无法写入此保存位置" }
+                                host.cards.documents.writeEmbeddedCopy(card, output)
+                            } else if (output != null) {
+                                require(output.scheme == "content") { "无法写入此保存位置" }
+                                val file = exportPolaroidMedia(host.stickers, card, maximumHeight = com.kigtts.next.cards.galleryPolaroidHeight(host.stickers, card))
+                                requireNotNull(contentResolver.openOutputStream(output, "w")).use { target -> file.inputStream().use { it.copyTo(target) } }
+                                output
+                            } else if (host.cards.documents.isEmbedded(card.id)) host.cards.documents.saveEmbedded(card)
+                            else host.cards.systemAlbum.save(card.id)
                         }
+                        if (editing) { returnImages(listOf(uri)); finish() } else editor = null
                     })
                 } else DeviceAlbumScreen({ finish() }, ::open, message = { failure = it },
                     choose = if (picking) ({ media -> returnImages(media.map { it.uri }); finish() }) else null,

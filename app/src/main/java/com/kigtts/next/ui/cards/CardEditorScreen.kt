@@ -35,7 +35,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
     identity: IdentityCard? = null, personalDesign: PolaroidCard? = null,
     savePersonal: ((PolaroidCard, IdentityCard) -> PolaroidCard)? = null,
-    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null, onSaved: ((PolaroidCard) -> Unit)? = null) {
+    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null, onSaved: (suspend (PolaroidCard) -> Unit)? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val identityFrames by stickers.identityFrames.items.collectAsStateWithLifecycle()
     val privateDesigns by stickers.identityDesigns.items.collectAsStateWithLifecycle()
@@ -129,7 +129,22 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 val clean = candidate.copy(title = candidate.title.trim(), layers = candidate.layers.filterNot { it.kind == CardLayerKind.TEXT && it.text.isBlank() })
                 if (personalDraft != null && savePersonal != null) savePersonal(clean, requireNotNull(personalDraft)) else { cards.documents.update(clean) }
             } }
-            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = onSaved == null; message("已保存$noun"); onSaved?.invoke(saved)
+            val embedded = identity == null && cards.documents.isEmbedded(cardId)
+            if (onSaved != null || embedded) {
+                try {
+                    if (onSaved != null) onSaved(saved) else cards.documents.saveEmbedded(saved)
+                }
+                catch (failure: Exception) {
+                    withContext(NonCancellable + Dispatchers.IO) {
+                        if (cards.cards.value.any { it == saved }) cards.documents.update(previous)
+                    }
+                    throw failure
+                }
+                message("已保存$noun")
+                if (onSaved == null) leave?.invoke()
+                return@work
+            }
+            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = true; message("已保存$noun")
         }
     }
     LaunchedEffect(active, savedReturn, discard) {
@@ -139,9 +154,16 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         enabled && dirty && !conflict, preserveColorWhenLocked = busy, click = { saveDraft() })))
     fun cancelAdjustment() { selectedId = null; textEditing = false; focus.clearFocus(); keyboard?.hide() }
     fun backFromEditor() { if (selectedId != null || textEditing) cancelAdjustment() else discard = true }
-    RegisterPageBackGuard(active && (dirty || selectedId != null || textEditing || savedReturn || busy)) { if (!savedReturn && !busy) backFromEditor() }
-    PredictiveBackHandler(active && (dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
-        try { events.collect { }; if (!savedReturn && !busy) backFromEditor() } catch (_: CancellationException) { }
+    val managedDraft = identity == null && cards.documents.isEmbedded(cardId)
+    fun requestClose() {
+        if (savedReturn || busy) return
+        if (!dirty && selectedId == null && !textEditing && managedDraft) work {
+            cards.documents.discardEmbedded(cardId); leave?.invoke()
+        } else backFromEditor()
+    }
+    RegisterPageBackGuard(active && (managedDraft || dirty || selectedId != null || textEditing || savedReturn || busy)) { requestClose() }
+    PredictiveBackHandler(active && (managedDraft || dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
+        try { events.collect { }; requestClose() } catch (_: CancellationException) { }
     }
     CardEditorPanelScaffold(polaroidPaperGeometry(draft, stickers.frameStyle(draft)).aspectRatio.toFloat(),
         enabled, textEditing, ::cancelAdjustment, preview = { paperModifier ->
@@ -226,7 +248,10 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         updateLayer(selected.copy(color = color)); textColor = false
     }, { textColor = false }, title = "文字颜色")
     if (active && discard) SaveChangesDialog({ _ -> saveDraft() },
-        { draft = baseline; discard = false; leave?.invoke() }, { discard = false },
+        {
+            if (managedDraft) work { cards.documents.discardEmbedded(cardId); leave?.invoke() }
+            else { draft = baseline; discard = false; leave?.invoke() }
+        }, { discard = false },
         canSave = enabled && dirty && !conflict, busy = busy || savedReturn,
         error = if (conflict) "这张照片已更新，请重新打开。" else null,
         completed = if (savedReturn) ({
