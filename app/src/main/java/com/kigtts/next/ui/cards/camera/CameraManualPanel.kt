@@ -23,7 +23,7 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
             Icons.Default.CenterFocusStrong, SettingPosition.FIRST) {
             Column {
                 ChoiceButtonGroup("对焦", listOf(false, true), controller.manualFocus,
-                    { if (it) "手动" else "自动" }, controller::focusMode, enabled = enabled && capability.focusAvailable)
+                    { if (it) "手动" else "自动" }, { controller.focusMode(it) }, enabled = enabled && capability.focusAvailable)
                 AnimatedVisibility(controller.manualFocus) {
                     Column {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("远"); Text("近") }
@@ -37,7 +37,7 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
             Icons.Default.ShutterSpeed, SettingPosition.LAST) {
             Column {
                 ChoiceButtonGroup("快门", listOf(false, true), !controller.automaticExposure,
-                    { if (it) "手动" else "自动" }, controller::setManualShutter, enabled = enabled && capability.shutterAvailable)
+                    { if (it) "手动" else "自动" }, { controller.setManualShutter(it) }, enabled = enabled && capability.shutterAvailable)
                 val range = capability.exposure
                 AnimatedVisibility(!controller.automaticExposure && range != null) {
                     if (range != null) Column {

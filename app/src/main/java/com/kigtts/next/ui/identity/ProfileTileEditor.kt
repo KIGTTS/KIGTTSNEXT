@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.StickerRepository
@@ -26,6 +27,8 @@ import java.io.File
     var contact by remember(tile?.id) { mutableStateOf(tile?.contact.orEmpty()) }
     var social by remember(tile?.id) { mutableStateOf(tile?.social) }
     var image by remember(tile?.id) { mutableStateOf(tile?.image.orEmpty()) }
+    var qrStyle by remember(tile?.id) { mutableStateOf(tile?.qrStyle ?: ProfileQrStyle.THEME) }
+    var qrLarge by remember(tile?.id) { mutableStateOf(tile?.let { it.rows == 4 && it.columns == 4 } ?: false) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -52,7 +55,7 @@ import java.io.File
         finally { working = false }
     } }
     val names = linkedMapOf(ProfileTileKind.LINK to "链接", ProfileTileKind.CONTACT to "社媒", ProfileTileKind.TITLE to "标题",
-        ProfileTileKind.TEXT to "文字", ProfileTileKind.IMAGE to "图片 / GIF")
+        ProfileTileKind.TEXT to "文字", ProfileTileKind.IMAGE to "图片 / GIF", ProfileTileKind.QR to "二维码")
     val keyboard = LocalSoftwareKeyboardController.current
     val changeKind = { keyboard?.hide(); kind = null; error = null }
     MotionAlertDialog(close, title = { Text(if (tile == null) "添加磁贴" else "编辑磁贴") },
@@ -72,6 +75,23 @@ import java.io.File
                         FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) "正在打开…" else "选择图片或 GIF") }
                     }
                     ProfileTileKind.TITLE -> Unit
+                    ProfileTileKind.QR -> {
+                        OutlinedTextField(text, { text = it.take(PROFILE_QR_MAX_BYTES); error = null },
+                            Modifier.fillMaxWidth(), label = { Text("文字或链接") }, minLines = 2, maxLines = 4)
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            ProfileQrStyle.entries.forEachIndexed { index, style ->
+                                SegmentedButton(qrStyle == style, feedbackClick { qrStyle = style },
+                                    SegmentedButtonDefaults.itemShape(index, ProfileQrStyle.entries.size), icon = {}) {
+                                    Text(style.label, maxLines = 1)
+                                }
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text("超大尺寸（4 × 4）")
+                            Switch(qrLarge, { qrLarge = it })
+                        }
+                        ProfileQrTile(text, qrStyle, title, Modifier.fillMaxWidth().height(144.dp))
+                    }
                     else -> OutlinedTextField(text, { text = it.take(400) }, Modifier.fillMaxWidth(), label = { Text("内容") }, minLines = 2)
                 }
                 if (tile == null) TextButton(feedbackClick(changeKind), enabled = !working) { Text("更换类型") }
@@ -86,9 +106,17 @@ import java.io.File
         if (selected == ProfileTileKind.CONTACT && social == null && (contact.isBlank() || contacts.none { it.value == contact })) { error = "请选择社媒平台或联系方式"; return@feedbackClick }
         if (selected == ProfileTileKind.IMAGE && image.isBlank()) { error = "请选择图片"; return@feedbackClick }
         if (selected == ProfileTileKind.TITLE && title.isBlank()) { error = "请输入标题"; return@feedbackClick }
+        if (selected == ProfileTileKind.QR && text.isBlank()) { error = "请输入二维码内容"; return@feedbackClick }
+        if (selected == ProfileTileKind.QR && text.trim().toByteArray(Charsets.UTF_8).size > PROFILE_QR_MAX_BYTES) {
+            error = "二维码内容太长，请缩短后重试"; return@feedbackClick
+        }
+        val wasLarge = tile?.rows == 4 && tile.columns == 4
         save((tile ?: ProfileTile()).copy(kind = selected, title = title.trim(), text = text.trim(), contact = if (selected == ProfileTileKind.CONTACT) contact else "", image = image,
-            social = social.takeIf { selected == ProfileTileKind.CONTACT },
-            columns = if (selected == ProfileTileKind.TITLE) 4 else tile?.columns ?: 2, rows = if (selected == ProfileTileKind.TITLE) 1 else tile?.rows ?: 2))
+            social = social.takeIf { selected == ProfileTileKind.CONTACT }, qrStyle = qrStyle,
+            columns = if (selected == ProfileTileKind.TITLE || selected == ProfileTileKind.QR && qrLarge) 4
+                else if (selected == ProfileTileKind.QR && wasLarge) 2 else tile?.columns ?: 2,
+            rows = if (selected == ProfileTileKind.TITLE) 1 else if (selected == ProfileTileKind.QR && qrLarge) 4
+                else if (selected == ProfileTileKind.QR && wasLarge) 2 else tile?.rows ?: 2))
     }) { Text("完成") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
 }
 

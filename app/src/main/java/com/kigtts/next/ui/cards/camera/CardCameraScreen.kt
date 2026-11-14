@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.camera.view.PreviewView
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -84,6 +85,24 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val fullFrame = modern && options.framingAspect == CameraAspect.FULL
     val aspect = if (modern) options.framingAspect.ratio(configuration.screenWidthDp, configuration.screenHeightDp) else format.geometry.photoAspectRatio.toFloat()
     val mode = if (modern) options.mode else CameraMode.PHOTO
+    var pickedCodes by remember { mutableStateOf<CameraCodeFrame?>(null) }
+    var readingCodeImage by remember { mutableStateOf(false) }
+    val scanImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null && mode == CameraMode.SCAN && !readingCodeImage) {
+            readingCodeImage = true
+            scope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) { readCameraCodes(context, uri) }
+                    if (result == null) latestMessage.value("图片里没有识别到二维码或条形码")
+                    else pickedCodes = result
+                } catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { latestMessage.value("无法读取这张图片") }
+                finally { readingCodeImage = false }
+            }
+        }
+        else if (!readingCodeImage) session.scan.setImporting(false)
+    }
+    SideEffect { session.scan.setImporting(mode == CameraMode.SCAN && (readingCodeImage || pickedCodes != null)) }
     val showExposureWarning = active && mode == CameraMode.PRO && options.exposureWarning && !options.settingsVisible
     SideEffect { session.setExposureWarning(showExposureWarning) }
     val processing = if (mode == CameraMode.PHOTO) options.processing else CameraProcessing.STANDARD
@@ -95,6 +114,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     var openGalleryWhenReady by remember { mutableStateOf(false) }
     var zoomDialVisible by remember { mutableStateOf(false) }
     var exposureOpen by remember(mode, front) { mutableStateOf(false) }
+    var proControl by remember(mode, front) { mutableStateOf<ProControl?>(null) }
     LaunchedEffect(openGalleryWhenReady, session.busy, active) {
         if (openGalleryWhenReady && !session.busy && active) {
             openGalleryWhenReady = false
@@ -128,18 +148,32 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     LaunchedEffect(active, displayReady, bound) {
         if (active && displayReady) streamTransition.reveal()
     }
+    LaunchedEffect(mode, active, displayReady, pickedCodes) {
+        val pending = pickedCodes ?: return@LaunchedEffect
+        if (mode != CameraMode.SCAN) {
+            pending.bitmap.recycle()
+            pickedCodes = null
+        } else if (active && (displayReady || session.error != null)) {
+            session.scan.pick(pending)
+            pickedCodes = null
+        }
+    }
     DisposableEffect(session) { onDispose { session.close() } }
     LaunchedEffect(session.countingDown) { if (session.countingDown) filtersExpanded = false }
     val evAvailable = mode != CameraMode.SCAN && session.manual.automaticExposure && session.exposure.step > 0f
     LaunchedEffect(evAvailable, active) { if (!evAvailable || !active) exposureOpen = false }
-    val interceptBack = pageActive && (session.busy || session.video.active || exposureOpen || filtersExpanded && !session.countingDown)
+    val interceptBack = pageActive && (session.busy || session.video.active || session.scan.showing || exposureOpen || proControl != null || filtersExpanded && !session.countingDown)
     val backAction = {
         if (session.video.active) session.video.stop()
+        else if (session.scan.showing) session.scan.clear()
         else if (session.busy) message("正在拍摄，请稍候")
-        else if (exposureOpen) exposureOpen = false else filtersExpanded = false
+        else if (exposureOpen) exposureOpen = false
+        else if (proControl != null) proControl = null
+        else filtersExpanded = false
     }
     RegisterPageBackGuard(interceptBack, backAction)
-    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || filtersExpanded || exposureOpen || morphing)
+    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible ||
+        filtersExpanded || exposureOpen || proControl != null || session.scan.showing || morphing)
     PredictiveBackHandler(interceptBack) { events ->
         try { events.collect { }; backAction() } catch (_: CancellationException) { }
     }
@@ -148,8 +182,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     RegisterCameraShutterKeys(active && granted && !options.settingsVisible) { shutter() }
     val leave = {
         if (session.video.active) session.video.stop()
+        else if (session.scan.showing) session.scan.clear()
         else if (session.busy) message("正在拍摄，请稍候")
         else if (exposureOpen) exposureOpen = false
+        else if (proControl != null) proControl = null
         else if (filtersExpanded && !session.countingDown) filtersExpanded = false
         else { session.unbind(); onCancel() }
     }
@@ -166,10 +202,12 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             options = options, rotation = rotation, active = active, showGuides = mode != CameraMode.SCAN,
             filterStrength = options.filterStrength, lut = lut,
             verticalChrome = vertical, headerOverlay = true, streamTransition = streamTransition, aspectRatio = aspect,
-            fullFrame = fullFrame, photoSideInset = CAMERA_PREVIEW_SIDE_INSET, chrome = { layout ->
+            fullFrame = fullFrame, photoSideInset = CAMERA_PREVIEW_SIDE_INSET, professional = mode == CameraMode.PRO,
+            chrome = { layout ->
             CameraOverlayControls(format, formats, filter, interactive, vertical, filtersExpanded,
                 { if (modern) options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) else format = nextCameraFormat(formats, format) },
-                { exposureOpen = false; options.showSettings() }, { exposureOpen = false; filtersExpanded = !filtersExpanded }, { filter = it },
+                { exposureOpen = false; proControl = null; options.showSettings() },
+                { exposureOpen = false; proControl = null; filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable && session.manual.automaticExposure, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
                 }, options.filterStrength, options::setFilterStrength, layout,
@@ -185,11 +223,21 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             if (!exposureOpen) CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
                 active && displayReady && (!session.busy || modern), session::zoomTo, vertical,
                 Modifier.matchParentSize(), bounds = layout.zoom, dialVisibilityChanged = { zoomDialVisible = it })
-            if (evAvailable && !zoomDialVisible) CameraExposureRail(session.exposure, layout.zoom, vertical,
+            if (mode != CameraMode.PRO && evAvailable && !zoomDialVisible) CameraExposureRail(session.exposure, layout.zoom, vertical,
                 cameraZoomRange(session.minZoomRatio, session.maxZoomRatio)?.let(::cameraZoomStops)?.size ?: 0,
                 exposureOpen, displayReady && interactive && !session.busy, {
                     filtersExpanded = false; exposureOpen = !exposureOpen
                 }, session::setGlobalExposure)
+            layout.pro?.let { bounds ->
+                androidx.compose.animation.AnimatedVisibility(!zoomDialVisible && !filtersExpanded,
+                    Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds),
+                    enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+                    CameraProControls(session.manual, session.exposure, displayReady && !locked && !zoomDialVisible && !filtersExpanded,
+                        vertical, session::setGlobalExposure, Modifier.fillMaxSize(), proControl) {
+                        proControl = it
+                    }
+                }
+            }
             }) {
             if (mode == CameraMode.PRO && displayReady) session.histogram?.let {
                 CameraHistogramOverlay(it, Modifier.align(Alignment.TopStart).padding(
@@ -198,7 +246,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             if (!modern) CameraManualBadge(session.manual, Modifier.align(Alignment.BottomStart).padding(start = if (vertical) 60.dp else 8.dp,
                 bottom = if (vertical) 8.dp else 56.dp))
             CameraBurstStatus(session.burst, Modifier.align(Alignment.Center))
-            if (mode == CameraMode.SCAN) CameraScanOverlay(session.scanned, session::clearScan)
+            if (mode == CameraMode.SCAN) CameraScanOverlay(session.scan, message)
         }
     }
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
@@ -208,8 +256,17 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             shutter,
             { front = !front }, vertical, locked,
             countingDown = session.countingDown, cancelCountdown = { session.cancelCountdown() }, showCancel = false,
-            gallery = { if (modern && session.busy) { openGalleryWhenReady = true; session.burst.stop() } else onGallery(format) },
-            galleryPreview = galleryPreview, configurationLocked = configurationLocked, gallerySaving = gallerySaving,
+            gallery = {
+                if (mode == CameraMode.SCAN) {
+                    if (!readingCodeImage) {
+                        session.scan.clear()
+                        session.scan.setImporting(true)
+                        scanImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    }
+                } else if (modern && session.busy) { openGalleryWhenReady = true; session.burst.stop() } else onGallery(format)
+            },
+            galleryPreview = galleryPreview, configurationLocked = configurationLocked || mode == CameraMode.SCAN && readingCodeImage,
+            gallerySaving = gallerySaving, scanImage = mode == CameraMode.SCAN,
             systemCamera = if (modern) null else ({ onSystemCamera(format) }),
             burstStart = onBurst?.takeIf { mode == CameraMode.PHOTO }?.let { complete -> { if (displayReady && !locked) {
                 val output = CameraPhotoOutput(options.watermark, options.encoding)
@@ -227,13 +284,9 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             })
         }
         if (modern) CameraModeControls(mode, { filtersExpanded = false; options.chooseMode(it) }, interactive,
-            vertical, session.video.active, session.video.durationMs, parameters = {
-                if (mode == CameraMode.PRO) CameraProControls(session.manual, session.exposure, displayReady && !locked,
-                    vertical, exposureOpen, { filtersExpanded = false; exposureOpen = !exposureOpen },
-                    { session.setGlobalExposure(0); exposureOpen = false })
-            }, controls = bar) else bar()
+            vertical, session.video.active, session.video.durationMs, controls = bar) else bar()
     }
-    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame)
+    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame, captureBaseline = modern)
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
         manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) }, watermarkStore = watermarkStore,

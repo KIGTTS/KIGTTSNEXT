@@ -30,15 +30,20 @@ internal val LocalCameraStageSettled = compositionLocalOf { true }
 internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
     controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {},
     header: @Composable (Boolean) -> Unit = {}, photoAspect: Float? = null, zoomDialVisible: Boolean = false,
-    fullFrame: Boolean = false) {
+    fullFrame: Boolean = false, captureBaseline: Boolean = false) {
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().testTag("polaroid-camera")) {
         val vertical = cameraSideControls(maxWidth.value, maxHeight.value)
-        val overlay = fullFrame || cameraOverlaysShutter(maxWidth.value, maxHeight.value, photoAspect)
-        val targetOverlap = if (overlay) 1f else 0f
-        val overlap by animateFloatAsState(targetOverlap, CameraFramingMotion, label = "camera-dock-overlap")
-        val dockSpace = if (!vertical && photoAspect != null) (maxHeight * .075f - 12.dp).coerceIn(0.dp, 52.dp) else 0.dp
         var controlsSize by remember { mutableStateOf(IntSize.Zero) }
         val inset = with(LocalDensity.current) { (if (vertical) controlsSize.width else controlsSize.height).toDp() }
+        val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value) else null
+        val overlay = if (baseline != null && photoAspect != null) {
+            val photo = cameraCenteredCaptureWindow(maxWidth.value, (maxHeight.value - 8f).coerceAtLeast(0f),
+                photoAspect, vertical, if (fullFrame) 1f else 0f)
+            (if (vertical) photo.right else photo.bottom) > baseline.dockStart + .5f
+        } else fullFrame || cameraOverlaysShutter(maxWidth.value, maxHeight.value, photoAspect)
+        val targetOverlap = if (overlay) 1f else 0f
+        val overlap by animateFloatAsState(targetOverlap, CameraFramingMotion, label = "camera-dock-overlap")
+        val dockSpace = if (!captureBaseline && !vertical && photoAspect != null) (maxHeight * .075f - 12.dp).coerceIn(0.dp, 52.dp) else 0.dp
         val blend by animateFloatAsState(if (zoomDialVisible) 1f else 0f,
             tween(if (zoomDialVisible) 140 else 180), label = "camera-dial-dock")
         val scrim = remember(vertical) {
@@ -51,6 +56,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
                     LocalCameraShutterInset provides (inset * overlap),
                     LocalCameraPortraitAnchor provides (if (!vertical && photoAspect != null) 1f - overlap else 0f),
                     LocalCameraStageSettled provides (overlap == targetOverlap),
+                    LocalCameraCaptureBaseline provides baseline,
                 ) {
                     preview(Modifier.fillMaxSize().padding(vertical = 4.dp), vertical)
                 }
@@ -74,13 +80,16 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
             val width = constraints.maxWidth; val height = constraints.maxHeight
             val dock = children[1].measure(Constraints(0, width, 0, height))
             // Keep the dock fixed. Only its reserved space changes as the preview grows underneath it.
-            val reserved = 1f - overlap
+            val reserved = if (captureBaseline) 0f else 1f - overlap
             val stage = children[0].measure(Constraints.fixed(
                 if (vertical) (width - (dock.width * reserved).roundToInt()).coerceAtLeast(0) else width,
                 if (vertical) height else (height - (dock.height * reserved).roundToInt()).coerceAtLeast(0)))
             layout(width, height) {
                 stage.place(0, 0)
-                dock.place(if (vertical) width - dock.width else 0, if (vertical) 0 else height - dock.height)
+                val start = if (captureBaseline) cameraCaptureBaseline(width.toDp().value, height.toDp().value, vertical,
+                    (if (vertical) dock.width else dock.height).toDp().value).dockPositionInStage().dp.roundToPx()
+                else if (vertical) width - dock.width else height - dock.height
+                dock.place(if (vertical) start else 0, if (vertical) 0 else start)
             }
         }
     }

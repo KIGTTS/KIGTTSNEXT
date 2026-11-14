@@ -25,9 +25,11 @@ internal fun faceWebTiles(person: PublicIdentityProfile, path: String, media: Li
             ProfileTileKind.CONTACT -> "$tileIcon<strong>$label</strong><small>${faceHtml(link?.value ?: "联系方式已移除")}</small>"
             ProfileTileKind.LINK -> "$tileIcon<strong>$label</strong><span>${faceHtml(tile.text)}</span>"
             ProfileTileKind.TITLE -> "<strong>$label</strong>"
+            ProfileTileKind.QR -> faceTileQr(tile)
             else -> if (tile.isTitleOnlyText) "<strong>$label</strong>" else "<strong>$label</strong><span>${faceHtml(tile.text)}</span>"
         }
-        val compact = (if (tile.rows == 1 && tile.kind !in setOf(ProfileTileKind.IMAGE, ProfileTileKind.TITLE)) " tile-compact" else "") +
+        val compact = (if (tile.rows == 1 && tile.kind !in setOf(ProfileTileKind.IMAGE, ProfileTileKind.TITLE, ProfileTileKind.QR)) " tile-compact" else "") +
+            (if (tile.kind == ProfileTileKind.QR) " tile-qr" else "") +
             (if (iconOnly) " tile-icon-only" else "") + (if (tile.isTitleOnlyText) " tile-text-title-only" else "")
         val accessible = if (iconOnly) " aria-label=\"${label.ifBlank { "链接" }}\"" else ""
         val markup = when {
@@ -44,7 +46,26 @@ internal fun faceWebTiles(person: PublicIdentityProfile, path: String, media: Li
         """<dialog id="tile-image-viewer" class="tile-image-viewer"><button class="contact-close" data-close="tile-image-viewer" aria-label="关闭图片预览">×</button><img alt="图片预览"><a download>保存图片</a></dialog>"""
 }
 
+private fun faceTileQr(tile: ProfileTile): String {
+    val bits = profileQrMatrix(tile.text) ?: return "<span class=\"tile-placeholder\">二维码</span>"
+    val dots = tile.qrStyle == ProfileQrStyle.DOTS
+    val paths = buildString {
+        append("<path d=\"")
+        for (y in 0 until bits.height) for (x in 0 until bits.width) {
+            if (bits[x, y] && (!dots || !bits.qrDotAllowed(x, y))) append("M$x $y h1v1h-1z")
+        }
+        append("\"/>")
+        if (dots) for (y in 0 until bits.height) for (x in 0 until bits.width) {
+            if (bits[x, y] && bits.qrDotAllowed(x, y)) append("<circle cx=\"${x + .5}\" cy=\"${y + .5}\" r=\".48\"/>")
+        }
+    }
+    val label = faceHtml(tile.title.ifBlank { "二维码" })
+    val ink = if (tile.qrStyle == ProfileQrStyle.INK) " qr-ink" else ""
+    return "<svg class=\"profile-qr-code$ink\" viewBox=\"0 0 ${bits.width} ${bits.height}\" role=\"img\" aria-label=\"$label\"><rect width=\"100%\" height=\"100%\"/>$paths</svg>"
+}
+
 internal const val faceTileStyles = """
+.profile-tile.tile-qr{padding:8px;align-items:center;justify-content:center;container-type:size}.tile-qr svg.profile-qr-code{width:min(100cqw,100cqh);height:min(100cqw,100cqh);fill:color-mix(in srgb,var(--md-sys-color-primary) 38%,black)}.tile-qr svg.profile-qr-code rect{fill:color-mix(in srgb,var(--md-sys-color-primary-container) 10%,white)}.tile-qr svg.qr-ink{fill:black}.tile-qr svg.qr-ink rect{fill:white}
 .tile-image-viewer{inset:0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:56px 16px 24px;background:#000e;color:white}.tile-image-viewer[open]{display:flex;flex-direction:column;align-items:center;gap:16px}.tile-image-viewer::backdrop{background:#0008}.tile-image-viewer img{width:100%;height:0;flex:1;object-fit:contain;min-height:0}.tile-image-viewer a{flex:none;padding:14px 24px;border-radius:28px;background:var(--md-sys-color-secondary-container);color:var(--md-sys-color-on-secondary-container);text-decoration:none}
 .profile-tile.tile-text-title-only{align-items:center;justify-content:center;text-align:center;padding:8px 12px;gap:0}.profile-tile.tile-text-title-only strong{font-size:22px;font-weight:700;line-height:28px;white-space:pre-wrap;text-wrap:balance;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:var(--tile-title-lines,2);overflow:hidden}
 .profile-tile.tile-icon-only{display:flex;align-items:center;justify-content:center;padding:8px}.profile-tile.tile-icon-only>svg{width:24px;height:24px}

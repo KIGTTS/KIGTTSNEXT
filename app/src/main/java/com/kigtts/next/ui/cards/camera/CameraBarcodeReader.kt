@@ -1,39 +1,62 @@
 package com.kigtts.next.ui.cards.camera
 
+import android.graphics.Matrix
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.compose.ui.geometry.Offset
 import com.google.zxing.*
-import com.google.zxing.common.HybridBinarizer
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
-/** A throttled luminance-only analyzer; every proxy is released, including failures. */
-internal class CameraBarcodeReader(private val result: (String) -> Unit) : ImageAnalysis.Analyzer, AutoCloseable {
+internal class CameraBarcodeReader(private val result: (Long, List<CameraCode>) -> Unit) : ImageAnalysis.Analyzer, AutoCloseable {
     val executor = Executors.newSingleThreadExecutor()
-    private val reader = MultiFormatReader().apply { setHints(mapOf(DecodeHintType.TRY_HARDER to true, DecodeHintType.CHARACTER_SET to "UTF-8")) }
+    private val decoder = CameraCodeDecoder()
+    private val paused = AtomicBoolean(true)
+    private val epoch = AtomicLong()
     private var last = 0L
+    private var lastEpoch = -1L
+    fun changeSession(value: Long, enabled: Boolean) { paused.set(true); epoch.set(value); paused.set(!enabled) }
+    fun pause(value: Boolean) { paused.set(value) }
+
     override fun analyze(image: ImageProxy) {
         try {
+            if (paused.get()) return
+            val generation = epoch.get()
             val now = android.os.SystemClock.elapsedRealtime()
-            if (now - last < 350) return
-            last = now
+            if (generation == lastEpoch && now - last < 235) return
+            last = now; lastEpoch = generation
+            val crop = image.cropRect
+            val width = crop.width(); val height = crop.height()
+            if (width < 1 || height < 1) return
             val plane = image.planes.first()
-            val bytes = ByteArray(image.width * image.height)
-            val data = plane.buffer
-            if (plane.pixelStride == 1) for (y in 0 until image.height) {
-                data.position(y * plane.rowStride); data.get(bytes, y * image.width, image.width)
-            } else for (y in 0 until image.height) for (x in 0 until image.width)
-                bytes[y * image.width + x] = data.get(y * plane.rowStride + x * plane.pixelStride)
-            val source = PlanarYUVLuminanceSource(bytes, image.width, image.height, 0, 0, image.width, image.height, false)
-            val decoded = decode(source) ?: run {
-                val rotated = ByteArray(bytes.size)
-                for (y in 0 until image.height) for (x in 0 until image.width)
-                    rotated[(image.width - 1 - x) * image.height + y] = bytes[y * image.width + x]
-                decode(PlanarYUVLuminanceSource(rotated, image.height, image.width, 0, 0, image.height, image.width, false))
+            val bytes = ByteArray(width * height)
+            val data = plane.buffer.duplicate()
+            val base = data.position()
+            for (y in 0 until height) {
+                val start = base + (crop.top + y) * plane.rowStride + crop.left * plane.pixelStride
+                if (plane.pixelStride == 1) {
+                    data.position(start); data.get(bytes, y * width, width)
+                } else for (x in 0 until width) bytes[y * width + x] = data.get(start + x * plane.pixelStride)
             }
-            decoded?.text?.takeIf { it.isNotBlank() && it.length <= 8192 }?.let(result)
+            val source = PlanarYUVLuminanceSource(bytes, width, height, 0, 0, width, height, false)
+            val cameraToSensor = Matrix()
+            val canMap = image.imageInfo.sensorToBufferTransformMatrix.invert(cameraToSensor)
+            val found = decoder.decode(source).ifEmpty {
+                val rotated = ByteArray(bytes.size)
+                for (y in 0 until height) for (x in 0 until width) rotated[(width - 1 - x) * height + y] = bytes[y * width + x]
+                decoder.decode(PlanarYUVLuminanceSource(rotated, height, width, 0, 0, height, width, false)).map { code ->
+                    code.copy(center = code.center?.let { Offset(width - 1f - it.y, it.x) })
+                }
+            }
+            val codes = found.map { code -> code.copy(center = code.center?.takeIf { canMap }?.let { point ->
+                val coords = floatArrayOf(point.x + crop.left, point.y + crop.top)
+                cameraToSensor.mapPoints(coords)
+                Offset(coords[0], coords[1])
+            }) }
+            if (!paused.get() && epoch.get() == generation) result(generation, codes)
         } catch (_: Exception) { /* An unreadable frame is not an error state. */ }
-        finally { reader.reset(); image.close() }
+        finally { image.close() }
     }
-    private fun decode(source: LuminanceSource) = try { reader.decodeWithState(BinaryBitmap(HybridBinarizer(source))) } catch (_: ReaderException) { null }
-    override fun close() { executor.shutdownNow() }
+    override fun close() { paused.set(true); executor.shutdown() }
 }

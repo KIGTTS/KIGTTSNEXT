@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.ProfileTile
+import com.kigtts.next.identity.maxTileRows
 import com.kigtts.next.ui.components.rememberDragFeedback
 import kotlin.math.roundToInt
 
@@ -37,11 +38,12 @@ import kotlin.math.roundToInt
             }, onDragEnd = { feedback.finish(); motion.release() }, onDragCancel = { feedback.finish(cancelled = true); motion.release() }) { event, amount ->
                 event.consume(); delta += amount
                 val width = (start.width + delta.x).coerceIn(geometry.unit, geometry.width)
-                val height = (start.height + delta.y).coerceIn(geometry.unit, geometry.unit * 3 + geometry.gap * 2)
+                val maxRows = currentTile.kind.maxTileRows()
+                val height = (start.height + delta.y).coerceIn(geometry.unit, geometry.unit * maxRows + geometry.gap * (maxRows - 1))
                 val left = start.left.coerceAtMost(geometry.width - width)
                 motion.follow(Rect(Offset(left, start.top), Size(width, height)))
                 val span = ((width + geometry.gap) / geometry.pitch).roundToInt().coerceIn(1, 4) to
-                    ((height + geometry.gap) / geometry.pitch).roundToInt().coerceIn(1, 3)
+                    ((height + geometry.gap) / geometry.pitch).roundToInt().coerceIn(1, maxRows)
                 if (span != last) { last = span; currentChange(span.first, span.second); feedback.step() }
             }
         }, contentAlignment = Alignment.Center) {

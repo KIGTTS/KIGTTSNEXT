@@ -22,7 +22,7 @@ import java.time.ZoneId
 
 data class AlbumMedia(val uri: Uri, val name: String, val mime: String, val takenAt: Long,
     val width: Int, val height: Int, val duration: Long = 0, val own: Boolean = false,
-    val bucketId: String = "", val bucketName: String = "") {
+    val bucketId: String = "", val bucketName: String = "", val favorite: Boolean = false, val addedAt: Long = takenAt) {
     val video get() = mime.startsWith("video/")
     val day get() = Instant.ofEpochMilli(takenAt).atZone(ZoneId.systemDefault()).toLocalDate()
 }
@@ -42,7 +42,8 @@ internal class DeviceAlbum(private val context: Context) {
             MediaStore.MediaColumns.MIME_TYPE, MediaStore.Images.ImageColumns.DATE_TAKEN,
             MediaStore.MediaColumns.DATE_ADDED, MediaStore.MediaColumns.WIDTH, MediaStore.MediaColumns.HEIGHT,
             MediaStore.Video.VideoColumns.DURATION) + if (Build.VERSION.SDK_INT >= 29)
-            listOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.VOLUME_NAME)
+            (listOf(MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.VOLUME_NAME) +
+                if (Build.VERSION.SDK_INT >= 30) listOf(MediaStore.MediaColumns.IS_FAVORITE) else emptyList())
         else listOf(MediaStore.MediaColumns.DATA)
         val result = ArrayList<AlbumMedia>()
         val type = MediaStore.Files.FileColumns.MEDIA_TYPE
@@ -60,14 +61,17 @@ internal class DeviceAlbum(private val context: Context) {
                 val collection = if (mime.startsWith("video/")) MediaStore.Video.Media.EXTERNAL_CONTENT_URI else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                 val path = if (Build.VERSION.SDK_INT >= 29) str(MediaStore.MediaColumns.RELATIVE_PATH) else str(MediaStore.MediaColumns.DATA)
                 val folder = if (Build.VERSION.SDK_INT >= 29) path.trimEnd('/') else path.substringBeforeLast('/', "")
+                val added = long(MediaStore.MediaColumns.DATE_ADDED) * 1000
                 result += AlbumMedia(ContentUris.withAppendedId(collection, long(MediaStore.MediaColumns._ID)),
                     str(MediaStore.MediaColumns.DISPLAY_NAME), mime,
-                    long(MediaStore.Images.ImageColumns.DATE_TAKEN).takeIf { it > 0 } ?: long(MediaStore.MediaColumns.DATE_ADDED) * 1000,
+                    long(MediaStore.Images.ImageColumns.DATE_TAKEN).takeIf { it > 0 } ?: added,
                     long(MediaStore.MediaColumns.WIDTH).toInt(), long(MediaStore.MediaColumns.HEIGHT).toInt(),
                     long(MediaStore.Video.VideoColumns.DURATION), path.contains("/KIGTTS/", true) || path.startsWith("KIGTTS/") ||
                         Build.VERSION.SDK_INT >= 29 && str(MediaStore.MediaColumns.OWNER_PACKAGE_NAME) == context.packageName,
                     bucketId = if (Build.VERSION.SDK_INT >= 29) "${str(MediaStore.MediaColumns.VOLUME_NAME)}/$folder" else folder,
-                    bucketName = folder.substringAfterLast('/'))
+                    bucketName = folder.substringAfterLast('/'),
+                    favorite = Build.VERSION.SDK_INT >= 30 && long(MediaStore.MediaColumns.IS_FAVORITE) == 1L,
+                    addedAt = added)
             }
         }
         result.sortedWith(compareByDescending<AlbumMedia> { it.takenAt }.thenByDescending { it.uri.lastPathSegment?.toLongOrNull() ?: 0 })

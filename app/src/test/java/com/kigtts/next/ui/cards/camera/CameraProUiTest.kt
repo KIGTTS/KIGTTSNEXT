@@ -60,20 +60,23 @@ class CameraProUiTest {
             }
         }
         val exposure = CameraExposureCompensation().apply { attach(-6..6, .5f) }
+        var selected by mutableStateOf<ProControl?>(null)
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            CameraProControls(controller, exposure, true, false, false, {}, {})
+            CameraProControls(controller, exposure, true, false, exposure::chooseBaseline, selected = selected, select = { selected = it })
         } }
         compose.onNodeWithTag("camera-pro/FOCUS").assertIsNotEnabled()
         compose.onNodeWithTag("camera-pro-controls").captureRoboImage("build/previews/camera-pro-controls.png")
         compose.onNodeWithTag("camera-pro/ISO").performClick()
-        compose.onNodeWithTag("camera-manual-iso").assertIsNotEnabled()
-        compose.onNodeWithTag("camera-pro-auto").performClick()
+        compose.onNodeWithTag("camera-pro-auto").assertIsNotEnabled()
         compose.onNodeWithTag("camera-manual-iso").assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.SetProgress) { it(1f) }
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(30f) }
         compose.runOnIdle { assertEquals(3200, controller.sensorIso) }
         compose.onNodeWithTag("camera-pro/EV").assertIsNotEnabled()
+        compose.onNodeWithTag("camera-pro-auto").performClick()
+        compose.runOnIdle { assertTrue(controller.automaticExposure) }
         compose.onNodeWithTag("camera-pro/WB").performClick()
-        compose.onNodeWithText("日光").performClick()
+        compose.onNodeWithTag("camera-manual-white-balance")
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(1f) }
         compose.runOnIdle { assertEquals(CameraWhiteBalance.DAYLIGHT, controller.whiteBalance) }
         compose.onNodeWithTag("camera-pro-reset").performClick()
         compose.onNodeWithTag("camera-pro/EV").assertIsEnabled()

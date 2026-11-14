@@ -17,6 +17,9 @@ import com.kigtts.next.identity.*
 import java.io.File
 
 @Composable internal fun ProfileTileContent(tile: ProfileTile, contact: ContactLink?, image: (String) -> File?, editing: Boolean) {
+    if (tile.kind == ProfileTileKind.QR) {
+        ProfileQrTile(tile.text, tile.qrStyle, tile.title, Modifier.fillMaxSize().padding(8.dp)); return
+    }
     if (tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank()) {
         ProfileTileImage(image(tile.image), Modifier.fillMaxSize(), tile.title.ifBlank { "图片" }); return
     }

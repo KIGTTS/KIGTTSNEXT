@@ -59,15 +59,9 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var delivering = false
     private var preferredFlash = CameraFlash.OFF
     val video = CameraVideoSession(context, message)
-    var scanned by mutableStateOf<String?>(null); private set
-    private var scanEnabled = false
-    private var dismissedCode: String? = null
-    private val barcode = CameraBarcodeReader { text -> ContextCompat.getMainExecutor(context).execute {
-        if (scanEnabled && scanned == null && text != dismissedCode) scanned = text
-    } }
-    fun clearScan() { dismissedCode = scanned; scanned = null }
+    val scan = CameraScanState(context)
     fun startVideo(audio: Boolean, timeLapse: Boolean, saved: (File, Boolean) -> Unit) = video.start(binding?.motionCapture?.output, audio, timeLapse, saved)
-    fun close() { unbind(); barcode.close() }
+    fun close() { unbind(); scan.close() }
     private val countdown = CameraCountdownState(scope)
     val burst = CameraBurstCapture(scope)
     val manual = CameraManualController(context, message, ::clearFocus)
@@ -95,7 +89,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             require(cameras.hasCamera(selector)) { "没有可用相机" }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
                 manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo,
-                barcode = barcode.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null) { failure ->
+                barcode = scan.analyzer.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
                         error = "实时滤镜暂时不可用，请重试"
@@ -107,7 +101,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             // Adopt before checking cancellation: catch/unbind can then release the newly created session.
             binding = attached
             histogram = attached.histogram
-            scanEnabled = mode == CameraMode.SCAN
+            scan.bind(view.takeIf { mode == CameraMode.SCAN }, epoch)
             currentCoroutineContext().ensureActive()
             if (mode.takesPhotos && attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
@@ -351,7 +345,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     }
     fun unbind(keepFlashAvailability: Boolean = false, keepZoomState: Boolean = false) {
         nextExposure = null; exposingPhoto = false; deferredZoom = null
-        video.stop(); scanEnabled = false; scanned = null; dismissedCode = null; generation++; burst.cancel(); captureJob?.cancel(); captureJob = null
+        video.stop(); scan.bind(null, ++generation); burst.cancel(); captureJob?.cancel(); captureJob = null
         capabilitiesJob?.cancel(); capabilitiesJob = null
         countdown.cancel()
         motionBuffer?.close(); motionBuffer = null

@@ -3,13 +3,16 @@ package com.kigtts.next.ui.album
 
 import android.content.Intent
 import android.net.Uri
-import android.provider.MediaStore
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -24,6 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.media.*
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.LocalCornerRadius
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.delay
@@ -82,8 +86,7 @@ import kotlinx.coroutines.delay
     BackHandler(choosingAlbum || selecting) { back() }
     Scaffold(topBar = {
         TopAppBar(title = {
-            if (choosingAlbum) Text("选择相册")
-            else AlbumTitle(album, albums, ::selectAlbum)
+            AlbumTitle(album, choosingAlbum) { choosingAlbum = !choosingAlbum }
         }, navigationIcon = { IconButton(feedbackClick(::back)) { Icon(Icons.Default.ArrowBack, "返回") } },
             actions = {
                 if (!choosingAlbum) {
@@ -113,13 +116,9 @@ import kotlinx.coroutines.delay
             if (!readable) TextButton(feedbackClick { request.launch(DeviceAlbum.permissions(imagesOnly)) },
                 Modifier.fillMaxWidth()) { Text("查看设备上的照片和视频") }
             if (failure != null) TextButton(feedbackClick { revision++ }, Modifier.fillMaxWidth()) { Text(failure.orEmpty()) }
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-            Crossfade(choosingAlbum, Modifier.fillMaxSize(), label = "album-level") { collections ->
-                if (collections) AlbumCollectionGrid(albums, onPinchOpen = ::selectAlbum) { choice ->
-                    zoom = 0
-                    selectAlbum(choice)
-                }
-                else AlbumPhotoGrid(photos, grid, loading, zoom, { zoom = it }, { choosingAlbum = true },
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val availableHeight = maxHeight
+                AlbumPhotoGrid(photos, grid, loading, zoom, { zoom = it }, { choosingAlbum = true },
                     selecting || choose != null && multiple, checked,
                     tapPhoto = { media ->
                         if (selecting || choose != null && multiple) toggle(media)
@@ -128,7 +127,24 @@ import kotlinx.coroutines.delay
                         selecting = choose == null
                         toggle(media)
                     }), modifier = Modifier.fillMaxSize())
-            }
+                androidx.compose.animation.AnimatedVisibility(choosingAlbum, Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = .23f))
+                        .clickable(remember { MutableInteractionSource() }, indication = null,
+                            onClickLabel = "收起相册", onClick = feedbackClick { choosingAlbum = false }))
+                }
+                androidx.compose.animation.AnimatedVisibility(choosingAlbum, Modifier.align(Alignment.TopCenter),
+                    enter = fadeIn() + slideInVertically { -it / 8 }, exit = fadeOut() + slideOutVertically { -it / 8 }) {
+                    Surface(Modifier.widthIn(max = 840.dp).fillMaxWidth()
+                        .height((availableHeight * .80f).coerceAtMost(570.dp)),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            bottomStart = LocalCornerRadius.current, bottomEnd = LocalCornerRadius.current),
+                        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .87f)) {
+                        AlbumCollectionGrid(albums, album.id, Modifier.fillMaxSize(), onPinchOpen = ::selectAlbum) { choice ->
+                            zoom = 0
+                            selectAlbum(choice)
+                        }
+                    }
+                }
             }
         }
     }

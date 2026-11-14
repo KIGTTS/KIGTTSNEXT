@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.components.LocalCornerRadius
 import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.excludeCameraPull
@@ -77,7 +78,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             4 -> settingsButton()
         }
     }
-    Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(16.dp))
+    Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(LocalCornerRadius.current))
         else Modifier.matchParentSize()) {
     // Keep both rails accessible, including while chrome is moving outside the viewfinder.
     val zoomClearance = if (layout == null) 60f else if (vertical)

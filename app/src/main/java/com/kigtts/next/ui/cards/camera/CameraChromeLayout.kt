@@ -10,7 +10,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
 
-internal data class CameraChromeLayout(val photo: Rect, val controls: Rect, val zoom: Rect)
+internal data class CameraChromeLayout(val photo: Rect, val controls: Rect, val zoom: Rect, val pro: Rect? = null)
 
 internal const val CAMERA_HEADER_CLEARANCE = 52f
 internal const val CAMERA_PREVIEW_SIDE_INSET = 12f
@@ -89,3 +89,14 @@ internal fun rememberCameraChromeLayout(width: Float, height: Float, photo: Size
 
 internal fun Modifier.cameraChromeBounds(rect: Rect): Modifier = offset(rect.left.dp, rect.top.dp)
     .size(rect.width.coerceAtLeast(0f).dp, rect.height.coerceAtLeast(0f).dp)
+
+internal fun cameraBaselineChrome(width: Float, height: Float, photo: Rect, baseline: CameraCaptureBaseline,
+    professional: Boolean): CameraChromeLayout {
+    val controls = if (baseline.vertical) {
+        // Back remains at the upper-left; the shortcut stack is centered in the remaining left rail.
+        Rect(0f, minOf(56f, height), minOf(CAMERA_LEFT_CLEARANCE, width), height)
+    } else {
+        Rect(minOf(width, 56f), 0f, width, minOf(height, CAMERA_HEADER_CLEARANCE))
+    }
+    return CameraChromeLayout(photo, controls, baseline.zoom(professional), baseline.pro().takeIf { professional })
+}

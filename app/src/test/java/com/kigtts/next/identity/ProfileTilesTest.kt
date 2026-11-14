@@ -15,6 +15,17 @@ import java.io.File
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35]) @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ProfileTilesTest {
+    @Test fun unicodeQrTileRetainsLargeSpanAndStyleInPublicWebLayout() {
+        val tile = ProfileTile(id = "qr", kind = ProfileTileKind.QR, title = "九月", text = "你好 👋",
+            columns = 4, rows = 4, qrStyle = ProfileQrStyle.DOTS)
+        val person = PublicIdentityProfile.from(JSONObject().put("tiles", profileTileJson(listOf(tile))))
+        assertEquals(tile, person.tiles.single())
+        val html = faceWebTiles(person, "/", emptyList()) { "" }
+        assertTrue(html.contains("grid-row:1/span 4"))
+        assertTrue(html.contains("profile-qr-code"))
+        assertTrue(html.contains("<circle"))
+        assertFalse(html.contains(tile.text))
+    }
     @Test fun socialAccountsSurviveRestartAndPublicSharingWithoutDependingOnProfileContacts() {
         val f = CardPrintCoordinatorTest.Fixture()
         try {

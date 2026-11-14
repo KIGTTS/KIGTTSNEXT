@@ -40,21 +40,21 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
     burstStart: (() -> Unit)? = null, burstEnd: () -> Unit = {}, burstRunning: Boolean = false,
     burstHeld: Boolean = false, burstCount: Int = 0, shutter: (@Composable () -> Unit)? = null,
     queueShutter: Boolean = false, galleryPreview: Uri? = null, configurationLocked: Boolean = locked,
-    gallerySaving: Boolean = false) {
+    gallerySaving: Boolean = false, scanImage: Boolean = false) {
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
         if (showCancel || gallery != null) Box(Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterStart)
             .padding(6.dp).size(56.dp), contentAlignment = Alignment.Center) {
-            ToolButton(if (gallery != null) "相册" else "取消拍摄",
-            if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
+            ToolButton(if (scanImage) "选取图片" else if (gallery != null) "相册" else "取消拍摄",
+            if (scanImage) Icons.Default.Image else if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
             Modifier.testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
             colors = tonal,
             enabled = active && if (gallery != null) !configurationLocked else !busy,
             onLongClick = if (gallery != null) systemCamera else null,
-            overlay = { if (gallery != null) CameraGalleryThumbnail(galleryPreview) })
-            if (gallery != null) AnimatedVisibility(gallerySaving, enter = fadeIn(), exit = fadeOut()) {
+            overlay = { if (gallery != null && !scanImage) CameraGalleryThumbnail(galleryPreview) })
+            if (gallery != null) AnimatedVisibility(gallerySaving && !scanImage, enter = fadeIn(), exit = fadeOut()) {
                 CircularProgressIndicator(Modifier.size(54.dp).testTag("camera-gallery-saving"), strokeWidth = 2.dp,
                     color = cameraShutterAccent(), trackColor = cameraShutterAccent().copy(alpha = .20f))
             }

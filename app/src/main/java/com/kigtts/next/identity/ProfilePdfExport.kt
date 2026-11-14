@@ -52,6 +52,22 @@ internal object ProfilePdfExport {
                 ProfileTileKind.CONTACT -> if (tile.social == null) {
                     paragraph(tile.title, 15f, true); paragraph(tile.text.ifBlank { tile.contact }, 12f)
                 }
+                ProfileTileKind.QR -> profileQrMatrix(tile.text)?.let { code ->
+                    space(224f)
+                    page.paragraph(tile.title.ifBlank { "二维码" }, 15f, true)
+                    val pitch = kotlin.math.floor(172f / code.width)
+                    val side = pitch * code.width; val left = (595f - side) / 2f
+                    val paint = Paint().apply { color = Color.WHITE }
+                    page.canvas.drawRect(left, page.y, left + side, page.y + side, paint)
+                    paint.color = Color.BLACK
+                    for (y in 0 until code.height) for (x in 0 until code.width) if (code[x, y]) {
+                        val px = left + x * pitch; val py = page.y + y * pitch
+                        if (tile.qrStyle == ProfileQrStyle.DOTS && pitch >= 3f && code.qrDotAllowed(x, y))
+                            page.canvas.drawCircle(px + pitch / 2, py + pitch / 2, pitch * .48f, paint)
+                        else page.canvas.drawRect(px, py, px + pitch, py + pitch, paint)
+                    }
+                    page.y += side + 12f
+                }
                 else -> {
                     val body = tile.text.ifBlank { tile.contact }
                     space(page.height(tile.title, 15f, true) + if (body.isNotBlank()) 70f else 12f)

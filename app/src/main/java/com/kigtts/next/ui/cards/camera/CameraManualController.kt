@@ -53,24 +53,25 @@ internal class CameraManualController(private val context: Context, private val 
     }
     internal fun record(value: CameraMeteringSample) { sample.set(value) }
     fun meteringSample(): CameraMeteringSample? = sample.get()
-    fun focusMode(enabled: Boolean) {
+    fun focusMode(enabled: Boolean, distance: Float? = null) {
         if (enabled && !capabilities.focusAvailable) return
         beforeChange(); manualFocus = enabled
-        if (enabled) focusDiopters = sample.get()?.focus?.takeIf(Float::isFinite)?.coerceIn(0f, capabilities.maximumFocus) ?: 0f
+        if (enabled) focusDiopters = (distance ?: sample.get()?.focus)?.takeIf(Float::isFinite)?.coerceIn(0f, capabilities.maximumFocus) ?: 0f
         apply()
     }
     fun focusAt(value: Float) {
         if (!manualFocus || !value.isFinite()) return
         focusDiopters = value.coerceIn(0f, capabilities.maximumFocus); apply()
     }
-    fun setManualShutter(enabled: Boolean) {
+    fun setManualShutter(enabled: Boolean, time: Long? = null, sensitivity: Int? = null) {
         if (enabled && !capabilities.shutterAvailable) return
         beforeChange()
         if (enabled) {
             val range = requireNotNull(capabilities.exposure)
-            shutterNanos = (sample.get()?.exposure ?: 16_666_667L).coerceIn(range)
+            val measured = sample.get()
+            shutterNanos = (time ?: measured?.exposure ?: 16_666_667L).coerceIn(range)
             val iso = requireNotNull(capabilities.sensitivity)
-            sensorIso = (sample.get()?.iso ?: (iso.first + (iso.last.toLong() - iso.first) / 2).toInt()).coerceIn(iso)
+            sensorIso = (sensitivity ?: measured?.iso ?: (iso.first + (iso.last.toLong() - iso.first) / 2).toInt()).coerceIn(iso)
         } else { shutterNanos = null; sensorIso = 0 }
         apply()
     }
