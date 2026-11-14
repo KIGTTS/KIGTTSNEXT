@@ -33,6 +33,62 @@ class CameraWatermarkGlassTest {
         assertEquals(WatermarkPalette.GLASS, thirdParty.defaults.palette)
     }
 
+    @Test fun explicitSourcesRoundTripAndRemainIndependentOfPlacement() {
+        val xml = "<watermark version='1' id='sample' name='预览' layout='CLASSIC' palette='GLASS' position='BOTTOM'"
+        for (source in WatermarkGlassSource.entries) {
+            val style = CameraWatermarkAsset.parse("$xml glassSource='${source.name}'/>").defaults
+            assertEquals(WatermarkPosition.BOTTOM, style.position)
+            assertEquals(source, style.glassSource)
+            assertEquals(style, CameraWatermarkStyle.decode(style.encode()))
+        }
+        assertEquals(WatermarkGlassSource.AUTO, CameraWatermarkAsset.parse("$xml/>").defaults.glassSource)
+        assertThrows(IllegalArgumentException::class.java) { CameraWatermarkAsset.parse("$xml glassSource='UNKNOWN'/>") }
+    }
+
+    @Test fun allFourEdgesAndWholePhotoCanFeedTheSameBottomBand() {
+        val bitmap = Bitmap.createBitmap(260, 200, Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = Canvas(bitmap)
+            val paper = RectF(0f, 0f, 260f, 200f)
+            val photo = RectF(10f, 16f, 250f, 152f)
+            val photoPixels = Rect(10, 16, 250, 152)
+            val paint = Paint()
+            fun fill(color: Int, left: Float, top: Float, right: Float, bottom: Float) {
+                paint.color = color
+                canvas.drawRect(left, top, right, bottom, paint)
+            }
+            fun render(source: WatermarkGlassSource): Int {
+                canvas.drawColor(Color.WHITE)
+                fill(Color.GRAY, photo.left, photo.top, photo.right, photo.bottom)
+                fill(Color.RED, 10f, 16f, 250f, 47f)
+                fill(Color.BLUE, 10f, 121f, 250f, 152f)
+                fill(Color.GREEN, 10f, 16f, 41f, 152f)
+                fill(Color.YELLOW, 219f, 16f, 250f, 152f)
+                PhotoFrameGlass.prepare(bitmap, photoPixels, WatermarkPosition.BOTTOM, 14,
+                    sideEdges = false, sampling = source).use { it.draw(canvas, paper, photo) }
+                assertEquals(Color.WHITE, bitmap.getPixel(130, 8))
+                assertEquals(Color.GRAY, bitmap.getPixel(130, 84))
+                return bitmap.getPixel(130, 176)
+            }
+            val top = render(WatermarkGlassSource.TOP)
+            val bottom = render(WatermarkGlassSource.BOTTOM)
+            val left = render(WatermarkGlassSource.LEFT)
+            val right = render(WatermarkGlassSource.RIGHT)
+            val full = render(WatermarkGlassSource.FULL)
+            assertTrue(Color.red(top) > 165 && Color.blue(top) < 24)
+            assertTrue(Color.blue(bottom) > 165 && Color.red(bottom) < 24)
+            assertTrue(Color.green(left) > 165 && Color.red(left) < 24)
+            assertTrue(Color.red(right) > 165 && Color.green(right) > 165)
+            assertTrue(Color.red(full) in 65..140 && Color.blue(full) in 65..140)
+        } finally { bitmap.recycle() }
+    }
+
+    @Test fun standardWatermarkLogoGetsMoreSpaceWithoutEnlargingCenteredOrClassicLogos() {
+        assertEquals(27f, watermarkLogoHeight(WatermarkLayout.STANDARD, false, 1000f, 90f, 4f), .01f)
+        assertEquals(19.8f, watermarkLogoHeight(WatermarkLayout.STANDARD, true, 1000f, 90f, 4f), .01f)
+        assertEquals(19.8f, watermarkLogoHeight(WatermarkLayout.CLASSIC, false, 1000f, 90f, 4f), .01f)
+    }
+
     @Test fun glassSamplesTheSelectedPhotoEdgeAndNeverPaintsThePhoto() {
         val image = Bitmap.createBitmap(184, 144, Bitmap.Config.ARGB_8888)
         try {

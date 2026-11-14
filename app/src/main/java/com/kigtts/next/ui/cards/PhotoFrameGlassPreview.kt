@@ -31,7 +31,7 @@ internal fun rememberPhotoFrameGlass(image: ImageBitmap?, style: CameraWatermark
     val frame = card?.frameStyleId?.substringAfter(".c-", "").orEmpty()
     val pose = card?.let { listOf(it.photoX, it.photoY, it.photoZoom, it.photoBackdrop) }
     val result by key(image) {
-        produceState<PhotoFrameGlass?>(null, style.position, style.band, sideEdges, frame, pose) {
+        produceState<PhotoFrameGlass?>(null, style.position, style.band, sideEdges, style.glassSource, frame, pose) {
             // During a drag retain the last prepared strip until the new pose settles.
             if (value != null) delay(65)
             value = withContext(Dispatchers.Default) {
@@ -49,7 +49,7 @@ internal fun rememberPhotoFrameGlass(image: ImageBitmap?, style: CameraWatermark
                         canvas.drawColor(android.graphics.Color.LTGRAY)
                         PolaroidPhotoRenderer.draw(canvas, source, rect, paint, card)
                     }
-                    PhotoFrameGlass.prepare(rendered, Rect(0, 0, width, height), style.position, style.band, sideEdges)
+                    PhotoFrameGlass.prepare(rendered, Rect(0, 0, width, height), style.position, style.band, sideEdges, style.glassSource)
                 } finally { rendered.recycle() }
             }
         }

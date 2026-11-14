@@ -87,12 +87,13 @@ internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: Camera
     }
     val lines = watermarkLines(style, facts)
     val centeredLogo = style.showLogo && style.center && lines.isNotEmpty()
-    val logoWidth = minOf(width * .25f, bandHeight * if (centeredLogo) .9f else 1.65f)
+    var logoWidth = 0f
     if (style.showLogo) {
         val logo = context.getDrawable(R.drawable.logo_horizontal)?.mutate()
         val ratio = logo?.let { it.intrinsicWidth.toFloat() / it.intrinsicHeight.coerceAtLeast(1) }?.coerceIn(1f, 16f) ?: 4f
-        val logoHeight = minOf(logoWidth / ratio, bandHeight * .22f)
+        val logoHeight = watermarkLogoHeight(style.layout, centeredLogo, width, bandHeight, ratio)
         val fittedWidth = logoHeight * ratio
+        if (logo != null) logoWidth = fittedWidth
         val x = if (style.center) (width - fittedWidth) / 2 else margin
         val y = if (centeredLogo) band.top + bandHeight * .19f else band.centerY()
         logo?.apply {
@@ -115,4 +116,11 @@ internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: Camera
             y + depth / 2, right - left, font * line.weight, style.center, alignRight)
         y += depth
     }
+}
+
+
+internal fun watermarkLogoHeight(layout: WatermarkLayout, centeredWithText: Boolean, width: Float, bandHeight: Float, ratio: Float): Float {
+    val prominent = layout == WatermarkLayout.STANDARD && !centeredWithText
+    val widthLimit = minOf(width * if (prominent) .30f else .25f, bandHeight * if (centeredWithText) .9f else 1.65f)
+    return minOf(widthLimit / ratio, bandHeight * if (prominent) .30f else .22f)
 }
