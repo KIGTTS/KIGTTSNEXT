@@ -73,6 +73,31 @@ class CameraFullscreenChromeUiTest {
         } finally { pixels.recycle() }
     }
 
+    @Test fun photoAndProKeepTheSameShutterAnchorInPortrait() = verifySharedShutterAnchor(360, 760)
+
+    @Test @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
+    fun photoAndProKeepTheSameShutterAnchorInLandscape() = verifySharedShutterAnchor(760, 360)
+
+    private fun verifySharedShutterAnchor(width: Int, height: Int) {
+        var pro by mutableStateOf(false)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            Box(Modifier.size(width.dp, height.dp)) {
+                CameraPageLayout(preview = { modifier, _ -> Box(modifier) },
+                    controls = { vertical ->
+                        CameraModeControls(if (pro) CameraMode.PRO else CameraMode.PHOTO, {}, true, vertical, false, 0) {
+                            CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {})
+                        }
+                    }, photoAspect = if (width > height) 4f / 3 else 3f / 4,
+                    captureBaseline = true, professional = pro)
+            }
+        } }
+        val shutter = compose.onNodeWithTag("camera-shutter")
+        val photo = shutter.fetchSemanticsNode().boundsInRoot
+        compose.runOnIdle { pro = true }
+        val professional = shutter.fetchSemanticsNode().boundsInRoot
+        assertEquals(photo, professional)
+    }
+
     @Test fun cornerActionsUseCurrentCallbacksAndSavingOnlyLocksTheNecessaryActions() {
         var busy by mutableStateOf(false); var countdown by mutableStateOf(false)
         var active by mutableStateOf(true)

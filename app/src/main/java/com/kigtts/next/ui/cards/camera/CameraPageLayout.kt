@@ -35,10 +35,11 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
         val vertical = cameraSideControls(maxWidth.value, maxHeight.value)
         var controlsSize by remember { mutableStateOf(IntSize.Zero) }
         val inset = with(LocalDensity.current) { (if (vertical) controlsSize.width else controlsSize.height).toDp() }
-        val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value, professional) else null
+        val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value) else null
         val overlay = if (baseline != null && photoAspect != null) {
             val photo = cameraCenteredCaptureWindow(maxWidth.value, (maxHeight.value - 8f).coerceAtLeast(0f),
-                photoAspect, vertical, if (fullFrame) 1f else 0f)
+                photoAspect, vertical, if (fullFrame) 1f else 0f,
+                endLimit = baseline.proPreviewLimit.takeIf { professional && !fullFrame })
             (if (vertical) photo.right else photo.bottom) > baseline.dockStart + .5f
         } else fullFrame || cameraOverlaysShutter(maxWidth.value, maxHeight.value, photoAspect)
         val targetOverlap = if (overlay) 1f else 0f
@@ -87,7 +88,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
             layout(width, height) {
                 stage.place(0, 0)
                 val start = if (captureBaseline) cameraCaptureBaseline(width.toDp().value, height.toDp().value, vertical,
-                    (if (vertical) dock.width else dock.height).toDp().value, professional).dockPositionInStage().dp.roundToPx()
+                    (if (vertical) dock.width else dock.height).toDp().value).dockPositionInStage().dp.roundToPx()
                 else if (vertical) width - dock.width else height - dock.height
                 dock.place(if (vertical) start else 0, if (vertical) 0 else start)
             }

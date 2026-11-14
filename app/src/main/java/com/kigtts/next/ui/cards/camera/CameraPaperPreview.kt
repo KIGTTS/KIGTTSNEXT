@@ -6,6 +6,7 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.Surface
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,9 +86,16 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         val targetHeaderInset = if (fullFrame) 0f else headerClearance
         val photoWidth = maxWidth.value - minOf(2 * photoSideInset, maxWidth.value * .5f)
         val fitted = cameraPhotoWindow(photoWidth, maxHeight.value - headerInset, motion.ratio.value)
+        val axisEnd = if (verticalChrome) maxWidth.value else maxHeight.value
+        val proFit by animateFloatAsState(if (professional) 1f else 0f,
+            CameraFramingMotion, label = "camera-pro-preview-clearance")
+        val proPreviewLimit = baseline?.let {
+            val inset = (axisEnd - it.proPreviewLimit).coerceAtLeast(0f)
+            (axisEnd - inset * proFit * (1f - fullFrameProgress)).takeIf { proFit > 0f && fullFrameProgress < 1f }
+        }
         val layout = if (baseline != null) cameraBaselineChrome(maxWidth.value, maxHeight.value,
             cameraCenteredCaptureWindow(maxWidth.value, maxHeight.value, motion.ratio.value, verticalChrome,
-                fullFrameProgress, photoSideInset), baseline, professional)
+                fullFrameProgress, photoSideInset, proPreviewLimit), baseline, professional)
         else rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
             cameraPhotoWindow(photoWidth, maxHeight.value - targetHeaderInset, aspectRatio), verticalChrome,
             headerInset = headerInset, portraitAnchor = LocalCameraPortraitAnchor.current,
