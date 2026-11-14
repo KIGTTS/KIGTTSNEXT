@@ -70,8 +70,7 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
         val card = PolaroidCard(title = "", imageId = shown.id, originalImageId = original.id,
             frameStyleId = PhotoFrameSpec(shown.width, shown.height, pending.watermark).id,
             photoStyle = shot.photoStyle?.persist(stickers)?.takeIf { it.hasPhotoTreatment() })
-        val facts = PhotoServiceSettings(stickers.context).captureFacts(
-            PolaroidPhotoFacts.read(shot.original, true, shot.capturedAt), System.currentTimeMillis())
+        val facts = cameraWatermarkCaptureFacts(stickers.context, shot.original, shot.capturedAt, pending.watermark)
         shot.motion?.let { saveMotion?.invoke(shown.id, it) }
         cards.systemAlbum.encodings.set(card.id, pending.encoding)
         cards.documents.hold(card.id)

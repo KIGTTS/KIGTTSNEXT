@@ -19,14 +19,19 @@ internal object PhotoFactsConsent {
             if (prefs.getBoolean("weather", false)) add(PhotoTextField.WEATHER)
         }
     }
+    private fun key(kind: String, settings: PhotoServiceConfig) = when {
+        kind == "weather" && settings.weatherSource != PhotoWeatherSource.OPEN_METEO -> "weather-${settings.weatherSource.name}"
+        kind == "location" && settings.placeSource == PhotoPlaceSource.AMAP -> "location-AMAP"
+        else -> kind
+    }
+
+    fun granted(context: Context, kind: String, settings: PhotoServiceConfig): Boolean =
+        context.getSharedPreferences("polaroid-facts", 0).getBoolean(key(kind, settings), false)
+
     suspend fun request(context: Context, kind: String,
         settings: PhotoServiceConfig = PhotoServiceSettings(context).snapshot()): Boolean = mutex.withLock {
         val prefs = context.getSharedPreferences("polaroid-facts", 0)
-        val key = when {
-            kind == "weather" && settings.weatherSource != PhotoWeatherSource.OPEN_METEO -> "weather-${settings.weatherSource.name}"
-            kind == "location" && settings.placeSource == PhotoPlaceSource.AMAP -> "location-AMAP"
-            else -> kind
-        }
+        val key = key(kind, settings)
         if (prefs.getBoolean(key, false)) return@withLock true
         val service = if (kind == "weather") settings.weatherSource.label else settings.placeSource.label
         val request = Request(kind, service = service); pending.value = request

@@ -1,7 +1,6 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards.camera
 
-import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,13 +23,13 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
-    watermarkPreview: () -> Bitmap? = { null }, watermarkStore: (() -> Unit)? = null,
+    watermarkStore: (() -> Unit)? = null,
     exposureWarningAvailable: Boolean = true) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
     var lastEdited by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
-    var snapshot by remember { mutableStateOf<Bitmap?>(null) }
+    val snapshot = rememberCameraReferencePhoto(watermarkPage)
     ModalBottomSheet(options::hideSettings, containerColor = MaterialTheme.colorScheme.surfaceContainer,
         scrimColor = Color.Black.copy(alpha = .26f),
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -45,7 +44,6 @@ import kotlinx.coroutines.withContext
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
             else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable) {
-                snapshot = watermarkPreview()
                 watermarkPage = true
             }
         }

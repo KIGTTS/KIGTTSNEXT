@@ -21,12 +21,14 @@ internal interface PhotoFactsAccess {
     suspend fun weather(facts: FrozenPhotoFacts): String?
 }
 
-internal class AndroidPhotoFactsAccess(private val context: Context) : PhotoFactsAccess {
+internal class AndroidPhotoFactsAccess(private val context: Context, private val interactive: Boolean = true) : PhotoFactsAccess {
     private val settings = PhotoServiceSettings(context).snapshot()
-    override suspend fun consent(kind: String) = PhotoFactsConsent.request(context, kind, settings)
+    override suspend fun consent(kind: String) = if (interactive) PhotoFactsConsent.request(context, kind, settings)
+        else PhotoFactsConsent.granted(context, kind, settings)
     override suspend fun locationPermission(): Boolean {
-        if (!PhotoFactsConsent.request(context, "location", settings)) return false
+        if (!consent("location")) return false
         fun has(permission: String) = ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        if (!interactive) return has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION)
         val prefs = context.getSharedPreferences("polaroid-facts", 0)
         if (has(Manifest.permission.ACCESS_FINE_LOCATION) || has(Manifest.permission.ACCESS_COARSE_LOCATION) && prefs.getBoolean("location-permission-v2", false)) return true
         prefs.edit().putBoolean("location-permission-v2", true).apply()

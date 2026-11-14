@@ -3,6 +3,7 @@ package com.kigtts.next.ui.cards.camera
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -28,13 +29,17 @@ import kotlin.math.ln
 @Composable
 internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enabled: Boolean,
     zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null,
-    dialVisibilityChanged: (Boolean) -> Unit = {}) {
-    val range = cameraZoomRange(minimum, maximum) ?: return
+    dialVisibilityChanged: (Boolean) -> Unit = {}, adjustment: ProControl? = null,
+    adjustmentContent: @Composable (ProControl) -> Unit = {}) {
+    val availableRange = cameraZoomRange(minimum, maximum)
+    if (availableRange == null && adjustment == null) return
+    val range = availableRange ?: (1f..2f)
+    val zoomEnabled = enabled && availableRange != null && adjustment == null
     val reported = ratio.takeIf(Float::isFinite)?.coerceIn(range) ?: range.start
     var dragging by remember { mutableStateOf(false) }
     var dial by remember { mutableStateOf(false) }
     val latestVisibility by rememberUpdatedState(dialVisibilityChanged)
-    LaunchedEffect(dial, enabled) { latestVisibility(dial && enabled) }
+    LaunchedEffect(dial, zoomEnabled) { latestVisibility(dial && zoomEnabled) }
     DisposableEffect(Unit) { onDispose { latestVisibility(false) } }
     var optimistic by remember { mutableFloatStateOf(reported) }
     // CameraX reports zoom asynchronously; keep the dial at the requested value through release.
@@ -42,19 +47,19 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
     val latestZoom by rememberUpdatedState(zoom)
     val latestValue by rememberUpdatedState(value)
     val feedback = rememberDragFeedback()
-    val stops = remember(range) { cameraZoomStops(range) }
-    val selected = stops.minBy { abs(ln(value / it)) }
+    val stops = remember(availableRange) { availableRange?.let(::cameraZoomStops).orEmpty() }
+    val selected = stops.minByOrNull { abs(ln(value / it)) }
     val travel = with(LocalDensity.current) { 260.dp.toPx() }
     LaunchedEffect(dial, dragging) { if (dial && !dragging) { delay(750); dial = false } }
-    LaunchedEffect(enabled) { if (!enabled) { dragging = false; dial = false; feedback.finish(true) } }
+    LaunchedEffect(zoomEnabled) { if (!zoomEnabled) { dragging = false; dial = false; feedback.finish(true) } }
     DisposableEffect(feedback) { onDispose { feedback.finish(true) } }
     fun change(position: Float) {
         optimistic = cameraZoomFromPosition(position, range)
         latestZoom(optimistic)
         feedback.move(position * 600f)
     }
-    fun dragModifier() = Modifier.pointerInput(range, vertical, enabled) {
-        if (!enabled) return@pointerInput
+    fun dragModifier() = Modifier.pointerInput(range, vertical, zoomEnabled) {
+        if (!zoomEnabled) return@pointerInput
         var position = 0f
         detectDragGestures(onDragStart = {
             optimistic = latestValue; position = cameraZoomPosition(latestValue, range)
@@ -68,27 +73,42 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         }
     }
     Box(modifier) {
-        val alpha by androidx.compose.animation.core.animateFloatAsState(if (dial) 0f else 1f,
+        val alpha by androidx.compose.animation.core.animateFloatAsState(if (dial && adjustment == null) 0f else 1f,
             tween(120), label = "zoom-presets-opacity")
         val rail = if (bounds != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds)
             else Modifier.matchParentSize()
         Box(rail.testTag("camera-zoom-rail"), contentAlignment = Alignment.Center) {
-            Surface(Modifier.alpha(alpha).excludeCameraPull().then(dragModifier()), shape = CircleShape,
+            val available = bounds?.let { if (vertical) it.height.dp else it.width.dp }
+            val target = if (adjustment == null) (48 * stops.size).dp else (available ?: 400.dp).coerceAtMost(440.dp)
+            val length by animateDpAsState(target, tween(220), label = "camera-zoom-morph")
+            val capsule = if (vertical) Modifier.width(48.dp).height(length) else Modifier.width(length).height(48.dp)
+            Surface(capsule.alpha(alpha).excludeCameraPull().then(dragModifier()), shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {
-                val buttons: @Composable () -> Unit = {
-                    stops.forEach { factor ->
-                        val active = factor == selected
-                        CameraZoomButton(if (active) zoomLabel(value) else zoomLabel(factor).removeSuffix("×").removeSuffix(".0"),
-                            "变焦 ${zoomLabel(factor)}", enabled, { latestZoom(factor) },
-                            Modifier.testTag("camera-zoom-stop/" + factor.toString().removeSuffix(".0")),
-                            if (active) "camera-zoom-value" else null, selected = active)
+                AnimatedContent(adjustment, Modifier.fillMaxSize(),
+                    transitionSpec = { fadeIn(tween(135, delayMillis = 35)) togetherWith fadeOut(tween(115)) },
+                    label = "camera-zoom-ruler") { key ->
+                    if (key != null) {
+                        Box(if (vertical) Modifier.fillMaxSize().verticalModeLabel() else Modifier.fillMaxSize()) {
+                            adjustmentContent(key)
+                        }
+                    } else {
+                        val buttons: @Composable () -> Unit = {
+                            stops.forEach { factor ->
+                                val active = factor == selected
+                                CameraZoomButton(if (active) zoomLabel(value) else zoomLabel(factor).removeSuffix("×").removeSuffix(".0"),
+                                    "变焦 ${zoomLabel(factor)}", zoomEnabled, { latestZoom(factor) },
+                                    Modifier.testTag("camera-zoom-stop/" + factor.toString().removeSuffix(".0")),
+                                    if (active) "camera-zoom-value" else null, selected = active)
+                            }
+                        }
+                        // Don't resize the preset hit targets while the surrounding capsule animates.
+                        if (vertical) Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) { buttons() }
+                        else Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center) { buttons() }
                     }
                 }
-                // Opacity keeps the original touch owner and geometry throughout a drag.
-                if (vertical) Column { buttons() } else Row { buttons() }
             }
         }
-        AnimatedVisibility(dial && enabled, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
+        AnimatedVisibility(dial && zoomEnabled, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
             Box(Modifier.fillMaxSize()) {
             val dialModifier = if (bounds == null) Modifier.fillMaxSize()
                 else if (vertical) Modifier.fillMaxHeight().width((bounds.right + 8f).dp)

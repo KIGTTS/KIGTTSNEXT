@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.*
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.ChoiceButtonGroup
+import androidx.compose.foundation.selection.toggleable
 import kotlin.math.roundToInt
 
 @Composable
@@ -42,13 +44,9 @@ internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enab
     Column(Modifier.fillMaxWidth().padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         WatermarkHeader("边框水印", back, store)
         val active = options.activeWatermark
-        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-            listOf("关闭", "开启").forEachIndexed { i, label ->
-                SegmentedButton(selected = options.watermarkEnabled == (i == 1), enabled = enabled && active != null,
-                    onClick = feedbackClick { options.chooseWatermark(active?.id.takeIf { i == 1 }) },
-                    shape = SegmentedButtonDefaults.itemShape(i, 2), label = { Text(label) })
-            }
-        }
+        ChoiceButtonGroup("边框水印", listOf(false, true), options.watermarkEnabled,
+            { if (it) "开启" else "关闭" }, { options.chooseWatermark(if (it) active?.id else null) },
+            Modifier.padding(horizontal = 20.dp), enabled = enabled && active != null)
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(options.watermarks, key = { it.id }) { asset ->
                 val selected = options.watermarkEnabled && active?.id == asset.id
@@ -86,12 +84,14 @@ internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraO
 internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boolean, change: (CameraWatermarkStyle) -> Unit,
     drag: (CameraWatermarkStyle) -> Unit = change, finishDrag: (() -> Unit)? = null) {
             WatermarkChoices("背景", WatermarkPalette.entries, style.palette, { it.label }, enabled) { change(style.copy(palette = it)) }
-            WatermarkChoices("位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
+            WatermarkChoices("边条位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
             Text("内容大小", style = MaterialTheme.typography.titleSmall)
             Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
                 enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
             WatermarkToggle("显示时间", style.showTime, enabled) { change(style.copy(showTime = it)) }
             WatermarkToggle("显示日期", style.showDate, enabled) { change(style.copy(showDate = it)) }
+            WatermarkToggle("显示地点", style.showLocation, enabled) { change(style.copy(showLocation = it)) }
+            WatermarkToggle("显示天气", style.showWeather, enabled) { change(style.copy(showWeather = it)) }
             if (style.layout == WatermarkLayout.CLASSIC) {
                 WatermarkToggle("显示拍摄参数", style.showExposure, enabled) { change(style.copy(showExposure = it)) }
                 Text("边框宽度", style = MaterialTheme.typography.titleSmall)
@@ -116,18 +116,14 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
 
 @Composable private fun <T> WatermarkChoices(title: String, values: List<T>, selected: T, name: (T) -> String, enabled: Boolean, select: (T) -> Unit) {
     Text(title, style = MaterialTheme.typography.titleSmall)
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
-        values.forEachIndexed { index, value ->
-            SegmentedButton(value == selected, feedbackClick { select(value) }, SegmentedButtonDefaults.itemShape(index, values.size),
-                enabled = enabled, icon = {}, label = { Text(name(value)) })
-        }
-    }
+    ChoiceButtonGroup(title, values, selected, name, select, Modifier.padding(bottom = 10.dp), enabled = enabled, compactLabels = true)
 }
 
 @Composable private fun WatermarkToggle(label: String, checked: Boolean, enabled: Boolean, set: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = set)
+        .padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(label, Modifier.weight(1f))
-        Switch(checked, set, enabled = enabled)
+        Switch(checked, onCheckedChange = null, enabled = enabled)
     }
 }
 
@@ -145,7 +141,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
             else Box(photo.background(Brush.linearGradient(listOf(Color(0xFF8ABACA), Color(0xFF486B76), Color(0xFFE0AB74)))))
             Canvas(Modifier.matchParentSize()) {
                 drawIntoCanvas { drawCameraWatermark(context, it.nativeCanvas, style, geometry,
-                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100"), this.size.width, this.size.height) }
+                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100", "上海市 · 徐汇区", "晴 22°C"), this.size.width, this.size.height) }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -34,14 +35,22 @@ class CameraProUiTest {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.size(360.dp, 240.dp)) {
                 val rail = Rect(0f, 192f, 360f, 240f)
-                if (!expanded) CameraZoomRail(1f, .6f, 8f, true, {}, false, Modifier.matchParentSize(), rail)
-                CameraExposureRail(exposure, rail, false, 4, expanded, true, { expanded = !expanded }, exposure::chooseBaseline)
+                CameraZoomRail(1f, .6f, 8f, true, {}, false, Modifier.matchParentSize(), rail,
+                    adjustment = ProControl.EV.takeIf { expanded }) {
+                    CameraExposureRuler(exposure, expanded, exposure::chooseBaseline, { expanded = false })
+                }
+                if (!expanded) CameraExposureRail(exposure, rail, false, 4, true) { expanded = true }
             }
         } }
         val button = compose.onNodeWithTag("camera-global-exposure")
         assertTrue(button.getUnclippedBoundsInRoot().right <=
             compose.onNodeWithTag("camera-zoom-stop/0.6").getUnclippedBoundsInRoot().left)
+        val zoomBounds = compose.onNodeWithTag("camera-zoom-rail").getUnclippedBoundsInRoot()
         button.performClick()
+        val rulerBounds = compose.onNodeWithTag("camera-exposure-ruler").getUnclippedBoundsInRoot()
+        assertEquals((zoomBounds.left.value + zoomBounds.right.value) / 2, (rulerBounds.left.value + rulerBounds.right.value) / 2, .5f)
+        assertEquals((zoomBounds.top.value + zoomBounds.bottom.value) / 2, (rulerBounds.top.value + rulerBounds.bottom.value) / 2, .5f)
+        compose.onNodeWithTag("camera-zoom-value").assertDoesNotExist()
         compose.onNodeWithTag("camera-global-exposure-slider").assertIsDisplayed()
             .performSemanticsAction(SemanticsActions.SetProgress) { it(3f) }
         compose.runOnIdle { assertEquals(5, exposure.index) }
@@ -62,14 +71,25 @@ class CameraProUiTest {
         val exposure = CameraExposureCompensation().apply { attach(-6..6, .5f) }
         var selected by mutableStateOf<ProControl?>(null)
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            CameraProControls(controller, exposure, true, false, exposure::chooseBaseline, selected = selected, select = { selected = it })
+            Column {
+                Box(Modifier.size(360.dp, 72.dp)) {
+                    val rail = Rect(0f, 0f, 360f, 48f)
+                    CameraZoomRail(1f, .6f, 8f, true, {}, false, Modifier.matchParentSize(), rail, adjustment = selected) { active ->
+                        CameraProAdjustment(active, controller, null, true, Modifier)
+                    }
+                }
+                CameraProControls(controller, exposure, true, false, exposure::chooseBaseline, Modifier.size(360.dp, 54.dp),
+                    selected = selected, select = { selected = it })
+            }
         } }
         compose.onNodeWithTag("camera-pro/FOCUS").assertIsNotEnabled()
         compose.onNodeWithTag("camera-pro-controls").captureRoboImage("build/previews/camera-pro-controls.png")
         compose.onNodeWithTag("camera-pro/ISO").performClick()
         compose.onNodeWithTag("camera-pro-auto").assertIsNotEnabled()
         compose.onNodeWithTag("camera-manual-iso").assertIsEnabled()
-            .performSemanticsAction(SemanticsActions.SetProgress) { it(30f) }
+            .performSemanticsAction(SemanticsActions.SetProgress) { it(.5f) }
+        compose.runOnIdle { assertTrue(controller.sensorIso in 564..567) }
+        compose.onNodeWithTag("camera-manual-iso").performSemanticsAction(SemanticsActions.SetProgress) { it(1f) }
         compose.runOnIdle { assertEquals(3200, controller.sensorIso) }
         compose.onNodeWithTag("camera-pro/EV").assertIsNotEnabled()
         compose.onNodeWithTag("camera-pro-auto").performClick()

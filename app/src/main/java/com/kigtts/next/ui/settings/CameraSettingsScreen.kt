@@ -11,6 +11,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.kigtts.next.cards.PhotoServiceSettings
+import com.kigtts.next.cards.AndroidPhotoFactsAccess
+import kotlinx.coroutines.launch
 
 @Composable internal fun CameraSettingsScreen(onWeather: () -> Unit) {
     val context = LocalContext.current
@@ -18,6 +20,7 @@ import com.kigtts.next.cards.PhotoServiceSettings
     var system by remember { mutableStateOf(preferences.getBoolean("use-system-camera", false)) }
     var full by remember { mutableStateOf(preferences.getBoolean("full-system-camera", true)) }
     val facts = remember(context) { PhotoServiceSettings(context) }
+    val scope = rememberCoroutineScope()
     var record by remember { mutableStateOf(facts.recordCapture) }
     SettingsLayout { SettingsGroup("相机") {
         ToggleSetting("默认使用系统相机", "编辑图片时优先使用系统相机。长按首页相机入口也可直接打开系统相机。", Icons.Default.PhotoCamera, system, {
@@ -30,6 +33,11 @@ import com.kigtts.next.cards.PhotoServiceSettings
         SettingsGroup("拍摄信息") {
             ToggleSetting("拍照时记录位置与天气信息", "", Icons.Default.LocationOn, record, {
                 record = it; facts.recordCapture = it
+                if (it) scope.launch {
+                    val access = AndroidPhotoFactsAccess(context)
+                    val hasLocation = if (facts.manual && facts.manualLocation != null) access.consent("location") else access.locationPermission()
+                    if (hasLocation && facts.recordCapture) access.consent("weather")
+                }
             }, position = SettingPosition.FIRST)
             SettingItem("天气设置", "位置与天气数据源", Icons.Default.Cloud, SettingPosition.LAST, onClick = onWeather,
                 trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })

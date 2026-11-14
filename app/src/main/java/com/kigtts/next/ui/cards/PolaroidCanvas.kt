@@ -58,7 +58,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     decodeMaximum: Int = 2048, photoOverride: ImageBitmap? = null, paperElevation: androidx.compose.ui.unit.Dp? = null,
     removeLayer: (String) -> Unit = {}, configureLayer: ((CardLayer) -> Unit)? = null, configurableLayer: (CardLayer) -> Boolean = { false },
     backgroundDecoration: @Composable () -> Unit = {}, photoContent: (@Composable () -> Unit)? = null,
-    viewScale: Float = 1f) {
+    viewScale: Float = 1f, photoFacts: com.kigtts.next.cards.FrozenPhotoFacts? = null) {
     var size by remember { mutableStateOf(IntSize.Zero) }
     var transforming by remember { mutableStateOf(false) }
     val current = rememberUpdatedState(card)
@@ -131,10 +131,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
             com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId)?.watermark?.let { watermark ->
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val sourceId = card.originalImageId ?: card.imageId
-                val facts by produceState(com.kigtts.next.cards.WatermarkFacts(), sourceId) {
+                val facts by produceState(com.kigtts.next.cards.WatermarkFacts(), sourceId, photoFacts) {
                     value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         val file = sourceId?.let(imageFile)
-                        com.kigtts.next.cards.watermarkFacts(file, com.kigtts.next.cards.PolaroidPhotoFacts.read(file, false))
+                        com.kigtts.next.cards.watermarkFacts(file, photoFacts ?: com.kigtts.next.cards.PolaroidPhotoFacts.read(file, false))
                     }
                 }
                 androidx.compose.foundation.Canvas(Modifier.matchParentSize().testTag("camera-watermark-paper")) {

@@ -173,6 +173,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 { if (it == null) cancelAdjustment() else { selectedId = it; if (draft.layers.none { layer -> layer.id == it && layer.kind == CardLayerKind.TEXT }) textEditing = false } },
                 ::updateLayer, photoEditable = identity != null && enabled && mode == CardEditorMode.CROP,
                 onPhotoChange = { draft = it }, frame = stickers.frameStyle(draft),
+                photoFacts = if (identity == null) remember(stickers, draft.id) { stickers.designs.facts(draft.id) } else null,
                 configurableLayer = { layer -> generators.contains(layer.imageId) },
                 configureLayer = { layer -> if (generators.get(layer.imageId) != null) generatorLayer = layer },
                 removeLayer = { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }); selectedId = null },

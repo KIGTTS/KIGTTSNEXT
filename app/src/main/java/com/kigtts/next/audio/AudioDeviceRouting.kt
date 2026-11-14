@@ -47,8 +47,8 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
                 AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE, AudioDeviceInfo.TYPE_BUILTIN_EARPIECE) || name.isBlank()) kind else "$name · $kind"
         return AudioEndpoint(audioEndpointKey(device.type, (if (Build.VERSION.SDK_INT >= 28) device.address.orEmpty() else ""), name), label, device.type)
     }
-    @Synchronized internal fun endpoints(input: Boolean) = devices(input).map(::endpoint).distinctBy { it.key }
-    internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)
+    @Synchronized internal fun endpoints(input: Boolean) = labelAudioEndpoints(devices(input).map(::endpoint).map { it.copy(key = normalizeAudioEndpointKey(it.key)) })
+    internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)?.let(::normalizeAudioEndpointKey)
     internal val noiseSuppression: Boolean get() = preferences.getBoolean(NOISE_PREF, false)
     internal val outputGain: Float get() = preferences.getFloat("output-gain", 1f).takeIf { it.isFinite() && it in 0f..10f } ?: 1f
     internal fun setOutputGain(value: Float) {
@@ -69,7 +69,11 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
     }
     @Synchronized internal fun unbind(stream: AudioRouting) { leases.remove(stream) }
     private fun route(stream: AudioRouting, input: Boolean) {
-        val target = selected(input)?.let { key -> devices(input).firstOrNull { endpoint(it).key == key } }
+        val target = preferences.getString(side(input), null)?.let { key ->
+            val current = devices(input).map { it to endpoint(it).key }
+            current.firstOrNull { it.second == key }?.first
+                ?: current.firstOrNull { normalizeAudioEndpointKey(it.second) == normalizeAudioEndpointKey(key) }?.first
+        }
         if (runCatching { stream.setPreferredDevice(target) }.getOrDefault(false).not())
             runCatching { stream.setPreferredDevice(null) }
     }
@@ -95,10 +99,14 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
         return page.copy(blocks = page.blocks + PageBlock.Group("音频设备", controls))
     }
     private fun action(input: Boolean, key: String?) = "host-audio/${side(input)}/" + (key ?: "default")
-    private fun actions(input: Boolean) = listOf(PageAction(action(input, null), "系统默认")) +
-        endpoints(input).map { PageAction(action(input, it.key), it.label) } +
-        if (selected(input) != null && endpoints(input).none { it.key == selected(input) })
-            listOf(PageAction(action(input, selected(input)), summary(input))) else emptyList()
+    private fun actions(input: Boolean): List<PageAction> {
+        val available = endpoints(input)
+        val selected = selected(input)
+        return listOf(PageAction(action(input, null), "系统默认")) +
+            available.map { PageAction(action(input, it.key), it.label) } +
+            if (selected != null && available.none { it.key == selected })
+                listOf(PageAction(action(input, selected), summary(input))) else emptyList()
+    }
     fun handle(plugin: KigPlugin, action: String, inputs: Map<String, String> = emptyMap()): Boolean {
         if (!action.startsWith("host-audio/")) return false
         if (action == NOISE_ACTION) {

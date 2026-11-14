@@ -220,14 +220,13 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                         active && granted && !locked && mode == CameraMode.PHOTO, options::setMotion)
                 }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.label.takeIf { modern },
                 reserveBack = true)
-            if (!exposureOpen) CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio,
-                active && displayReady && (!session.busy || modern), session::zoomTo, vertical,
-                Modifier.matchParentSize(), bounds = layout.zoom, dialVisibilityChanged = { zoomDialVisible = it })
-            if (mode != CameraMode.PRO && evAvailable && !zoomDialVisible) CameraExposureRail(session.exposure, layout.zoom, vertical,
-                cameraZoomRange(session.minZoomRatio, session.maxZoomRatio)?.let(::cameraZoomStops)?.size ?: 0,
-                exposureOpen, displayReady && interactive && !session.busy, {
-                    filtersExpanded = false; exposureOpen = !exposureOpen
-                }, session::setGlobalExposure)
+            CameraParameterRail(session, layout.zoom, vertical,
+                active && displayReady && (!session.busy || modern), displayReady && interactive && !session.busy && !filtersExpanded,
+                if (exposureOpen) ProControl.EV else proControl, exposureOpen,
+                close = { exposureOpen = false; proControl = null }, dialVisibilityChanged = { zoomDialVisible = it })
+            if (mode != CameraMode.PRO && evAvailable && !zoomDialVisible && !exposureOpen) CameraExposureRail(session.exposure,
+                layout.zoom, vertical, cameraZoomRange(session.minZoomRatio, session.maxZoomRatio)?.let(::cameraZoomStops)?.size ?: 0,
+                displayReady && interactive && !session.busy) { filtersExpanded = false; exposureOpen = true }
             layout.pro?.let { bounds ->
                 androidx.compose.animation.AnimatedVisibility(!zoomDialVisible && !filtersExpanded,
                     Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds),
@@ -286,9 +285,9 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         if (modern) CameraModeControls(mode, { filtersExpanded = false; options.chooseMode(it) }, interactive,
             vertical, session.video.active, session.video.durationMs, controls = bar) else bar()
     }
-    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame, captureBaseline = modern)
+    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame, captureBaseline = modern, professional = mode == CameraMode.PRO)
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
-        manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) }, watermarkStore = watermarkStore,
+        manual = session.manual.takeUnless { modern }, watermarkStore = watermarkStore,
         exposureWarningAvailable = session.previewFilterAvailable || !displayReady)
 }

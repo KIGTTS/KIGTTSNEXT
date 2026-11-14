@@ -74,6 +74,20 @@ class CardPageChromeTest {
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination) }
     }
 
+    @Test fun titleDropdownShowsHorizontalRowsNotPinchCollectionGrid() {
+        val model = show()
+        compose.runOnIdle { model.navigate(Destination.Cards) }
+        compose.onNodeWithTag("album-title").performClick()
+        compose.onNodeWithTag("album-dropdown-list").assertIsDisplayed()
+        compose.onNodeWithTag("album-collections").assertDoesNotExist()
+        val cover = compose.onNodeWithTag("album-dropdown-cover/all", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val label = compose.onNodeWithTag("album-dropdown-name/all", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue(cover.right < label.left && label.top < cover.bottom)
+        compose.onNodeWithTag("album-dropdown/all").performClick()
+        compose.onNodeWithTag("album-dropdown-list").assertDoesNotExist()
+        compose.onNodeWithTag("device-album").assertIsDisplayed()
+    }
+
     @Test
     @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
     fun theDeviceAlbumStaysUsableInLandscapeAndRetainsPredictiveReturn() {

@@ -60,6 +60,29 @@ class AudioDeviceRoutingTest {
         }
         AudioDeviceRouting(app).use { assertEquals("内置麦克风", it.summary(true)); assertEquals("系统默认", it.summary(false)) }
     }
+    @Test fun repeatedBuiltInInputPortsShareOneChoiceAndLegacyPreferenceStillRoutes() {
+        val mic = device(AudioDeviceInfo.TYPE_BUILTIN_MIC)
+        shadow.setInputDevices(listOf(mic, device(AudioDeviceInfo.TYPE_BUILTIN_MIC)))
+        val oldKey = audioEndpointKey(AudioDeviceInfo.TYPE_BUILTIN_MIC, "back", "内置麦克风")
+        app.getSharedPreferences("speech-audio-devices", 0).edit().putString("input", oldKey).commit()
+        val requested = mutableListOf<AudioDeviceInfo?>()
+        AudioDeviceRouting(app).use { routes ->
+            assertEquals(1, routes.endpoints(true).size)
+            assertEquals("内置麦克风", routes.summary(true))
+            routes.bind(stream(requested), true)
+            assertSame(mic, requested.last())
+        }
+    }
+
+    @Test fun sameNameExternalDevicesRemainIndividuallySelectable() {
+        val type = AudioDeviceInfo.TYPE_USB_HEADSET
+        val first = AudioEndpoint(audioEndpointKey(type, "card=1", "USB Mic"), "USB Mic", type)
+        val second = first.copy(key = audioEndpointKey(type, "card=2", "USB Mic"))
+        val devices = labelAudioEndpoints(listOf(first, first, second))
+        assertEquals(listOf("USB Mic 1", "USB Mic 2"), devices.map { it.label })
+        assertEquals(listOf(first.key, second.key), devices.map { it.key })
+    }
+
     @Test fun servicePagesExposeOnlyTheirOwnRouteAndProvidersCannotInvokeHostSelection() {
         fun plugin(role: TtsRole) = object : KigPlugin {
             override val descriptor = PluginDescriptor("test.audio", "test", "test")

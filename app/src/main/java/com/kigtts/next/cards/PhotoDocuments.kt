@@ -73,7 +73,7 @@ class PhotoDocuments internal constructor(private val cards: CardRepository, pri
         val image = cards.systemAlbum.encodings.stage(card, CameraPhotoEncoding.JPEG, null)
         val packed = File.createTempFile("camera-embedded-", ".jpg", stickers.context.cacheDir)
         try {
-            EmbeddedPhotoOriginal.write(image, source, EmbeddedCameraEdit.encode(card, stickers.designs.facts(card.id).capturedAt), packed)
+            EmbeddedPhotoOriginal.write(image, source, EmbeddedCameraEdit.encode(card, stickers.designs.facts(card.id)), packed)
             requireNotNull(stickers.context.contentResolver.openOutputStream(uri, "wt")).use { target ->
                 packed.inputStream().use { it.copyTo(target, 64 * 1024) }
             }
@@ -114,7 +114,8 @@ class PhotoDocuments internal constructor(private val cards: CardRepository, pri
                 frameStyleId = PhotoFrameSpec(image.width, image.height).id)
             cards.createCameraPhoto(metadata?.takeUnless { it.flattened }?.apply(card) ?: card,
                 PolaroidPhotoFacts.read(if (metadata != null) extracted else container, false).let { facts ->
-                    facts.copy(capturedAt = metadata?.takenAt ?: facts.capturedAt)
+                    facts.copy(capturedAt = metadata?.takenAt ?: facts.capturedAt,
+                        location = metadata?.watermarkLocation, weather = metadata?.watermarkWeather)
                 })
             id
         } finally { container.delete(); extracted.delete() }

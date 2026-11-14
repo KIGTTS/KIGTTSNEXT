@@ -1,24 +1,24 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material3.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.navigation.excludeCameraPull
 import java.util.Locale
-import kotlin.math.abs
-import kotlin.math.ln
-import kotlin.math.roundToInt
 
 @Composable
 internal fun CameraProAdjustment(key: ProControl, controller: CameraManualController, sample: CameraMeteringSample?,
-    enabled: Boolean, modifier: Modifier) {
+    enabled: Boolean, modifier: Modifier, background: Boolean = true) {
     val capability = controller.capabilities
     val auto = when (key) {
         ProControl.FOCUS -> !controller.manualFocus
@@ -26,48 +26,44 @@ internal fun CameraProAdjustment(key: ProControl, controller: CameraManualContro
         else -> controller.automaticExposure
     }
     Surface(modifier.fillMaxWidth().height(48.dp).excludeCameraPull(),
-        shape = CircleShape, color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f)) {
+        shape = CircleShape, color = if (background) MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f) else Color.Transparent) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(feedbackClick {
+            CameraRulerIcon("${key.label}恢复自动", Icons.Default.AutoAwesome, "camera-pro-auto", enabled && !auto) {
                 when (key) {
                     ProControl.FOCUS -> controller.focusMode(false)
                     ProControl.WB -> controller.selectWhiteBalance(CameraWhiteBalance.AUTO)
                     else -> controller.setManualShutter(false)
                 }
-            }, Modifier.width(48.dp).testTag("camera-pro-auto"), shape = CircleShape,
-                enabled = enabled && !auto, contentPadding = PaddingValues(0.dp)) { Text("自动") }
+            }
 
             val ruler = Modifier.weight(1f).padding(end = 12.dp)
             when (key) {
                 ProControl.SHUTTER -> capability.exposure?.let { range ->
-                    val stops = remember(range) { cameraProLogStops(range) }
-                    val current = controller.shutterNanos ?: sample?.exposure ?: 16_666_667L
-                    CameraTickRuler(stops.indices, stops.closestStop(current), { shutterLabel(stops[it]).removeSuffix(" 秒") },
+                    val current = (controller.shutterNanos ?: sample?.exposure ?: 16_666_667L).coerceIn(range)
+                    CameraContinuousRuler(0f..1f, shutterFraction(current, range), { shutterLabel(shutterAt(it, range)).removeSuffix(" 秒") },
                         key.label, "camera-manual-shutter", enabled, {
-                            if (controller.automaticExposure) controller.setManualShutter(true, time = stops[it])
-                            else controller.exposeFor(stops[it])
+                            val requested = shutterAt(it, range)
+                            if (controller.automaticExposure) controller.setManualShutter(true, time = requested)
+                            else controller.exposeFor(requested)
                         }, ruler, if (auto) "自动" else shutterLabel(current).removeSuffix(" 秒"))
                 }
                 ProControl.ISO -> capability.sensitivity?.let { range ->
-                    val stops = remember(range) { cameraProLogStops(range.first.toLong()..range.last.toLong()) }
-                    val current = controller.sensorIso.takeIf { it > 0 } ?: sample?.iso ?: range.first
-                    CameraTickRuler(stops.indices, stops.closestStop(current.toLong()), { stops[it].toString() },
+                    val longRange = range.first.toLong()..range.last.toLong()
+                    val current = (controller.sensorIso.takeIf { it > 0 } ?: sample?.iso ?: range.first).coerceIn(range)
+                    CameraContinuousRuler(0f..1f, shutterFraction(current.toLong(), longRange), { shutterAt(it, longRange).toString() },
                         key.label, "camera-manual-iso", enabled, {
-                            if (controller.automaticExposure) controller.setManualShutter(true, sensitivity = stops[it].toInt())
-                            else controller.sensitivityAt(stops[it].toInt())
+                            val requested = shutterAt(it, longRange).toInt()
+                            if (controller.automaticExposure) controller.setManualShutter(true, sensitivity = requested)
+                            else controller.sensitivityAt(requested)
                         }, ruler, if (auto) "自动" else current.toString())
                 }
                 ProControl.FOCUS -> {
                     val max = capability.maximumFocus
-                    val distance = if (auto) sample?.focus?.takeIf(Float::isFinite) ?: 0f else controller.focusDiopters
-                    val ticks = 30
-                    CameraTickRuler(0..ticks, (distance.coerceIn(0f, max) / max * ticks).roundToInt(),
-                        { if (it == 0) "∞" else String.format(Locale.ROOT, "%.1f D", it * max / ticks) },
-                        key.label, "camera-manual-focus", enabled, {
-                            val requested = it * max / ticks
-                            if (!controller.manualFocus) controller.focusMode(true, requested)
-                            else controller.focusAt(requested)
-                        }, ruler, if (auto) "自动" else if (distance == 0f) "∞" else String.format(Locale.ROOT, "%.1f D", distance))
+                    val distance = (if (auto) sample?.focus?.takeIf(Float::isFinite) ?: 0f else controller.focusDiopters).coerceIn(0f, max)
+                    val label: (Float) -> String = { if (it == 0f) "∞" else String.format(Locale.ROOT, "%.2f D", it) }
+                    CameraContinuousRuler(0f..max, distance, label, key.label, "camera-manual-focus", enabled, {
+                        if (!controller.manualFocus) controller.focusMode(true, it) else controller.focusAt(it)
+                    }, ruler, if (auto) "自动" else label(distance), emphasis = 0f, snapToEmphasis = true)
                 }
                 ProControl.WB -> {
                     val presets = remember(capability.whiteBalance) {
@@ -83,12 +79,4 @@ internal fun CameraProAdjustment(key: ProControl, controller: CameraManualContro
             }
         }
     }
-}
-
-internal fun cameraProLogStops(range: LongRange): List<Long> =
-    (listOf(range.first) + (1 until 30).map { shutterAt(it / 30f, range) } + range.last).distinct()
-
-private fun List<Long>.closestStop(value: Long): Int {
-    val target = ln(value.coerceAtLeast(1).toDouble())
-    return indices.minBy { abs(ln(this[it].toDouble()) - target) }
 }

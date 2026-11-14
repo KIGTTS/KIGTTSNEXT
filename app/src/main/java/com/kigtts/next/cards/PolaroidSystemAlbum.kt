@@ -65,11 +65,12 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
         var embedded: File? = null
         try {
             val source = (card.originalImageId ?: card.imageId)?.let(stickers::imageFile)
-            val takenAt = stickers.designs.facts(card.id).capturedAt
+            val facts = stickers.designs.facts(card.id)
+            val takenAt = facts.capturedAt
             if (embedOriginal && image != requireNotNull(source) { "原图不存在" }) {
                 val target = File.createTempFile("camera-embedded-", if (motion) "MP.jpg" else ".tmp", context.cacheDir)
                 embedded = target
-                EmbeddedPhotoOriginal.write(image, requireNotNull(source), EmbeddedCameraEdit.encode(card, takenAt), target)
+                EmbeddedPhotoOriginal.write(image, requireNotNull(source), EmbeddedCameraEdit.encode(card, facts), target)
             }
             // An edit or removal during export must not publish a stale frame or recreate a deleted card.
             if (stickers.cards.value.firstOrNull { it.id == card.id } != card || fingerprint(card) != cardHash) return@withContext null

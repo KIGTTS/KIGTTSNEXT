@@ -4,7 +4,8 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.geometry.Rect
 
 private const val STAGE_VERTICAL_PADDING = 4f
-internal const val CAMERA_PRO_BAND = 104f
+internal const val CAMERA_PRO_BAND = 54f
+internal const val CAMERA_RAIL_GAP = 8f
 private const val CAMERA_BASELINE_GAP = 4f
 private const val CAMERA_ZOOM_BAND = 48f
 internal const val CAMERA_LEFT_CLEARANCE = 60f
@@ -13,7 +14,13 @@ internal const val CAMERA_LEFT_CLEARANCE = 60f
 internal data class CameraCaptureBaseline(val frame: Rect, val dockStart: Float, val vertical: Boolean) {
     private val boundary get() = (minOf(if (vertical) frame.right else frame.bottom, dockStart) - CAMERA_BASELINE_GAP).coerceAtLeast(0f)
     fun pro(): Rect = band(boundary, CAMERA_PRO_BAND)
-    fun zoom(pro: Boolean): Rect = band((boundary - if (pro) CAMERA_PRO_BAND else 0f).coerceAtLeast(0f), CAMERA_ZOOM_BAND)
+    fun zoom(pro: Boolean): Rect = if (pro) {
+        band((depthEnd(pro().left, pro().top) - CAMERA_RAIL_GAP).coerceAtLeast(0f), CAMERA_ZOOM_BAND)
+    } else {
+        // The normal zoom strip starts after the 4:3 edge, moving inward only if the dock runs out of space.
+        band((dockStart - CAMERA_BASELINE_GAP).coerceAtLeast(0f), CAMERA_ZOOM_BAND)
+    }
+    private fun depthEnd(x: Float, y: Float) = if (vertical) x else y
     private fun band(end: Float, depth: Float): Rect = if (vertical) {
         Rect((end - depth).coerceAtLeast(0f), frame.top, end, frame.bottom)
     } else Rect(frame.left, (end - depth).coerceAtLeast(0f), frame.right, end)
@@ -21,11 +28,13 @@ internal data class CameraCaptureBaseline(val frame: Rect, val dockStart: Float,
 
 internal val LocalCameraCaptureBaseline = compositionLocalOf<CameraCaptureBaseline?> { null }
 
-internal fun cameraCaptureBaseline(width: Float, stageHeight: Float, vertical: Boolean, dockExtent: Float): CameraCaptureBaseline {
+internal fun cameraCaptureBaseline(width: Float, stageHeight: Float, vertical: Boolean, dockExtent: Float, professional: Boolean = false): CameraCaptureBaseline {
     val height = (stageHeight - 2 * STAGE_VERTICAL_PADDING).coerceAtLeast(0f)
-    val photo = cameraCenteredCaptureWindow(width, height, if (vertical) 16f / 9f else 9f / 16f, vertical, 0f)
+    val photo = cameraCenteredCaptureWindow(width, height, if (vertical) CameraAspect.STANDARD.ratio(4, 3) else CameraAspect.STANDARD.ratio(3, 4), vertical, 0f)
     val lastDockStart = ((if (vertical) width else height) - dockExtent).coerceAtLeast(0f)
-    val dockStart = minOf(if (vertical) photo.right else photo.bottom, lastDockStart)
+    val edge = if (vertical) photo.right else photo.bottom
+    val zoomSpace = if (professional) 0f else CAMERA_ZOOM_BAND + 2 * CAMERA_BASELINE_GAP
+    val dockStart = minOf(edge + zoomSpace, lastDockStart)
     return CameraCaptureBaseline(photo, dockStart, vertical)
 }
 

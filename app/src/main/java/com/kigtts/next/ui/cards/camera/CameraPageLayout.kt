@@ -30,12 +30,12 @@ internal val LocalCameraStageSettled = compositionLocalOf { true }
 internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
     controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {},
     header: @Composable (Boolean) -> Unit = {}, photoAspect: Float? = null, zoomDialVisible: Boolean = false,
-    fullFrame: Boolean = false, captureBaseline: Boolean = false) {
+    fullFrame: Boolean = false, captureBaseline: Boolean = false, professional: Boolean = false) {
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().testTag("polaroid-camera")) {
         val vertical = cameraSideControls(maxWidth.value, maxHeight.value)
         var controlsSize by remember { mutableStateOf(IntSize.Zero) }
         val inset = with(LocalDensity.current) { (if (vertical) controlsSize.width else controlsSize.height).toDp() }
-        val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value) else null
+        val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value, professional) else null
         val overlay = if (baseline != null && photoAspect != null) {
             val photo = cameraCenteredCaptureWindow(maxWidth.value, (maxHeight.value - 8f).coerceAtLeast(0f),
                 photoAspect, vertical, if (fullFrame) 1f else 0f)
@@ -87,7 +87,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
             layout(width, height) {
                 stage.place(0, 0)
                 val start = if (captureBaseline) cameraCaptureBaseline(width.toDp().value, height.toDp().value, vertical,
-                    (if (vertical) dock.width else dock.height).toDp().value).dockPositionInStage().dp.roundToPx()
+                    (if (vertical) dock.width else dock.height).toDp().value, professional).dockPositionInStage().dp.roundToPx()
                 else if (vertical) width - dock.width else height - dock.height
                 dock.place(if (vertical) start else 0, if (vertical) 0 else start)
             }

@@ -8,10 +8,12 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -44,6 +46,7 @@ import kotlinx.coroutines.delay
     val repository = remember(context) { DeviceAlbum(context.applicationContext) }
     var albumId by rememberSaveable { mutableStateOf("all") }
     var choosingAlbum by rememberSaveable { mutableStateOf(false) }
+    var showingCollectionGrid by rememberSaveable { mutableStateOf(false) }
     var zoom by rememberSaveable { mutableIntStateOf(0) }
     var all by remember { mutableStateOf(emptyList<AlbumMedia>()) }
     var loading by remember { mutableStateOf(true) }
@@ -77,21 +80,28 @@ import kotlinx.coroutines.delay
         val id = media.uri.toString()
         selected = if (id in checked) selected - id else selected + id
     }
-    fun selectAlbum(choice: AlbumCollection) { albumId = choice.id; choosingAlbum = false }
+    fun selectAlbum(choice: AlbumCollection, fromGrid: Boolean) {
+        if (albumId != choice.id || fromGrid) zoom = 0
+        albumId = choice.id
+        choosingAlbum = false
+        if (fromGrid) showingCollectionGrid = false
+    }
     fun back() {
         when {
             choosingAlbum -> choosingAlbum = false
+            showingCollectionGrid -> showingCollectionGrid = false
             selecting -> { selecting = false; selected = emptyList() }
             else -> onBack()
         }
     }
-    BackHandler(choosingAlbum || selecting) { back() }
+    BackHandler(choosingAlbum || showingCollectionGrid || selecting) { back() }
     Scaffold(topBar = {
         TopAppBar(title = {
-            AlbumTitle(album, choosingAlbum) { choosingAlbum = !choosingAlbum }
+            if (showingCollectionGrid) Text("相册")
+            else AlbumTitle(album, choosingAlbum) { choosingAlbum = !choosingAlbum }
         }, navigationIcon = { IconButton(feedbackClick(::back)) { Icon(Icons.Default.ArrowBack, "返回") } },
             actions = {
-                if (!choosingAlbum) {
+                if (!choosingAlbum && !showingCollectionGrid) {
                     if (choose == null && !selecting) IconButton(feedbackClick { openSystemAlbum(context, message) }) {
                         Icon(Icons.Default.OpenInNew, "系统相册")
                     }
@@ -103,7 +113,7 @@ import kotlinx.coroutines.delay
                 }
             })
     }, bottomBar = {
-        if (!choosingAlbum && selecting) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),
+        if (!choosingAlbum && !showingCollectionGrid && selecting) Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(12.dp),
             horizontalArrangement = Arrangement.SpaceEvenly) {
             val allChecked = photos.isNotEmpty() && photos.all { it.uri.toString() in checked }
             TextButton(feedbackClick {
@@ -120,7 +130,12 @@ import kotlinx.coroutines.delay
             if (failure != null) TextButton(feedbackClick { revision++ }, Modifier.fillMaxWidth()) { Text(failure.orEmpty()) }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val availableHeight = maxHeight
-                AlbumPhotoGrid(photos, grid, loading, zoom, { zoom = it }, { choosingAlbum = true },
+                AnimatedContent(showingCollectionGrid, Modifier.fillMaxSize(), transitionSpec = { fadeIn() togetherWith fadeOut() },
+                    label = "album-zoom-mode") { collections ->
+                    if (collections) {
+                        AlbumCollectionGrid(albums, album.id, Modifier.fillMaxSize(),
+                            onPinchOpen = { selectAlbum(it, fromGrid = true) }) { selectAlbum(it, fromGrid = true) }
+                    } else AlbumPhotoGrid(photos, grid, loading, zoom, { zoom = it }, { showingCollectionGrid = true },
                     selecting || choose != null && multiple, checked,
                     tapPhoto = { media ->
                         if (selecting || choose != null && multiple) toggle(media)
@@ -129,6 +144,7 @@ import kotlinx.coroutines.delay
                         selecting = choose == null
                         toggle(media)
                     }), modifier = Modifier.fillMaxSize())
+                }
                 androidx.compose.animation.AnimatedVisibility(choosingAlbum, Modifier.matchParentSize(), enter = fadeIn(), exit = fadeOut()) {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = .23f))
                         .clickable(remember { MutableInteractionSource() }, indication = null,
@@ -141,9 +157,8 @@ import kotlinx.coroutines.delay
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(
                             bottomStart = LocalCornerRadius.current, bottomEnd = LocalCornerRadius.current),
                         color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .87f)) {
-                        AlbumCollectionGrid(albums, album.id, Modifier.fillMaxSize(), onPinchOpen = ::selectAlbum) { choice ->
-                            zoom = 0
-                            selectAlbum(choice)
+                        AlbumDropdownList(albums, album.id, Modifier.fillMaxSize()) { choice ->
+                            selectAlbum(choice, fromGrid = false)
                         }
                     }
                 }

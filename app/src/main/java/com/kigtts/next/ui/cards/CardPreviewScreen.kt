@@ -62,7 +62,7 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
         val width = minOf(maxWidth, maxHeight * com.kigtts.next.cards.polaroidPaperGeometry(view, frame).aspectRatio.toFloat(), 520.dp).coerceAtLeast(1.dp)
         PolaroidCanvas(view, stickers::imageFile, Modifier.width(width), photoEditable = enabled && cardId !in readOnly,
             onPhotoChange = { view = it }, onPhotoEnd = ::finishPhoto,
-            frame = frame)
+            frame = frame, photoFacts = remember(stickers, cardId) { stickers.designs.facts(cardId) })
     }
     if (active) CardQuickExportDialog(actions)
     if (active && senderInfo && receipt != null) com.kigtts.next.sharing.FaceReceiptDialog(receipt) { senderInfo = false }
