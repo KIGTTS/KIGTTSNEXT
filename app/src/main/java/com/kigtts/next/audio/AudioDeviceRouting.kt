@@ -11,6 +11,9 @@ import android.os.Handler
 import android.os.Looper
 import com.kigtts.plugin.api.*
 
+private const val NOISE_ACTION = "host-audio/input-noise/value"
+private const val NOISE_PREF = "input-noise-suppression"
+
 /** Per-stream preferences never change the device-wide communication route. */
 class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = {}) : AutoCloseable {
     private val manager = context.getSystemService(AudioManager::class.java)
@@ -46,6 +49,7 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
     }
     @Synchronized internal fun endpoints(input: Boolean) = devices(input).map(::endpoint).distinctBy { it.key }
     internal fun selected(input: Boolean): String? = preferences.getString(side(input), null)
+    internal val noiseSuppression: Boolean get() = preferences.getBoolean(NOISE_PREF, false)
     internal val outputGain: Float get() = preferences.getFloat("output-gain", 1f).takeIf { it.isFinite() && it in 0f..10f } ?: 1f
     internal fun setOutputGain(value: Float) {
         require(value.isFinite() && value in 0f..10f) { "音量需在0至10倍之间" }
@@ -86,6 +90,8 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
         controls +=
             PageBlock.Select(if (input) "首选麦克风" else "首选朗读设备", actions(input),
                 action(input, selected(input)), if (input) PluginIcon.MIC else PluginIcon.SPEAKER)
+        if (input) controls += PageBlock.Toggle("系统降噪", noiseSuppression, NOISE_ACTION,
+            if (systemRecognitionNoiseAvailable()) "下次开始录音时生效" else "当前设备不支持系统降噪", PluginIcon.MIC)
         return page.copy(blocks = page.blocks + PageBlock.Group("音频设备", controls))
     }
     private fun action(input: Boolean, key: String?) = "host-audio/${side(input)}/" + (key ?: "default")
@@ -95,6 +101,13 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
             listOf(PageAction(action(input, selected(input)), summary(input))) else emptyList()
     fun handle(plugin: KigPlugin, action: String, inputs: Map<String, String> = emptyMap()): Boolean {
         if (!action.startsWith("host-audio/")) return false
+        if (action == NOISE_ACTION) {
+            require(plugin.asr?.info?.role == AsrRole.SERVICE)
+            val enabled = requireNotNull(inputs["checked"]?.toBooleanStrictOrNull()) { "无效的降噪设置" }
+            require(!enabled || systemRecognitionNoiseAvailable()) { "当前设备不支持系统降噪" }
+            preferences.edit().putBoolean(NOISE_PREF, enabled).apply()
+            return true
+        }
         if (action == SPEECH_GAIN_ACTION) {
             require(plugin.tts?.info?.role == TtsRole.SERVICE)
             val value = inputs["value"]?.toFloatOrNull()

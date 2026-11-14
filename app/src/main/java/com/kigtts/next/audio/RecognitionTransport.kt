@@ -22,6 +22,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private var readOnSubmit = false
     private var currentSession: RecognitionSession? = null
     private var committedText = ""
+    private var segmentedSession = false
     private val requests = Channel<Unit>(Channel.CONFLATED)
     val permissionRequests = requests.receiveAsFlow()
     fun permissionResult(granted: Boolean) {
@@ -59,6 +60,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         val epoch = ++generation
         val stop = CompletableDeferred<Unit>(); stopInput = stop; submit = false; readOnSubmit = false
         currentSession = session; committedText = ""
+        segmentedSession = engine.info.streaming != StreamingKind.INCREMENTAL
         val initialized = CompletableDeferred<Unit>(); ready = initialized
         job = scope.launch {
             previous?.join()
@@ -137,10 +139,11 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         if (!state().voiceInputActive || state().continuousRecognition || !send) { cancel(); return }
         submit = true; readOnSubmit = read; stopInput?.complete(Unit)
         val finishing = job; val initialized = ready; val epoch = generation
+        val finishBudget = if (segmentedSession) 25_000L else 3_000L
         scope.launch {
             val finished = withTimeoutOrNull(30_000) {
                 initialized?.await()
-                withTimeoutOrNull(3_000) { finishing?.join(); true } == true
+                withTimeoutOrNull(finishBudget) { finishing?.join(); true } == true
             } == true
             if (!finished && epoch == generation) { cancel(); message("识别结束超时，请重试") }
         }

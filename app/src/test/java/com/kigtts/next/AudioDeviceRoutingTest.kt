@@ -86,4 +86,28 @@ class AudioDeviceRoutingTest {
         }
         AudioDeviceRouting(app).use { assertEquals(4.5f, it.outputGain) }
     }
+    @Test fun systemNoiseDefaultsOffAndIsOnlyOnRecognitionService() {
+        fun plugin(role: AsrRole) = object : KigPlugin {
+            override val descriptor = PluginDescriptor("test.asr", "test", "test")
+            override val asr = object : AsrEngine {
+                override val info = AsrInfo(role = role)
+                override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = RecognitionResult("")
+                override fun recognizeStream(audio: kotlinx.coroutines.flow.Flow<PcmAudio>, config: RecognitionConfig) =
+                    kotlinx.coroutines.flow.emptyFlow<RecognitionEvent>()
+            }
+            override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.NoAction
+        }
+        val page = PluginPage("manager", "语音识别", emptyList())
+        AudioDeviceRouting(app).use { routes ->
+            assertFalse(routes.noiseSuppression)
+            assertEquals(page, routes.decorate(plugin(AsrRole.PROVIDER), page))
+            val group = routes.decorate(plugin(AsrRole.SERVICE), page)!!.blocks.single() as PageBlock.Group
+            val toggle = group.children.filterIsInstance<PageBlock.Toggle>().single()
+            assertEquals("系统降噪", toggle.title)
+            assertFalse(toggle.checked)
+            assertTrue(routes.handle(plugin(AsrRole.SERVICE), toggle.actionId, mapOf("checked" to "false")))
+            try { routes.handle(plugin(AsrRole.PROVIDER), toggle.actionId, mapOf("checked" to "false")); fail() }
+            catch (_: IllegalArgumentException) { }
+        }
+    }
 }

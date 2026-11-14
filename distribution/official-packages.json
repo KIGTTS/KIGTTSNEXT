@@ -183,6 +183,21 @@
   },
   {
     "module": "cloud-asr",
+    "file": "engine.cloud-asr-0.2.0.kigplugin",
+    "category": "音频",
+    "summary": "连接熟悉的云端服务，把语音转换成文字。",
+    "symbol": "cloud",
+    "description": "## 云端语音识别\n\n支持 DeepSeek、腾讯云、阿里云、Azure、百度云和讯飞。在语音识别服务中选用后，可以按句显示聆听字幕。",
+    "notes": "新增 DeepSeek 语音识别，只需 API Key，自动识别语言。",
+    "tags": [
+      "语音识别"
+    ],
+    "dependencies": {
+      "service.speech-recognition": "^0.8.3"
+    }
+  },
+  {
+    "module": "cloud-asr",
     "file": "engine.cloud-asr-0.1.2.kigplugin",
     "category": "音频",
     "summary": "连接熟悉的云端服务，把语音转换成文字。",
@@ -909,6 +924,18 @@
       "语音合成"
     ],
     "notes": ""
+  },
+  {
+    "module": "recognition-service",
+    "file": "service.speech-recognition-0.8.3.kigplugin",
+    "category": "音频",
+    "summary": "把听到的话变成字幕或输入文字，支持连续聆听。",
+    "symbol": "hearing",
+    "description": "## 语音识别服务\n\n在交流时查看聆听字幕，或直接用语音输入文字。支持实时更新，也支持一句识别完再上屏。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "只接收完整录音的引擎也能用来连续聆听和输入，遇到停顿会按句识别。"
   },
   {
     "module": "recognition-service",

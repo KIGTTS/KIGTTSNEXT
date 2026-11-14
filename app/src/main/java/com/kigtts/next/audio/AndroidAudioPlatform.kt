@@ -22,9 +22,11 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
         val recorder = AudioRecord.Builder().setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
             .setAudioFormat(NativeAudioFormat.Builder().setSampleRate(format.sampleRate).setEncoding(NativeAudioFormat.ENCODING_PCM_16BIT).setChannelMask(channel).build())
             .setBufferSizeInBytes(maxOf(minimum * 2, chunkSize * 4)).build()
+        var noise: android.media.audiofx.NoiseSuppressor? = null
         try {
             check(recorder.state == AudioRecord.STATE_INITIALIZED) { "麦克风初始化失败" }
             devices.bind(recorder, true)
+            noise = recognitionNoise(recorder.audioSessionId, devices.noiseSuppression)
             recorder.startRecording()
             val buffer = ByteArray(chunkSize)
             while (currentCoroutineContext().isActive) {
@@ -32,7 +34,12 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
                 check(count >= 0) { "麦克风读取失败（$count）" }
                 if (count == 0) delay(10) else emit(PcmAudio(buffer.copyOf(count), format.sampleRate, format.channels))
             }
-        } finally { devices.unbind(recorder); runCatching { recorder.stop() }; recorder.release() }
+        } finally {
+            devices.unbind(recorder)
+            runCatching { recorder.stop() }
+            runCatching { noise?.release() }
+            recorder.release()
+        }
     }.flowOn(Dispatchers.IO)
     override fun player(): PcmPlayer = AndroidPcmPlayer(devices)
 }

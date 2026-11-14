@@ -83,6 +83,32 @@ class RecognitionSessionTest {
         assertEquals(listOf("完整句"), submitted); assertEquals(2, hardware.released)
         controller.stopAll()
     }
+    @Test fun segmentedEngineCanReturnTheLastSentenceAfterTheStreamingDeadline() = runTest {
+        var state = AppState(autoPlayback = false)
+        val submitted = mutableListOf<String>()
+        val messages = mutableListOf<String>()
+        val engine = object : AsrEngine {
+            override val info = AsrInfo(role = AsrRole.SERVICE, streaming = StreamingKind.SEGMENTED)
+            override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("the service adapts batch requests")
+            override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
+                emit(RecognitionEvent.Started)
+                audio.collect {}
+                delay(5_000)
+                emit(RecognitionEvent.Transcript("最后一句", "", 1, "最后一句"))
+            }
+        }
+        val controller = SpeechCoordinator(this, PluginRegistry(listOf(plugin(engine))), Hardware(), { state }, { state = it(state) },
+            messages::add, submitted::add, { "test.service" })
+        controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT))
+        runCurrent()
+        controller.end(true)
+        advanceTimeBy(3_500); runCurrent()
+        assertTrue(state.voiceInputActive)
+        advanceTimeBy(2_000); runCurrent()
+        assertEquals(listOf("最后一句"), submitted)
+        assertTrue(messages.isEmpty())
+        controller.stopAll()
+    }
     @Test fun continuousOnlyQueuesFinalizedSequencesAfterUserReenablesReading() = runTest {
         val events = Channel<RecognitionEvent>(Channel.UNLIMITED)
         val spoken = mutableListOf<String>(); val submitted = mutableListOf<String>()
