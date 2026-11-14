@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.util.Log
 import android.os.SystemClock
@@ -103,7 +105,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             histogram = attached.histogram
             scan.bind(view.takeIf { mode == CameraMode.SCAN }, epoch)
             currentCoroutineContext().ensureActive()
-            if (mode.takesPhotos && attached.previewEffect == null) message("实时滤镜暂时不可用，仍可正常拍照")
+            if (mode.takesPhotos && attached.previewEffect == null) message(context.uiCopy("camera.filter"))
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
                     CameraMotionRecorder(context, video.output), scope, message).also { it.start() }
@@ -307,7 +309,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             try {
                 manual.awaitConfigured()
                 motionTicket = motion?.beginCapture()
-                if (motion != null && motionTicket == null && !motion.failed) message("实况还在准备，本次保存照片")
+                if (motion != null && motionTicket == null && !motion.failed) message(context.uiCopy("camera.motion"))
                 photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength, lut, effects) {
                     motionTicket?.let { motion?.exposureStarted(it) }
                 }
@@ -320,7 +322,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                     delivered = true; delivering = false
                 }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { if (epoch == generation) message("拍照未完成，请重试") }
+            catch (_: Exception) { if (epoch == generation) message(context.uiCopy("camera.photo_failed")) }
             finally {
                 if (!delivered) { motion?.abort(motionTicket); photo?.discard() }
                 if (epoch == generation) {

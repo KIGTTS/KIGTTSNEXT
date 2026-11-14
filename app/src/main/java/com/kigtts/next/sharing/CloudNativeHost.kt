@@ -17,18 +17,30 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 @Composable internal fun CloudNativeHost(model: AppViewModel) {
-    val shown by model.sharing.nativePanel.collectAsStateWithLifecycle()
-    val receiving by model.faceShare.receiving.collectAsStateWithLifecycle()
+    val shown by model.sharing.nativePanel.collectAsState()
+    val outgoing by model.sharing.outgoing.collectAsState()
+    val receiving by model.sharing.receiving.collectAsStateWithLifecycle()
     val app by model.state.collectAsStateWithLifecycle()
     val idle = remember(app.pluginRevision, receiving) {
         if (receiving && model.sharing.setup.enabled) model.sharing.nativePage(CLOUD_SHARING_ID, "receive") else null
     }
     // Receiving remains independent while an outgoing share is shown; both phones may send.
     idle?.let { key("cloud-receiver", it) { CloudNativePanelHost(model, it, true, shown == it) } }
-    shown?.takeIf { it != idle }?.let { key("cloud-shown", it) { CloudNativePanelHost(model, it, false, true) } }
+    outgoing?.let { share ->
+        key("cloud-sender", share.key) {
+            CloudNativePanelHost(model, share.panel, false, shown == share.panel, share.expiresAt)
+        }
+        LaunchedEffect(share, app.pluginRevision) {
+            if (!model.sharing.isProvider(share.panel.owner)) model.sharing.endNativeShare(share.panel)
+        }
+    }
+    shown?.takeIf { it != idle && !it.pageId.startsWith("outgoing/") }?.let {
+        key("cloud-shown", it) { CloudNativePanelHost(model, it, false, true) }
+    }
 }
 
-@Composable private fun CloudNativePanelHost(model: AppViewModel, panel: CloudNativePanel, receiving: Boolean, shown: Boolean) {
+@Composable private fun CloudNativePanelHost(model: AppViewModel, panel: CloudNativePanel, receiving: Boolean, shown: Boolean,
+    expiresAt: Long? = null) {
     val scope = rememberCoroutineScope()
     val session = remember(panel) { CloudNativeSession(model, panel, scope) }
     // Opening the share sheet also makes this device available for the current session.
@@ -37,9 +49,16 @@ import org.json.JSONObject
     var receivingDetails by remember(session) { mutableStateOf(false) }
     if (shown || receivingDetails) {
         FaceShareSheet(if (session.sending && !session.incomingContent) "分享" else "面对面接收", {
-            receivingDetails = false; if (shown) model.sharing.dismissNative()
-        }, maximumHeight = if (session.sending) 560.dp else 680.dp, finish = if (session.sending) model.sharing::dismissNative else null) {
+            receivingDetails = false; if (shown) model.sharing.dismissNative(panel)
+        }, maximumHeight = if (session.sending) 560.dp else 680.dp,
+            finish = expiresAt?.let { { model.sharing.endNativeShare(panel) } }) {
             CloudNativeContent(model, session)
+            if (expiresAt != null && !session.incomingContent) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                val time = remember(context, expiresAt) { android.text.format.DateFormat.getTimeFormat(context).format(expiresAt) }
+                Text("链接有效至 $time，可重复领取。关闭面板后继续分享。", style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
         }
     }
     session.invitation?.let { invite ->

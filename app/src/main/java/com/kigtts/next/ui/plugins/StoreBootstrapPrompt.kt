@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -52,9 +54,9 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
         }) },
         text = { Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(when (state.phase) {
-                StoreBootstrapPhase.OFFER -> if (synthesis) "安装语音合成服务需要插件商店。是否先从 KIGTTS 官方源下载并安装商店？" else "添加插件源需要插件商店。是否从 KIGTTS 官方源下载并安装？"
+                StoreBootstrapPhase.OFFER -> if (synthesis) uiText("store.reading") else "添加插件源需要插件商店。是否从 KIGTTS 官方源下载并安装？"
                 StoreBootstrapPhase.RESTORE -> if (synthesis) "插件商店已安装但当前不可用。启用后前往安装语音合成服务。" else "插件商店已安装但当前不可用。启用后继续添加源。"
-                StoreBootstrapPhase.DOWNLOADING -> "正在读取官方目录并检查下载文件…"
+                StoreBootstrapPhase.DOWNLOADING -> uiText("store.fetch")
                 StoreBootstrapPhase.REVIEW -> "下载已完成，请确认插件信息。"
                 StoreBootstrapPhase.INSTALLING -> if (synthesis) "完成后前往语音合成服务的安装页面。" else "完成后继续添加刚才的源。"
                 StoreBootstrapPhase.COMPLETED -> "商店已准备好。"
@@ -66,7 +68,7 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
                 Text("发布者 SHA-256：${candidate.publisherSha256}", style = MaterialTheme.typography.bodySmall)
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (synthesis) "商店准备好后，请选择语音合成服务并确认安装。" else "源地址已保留；商店准备好后仍会请你确认添加。", style = MaterialTheme.typography.bodySmall)
+            Text(if (synthesis) "商店准备好后，请选择语音合成服务并确认安装。" else uiText("store.source"), style = MaterialTheme.typography.bodySmall)
         } },
         confirmButton = { MotionTextButton(onClick = feedbackClick(confirm), enabled = !busy) { Text(when (state.phase) {
             StoreBootstrapPhase.OFFER -> "下载插件商店"

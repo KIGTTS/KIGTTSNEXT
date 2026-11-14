@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -87,8 +89,8 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
             }
         }
         EmptyContent(shown.isEmpty() && !importing, if (pagesOnly) Icons.Default.Language else Icons.Default.PermMedia,
-            if (pagesOnly) "还没有网页" else "还没有媒体",
-            description = if (pagesOnly) "添加网址，或编写自己的网页" else "导入图片、视频或网页后，就能在这里找到")
+            if (pagesOnly) "还没有网页" else uiText("media.empty"),
+            description = if (pagesOnly) "添加网址，或编写自己的网页" else uiText("media.empty_body"))
         }
     }
     if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(mediaDisplayTitle(entry,phrases)) }, text = { Column {
@@ -100,7 +102,7 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
         TextButton(dialogFeedbackClick { menu = null; deleting = entry }) { Text("删除", color = MaterialTheme.colorScheme.error) }
     } }, confirmButton = { TextButton(dialogFeedbackClick { menu = null }) { Text("关闭") } }) }
     if (active) deleting?.let { entry -> MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除媒体？") },
-        text = { Text("引用此媒体的快捷条目将保留文字并移除媒体关联。") }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(feedbackClick {
+        text = { Text(uiText("media.delete_body")) }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(feedbackClick {
             scope.launch { try { model.content.removeAsync(entry.id); closeDialog { deleting = null } } catch (e: Exception) { error = e.message } }
         }) { Text("删除") } }, dismissButton = { TextButton(dialogFeedbackClick { deleting = null }) { Text("取消") } }) }
     if (active && website) WebsiteDialog(model, close = { website = false })

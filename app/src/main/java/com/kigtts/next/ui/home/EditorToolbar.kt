@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,7 +23,7 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     val registeredStart = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_START, model) }
     val registeredEnd = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_END, model) }
     val start = listOf(ElasticAction("editor-menu", "文本菜单", Icons.Default.MoreVert, { menu = true }),
-        ElasticAction("editor-flip", "上下翻转字幕", Icons.Default.SwapVert, model::flipSubtitle)) + registeredStart
+        ElasticAction("editor-flip", uiText("subtitle.flip"), Icons.Default.SwapVert, model::flipSubtitle)) + registeredStart
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) fontBar = false }
     val end = (if (state.mediaId == null) listOf(ElasticAction("editor-font-size", "调整字幕字号", Icons.Default.ZoomIn, { fontBar = !fontBar })) else emptyList()) + registeredEnd
     Box {
@@ -29,7 +31,7 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
             FontToolbarSwap(fontBar, "字幕字号", Modifier.weight(.68f)) { expanded ->
             if (expanded) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
                 { fontBar = false }, Modifier.fillMaxWidth(),
-                valueDescription = "单字宽度占屏幕 %.1f%%".format(state.subtitleSizePercent))
+                valueDescription = uiText("subtitle.size", "size" to "%.1f".format(state.subtitleSizePercent)))
             else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作", stableItems = true)
             }
             Spacer(Modifier.weight(.02f))

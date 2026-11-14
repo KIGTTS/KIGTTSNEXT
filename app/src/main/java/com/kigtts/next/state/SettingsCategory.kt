@@ -1,6 +1,7 @@
 package com.kigtts.next.state
 
 enum class SettingsCategory(val title: String, val summary: String) {
+    LANGUAGE("语言与文案", ""),
     APPEARANCE("外观", "主题、颜色与圆角"),
     FEEDBACK("操作反馈", "震动与长按快速排序"),
     OVERLAY("悬浮窗", "悬浮快捷入口与气泡"),

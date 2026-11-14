@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -60,8 +62,8 @@ import kotlinx.coroutines.delay
             delay(120)
             try { all = repository.load(imagesOnly, videosOnly); failure = null }
             catch (cancel: CancellationException) { throw cancel }
-            catch (_: SecurityException) { failure = "请允许访问要查看的照片" }
-            catch (_: Exception) { failure = "相册暂时无法读取，点按重试" }
+            catch (_: SecurityException) { failure = context.uiCopy("album.permission") }
+            catch (_: Exception) { failure = context.uiCopy("album.failed") }
             finally { loading = false }
         }
     }
@@ -169,7 +171,7 @@ internal fun shareAlbumMedia(context: android.content.Context, photos: List<Albu
 private fun openSystemAlbum(context: android.content.Context, message: (String) -> Unit) {
     val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_GALLERY)
     val targets = context.packageManager.queryIntentActivities(intent, 0).filter { it.activityInfo.packageName != context.packageName }
-    val target = targets.firstOrNull() ?: run { message("未找到其它相册应用"); return }
+    val target = targets.firstOrNull() ?: run { message(context.uiCopy("album.system_missing")); return }
     runCatching { context.startActivity(intent.setClassName(target.activityInfo.packageName, target.activityInfo.name)) }
-        .onFailure { message("未能打开系统相册") }
+        .onFailure { message(context.uiCopy("album.system_failed")) }
 }

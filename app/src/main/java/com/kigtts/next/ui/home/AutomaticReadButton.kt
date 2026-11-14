@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.*
 import androidx.compose.ui.unit.dp
@@ -32,6 +34,6 @@ internal fun AutomaticReadButton(state: AppState, model: AppViewModel) {
             .iconLongAction(true) { picker = true },
         colors = compactPlainIconColors()) {
         Icon(if (state.autoPlayback) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-            if (state.autoPlayback) "关闭自动播放与朗读" else "开启自动播放与朗读")
+            if (state.autoPlayback) uiText("subtitle.auto_off") else uiText("subtitle.auto_on"))
     }
 }

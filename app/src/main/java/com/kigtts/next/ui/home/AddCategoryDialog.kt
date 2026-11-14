@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.MotionTextButton
 
 import androidx.compose.foundation.layout.*
@@ -50,7 +52,7 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
         text = {
             Column(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(state = name, lineLimits = TextFieldLineLimits.SingleLine, label = { Text("分组名称") },
-                    isError = duplicate, supportingText = { if (duplicate) Text("分组名称已存在") },
+                    isError = duplicate, supportingText = { if (duplicate) Text(uiText("quick.group_duplicate")) },
                     modifier = Modifier.fillMaxWidth().testTag(if (original == null) "new-category-name" else "edit-category-name"))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

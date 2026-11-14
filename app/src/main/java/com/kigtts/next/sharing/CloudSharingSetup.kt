@@ -24,10 +24,16 @@ internal class CloudSharingSetup(private val preferences: SharedPreferences, pri
             // Disabling an installed plugin continues to mean system sharing.
             if (installed()) return false
         }
-        return (pending ?: CompletableDeferred<Boolean>().also {
+        return prompt()
+    }
+    /** Turning on receiving is an explicit opt-in even after choosing system sharing earlier. */
+    suspend fun ensureForReceiving(): Boolean {
+        if (enabled && ready()) return true
+        return prompt()
+    }
+    private suspend fun prompt(): Boolean = (pending ?: CompletableDeferred<Boolean>().also {
             pending = it; mutable.value = CloudSharingSetupState()
         }).await()
-    }
     fun useCloud() {
         if (job?.isActive == true) return
         mutable.value = CloudSharingSetupState(busy = true, progress = 0f)

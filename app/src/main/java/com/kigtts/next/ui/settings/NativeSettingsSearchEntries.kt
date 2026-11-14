@@ -4,6 +4,7 @@ import com.kigtts.next.state.*
 
 /** Native option paths. Plugin entrances are merged from their live contributions. */
 internal val nativeSettingsSearchEntries = listOf(
+    SettingsSearchResult("语言与文案", "设置 / 外观与交互 / 语言与文案", Destination.SettingsDetail(SettingsCategory.LANGUAGE)),
     SettingsSearchResult("版本", "设置 / 关于 / 版本", Destination.SettingsDetail(SettingsCategory.ABOUT)),
     SettingsSearchResult("项目主页", "设置 / 关于 / 帮助与反馈 / 项目主页", Destination.SettingsDetail(SettingsCategory.ABOUT)),
     SettingsSearchResult("反馈问题", "设置 / 关于 / 帮助与反馈 / 反馈问题", Destination.SettingsDetail(SettingsCategory.ABOUT)),
@@ -59,4 +60,14 @@ internal val nativeSettingsSearchEntries = listOf(
     SettingsSearchResult("心知天气 API Key", "设置 / 拍照 / 天气设置 / 服务密钥 / 心知天气 API Key", Destination.SettingsDetail(SettingsCategory.PHOTO_WEATHER)),
     SettingsSearchResult("媒体", "设置 / ${SettingsCategory.EXPERIMENTAL.title} / 媒体", Destination.SettingsDetail(SettingsCategory.EXPERIMENTAL)),
     SettingsSearchResult("苹果实况照片", "设置 / ${SettingsCategory.EXPERIMENTAL.title} / 媒体 / 苹果实况照片", Destination.SettingsDetail(SettingsCategory.EXPERIMENTAL)),
+)
+
+internal val localizedSearchTitles = mapOf(
+    "更暗的深色模式" to "appearance.dark",
+    "减弱字幕动效" to "appearance.less_motion",
+    "展示时换行动效" to "appearance.reflow",
+    "开启悬浮窗" to "overlay.on",
+    "自动贴边收起" to "overlay.fold",
+    "优先小窗打开" to "overlay.window",
+    "完整系统相机" to "camera.full_system.title",
 )

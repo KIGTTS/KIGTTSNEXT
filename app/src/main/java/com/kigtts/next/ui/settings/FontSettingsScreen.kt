@@ -1,5 +1,9 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiCopy
+
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -51,7 +55,7 @@ import kotlinx.coroutines.*
             }
             onChange(current.copy(font = font.key, fontName = font.name)); revision++
         } catch (cancel: CancellationException) { throw cancel }
-        catch (e: Exception) { error = e.message ?: "字体未能导入，请重试" }
+        catch (e: Exception) { error = e.message ?: context.uiCopy("font.import_failed") }
         finally { busy = null }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -95,8 +99,8 @@ import kotlinx.coroutines.*
         onChange(current.copy(font = font.key, fontName = font.name, fontWeight = weight))
         weightEditor = null
     } }
-    remove?.let { font -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("删除这个字体？") },
-        text = { Text(if (settings.font == font.key) "删除后使用系统默认字体。" else font.name) },
+    remove?.let { font -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text(uiText("font.delete")) },
+        text = { Text(if (settings.font == font.key) uiText("font.delete_body") else font.name) },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick {
             remove = null
             scope.launch {

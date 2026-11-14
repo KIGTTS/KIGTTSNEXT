@@ -74,6 +74,7 @@ data class AppState(
     val contentAutoPlay: Boolean = true,
     val contentAudioMode: com.kigtts.next.media.MediaAudioMode? = null,
     val contentRevision: Int = 0,
+    val uiLocale: String = "zh-CN",
 ) {
     val editorText: String get() = editorValue.text
     val subtitleExpanded: Boolean get() = editing || forcedFullscreen || mediaEditing

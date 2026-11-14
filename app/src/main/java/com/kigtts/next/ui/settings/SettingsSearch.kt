@@ -1,6 +1,10 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiCopy
+
+import com.kigtts.next.i18n.LocalUiLocale
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,9 +25,9 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 
-internal data class SettingsSearchResult(val title: String, val path: String, val destination: Destination, val target: String = title)
+internal data class SettingsSearchResult(val title: String, val path: String, val destination: Destination, val target: String = title, val alias: String = "")
 
-internal fun searchSettings(query: String, cards: List<SettingsCard>): List<SettingsSearchResult> {
+internal fun searchSettings(query: String, cards: List<SettingsCard>, localize: (String) -> String = { it }): List<SettingsSearchResult> {
     val root = cards.flatMap { group -> group.links.map { link ->
         SettingsSearchResult(link.title, "设置 / ${group.title} / ${link.title}", link.destination)
     } }
@@ -33,15 +37,23 @@ internal fun searchSettings(query: String, cards: List<SettingsCard>): List<Sett
         SettingsSearchResult("背景与贴纸", "设置 / 个人信息 / 编辑 / 背景与贴纸", Destination.PersonalInformationEditor))
     val words = query.trim().lowercase().split(Regex("\\s+")).filter(String::isNotBlank)
     if (words.isEmpty()) return emptyList()
-    return (root + nativeSettingsSearchEntries + personal).distinctBy { it.path }.filter { entry ->
-        words.all { it in (entry.title + " " + entry.path).lowercase() }
+    return (root + nativeSettingsSearchEntries.map { entry ->
+        val key = localizedSearchTitles[entry.title] ?: return@map entry
+        val title = localize(key)
+        if (title == key) entry else entry.copy(title = title, path = entry.path.substringBeforeLast(" / ") + " / " + title, target = title, alias = entry.title)
+    } + personal).distinctBy { it.path }.filter { entry ->
+        words.all { it in (entry.title + " " + entry.path + " " + entry.alias).lowercase() }
     }.sortedWith(compareBy({ if (it.title.equals(query.trim(), true)) 0 else if (query.trim() in it.title) 1 else 2 }, { it.path.length }))
 }
 
 @Composable internal fun SettingsSearchDialog(cards: List<SettingsCard>, close: () -> Unit, open: (Destination) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val focus = remember { FocusRequester() }
-    val results = remember(query, cards) { searchSettings(query, cards) }
+    val language = LocalUiLocale.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val results = remember(query, cards, language, context) {
+        searchSettings(query, cards) { key -> context.uiCopy(key, locale = language) }
+    }
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = close)
         LaunchedEffect(Unit) { focus.requestFocus() }

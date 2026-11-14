@@ -14,6 +14,25 @@ import java.util.UUID
 internal class SharingCoordinator(private val model: AppViewModel, private val scope: CoroutineScope) {
     val deviceKey = UUID.randomUUID().toString().replace("-", "")
     private val context get() = model.getApplication<Application>()
+    private val receivePreferences = context.getSharedPreferences("face-receiving", 0)
+    private val mutableReceiving = kotlinx.coroutines.flow.MutableStateFlow(receivePreferences.getBoolean("enabled", false))
+    val receiving = mutableReceiving.asStateFlow()
+    private var enablingReception: Job? = null
+    fun setReceiving(enabled: Boolean) {
+        if (!enabled) {
+            enablingReception?.cancel()
+            mutableReceiving.value = false
+            receivePreferences.edit().putBoolean("enabled", false).apply()
+        } else if (enablingReception?.isActive != true) {
+            enablingReception = scope.launch {
+                if (setup.ensureForReceiving()) {
+                    mutableReceiving.value = true
+                    receivePreferences.edit().putBoolean("enabled", true).apply()
+                } else model.message("开启云端互传后才能接收附近分享")
+            }
+        }
+    }
+    fun openReceiving() = setReceiving(true)
     val setup: CloudSharingSetup = CloudSharingSetup(context.getSharedPreferences("sharing", 0), scope,
         ready = { provider("sharing/open-v1") != null },
         installed = { model.pluginManager.status.any { it.installed.manifest.id == CLOUD_SHARING_ID } },
@@ -39,14 +58,35 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
             }
             model.refreshPlugins()
         })
-    fun close() { setup.close(); preparing?.cancel() }
+    fun close() { enablingReception?.cancel(); setup.close(); preparing?.cancel(); endNativeShare() }
     private var preparing: Job? = null
     private var invitation: String? = null
     private val mutableNfc = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val nfc = mutableNfc.asStateFlow()
     private val mutablePanel = kotlinx.coroutines.flow.MutableStateFlow<CloudNativePanel?>(null)
     val nativePanel = mutablePanel.asStateFlow()
-    fun dismissNative() { mutablePanel.value = null }
+    private val mutableOutgoing = kotlinx.coroutines.flow.MutableStateFlow<CloudOutgoingShare?>(null)
+    val outgoing = mutableOutgoing.asStateFlow()
+    private var expiry: Job? = null
+    fun dismissNative(panel: CloudNativePanel) {
+        if (mutablePanel.value != panel) return
+        mutablePanel.value = null
+        if (mutableOutgoing.value?.panel == panel) model.message("分享仍在进行，可从通知或云共享返回")
+    }
+    fun endNativeShare(panel: CloudNativePanel? = null) {
+        val share = mutableOutgoing.value ?: return
+        if (panel != null && share.panel != panel) return
+        expiry?.cancel(); expiry = null
+        mutableOutgoing.value = null
+        if (mutablePanel.value == share.panel) mutablePanel.value = null
+        if (mutableNfc.value != null) dismissNfc()
+        CloudShareService.finish(context, share.key)
+        // Explicit end must revoke even if the WebView is already gone or the Activity is closing.
+        releaseShare(share)
+    }
+    private fun releaseShare(share: CloudOutgoingShare) {
+        scope.launch(Dispatchers.IO + NonCancellable) { runCatching { share.release() } }
+    }
     fun nativePage(owner: String, pageId: String): CloudNativePanel? {
         if (!isProvider(owner) || "sharing/native-v1" !in model.registry.plugin(owner)!!.contributions.automationActions) return null
         val block = model.pluginPage(owner, pageId)?.blocks?.filterIsInstance<com.kigtts.plugin.api.PageBlock.Browser>()?.singleOrNull() ?: return null
@@ -54,11 +94,40 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         return CloudNativePanel(owner, pageId, block)
     }
     fun showNative(owner: String, pageId: String): Boolean {
+        val active = mutableOutgoing.value
+        if (pageId == "receive" && active?.panel?.owner == owner) {
+            mutablePanel.value = active.panel
+            return true
+        }
         val panel = nativePage(owner, pageId) ?: return false
+        if (panel.pageId.startsWith("outgoing/")) {
+            val share = runCatching {
+                val root = model.pluginManager.paths.storage(owner).file(panel.block.root!!.path)
+                CloudOutgoingShare(panel, root).also { require(it.expiresAt > System.currentTimeMillis()) }
+            }.getOrElse { model.message("分享链接已失效，请重新分享"); return true }
+            if (active != null) {
+                if (active.panel != panel) releaseShare(share)
+                mutablePanel.value = active.panel
+                return true
+            }
+            mutableOutgoing.value = share
+            expiry = scope.launch {
+                delay((share.expiresAt - System.currentTimeMillis()).coerceAtLeast(0))
+                endNativeShare(share.panel)
+            }
+            CloudShareService.start(context, share.key) { endNativeShare(share.panel) }
+        }
         mutablePanel.value = panel; return true
     }
     fun dismissNfc() { mutableNfc.value = null }
-    fun accept(intent: android.content.Intent?): Boolean = CloudShareLinks.from(intent)?.let(::open) ?: false
+    fun accept(intent: android.content.Intent?): Boolean {
+        val key = intent?.getStringExtra(CloudShareService.EXTRA_SHARE)
+        if (key != null) {
+            mutableOutgoing.value?.takeIf { it.key == key }?.let { mutablePanel.value = it.panel }
+            return true
+        }
+        return CloudShareLinks.from(intent)?.let(::open) ?: false
+    }
     fun open(raw: String): Boolean {
         val url = CloudShareLinks.parse(raw) ?: return false
         invitation = url; deliver(); return true
@@ -118,7 +187,9 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         try { publishOrShare("quick-text", title, listOf(file), "application/zip", "$title.kigcard") }
         finally { withContext(Dispatchers.IO) { file.delete() } }
     }
-    fun shareMedia(ids: List<String>) = prepare {
+    fun shareMedia(ids: List<String>) = shareMedia(ids, context::startActivity)
+
+    internal fun shareMedia(ids: List<String>, launchChooser: (android.content.Intent) -> Unit) = prepare {
         val personal = model.identities.current?.takeIf { ids.singleOrNull() == it.designId }
         val root = File(context.cacheDir, "cards/sharing/${UUID.randomUUID()}")
         try {
@@ -129,7 +200,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
                 } else listOf(pdf)
                 if (!publish("profile", personal.nickname.ifBlank { "个人主页" }, files)) {
                     val intent = withContext(Dispatchers.IO) { shareFileIntent(context, pdf, "个人主页.pdf", "application/pdf") }
-                    context.startActivity(intent)
+                    launchChooser(intent)
                 }
             } else {
                 val assets = withContext(Dispatchers.IO) { FacePhotoRepository(model.cards, model.identities).prepare(ids, false, true, root)
@@ -137,13 +208,18 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
                 val files = assets.map { requireNotNull(it.file) }
                 if (!publish("photos", "照片", files)) {
                     val intent = withContext(Dispatchers.IO) { faceSystemShareIntent(context, assets, false) }
-                    context.startActivity(intent)
+                    launchChooser(intent)
                 }
             }
         } finally { withContext(Dispatchers.IO) { root.deleteRecursively() } }
     }
     private fun prepare(work: suspend () -> Unit) {
         if (preparing?.isActive == true) return
+        mutableOutgoing.value?.let {
+            mutablePanel.value = it.panel
+            model.message("请先结束当前分享，再分享其它内容")
+            return
+        }
         preparing = scope.launch {
             try { setup.ensure(); work() }
             catch (cancel: CancellationException) { throw cancel }

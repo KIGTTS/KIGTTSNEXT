@@ -50,7 +50,7 @@
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
         <service android:name=".audio.RecognitionForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".sharing.FaceShareService" android:exported="false" android:foregroundServiceType="connectedDevice" />
+        <service android:name=".sharing.CloudShareService" android:exported="false" android:foregroundServiceType="connectedDevice" />
         <service android:name=".identity.ContactNfcService" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
             <intent-filter><action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" /></intent-filter>
             <meta-data android:name="android.nfc.cardemulation.host_apdu_service" android:resource="@xml/contact_nfc_service" />

@@ -14,7 +14,7 @@ internal fun faceSystemShareIntent(context: Context, assets: List<FaceAsset>, pe
     val root = File(context.cacheDir, "cards/exports").apply { check(mkdirs() || isDirectory) }
     val uris = photos.map { asset ->
         val source = requireNotNull(asset.file)
-        val copy = source.copyTo(File(root, "${UUID.randomUUID()}.${FacePhotoSession.extension(asset.mime)}"))
+        val copy = source.copyTo(File(root, "${UUID.randomUUID()}.${shareImageExtension(asset.mime)}"))
         FileProvider.getUriForFile(context, context.packageName + ".files", copy)
     }
     val send = Intent(if (uris.size == 1) Intent.ACTION_SEND else Intent.ACTION_SEND_MULTIPLE).apply {

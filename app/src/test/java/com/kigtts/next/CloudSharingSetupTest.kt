@@ -27,6 +27,20 @@ class CloudSharingSetupTest {
         setup.useCloud();assertTrue(choice.await());assertTrue(setup.enabled);assertTrue(setup.ensure());assertEquals(1,installs)
         ready=false;assertFalse(setup.ensure());assertEquals(1,installs)
     }
+    @Test fun explicitReceivingCanOptInAfterSystemSharingWasChosen() = runBlocking {
+        var ready = false
+        var installs = 0
+        val prefs = preferences().apply { edit().putBoolean("cloud", false).commit() }
+        val setup = CloudSharingSetup(prefs, this, { ready }, { true }, { installs++; ready = true })
+        assertFalse(setup.ensure())
+        val receiving = async(start = CoroutineStart.UNDISPATCHED) { setup.ensureForReceiving() }
+        assertNotNull(setup.state.value)
+        assertEquals(0, installs)
+        setup.useCloud()
+        assertTrue(receiving.await())
+        assertTrue(setup.ensure())
+        assertEquals(1, installs)
+    }
     @Test fun failedInstallOffersRetryOrSystemSharingWithoutClaimingEnabled() = runBlocking {
         val setup=CloudSharingSetup(preferences(),this,{false},{false},{error("网络暂不可用")})
         val choice=async(start=CoroutineStart.UNDISPATCHED){setup.ensure()}

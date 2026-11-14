@@ -1,20 +1,6 @@
 package com.kigtts.next.sharing
 
-import android.content.Context
 import org.json.JSONObject
-import java.io.File
-
-/** Browser-only resources stay behind the revocable share URL, outside peer photo lists. */
-internal class FaceWebAppearance(val json: JSONObject, private val files: Map<String, File>) {
-    fun file(name: String) = files[name]?.takeIf { it.isFile }
-    companion object {
-        fun prepare(context: Context, directory: File): FaceWebAppearance {
-            val files = mutableListOf<File>()
-            val json = shareWebAppearance(context, directory.apply { mkdirs() }, files)
-            return FaceWebAppearance(json, files.associateBy { it.name })
-        }
-    }
-}
 
 internal const val faceAppearanceStyles = """
 :root{--share-font:system-ui;--profile-font-scale:1;--weight-400:400;--weight-500:500;--weight-600:600;--weight-700:700}

@@ -69,8 +69,6 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
     internal val contactFavorites by lazy { com.kigtts.next.identity.ContactFavorites.get(application) }
     init { com.kigtts.next.identity.warmIdentityBackground(viewModelScope, stickers, identities) }
-    private val faceShareDelegate = lazy { com.kigtts.next.sharing.FaceShareController(application, viewModelScope, cards, identities, ::message, { sharing.shareMedia(it) }) }
-    internal val faceShare get() = faceShareDelegate.value
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)
     val cardUi = CardWorkspace(::navigate, { navigate(Destination.Cards) },
         { cards.albums.value }, { id -> cards.cards.value.any { it.id == id } }, { id -> !cards.isReadOnly(id) })
@@ -80,7 +78,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val mediaPlayback = com.kigtts.next.ui.media.MediaPlaybackSessions()
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
-    private val mutableState = MutableStateFlow(AppState(theme = themeStore.load(), subtitlePlaceholder = placeholderStore.load(), hapticsEnabled = feedbackStore.load(),
+    private val uiLanguage = com.kigtts.next.i18n.UiLanguageStore(application)
+    private val mutableState = MutableStateFlow(AppState(uiLocale = uiLanguage.load(), theme = themeStore.load(), subtitlePlaceholder = placeholderStore.load(), hapticsEnabled = feedbackStore.load(),
         subtitleAppearance = subtitleAppearanceStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
@@ -152,7 +151,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal fun openSpeechPluginStore(query: String) {
         storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
             invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to query)) { accepted ->
-                if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "store"))
+                if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "search"))
             }
         }
     }
@@ -204,7 +203,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         ttsPluginId = registry.plugin(selectedTtsId.orEmpty())?.takeIf { plugin -> plugin.tts != null }?.descriptor?.id
             ?: registry.plugins.firstOrNull { plugin -> plugin.tts != null }?.descriptor?.id,
         voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
-        recognitionServiceId = selectedAsrId, locale = getApplication<Application>().resources.configuration.locales[0].toLanguageTag()) }
+        recognitionServiceId = selectedAsrId, locale = it.uiLocale) }
+    internal fun setUiLanguage(language: com.kigtts.next.i18n.UiLanguage) {
+        if (state.value.uiLocale == language.tag) return
+        uiLanguage.save(language)
+        update { it.copy(uiLocale = language.tag) }
+    }
     fun navigate(destination: Destination) {
         if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
         if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {
@@ -519,7 +523,6 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     suspend fun stopSpeech() = speech.stopAll()
     fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || state.value.recognitionOutput == CaptionOutput.PANEL) viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
-        if (faceShareDelegate.isInitialized()) faceShare.dispose()
         super.onCleared()
         storeBootstrap.close()
         sharing.close()

@@ -89,6 +89,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
                         state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) })
+                    SettingsCategory.LANGUAGE -> UiLanguageScreen(state.uiLocale, model::setUiLanguage)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)

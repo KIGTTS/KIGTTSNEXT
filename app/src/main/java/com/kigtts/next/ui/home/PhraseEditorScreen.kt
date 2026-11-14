@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiCopy
+
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -44,7 +46,7 @@ private fun PhraseEditorContent(model: AppViewModel, token: String) {
         error = null
         try {
             focus.clearFocus(); keyboard?.hide()
-            check(model.content.savePhraseForExit(waitForExit)) { "保存未完成，请检查内容与分组后重试" }
+            check(model.content.savePhraseForExit(waitForExit)) { model.getApplication<android.app.Application>().uiCopy("quick.save_error") }
             baseline = serialized
             model.category(draft.category)
         } catch (failure: Exception) {

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.LocationOn
@@ -21,7 +23,7 @@ import com.kigtts.next.cards.PhotoServiceSettings
         ToggleSetting("默认使用系统相机", "编辑图片时优先使用系统相机。长按首页相机入口也可直接打开系统相机。", Icons.Default.PhotoCamera, system, {
             system = it; preferences.edit().putBoolean("use-system-camera", it).apply()
         }, position = SettingPosition.FIRST)
-        ToggleSetting("完整系统相机", "使用系统相机的完整功能与镜头，返回后自动导入刚拍的照片。关闭后，拍完即可返回。", Icons.Default.PhotoCamera, full, {
+        ToggleSetting(uiText("camera.full_system.title"), uiText("camera.full_system.body"), Icons.Default.PhotoCamera, full, {
             full = it; preferences.edit().putBoolean("full-system-camera", it).apply()
         }, position = SettingPosition.LAST)
     }

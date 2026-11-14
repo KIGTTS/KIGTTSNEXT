@@ -15,6 +15,10 @@ import com.kigtts.next.theme.*
 import com.kigtts.next.ui.cards.CardPreviewDialog
 import com.kigtts.next.ui.settings.*
 import com.kigtts.plugin.api.PolaroidCard
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +29,7 @@ import org.robolectric.annotation.*
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
-@Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
+@Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi", shadows = [FaceWindowsFileProvider::class])
 class FaceUnifiedShareUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
@@ -47,10 +51,10 @@ class FaceUnifiedShareUiTest {
                 compose.onNodeWithText("创建临时热点").assertDoesNotExist()
             }
             checkRows()
-            compose.runOnIdle { model.faceShare.setReceiving(true) }
-            compose.onNodeWithContentDescription("面对面接收").assertIsOn()
-            checkRows()
-        } finally { compose.runOnIdle { model.faceShare.stop() } }
+            compose.onNodeWithContentDescription("面对面接收").performClick()
+            compose.waitUntil(3000) { model.sharing.setup.state.value != null }
+            compose.onNodeWithContentDescription("面对面接收").assertIsOff()
+        } finally { compose.runOnIdle { model.sharing.setup.dismiss() } }
     }
 
     @Test fun resolvedPeerShowsItsNicknamePhotoAndActualAvatarShapeAfterSparseUpdates() {
@@ -59,11 +63,10 @@ class FaceUnifiedShareUiTest {
         source.eraseColor(android.graphics.Color.rgb(220, 25, 110))
         file.outputStream().use { source.compress(android.graphics.Bitmap.CompressFormat.JPEG, 95, it) }; source.recycle()
         val raw = FacePeer(faceToken(), "KIGTTS 用户", "192.168.1.2", 12345, faceToken())
-        val resolved = facePeerProfile(raw, org.json.JSONObject().put("id", raw.id).put("protocol", 1)
-            .put("nickname", "我的朋友").put("avatar", faceAvatarData(file)).put("avatarFrame", "flower"))
+        val resolved = raw.copy(name = "我的朋友", avatar = faceAvatarData(file), avatarFrame = "flower")
         var peers by mutableStateOf(listOf(raw)); var sent: FacePeer? = null
         compose.setContent { KigttsTheme(ThemeSettings()) { FaceDiscoveryBar(peers, false, {}, {}, { sent = it }) } }
-        compose.runOnIdle { peers = listOf(mergeFacePeer(resolved, raw.copy(host = null))) }
+        compose.runOnIdle { peers = listOf(resolved) }
         compose.onNodeWithText("我的朋友").assertIsDisplayed()
         compose.onNodeWithTag("face-peer-${raw.id}").performClick(); assertEquals("我的朋友", sent?.name)
         fun capture(name: String): android.graphics.Bitmap {
@@ -94,68 +97,44 @@ class FaceUnifiedShareUiTest {
         assertEquals(1, shares); assertEquals(1, wifi)
     }
 
-    @Test fun photoSharingOpensStraightToDiscoveryAndReplacesIdentityWithAStack() {
-        val model = testAppModel(compose.activity.application)
-        compose.activity.viewModelStore.put("unified-share", model)
-        val person = model.identities.create().copy(nickname = "自己的名片")
-        model.identities.save(person)
-        val photos = (1..3).map { model.cards.create(PolaroidCard(title = "照片$it")) }
-        model.faceShare.openSend(photos.map { it.id })
-        assertEquals(FaceMode.SEND, model.faceShare.panel.value?.mode)
-        try {
-            compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { FaceShareHost(model) } }
-            compose.mainClock.advanceTimeBy(600); compose.waitForIdle()
-            compose.onNodeWithText("分享照片").assertIsDisplayed()
-            compose.onNodeWithTag("face-share-identity").assertDoesNotExist()
-            (0..2).forEach { compose.onNodeWithTag("face-share-photo-$it", useUnmergedTree = true).assertExists() }
-            compose.onNodeWithTag("face-system-share").assertIsDisplayed()
-            compose.onNodeWithTag("face-wifi-share").assertIsDisplayed()
-            compose.onNodeWithTag("face-share").captureRoboImage("build/previews/face-unified-photo-share.png")
-            compose.onNodeWithTag("face-connection").performClick()
-            compose.onNodeWithText("创建临时热点").assertIsDisplayed()
-        } finally { compose.runOnIdle { model.faceShare.stop() } }
-    }
-
-    @Test fun personalSharingShowsOnlyTheCardAndNoProfileTiles() {
-        val model = testAppModel(compose.activity.application)
+    @Test fun personalSharingUsesSystemChooserWithReadablePdfAndDoesNotLaunchLegacySheet() {
+        val app = compose.activity.application
+        val model = testAppModel(app)
         compose.activity.viewModelStore.put("identity-share", model)
         val person = model.identities.create().copy(nickname = "我的名片", tiles = listOf(
             ProfileTile(kind = ProfileTileKind.TEXT, title = "不应显示的磁贴")))
-        model.identities.save(person); model.faceShare.openSend(listOf(person.designId))
+        model.identities.save(person)
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { CloudSharingSetupHost(model) } }
+        var error: String? = null
+        val scope = CoroutineScope(Dispatchers.Main.immediate)
+        compose.runOnIdle {
+            scope.launch {
+                model.events.collect { (_, result) ->
+                    if (result is com.kigtts.plugin.api.PluginOutcome.Message) error = result.text
+                }
+            }
+        }
+        var launched: android.content.Intent? = null
+        compose.runOnIdle { model.sharing.shareMedia(listOf(person.designId)) { launched = it } }
+        compose.onNodeWithText("使用云端互传？").assertIsDisplayed()
+        compose.onNodeWithText("使用系统分享").performClick()
         try {
-            compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { FaceShareHost(model) } }
-            compose.mainClock.advanceTimeBy(600); compose.waitForIdle()
-            compose.onNodeWithTag("face-share-identity").assertIsDisplayed()
-            compose.onNodeWithTag("face-share-photos").assertDoesNotExist()
-            compose.onNodeWithText("不应显示的磁贴").assertDoesNotExist()
-            compose.onNodeWithText("拍立得成片").assertDoesNotExist()
-            compose.onNodeWithTag("face-system-share").assertIsDisplayed()
-            compose.onNodeWithTag("face-share").captureRoboImage("build/previews/face-unified-identity-share.png")
-        } finally { compose.runOnIdle { model.faceShare.stop() } }
-    }
-
-    @Test fun receivingChangesKeepPhotoPreviewFormatActionsAndSheetPosition() {
-        val model = testAppModel(compose.activity.application)
-        compose.activity.viewModelStore.put("share-isolation", model)
-        val photos = (1..2).map { model.cards.create(PolaroidCard(title = "照片$it")) }
-        model.faceShare.openSend(photos.map { it.id })
-        try {
-            compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) { FaceShareHost(model) } }
-            compose.mainClock.advanceTimeBy(600); compose.waitForIdle()
-            val before = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
-            compose.onNodeWithContentDescription("分享格式：原图").performClick()
-            compose.runOnIdle { model.faceShare.openReceive() }
-            compose.onNodeWithText("分享照片").assertIsDisplayed()
-            compose.onNodeWithText("面对面接收").assertDoesNotExist()
-            compose.onNodeWithContentDescription("分享格式：原图").assertIsSelected()
-            compose.runOnIdle { model.faceShare.setReceiving(false) }
-            compose.onNodeWithContentDescription("分享格式：原图").assertIsSelected()
-            (0..1).forEach { compose.onNodeWithTag("face-share-photo-$it", useUnmergedTree = true).assertExists() }
-            compose.onNodeWithTag("face-system-share").assertIsDisplayed()
-            compose.onNodeWithTag("face-wifi-share").assertIsDisplayed()
-            val after = compose.onNodeWithTag("face-share").getUnclippedBoundsInRoot()
-            assertEquals(before, after)
-        } finally { compose.runOnIdle { model.faceShare.stop() } }
+            compose.waitUntil(12_000) {
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                launched != null || error != null
+            }
+        } finally { scope.cancel() }
+        assertNull(error)
+        assertEquals(android.content.Intent.ACTION_CHOOSER, launched!!.action)
+        val send = requireNotNull(launched!!.getParcelableExtra(android.content.Intent.EXTRA_INTENT, android.content.Intent::class.java))
+        assertEquals(android.content.Intent.ACTION_SEND, send.action)
+        assertEquals("application/pdf", send.type)
+        assertTrue(send.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        val uri = requireNotNull(send.getParcelableExtra(android.content.Intent.EXTRA_STREAM, android.net.Uri::class.java))
+        assertEquals(uri, send.clipData?.getItemAt(0)?.uri)
+        val file = java.io.File(app.cacheDir, "cards/" + uri.pathSegments.drop(1).joinToString("/"))
+        assertEquals("%PDF-", file.inputStream().use { String(it.readNBytes(5), Charsets.US_ASCII) })
+        compose.onNodeWithTag("face-share-identity").assertDoesNotExist()
     }
 
     @Test fun ordinaryPhotoShareButtonUsesUnifiedPanelInsteadOfBypassingIt() {

@@ -1,6 +1,6 @@
 # 独立插件编辑器与 Lua 工具
 
-插件编辑器是独立的 `runtime.lua` API11/MIT 插件，发布为 `runtime.lua-0.9.1.kigplugin`。
+插件编辑器是独立的 `runtime.lua` 插件。0.9.3 按原生 API 34 构建，并增加界面语言支持。
 LuaJ 3.0.1 与编辑器实现只存在于外置包，主程序提供原生页面、文件列表和能力接口。
 `.kigplugin` 仍是需要发行者签名的 Android DEX 插件；`.kiglua` 是由此编辑器管理的 Lua 源项目，不是 APK。
 
@@ -58,6 +58,8 @@ appdata/Kigtts/plugin/plugindata/runtime.lua/
 这三类返回值只能含 JSON 数据，不能包含函数、userdata、循环表或无限 UI 树。
 每次调用使用新的全局环境；跨调用状态使用 `host.data.read/write`。
 页面和按钮先缓存，宿主绘制时不执行 Lua，也不重播整个条目列表的入场动画。
+
+在项目的 `assets/i18n/zh-CN.json` 与 `assets/i18n/zh-CN-x-casual.json` 提供 UTF-8 无 BOM 文案。两套文案使用相同的键和占位符。用 `host.t("greeting", { name = "KIGTTS" }, "你好")` 取当前文案，或通过 `ctx.locale` 获取语言标签。旧项目可保留原文；切换语言不重跑任何用户动作。
 
 ```lua
 return {

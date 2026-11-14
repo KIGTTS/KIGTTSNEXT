@@ -60,7 +60,10 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         require(item.nickname.length <= 40 && item.bio.length <= 240 && item.contacts.size <= 8)
         require(item.tags.size <= 12 && item.tags.all { it.isNotBlank() && it.length <= 20 })
         require(item.tiles.size <= 24 && item.tiles.distinctBy { it.id }.size == item.tiles.size)
-        require(item.tiles.all { it.columns in 1..4 && it.rows in 1..3 && it.title.length <= 40 && it.text.length <= 2048 && it.contact.length <= 2048 })
+        require(item.tiles.all {
+            it.columns in 1..4 && it.rows in 1..(if (it.kind == ProfileTileKind.QR) 4 else 3) &&
+                it.title.length <= 40 && it.text.length <= 2048 && it.contact.length <= 2048
+        })
         require(item.contacts.all { it.label.length <= 24 && it.value.length <= 2048 && it.value.isNotBlank() && (it.qrContent?.length ?: 0) <= 2048 })
         require(current == null || current?.id == item.id) { "个人名片只保留一张" }
         val nextProfile = PersonalProfile.from(item)

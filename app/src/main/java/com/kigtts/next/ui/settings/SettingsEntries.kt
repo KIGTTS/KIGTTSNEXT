@@ -31,6 +31,7 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         "sharing" to listOf(SettingsLink("face-receive", "面对面接收", "", Icons.Default.MoveToInbox, Destination.Settings),
             SettingsLink("contact-favorites", "扩列收藏夹", "", Icons.Default.Bookmarks, Destination.ContactFavorites)),
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
+            category("ui-language", SettingsCategory.LANGUAGE, Icons.Default.Language),
             category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration),
             category("overlay", SettingsCategory.OVERLAY, Icons.Default.BubbleChart)),
         "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language),

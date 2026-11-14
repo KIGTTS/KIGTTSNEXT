@@ -106,8 +106,8 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
             }
             SettingsGroup("我的名片") {
                 SettingItem("分享名片", "", Icons.Default.Share, SettingPosition.SINGLE,
-                    onClick = { if (editing) persist { model.faceShare.openSend(listOf(displayed.designId)) }
-                        else model.faceShare.openSend(listOf(displayed.designId)) })
+                    onClick = { if (editing) persist { model.sharing.shareMedia(listOf(displayed.designId)) }
+                        else model.sharing.shareMedia(listOf(displayed.designId)) })
             }
         } ?: FilledTonalButton(feedbackClick(::begin), Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Text("设置我的名片") }
         SettingsGroup("我的收藏") {

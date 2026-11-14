@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.MediaStore
@@ -14,9 +16,9 @@ internal fun systemCameraShortcut(message: (String) -> Unit): () -> Unit {
         try {
             context.startActivity(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
         } catch (_: ActivityNotFoundException) {
-            message("没有可用的系统相机")
+            message(context.uiCopy("camera.system_missing"))
         } catch (_: SecurityException) {
-            message("无法打开系统相机")
+            message(context.uiCopy("camera.system_missing"))
         }
     }
 }

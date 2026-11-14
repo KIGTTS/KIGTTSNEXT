@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -49,21 +51,21 @@ fun OverlaySettingsScreen() {
         store.update { it.copy(shortcuts = it.shortcuts.filterNot { old -> old.id == entry.id }) }
     }, controls = {
         SettingsGroup("悬浮快捷入口") {
-            ToggleSetting("开启悬浮窗", "快速打开字幕板、相机和常用功能", Icons.Default.BubbleChart,
+            ToggleSetting(uiText("overlay.on"), uiText("overlay.on.body"), Icons.Default.BubbleChart,
                 state.enabled && Settings.canDrawOverlays(context), { enabled ->
                     if (enabled && !Settings.canDrawOverlays(context)) permissionExplanation = true else enable(enabled)
                 }, position = SettingPosition.FIRST)
-            ToggleSetting("自动贴边收起", "闲置时收起并淡化，点按展开，拖动调整位置", Icons.Default.Dock,
+            ToggleSetting(uiText("overlay.fold"), uiText("overlay.fold.body"), Icons.Default.Dock,
                 state.autoHide, { enabled -> store.update { it.copy(autoHide = enabled) } }, position = SettingPosition.MIDDLE)
             ToggleSetting("显示入口文字", "关闭后可长按图标查看名称", Icons.Default.Label,
                 state.showLabels, { enabled -> store.update { it.copy(showLabels = enabled) } }, position = SettingPosition.MIDDLE)
-            ToggleSetting("优先小窗打开", "在其它应用中使用小窗，KIGTTS 前台保持当前窗口", Icons.Default.PictureInPictureAlt,
+            ToggleSetting(uiText("overlay.window"), uiText("overlay.window.body"), Icons.Default.PictureInPictureAlt,
                 state.preferSmallWindows, { enabled -> store.update { it.copy(preferSmallWindows = enabled) } }, position = SettingPosition.LAST)
         }
     })
     if (permissionExplanation) AlertDialog(onDismissRequest = { permissionExplanation = false },
         icon = { Icon(Icons.Default.BubbleChart, null) }, title = { Text("允许显示悬浮窗") },
-        text = { Text("开启后，快捷入口会显示在其它应用上方。请在接下来的系统页面允许 KIGTTS 显示悬浮窗。") },
+        text = { Text(uiText("overlay.permission")) },
         confirmButton = { TextButton(onClick = feedbackClick { permissionExplanation = false
             runCatching { permission.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}"))) }
                 .onFailure { android.widget.Toast.makeText(context, "请在系统设置中开启悬浮窗权限", android.widget.Toast.LENGTH_SHORT).show() }

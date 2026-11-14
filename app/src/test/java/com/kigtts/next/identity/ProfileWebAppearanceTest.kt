@@ -53,28 +53,10 @@ class ProfileWebAppearanceTest {
             assertEquals(.48, appearance.getDouble("backgroundDim"), .001)
             assertTrue(files.single { it.name == appearance.getString("background") }.length() > 0)
             val lan = File("build/previews/lan-profile").apply { mkdirs() }
-            val localAppearance = com.kigtts.next.sharing.FaceWebAppearance.prepare(f.app, File(lan, "appearance"))
             val banner = files.first { it.extension == "png" && it.name != "share-background.png" }
-            File(lan, "file").mkdirs()
-            banner.copyTo(File(lan, "file/banner.png"), overwrite = true)
             val asset = com.kigtts.next.sharing.FaceAsset("banner.png", "profile", "polaroid", "名片.png", "image/png", banner.length(), "", "BANNER")
             File(lan, "index.html").writeText(com.kigtts.next.sharing.faceGallery(json, listOf(asset), "./",
-                com.kigtts.next.sharing.FaceWebIcons(f.app)::icon, appearance = localAppearance.json))
-            com.kigtts.next.sharing.FacePhotoSession(File(lan, "session"), { json }, received = { _, _ -> }).use { session ->
-                session.webAppearance = localAppearance
-                val base = "http://127.0.0.1:${session.server.port}"
-                val connection = java.net.URL(base + session.path + "appearance/profile-font.ttf").openConnection() as java.net.HttpURLConnection
-                assertArrayEquals(bytes, connection.inputStream.use { it.readBytes() })
-                assertTrue(connection.getHeaderField("Content-Security-Policy").contains("font-src 'self'"))
-                fun status(path: String) = (java.net.URL(base + path).openConnection() as java.net.HttpURLConnection).run {
-                    try { responseCode } finally { disconnect() }
-                }
-                assertEquals(404, status("/s/${session.peerToken}/appearance/profile-font.ttf"))
-                assertEquals(404, status(session.path + "appearance/private-file.ttf"))
-                val old = session.path
-                session.endBrowserShare()
-                assertEquals(404, status(old + "appearance/profile-font.ttf"))
-            }
+                com.kigtts.next.sharing.FaceWebIcons(f.app)::icon, appearance = appearance))
             ThemeSettingsStore(f.app).save(ThemeSettings(background = backgroundKey, secondaryPageBackground = false))
             val plain = com.kigtts.next.sharing.shareWebAppearance(f.app, directory, mutableListOf())
             assertFalse(plain.has("background"))

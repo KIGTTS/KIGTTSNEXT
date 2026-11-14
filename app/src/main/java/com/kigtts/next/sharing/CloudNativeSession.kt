@@ -43,6 +43,7 @@ internal data class CloudCachedFile(val file: File, val path: String)
         when (input.optString("type")) {
             "status" -> status = input.optString("text").take(240)
             "share" -> url = CloudShareLinks.parse(input.optString("url"))
+            "ended" -> if (sending) model.sharing.endNativeShare(panel)
             "devices" -> peers = input.optJSONArray("peers")?.let { list -> (0 until minOf(64, list.length())).mapNotNull { i ->
                 val p = list.optJSONObject(i) ?: return@mapNotNull null
                 val id = p.optString("id").takeIf { it.matches(Regex("[A-Za-z0-9_-]{22}")) } ?: return@mapNotNull null

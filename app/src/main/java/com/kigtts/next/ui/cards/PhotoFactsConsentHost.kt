@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.cards.PhotoFactsConsent
 import com.kigtts.next.ui.components.MotionAlertDialog
 
@@ -21,11 +22,9 @@ internal fun PhotoFactsConsentHost() {
                 Icon(if (weather) Icons.Default.Cloud else Icons.Default.LocationOn, null)
             } },
             text = { Text(if (weather) {
-                "允许将大致位置和拍摄日期发送给 ${request.service}，查询拍摄时的天气？" +
-                    if (request.service == "Open-Meteo") "免费服务限非商业用途。" else ""
+                uiText("camera.weather", "service" to request.service)
             } else {
-                "用于给照片添加拍摄地点和天气。新拍照片使用手机定位或设置中的手动位置，导入照片读取已有的拍摄位置。" +
-                    if (request.service == "高德地图") "将大致位置发送给高德地图查询地名，是否允许？" else "是否允许？"
+                uiText(if (request.service == "高德地图") "camera.location_provider" else "camera.location")
             }) },
             confirmButton = { TextButton({ request.result.complete(true) }) { Text("允许") } },
             dismissButton = { TextButton({ request.result.complete(false) }) { Text("暂不允许") } })

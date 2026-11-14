@@ -1,6 +1,6 @@
-# 插件 API31（兼容 API9–30）
+# 插件 API34（兼容 API9–33）
 
-当前 SDK 为 API31，宿主接受API9–31签名包。AI助手0.9.25的通用文件附件需要API31，插件商店0.16.0需要API30。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)；文件会话见 [API31说明](api31-chat-files.md)。
+当前 SDK 为 API34，宿主接受 API9–34 签名包。AI助手0.9.25的通用文件附件需要API31，插件商店0.16.0需要API30。API8及更早的DEX包需由同一发布者重新构建并递增versionCode。专用包、签名、资源归属及安装规则见 [插件包](plugin-packages.md)；文件会话见 [API31说明](api31-chat-files.md)。
 
 插件实现 `KigPlugin`，提供 `PluginDescriptor`、可选语音引擎/资源管理器、`PluginContributions` 和页面。外置原生代码在独立工作进程运行，宿主通过规范代理传输数据并渲染 UI；插件不持有宿主 Activity、View 或 Compose 实例。`attach` 提供专属资源环境，`close` 在会话取消并结束后释放资源。
 
@@ -213,3 +213,6 @@ PageBlock.StrokeGuide(title, instruction, points, summary, toggle, actions) 在�
 识别引擎可实现 `ControlledAsrEngine` 接收 `AsrControl(PREPARE/RELEASE)`。服务通过 `RecognitionBroker.control` 控制所选引擎，保留期为 5–120 秒，录音期间不释放。旧引擎返回不支持并继续正常识别。TTS/ASR 的 `settingsPages` 汇总正式设置入口与旧页面入口，由服务展示，主设置不再重复显示引擎。
 
 `VoicePackInfo.providerLabel` 可填写实际语音服务商的短名称，语音库优先用它显示类型标签；留空时使用引擎名称。旧构造和复制方法继续可用。
+# 界面语言
+
+默认使用 `zh-CN`（简体中文）；轻松版使用 `zh-CN-x-casual`。插件的页面、入口和动作使用 `PluginContext.locale`，而不是系统语言来选文案。原生插件在 `attach` 中以 `PluginStrings.fromAssets` 读取 `assets/i18n/*.json`；Lua 0.9.3 通过 `host.t` 读取同样的项目目录。使用 UTF-8 无 BOM、稳定的语义键，保留同样的占位符和权限／数据边界。语言切换不改变 TTS/ASR 模型语言或用户数据。

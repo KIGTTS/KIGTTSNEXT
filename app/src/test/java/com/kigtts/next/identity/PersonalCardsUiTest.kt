@@ -34,6 +34,7 @@ class PersonalCardsUiTest {
         model.identities.save(second)
         model.navigate(Destination.PersonalCards)
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            com.kigtts.next.sharing.CloudSharingSetupHost(model)
             val state by model.state.collectAsState()
             SecondaryDestination(state.destination, state, model)
         } }
@@ -62,8 +63,9 @@ class PersonalCardsUiTest {
         compose.onNodeWithTag("profile-add-tile").assertDoesNotExist()
         compose.onNodeWithTag("profile-tag-remove/开发").assertDoesNotExist()
         compose.onNodeWithText("分享名片").performScrollTo().performClick()
-        assertTrue(model.faceShare.panel.value!!.personal)
-        assertEquals(listOf(second.designId), model.faceShare.panel.value!!.ids)
+        compose.onNodeWithText("使用云端互传？").assertIsDisplayed()
+        compose.onNodeWithTag("face-share").assertDoesNotExist()
+        compose.runOnIdle { model.sharing.setup.dismiss() }
     }
     @Test fun backgroundEditorPreviewsIdentityWhileItsToolPanelRemainsUsable() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())

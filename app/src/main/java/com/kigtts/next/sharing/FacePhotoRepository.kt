@@ -43,7 +43,7 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
                 val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 android.graphics.BitmapFactory.decodeFile(source.path, options)
                 val mime = options.outMimeType?.takeIf { it in setOf("image/gif", "image/png", "image/webp", "image/jpeg") } ?: return@mapNotNull null
-                val key = faceToken(); val file = File(outgoing, "$key.${FacePhotoSession.extension(mime)}"); source.copyTo(file)
+                val key = faceToken(); val file = File(outgoing, "$key.${shareImageExtension(mime)}"); source.copyTo(file)
                 FaceAsset(key, com.kigtts.next.identity.profileTileMediaId(tile.id), "profile", "图片.${file.extension}", mime,
                     file.length(), sha256(file), "PROFILE", file)
             }

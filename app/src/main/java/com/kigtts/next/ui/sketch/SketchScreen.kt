@@ -1,5 +1,9 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.uiCopy
+
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.background
@@ -42,7 +46,7 @@ import kotlinx.coroutines.*
     LaunchedEffect(state, repository) {
         if (!ready) {
             try { withContext(Dispatchers.IO) { repository.loadDraft() }?.let(state::restore) }
-            catch (failure: Exception) { if (failure is CancellationException) throw failure; message("无法恢复上次画板，已打开空白画板") }
+            catch (failure: Exception) { if (failure is CancellationException) throw failure; message(context.uiCopy("sketch.restore")) }
             ready = true
         }
         state.startSession()
@@ -64,7 +68,7 @@ import kotlinx.coroutines.*
         }
     }
     val save = rememberSketchSavePermission({ val drawing = state.document(); work {
-        withContext(Dispatchers.IO) { repository.save(drawing) }; message("已保存到作品相册和系统相册")
+        withContext(Dispatchers.IO) { repository.save(drawing) }; message(context.uiCopy("sketch.saved"))
     } }, message)
     fun share() { val drawing = state.document(); work {
         val file = withContext(Dispatchers.IO) { exportSketch(context, drawing, false) }
@@ -103,12 +107,12 @@ import kotlinx.coroutines.*
     }
     }
     if (active && paper) SketchBackgroundDialog(state) { paper = false }
-    if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text("清空画板？") },
-        text = { Text("当前笔画将被移除。已保存的作品不受影响。") },
+    if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text(uiText("sketch.clear")) },
+        text = { Text(uiText("sketch.clear_body")) },
         confirmButton = { MotionTextButton(dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },
         dismissButton = { MotionTextButton(dialogFeedbackClick { clear = false }) { Text("取消") } })
-    if (active && opening != null) MotionAlertDialog(onDismissRequest = { opening = null }, title = { Text("打开这幅作品？") },
-        text = { Text("当前未保存的笔画将被替换。") },
+    if (active && opening != null) MotionAlertDialog(onDismissRequest = { opening = null }, title = { Text(uiText("sketch.open")) },
+        text = { Text(uiText("sketch.open_body")) },
         confirmButton = { MotionTextButton(dialogFeedbackClick { opening?.let(::openWork) }, enabled = !busy) { Text("打开") } },
         dismissButton = { MotionTextButton(dialogFeedbackClick { opening = null }, enabled = !busy) { Text("取消") } })
 }

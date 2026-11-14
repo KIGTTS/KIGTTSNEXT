@@ -23,7 +23,8 @@ internal class ScopedEnvironment(base: Context, override val storage: PluginStor
     override val recognitionBroker: RecognitionBroker? = null,override val quickTextBroker:QuickTextBroker?=null,
     override val appBroker: com.kigtts.plugin.api.AppBroker? = null,
     override val stickerBroker: com.kigtts.plugin.api.StickerBroker? = null) : AndroidPluginEnvironment {
-    override val locale: String get() = context.resources.configuration.locales[0].toLanguageTag()
+    @Volatile internal var currentLocale: String = "zh-CN"
+    override val locale: String get() = currentLocale
     override val context = object : ContextWrapper(base) {
         override fun getApplicationContext(): Context = this
         override fun getFilesDir(): File = storage.directory("files")

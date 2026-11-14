@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 open class PluginWorkerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var plugin: KigPlugin? = null
+    private var localizedEnvironment: ScopedEnvironment? = null
     private var installedDescriptor: PluginDescriptor? = null
     private var quickText:IHostQuickTextBroker?=null
     private var app: IHostAppBroker? = null
@@ -68,7 +69,8 @@ open class PluginWorkerService : Service() {
                     if ("asr-service" in manifest.capabilities && broker != null) WorkerRecognitionBroker(broker) else null,
                     if(manifest.capabilities.any {it in setOf("quick-text-read","quick-text-write")})quickText?.let(::WorkerQuickTextBroker) else null,
                     app?.let(::WorkerAppBroker),
-                    if (manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickers?.let(::WorkerStickerBroker) else null))
+                    if (manifest.capabilities.any { it in setOf("stickers-read", "stickers-write") }) stickers?.let(::WorkerStickerBroker) else null)
+                    .also { localizedEnvironment = it })
                 require(instance.tts == null || "tts" in manifest.capabilities) { "插件未声明 TTS 能力" }
                 require(instance.tts?.info?.role != TtsRole.SERVICE || "speech-service" in manifest.capabilities) { "插件未声明语音合成服务能力" }
                 require(instance.voiceManager == null || "voice-packs" in manifest.capabilities) { "插件未声明语音包管理能力" }
@@ -93,6 +95,7 @@ open class PluginWorkerService : Service() {
             require(context.toByteArray().size <= 256 * 1024)
             val instance = requireNotNull(plugin)
             val decoded = PluginJson.decodeFromString<PluginContext>(context)
+            localizedEnvironment?.currentLocale = decoded.locale
             val contributions = instance.contributions(decoded)
             synchronized(pages) { pages.addAll(contributions.drawerEntries.map { it.pageId }); pages.addAll(contributions.settingsEntries.map { it.pageId }) }
             val snapshot = PluginSnapshot(installedDescriptor ?: instance.descriptor, contributions,
