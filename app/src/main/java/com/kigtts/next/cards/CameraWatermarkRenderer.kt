@@ -64,13 +64,18 @@ internal fun watermarkLines(style: CameraWatermarkStyle, facts: WatermarkFacts):
 
 /** Same proportional drawing for the selector, image editor, and still/motion output. */
 internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: CameraWatermarkStyle,
-    geometry: PolaroidGeometry, facts: WatermarkFacts, width: Float, height: Float) {
+    geometry: PolaroidGeometry, facts: WatermarkFacts, width: Float, height: Float, glass: PhotoFrameGlass? = null) {
     val unit = width / geometry.paperWidth.toFloat()
     val top = style.position == WatermarkPosition.TOP
     val bandHeight = minOf(geometry.photoWidth, geometry.photoHeight).toFloat() * unit * style.band / 100
     if (width <= 0f || bandHeight <= 0f) return
     val band = RectF(0f, if (top) 0f else height - bandHeight, width, if (top) bandHeight else height)
-    val ink = if (Color.luminance(style.palette.color) < .42) Color.WHITE else 0xFF182124.toInt()
+    if (style.palette == WatermarkPalette.GLASS) {
+        glass?.draw(canvas, RectF(0f, 0f, width, height), RectF(
+            (geometry.photoLeft * unit).toFloat(), (geometry.photoTop * unit).toFloat(),
+            (geometry.photoRight * unit).toFloat(), (geometry.photoBottom * unit).toFloat()))
+    }
+    val ink = if (style.palette == WatermarkPalette.GLASS || Color.luminance(style.palette.color) < .42) Color.WHITE else 0xFF182124.toInt()
     val margin = width * .042f
     val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL) }
     fun text(value: String, x: Float, y: Float, maximum: Float, fontSize: Float, center: Boolean = false, right: Boolean = false) {

@@ -10,7 +10,8 @@ internal enum class WatermarkLayout { STANDARD, CHECK_IN, CLASSIC }
 internal enum class WatermarkPosition(val label: String) { BOTTOM("底部"), TOP("顶部") }
 internal enum class WatermarkPalette(val label: String, val color: Int) {
     LIGHT("浅色", 0xFFFAF8F4.toInt()), DARK("深色", 0xFF171E21.toInt()),
-    WARM("暖色", 0xFFFFDFB6.toInt()), COOL("冷色", 0xFFD4ECEE.toInt())
+    WARM("暖色", 0xFFFFDFB6.toInt()), COOL("冷色", 0xFFD4ECEE.toInt()),
+    GLASS("毛玻璃", 0xFF31383B.toInt())
 }
 
 /** An immutable snapshot of the controls used for one photo, independent of installed assets. */

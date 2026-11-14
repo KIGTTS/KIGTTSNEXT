@@ -44,14 +44,26 @@ internal object PolaroidRenderer {
             (geometry.photoRight*unit).toFloat(),(geometry.photoBottom*unit).toFloat())
         val radius=(frame.photoCornerRadius*width).toFloat()
         val photoPath=Path().apply {addRoundRect(imageArea,radius,radius,Path.Direction.CW)}
+        val watermark = PhotoFrameSpec.from(card.frameStyleId)?.watermark?.takeIf { options.includeFrame }
+        val glassStyle = watermark?.takeIf { it.palette == WatermarkPalette.GLASS && card.imageId != null }
         canvas.save();canvas.clipPath(photoPath)
-        if(transparentPhoto)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
+        if(transparentPhoto && glassStyle == null)canvas.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR) else {
             if(card.imageId!=null || !isFullPhotoPaper(card))canvas.drawColor(0xFFB0B0B0.toInt())
             card.imageId?.let {id->decode(repository,id,decodeEdge)?.let {bitmap->try {
                 renderCardPhotoStyle(bitmap,card.photoStyle,repository::imageFile)
                 PolaroidPhotoRenderer.draw(canvas,bitmap,imageArea,paint,card)
             } finally {bitmap.recycle()}}}
         };canvas.restore()
+        if (glassStyle != null) {
+            // Bake from the already positioned and treated still. Motion uses the same frozen paper.
+            PhotoFrameGlass.prepare(result, imageArea.framePixelBounds(result), glassStyle.position, glassStyle.band, glassStyle.edge > 0).use {
+                it.draw(canvas, RectF(0f, 0f, width.toFloat(), height.toFloat()), imageArea)
+            }
+            if (transparentPhoto) {
+                canvas.save(); canvas.clipPath(photoPath)
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR); canvas.restore()
+            }
+        }
         if(options.includeFrame&&frame.borderWidth>0&&frame.borderColor!=null) {
             val line=Paint(Paint.ANTI_ALIAS_FLAG).apply {style=Paint.Style.STROKE;color=requireNotNull(frame.borderColor).toInt();strokeWidth=(frame.borderWidth*width).toFloat()}
             canvas.drawPath(photoPath,line)
@@ -62,7 +74,7 @@ internal object PolaroidRenderer {
             canvas.restore()} finally {bitmap.recycle()}}}
         val dark=Color.luminance(paperColor)<.45f
         if(options.includeFrame) {
-        PhotoFrameSpec.from(card.frameStyleId)?.watermark?.let { style ->
+        watermark?.let { style ->
             drawCameraWatermark(repository.context, canvas, style, geometry,
                 watermarkFacts((card.originalImageId ?: card.imageId)?.let(repository::imageFile), repository.designs.facts(card.id)),
                 width.toFloat(), height.toFloat())

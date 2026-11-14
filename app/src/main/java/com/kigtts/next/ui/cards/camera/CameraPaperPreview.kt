@@ -95,7 +95,9 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         }
         val layout = if (baseline != null) cameraBaselineChrome(maxWidth.value, maxHeight.value,
             cameraCenteredCaptureWindow(maxWidth.value, maxHeight.value, motion.ratio.value, verticalChrome,
-                fullFrameProgress, photoSideInset, proPreviewLimit), baseline, professional)
+                fullFrameProgress, photoSideInset, proPreviewLimit,
+                portraitShift = if (verticalChrome) 0f else cameraLongScreenPreviewShift(maxWidth.value, maxHeight.value, baseline.dockStart)),
+            baseline, professional)
         else rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
             cameraPhotoWindow(photoWidth, maxHeight.value - targetHeaderInset, aspectRatio), verticalChrome,
             headerInset = headerInset, portraitAnchor = LocalCameraPortraitAnchor.current,

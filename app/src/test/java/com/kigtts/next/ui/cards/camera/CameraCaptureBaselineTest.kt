@@ -82,9 +82,34 @@ class CameraCaptureBaselineTest {
         val compact = cameraDockTrailingGap(short * 16f / 9f, short)
         assertTrue(compact < reference)
         assertTrue(compact >= 0f)
-        assertEquals(reference, cameraDockTrailingGap(short * 2.5f, short), .001f)
+        assertTrue(cameraDockTrailingGap(short * 2.5f, short) < reference)
         val landscape = cameraCaptureBaseline(short * 16f / 9f, short, true, 164f)
         assertEquals(CAMERA_LEFT_CLEARANCE + CAMERA_PREVIEW_SIDE_INSET, landscape.frame.left, .001f)
+    }
+
+    @Test fun squareLandscapeCentersOnTheSameFourByThreeWindow() {
+        for (limit in listOf<Float?>(null, 470f, 660f)) {
+            val standard = cameraCenteredCaptureWindow(900f, 420f, 4f / 3f, true, 0f, endLimit = limit)
+            val square = cameraCenteredCaptureWindow(900f, 420f, 1f, true, 0f, endLimit = limit)
+            assertEquals(standard.center.x, square.center.x, .001f)
+            assertEquals(standard.center.y, square.center.y, .001f)
+            assertEquals(square.width, square.height, .001f)
+        }
+    }
+
+    @Test fun ultraLongDeviceUsesSixteenByNineShutterGapAndMovesPreviewWithinFreeSpace() {
+        val width = 393f
+        val compactHeight = width * 16f / 9f
+        val longHeight = width * 24f / 9f
+        assertEquals(cameraDockTrailingGap(compactHeight, width), cameraDockTrailingGap(longHeight, width), .001f)
+        val dockExtent = 140f
+        val compact = cameraCaptureBaseline(width, compactHeight, false, dockExtent)
+        val long = cameraCaptureBaseline(width, longHeight, false, dockExtent)
+        assertEquals(compactHeight - compact.dockPositionInStage() - dockExtent,
+            longHeight - long.dockPositionInStage() - dockExtent, .001f)
+        assertTrue(long.frame.top > compact.frame.top)
+        assertEquals(3f / 4f, long.frame.width / long.frame.height, .001f)
+        assertTrue(long.frame.bottom <= long.proPreviewLimit)
     }
 
     @Test fun continuousRulerProducesTactileTicksWithoutQuantizingTheParameter() {

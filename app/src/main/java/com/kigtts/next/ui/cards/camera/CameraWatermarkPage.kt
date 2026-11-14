@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.ChoiceButtonGroup
+import com.kigtts.next.ui.cards.rememberPhotoFrameGlass
 import androidx.compose.foundation.selection.toggleable
 import kotlin.math.roundToInt
 
@@ -83,23 +84,25 @@ internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraO
 @Composable
 internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boolean, change: (CameraWatermarkStyle) -> Unit,
     drag: (CameraWatermarkStyle) -> Unit = change, finishDrag: (() -> Unit)? = null) {
-            WatermarkChoices("背景", WatermarkPalette.entries, style.palette, { it.label }, enabled) { change(style.copy(palette = it)) }
-            WatermarkChoices("边条位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
-            Text("内容大小", style = MaterialTheme.typography.titleSmall)
-            Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
-                enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
-            WatermarkToggle("显示时间", style.showTime, enabled) { change(style.copy(showTime = it)) }
-            WatermarkToggle("显示日期", style.showDate, enabled) { change(style.copy(showDate = it)) }
-            WatermarkToggle("显示地点", style.showLocation, enabled) { change(style.copy(showLocation = it)) }
-            WatermarkToggle("显示天气", style.showWeather, enabled) { change(style.copy(showWeather = it)) }
-            if (style.layout == WatermarkLayout.CLASSIC) {
-                WatermarkToggle("显示拍摄参数", style.showExposure, enabled) { change(style.copy(showExposure = it)) }
-                Text("边框宽度", style = MaterialTheme.typography.titleSmall)
-                Slider(style.edge.toFloat(), { drag(style.copy(edge = it.roundToInt())) },
-                    enabled = enabled, valueRange = 0f..12f, steps = 11, onValueChangeFinished = finishDrag)
-            }
-            if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle("内容居中", style.center, enabled) { change(style.copy(center = it)) }
-            WatermarkToggle("显示 KIGTTS 标志", style.showLogo, enabled) { change(style.copy(showLogo = it)) }
+    WatermarkChoices("背景", WatermarkPalette.entries, style.palette, { it.label }, enabled) { change(style.copy(palette = it)) }
+    WatermarkChoices("边条位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
+    Text("内容大小", style = MaterialTheme.typography.titleSmall)
+    Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
+        enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
+    WatermarkToggle("显示时间", style.showTime, enabled) { change(style.copy(showTime = it)) }
+    WatermarkToggle("显示日期", style.showDate, enabled) { change(style.copy(showDate = it)) }
+    WatermarkToggle("显示地点", style.showLocation, enabled) { change(style.copy(showLocation = it)) }
+    WatermarkToggle("显示天气", style.showWeather, enabled) { change(style.copy(showWeather = it)) }
+    if (style.layout == WatermarkLayout.CLASSIC) {
+        WatermarkToggle("显示拍摄参数", style.showExposure, enabled) { change(style.copy(showExposure = it)) }
+    }
+    if (style.layout == WatermarkLayout.CLASSIC || style.palette == WatermarkPalette.GLASS || style.edge > 0) {
+        Text("边框宽度", style = MaterialTheme.typography.titleSmall)
+        Slider(style.edge.toFloat(), { drag(style.copy(edge = it.roundToInt())) },
+            enabled = enabled, valueRange = 0f..12f, steps = 11, onValueChangeFinished = finishDrag)
+    }
+    if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle("内容居中", style.center, enabled) { change(style.copy(center = it)) }
+    WatermarkToggle("显示 KIGTTS 标志", style.showLogo, enabled) { change(style.copy(showLogo = it)) }
 }
 
 @Composable private fun WatermarkHeader(title: String, back: () -> Unit, store: (() -> Unit)? = null) {
@@ -131,6 +134,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
     val context = LocalContext.current
     val preview = remember(snapshot) { snapshot?.asImageBitmap() }
     val geometry = remember(preview, style) { PhotoFrameSpec(preview?.width ?: 4, preview?.height ?: 3, style.encode()).geometry() }
+    val glass = rememberPhotoFrameGlass(preview, style, geometry)
     BoxWithConstraints(modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
         val size = cameraPhotoWindow(maxWidth.value, maxHeight.value, geometry.aspectRatio.toFloat())
         val unit = size.width / geometry.paperWidth
@@ -141,7 +145,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
             else Box(photo.background(Brush.linearGradient(listOf(Color(0xFF8ABACA), Color(0xFF486B76), Color(0xFFE0AB74)))))
             Canvas(Modifier.matchParentSize()) {
                 drawIntoCanvas { drawCameraWatermark(context, it.nativeCanvas, style, geometry,
-                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100", "上海市 · 徐汇区", "晴 22°C"), this.size.width, this.size.height) }
+                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100", "上海市 · 徐汇区", "晴 22°C"), this.size.width, this.size.height, glass) }
             }
         }
     }

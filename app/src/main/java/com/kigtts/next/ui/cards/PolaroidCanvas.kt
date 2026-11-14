@@ -114,21 +114,24 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
             val density = LocalDensity.current
             val canvasWidthPx = with(density) { maxWidth.toPx() }
             val canvasHeightPx = with(density) { maxHeight.toPx() }
+            val watermarkStyle = com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId)?.watermark
+            val frameGlassEnabled = watermarkStyle?.palette == com.kigtts.next.cards.WatermarkPalette.GLASS
+            val source = card.imageId?.takeIf { photoContent == null || frameGlassEnabled }?.let {
+                val loaded = rememberCardImage(imageFile(it), cardPhotoDecodeSize(
+                    canvasWidthPx * (geometry.photoWidth / geometry.paperWidth).toFloat(),
+                    canvasWidthPx * (geometry.photoHeight / geometry.paperWidth).toFloat(), card.photoZoom, viewScale, decodeMaximum))
+                photoOverride?.takeIf { warm -> loaded == null || maxOf(warm.width, warm.height) > maxOf(loaded.width, loaded.height) } ?: loaded
+            }
+            val image = rememberCardPhotoStyle(source, card.imageId.orEmpty(), card.photoStyle, imageFile)
             Box(Modifier.offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * (frame?.photoCornerRadius ?: 0.0).toFloat()))
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
-                val source = card.imageId?.takeIf { photoContent == null }?.let {
-                    val loaded = rememberCardImage(imageFile(it), cardPhotoDecodeSize(
-                        canvasWidthPx * (geometry.photoWidth / geometry.paperWidth).toFloat(),
-                        canvasWidthPx * (geometry.photoHeight / geometry.paperWidth).toFloat(), card.photoZoom, viewScale, decodeMaximum))
-                    photoOverride?.takeIf { warm -> loaded == null || maxOf(warm.width, warm.height) > maxOf(loaded.width, loaded.height) } ?: loaded
-                }
-                val image = rememberCardPhotoStyle(source, card.imageId.orEmpty(), card.photoStyle, imageFile)
                 if (photoContent != null || image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize(), photoContent)
             }
             backgroundDecoration()
-            com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId)?.watermark?.let { watermark ->
+            watermarkStyle?.let { watermark ->
+                val glass = rememberPhotoFrameGlass(image, watermark, geometry, card)
                 val context = androidx.compose.ui.platform.LocalContext.current
                 val sourceId = card.originalImageId ?: card.imageId
                 val facts by produceState(com.kigtts.next.cards.WatermarkFacts(), sourceId, photoFacts) {
@@ -138,7 +141,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     }
                 }
                 androidx.compose.foundation.Canvas(Modifier.matchParentSize().testTag("camera-watermark-paper")) {
-                    drawIntoCanvas { com.kigtts.next.cards.drawCameraWatermark(context, it.nativeCanvas, watermark, geometry, facts, this.size.width, this.size.height) }
+                    drawIntoCanvas { com.kigtts.next.cards.drawCameraWatermark(context, it.nativeCanvas, watermark, geometry, facts, this.size.width, this.size.height, glass) }
                 }
             }
             if (editable && current.value.layers.any { it.id == selectedId.value && (it.x !in 0.0..1.0 || it.y !in 0.0..1.0) })
