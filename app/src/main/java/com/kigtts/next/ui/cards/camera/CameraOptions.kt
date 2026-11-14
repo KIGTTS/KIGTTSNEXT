@@ -20,6 +20,8 @@ internal enum class CameraGrid(val label: String) { OFF("关闭"), THIRDS("三�
 internal class CameraOptions(private val preferences: SharedPreferences) {
     private var selectedGrid by mutableStateOf(enumPreference("grid", CameraGrid.THIRDS))
     private var showLevel by mutableStateOf(preferences.getBoolean("level", true))
+    private var showExposureWarning by mutableStateOf(preferences.getBoolean("exposure-warning", true))
+    val exposureWarning get() = showExposureWarning
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
     private var motionEnabled by mutableStateOf(preferences.getBoolean("motion", false))
@@ -74,6 +76,10 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
         enumValues<T>().firstOrNull { it.name == preferences.getString(key, null) } ?: fallback
     fun setGrid(value: CameraGrid) { selectedGrid = value; preferences.edit().putString("grid", value.name).apply() }
     fun setLevel(value: Boolean) { showLevel = value; preferences.edit().putBoolean("level", value).apply() }
+    fun setExposureWarning(value: Boolean) {
+        showExposureWarning = value
+        preferences.edit().putBoolean("exposure-warning", value).apply()
+    }
     fun setFlash(value: CameraFlash) { selectedFlash = value; preferences.edit().putString("flash", value.name).apply() }
     fun setProcessing(value: CameraProcessing) { selectedProcessing = value; preferences.edit().putString("processing", value.name).apply() }
     fun chooseEncoding(value: CameraPhotoEncoding) {

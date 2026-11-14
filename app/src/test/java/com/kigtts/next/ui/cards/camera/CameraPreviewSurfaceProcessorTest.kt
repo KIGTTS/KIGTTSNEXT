@@ -46,7 +46,7 @@ class CameraPreviewSurfaceProcessorTest {
             return CameraGlOutput(egl, size)
         }
         override fun latch(input: CameraGlInput, transform: FloatArray) {}
-        override fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms) {}
+        override fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms, exposureWarning: Boolean) {}
         override fun releaseInput(input: CameraGlInput) { inputReleases++; input.surface.release(); input.texture.release() }
         override fun releaseOutput(output: CameraGlOutput) { outputReleases++ }
         override fun close() { closes++ }
@@ -134,5 +134,14 @@ class CameraPreviewSurfaceProcessorTest {
             assertEquals(0, effect.targets and CameraEffect.IMAGE_CAPTURE)
             assertEquals(0, effect.targets and CameraEffect.VIDEO_CAPTURE)
         } finally { effect.close(); worker.drain() }
+    }
+    @Test fun updatingFilterDoesNotResetExposureWarning() {
+        val colors = CameraPreviewColors()
+        assertFalse(colors.exposureWarning)
+        colors.exposureWarning = true
+        colors.update(PhotoFilters.coefficients(PhotoFilter.ORIGINAL))
+        assertTrue(colors.exposureWarning)
+        colors.exposureWarning = false
+        assertFalse(colors.exposureWarning)
     }
 }

@@ -39,6 +39,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var binding: CameraBinding? = null
     private val previewColors = CameraPreviewColors()
     val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
+    fun setExposureWarning(enabled: Boolean) { previewColors.exposureWarning = enabled }
     fun setPreviewFilter(values: FloatArray, lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f, effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) { previewColors.update(values, lut, strength, effects) }
     private var motionBuffer: CameraMotionBuffer? = null
     val motionAvailable: Boolean get() = motionBuffer?.failed == false

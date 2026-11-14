@@ -75,9 +75,10 @@ internal class CameraPreviewSurfaceProcessor(val colors: CameraPreviewColors, pr
             gl.latch(input.gl, originalTransform)
             if (current !== input) return
             val values = colors.snapshot()
+            val exposureWarning = colors.exposureWarning
             outputs.forEach { (output, target) ->
                 output.updateTransformMatrix(outputTransform, originalTransform)
-                gl.draw(input.gl, target, outputTransform, values)
+                gl.draw(input.gl, target, outputTransform, values, exposureWarning)
             }
             if (!renderedFirstFrame && outputs.isNotEmpty()) {
                 renderedFirstFrame = true; Log.d(CAMERA_LOG_TAG, "GPU preview first filtered frame")

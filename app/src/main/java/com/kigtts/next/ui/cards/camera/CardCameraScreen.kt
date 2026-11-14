@@ -84,6 +84,8 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val fullFrame = modern && options.framingAspect == CameraAspect.FULL
     val aspect = if (modern) options.framingAspect.ratio(configuration.screenWidthDp, configuration.screenHeightDp) else format.geometry.photoAspectRatio.toFloat()
     val mode = if (modern) options.mode else CameraMode.PHOTO
+    val showExposureWarning = active && mode == CameraMode.PRO && options.exposureWarning && !options.settingsVisible
+    SideEffect { session.setExposureWarning(showExposureWarning) }
     val processing = if (mode == CameraMode.PHOTO) options.processing else CameraProcessing.STANDARD
     val motion = options.motion && mode == CameraMode.PHOTO
     val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
@@ -234,5 +236,6 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame)
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
-        manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) }, watermarkStore = watermarkStore)
+        manual = session.manual.takeUnless { modern }, watermarkPreview = { cameraPreviewSnapshot(view) }, watermarkStore = watermarkStore,
+        exposureWarningAvailable = session.previewFilterAvailable || !displayReady)
 }

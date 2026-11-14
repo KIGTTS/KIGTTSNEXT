@@ -17,7 +17,7 @@ internal interface CameraPreviewRenderer : Closeable {
     fun createInput(size: Size): CameraGlInput
     fun createOutput(surface: Surface, size: Size): CameraGlOutput
     fun latch(input: CameraGlInput, transform: FloatArray)
-    fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms)
+    fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms, exposureWarning: Boolean)
     fun releaseInput(input: CameraGlInput)
     fun releaseOutput(output: CameraGlOutput)
 }
@@ -36,6 +36,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     private var matrixLocation = -1; private var textureLocation = -1
     private var biasLocation = -1; private val rowLocations = IntArray(4)
     private var effectsLocation = -1
+    private var exposureWarningLocation = -1
     private var initialized = false
     private var displayInitialized = false
 
@@ -65,6 +66,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
             textureLocation = GLES20.glGetUniformLocation(program, "uTexture")
             biasLocation = GLES20.glGetUniformLocation(program, "uBias")
             effectsLocation = GLES20.glGetUniformLocation(program, "uEffects")
+            exposureWarningLocation = GLES20.glGetUniformLocation(program, "uExposureWarning")
             for (row in 0..3) rowLocations[row] = GLES20.glGetUniformLocation(program, "uRow$row")
             checkGl(); initialized = true
         } catch (failure: Throwable) { close(); throw failure }
@@ -97,7 +99,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
         makeCurrent(placeholder)
         input.texture.updateTexImage(); input.texture.getTransformMatrix(transform)
     }
-    override fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms) {
+    override fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms, exposureWarning: Boolean) {
         makeCurrent(output.eglSurface)
         GLES20.glViewport(0, 0, output.size.width, output.size.height)
         GLES20.glDisable(GLES20.GL_BLEND); GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
@@ -107,6 +109,9 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
         for (row in 0..3) GLES20.glUniform4fv(rowLocations[row], 1, colors.rows, row * 4)
         GLES20.glUniform4fv(biasLocation, 1, colors.bias, 0)
         GLES20.glUniform4fv(effectsLocation, 1, colors.effects.values(), 0)
+        GLES20.glUniform2f(exposureWarningLocation,
+            if (exposureWarning) CameraExposureWarning.SHADOW_LUMA else CameraExposureWarning.DISABLED_SHADOW_LUMA,
+            if (exposureWarning) CameraExposureWarning.HIGHLIGHT_LUMA else CameraExposureWarning.DISABLED_HIGHLIGHT_LUMA)
         lutTexture?.bind(colors.lut, colors.lutStrength)
         positions.position(0); coordinates.position(0)
         GLES20.glEnableVertexAttribArray(positionLocation); GLES20.glVertexAttribPointer(positionLocation, 2, GLES20.GL_FLOAT, false, 0, positions)

@@ -35,6 +35,14 @@ class CameraOptionsTest {
         assertEquals(.4f, reopened.filterStrength, .001f)
         assertFalse(reopened.settingsVisible)
     }
+    @Test fun exposureWarningDefaultsOnAndRemembersWhenTurnedOff() {
+        val options = CameraOptions(prefs)
+        assertTrue(options.exposureWarning)
+        options.setExposureWarning(false)
+        assertFalse(CameraOptions(prefs).exposureWarning)
+        options.setExposureWarning(true)
+        assertTrue(CameraOptions(prefs).exposureWarning)
+    }
     @Test fun unknownPreferencesRecoverAndUnsupportedCountdownsAreRejected() {
         prefs.edit().putString("grid", "future").putString("flash", "future").putString("processing", "future")
             .putFloat("filter-strength", Float.NaN).putInt("timer", -3).commit()

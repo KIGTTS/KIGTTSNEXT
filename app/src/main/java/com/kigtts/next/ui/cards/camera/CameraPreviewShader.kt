@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicBoolean
 import com.kigtts.next.media.color.CubeLut
 import com.kigtts.next.media.color.LutShader
 import com.kigtts.next.media.color.PhotoEffects
@@ -16,6 +17,10 @@ internal fun cameraPreviewUniforms(values: FloatArray): CameraPreviewUniforms {
 /** Animation updates a retained shader's uniforms, never the camera session or its surfaces. */
 internal class CameraPreviewColors(initial: FloatArray = PhotoFilters.coefficients(PhotoFilter.ORIGINAL)) {
     private val current = AtomicReference(cameraPreviewUniforms(initial))
+    private val warning = AtomicBoolean(false)
+    var exposureWarning: Boolean
+        get() = warning.get()
+        set(value) { warning.set(value) }
     fun update(values: FloatArray, lut: CubeLut? = null, strength: Float = 1f, effects: PhotoEffects = PhotoEffects.NONE) { current.set(cameraPreviewUniforms(values).copy(lut = lut, lutStrength = if (lut == null) 0f else strength.coerceIn(0f, 1f), effects = effects)) }
     fun snapshot(): CameraPreviewUniforms = current.get()
 }
@@ -42,13 +47,14 @@ internal object CameraPreviewShader {
         uniform vec4 uBias;
         varying vec2 vTexCoord;
         varying vec2 vPhotoUv;
-        """ + LutShader.GLSL + com.kigtts.next.media.color.PhotoEffectsShader.GLSL + """
+        """ + LutShader.GLSL + com.kigtts.next.media.color.PhotoEffectsShader.GLSL + CameraExposureWarning.GLSL + """
         vec3 effectSample(vec2 uv) { return texture2D(uTexture,(uTextureMatrix*vec4(uv,0.,1.)).xy).rgb; }
         void main() {
             vec4 source = texture2D(uTexture, vTexCoord);
+            float luma = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
             source.rgb = applyPhotoEffects(vPhotoUv,source.rgb);
             vec4 color = clamp(vec4(dot(uRow0, source), dot(uRow1, source),
                 dot(uRow2, source), dot(uRow3, source)) + uBias, 0.0, 1.0);
-            gl_FragColor = vec4(applyLut(color.rgb), color.a);
+            gl_FragColor = vec4(applyExposureWarning(applyLut(color.rgb), luma), color.a);
         }"""
 }

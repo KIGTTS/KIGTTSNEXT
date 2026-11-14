@@ -24,7 +24,8 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
-    watermarkPreview: () -> Bitmap? = { null }, watermarkStore: (() -> Unit)? = null) {
+    watermarkPreview: () -> Bitmap? = { null }, watermarkStore: (() -> Unit)? = null,
+    exposureWarningAvailable: Boolean = true) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
@@ -43,7 +44,7 @@ import kotlinx.coroutines.withContext
             else if (shown == 1) CameraWatermarkPage(options, snapshot, enabled,
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
-            else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual) {
+            else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable) {
                 snapshot = watermarkPreview()
                 watermarkPage = true
             }
@@ -52,7 +53,8 @@ import kotlinx.coroutines.withContext
 }
 
 @Composable private fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
-    availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, openWatermark: () -> Unit) {
+    availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, exposureWarningAvailable: Boolean,
+    openWatermark: () -> Unit) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -79,6 +81,15 @@ import kotlinx.coroutines.withContext
             }
             if (options.mode.takesPhotos) {
                 CameraOutputTiles(options, enabled, openWatermark)
+                if (options.mode == CameraMode.PRO) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CameraTile("曝光警示", if (!exposureWarningAvailable) "当前镜头不可用" else if (options.exposureWarning) "开启" else "关闭",
+                            Icons.Default.WarningAmber, enabled && exposureWarningAvailable, Modifier.weight(1f)) {
+                            options.setExposureWarning(!options.exposureWarning)
+                        }
+                        Spacer(Modifier.weight(2f))
+                    }
+                }
                 manual?.let { CameraManualPanel(it, enabled) }
             }
         }
