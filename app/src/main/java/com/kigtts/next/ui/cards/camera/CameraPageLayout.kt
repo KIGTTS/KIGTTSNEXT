@@ -14,7 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,11 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
         val vertical = cameraSideControls(maxWidth.value, maxHeight.value)
         var controlsSize by remember { mutableStateOf(IntSize.Zero) }
         val inset = with(LocalDensity.current) { (if (vertical) controlsSize.width else controlsSize.height).toDp() }
+        val density = LocalDensity.current
+        val direction = LocalLayoutDirection.current
+        val safeDrawing = WindowInsets.safeDrawing
+        val trailingInset = if (!captureBaseline) 0
+            else if (vertical) safeDrawing.getRight(density, direction) else safeDrawing.getBottom(density)
         val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value) else null
         val overlay = if (baseline != null && photoAspect != null) {
             val photo = cameraCenteredCaptureWindow(maxWidth.value, (maxHeight.value - 8f).coerceAtLeast(0f),
@@ -47,10 +54,6 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
         val dockSpace = if (!captureBaseline && !vertical && photoAspect != null) (maxHeight * .075f - 12.dp).coerceIn(0.dp, 52.dp) else 0.dp
         val blend by animateFloatAsState(if (zoomDialVisible) 1f else 0f,
             tween(if (zoomDialVisible) 140 else 180), label = "camera-dial-dock")
-        val scrim = remember(vertical) {
-            val stops = listOf(Color.Transparent, Color.Black.copy(alpha = .68f), Color.Black.copy(alpha = .88f))
-            if (vertical) Brush.horizontalGradient(stops) else Brush.verticalGradient(stops)
-        }
         Layout(content = {
             Box(Modifier.testTag("camera-stage")) {
                 CompositionLocalProvider(
@@ -65,13 +68,8 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
                 Box(Modifier.align(if (overlay) Alignment.TopCenter else Alignment.BottomCenter)
                     .fillMaxWidth().then(if (overlay) Modifier.padding(top = 54.dp) else Modifier)) { error() }
             }
-            Box(Modifier.onSizeChanged { controlsSize = it }.drawBehind {
-                val coverage = overlap
-                if (coverage > 0f) {
-                    drawRect(scrim, alpha = coverage * (1f - blend))
-                    drawRect(CameraZoomDialBackdrop, alpha = coverage * blend)
-                }
-            }) {
+            CameraDockBackdrop(vertical, overlap, blend, inset)
+            Box(Modifier.onSizeChanged { controlsSize = it }) {
                 Column {
                     CompositionLocalProvider(LocalCameraShutterOverlay provides overlay) { controls(vertical) }
                     if (dockSpace > 0.dp) Spacer(Modifier.height(dockSpace))
@@ -79,19 +77,40 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
             }
         }, modifier = Modifier.fillMaxSize()) { children, constraints ->
             val width = constraints.maxWidth; val height = constraints.maxHeight
-            val dock = children[1].measure(Constraints(0, width, 0, height))
+            val dock = children[2].measure(Constraints(0, width, 0, height))
             // Keep the dock fixed. Only its reserved space changes as the preview grows underneath it.
             val reserved = if (captureBaseline) 0f else 1f - overlap
             val stage = children[0].measure(Constraints.fixed(
                 if (vertical) (width - (dock.width * reserved).roundToInt()).coerceAtLeast(0) else width,
                 if (vertical) height else (height - (dock.height * reserved).roundToInt()).coerceAtLeast(0)))
+            val start = if (captureBaseline) cameraCaptureBaseline(width.toDp().value, height.toDp().value, vertical,
+                (if (vertical) dock.width else dock.height).toDp().value).dockPositionInStage().dp.roundToPx()
+            else if (vertical) width - dock.width else height - dock.height
+            val backdropDepth = if (captureBaseline)
+                ((if (vertical) width else height) - start + trailingInset).coerceAtLeast(0)
+                else if (vertical) dock.width else dock.height
+            val backdrop = children[1].measure(Constraints.fixed(
+                if (vertical) backdropDepth else dock.width, if (vertical) dock.height else backdropDepth))
             layout(width, height) {
                 stage.place(0, 0)
-                val start = if (captureBaseline) cameraCaptureBaseline(width.toDp().value, height.toDp().value, vertical,
-                    (if (vertical) dock.width else dock.height).toDp().value).dockPositionInStage().dp.roundToPx()
-                else if (vertical) width - dock.width else height - dock.height
+                backdrop.place(if (vertical) start else 0, if (vertical) 0 else start)
                 dock.place(if (vertical) start else 0, if (vertical) 0 else start)
             }
         }
     }
+}
+
+
+@Composable
+private fun CameraDockBackdrop(vertical: Boolean, coverage: Float, dial: Float, dockDepth: Dp) {
+    Box(Modifier.testTag("camera-dock-backdrop").drawBehind {
+        if (coverage <= 0f) return@drawBehind
+        val depth = (if (vertical) size.width else size.height).coerceAtLeast(1f)
+        val stop = (dockDepth.toPx() / depth).coerceIn(.01f, 1f)
+        val ink = Color.Black.copy(alpha = .88f)
+        val stops = arrayOf(0f to Color.Transparent, stop * .5f to Color.Black.copy(alpha = .68f), stop to ink, 1f to ink)
+        val scrim = if (vertical) Brush.horizontalGradient(*stops) else Brush.verticalGradient(*stops)
+        drawRect(scrim, alpha = coverage * (1f - dial))
+        drawRect(CameraZoomDialBackdrop, alpha = coverage * dial)
+    })
 }

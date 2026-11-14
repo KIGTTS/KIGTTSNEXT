@@ -18,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+private const val CAMERA_RULER_GRADUATIONS = 32
+
 /** Numeric ranges move continuously; true camera presets remain discrete. */
 @Composable
 internal fun CameraTickRuler(range: IntRange, value: Int, label: (Int) -> String, description: String,
@@ -50,21 +52,24 @@ internal fun CameraContinuousRuler(range: ClosedFloatingPointRange<Float>, value
             steps = if (discrete) (count.roundToInt() - 1).coerceAtLeast(0) else 0, valueRange = range) }
         // Keep the thumb between hardware indices (Camera2 EV only accepts whole steps).
         var dragPosition by remember(range) { mutableStateOf<Float?>(null) }
-        var lastDetent by remember(range) { mutableStateOf<Float?>(null) }
-        LaunchedEffect(value, enabled) { if (!enabled) dragPosition = null }
+        var lastPosition by remember(range) { mutableStateOf<Float?>(null) }
+        LaunchedEffect(value, enabled) { if (!enabled) { dragPosition = null; lastPosition = null } }
         slider.value = dragPosition ?: value
-        slider.onValueChangeFinished = { dragPosition = null; lastDetent = null }
+        slider.onValueChangeFinished = { dragPosition = null; lastPosition = null }
         val ticks = remember(range, emphasis, discrete) {
-            val n = if (discrete) count.roundToInt().coerceIn(1, 32) else 32
+            val n = if (discrete) count.roundToInt().coerceIn(1, CAMERA_RULER_GRADUATIONS) else CAMERA_RULER_GRADUATIONS
             ((0..n).map { range.start + it * count / n } + listOfNotNull(emphasis?.takeIf { it in range })).distinct()
         }
         slider.onValueChange = { raw ->
             val next = cameraRulerPosition(raw, range, emphasis.takeIf { snapToEmphasis })
-            val detent = if (discrete) next else emphasis?.takeIf { next == it }
-            if (detent != null && lastDetent != detent && (snapToEmphasis || detent != value)) {
+            val previous = lastPosition ?: value
+            val neutral = emphasis.takeIf { snapToEmphasis }
+            if (neutral != null && next == neutral && previous != neutral) {
+                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+            } else if (cameraRulerHapticTick(previous, range, discrete) != cameraRulerHapticTick(next, range, discrete)) {
                 haptic.performHapticFeedback(HapticFeedbackType.SegmentTick)
             }
-            lastDetent = detent
+            lastPosition = next
             if (snapToEmphasis) dragPosition = next
             change(next)
         }
@@ -77,7 +82,7 @@ internal fun CameraContinuousRuler(range: ClosedFloatingPointRange<Float>, value
             }, track = {
                 Canvas(Modifier.fillMaxWidth().height(22.dp)) {
                     ticks.forEach { tick ->
-                        if (snapToEmphasis && emphasis != null && tick != emphasis && abs(tick - emphasis) < count / 64) return@forEach
+                        if (snapToEmphasis && emphasis != null && tick != emphasis && abs(tick - emphasis) < count / (2 * CAMERA_RULER_GRADUATIONS)) return@forEach
                         val x = size.width * (tick - range.start) / count
                         val strong = tick == emphasis || tick == range.start || tick == range.endInclusive
                         val radius = if (strong) .42f else .23f
@@ -95,3 +100,9 @@ internal fun cameraRulerPosition(value: Float, range: ClosedFloatingPointRange<F
     val radius = (range.endInclusive - range.start) * .035f
     return if (neutral != null && neutral in range && abs(bounded - neutral) <= radius) neutral else bounded
 }
+
+
+/** Crossing visual graduations gives tactile feedback without snapping the continuous value. */
+internal fun cameraRulerHapticTick(value: Float, range: ClosedFloatingPointRange<Float>, discrete: Boolean): Int =
+    if (discrete || range.start == range.endInclusive) value.roundToInt()
+    else ((value.coerceIn(range) - range.start) / (range.endInclusive - range.start) * CAMERA_RULER_GRADUATIONS).roundToInt()

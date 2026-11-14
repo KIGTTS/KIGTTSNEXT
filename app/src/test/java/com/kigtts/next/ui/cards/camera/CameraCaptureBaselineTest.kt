@@ -60,6 +60,40 @@ class CameraCaptureBaselineTest {
         assertEquals(0f, full.top, .001f)
     }
 
+    @Test fun onA21By9DeviceShutterTrailingGapMatchesAfterRotation() {
+        val short = 393f
+        val long = short * 21f / 9f
+        val portraitDepth = 140f
+        val landscapeDepth = 164f
+        val portrait = cameraCaptureBaseline(short, long, false, portraitDepth)
+        val landscape = cameraCaptureBaseline(long, short, true, landscapeDepth)
+        val portraitTail = long - portrait.dockPositionInStage() - portraitDepth
+        val landscapeTail = long - landscape.dockPositionInStage() - landscapeDepth
+        assertEquals(portraitTail, landscapeTail, .001f)
+        // 21:9 keeps the existing portrait edge relationship on the reference screen.
+        assertEquals(portrait.frame.bottom + CAMERA_PRO_BAND + CAMERA_PREVIEW_SIDE_INSET + 4f, portrait.dockStart, .001f)
+        assertEquals(CAMERA_LEFT_CLEARANCE + CAMERA_PREVIEW_SIDE_INSET, landscape.frame.left, .001f)
+        assertEquals(4f / 3f, landscape.frame.width / landscape.frame.height, .001f)
+    }
+
+    @Test fun shorterScreensMoveTheDockOutwardWithoutChangingLandscapeAlignment() {
+        val short = 393f
+        val reference = cameraDockTrailingGap(short * 21f / 9f, short)
+        val compact = cameraDockTrailingGap(short * 16f / 9f, short)
+        assertTrue(compact < reference)
+        assertTrue(compact >= 0f)
+        assertEquals(reference, cameraDockTrailingGap(short * 2.5f, short), .001f)
+        val landscape = cameraCaptureBaseline(short * 16f / 9f, short, true, 164f)
+        assertEquals(CAMERA_LEFT_CLEARANCE + CAMERA_PREVIEW_SIDE_INSET, landscape.frame.left, .001f)
+    }
+
+    @Test fun continuousRulerProducesTactileTicksWithoutQuantizingTheParameter() {
+        val span = 0f..1f
+        assertEquals(cameraRulerHapticTick(.5001f, span, false), cameraRulerHapticTick(.503f, span, false))
+        assertTrue(cameraRulerHapticTick(.54f, span, false) > cameraRulerHapticTick(.50f, span, false))
+        assertEquals(.503f, cameraRulerPosition(.503f, span, null), 0f)
+    }
+
     @Test fun exposureDetentOnlySnapsNearNeutral() {
         assertEquals(0f, cameraRulerPosition(.2f, -6f..6f, 0f), 0f)
         assertEquals(1.75f, cameraRulerPosition(1.75f, -6f..6f, 0f), 0f)

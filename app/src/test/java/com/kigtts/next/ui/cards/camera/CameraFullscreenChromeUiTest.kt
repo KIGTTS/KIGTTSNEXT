@@ -2,6 +2,10 @@ package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.ComponentActivity
 import android.graphics.BitmapFactory
+import android.view.ViewGroup
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -96,6 +100,36 @@ class CameraFullscreenChromeUiTest {
         compose.runOnIdle { pro = true }
         val professional = shutter.fetchSemanticsNode().boundsInRoot
         assertEquals(photo, professional)
+    }
+
+    @Test fun shutterScrimPaintsThroughTheBottomSafeAreaWithoutMovingTouchTargetsThere() {
+        compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
+            Box(Modifier.size(360.dp, 640.dp).testTag("camera-with-safe-area")) {
+                CameraPageLayout(
+                    preview = { modifier, _ -> Box(modifier.background(Color.White)) },
+                    controls = { vertical -> CameraActionBar(false, true, true, true, {}, {}, {}, vertical,
+                        showCancel = false, gallery = {}) },
+                    photoAspect = .52f, fullFrame = true, captureBaseline = true)
+            }
+        } }
+        val bottomInsetPx = (28 * compose.activity.resources.displayMetrics.density).toInt()
+        compose.runOnIdle {
+            val insets = WindowInsetsCompat.Builder()
+                .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, bottomInsetPx)).build()
+            val root = compose.activity.findViewById<ViewGroup>(android.R.id.content)
+            ViewCompat.dispatchApplyWindowInsets(root.getChildAt(0), insets)
+        }
+        val camera = compose.onNodeWithTag("camera-with-safe-area")
+        val root = camera.fetchSemanticsNode().boundsInRoot
+        val shutter = compose.onNodeWithTag("camera-shutter").fetchSemanticsNode().boundsInRoot
+        assertTrue(root.bottom - shutter.bottom >= bottomInsetPx)
+        val output = File("build/previews/camera-dock-bottom-safe-area.png").apply { requireNotNull(parentFile).mkdirs() }
+        camera.captureRoboImage(output.absolutePath)
+        val image = output.inputStream().use { requireNotNull(BitmapFactory.decodeStream(it)) }
+        try {
+            val color = Color(image.getPixel(image.width / 8, image.height - 2))
+            assertTrue("Bottom safe area must retain the dark scrim: $color", color.red < .5f)
+        } finally { image.recycle() }
     }
 
     @Test fun cornerActionsUseCurrentCallbacksAndSavingOnlyLocksTheNecessaryActions() {
