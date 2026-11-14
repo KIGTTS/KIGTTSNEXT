@@ -119,11 +119,15 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerReview -> com.kigtts.next.ui.cards.StickerReviewScreen(model, destination.token)
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
-                is Destination.PluginPage -> PluginPageScreen(model.pluginPage(destination.pluginId, destination.pageId), destination.pluginId in state.busyPlugins,
+                is Destination.PluginPage -> {
+                    if (destination.pluginId == "service.speech-synthesis" && destination.pageId == "manager")
+                        model.readingCacheBytes?.collectAsStateWithLifecycle()?.value
+                    PluginPageScreen(model.pluginPage(destination.pluginId, destination.pageId), destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/") { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
+                    }
                 }
             }
     }

@@ -32,6 +32,8 @@ import com.kigtts.next.ui.components.reorder.*
     val keys = entries.map { it.id }
     var positions by remember { mutableStateOf(keys) }
     var revealed by remember { mutableStateOf<String?>(null) }
+    var held by remember { mutableStateOf<String?>(null) }
+    var holdRequest by remember { mutableIntStateOf(0) }
     val bounds = remember { mutableMapOf<String, LayoutCoordinates>() }
     var root by remember { mutableStateOf(Offset.Zero) }
     val feedback = rememberDragFeedback()
@@ -65,13 +67,16 @@ import com.kigtts.next.ui.components.reorder.*
         OverlaySettingsRow(entry,
             if (positions.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == positions.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
             modifier = modifier, grip = grip, elevated = elevated, active = revealed == id,
+            holdRequest = if (held == id) holdRequest else 0,
             activate = { revealed = id }, edit = { edit(entry) }, remove = { remove(entry) }, move = { delta ->
                     val items = positions.toMutableList(); val i = items.indexOf(id)
                     if (i + delta in items.indices) { items.add(i + delta, items.removeAt(i)); latestOrder(items) }
             })
     }
     ReadablePage(840.dp) {
-        Box(Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }.reorderGestures(drag, handlesOnly = true)) {
+        Box(Modifier.fillMaxSize().onGloballyPositioned { root = it.positionInRoot() }.reorderGestures(drag,
+            onStationaryHold = { target -> held = target.key; revealed = target.key; holdRequest++ },
+            onDragStart = { revealed = null; held = null })) {
             LazyColumn(Modifier.fillMaxSize().testTag("overlay-shortcuts-list"), state = state,
                 contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "controls") { Column(Modifier.padding(bottom = 20.dp)) { controls() } }

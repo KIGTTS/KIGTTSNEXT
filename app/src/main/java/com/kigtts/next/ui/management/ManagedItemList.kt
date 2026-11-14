@@ -43,6 +43,8 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
     val density = androidx.compose.ui.platform.LocalDensity.current
     var headerHeight by remember { mutableIntStateOf(0) }
     var revealedItem by remember(list.id) { mutableStateOf<String?>(null) }
+    var heldItem by remember(list.id) { mutableStateOf<String?>(null) }
+    var holdRequest by remember(list.id) { mutableIntStateOf(0) }
     val topInset = if (list.filters.isEmpty()) 16.dp else 4.dp
     val horizontalPadding = with(density) { 16.dp.toPx() }
     val external = list.items.map { it.id }
@@ -83,7 +85,10 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
         order = ItemOrder.move(order, id, target)
         list.reorderAction?.let { invoke(it, mapOf("order" to PluginJson.encodeToString(order))) }
     }
-    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive) Modifier.reorderGestures(drag, handlesOnly = true) else Modifier)) {
+    Box(Modifier.fillMaxSize().testTag("managed-list/" + list.id).then(if (list.reorderAction != null && interactive)
+        Modifier.reorderGestures(drag, onStationaryHold = { target ->
+            heldItem = target.key; revealedItem = target.key; holdRequest++
+        }, onDragStart = { revealedItem = null; heldItem = null }) else Modifier)) {
         val pagePadding = com.kigtts.next.ui.navigation.pageContentPadding()
         val sections = managedItemSections(order.mapNotNull(data::get))
         LazyVerticalGrid(GridCells.Fixed(columns), Modifier.fillMaxSize(), state = lazy, contentPadding = PaddingValues(
@@ -110,6 +115,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                     catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[item.id],
                     compactActions = compactActions,
                     revealActive = revealedItem == item.id, activateReveal = { revealedItem = item.id },
+                    holdRequest = if (heldItem == item.id) holdRequest else 0,
                     position = managedGridPosition(section, index, columns))
             }
             }

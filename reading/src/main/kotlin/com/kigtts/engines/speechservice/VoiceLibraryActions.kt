@@ -2,9 +2,12 @@
 package com.kigtts.engines.speechservice
 
 import com.kigtts.plugin.api.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal class VoiceLibraryActions(private val environment: PluginEnvironment, private val settings: ServiceSettings,
-    private val library: VoiceLibrary, private val pages: VoiceLibraryPages, private val broker: SpeechBroker) {
+    private val library: VoiceLibrary, private val pages: VoiceLibraryPages, private val broker: SpeechBroker,
+    private val forgetAudio: (String, String) -> Unit = { _, _ -> }) {
     suspend fun execute(action: String, context: PluginContext): PluginOutcome {
         if (action == "library") return PluginOutcome.OpenPage("packs")
         if (action.startsWith("pack-filter/")) { library.filter = decodeId(action.substringAfter('/')); library.save(); return PluginOutcome.RefreshUi }
@@ -59,8 +62,10 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
             "pack-update" -> PluginOutcome.ImportResource("更新语音包（保留名称、备注、头像和顺序）", "resources/inbox", action.replace("pack-update", "pack-update-save"))
             "pack-update-save" -> {
                 val path = requireNotNull(context.inputs["resourcePath"])
-                try { broker.command(owner, VoiceCommand(VoiceOperation.IMPORT, packId = id, resourcePath = path)) }
+                val result = try { broker.command(owner, VoiceCommand(VoiceOperation.IMPORT, packId = id, resourcePath = path)) }
                 finally { environment.storage.file(path).delete() }
+                if (result is PluginOutcome.Message) return result
+                withContext(Dispatchers.IO) { forgetAudio(owner, id) }
                 if (settings.provider == owner) {
                     val updated = pages.entries().first { it.key == entry.key }
                     if (settings.voice !in updated.pack.voiceIds) { settings.voice = updated.pack.voiceIds.firstOrNull(); settings.save() }
@@ -74,7 +79,9 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
             }
             "pack-delete" -> PluginOutcome.Menu("确认删除“${current.name}”及包中的全部声音？", listOf(PageAction(action.replace("pack-delete", "pack-delete-confirm"), "确认删除", PluginIcon.CLOSE)))
             "pack-delete-confirm" -> {
-                command(VoiceOperation.DELETE)
+                val result = command(VoiceOperation.DELETE)
+                if (result is PluginOutcome.Message) return result
+                withContext(Dispatchers.IO) { forgetAudio(owner, id) }
                 if (settings.provider == owner && settings.voice in entry.pack.voiceIds) { settings.voice = null; settings.provider = null; settings.save() }
                 PluginOutcome.RefreshUi
             }

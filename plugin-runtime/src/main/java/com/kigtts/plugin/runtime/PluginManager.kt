@@ -48,6 +48,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     private var builtinsAttached = false
     @Volatile var status: List<PluginStatus> = emptyList()
         private set
+    @Volatile var installedCatalogReady: Boolean = false
+        private set
     suspend fun reload() = mutation.withLock { reloadLocked() }
     suspend fun workers() = mutation.withLock { loaded.map { (id, entry) -> WorkerStatus(id, entry.first, entry.second.alive) } }
     suspend fun restart(id: String) = mutation.withLock { paths.validateId(id);unload(id);reloadLocked() }
@@ -124,6 +126,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
             PluginStatus(info, error)
         }
         status = statuses
+        installedCatalogReady = true
         registry.replace(builtins + loaded.values.map { it.second })
     }
     private suspend fun unload(id: String) {

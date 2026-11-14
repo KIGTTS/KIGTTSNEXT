@@ -23,10 +23,12 @@ class SpeechServicePagesTest {
         val pages = SpeechServicePages(settings) { listOf(system, source) }
         val page = pages.page("manager", true)!!
         val items = page.blocks.filterIsInstance<PageBlock.Group>().flatMap { it.children }
-        val sound = items.filterIsInstance<PageBlock.Input>().single()
+        val sound = items.filterIsInstance<PageBlock.Input>().single { it.actionId == "library" }
         assertEquals("声音", sound.title); assertEquals("清朗", sound.value); assertEquals("library", sound.actionId)
         assertEquals(1f, items.filterIsInstance<PageBlock.Slider>().single().control.value)
-        assertTrue(items.filterIsInstance<PageBlock.Toggle>().single().checked)
+        assertTrue(items.filterIsInstance<PageBlock.Toggle>().single { it.actionId == "resident" }.checked)
+        assertTrue(items.filterIsInstance<PageBlock.Toggle>().single { it.actionId == "cache-toggle" }.checked)
+        assertEquals("0 B", items.filterIsInstance<PageBlock.Input>().single { it.actionId == "cache-clear" }.value)
         assertEquals(listOf("activate"), pages.page("manager", false)!!.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { it.id })
     }
 
@@ -34,7 +36,7 @@ class SpeechServicePagesTest {
         val settings = settings().apply { provider = source.pluginId; voice = this@SpeechServicePagesTest.voice.id }
         val pages = SpeechServicePages(settings) { listOf(system, source.copy(enabled = false)) }
         assertEquals("系统默认声音", pages.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>()
-            .flatMap { it.children }.filterIsInstance<PageBlock.Input>().single().value)
+            .flatMap { it.children }.filterIsInstance<PageBlock.Input>().single { it.actionId == "library" }.value)
         assertEquals(listOf("system-default"), pages.page("voices", true)!!.management!!.items.map { it.id })
     }
 

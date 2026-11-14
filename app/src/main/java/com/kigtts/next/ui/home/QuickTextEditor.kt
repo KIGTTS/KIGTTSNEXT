@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,6 +39,9 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     val drag = rememberReorderDrag({ emptyList() }, animateDrop = true, feedback = feedback, move = model.quickTexts::movePhrase)
     val density = LocalDensity.current
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val icons by model.quickTexts.categoryIcons.collectAsStateWithLifecycle()
+    val category = state.selectedCategory
+    val addPhrase = { model.editPhraseDetails(null, category) }
     Surface(modifier.fillMaxSize().testTag("quick-text-editor"), shape = homeCardShape(),
         color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -45,7 +49,18 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                 ToolButton("完成编辑", Icons.Default.Check, {
                     focus.clearFocus(); keyboard?.hide(); model.finishQuickTextEditing()
                 }, Modifier.testTag("quick-edit-done"))
-                Text("编辑快捷文本", Modifier.weight(1f).padding(start = 12.dp), style = MaterialTheme.typography.titleMedium)
+                Box(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                    TextButton(onClick = feedbackClick { editGroup = category }, modifier = Modifier.testTag("quick-edit-group"),
+                        contentPadding = PaddingValues(horizontal = 8.dp)) {
+                        Icon((icons[category] ?: CategoryIcon.defaultFor(category)).vector(), null, Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(category, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false))
+                        Spacer(Modifier.width(6.dp))
+                        Icon(Icons.Default.Edit, "编辑分组", Modifier.size(16.dp))
+                    }
+                }
+                ToolButton("新增快捷文本", Icons.Default.Add, addPhrase, Modifier.testTag("quick-edit-add"))
             }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane")
                 .reorderGestures(drag, onStationaryHold = { menu = it.menuTarget() })) {
@@ -54,7 +69,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null, model::category, Modifier.weight(1f)) { category, active ->
                         EditablePhraseGrid(phrases.filter { it.category == category }, model,
                             { model.editPhraseDetails(it, state.selectedCategory) }, { deleting = it },
-                            { model.editPhraseDetails(null, state.selectedCategory) },
+                            addPhrase,
                             Modifier.fillMaxSize(), drag = drag, active = active, columns = columns)
                     }
                     CategoryTabs(state, categories, model, editing = true, addGroup = { addGroup = true }, editGroup = { editGroup = it })

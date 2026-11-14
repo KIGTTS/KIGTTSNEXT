@@ -5,8 +5,13 @@ import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.*
 import com.kigtts.engines.system.SystemSpeechEngine
 import java.util.Base64
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.withContext
 
-class SpeechServicePlugin : KigPlugin {
+class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> = emptyFlow(),
+    private val installedProviders: () -> Map<String, String>? = { null },
+    private val mayCacheProvider: (String) -> Boolean = { true }) : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "朗读设置",
         "选择朗读声音，管理语音包", version = "0.8.5", license = "GPL-3.0-only")
     private lateinit var environment: AndroidPluginEnvironment
@@ -17,6 +22,14 @@ class SpeechServicePlugin : KigPlugin {
     private lateinit var libraryPages: VoiceLibraryPages
     private lateinit var libraryActions: VoiceLibraryActions
     private lateinit var settingsPages: SpeechServicePages
+    private val cacheSize = MutableStateFlow(0L)
+    val cacheBytes = cacheSize.asStateFlow()
+    fun synthesizeText(request: TtsRequest, phraseId: String?) =
+        if (::facade.isInitialized) facade.synthesize(request, phraseId) else pending.synthesize(request)
+    suspend fun forgetCachedPacks(owner: String, ids: Set<String>) = withContext(Dispatchers.IO) {
+        if (::facade.isInitialized) facade.cache?.forget(owner, ids)
+        Unit
+    }
     private val pending = object : TtsEngine {
         override val info = TtsInfo(role = TtsRole.SERVICE)
         override fun synthesize(request: TtsRequest) = kotlinx.coroutines.flow.flow<SynthesisEvent> { error("朗读设置正在加载，请稍后重试") }
@@ -28,10 +41,15 @@ class SpeechServicePlugin : KigPlugin {
         settings = ServiceSettings(environment.storage)
         system = SystemSpeechEngine(this.environment)
         facade = ServiceSynthesis(settings, broker, system)
+        val cache = ServiceCache(environment.storage.file("audio-cache"), settings, broker, shortcutTexts, installedProviders,
+            ::systemVoiceRevision, facade, cacheSize, mayCacheProvider)
+        facade.cache = cache
         val library = VoiceLibrary(environment.storage)
         libraryPages = VoiceLibraryPages(settings, library, ::providers)
-        libraryActions = VoiceLibraryActions(environment, settings, library, libraryPages, broker)
-        settingsPages = SpeechServicePages(settings, ::providers)
+        libraryActions = VoiceLibraryActions(environment, settings, library, libraryPages, broker) { owner, pack ->
+            cache.forget(owner, setOf(pack))
+        }
+        settingsPages = SpeechServicePages(settings, { cache.bytes.value }, ::providers)
     }
     override val contributions = PluginContributions(settingsEntries = listOf(
         SettingsEntry("manager", "朗读设置", "manager", PluginIcon.SPEAKER, "audio", "音频", "选择朗读声音", 10),
@@ -70,11 +88,20 @@ class SpeechServicePlugin : KigPlugin {
         return null
     }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome {
-        if (actionId == "library" || actionId.startsWith("pack")) return libraryActions.execute(actionId, context)
+        if (actionId == "library" || actionId.startsWith("pack")) {
+            return libraryActions.execute(actionId, context).also { facade.cache?.changed() }
+        }
         val pieces = actionId.split('/')
         val id = pieces.getOrNull(1)?.takeIf { pieces[0] != "sounds" }?.let(::decode)
         val voice = pieces.getOrNull(2)?.takeIf { pieces[0] !in setOf("engine") }?.let(::decode)
         return when (pieces[0]) {
+            "cache-toggle" -> withContext(Dispatchers.IO) {
+                settings.cacheEnabled = context.inputs["checked"]?.toBooleanStrictOrNull() ?: !settings.cacheEnabled
+                settings.save(); facade.cache?.optionsChanged(); PluginOutcome.RefreshUi
+            }
+            "cache-clear" -> PluginOutcome.Confirm("清理朗读缓存？", "不会删除快捷文本或语音包。",
+                PageAction("cache-clear-confirm", "清理", PluginIcon.CLOSE))
+            "cache-clear-confirm" -> withContext(Dispatchers.IO) { facade.cache?.clear(); PluginOutcome.RefreshUi }
             "settings" -> {
                 val provider = providers().first { it.pluginId == id && it.enabled }
                 require(provider.settingsPages.any { it.id == voice })
@@ -114,7 +141,12 @@ class SpeechServicePlugin : KigPlugin {
             "renamed" -> { broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.RENAME, voiceId = voice, value = context.inputs["value"])); PluginOutcome.RefreshUi }
             "delete" -> PluginOutcome.Menu("确认删除这个语音包及其所有声音？", listOf(PageAction("deleted/${pieces[1]}/${pieces[2]}", "确认删除", PluginIcon.CLOSE)))
             "deleted" -> {
-                broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.DELETE, voiceId = voice))
+                val source = providers().firstOrNull { it.pluginId == id }?.info
+                val pack = source?.packs?.firstOrNull { voice in it.voiceIds }?.id
+                    ?: source?.voices?.firstOrNull { it.id == voice }?.packId ?: voice
+                val result = broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.DELETE, voiceId = voice))
+                if (result is PluginOutcome.Message) return result
+                if (pack != null) forgetCachedPacks(id, setOf(pack))
                 if (settings.provider == id) { settings.voice = providers().firstOrNull { it.pluginId == id }?.info?.selectedVoiceId; settings.save() }
                 PluginOutcome.RefreshUi
             }
@@ -124,7 +156,18 @@ class SpeechServicePlugin : KigPlugin {
                 settings.rate = value; settings.save(); PluginOutcome.NoAction
             }
             else -> PluginOutcome.Message("操作不可用，请重新打开朗读设置")
-        }
+        }.also { facade.cache?.changed() }
+    }
+    private fun systemVoiceRevision(): String {
+        val context = environment.context
+        val resolver = context.contentResolver
+        val engine = android.provider.Settings.Secure.getString(resolver, "tts_default_synth")
+        val locales = android.provider.Settings.Secure.getString(resolver, "tts_default_locale")
+        val version = engine?.let { runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(it, 0).lastUpdateTime
+        }.getOrNull() }
+        return cacheHash(engine, locales, version, environment.locale)
     }
     private fun providers() = listOf(TtsProvider(SYSTEM_PROVIDER, "系统声音", system.info)) + broker.providers().filter { it.pluginId != LEGACY_SYSTEM_PROVIDER && it.pluginId != SYSTEM_PROVIDER }
     private fun encode(value: String) = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray())

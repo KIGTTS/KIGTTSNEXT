@@ -46,6 +46,7 @@ data class AppState(
     val pluginRevision: Int = 0,
     val busyPlugins: Set<String> = emptySet(),
     val editorValue: TextFieldValue = TextFieldValue("", TextRange.Zero),
+    val spokenPhraseId: String? = null,
     val subtitlePlaceholder: String = "点击输入文字",
     val transcript: String = "",
     val listening: Boolean = false,

@@ -36,12 +36,12 @@ class ReorderDrag(private val targets: () -> List<ReorderTarget>, private val mo
     private fun currentTargets() = targetProvider?.invoke() ?: targets()
     fun hit(point: Offset) = currentTargets().firstOrNull { it.bounds.contains(point) }
     fun targetBounds(id: String) = currentTargets().firstOrNull { it.key == id }?.bounds
-    fun begin(item: ReorderTarget, point: Offset) {
+    fun begin(item: ReorderTarget, point: Offset, feedbackStarted: Boolean = false) {
         settling = false
         landed = false; overlayAlpha = 1f
         key = item.key; initial = item.bounds.topLeft; touch = point; offset = Offset.Zero; pickedBounds = item.bounds
         acceptedSlot = null
-        feedback?.start(0f)
+        if (!feedbackStarted) feedback?.start(0f)
     }
     fun drag(delta: Offset) { offset += if (horizontalOnly) Offset(delta.x, 0f) else if (verticalOnly) Offset(0f, delta.y) else delta; checkTarget() }
     fun checkTarget() {
@@ -82,7 +82,8 @@ fun rememberReorderDrag(targets: () -> List<ReorderTarget>, horizontalOnly: Bool
 
 /** Detect on the stable list container so item placement never interrupts the pointer. */
 fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true }, handlesOnly: Boolean = false,
-    onStart: () -> Boolean = { true }, onStationaryHold: ((ReorderTarget) -> Unit)? = null) = onGloballyPositioned { drag.origin = it.positionInRoot() }
+    onStart: () -> Boolean = { true }, onStationaryHold: ((ReorderTarget) -> Unit)? = null,
+    onDragStart: () -> Unit = {}) = onGloballyPositioned { drag.origin = it.positionInRoot() }
     .pointerInput(drag, handlesOnly, onStationaryHold != null) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
@@ -139,7 +140,8 @@ fun Modifier.reorderGestures(drag: ReorderDrag, canStart: () -> Boolean = { true
                     } } finally { if (!moved) drag.feedback?.finish(cancelled = !released) }
                     if (!moved) return@awaitEachGesture
                 }
-                drag.begin(item, start.position)
+                onDragStart()
+                drag.begin(item, start.position, feedbackStarted = !handle && onStationaryHold != null)
                 drag.drag(initialDelta)
                 var released = false
                 try {

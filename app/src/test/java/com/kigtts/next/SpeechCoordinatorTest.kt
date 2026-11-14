@@ -18,10 +18,11 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpeechCoordinatorTest {
-    @Test fun productionHostContainsNoSpeechEnginesWithoutInstalledPackages() {
+    @Test fun productionHostOnlyContainsTheBuiltInReadingServiceWithoutInstalledPackages() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(app).create(AppViewModel::class.java)
-        assertTrue(model.registry.plugins.all { it.tts == null && it.asr == null })
+        assertEquals(listOf(TtsRole.SERVICE), model.registry.plugins.mapNotNull { it.tts?.info?.role })
+        assertTrue(model.registry.plugins.none { it.asr != null })
         assertTrue(model.registry.plugins.none { it.descriptor.placeholder })
     }
     @Test fun audioFlowsToSelectedPluginAndCancellationReleasesTransport() = runTest {

@@ -28,12 +28,27 @@ class QuickTextEditorTest {
     private fun show(): AppViewModel {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input", "quick-phrases").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
+        QuickPhraseStore(app).save(listOf(QuickPhrase("第一条", "常用"), QuickPhrase("第二条", "常用"),
+            QuickPhrase("第三条", "常用")), listOf("常用", "生活", "收藏", "出行"))
         return testAppModel(app).also { model ->
             compose.setContent { KigttsApp(model) }
             compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f) }
         }
     }
     private fun edit() = compose.onNodeWithContentDescription("编辑快捷文本").performClick()
+    @Test fun toolbarShowsCurrentGroupAndAddsToItWithoutReplacingTailAction() {
+        val model = show(); edit()
+        compose.runOnIdle { model.category("生活") }
+        val group = compose.onNodeWithTag("quick-edit-group")
+        group.assertTextContains("生活")
+        group.performClick()
+        compose.onNodeWithTag("edit-category-name").assertTextContains("生活")
+        compose.onNodeWithText("取消").performClick()
+        compose.waitUntil(5000) { compose.onAllNodesWithTag("edit-category-name").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithTag("add-phrase").assertExists()
+        compose.onNodeWithTag("quick-edit-add").performClick()
+        assertEquals("生活", model.content.phraseDraft.value?.category)
+    }
     private fun capture(name: String) {
         val target = if (compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty()) compose.onNode(isDialog()) else compose.onRoot()
         target.captureRoboImage("build/previews/" + name + ".png")
@@ -143,8 +158,9 @@ class QuickTextEditorTest {
         val end = point(compose.onNodeWithTag("category-常用"), tabs)
         tabs.performTouchInput { down(start) }
         compose.mainClock.advanceTimeBy(700)
+        tabs.performTouchInput { moveTo(end, delayMillis = 300) }
         compose.onNodeWithTag("category-生活").assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "正在拖动分组"))
-        tabs.performTouchInput { moveTo(end, delayMillis = 300); up() }
+        tabs.performTouchInput { up() }
         assertEquals(listOf("常用", "生活", "收藏", "出行"), model.categories.value)
         assertEquals("常用", model.state.value.selectedCategory)
         capture("quick-edit-reordered-groups")

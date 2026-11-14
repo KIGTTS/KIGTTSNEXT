@@ -33,6 +33,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal val safeModeSession = com.kigtts.next.recovery.SafeModeSession(recovery, ::refreshPlugins)
     init { pluginManager.safeMode = recovery::safeMode }
     val registry = pluginManager.registry
+    val readingCacheBytes get() = hostRuntime?.reading?.cacheBytes
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         audioDevices.decorate(plugin, plugin.page(pageId, context()))
@@ -297,7 +298,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         content.resetSelection()
         if (audioSessionDelegate.isInitialized()) cardAudio.clear()
         update { it.copy(editorValue = TextFieldValue(text, TextRange(text.length)), mediaId = null,
-            mediaEditing = false, webCanGoBack = false, audioId = null, subtitleFormats = emptyList(), subtitleRevision = it.subtitleRevision + 1) }
+            mediaEditing = false, webCanGoBack = false, audioId = null, subtitleFormats = emptyList(), subtitleRevision = it.subtitleRevision + 1,
+            spokenPhraseId = null) }
     }
     fun playAudioCard(entry: com.kigtts.next.media.MediaEntry, autoPlay: Boolean = state.value.autoPlayback) {
         val file = mediaRepository.file(entry) ?: return message("音频文件已不可用")
@@ -320,6 +322,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         if(registry.plugins.any { it.tts!=null && registry.available(it) }&&state.value.mediaId==null&&state.value.editorText.isNotBlank())speech.speak(replace=true)
     }
     fun editText(value: TextFieldValue) { update { it.copy(editorValue = value,
+        spokenPhraseId = it.spokenPhraseId.takeIf { _ -> value.text == it.editorText },
         subtitleFormats = com.kigtts.next.text.TextFormatting.rebase(it.subtitleFormats, it.editorText, value.text)) } }
     fun moveCursor(steps: Int) {
         if (steps == 0) return
@@ -398,7 +401,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             var accepted = false
             try {
                 val executionContext = context().let { it.copy(inputs = inputs + it.inputs) }
-                val outcome = plugin.execute(actionId, executionContext)
+                val outcome = executeWithReadingCache(hostRuntime?.reading, plugin, actionId, executionContext)
                 if (handleServiceOutcome(outcome, plugin, pluginManager, context(), { speech.closeListening(); speech.stopAll() },
                         ::refreshPlugins, { selectEngine(it, false) }, ::navigate)) return@launch
                 when (outcome) {

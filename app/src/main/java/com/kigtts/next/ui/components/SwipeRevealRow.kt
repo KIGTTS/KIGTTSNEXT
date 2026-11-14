@@ -35,6 +35,7 @@ private enum class RevealSide { CLOSED, START, END }
     id: String, active: Boolean, onActivate: () -> Unit,
     startActions: List<RevealAction> = emptyList(), endActions: List<RevealAction> = emptyList(),
     enabled: Boolean = true, modifier: Modifier = Modifier, fullSwipeStartAction: String? = null, invoke: (String) -> Unit,
+    holdRequest: Int = 0,
     content: @Composable (revealed: Boolean, toggleActions: () -> Unit, closeActions: () -> Unit) -> Unit,
 ) {
     var offset by remember(id) { mutableFloatStateOf(0f) }
@@ -64,6 +65,12 @@ private enum class RevealSide { CLOSED, START, END }
         LaunchedEffect(startWidth, endWidth) {
             if (target == RevealSide.END) settle(target, -endWidth)
             else if (target == RevealSide.START) settle(target, startWidth)
+        }
+        LaunchedEffect(holdRequest) {
+            if (holdRequest != 0 && enabled && active) {
+                if (end.isNotEmpty()) settle(RevealSide.END, -endWidth)
+                else if (start.isNotEmpty() && fullSwipeStartAction == null) settle(RevealSide.START, startWidth)
+            }
         }
         fun act(action: String) { close(); latestInvoke(action) }
         // The gesture detector stays outside the translated content. Row movement cannot

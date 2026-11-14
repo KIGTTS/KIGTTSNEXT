@@ -5,7 +5,8 @@ import com.kigtts.plugin.api.*
 import java.util.Locale
 
 /** Configuration and voice selection use the host's grouped settings renderer. */
-internal class SpeechServicePages(private val settings: ServiceSettings, private val providers: () -> List<TtsProvider>) {
+internal class SpeechServicePages(private val settings: ServiceSettings, private val cacheBytes: () -> Long = { 0L },
+    private val providers: () -> List<TtsProvider>) {
     fun page(id: String, active: Boolean): PluginPage? {
         if (id == "manager") {
             val catalog = providers()
@@ -27,6 +28,12 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                         if (provider.settingsPages.size == 1) provider.name else "${provider.name} · ${page.title}", page.icon)
                 } }
                 if (entries.isNotEmpty()) add(PageBlock.Group("引擎设置", listOf(PageBlock.Actions(entries))))
+                add(PageBlock.Group("语音缓存", listOf(
+                    PageBlock.Toggle("自动缓存", settings.cacheEnabled, "cache-toggle",
+                        if (source?.info?.packs?.isNotEmpty() == true && source.pluginId == "engine.cloud-tts")
+                            "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读。合成时会将文字发送给云端服务。"
+                        else "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读"),
+                    PageBlock.Input("清理缓存", formatCacheSize(cacheBytes()), "cache-clear", icon = PluginIcon.CLOSE))))
                 add(PageBlock.Group("加载方式", listOf(PageBlock.Toggle("保持加载", settings.resident, "resident", "减少下次朗读等待"))))
             })
         }
@@ -52,6 +59,13 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
         return PluginPage(id, "选择声音", if (navigation.isEmpty()) emptyList() else listOf(PageBlock.Actions(navigation)),
             ManagementList("voice-picker/$page", items.drop(page * 24).take(24)))
     }
+}
+
+private fun formatCacheSize(bytes: Long): String = when {
+    bytes < 1024 -> "$bytes B"
+    bytes < 1024 * 1024 -> String.format(Locale.ROOT, "%.1f KB", bytes / 1024.0)
+    bytes < 1024L * 1024 * 1024 -> String.format(Locale.ROOT, "%.1f MB", bytes / (1024.0 * 1024))
+    else -> String.format(Locale.ROOT, "%.2f GB", bytes / (1024.0 * 1024 * 1024))
 }
 
 internal fun languageName(tag: String): String = Locale.forLanguageTag(tag).let { locale ->

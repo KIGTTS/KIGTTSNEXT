@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -38,38 +39,44 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
     }
     displayed?.let { selected ->
         val gap = with(density) { 8.dp.roundToPx() }
-        val position = remember(selected, gap, view) { object : PopupPositionProvider {
+        val shadowPadding = 16.dp
+        val inset = with(density) { shadowPadding.roundToPx() }
+        val position = remember(selected, gap, inset, view) { object : PopupPositionProvider {
             override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
                 val origin = IntArray(2).also(view::getLocationInWindow)
                 val bounds = selected.bounds
                 return IntOffset((origin[0] + bounds.center.x.toInt() - popupContentSize.width / 2)
                     .coerceIn(gap, maxOf(gap, windowSize.width - popupContentSize.width - gap)),
-                    (origin[1] + bounds.top.toInt() - popupContentSize.height - gap).let { above ->
+                    (origin[1] + bounds.top.toInt() - popupContentSize.height - gap + inset).let { above ->
                         if (above >= gap) above else (origin[1] + bounds.bottom.toInt() + gap)
+                            .minus(inset)
                             .coerceAtMost(maxOf(gap, windowSize.height - popupContentSize.height - gap)) })
             }
         } }
-        Popup(position, dismiss, PopupProperties(focusable = target != null)) {
+        Popup(position, dismiss, PopupProperties(focusable = true)) {
+            Box(Modifier.graphicsLayer {
+                alpha = reveal.value
+                compositingStrategy = CompositingStrategy.Offscreen
+                scaleX = .94f + .06f * reveal.value; scaleY = scaleX
+                translationY = with(density) { 6.dp.toPx() } * (1f - reveal.value)
+            }.padding(shadowPadding)) {
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.testTag("quick-text-context-menu").graphicsLayer {
-                    alpha = reveal.value
-                    scaleX = .94f + .06f * reveal.value; scaleY = scaleX
-                    translationY = with(density) { 6.dp.toPx() } * (1f - reveal.value)
-                }) {
+                tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.testTag("quick-text-context-menu")) {
                 Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
-                    IconButton(onClick = feedbackClick { dismiss(); model.sharing.shareQuickText(selected.key, selected.group) }) {
+                    IconButton(enabled = target != null, onClick = feedbackClick { dismiss(); model.sharing.shareQuickText(selected.key, selected.group) }) {
                         Icon(Icons.Default.Share, "分享", Modifier.size(22.dp))
                     }
-                    IconButton(onClick = feedbackClick {
+                    IconButton(enabled = target != null, onClick = feedbackClick {
                         dismiss()
                         if (selected.group) editGroup(selected.key)
                         else model.phrases.value.firstOrNull { it.id == selected.key }?.let { model.editPhraseDetails(it, it.category) }
                     }) { Icon(Icons.Default.Edit, "编辑", Modifier.size(22.dp)) }
-                    IconButton(onClick = feedbackClick { deleting = selected; dismiss() },
+                    IconButton(enabled = target != null, onClick = feedbackClick { deleting = selected; dismiss() },
                         colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
                         Icon(Icons.Default.Delete, "删除", Modifier.size(22.dp))
                     }
                 }
+            }
             }
         }
     }

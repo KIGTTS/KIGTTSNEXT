@@ -19,12 +19,13 @@ import com.kigtts.next.ui.management.managedItemShape
 /** Uses the same segmented surface and reveal rail as other management lists. */
 @Composable internal fun OverlaySettingsRow(entry: OverlayShortcut, position: SettingPosition,
     modifier: Modifier, grip: Modifier, elevated: Boolean, active: Boolean, activate: () -> Unit,
-    edit: () -> Unit, remove: () -> Unit, move: (Int) -> Unit) {
+    edit: () -> Unit, remove: () -> Unit, move: (Int) -> Unit, holdRequest: Int = 0) {
     val content: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggle, close ->
+        val menu = feedbackClick(toggle)
         Surface(shape = managedItemShape(position, revealed), color = MaterialTheme.colorScheme.surfaceContainer) {
             Row(Modifier.fillMaxWidth().heightIn(min = 80.dp)
                 .then(if (elevated) Modifier else Modifier.combinedClickable(
-                    onLongClick = feedbackClick(toggle), onClick = feedbackClick { if (revealed) close() }))
+                    onClick = feedbackClick { if (revealed) close() }).semantics { onLongClick("更多操作") { menu(); true } })
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.alpha(if (entry.enabled) 1f else .45f)) { OverlayShortcutIcon(entry) }
@@ -48,6 +49,6 @@ import com.kigtts.next.ui.management.managedItemShape
     else SwipeRevealRow("overlay/${entry.id}", active, activate, modifier = Modifier.fillMaxWidth(),
         endActions = listOf(RevealAction("settings", "配置${entry.title}", Icons.Default.Tune),
             RevealAction("delete", "移除${entry.title}", Icons.Default.Delete, destructive = true)),
-        invoke = { when (it) { "settings" -> edit(); "delete" -> remove() } }, content = content)
+        invoke = { when (it) { "settings" -> edit(); "delete" -> remove() } }, holdRequest = holdRequest, content = content)
     }
 }

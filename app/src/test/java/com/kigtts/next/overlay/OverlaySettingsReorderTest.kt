@@ -31,7 +31,7 @@ class OverlaySettingsReorderTest {
         compose.onNodeWithTag("reveal-row/overlay/camera").performTouchInput { swipeLeft() }
         compose.onNodeWithTag("reveal-action/overlay/camera/settings").assertIsDisplayed().performClick()
         assertEquals(1, edits); assertEquals(0, writes)
-        compose.onNodeWithText("拍立得").performTouchInput { longClick() }
+        compose.onNodeWithText("相册").performTouchInput { longClick() }
         compose.onNodeWithTag("overlay-floating-entry", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithTag("reveal-action/overlay/cards/delete").assertIsDisplayed()
         compose.onNodeWithTag("overlay-more/sketch").performClick()

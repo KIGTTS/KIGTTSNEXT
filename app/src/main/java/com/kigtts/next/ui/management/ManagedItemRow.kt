@@ -27,7 +27,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
     catalog: Boolean = false, trailingAction: ManagementProgressAction? = null,
     position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false,
-    revealActive: Boolean = false, activateReveal: () -> Unit = {}) {
+    revealActive: Boolean = false, activateReveal: () -> Unit = {}, holdRequest: Int = 0) {
     val primary = item.primaryAction
     val clickAction = managedItemClickAction(item)
     val direct = if (compactActions) item.actions.firstOrNull { it.id == primary } else null
@@ -38,12 +38,15 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         tween(180), label = "managed-selection-color")
     val row: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggleActions, closeActions ->
+        val menu = feedbackClick(toggleActions)
     Surface(Modifier.fillMaxWidth().testTag("managed-item/" + item.id), shape = managedItemShape(position, revealed),
         color = color, shadowElevation = shadowElevation) {
             Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).then(if ((clickAction != null || secondary.isNotEmpty() || revealed) && !elevated)
-                Modifier.combinedClickable(enabled = enabled, onLongClick = if (secondary.isNotEmpty()) feedbackClick(toggleActions) else null, onClick = feedbackClick {
+                Modifier.combinedClickable(enabled = enabled, onLongClick = if (!reorderable && secondary.isNotEmpty()) menu else null, onClick = feedbackClick {
                     if (revealed) closeActions() else clickAction?.let { invoke(it, emptyMap()) }
-                }) else Modifier)
+                }).then(if (reorderable && enabled && secondary.isNotEmpty()) Modifier.semantics {
+                    onLongClick("更多操作") { menu(); true }
+                } else Modifier) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
                     ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
@@ -68,7 +71,8 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     }
     if (elevated) Box(modifier) { row(false, {}, {}) }
     else SwipeRevealRow(item.id, revealActive, activateReveal, pin.map { it.reveal() }, other.map { it.reveal() },
-        enabled = enabled, modifier = modifier, fullSwipeStartAction = pin.firstOrNull()?.id, invoke = { invoke(it, emptyMap()) }, content = row)
+        enabled = enabled, modifier = modifier, fullSwipeStartAction = pin.firstOrNull()?.id, invoke = { invoke(it, emptyMap()) },
+        holdRequest = holdRequest, content = row)
 }
 
 private fun PageAction.isDestructive() = symbol in setOf("delete", "delete_forever", "delete_outline") ||

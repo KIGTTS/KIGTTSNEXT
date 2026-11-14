@@ -20,7 +20,7 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
         if (state().speaking && !replace) { current?.cancel(); return }
         val text = state().editorText
         if (text.isBlank()) { message("请先输入文本"); return }
-        play(text)
+        play(text, state().spokenPhraseId)
     }
     fun readOnce(text: String) {
         if (text.isBlank()) return
@@ -45,8 +45,9 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
             pending.clear(); queuedCharacters = 0; warned = false
         }
     }
-    private fun play(text: String): Job? {
-        val engine = registry.plugin(selection().orEmpty())?.tts ?: registry.plugins.firstNotNullOfOrNull { it.tts }
+    private fun play(text: String, phraseId: String? = null): Job? {
+        val plugin = registry.plugin(selection().orEmpty())?.takeIf { it.tts != null } ?: registry.plugins.firstOrNull { it.tts != null }
+        val engine = plugin?.tts
         if (engine == null) { message("请先安装并选择语音合成插件"); return null }
         if (engine.info.availability != EngineAvailability.READY) { message("语音合成插件尚未配置资源"); return null }
         val previous = current; previous?.cancel(); val epoch = ++generation
@@ -55,12 +56,16 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
             update { it.copy(speaking = true) }
             val player = audio.player()
             try {
-                var offset = 0; val limit = engine.info.maxTextLength.coerceAtLeast(2)
-                while (offset < text.length) {
-                    var end = minOf(offset + limit, text.length)
-                    if (end < text.length && text[end - 1].isHighSurrogate()) end--
-                    engine.synthesize(TtsRequest(text.substring(offset, end))).collect { event -> if (event is SynthesisEvent.Audio) player.write(event.audio) }
-                    offset = end
+                if (plugin is com.kigtts.engines.speechservice.SpeechServicePlugin) {
+                    plugin.synthesizeText(TtsRequest(text), phraseId).collect { event -> if (event is SynthesisEvent.Audio) player.write(event.audio) }
+                } else {
+                    var offset = 0; val limit = engine.info.maxTextLength.coerceAtLeast(2)
+                    while (offset < text.length) {
+                        var end = minOf(offset + limit, text.length)
+                        if (end < text.length && text[end - 1].isHighSurrogate()) end--
+                        engine.synthesize(TtsRequest(text.substring(offset, end))).collect { event -> if (event is SynthesisEvent.Audio) player.write(event.audio) }
+                        offset = end
+                    }
                 }
                 player.finish()
             } catch (cancel: CancellationException) { throw cancel }

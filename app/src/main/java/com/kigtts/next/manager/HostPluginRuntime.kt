@@ -6,16 +6,34 @@ import com.kigtts.next.state.editingCardId
 import com.kigtts.plugin.runtime.PluginManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.lang.ref.WeakReference
 
 /** The UI and external manager must share exactly one worker owner in the main process. */
 class HostPluginRuntime private constructor(private val application: Application) {
-    val manager = PluginManager(application, listOf(com.kigtts.engines.speechservice.SpeechServicePlugin()))
-    val recovery = com.kigtts.next.recovery.CrashRecovery(application)
     internal val legacyPiperStartupChecked = java.util.concurrent.atomic.AtomicBoolean(false)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
+    val reading = com.kigtts.engines.speechservice.SpeechServicePlugin(
+        shortcutTexts = flow { quickTexts.phrases.collect { phrases ->
+            emit(phrases.filter { it.cardType() == com.kigtts.next.state.QuickCardType.TEXT && it.text.isNotBlank() }
+                .associate { it.id to it.text })
+        } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice)
+    val manager = PluginManager(application, listOf(reading))
+    private fun voicePluginRevisions(): Map<String, String>? = if (!manager.installedCatalogReady) null
+        else manager.status.associate { status ->
+            val pkg = status.installed
+            pkg.manifest.id to "${pkg.publisherSha256}/${pkg.manifest.versionCode}/${pkg.manifest.version}/${pkg.manifest.files.hashCode()}"
+        }
+    private fun canBakeVoice(id: String): Boolean {
+        val installed = manager.status.firstOrNull { it.installed.manifest.id == id }?.installed ?: return false
+        val owner = "${id}:${installed.publisherSha256}"
+        return installed.enabled && manager.permissions.access(owner, "tts") == com.kigtts.plugin.runtime.PermissionAccess.ALLOW &&
+            ("network" !in installed.manifest.capabilities ||
+                manager.permissions.access(owner, "network") == com.kigtts.plugin.runtime.PermissionAccess.ALLOW)
+    }
+    val recovery = com.kigtts.next.recovery.CrashRecovery(application)
     val mediaRepository=com.kigtts.next.media.MediaRepository(application,manager.paths)
     val stickers = com.kigtts.next.cards.StickerRepository(application, manager.paths, mediaRepository)
     val cards = com.kigtts.next.cards.CardRepository(application, stickers)

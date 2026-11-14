@@ -92,7 +92,11 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
             QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay,
                 subtitleFormats=if(phrase.richText)phrase.formats else emptyList()) }
                 if (entry?.kind == MediaKind.AUDIO) playAudio(entry,phrase.autoPlay&&state().autoPlayback) }
-            QuickCardType.TEXT -> { history.clear();setText(phrase.text); if (phrase.richText) update { it.copy(subtitleFormats = phrase.formats) };if(state().autoPlayback)autoRead() }
+            QuickCardType.TEXT -> {
+                history.clear(); setText(phrase.text)
+                update { it.copy(spokenPhraseId = phrase.id, subtitleFormats = if (phrase.richText) phrase.formats else emptyList()) }
+                if (state().autoPlayback) autoRead()
+            }
         }
     }
     fun beginPhrase(phrase:QuickPhrase?,category:String) {

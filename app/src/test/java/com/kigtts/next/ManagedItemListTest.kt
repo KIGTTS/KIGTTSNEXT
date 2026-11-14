@@ -24,6 +24,34 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class ManagedItemListTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun stationaryHoldRevealsActionsButHoldThenMoveClosesTheRailAndReorders() {
+        var ids by mutableStateOf(listOf("a", "b", "c"))
+        val orders = mutableListOf<List<String>>()
+        compose.setContent { KigttsTheme(ThemeSettings()) { ProvideButtonFeedback(true) {
+            ManagedItemList(ManagementList("hold", ids.map {
+                ManagementItem(it, "条目 $it", actions = listOf(PageAction("delete", "删除", PluginIcon.CLOSE)))
+            }, "order"), invoke = { action, inputs ->
+                if (action == "order") { ids = PluginJson.decodeFromString(inputs.getValue("order")); orders += ids }
+            })
+        } } }
+        val list = compose.onNodeWithTag("managed-list/hold")
+        val root = list.getUnclippedBoundsInRoot()
+        val density = compose.activity.resources.displayMetrics.density
+        fun point(id: String): Offset {
+            val bounds = compose.onNodeWithTag("managed-item/$id").getUnclippedBoundsInRoot()
+            return Offset((bounds.left.value + 80 - root.left.value) * density,
+                ((bounds.top.value + bounds.bottom.value) / 2 - root.top.value) * density)
+        }
+        list.performTouchInput { down(point("a")); advanceEventTime(700); up() }
+        compose.onNodeWithTag("reveal-action/a/delete").assertIsDisplayed()
+        val start = point("a"); val end = point("c")
+        list.performTouchInput { down(start) }
+        compose.mainClock.advanceTimeBy(650)
+        list.performTouchInput { moveTo(end, delayMillis = 100); up() }
+        compose.mainClock.advanceTimeBy(1800)
+        compose.onNodeWithTag("reveal-action/a/delete").assertDoesNotExist()
+        assertEquals(listOf(listOf("b", "c", "a")), orders)
+    }
     @Test fun confirmingAnItemDoesNotShiftTheListWhenBusyChanges() {
         var busy by mutableStateOf(false)
         compose.setContent { KigttsTheme(ThemeSettings()) { ProvideButtonFeedback(true) {
