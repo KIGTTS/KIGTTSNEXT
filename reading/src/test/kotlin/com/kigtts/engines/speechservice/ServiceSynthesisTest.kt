@@ -35,6 +35,51 @@ class ServiceSynthesisTest {
         }
     }
     private fun settings() = ServiceSettings(PluginStorage(files.newFolder())).also { it.provider = "test.provider"; it.voice = "chosen" }
+    @Test fun shortcutAndLiveProfilesDoNotShareAudioOrInvalidateEachOther() = runBlocking {
+        val broker = Broker().also { it.catalog = listOf(TtsProvider("test.provider", "test",
+            TtsInfo(voices = listOf(VoiceInfo("chosen", "Voice", "zh-CN")), profiles = TtsProfileVersions("fast-v1", "quality-v1")))) }
+        fun updateProfiles(realtime: String, prebake: String) {
+            broker.catalog = broker.catalog.map { it.copy(info = it.info.copy(profiles = TtsProfileVersions(realtime, prebake))) }
+        }
+        broker.output = { request ->
+            emit(SynthesisEvent.Audio(PcmAudio(byteArrayOf(if (request.profile == TtsProfile.PREBAKE) 4 else 2, 0))))
+        }
+        val options = settings()
+        val facade = ServiceSynthesis(options, broker, System())
+        val cacheDir = files.newFolder()
+        val cache = ServiceCache(cacheDir, options, broker, MutableStateFlow(mapOf("phrase" to "你好")),
+            { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
+        facade.cache = cache
+        suspend fun speak(id: String? = null) = facade.synthesize(TtsRequest("你好"), id)
+            .filterIsInstance<SynthesisEvent.Audio>().single().audio.bytes.first().toInt()
+        suspend fun waitFor(predicate: () -> Boolean) = withTimeout(10_000) { while (!predicate()) delay(10) }
+        fun baked() = cacheDir.walkTopDown().firstOrNull { it.isFile && it.name.startsWith("q_") }?.name
+        try {
+            assertEquals(2, speak())
+            waitFor { baked() != null }
+            assertEquals(4, speak("phrase"))
+            assertEquals(2, speak())
+            assertEquals(listOf(TtsProfile.REALTIME, TtsProfile.PREBAKE), broker.requests.map { it.profile })
+            updateProfiles("fast-v2", "quality-v1"); cache.changed()
+            assertEquals(4, speak("phrase"))
+            assertEquals(2, speak())
+            assertEquals(listOf(TtsProfile.REALTIME, TtsProfile.PREBAKE, TtsProfile.REALTIME), broker.requests.map { it.profile })
+            val oldBake = baked()
+            updateProfiles("fast-v2", "quality-v2")
+            // New baked key is not ready: return live audio without poisoning it.
+            assertEquals(2, speak("phrase"))
+            waitFor { baked()?.let { it != oldBake } == true }
+            assertEquals(4, speak("phrase"))
+            val liveCount = broker.requests.count { it.profile == TtsProfile.REALTIME }
+            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
+            assertNull(baked())
+            assertEquals(2, speak())
+            assertEquals(liveCount, broker.requests.count { it.profile == TtsProfile.REALTIME })
+            waitFor { baked() != null }
+            assertEquals(3, broker.requests.count { it.profile == TtsProfile.PREBAKE })
+            assertEquals(4, speak("phrase"))
+        } finally { facade.close() }
+    }
     @Test fun splitsProviderRequestsWithoutSplittingSurrogatesAndEmitsSingleLifecycle() = runBlocking {
         val broker = Broker(); val system = System()
         val options = settings().also { it.rate = 1.5f }

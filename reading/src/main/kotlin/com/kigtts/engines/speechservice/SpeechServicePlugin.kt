@@ -102,6 +102,9 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
             "cache-clear" -> PluginOutcome.Confirm("清理朗读缓存？", "不会删除快捷文本或语音包。",
                 PageAction("cache-clear-confirm", "清理", PluginIcon.CLOSE))
             "cache-clear-confirm" -> withContext(Dispatchers.IO) { facade.cache?.clear(); PluginOutcome.RefreshUi }
+            "cache-rebuild" -> withContext(Dispatchers.IO) {
+                PluginOutcome.Message(facade.cache?.rebuild() ?: "朗读设置正在加载")
+            }
             "settings" -> {
                 val provider = providers().first { it.pluginId == id && it.enabled }
                 require(provider.settingsPages.any { it.id == voice })

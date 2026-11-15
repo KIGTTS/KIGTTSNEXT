@@ -29,6 +29,10 @@ class SpeechServicePagesTest {
         assertTrue(items.filterIsInstance<PageBlock.Toggle>().single { it.actionId == "resident" }.checked)
         assertTrue(items.filterIsInstance<PageBlock.Toggle>().single { it.actionId == "cache-toggle" }.checked)
         assertEquals("0 B", items.filterIsInstance<PageBlock.Input>().single { it.actionId == "cache-clear" }.value)
+        assertEquals("重新缓存", items.filterIsInstance<PageBlock.Input>().single { it.actionId == "cache-rebuild" }.title)
+        settings.cacheEnabled = false
+        assertFalse(pages.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>().flatMap { it.children }
+            .filterIsInstance<PageBlock.Input>().any { it.actionId == "cache-rebuild" })
         assertEquals(listOf("activate"), pages.page("manager", false)!!.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }.map { it.id })
     }
 

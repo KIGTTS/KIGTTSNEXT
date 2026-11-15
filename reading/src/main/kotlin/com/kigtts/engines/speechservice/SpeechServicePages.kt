@@ -28,12 +28,14 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                         if (provider.settingsPages.size == 1) provider.name else "${provider.name} · ${page.title}", page.icon)
                 } }
                 if (entries.isNotEmpty()) add(PageBlock.Group("引擎设置", listOf(PageBlock.Actions(entries))))
-                add(PageBlock.Group("语音缓存", listOf(
-                    PageBlock.Toggle("自动缓存", settings.cacheEnabled, "cache-toggle",
+                add(PageBlock.Group("语音缓存", buildList {
+                    add(PageBlock.Toggle("自动缓存", settings.cacheEnabled, "cache-toggle",
                         if (source?.info?.packs?.isNotEmpty() == true && source.pluginId == "engine.cloud-tts")
                             "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读。合成时会将文字发送给云端服务。"
-                        else "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读"),
-                    PageBlock.Input("清理缓存", formatCacheSize(cacheBytes()), "cache-clear", icon = PluginIcon.CLOSE))))
+                        else "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读"))
+                    if (settings.cacheEnabled) add(PageBlock.Input("重新缓存", "重新合成当前声音的快捷文本", "cache-rebuild", symbol = "refresh"))
+                    add(PageBlock.Input("清理缓存", formatCacheSize(cacheBytes()), "cache-clear", icon = PluginIcon.CLOSE))
+                }))
                 add(PageBlock.Group("加载方式", listOf(PageBlock.Toggle("保持加载", settings.resident, "resident", "减少下次朗读等待"))))
             })
         }

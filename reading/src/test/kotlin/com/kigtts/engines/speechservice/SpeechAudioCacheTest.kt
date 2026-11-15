@@ -17,6 +17,17 @@ class SpeechAudioCacheTest {
         assertTrue(it.finish())
     }
 
+    @Test fun manuallyRebuildingAShortcutLeavesOtherVoicesAndRecentTextAlone() {
+        val store = SpeechAudioCache(files.newFolder())
+        val sibling = a.copy(voice = "other")
+        val entries = listOf(key("快捷文本", a, "x"), key("快捷文本", sibling, "x"),
+            key("快捷文本", b, "x"), key("临时字幕", a))
+        entries.forEach { put(store, it) }
+        store.forgetShortcuts(a)
+        assertFalse(store.has(entries.first()))
+        assertTrue(entries.drop(1).all(store::has))
+    }
+
     @Test fun shortcutsHaveIndependentIdentityAndEditsDoNotEvictOtherEntriesOrPacks() {
         val directory = files.newFolder()
         val store = SpeechAudioCache(directory)

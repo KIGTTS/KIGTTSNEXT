@@ -13,10 +13,11 @@ import java.util.zip.GZIPOutputStream
 
 internal data class CacheVoice(val owner: String, val pack: String, val revision: String, val voice: String?)
 internal data class AudioCacheKey(val voice: CacheVoice, val phraseId: String?, val text: String,
-    val language: String, val rate: Float, val requestedVoice: String?) {
+    val language: String, val rate: Float, val requestedVoice: String?, val profileVersion: String? = null) {
     val quick = phraseId?.let { cacheHash(it) }
     val textHash = cacheHash(text)
-    val requestHash = cacheHash(language, rate, requestedVoice)
+    val requestHash = if (profileVersion == null) cacheHash(language, rate, requestedVoice)
+        else cacheHash(language, rate, requestedVoice, profileVersion)
 }
 
 internal fun cacheHash(vararg parts: Any?): String = MessageDigest.getInstance("SHA-256").run {
@@ -88,6 +89,16 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
         if (packs.isEmpty()) return
         epoch++
         packs.forEach { packDir(owner, it).deleteRecursively() }
+        refreshSize()
+    }
+    @Synchronized fun forgetShortcuts(voice: CacheVoice) {
+        epoch++
+        // Restrict manual rebuild to the selected voice; keep its recent text and other voices.
+        val key = cacheHash(voice.voice)
+        packDir(voice.owner, voice.pack).listFiles().orEmpty().filter { it.isDirectory }.forEach { revision ->
+            File(revision, key).listFiles().orEmpty().filter { it.name.startsWith("q_") && it.extension == "gz" }
+                .forEach { it.delete() }
+        }
         refreshSize()
     }
     @Synchronized fun reconcile(knownOwners: Set<String>?, voices: List<CacheVoice>) {

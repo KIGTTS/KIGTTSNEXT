@@ -25,12 +25,15 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
     }.flowOn(Dispatchers.IO)
 
     /** Returns false when the output is not from the requested voice. Never bake fallbacks. */
-    suspend fun generate(request: TtsRequest, expected: CacheVoice?, allowFallback: Boolean = false,
+    suspend fun generate(request: TtsRequest, expected: CacheVoice?, allowFallback: Boolean = false, profileVersion: String? = null,
         emit: suspend (SynthesisEvent) -> Unit): Boolean {
         val provider = routing.begin()
         val voice = settings.voice ?: provider?.info?.selectedVoiceId
-        val matches = expected == null || if (provider == null) expected.owner == SYSTEM_PROVIDER && settings.provider == null
+        val matchesVoice = expected == null || if (provider == null) expected.owner == SYSTEM_PROVIDER && settings.provider == null
             else expected.owner == provider.pluginId && expected.voice == voice
+        val profiles = provider?.info?.profiles
+        val actualProfileVersion = if (request.profile == TtsProfile.PREBAKE) profiles?.prebake else profiles?.realtime
+        val matches = matchesVoice && (profileVersion == null || profileVersion == actualProfileVersion)
         if (!matches && !allowFallback) return false
         if (provider == null) {
             routing.fallback()
@@ -46,7 +49,7 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
             var audioSent = false
             try {
                 broker.synthesize(provider.pluginId, request.copy(text = request.text.substring(offset, end),
-                    voiceId = voice)).collect { event ->
+                    voiceId = voice, profile = if (profiles != null) request.profile else TtsProfile.REALTIME)).collect { event ->
                     if (event is SynthesisEvent.Audio && event.audio.bytes.isNotEmpty()) { audioSent = true; emit(event) }
                 }
                 if (!audioSent && request.text.substring(offset, end).isNotBlank())
@@ -61,7 +64,11 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
             offset = end
         }
         emit(SynthesisEvent.Finished())
-        return matches
+        if (!matches || profileVersion == null) return matches
+        // Avoid committing audio under stale settings if a provider was reconfigured
+        // while a multi-segment request was being produced.
+        val latest = runCatching { broker.providers().firstOrNull { it.pluginId == provider.pluginId }?.info?.profiles }.getOrNull()
+        return (if (request.profile == TtsProfile.PREBAKE) latest?.prebake else latest?.realtime) == profileVersion
     }
 
     private suspend fun generateSystem(request: TtsRequest, emit: suspend (SynthesisEvent) -> Unit, started: Boolean = false) {

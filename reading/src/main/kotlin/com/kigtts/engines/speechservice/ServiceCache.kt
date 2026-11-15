@@ -28,7 +28,8 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     @Volatile private var lastPlan: Plan? = null
     @Volatile private var clearedPlan: Plan? = null
     private val revision = AtomicInteger()
-    private data class Plan(val voice: CacheVoice, val rate: Float, val phrases: Map<String, String>, val revision: Int)
+    private data class Plan(val voice: CacheVoice, val rate: Float, val phrases: Map<String, String>, val revision: Int,
+        val prebakeVersion: String?)
     private data class CatalogSnapshot(val owners: Map<String, String>?, val providers: Map<String, TtsInfo>)
     private var reconciled: CatalogSnapshot? = null
     private var reconciledVoice: CacheVoice? = null
@@ -66,6 +67,16 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         optionsChanged()
     }
     fun clear() { clearedPlan = lastPlan ?: currentPlan(catalog()); store.clear(); changed() }
+    fun rebuild(): String {
+        if (!settings.cacheEnabled) return "请先开启自动缓存"
+        if (shortcuts.isEmpty()) return "没有可预合成的快捷文本"
+        val plan = currentPlan(catalog()) ?: return "当前声音还不能预合成，请检查引擎和权限"
+        revision.incrementAndGet()
+        clearedPlan = null
+        store.forgetShortcuts(plan.voice)
+        changed()
+        return "已安排重新缓存当前声音的快捷文本"
+    }
     fun close() { scope.cancel(); store.suspendWrites() }
 
     private fun voice(provider: TtsProvider, id: String?): CacheVoice? {
@@ -86,11 +97,13 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private fun systemVoice() = CacheVoice(SYSTEM_PROVIDER, DEFAULT_PACK, cacheHash(systemRevision()), null)
     private fun currentPlan(catalog: List<TtsProvider>?): Plan? {
         val owner = settings.provider
-        val voice = if (owner == null) systemVoice()
-        else catalog?.firstOrNull { it.pluginId == owner && it.enabled && it.info.availability == EngineAvailability.READY &&
-            mayCacheProvider(owner) }
+        val provider = selectedProvider(catalog, owner)
+        val voice = if (owner == null) systemVoice() else provider?.takeIf { mayCacheProvider(owner) }
             ?.let { voice(it, settings.voice) } ?: return null
-        return Plan(voice, settings.rate, shortcuts, revision.get())
+        return Plan(voice, settings.rate, shortcuts, revision.get(), provider?.info?.profiles?.prebake)
+    }
+    private fun selectedProvider(catalog: List<TtsProvider>?, owner: String?) = catalog?.firstOrNull {
+        it.pluginId == owner && it.enabled && it.info.availability == EngineAvailability.READY
     }
     private fun plan(): Plan? {
         if (playing.get() != 0) return null
@@ -123,21 +136,22 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         var retry = false
         for ((id, text) in plan.phrases) {
             if (playing.get() != 0 || !settings.cacheEnabled) return true
-            val request = TtsRequest(text)
-            val key = AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null)
+            val request = TtsRequest(text, rate = plan.rate,
+                profile = if (plan.prebakeVersion != null) TtsProfile.PREBAKE else TtsProfile.REALTIME)
+            val key = AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null, plan.prebakeVersion)
             if (store.has(key)) continue
             val complete = try {
                 gate.withLock {
-                    if (playing.get() != 0 || plan != lastPlan || clearedPlan == plan) return true
+                    if (playing.get() != 0 || plan != lastPlan || clearedPlan == plan || plan.revision != revision.get()) return true
                     val writer = store.writer(key) ?: return true
                     writer.use {
-                        val valid = withTimeoutOrNull(30_000) {
-                            synthesis.generate(request.copy(rate = plan.rate), plan.voice) { event ->
+                        val valid = withTimeoutOrNull(if (plan.prebakeVersion != null) 120_000 else 30_000) {
+                            synthesis.generate(request, plan.voice, profileVersion = plan.prebakeVersion) { event ->
                                 if (event is SynthesisEvent.Audio) writer.append(event.audio)
                             }
                         } == true
                         currentCoroutineContext().ensureActive()
-                        valid && clearedPlan != plan && writer.finish()
+                        valid && clearedPlan != plan && plan.revision == revision.get() && writer.finish()
                     }
                 }
             } catch (cancel: CancellationException) { throw cancel }
@@ -152,18 +166,19 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         playing.incrementAndGet(); changed()
         try {
             gate.withLock {
-                val rated = request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f))
-                val voice = if (settings.provider == null) systemVoice()
-                    else catalog()?.firstOrNull {
-                        it.pluginId == settings.provider && it.enabled && it.info.availability == EngineAvailability.READY
-                    }?.let { voice(it, settings.voice) }
+                val rated = request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f), profile = TtsProfile.REALTIME)
+                val owner = settings.provider
+                val provider = if (owner != null) selectedProvider(catalog(), owner) else null
+                val voice = if (owner == null) systemVoice() else provider?.let { voice(it, settings.voice) }
                 if (voice == null || !settings.cacheEnabled || request.text.isBlank() ||
                     (voice.owner != SYSTEM_PROVIDER && !mayCacheProvider(voice.owner))) {
                     synthesis.generate(rated, voice, allowFallback = true, emit = emit)
                     return@withLock
                 }
-                val key = AudioCacheKey(voice, phraseId?.takeIf { shortcuts[it] == request.text },
-                    request.text, request.language, rated.rate, request.voiceId)
+                val quickId = phraseId?.takeIf { shortcuts[it] == request.text }
+                val profiles = provider?.info?.profiles
+                val key = AudioCacheKey(voice, quickId, request.text, request.language, rated.rate, request.voiceId,
+                    if (quickId == null) profiles?.realtime else profiles?.prebake)
                 store.open(key)?.let { reader ->
                     var began = false
                     try {
@@ -177,8 +192,14 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                         if (began) { emit(SynthesisEvent.Finished()); return@withLock }
                     } catch (error: IOException) { store.discard(key); if (began) throw error }
                 }
+                // A quick-text miss must be responsive, but its real-time audio cannot replace
+                // the high-quality result that the pre-bake queue will produce.
+                if (quickId != null && profiles != null) {
+                    synthesis.generate(rated, voice, allowFallback = true, emit = emit)
+                    return@withLock
+                }
                 store.writer(key).use { writer ->
-                    val valid = synthesis.generate(rated, voice, allowFallback = true) { event ->
+                    val valid = synthesis.generate(rated, voice, allowFallback = true, profileVersion = profiles?.realtime) { event ->
                         if (event is SynthesisEvent.Audio) writer?.append(event.audio)
                         emit(event)
                     }
