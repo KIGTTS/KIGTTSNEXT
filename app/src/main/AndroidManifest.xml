@@ -50,11 +50,6 @@
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
         <service android:name=".audio.RecognitionForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
-        <service android:name=".sharing.CloudShareService" android:exported="false" android:foregroundServiceType="connectedDevice" />
-        <service android:name=".identity.ContactNfcService" android:exported="true" android:permission="android.permission.BIND_NFC_SERVICE">
-            <intent-filter><action android:name="android.nfc.cardemulation.action.HOST_APDU_SERVICE" /></intent-filter>
-            <meta-data android:name="android.nfc.cardemulation.host_apdu_service" android:resource="@xml/contact_nfc_service" />
-        </service>
         <service android:name=".overlay.NativeOverlayService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled persistent floating shortcuts and plugin message bubbles" />
         </service>
@@ -94,13 +89,9 @@
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="app.kigtts.lhtstudio.com" android:pathPrefix="/kigtts/" />
-                <data android:scheme="https" android:host="share.kigtts.lhtstudio.com" android:pathPrefix="/kigtts/" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" /><category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="kigtts" android:host="share" />
+                <data android:scheme="https" android:host="app.kigtts.lhtstudio.com" />
+                <data android:path="/kigtts/open" />
+                <data android:path="/kigtts/quick-text" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -125,8 +116,10 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="lhtstudio.com" android:pathPrefix="/kigtts/" />
-                <data android:scheme="https" android:host="*.lhtstudio.com" android:pathPrefix="/kigtts/" />
+                <data android:scheme="https" android:host="lhtstudio.com" />
+                <data android:scheme="https" android:host="*.lhtstudio.com" />
+                <data android:path="/kigtts/open" />
+                <data android:path="/kigtts/quick-text" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
@@ -137,11 +130,29 @@
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="https" android:host="lhtstudio.com" android:pathPrefix="/kigtts/" />
-                <data android:scheme="https" android:host="*.lhtstudio.com" android:pathPrefix="/kigtts/" />
+                <data android:scheme="https" android:host="lhtstudio.com" />
+                <data android:scheme="https" android:host="*.lhtstudio.com" />
+                <data android:path="/kigtts/open" />
+                <data android:path="/kigtts/quick-text" />
             </intent-filter>
             <!-- File managers deliver legacy exports and voice packs as content:// URIs;
                  the host classifies the name/MIME and keeps unknown files read-only. -->
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="multipart/related" />
+                <data android:mimeType="application/x-mimearchive" />
+                <data android:mimeType="application/x-mhtml" />
+                <data android:mimeType="message/rfc822" />
+            </intent-filter>
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="multipart/related" />
+                <data android:mimeType="message/rfc822" />
+            </intent-filter>
             <intent-filter android:label="用 KIGTTS 打开">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -166,7 +177,26 @@
                 <data android:pathPattern=".*\\.kigcard" />
                 <data android:pathPattern=".*\\.kigconfig" />
                 <data android:pathPattern=".*\\.kigplugin" />
+                <data android:pathPattern=".*\\.mhtml" />
+                <data android:pathPattern=".*\\.mht" />
             </intent-filter>
         </activity>
+        <activity-alias android:name=".ProfileImageOpen" android:targetActivity=".MainActivity"
+            android:label="用 KIGTTS 收藏名片" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="image/png" />
+                <data android:mimeType="image/jpeg" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/png" />
+                <data android:mimeType="image/jpeg" />
+            </intent-filter>
+        </activity-alias>
     </application>
 </manifest>

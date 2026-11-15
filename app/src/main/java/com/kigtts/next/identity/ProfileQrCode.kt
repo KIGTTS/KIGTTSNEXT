@@ -8,8 +8,8 @@ import com.google.zxing.qrcode.QRCodeWriter
 
 internal const val PROFILE_QR_MAX_BYTES = 1000
 
-internal fun profileQrMatrix(value: String): BitMatrix? {
-    if (value.isBlank() || value.toByteArray(Charsets.UTF_8).size > PROFILE_QR_MAX_BYTES) return null
+internal fun profileQrMatrix(value: String, maxBytes: Int = PROFILE_QR_MAX_BYTES): BitMatrix? {
+    if (value.isBlank() || value.toByteArray(Charsets.UTF_8).size > maxBytes) return null
     return try {
         QRCodeWriter().encode(value, BarcodeFormat.QR_CODE, 1, 1,
             mapOf(EncodeHintType.CHARACTER_SET to "UTF-8", EncodeHintType.MARGIN to 4))

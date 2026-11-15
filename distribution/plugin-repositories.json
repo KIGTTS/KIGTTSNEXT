@@ -36,7 +36,7 @@
     "repository": "https://github.com/KIGTTS/plugin-package-store",
     "id": "tools.package-store",
     "license": "MIT",
-    "sourceCommit": "e22cfae715ede9b120411bb9fe3c0e5e67993762",
+    "sourceCommit": "841bbdc945978cf81154361e8f581bae90a24140",
     "directory": "package-store"
   },
   {

@@ -119,7 +119,7 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
                 if (columns < maximumColumns) "宫格列数：" + columns + "，点按缩小" else "相册总览",
                 if (columns < maximumColumns) Icons.Default.ViewWeek else Icons.Default.PhotoLibrary, enabled,
                 click = { if (columns < maximumColumns) columnLevel++ else mode = PolaroidBrowseMode.ALBUMS }))
-            add(ToolbarAction("face-discovery", "面对面接收", Icons.Default.Radar, active, click = { faceShare?.receive?.invoke() }))
+            faceShare?.receive?.let { receive -> add(ToolbarAction("face-discovery", "面对面接收", Icons.Default.Radar, active, click = receive)) }
         }, primaryCount = 4)
 
         val body: @Composable () -> Unit = {

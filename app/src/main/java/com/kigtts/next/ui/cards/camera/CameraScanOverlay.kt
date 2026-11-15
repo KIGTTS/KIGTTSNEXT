@@ -29,8 +29,10 @@ import com.kigtts.next.ui.components.feedbackClick
     val sharingLink = text?.let(com.kigtts.next.sharing.CloudShareLinks::parse)
     if (sharingLink != null) {
         LaunchedEffect(sharingLink) {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sharingLink))
-                .setClassName(context.packageName, "com.kigtts.next.MainActivity")) }
+            if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) {
+                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sharingLink))
+                    .setClassName(context.packageName, "com.kigtts.next.MainActivity")) }
+            } else message("云分享暂不可用")
             dismiss()
         }
         return

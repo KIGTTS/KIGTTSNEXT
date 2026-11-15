@@ -10,7 +10,8 @@ import java.util.UUID
 internal class FacePhotoRepository(private val cards: CardRepository, private val identities: IdentityRepository) {
     private val stickers get() = cards.stickers
     private val favorites by lazy { com.kigtts.next.identity.ContactFavorites.get(stickers.context) }
-    suspend fun prepare(ids: List<String>, original: Boolean, polaroid: Boolean, root: File, includeMotion: Boolean = false): List<FaceAsset> {
+    suspend fun prepare(ids: List<String>, original: Boolean, polaroid: Boolean, root: File, includeMotion: Boolean = false,
+        includeProfileMedia: Boolean = true): List<FaceAsset> {
         require(original || polaroid) { "请选择原图或编辑后的照片" }
         require(ids.size in 1..64) { "每次最多分享 64 张照片" }
         val outgoing = File(root, "outgoing").apply { mkdirs() }
@@ -38,7 +39,7 @@ internal class FacePhotoRepository(private val cards: CardRepository, private va
                 }
             }
         }.also { require(it.isNotEmpty()) { "没有可以分享的原图，请选择照片成片" } }.let { photos ->
-            val images = identities.current?.tiles.orEmpty().filter { it.kind == com.kigtts.next.identity.ProfileTileKind.IMAGE }.mapNotNull { tile ->
+            val images = identities.current?.tiles.orEmpty().filter { includeProfileMedia && it.kind == com.kigtts.next.identity.ProfileTileKind.IMAGE }.mapNotNull { tile ->
                 val source = com.kigtts.next.identity.profileImageFile(stickers, tile.image) ?: return@mapNotNull null
                 val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 android.graphics.BitmapFactory.decodeFile(source.path, options)

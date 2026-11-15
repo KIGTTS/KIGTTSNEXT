@@ -59,14 +59,15 @@ fun KigttsApp(model: AppViewModel) {
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
     var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
     val storeBootstrap by model.storeBootstrap.state.collectAsStateWithLifecycle()
-    val sharingSetup by model.sharing.setup.state.collectAsStateWithLifecycle()
+    val profileShareFormat by model.sharing.profileFormat.collectAsStateWithLifecycle()
+    val sharingSetup = if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) model.sharing.setup.state.collectAsStateWithLifecycle().value else null
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
     val legacyPiperPrompt by model.legacyPiperGuidance.prompt.collectAsStateWithLifecycle()
     val externalFile by model.externalFiles.prompt.collectAsStateWithLifecycle()
     val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
     val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || sharingSetup != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || sharingSetup != null || profileShareFormat != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -130,11 +131,15 @@ fun KigttsApp(model: AppViewModel) {
                 com.kigtts.next.theme.LocalAppAppearanceSettings provides state.theme,
                 LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
                 com.kigtts.next.ui.plugins.LocalPluginEntryBlocked provides inputOverlay,
-                com.kigtts.next.sharing.LocalFaceShare provides com.kigtts.next.sharing.FaceShareActions(model.sharing::shareMedia, model.sharing::openReceiving),
+                com.kigtts.next.sharing.LocalFaceShare provides com.kigtts.next.sharing.FaceShareActions(model.sharing::shareMedia,
+                    if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) model.sharing::openReceiving else null),
                 com.kigtts.next.plugins.control.LocalAgentAccessPolicy provides model.agentAccess) {
-            com.kigtts.next.sharing.CloudShareLinkHost(model)
-            com.kigtts.next.sharing.CloudSharingSetupHost(model)
-            com.kigtts.next.sharing.CloudNativeHost(model)
+            if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) {
+                com.kigtts.next.sharing.CloudShareLinkHost(model)
+                com.kigtts.next.sharing.CloudSharingSetupHost(model)
+                com.kigtts.next.sharing.CloudNativeHost(model)
+            }
+            if (profileShareFormat != null) com.kigtts.next.sharing.ProfileShareFormatDialog(model.sharing)
             CompositionLocalProvider(LocalIconTextMenuEnabled provides false) {
             HomeExitHandler(model.homeExit, state.destination == Destination.Home && !navigation.returningHome &&
                 !state.voiceInputActive && !state.webCanGoBack && !state.subtitleExpanded && state.sidePage == null &&

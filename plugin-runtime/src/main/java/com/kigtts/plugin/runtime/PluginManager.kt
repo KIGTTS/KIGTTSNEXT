@@ -13,7 +13,9 @@ data class PluginStatus(val installed: InstalledPlugin, val error: String? = nul
 data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
-class PluginManager(private val context: Context, private val builtins: List<KigPlugin>) {
+class PluginManager(private val context: Context, private val builtins: List<KigPlugin>,
+    private val pausedPackages: Set<String> = emptySet()) {
+    fun isPackagePaused(id: String): Boolean = id in pausedPackages
     val builtinIds: Set<String> = builtins.map { it.descriptor.id }.toSet()
     val applicationContext: Context get() = context.applicationContext
     @Volatile var onNotificationsUnavailable: (String) -> Unit = {}
@@ -87,7 +89,9 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         }
         // A previous standalone build may still be installed. Keep its data and package,
         // but never start a second service or expose it as an independently managed plugin.
-        val installed = withContext(Dispatchers.IO) { packages.installed().filterNot { info -> builtins.any { it.descriptor.id == info.manifest.id } } }
+        val installed = withContext(Dispatchers.IO) {
+            packages.installed().filterNot { it.manifest.id in builtinIds || isPackagePaused(it.manifest.id) }
+        }
         loaded.filterValues { !it.second.alive }.keys.toList().forEach { unload(it) }
         loaded.keys.filter { id -> safeMode() || installed.none { it.manifest.id == id && it.enabled } }.toList().forEach { unload(it) }
         val statuses = installed.map { info ->
@@ -139,12 +143,14 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     }
     suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false) = mutation.withLock {
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
+        require(!isPackagePaused(id)) { "此插件暂不可用" }
         require(builtins.none { it.descriptor.id == id }) { "此功能已内置，请在设置中打开朗读设置" }
         unload(id)
         try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
         finally { reloadLocked() }
     }
     suspend fun enable(id: String, enabled: Boolean) = mutation.withLock {
+        require(!enabled || !isPackagePaused(id)) { "此插件暂不可用" }
         if (!enabled) unload(id)
         withContext(Dispatchers.IO) { packages.enabled(id, enabled) }
         reloadLocked()

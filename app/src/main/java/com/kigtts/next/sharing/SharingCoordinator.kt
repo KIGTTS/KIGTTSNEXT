@@ -15,10 +15,11 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     val deviceKey = UUID.randomUUID().toString().replace("-", "")
     private val context get() = model.getApplication<Application>()
     private val receivePreferences = context.getSharedPreferences("face-receiving", 0)
-    private val mutableReceiving = kotlinx.coroutines.flow.MutableStateFlow(receivePreferences.getBoolean("enabled", false))
+    private val mutableReceiving = kotlinx.coroutines.flow.MutableStateFlow(CLOUD_SHARING_ENABLED && receivePreferences.getBoolean("enabled", false))
     val receiving = mutableReceiving.asStateFlow()
     private var enablingReception: Job? = null
     fun setReceiving(enabled: Boolean) {
+        if (!CLOUD_SHARING_ENABLED) return
         if (!enabled) {
             enablingReception?.cancel()
             mutableReceiving.value = false
@@ -121,6 +122,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     }
     fun dismissNfc() { mutableNfc.value = null }
     fun accept(intent: android.content.Intent?): Boolean {
+        if (!CLOUD_SHARING_ENABLED) return false
         val key = intent?.getStringExtra(CloudShareService.EXTRA_SHARE)
         if (key != null) {
             mutableOutgoing.value?.takeIf { it.key == key }?.let { mutablePanel.value = it.panel }
@@ -129,11 +131,12 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         return CloudShareLinks.from(intent)?.let(::open) ?: false
     }
     fun open(raw: String): Boolean {
+        if (!CLOUD_SHARING_ENABLED) return false
         val url = CloudShareLinks.parse(raw) ?: return false
         invitation = url; deliver(); return true
     }
     fun deliver() {
-        if (!model.pluginCatalogReady) return
+        if (!CLOUD_SHARING_ENABLED || !model.pluginCatalogReady) return
         val url = invitation ?: return
         val provider = provider("sharing/open-v1")
         if (provider?.descriptor?.id in model.state.value.busyPlugins) return
@@ -146,6 +149,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     }
     fun handle(owner: String, action: String, inputs: Map<String, String>): Boolean {
         if (action !in setOf("sharing/system-link-v1", "sharing/nfc-v1")) return false
+        check(CLOUD_SHARING_ENABLED) { "云分享暂不可用" }
         require(isProvider(owner)) { "分享提供方不可用" }
         val url = requireNotNull(CloudShareLinks.parse(inputs["url"].orEmpty())) { "分享链接无效" }
         if (action == "sharing/nfc-v1") mutableNfc.value = url
@@ -154,7 +158,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         }, "分享链接").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
         return true
     }
-    fun isProvider(owner: String) = model.registry.plugin(owner)?.let {
+    fun isProvider(owner: String) = CLOUD_SHARING_ENABLED && model.registry.plugin(owner)?.let {
         model.registry.available(it) && "sharing/publish-v1" in it.contributions.automationActions
     } == true
     fun received(owner: String, file: File, path: String) = scope.launch {
@@ -170,7 +174,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         } catch (error: Exception) { model.message(error.message ?: "保存失败，请重试")
         } finally { if (file.extension.lowercase() in setOf("kigcard", "png", "jpg", "jpeg", "gif", "webp", "heic", "heif")) withContext(Dispatchers.IO) { file.delete() } }
     }
-    private fun provider(action: String) = model.registry.plugins.firstOrNull {
+    private fun provider(action: String) = if (!CLOUD_SHARING_ENABLED) null else model.registry.plugins.firstOrNull {
         action in it.contributions.automationActions && model.registry.available(it) && (action != "sharing/publish-v1" || setup.enabled)
     }
     fun shareDraft(draft: com.kigtts.next.state.PhraseDraft) = prepare {
@@ -187,13 +191,39 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         try { publishOrShare("quick-text", title, listOf(file), "application/zip", "$title.kigcard") }
         finally { withContext(Dispatchers.IO) { file.delete() } }
     }
-    fun shareMedia(ids: List<String>) = shareMedia(ids, context::startActivity)
+    private val mutableProfileFormat = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    val profileFormat = mutableProfileFormat.asStateFlow()
 
-    internal fun shareMedia(ids: List<String>, launchChooser: (android.content.Intent) -> Unit) = prepare {
+    fun shareMedia(ids: List<String>) {
+        val personal = model.identities.current?.takeIf { ids.singleOrNull() == it.designId }
+        if (personal == null) shareMedia(ids, launchChooser = context::startActivity)
+        else mutableProfileFormat.value = personal.designId
+    }
+
+    fun dismissProfileFormat() { mutableProfileFormat.value = null }
+    fun shareProfile(format: ProfileShareFormat, embedSource: Boolean = false) {
+        val id = mutableProfileFormat.value ?: return
+        dismissProfileFormat()
+        if (model.identities.current?.designId == id) shareMedia(listOf(id), format, embedSource, context::startActivity)
+    }
+
+    internal fun shareMedia(ids: List<String>, format: ProfileShareFormat = ProfileShareFormat.PDF, embedSource: Boolean = false,
+        launchChooser: (android.content.Intent) -> Unit) = prepare {
         val personal = model.identities.current?.takeIf { ids.singleOrNull() == it.designId }
         val root = File(context.cacheDir, "cards/sharing/${UUID.randomUUID()}")
         try {
             if (personal != null) {
+                if (format != ProfileShareFormat.PDF) {
+                    val file = withContext(Dispatchers.IO) {
+                        when (format) {
+                            ProfileShareFormat.MHTML -> com.kigtts.next.identity.ProfileArchive.write(personal, model.stickers, root)
+                            ProfileShareFormat.LONG_IMAGE -> com.kigtts.next.identity.ProfileLongImage.write(personal, model.stickers, root, embedSource)
+                            ProfileShareFormat.PDF -> error("意外的分享格式")
+                        }
+                    }
+                    launchChooser(withContext(Dispatchers.IO) { shareFileIntent(context, file, format.fileName, format.mime) })
+                    return@prepare
+                }
                 val pdf = withContext(Dispatchers.Default) { ProfilePdfExport.write(personal, model.stickers, root) }
                 val files = if (provider("sharing/publish-v1") != null) withContext(Dispatchers.Default) {
                     com.kigtts.next.identity.profileSharingFiles(personal, model.stickers, root, pdf)
@@ -203,7 +233,8 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
                     launchChooser(intent)
                 }
             } else {
-                val assets = withContext(Dispatchers.IO) { FacePhotoRepository(model.cards, model.identities).prepare(ids, false, true, root)
+                val assets = withContext(Dispatchers.IO) { FacePhotoRepository(model.cards, model.identities)
+                    .prepare(ids, false, true, root, includeProfileMedia = false)
                     .filterNot { it.format == "PROFILE" } }
                 val files = assets.map { requireNotNull(it.file) }
                 if (!publish("photos", "照片", files)) {
@@ -221,7 +252,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
             return
         }
         preparing = scope.launch {
-            try { setup.ensure(); work() }
+            try { if (CLOUD_SHARING_ENABLED) setup.ensure(); work() }
             catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { model.message(error.message ?: "暂时无法分享，请重试") }
         }

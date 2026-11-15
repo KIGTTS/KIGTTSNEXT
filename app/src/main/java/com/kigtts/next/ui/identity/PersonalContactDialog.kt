@@ -19,7 +19,7 @@ import com.kigtts.next.sharing.FaceQrCode
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             FaceQrCode(payload, "${link.label}二维码")
             Text(link.value, style = MaterialTheme.typography.bodyMedium)
-            ContactNfcControl(payload)
+            if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) ContactNfcControl(payload)
         }
     }, confirmButton = { TextButton(dialogFeedbackClick {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(link.label, link.value)); close()

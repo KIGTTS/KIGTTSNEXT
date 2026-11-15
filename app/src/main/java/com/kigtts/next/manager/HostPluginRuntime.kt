@@ -20,7 +20,7 @@ class HostPluginRuntime private constructor(private val application: Application
             emit(phrases.filter { it.cardType() == com.kigtts.next.state.QuickCardType.TEXT && it.text.isNotBlank() }
                 .associate { it.id to it.text })
         } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice)
-    val manager = PluginManager(application, listOf(reading))
+    val manager = PluginManager(application, listOf(reading), com.kigtts.next.sharing.pausedSharingPlugins)
     private fun voicePluginRevisions(): Map<String, String>? = if (!manager.installedCatalogReady) null
         else manager.status.associate { status ->
             val pkg = status.installed

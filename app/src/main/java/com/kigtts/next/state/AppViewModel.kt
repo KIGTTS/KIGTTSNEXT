@@ -28,7 +28,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val pluginChatHistory = com.kigtts.next.ui.plugins.ChatHistoryCache()
     val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
-    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures)
+    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures, com.kigtts.next.sharing.pausedSharingPlugins)
     private val recovery = hostRuntime?.recovery ?: com.kigtts.next.recovery.CrashRecovery(application)
     internal val safeModeSession = com.kigtts.next.recovery.SafeModeSession(recovery, ::refreshPlugins)
     init { pluginManager.safeMode = recovery::safeMode }
@@ -211,6 +211,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(uiLocale = language.tag) }
     }
     fun navigate(destination: Destination) {
+        if (destination is Destination.PluginPage && pluginManager.isPackagePaused(destination.pluginId)) return
         if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
         if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {
             message("接收的照片只能查看和分享")

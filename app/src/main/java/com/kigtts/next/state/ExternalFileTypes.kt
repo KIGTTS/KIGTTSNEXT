@@ -5,7 +5,7 @@ import java.util.zip.ZipFile
 import com.kigtts.next.legacy.legacyJson
 
 internal enum class ExternalFileType(val engineId: String? = null, val engineName: String? = null) {
-    QUICK_TEXT_BACKUP, LEGACY_BACKUP,
+    QUICK_TEXT_BACKUP, LEGACY_BACKUP, PROFILE_ARCHIVE,
     PIPER_VOICE("engine.piper", "Piper 语音引擎"),
     SHARED_CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
     CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
@@ -22,11 +22,16 @@ internal object ExternalFileTypes {
         "kigtpk", "kigspk", "kigcard", "kigconfig" -> ExternalFileType.LEGACY_BACKUP
         "kigvpk" -> ExternalFileType.PIPER_VOICE
         "kigplugin" -> ExternalFileType.PLUGIN
+        "mhtml", "mht" -> ExternalFileType.PROFILE_ARCHIVE
         else -> ExternalFileType.UNKNOWN
     }
 
     fun inspect(file: File, displayName: String): ExternalFileType {
         val declared = detect(displayName)
+        if (declared == ExternalFileType.PROFILE_ARCHIVE || declared == ExternalFileType.UNKNOWN) {
+            if (com.kigtts.next.identity.ProfileArchive.recognizes(file)) return ExternalFileType.PROFILE_ARCHIVE
+            if (declared == ExternalFileType.PROFILE_ARCHIVE) return ExternalFileType.UNKNOWN
+        }
         if (!displayName.endsWith(".kigcard", true) && !declared.isVoice && declared != ExternalFileType.UNKNOWN) return declared
         val zipped = file.inputStream().use { it.read() == 0x50 && it.read() == 0x4b }
         if (!zipped) return if (file.length() <= MAX_METADATA) legacy(file.readText(Charsets.UTF_8)) else ExternalFileType.UNKNOWN

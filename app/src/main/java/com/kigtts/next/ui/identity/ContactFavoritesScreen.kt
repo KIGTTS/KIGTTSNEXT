@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -45,7 +47,10 @@ import org.json.JSONObject
     val scope = rememberCoroutineScope()
     val filtered = remember(indexed, entries) { val ids = entries.mapTo(hashSetOf()) { it.id }; indexed.filter { it.item.id in ids } }
     val list = rememberLazyListState()
-    RegisterPageActions(listOf(ToolbarAction("search-contact-favorites", "搜索收藏夹", Icons.Default.Search) { searching = true }))
+    val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model.externalFiles::profilePicked) }
+    RegisterPageActions(listOf(
+        ToolbarAction("search-contact-favorites", "搜索收藏夹", Icons.Default.Search) { searching = true },
+        ToolbarAction("import-contact-favorite", "导入离线名片", Icons.Default.FileOpen) { importer.launch(arrayOf("*/*")) }))
     LaunchedEffect(searchTarget, filtered) {
         val target = searchTarget ?: return@LaunchedEffect
         val index = filtered.indexOfFirst { it.item.id == target }
@@ -90,7 +95,7 @@ import org.json.JSONObject
         }
     }
     EmptyContent(entries.isEmpty(), Icons.Default.ContactPage, "还没有收藏的名片",
-        description = "面对面收到或收藏的名片会保存在这里")
+        description = "打开 KIGTTS 导出的离线网页或长图，即可把名片添加到这里")
     }
     }
     removing?.let { item -> MotionAlertDialog({ removing = null }, title = { Text("移除这张名片？") },

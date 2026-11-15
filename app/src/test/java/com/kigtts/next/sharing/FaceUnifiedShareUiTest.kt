@@ -33,28 +33,23 @@ import org.robolectric.annotation.*
 class FaceUnifiedShareUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun receivingSettingsKeepTheirListGapAndDoNotOfferHotspotCreation() {
+    @Test fun pausedSharingHidesReceivingButKeepsFavoritesEvenWithReceivingPreviouslyEnabled() {
+        val app = compose.activity.application
+        val preferences = app.getSharedPreferences("face-receiving", 0)
+        preferences.edit().putBoolean("enabled", true).commit()
         val model = testAppModel(compose.activity.application)
         compose.activity.viewModelStore.put("receiving-settings", model)
         try {
-            compose.setContent { KigttsTheme(ThemeSettings()) {
-                SettingsGroup("面对面") {
-                    FaceReceivingSetting(model, SettingPosition.FIRST)
-                    SettingItem("扩列收藏夹", "", null, SettingPosition.LAST, Modifier.testTag("favorites"))
-                }
-            } }
-            fun checkRows() {
-                val receiver = compose.onNodeWithContentDescription("面对面接收").getUnclippedBoundsInRoot()
-                val favorites = compose.onNodeWithTag("favorites").getUnclippedBoundsInRoot()
-                assertEquals(2f, favorites.top.value - receiver.bottom.value, .01f)
-                compose.onNodeWithText("连接设备").assertDoesNotExist()
-                compose.onNodeWithText("创建临时热点").assertDoesNotExist()
+            compose.setContent { KigttsTheme(ThemeSettings()) { SettingsScreen(model::navigate) } }
+            compose.runOnIdle {
+                model.sharing.openReceiving()
+                assertFalse(model.sharing.receiving.value)
+                assertNull(model.sharing.setup.state.value)
+                assertTrue(model.pluginManager.isPackagePaused(CLOUD_SHARING_ID))
             }
-            checkRows()
-            compose.onNodeWithContentDescription("面对面接收").performClick()
-            compose.waitUntil(3000) { model.sharing.setup.state.value != null }
-            compose.onNodeWithContentDescription("面对面接收").assertIsOff()
-        } finally { compose.runOnIdle { model.sharing.setup.dismiss() } }
+            compose.onNodeWithText("面对面").assertDoesNotExist()
+            compose.onNodeWithText("扩列收藏夹").assertIsDisplayed()
+        } finally { preferences.edit().remove("enabled").commit() }
     }
 
     @Test fun resolvedPeerShowsItsNicknamePhotoAndActualAvatarShapeAfterSparseUpdates() {
@@ -116,8 +111,7 @@ class FaceUnifiedShareUiTest {
         }
         var launched: android.content.Intent? = null
         compose.runOnIdle { model.sharing.shareMedia(listOf(person.designId)) { launched = it } }
-        compose.onNodeWithText("使用云端互传？").assertIsDisplayed()
-        compose.onNodeWithText("使用系统分享").performClick()
+        compose.onNodeWithText("使用云端互传？").assertDoesNotExist()
         try {
             compose.waitUntil(12_000) {
                 org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
@@ -148,5 +142,31 @@ class FaceUnifiedShareUiTest {
         compose.mainClock.advanceTimeBy(800); compose.waitForIdle()
         compose.onNodeWithTag("share-card-preview").performClick()
         assertEquals(listOf(photo.id), selected); assertFalse(systemDirect)
+    }
+
+    @Test fun openingAnArchiveAddsItToFavoritesWithoutConfirmation() {
+        val app = compose.activity.application
+        val model = testAppModel(app)
+        compose.activity.viewModelStore.put("offline-profile-import", model)
+        val profile = model.identities.create().copy(nickname = "自动收藏的名片")
+        val root = java.io.File(app.cacheDir, "offline-test")
+        val file = com.kigtts.next.identity.ProfileArchive.write(profile, model.stickers, root)
+        val uri = android.net.Uri.parse("content://kigtts.test/profile.mhtml")
+        org.robolectric.Shadows.shadowOf(app.contentResolver).registerInputStreamSupplier(uri) { file.inputStream() }
+        try {
+            compose.runOnIdle {
+                model.externalIntent(android.content.Intent(android.content.Intent.ACTION_VIEW)
+                    .setDataAndType(uri, com.kigtts.next.identity.ProfileArchive.MIME))
+            }
+            compose.waitUntil(12_000) {
+                org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+                model.state.value.destination == com.kigtts.next.state.Destination.ContactFavorites
+            }
+            assertNull(model.externalFiles.prompt.value)
+            assertTrue(model.contactFavorites.items.value.any { it.profile.contains(profile.nickname) })
+        } finally {
+            model.contactFavorites.items.value.filter { it.profile.contains(profile.nickname) }.forEach { model.contactFavorites.remove(it.id) }
+            root.deleteRecursively()
+        }
     }
 }

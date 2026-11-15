@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
+import com.kigtts.next.identity.ProfileArchive
+import com.kigtts.next.identity.ProfileLongCardRestore
 import com.kigtts.next.ui.plugins.PendingPackage
 import com.kigtts.next.ui.plugins.inspectPackage
 import com.kigtts.plugin.api.*
@@ -36,7 +38,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
 
     fun accept(intent: Intent?) {
         val uri = localUri(intent) ?: return
-        acceptUri(uri, voiceOnly = false)
+        acceptUri(uri, voiceOnly = false, mime = intent?.type)
     }
 
     fun chooseVoice() {
@@ -45,8 +47,9 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
     }
 
     fun voicePicked(uri: Uri) = acceptUri(uri, voiceOnly = true)
+    fun profilePicked(uri: Uri) = acceptUri(uri, voiceOnly = false, profileOnly = true)
 
-    private fun acceptUri(uri: Uri, voiceOnly: Boolean) {
+    private fun acceptUri(uri: Uri, voiceOnly: Boolean, profileOnly: Boolean = false, mime: String? = null) {
         if (job?.isActive == true || pending != null) { model.message("请先完成当前文件的导入"); return }
         mutable.value = ExternalFilePrompt("正在读取文件", busy = true)
         job = scope.launch {
@@ -62,17 +65,46 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     val file = File(context.cacheDir, "external-open/${UUID.randomUUID()}.package")
                     file.parentFile!!.mkdirs()
                     staged = file
+                    val fileMime = (mime ?: runCatching { context.contentResolver.getType(uri) }.getOrNull()).orEmpty()
+                    val archive = ExternalFileTypes.detect(name) == ExternalFileType.PROFILE_ARCHIVE ||
+                        fileMime in setOf(ProfileArchive.MIME, "message/rfc822", "application/x-mimearchive", "application/x-mhtml")
+                    val photo = fileMime in setOf("image/png", "image/jpeg") ||
+                        name.substringAfterLast('.', "").lowercase() in setOf("png", "jpg", "jpeg")
+                    val profileFile = !voiceOnly && (archive || photo || profileOnly)
                     requireNotNull(context.contentResolver.openInputStream(uri)) { "无法读取文件，请重新打开" }.use { input ->
                         file.outputStream().use { output ->
-                            val bytes = com.kigtts.next.legacy.LegacyArchive.copy(input, output, 2L * 1024 * 1024 * 1024)
+                            val limit = when {
+                                archive -> ProfileArchive.MAX_BYTES
+                                profileFile -> ProfileLongCardRestore.MAX_BYTES
+                                else -> 2L * 1024 * 1024 * 1024
+                            }
+                            val bytes = com.kigtts.next.legacy.LegacyArchive.copy(input, output, limit)
                             require(bytes > 0) { "文件为空" }
                         }
                     }
-                    val kind = ExternalFileTypes.inspect(file, name)
+                    val image = profileFile && ProfileLongCardRestore.imageFile(file)
+                    val kind = if (image) ExternalFileType.UNKNOWN else ExternalFileTypes.inspect(file, name)
                     require(!voiceOnly || kind.isVoice) { "无法识别此语音包，请选择由受支持的语音引擎导出的语音包" }
-                    require(kind != ExternalFileType.UNKNOWN) { "不支持此文件，请选择 KIGTTS 备份、语音包或插件包" }
-                    ExternalFilePrompt(name.ifBlank { "导入文件" }, kind, candidate = if (kind == ExternalFileType.PLUGIN)
+                    require(!profileFile || image || kind == ExternalFileType.PROFILE_ARCHIVE) { "没有找到可恢复的 KIGTTS 名片数据" }
+                    require(kind != ExternalFileType.UNKNOWN || image) { "不支持此文件，请选择 KIGTTS 备份、语音包或插件包" }
+                    if (kind == ExternalFileType.PROFILE_ARCHIVE || image) {
+                        val scratch = File(file.parentFile, "${file.nameWithoutExtension}-profile")
+                        try {
+                            if (image) requireNotNull(ProfileLongCardRestore.restore(file, scratch, model.contactFavorites)) {
+                                "这张图没有可恢复的 KIGTTS 名片数据"
+                            } else ProfileArchive.restore(file, scratch, model.contactFavorites)
+                        }
+                        finally { scratch.deleteRecursively() }
+                        null
+                    } else ExternalFilePrompt(name.ifBlank { "导入文件" }, kind, candidate = if (kind == ExternalFileType.PLUGIN)
                         PendingPackage(file, model.pluginManager.packages.inspect(file)) else null)
+                }
+                if (prepared == null) {
+                    cleanup()
+                    mutable.value = null
+                    if (model.state.value.destination != Destination.ContactFavorites) model.navigate(Destination.ContactFavorites)
+                    model.message("已添加到扩列收藏夹")
+                    return@launch
                 }
                 pending = prepared
                 showReady()

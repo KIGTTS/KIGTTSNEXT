@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.kigtts.next.state.Destination
 import com.kigtts.next.state.SettingsCategory
+import com.kigtts.next.sharing.CLOUD_SHARING_ENABLED
 import com.kigtts.next.ui.components.vector
 import com.kigtts.plugin.api.PluginContext
 import com.kigtts.plugin.api.PluginRegistry
@@ -18,7 +19,7 @@ internal data class SettingsCard(val id: String, val title: String, val subtitle
 /** Formal entries share native cards. Old plugins retain their page entrances until rebuilt. */
 internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): List<SettingsCard> {
     val reserved = linkedMapOf(
-        "sharing" to ("面对面" to ""),
+        "sharing" to ("分享与收藏" to ""),
         "appearance" to ("外观与交互" to "调整显示效果和操作反馈"),
         "audio" to ("音频" to ""),
         "content" to ("内容" to ""),
@@ -28,8 +29,10 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
     fun category(id: String, category: SettingsCategory, icon: ImageVector) =
         SettingsLink(id, category.title, category.summary, icon, Destination.SettingsDetail(category))
     val native = mapOf(
-        "sharing" to listOf(SettingsLink("face-receive", "面对面接收", "", Icons.Default.MoveToInbox, Destination.Settings),
-            SettingsLink("contact-favorites", "扩列收藏夹", "", Icons.Default.Bookmarks, Destination.ContactFavorites)),
+        "sharing" to buildList {
+            if (CLOUD_SHARING_ENABLED) add(SettingsLink("face-receive", "面对面接收", "", Icons.Default.MoveToInbox, Destination.Settings))
+            add(SettingsLink("contact-favorites", "扩列收藏夹", "", Icons.Default.Bookmarks, Destination.ContactFavorites))
+        },
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
             category("ui-language", SettingsCategory.LANGUAGE, Icons.Default.Language),
             category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration),
