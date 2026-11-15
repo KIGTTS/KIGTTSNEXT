@@ -45,6 +45,17 @@ class ExternalFileTypesTest {
         file.writeText("not a backup")
         assertEquals(UNKNOWN, ExternalFileTypes.inspect(file, "data.json"))
     }
+    @Test fun routesVoicePacksByPayloadAndEngineRatherThanExtension() {
+        val legacy = """{"formatVersion":1,"name":"参考声音","referenceText":"你好"}"""
+        val qwen = """{"formatVersion":1,"name":"参考声音","referenceText":"你好","engine":"engine.qwen3-clone"}"""
+        assertEquals(SHARED_CLONE_VOICE, ExternalFileTypes.inspect(archive("voice.json" to legacy, "reference.wav" to "audio"), "renamed.kigvpk"))
+        assertEquals(QWEN_VOICE, ExternalFileTypes.inspect(archive("voice.json" to qwen, "reference.wav" to "audio"), "voice.zip"))
+        assertEquals(PIPER_VOICE, ExternalFileTypes.inspect(archive("wrap/manifest.json" to
+            """{"files":{"model":"tts\\voice.onnx","config":"tts/config.json"}}""",
+            "wrap/tts/voice.onnx" to "model", "wrap/tts/config.json" to "{}"), "legacy.kigvpk"))
+        assertEquals(UNKNOWN, ExternalFileTypes.inspect(archive("model.onnx" to "model"), "model.kigvpk"))
+        assertEquals(UNKNOWN, ExternalFileTypes.inspect(archive("manifest.json" to """{"files":{"model":"missing.onnx"}}"""), "invalid.kigvpk"))
+    }
     @Test fun remoteLinksAndPlainTextSharesAreNotOpenedAsFiles() {
         assertNull(ExternalFileOpen.localUri(Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com/backup.kigconfig"))))
         assertNull(ExternalFileOpen.localUri(Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "content://files/item")))

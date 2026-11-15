@@ -17,8 +17,8 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
             val filters = listOf(ManagementFilter("all", "全部", "pack-filter/${encodeId("all")}", library.filter == "all")) + sources.map {
                 ManagementFilter(it.pluginId, it.name, "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
             }
-            val importers = sources.filter { it.info.importsVoicePacks }.map { PageAction("import/${encodeId(it.pluginId)}", "导入${it.name}语音包", PluginIcon.ADD) }
-            return PluginPage(id, "语音包管理", listOf(PageBlock.Actions(importers)),
+            return PluginPage(id, "语音包管理", listOf(PageBlock.Actions(listOf(
+                PageAction("import-voice-package", "导入语音包", PluginIcon.ADD)))),
                 ManagementList("voice-packs", visible().map { entry ->
                     val pack = entry.pack; val pinned = library.pinned(entry.key, pack.metadata.pinned)
                     val actions = mutableListOf(PageAction(packAction("pack-pin", entry), if (pinned) "取消置顶" else "置顶", PluginIcon.PIN),

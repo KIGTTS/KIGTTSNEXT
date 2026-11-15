@@ -4,7 +4,16 @@ import java.io.File
 import java.util.zip.ZipFile
 import com.kigtts.next.legacy.legacyJson
 
-internal enum class ExternalFileType { QUICK_TEXT_BACKUP, LEGACY_BACKUP, PIPER_VOICE, PLUGIN, UNKNOWN }
+internal enum class ExternalFileType(val engineId: String? = null, val engineName: String? = null) {
+    QUICK_TEXT_BACKUP, LEGACY_BACKUP,
+    PIPER_VOICE("engine.piper", "Piper 语音引擎"),
+    SHARED_CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
+    CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
+    QWEN_VOICE("engine.qwen3-clone", "千问语音克隆引擎"),
+    PLUGIN, UNKNOWN;
+
+    val isVoice get() = engineId != null
+}
 
 /** Routing only: the destination validates the complete archive before importing. */
 internal object ExternalFileTypes {
@@ -18,30 +27,52 @@ internal object ExternalFileTypes {
 
     fun inspect(file: File, displayName: String): ExternalFileType {
         val declared = detect(displayName)
-        if (!displayName.endsWith(".kigcard", true) && declared != ExternalFileType.UNKNOWN) return declared
+        if (!displayName.endsWith(".kigcard", true) && !declared.isVoice && declared != ExternalFileType.UNKNOWN) return declared
         val zipped = file.inputStream().use { it.read() == 0x50 && it.read() == 0x4b }
         if (!zipped) return if (file.length() <= MAX_METADATA) legacy(file.readText(Charsets.UTF_8)) else ExternalFileType.UNKNOWN
         return ZipFile(file).use { zip ->
             require(zip.size() <= 12000) { "文件数量过多" }
-            val names = zip.entries().asSequence().map { it.name }.toSet()
+            val names = zip.entries().asSequence().filterNot { it.isDirectory }.map { it.name }.toSet()
             when {
                 "plugin.json" in names -> ExternalFileType.PLUGIN
                 "cards.json" in names -> ExternalFileType.QUICK_TEXT_BACKUP
-                names.any { it.endsWith(".onnx") && "$it.json" in names } -> ExternalFileType.PIPER_VOICE
-                else -> {
-                    val entry = zip.getEntry("manifest.json") ?: zip.getEntry("preset.json")
-                    if (entry == null || entry.size !in 1..MAX_METADATA) ExternalFileType.UNKNOWN
-                    else zip.getInputStream(entry).use { stream ->
-                        val output = java.io.ByteArrayOutputStream()
-                        com.kigtts.next.legacy.LegacyArchive.copy(stream, output, MAX_METADATA)
-                        val json = legacyJson(output.toString("UTF-8"))
-                        val files = json.optJSONObject("files")
-                        if (files != null && files.keys().asSequence().any { key -> files.optString(key).endsWith(".onnx") }) ExternalFileType.PIPER_VOICE
-                        else legacy(json.toString())
+                "voice.json" in names && "reference.wav" in names -> {
+                    val metadata = json(zip, "voice.json", 16 * 1024L)
+                    if (metadata == null || metadata.optString("name").isBlank() || metadata.optString("referenceText").isBlank())
+                        ExternalFileType.UNKNOWN
+                    else when (metadata.optString("engine").lowercase()) {
+                        "" -> ExternalFileType.SHARED_CLONE_VOICE
+                        "zipvoice", "engine.zipvoice-clone" -> ExternalFileType.CLONE_VOICE
+                        "qwen3", "qwen3-tts", "engine.qwen3-clone" -> ExternalFileType.QWEN_VOICE
+                        else -> ExternalFileType.UNKNOWN
                     }
+                }
+                names.any { it.endsWith(".onnx", true) && "$it.json" in names } -> ExternalFileType.PIPER_VOICE
+                else -> {
+                    val manifests = names.asSequence().filter { it.substringAfterLast('/') == "manifest.json" }.take(16)
+                    if (manifests.any { manifest -> isPiperManifest(zip, names, manifest) }) ExternalFileType.PIPER_VOICE
+                    else (json(zip, "manifest.json") ?: json(zip, "preset.json"))?.let { legacy(it.toString()) }
+                        ?: ExternalFileType.UNKNOWN
                 }
             }
         }
+    }
+
+    private fun isPiperManifest(zip: ZipFile, names: Set<String>, manifest: String): Boolean {
+        val files = json(zip, manifest)?.optJSONObject("files") ?: return false
+        val parent = manifest.removeSuffix("manifest.json")
+        val model = files.optString("model").replace('\\', '/')
+        val config = files.optString("config").replace('\\', '/').ifBlank { "$model.json" }
+        return model.endsWith(".onnx", true) && parent + model in names && parent + config in names
+    }
+
+    private fun json(zip: ZipFile, name: String, limit: Long = MAX_METADATA): org.json.JSONObject? {
+        val entry = zip.getEntry(name)?.takeIf { !it.isDirectory && it.size in 1..limit } ?: return null
+        return runCatching { zip.getInputStream(entry).use { stream ->
+            val output = java.io.ByteArrayOutputStream()
+            com.kigtts.next.legacy.LegacyArchive.copy(stream, output, limit)
+            legacyJson(output.toString("UTF-8"))
+        } }.getOrNull()
     }
 
     private fun legacy(text: String): ExternalFileType = runCatching {

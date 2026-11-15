@@ -17,6 +17,16 @@ class VoiceLibraryTest {
     private fun provider(id: String, enabled: Boolean = true) = TtsProvider(id, id, TtsInfo(
         voices = listOf(VoiceInfo("one", "第一声", "zh", packId = "pack"), VoiceInfo("two", "第二声", "zh", packId = "pack")),
         packs = listOf(VoicePackInfo("pack", VoicePackMetadata(id, "备注"), listOf("one", "two"), editable = true, exportable = true))), enabled)
+    @Test fun importHasOneEntryEvenWithoutAnInstalledEngine() {
+        val storage = PluginStorage(files.newFolder())
+        for (providers in listOf(emptyList(), listOf(provider("first.engine"), provider("second.engine")))) {
+            val pages = VoiceLibraryPages(ServiceSettings(storage), VoiceLibrary(storage)) {
+                providers.map { it.copy(info = it.info.copy(importsVoicePacks = true)) }
+            }
+            val actions = pages.page("packs")!!.blocks.filterIsInstance<PageBlock.Actions>().flatMap { it.actions }
+            assertEquals(listOf("导入语音包"), actions.map { it.label })
+        }
+    }
     @Test fun oneRowPerPackAcrossEnginesIncludingDisabledCachedPacks() {
         val storage = PluginStorage(files.newFolder()); val library = VoiceLibrary(storage); val settings = ServiceSettings(storage)
         val pages = VoiceLibraryPages(settings, library) { listOf(provider("first.engine"), provider("second.engine", false)) }

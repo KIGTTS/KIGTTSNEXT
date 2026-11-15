@@ -13,11 +13,13 @@ import java.util.zip.GZIPOutputStream
 
 internal data class CacheVoice(val owner: String, val pack: String, val revision: String, val voice: String?)
 internal data class AudioCacheKey(val voice: CacheVoice, val phraseId: String?, val text: String,
-    val language: String, val rate: Float, val requestedVoice: String?, val profileVersion: String? = null) {
+    val language: String, val rate: Float, val requestedVoice: String?, val profileVersion: String? = null,
+    val provisional: Boolean = false) {
     val quick = phraseId?.let { cacheHash(it) }
     val textHash = cacheHash(text)
     val requestHash = if (profileVersion == null) cacheHash(language, rate, requestedVoice)
         else cacheHash(language, rate, requestedVoice, profileVersion)
+    init { require(!provisional || quick != null) }
 }
 
 internal fun cacheHash(vararg parts: Any?): String = MessageDigest.getInstance("SHA-256").run {
@@ -44,14 +46,19 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
 
     private fun packDir(owner: String, pack: String) = File(File(root, cacheHash(owner)), cacheHash(pack))
     private fun revisionDir(voice: CacheVoice) = File(packDir(voice.owner, voice.pack), voice.revision)
-    private fun destination(key: AudioCacheKey) = File(File(revisionDir(key.voice), cacheHash(key.voice.voice)),
-        if (key.quick != null) "q_${key.quick}_${key.textHash}_${key.requestHash}.gz" else "r_${key.textHash}_${key.requestHash}.gz")
+    private fun voiceDir(voice: CacheVoice) = File(revisionDir(voice), cacheHash(voice.voice))
+    private fun destination(key: AudioCacheKey) = File(voiceDir(key.voice), when {
+        key.provisional -> "p_${key.quick}_${key.textHash}_${key.requestHash}.gz"
+        key.quick != null -> "q_${key.quick}_${key.textHash}_${key.requestHash}.gz"
+        else -> "r_${key.textHash}_${key.requestHash}.gz"
+    })
+    private fun File.shortcut() = name.startsWith("q_") || name.startsWith("p_")
     private fun records() = root.walkTopDown().onEnter { it != staging }.filter { it.isFile && it.extension == "gz" }
     private fun refreshSize() {
         val found = records().toList()
         recentRecords = found.filterTo(mutableSetOf()) { it.name.startsWith("r_") }
         lastUse = maxOf(lastUse, recentRecords.maxOfOrNull { it.lastModified() } ?: 0L)
-        quickRecords = found.filter { it.name.startsWith("q_") }.associateByTo(mutableMapOf()) {
+        quickRecords = found.filter { it.shortcut() }.sortedBy { it.name.startsWith("q_") }.associateByTo(mutableMapOf()) {
             requireNotNull(it.parentFile) to it.name.substringAfter('_').substringBefore('_')
         }
         size.value = found.sumOf { it.length() }
@@ -62,6 +69,10 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
     }
 
     @Synchronized fun has(key: AudioCacheKey) = destination(key).isFile
+    @Synchronized fun hasProvisional(key: AudioCacheKey): Boolean =
+        quickRecords[voiceDir(key.voice) to key.quick]?.let {
+            it.name.startsWith("p_${key.quick}_${key.textHash}_") && it.isFile
+        } == true
     @Synchronized fun open(key: AudioCacheKey): Reader? {
         val file = destination(key)
         if (!file.isFile) return null
@@ -69,17 +80,17 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
         catch (_: IOException) { file.delete(); refreshSize(); null }
     }
     @Synchronized fun discard(key: AudioCacheKey) { if (destination(key).delete()) refreshSize() }
-    @Synchronized fun writer(key: AudioCacheKey): Writer? {
+    @Synchronized fun writer(key: AudioCacheKey, finalKey: AudioCacheKey? = null): Writer? {
         val file = try { staging.mkdirs(); File.createTempFile("pcm", ".tmp", staging) }
         catch (_: IOException) { return null }
-        return try { Writer(key, epoch, file) } catch (_: IOException) { file.delete(); null }
+        return try { Writer(key, finalKey, epoch, file) } catch (_: IOException) { file.delete(); null }
     }
 
     @Synchronized fun updatePhrases(items: Map<String, String>) {
         val hashes = items.entries.associate { cacheHash(it.key) to cacheHash(it.value) }
         if (hashes == phrases) return
         phrases = hashes
-        records().filter { it.name.startsWith("q_") }.forEach { file ->
+        records().filter { it.shortcut() }.forEach { file ->
             val parts = file.name.split('_', limit = 4)
             if (parts.size != 4 || hashes[parts[1]] != parts[2]) file.delete()
         }
@@ -96,7 +107,7 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
         // Restrict manual rebuild to the selected voice; keep its recent text and other voices.
         val key = cacheHash(voice.voice)
         packDir(voice.owner, voice.pack).listFiles().orEmpty().filter { it.isDirectory }.forEach { revision ->
-            File(revision, key).listFiles().orEmpty().filter { it.name.startsWith("q_") && it.extension == "gz" }
+            File(revision, key).listFiles().orEmpty().filter { it.shortcut() && it.extension == "gz" }
                 .forEach { it.delete() }
         }
         refreshSize()
@@ -115,8 +126,10 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
     @Synchronized fun clear() { epoch++; root.deleteRecursively(); refreshSize() }
     @Synchronized fun suspendWrites() { epoch++ }
 
-    @Synchronized private fun commit(key: AudioCacheKey, token: Long, file: File): Boolean {
+    @Synchronized private fun commit(key: AudioCacheKey, finalKey: AudioCacheKey?, token: Long, file: File): Boolean {
         if (token != epoch || (key.quick != null && phrases?.let { it[key.quick] != key.textHash } == true)) return false
+        // A concurrent real-time request must never overwrite a completed pre-bake.
+        if (finalKey != null && destination(finalKey).isFile) return false
         val destination = destination(key)
         destination.parentFile?.mkdirs()
         val formerBytes = destination.length()
@@ -135,7 +148,8 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
         return true
     }
 
-    inner class Writer(private val key: AudioCacheKey, private val token: Long, private val file: File) : Closeable {
+    inner class Writer(private val key: AudioCacheKey, private val finalKey: AudioCacheKey?,
+        private val token: Long, private val file: File) : Closeable {
         private val output = DataOutputStream(GZIPOutputStream(file.outputStream().buffered(), 16_384))
         private var length = 0L
         private var valid = true
@@ -157,7 +171,7 @@ internal class SpeechAudioCache(private val root: File, private val size: Mutabl
         fun finish(): Boolean = try {
             if (valid && length > 0) {
                 output.writeInt(0); output.close()
-                commit(key, token, file)
+                commit(key, finalKey, token, file)
             } else false
         } catch (_: IOException) { false }
         override fun close() { runCatching { output.close() }; file.delete() }

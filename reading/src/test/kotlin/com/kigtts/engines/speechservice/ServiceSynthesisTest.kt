@@ -80,6 +80,71 @@ class ServiceSynthesisTest {
             assertEquals(4, speak("phrase"))
         } finally { facade.close() }
     }
+    @Test fun realtimePreemptsLocalBakeAndProvisionalPlaybackDoesNotInterruptOtherEntries() = runBlocking {
+        val broker = profiledBroker()
+        val interrupted = CompletableDeferred<Unit>()
+        val initial = CompletableDeferred<Unit>()
+        val other = CompletableDeferred<Unit>()
+        val releaseOther = CompletableDeferred<Unit>()
+        broker.output = { request ->
+            if (request.profile == TtsProfile.PREBAKE && request.text == "甲" && initial.complete(Unit)) {
+                try { awaitCancellation() } finally { interrupted.complete(Unit) }
+            }
+            if (request.profile == TtsProfile.PREBAKE && request.text == "乙") {
+                other.complete(Unit)
+                releaseOther.await()
+            }
+            emit(SynthesisEvent.Audio(PcmAudio(byteArrayOf(if (request.profile == TtsProfile.PREBAKE) 4 else 2, 0))))
+        }
+        val options = settings()
+        val facade = ServiceSynthesis(options, broker, System())
+        val cacheDir = files.newFolder()
+        facade.cache = ServiceCache(cacheDir, options, broker, MutableStateFlow(linkedMapOf("a" to "甲", "b" to "乙")),
+            { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
+        suspend fun speak() = facade.synthesize(TtsRequest("甲"), "a").filterIsInstance<SynthesisEvent.Audio>().single().audio.bytes[0].toInt()
+        try {
+            withTimeout(10_000) {
+                initial.await()
+                assertEquals(2, speak())
+                assertTrue(interrupted.isCompleted)
+                other.await()
+                assertEquals(2, speak())
+                assertEquals(1, broker.requests.count { it.profile == TtsProfile.REALTIME })
+                assertEquals(1, broker.requests.count { it.profile == TtsProfile.PREBAKE && it.text == "甲" })
+                releaseOther.complete(Unit)
+                while (cacheDir.walkTopDown().count { it.name.startsWith("q_") } < 2) delay(10)
+                assertEquals(4, speak())
+                assertEquals(listOf("甲", "乙", "甲"), broker.requests.filter { it.profile == TtsProfile.PREBAKE }.map { it.text })
+            }
+        } finally { facade.close() }
+    }
+
+    @Test fun concurrentEngineCanFinishRealtimeWhileHighQualityIsStillInFlight() = runBlocking {
+        val broker = profiledBroker()
+        val baking = CompletableDeferred<Unit>()
+        val releaseBake = CompletableDeferred<Unit>()
+        broker.output = { request ->
+            if (request.profile == TtsProfile.PREBAKE) { baking.complete(Unit); releaseBake.await() }
+            emit(pcm)
+        }
+        val options = settings()
+        val facade = ServiceSynthesis(options, broker, System())
+        facade.cache = ServiceCache(files.newFolder(), options, broker, MutableStateFlow(mapOf("a" to "甲")),
+            { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L), parallelProvider = { true })
+        try {
+            withTimeout(10_000) {
+                baking.await()
+                val events = facade.synthesize(TtsRequest("实时")).toList()
+                assertEquals(1, events.count { it is SynthesisEvent.Audio })
+                assertFalse(releaseBake.isCompleted)
+                assertEquals(listOf(TtsProfile.PREBAKE, TtsProfile.REALTIME), broker.requests.map { it.profile })
+            }
+        } finally { releaseBake.complete(Unit); facade.close() }
+    }
+
+    private fun profiledBroker() = Broker().also { it.catalog = listOf(TtsProvider("test.provider", "test",
+        TtsInfo(voices = listOf(VoiceInfo("chosen", "Voice", "zh-CN")),
+            profiles = TtsProfileVersions("fast-v1", "quality-v1")))) }
     @Test fun splitsProviderRequestsWithoutSplittingSurrogatesAndEmitsSingleLifecycle() = runBlocking {
         val broker = Broker(); val system = System()
         val options = settings().also { it.rate = 1.5f }

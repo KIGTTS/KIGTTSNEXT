@@ -16,20 +16,24 @@ import java.util.concurrent.atomic.AtomicInteger
 internal class ServiceCache(directory: File, private val settings: ServiceSettings, private val broker: SpeechBroker,
     phrases: Flow<Map<String, String>>, private val installed: () -> Map<String, String>?,
     private val systemRevision: () -> String, private val synthesis: ServiceSynthesis, size: MutableStateFlow<Long>,
-    private val mayCacheProvider: (String) -> Boolean = { true }) {
+    private val mayCacheProvider: (String) -> Boolean = { true },
+    private val parallelProvider: (String) -> Boolean = { it == "engine.cloud-tts" }) {
     private val store = SpeechAudioCache(directory, size)
     val bytes get() = store.bytes
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val signal = Channel<Unit>(Channel.CONFLATED)
-    private val gate = Mutex()
-    private val playing = AtomicInteger()
+    private val exclusiveGeneration = Mutex()
+    private val foregroundOrder = Mutex()
+    private val realtimeRequests = AtomicInteger()
+    @Volatile private var pendingRealtimeShortcut: AudioCacheKey? = null
+    private val provisionalRevision = MutableStateFlow(0)
     @Volatile private var shortcuts = emptyMap<String, String>()
     @Volatile private var installedRevisions = emptyMap<String, String>()
     @Volatile private var lastPlan: Plan? = null
     @Volatile private var clearedPlan: Plan? = null
     private val revision = AtomicInteger()
     private data class Plan(val voice: CacheVoice, val rate: Float, val phrases: Map<String, String>, val revision: Int,
-        val prebakeVersion: String?)
+        val prebakeVersion: String?, val parallel: Boolean)
     private data class CatalogSnapshot(val owners: Map<String, String>?, val providers: Map<String, TtsInfo>)
     private var reconciled: CatalogSnapshot? = null
     private var reconciledVoice: CacheVoice? = null
@@ -50,7 +54,11 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                 .map { plan() }.distinctUntilChanged().collectLatest { plan ->
                     if (plan != null) {
                         delay(500)
-                        while (!prepare(plan)) delay(60_000)
+                        while (true) {
+                            val before = provisionalRevision.value
+                            if (prepare(plan)) break
+                            withTimeoutOrNull(60_000) { provisionalRevision.first { it != before } }
+                        }
                     }
                 }
         }
@@ -100,14 +108,16 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         val provider = selectedProvider(catalog, owner)
         val voice = if (owner == null) systemVoice() else provider?.takeIf { mayCacheProvider(owner) }
             ?.let { voice(it, settings.voice) } ?: return null
-        return Plan(voice, settings.rate, shortcuts, revision.get(), provider?.info?.profiles?.prebake)
+        return Plan(voice, settings.rate, shortcuts, revision.get(), provider?.info?.profiles?.prebake,
+            provider?.let { parallelProvider(it.pluginId) } == true)
     }
     private fun selectedProvider(catalog: List<TtsProvider>?, owner: String?) = catalog?.firstOrNull {
         it.pluginId == owner && it.enabled && it.info.availability == EngineAvailability.READY
     }
     private fun plan(): Plan? {
-        if (playing.get() != 0) return null
         if (!settings.cacheEnabled && bytes.value == 0L) return null
+        // Cancel a serial engine's pre-bake immediately, before requesting catalogue data.
+        if (realtimeRequests.get() != 0 && lastPlan?.parallel != true) return null
         val inventory = runCatching { installed() }.getOrNull()
         if (inventory != null) installedRevisions = inventory
         val catalog = catalog()
@@ -121,7 +131,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         }
         lastPlan = plan
         if (clearedPlan != null && plan != null && clearedPlan != plan) clearedPlan = null
-        return plan?.takeIf { settings.cacheEnabled && it != clearedPlan && it.phrases.isNotEmpty() }
+        return plan?.takeIf { settings.cacheEnabled && it != clearedPlan && it.phrases.isNotEmpty() && canBake(it) }
     }
     private fun reconcile(inventory: Map<String, String>?, ready: List<TtsProvider>, plan: Plan?) {
         // Even a READY engine can list only loaded/configured packs. Only confirmed deletions
@@ -132,83 +142,107 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         } + listOfNotNull(plan?.voice)
         store.reconcile(inventory?.keys?.plus(SYSTEM_PROVIDER), revisions)
     }
+    private fun canBake(plan: Plan) = plan.parallel || realtimeRequests.get() == 0
     private suspend fun prepare(plan: Plan): Boolean {
-        var retry = false
-        for ((id, text) in plan.phrases) {
-            if (playing.get() != 0 || !settings.cacheEnabled) return true
+        val work = plan.phrases.map { (id, text) ->
             val request = TtsRequest(text, rate = plan.rate,
                 profile = if (plan.prebakeVersion != null) TtsProfile.PREBAKE else TtsProfile.REALTIME)
-            val key = AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null, plan.prebakeVersion)
-            if (store.has(key)) continue
-            val complete = try {
-                gate.withLock {
-                    if (playing.get() != 0 || plan != lastPlan || clearedPlan == plan || plan.revision != revision.get()) return true
-                    val writer = store.writer(key) ?: return true
-                    writer.use {
-                        val valid = withTimeoutOrNull(if (plan.prebakeVersion != null) 120_000 else 30_000) {
-                            synthesis.generate(request, plan.voice, profileVersion = plan.prebakeVersion) { event ->
-                                if (event is SynthesisEvent.Audio) writer.append(event.audio)
-                            }
-                        } == true
-                        currentCoroutineContext().ensureActive()
-                        valid && clearedPlan != plan && plan.revision == revision.get() && writer.finish()
-                    }
-                }
-            } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { false }
-            if (!complete) retry = true
-            yield()
+            AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null, plan.prebakeVersion) to request
         }
-        return !retry
-    }
-
-    suspend fun foreground(request: TtsRequest, phraseId: String?, emit: suspend (SynthesisEvent) -> Unit) {
-        playing.incrementAndGet(); changed()
-        try {
-            gate.withLock {
-                val rated = request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f), profile = TtsProfile.REALTIME)
-                val owner = settings.provider
-                val provider = if (owner != null) selectedProvider(catalog(), owner) else null
-                val voice = if (owner == null) systemVoice() else provider?.let { voice(it, settings.voice) }
-                if (voice == null || !settings.cacheEnabled || request.text.isBlank() ||
-                    (voice.owner != SYSTEM_PROVIDER && !mayCacheProvider(voice.owner))) {
-                    synthesis.generate(rated, voice, allowFallback = true, emit = emit)
-                    return@withLock
-                }
-                val quickId = phraseId?.takeIf { shortcuts[it] == request.text }
-                val profiles = provider?.info?.profiles
-                val key = AudioCacheKey(voice, quickId, request.text, request.language, rated.rate, request.voiceId,
-                    if (quickId == null) profiles?.realtime else profiles?.prebake)
-                store.open(key)?.let { reader ->
-                    var began = false
-                    try {
-                        reader.use {
-                            while (true) {
-                                val audio = reader.next() ?: break
-                                if (!began) { emit(SynthesisEvent.Started); began = true }
-                                emit(SynthesisEvent.Audio(audio))
+        for (replaceProvisional in listOf(false, true)) {
+            // Fill holes before upgrading playable entries. Retry missing entries later if one failed.
+            if (replaceProvisional && work.any { (key, _) -> !store.has(key) && !store.hasProvisional(key) }) return false
+            for ((key, request) in work) {
+                if (!validPlan(plan)) return true
+                if (store.has(key) || store.hasProvisional(key) != replaceProvisional) continue
+                try {
+                    val bake: suspend () -> Unit = {
+                        if (validPlan(plan) && !store.has(key)) {
+                            store.writer(key)?.use { writer ->
+                                val valid = withTimeoutOrNull(if (plan.prebakeVersion != null) 120_000 else 30_000) {
+                                    synthesis.generate(request, plan.voice, profileVersion = plan.prebakeVersion) { event ->
+                                        if (event is SynthesisEvent.Audio) writer.append(event.audio)
+                                    }
+                                } == true
+                                currentCoroutineContext().ensureActive()
+                                val deferReplacement = !replaceProvisional &&
+                                    (pendingRealtimeShortcut == key || store.hasProvisional(key)) &&
+                                    work.any { (other, _) -> other != key && !store.has(other) && !store.hasProvisional(other) }
+                                if (valid && validPlan(plan) && !deferReplacement) writer.finish()
                             }
                         }
-                        if (began) { emit(SynthesisEvent.Finished()); return@withLock }
-                    } catch (error: IOException) { store.discard(key); if (began) throw error }
-                }
-                // A quick-text miss must be responsive, but its real-time audio cannot replace
-                // the high-quality result that the pre-bake queue will produce.
-                if (quickId != null && profiles != null) {
-                    synthesis.generate(rated, voice, allowFallback = true, emit = emit)
-                    return@withLock
-                }
-                store.writer(key).use { writer ->
-                    val valid = synthesis.generate(rated, voice, allowFallback = true, profileVersion = profiles?.realtime) { event ->
-                        if (event is SynthesisEvent.Audio) writer?.append(event.audio)
-                        emit(event)
                     }
-                    currentCoroutineContext().ensureActive()
-                    if (valid && settings.cacheEnabled) writer?.finish()
-                }
+                    if (plan.parallel) bake() else exclusiveGeneration.withLock { bake() }
+                } catch (cancel: CancellationException) { throw cancel }
+                catch (_: Exception) { /* Continue filling unrelated entries; retry unfinished work. */ }
+                yield()
             }
-        } finally { playing.decrementAndGet(); changed() }
+        }
+        return !validPlan(plan) || work.all { (key, _) -> store.has(key) }
     }
+    private fun validPlan(plan: Plan) = canBake(plan) && settings.cacheEnabled &&
+        plan == lastPlan && clearedPlan != plan && plan.revision == revision.get()
+
+    private suspend fun playCached(key: AudioCacheKey, emit: suspend (SynthesisEvent) -> Unit): Boolean {
+        val reader = store.open(key) ?: return false
+        var began = false
+        reader.use {
+            while (true) {
+                val audio = try { reader.next() ?: break } catch (error: IOException) {
+                    store.discard(key)
+                    if (began) throw error
+                    break
+                }
+                if (!began) { emit(SynthesisEvent.Started); began = true }
+                emit(SynthesisEvent.Audio(audio))
+            }
+        }
+        if (began) emit(SynthesisEvent.Finished())
+        return began
+    }
+
+    private suspend fun realtime(parallel: Boolean, task: suspend () -> Unit) {
+        realtimeRequests.incrementAndGet(); changed()
+        try {
+            if (parallel) task() else exclusiveGeneration.withLock { task() }
+        } finally { realtimeRequests.decrementAndGet(); changed() }
+    }
+
+    suspend fun foreground(request: TtsRequest, phraseId: String?, emit: suspend (SynthesisEvent) -> Unit) =
+        foregroundOrder.withLock {
+            val rated = request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f), profile = TtsProfile.REALTIME)
+            val owner = settings.provider
+            val provider = if (owner != null) selectedProvider(catalog(), owner) else null
+            val parallel = provider?.let { parallelProvider(it.pluginId) } == true
+            val voice = if (owner == null) systemVoice() else provider?.let { voice(it, settings.voice) }
+            if (voice == null || !settings.cacheEnabled || request.text.isBlank() ||
+                (voice.owner != SYSTEM_PROVIDER && !mayCacheProvider(voice.owner))) {
+                realtime(parallel) { synthesis.generate(rated, voice, allowFallback = true, emit = emit) }
+                return@withLock
+            }
+            val quickId = phraseId?.takeIf { shortcuts[it] == request.text }
+            val profiles = provider?.info?.profiles
+            val key = AudioCacheKey(voice, quickId, request.text, request.language, rated.rate, request.voiceId,
+                if (quickId == null) profiles?.realtime else profiles?.prebake)
+            if (playCached(key, emit)) return@withLock
+            val provisional = if (quickId != null && profiles != null)
+                key.copy(profileVersion = profiles.realtime, provisional = true) else null
+            if (provisional != null && playCached(provisional, emit)) return@withLock
+            pendingRealtimeShortcut = key.takeIf { provisional != null }
+            try {
+                realtime(parallel) {
+                    store.writer(provisional ?: key, key.takeIf { provisional != null }).use { writer ->
+                        val valid = synthesis.generate(rated, voice, allowFallback = true, profileVersion = profiles?.realtime) { event ->
+                            emit(event)
+                            if (event is SynthesisEvent.Audio) writer?.append(event.audio)
+                        }
+                        currentCoroutineContext().ensureActive()
+                        if (valid && settings.cacheEnabled && writer?.finish() == true && provisional != null)
+                            provisionalRevision.update { it + 1 }
+                    }
+                }
+            } finally { pendingRealtimeShortcut = null }
+        }
 
     private companion object { const val DEFAULT_PACK = "default" }
 }

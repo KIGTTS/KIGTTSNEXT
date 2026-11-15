@@ -389,6 +389,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
+        if (pluginId == "service.speech-synthesis" && actionId == "import-voice-package") {
+            externalFiles.chooseVoice()
+            complete?.invoke(true)
+            return
+        }
         if (runCatching { sharing.handle(pluginId, actionId, inputs) }.getOrElse { message(it.message ?: "分享暂不可用"); true }) {
             complete?.invoke(true); return
         }

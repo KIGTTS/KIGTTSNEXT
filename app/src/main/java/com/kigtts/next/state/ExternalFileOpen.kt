@@ -6,16 +6,22 @@ import android.net.Uri
 import android.os.Environment
 import android.provider.OpenableColumns
 import com.kigtts.next.ui.plugins.PendingPackage
+import com.kigtts.next.ui.plugins.inspectPackage
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import java.io.File
 import java.util.UUID
 
 internal data class ExternalFilePrompt(val name: String, val kind: ExternalFileType = ExternalFileType.UNKNOWN,
     val busy: Boolean = false, val missing: List<String> = emptyList(), val error: String? = null,
-    val candidate: PendingPackage? = null)
+    val candidate: PendingPackage? = null, val dependency: PendingPackage? = null, val sharedClone: Boolean = false,
+    val engineAction: VoiceImportAction? = null)
+
+internal enum class VoiceImportAction { INSTALL, ENABLE }
 
 /** Own the temporary URI grant immediately; import only after native confirmation. */
 internal class ExternalFileOpen(private val model: AppViewModel, private val scope: CoroutineScope) {
@@ -24,11 +30,23 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
     val prompt = mutable.asStateFlow()
     private var staged: File? = null
     private var pending: ExternalFilePrompt? = null
-    private var waitingForPlugins = false
     private var job: Job? = null
+    private val chooseVoiceEvent = Channel<Unit>(Channel.CONFLATED)
+    val chooseVoiceRequests = chooseVoiceEvent.receiveAsFlow()
 
     fun accept(intent: Intent?) {
         val uri = localUri(intent) ?: return
+        acceptUri(uri, voiceOnly = false)
+    }
+
+    fun chooseVoice() {
+        if (job?.isActive == true || pending != null) model.message("请先完成当前文件的导入")
+        else chooseVoiceEvent.trySend(Unit)
+    }
+
+    fun voicePicked(uri: Uri) = acceptUri(uri, voiceOnly = true)
+
+    private fun acceptUri(uri: Uri, voiceOnly: Boolean) {
         if (job?.isActive == true || pending != null) { model.message("请先完成当前文件的导入"); return }
         mutable.value = ExternalFilePrompt("正在读取文件", busy = true)
         job = scope.launch {
@@ -51,6 +69,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                         }
                     }
                     val kind = ExternalFileTypes.inspect(file, name)
+                    require(!voiceOnly || kind.isVoice) { "无法识别此语音包，请选择由受支持的语音引擎导出的语音包" }
                     require(kind != ExternalFileType.UNKNOWN) { "不支持此文件，请选择 KIGTTS 备份、语音包或插件包" }
                     ExternalFilePrompt(name.ifBlank { "导入文件" }, kind, candidate = if (kind == ExternalFileType.PLUGIN)
                         PendingPackage(file, model.pluginManager.packages.inspect(file)) else null)
@@ -62,44 +81,94 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
         }
     }
 
-    private fun missingVoicePlugins(): List<String> = buildList {
+    private fun missingVoicePlugins(kind: ExternalFileType): List<String> = buildList {
         if (model.registry.plugins.none { model.registry.available(it) && it.tts?.info?.role == TtsRole.SERVICE }) add("语音合成服务")
-        if (model.registry.plugin("engine.piper")?.let { model.registry.available(it) && it.voiceManager != null } != true) add("Piper 语音引擎")
+        if (!engineReady(kind)) add(requireNotNull(kind.engineName))
     }
 
-    private fun showReady() {
-        val current = pending ?: return
-        mutable.value = if (current.kind == ExternalFileType.PIPER_VOICE) {
+    private fun engineReady(kind: ExternalFileType) =
+        kind.engineId?.let(model.registry::plugin)?.let { model.registry.available(it) && it.voiceManager != null } == true
+
+    private fun resolveVoiceEngine(kind: ExternalFileType): ExternalFileType {
+        if (kind != ExternalFileType.SHARED_CLONE_VOICE) return kind
+        // Early clone exports use an interchangeable reference-audio format with no engine ID.
+        return cloneEngines.firstOrNull(::engineReady)
+            ?: cloneEngines.firstOrNull { engine -> model.pluginManager.status.any { it.installed.manifest.id == engine.engineId } }
+            ?: ExternalFileType.CLONE_VOICE
+    }
+
+    private fun showReady(error: String? = null) {
+        val item = pending ?: return
+        val current = item.copy(kind = resolveVoiceEngine(item.kind), sharedClone = item.kind == ExternalFileType.SHARED_CLONE_VOICE)
+        mutable.value = if (current.kind.isVoice) {
             if (!model.pluginCatalogReady) current.copy(busy = true)
-            else current.copy(missing = missingVoicePlugins())
-        } else current
+            else {
+                val engine = model.pluginManager.status.firstOrNull { it.installed.manifest.id == current.kind.engineId }
+                val action = when {
+                    engineReady(current.kind) -> null
+                    engine == null -> VoiceImportAction.INSTALL
+                    !engine.installed.enabled -> VoiceImportAction.ENABLE
+                    else -> null
+                }
+                current.copy(missing = missingVoicePlugins(current.kind), error = error, engineAction = action)
+            }
+        } else current.copy(error = error)
     }
 
     fun pluginsChanged() {
-        if (pending?.kind != ExternalFileType.PIPER_VOICE || job?.isActive == true) return
-        if (!waitingForPlugins || missingVoicePlugins().isEmpty()) { waitingForPlugins = false; showReady() }
+        if (pending?.kind?.isVoice != true || job?.isActive == true || mutable.value?.dependency != null) return
+        showReady()
     }
 
-    fun guide() {
-        val missing = missingVoicePlugins().firstOrNull() ?: return showReady()
-        waitingForPlugins = true
-        mutable.value = null
-        val installed = model.pluginManager.status.any {
-            if (missing == "Piper 语音引擎") it.installed.manifest.id == "engine.piper"
-            else "speech-service" in it.installed.manifest.capabilities
+    fun enableEngine() {
+        val current = mutable.value ?: return
+        val id = current.kind.engineId ?: return
+        if (current.engineAction != VoiceImportAction.ENABLE || job?.isActive == true) return
+        mutable.value = current.copy(busy = true)
+        job = scope.launch {
+            try {
+                model.pluginManager.enable(id, true)
+                model.refreshPlugins()
+                showReady()
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (failure: Exception) { showReady(failure.message ?: "无法启用语音引擎") }
         }
-        if (installed) { model.navigate(Destination.Plugins); return }
-        // The store presents installation and publisher review; opening a file never installs dependencies.
-        model.openSpeechPluginStore(missing)
     }
 
-    fun resume() { if (waitingForPlugins) { waitingForPlugins = false; showReady() } }
+    fun dependencyPicked(uri: Uri) {
+        val current = mutable.value ?: return
+        val id = current.kind.engineId ?: return
+        if (current.engineAction != VoiceImportAction.INSTALL || job?.isActive == true) return
+        mutable.value = current.copy(busy = true, error = null)
+        job = scope.launch {
+            var inspected: PendingPackage? = null
+            try {
+                val candidate = inspectPackage(context, model, uri)
+                inspected = candidate
+                val manifest = candidate.preview.manifest
+                val matching = manifest.id == id || current.sharedClone && cloneEngines.any { it.engineId == manifest.id }
+                require(matching && manifest.capabilities.containsAll(listOf("tts", "voice-packs"))) {
+                    "此安装包与所选语音包不兼容"
+                }
+                mutable.value = current.copy(dependency = candidate, error = null)
+                inspected = null
+            } catch (cancel: CancellationException) { throw cancel }
+            catch (failure: Exception) { showReady(failure.message ?: "无法读取引擎安装包") }
+            finally { inspected?.file?.delete() }
+        }
+    }
+
+    fun finishDependencyInstaller() {
+        mutable.value?.dependency?.file?.delete()
+        showReady()
+    }
 
     fun confirm() {
-        val current = pending ?: return
+        val current = mutable.value?.takeUnless { it.busy || it.dependency != null } ?: return
+        if (pending == null) return
         val file = staged ?: return
         if (job?.isActive == true) return
-        if (current.kind == ExternalFileType.PIPER_VOICE && missingVoicePlugins().isNotEmpty()) return showReady()
+        if (current.kind.isVoice && missingVoicePlugins(current.kind).isNotEmpty()) return showReady()
         mutable.value = current.copy(busy = true)
         job = scope.launch {
             try {
@@ -112,18 +181,22 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                         model.navigate(Destination.SettingsDetail(SettingsCategory.BACKUP_RESTORE))
                         requireNotNull(model.legacyImports.prepare(Uri.fromFile(file))) { "另一个备份正在导入，请稍后重试" }.join()
                     }
-                    ExternalFileType.PIPER_VOICE -> importVoice(file)
+                    ExternalFileType.PIPER_VOICE, ExternalFileType.CLONE_VOICE, ExternalFileType.SHARED_CLONE_VOICE,
+                    ExternalFileType.QWEN_VOICE -> importVoice(file, current.kind)
                     else -> return@launch
                 }
                 cleanup(); mutable.value = null
             } catch (cancel: CancellationException) { throw cancel }
-            catch (failure: Exception) { mutable.value = current.copy(error = failure.message ?: "导入失败，请重试") }
+            catch (failure: Exception) { showReady(failure.message ?: "导入失败，请重试") }
         }
     }
 
-    internal suspend fun importVoice(file: File) {
-        val engine = requireNotNull(model.registry.plugin("engine.piper")) { "请先启用 Piper 语音引擎" }
-        val relative = "imports/voices/${UUID.randomUUID()}.kigvpk"
+    internal suspend fun importVoice(file: File, kind: ExternalFileType? = null) {
+        val type = resolveVoiceEngine(kind ?: withContext(Dispatchers.IO) { ExternalFileTypes.inspect(file, file.name) })
+        require(type.isVoice) { "无法识别此语音包" }
+        val engine = requireNotNull(type.engineId?.let(model.registry::plugin)) { "请先启用${type.engineName}" }
+        val suffix = if (type == ExternalFileType.PIPER_VOICE) "kigvpk" else "zip"
+        val relative = "imports/voices/${UUID.randomUUID()}.$suffix"
         val target = model.pluginManager.paths.storage(engine.descriptor.id).file(relative)
         try {
             withContext(Dispatchers.IO) { target.parentFile!!.mkdirs(); file.copyTo(target) }
@@ -138,9 +211,15 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
     }
 
     fun dismiss() { if (job?.isActive != true) { cleanup(); mutable.value = null } }
-    private fun cleanup() { staged?.delete(); staged = null; pending = null; waitingForPlugins = false }
+    private fun cleanup() {
+        mutable.value?.dependency?.file?.delete()
+        staged?.delete()
+        staged = null
+        pending = null
+    }
 
     companion object {
+        private val cloneEngines = listOf(ExternalFileType.CLONE_VOICE, ExternalFileType.QWEN_VOICE)
         fun localUri(intent: Intent?): Uri? {
             if (intent?.action !in setOf(Intent.ACTION_VIEW, Intent.ACTION_SEND)) return null
             @Suppress("DEPRECATION")

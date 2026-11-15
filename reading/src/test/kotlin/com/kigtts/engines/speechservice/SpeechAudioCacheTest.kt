@@ -28,6 +28,22 @@ class SpeechAudioCacheTest {
         assertTrue(entries.drop(1).all(store::has))
     }
 
+    @Test fun highQualityReplacesProvisionalAndLateRealtimeCannotReplaceIt() {
+        val store = SpeechAudioCache(files.newFolder())
+        val final = key("语音", id = "x").copy(profileVersion = "high")
+        val temporary = final.copy(profileVersion = "quick", provisional = true)
+        put(store, temporary)
+        assertTrue(store.hasProvisional(final))
+        store.writer(temporary, final)!!.use { lateRealtime ->
+            lateRealtime.append(PcmAudio(byteArrayOf(2, 0)))
+            put(store, final)
+            assertFalse(lateRealtime.finish())
+        }
+        assertTrue(store.has(final))
+        assertFalse(store.hasProvisional(final))
+        assertFalse(store.has(temporary))
+    }
+
     @Test fun shortcutsHaveIndependentIdentityAndEditsDoNotEvictOtherEntriesOrPacks() {
         val directory = files.newFolder()
         val store = SpeechAudioCache(directory)
