@@ -21,7 +21,7 @@ import com.kigtts.next.ui.components.*
                     state.background.toInt(), state.pattern, size.width, 1f)
             }
             ChoiceButtonGroup("画布背景", SketchPaperPattern.entries, state.pattern, { it.label }, state::setPaperPattern)
-            Text("背景随画布移动和缩放，并保留在保存的图片中。")
+            Text("背景随画布移动和缩放，并保留在保存的图片中")
         }
     }, confirmButton = { MotionTextButton(dialogFeedbackClick(close)) { Text("完成") } })
 }

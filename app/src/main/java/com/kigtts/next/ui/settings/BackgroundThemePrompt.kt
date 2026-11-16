@@ -15,7 +15,7 @@ import com.kigtts.next.ui.components.*
     var never by rememberSaveable { mutableStateOf(false) }
     MotionAlertDialog(onDismissRequest = { onResult(false, !never) }, title = { Text("使用背景主题色？") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("让按钮和面板配色与这张背景相配。")
+            Text("让按钮和面板配色与这张背景相配")
             Row(Modifier.fillMaxWidth().toggleable(never, role = Role.Checkbox, onValueChange = feedbackChange { never = it }),
                 verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(never, null); Spacer(Modifier.width(8.dp)); Text("下次不再提醒")

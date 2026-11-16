@@ -42,7 +42,7 @@ import kotlinx.coroutines.*
                 OutlinedButton(feedbackClick { picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !loading) {
                     Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(if (loading) "正在识别…" else "从二维码图片读取")
                 }
-                Text("微信等平台可选择个人二维码图片；仅填写账号时，二维码展示账号文本。", style = MaterialTheme.typography.bodySmall)
+                Text("微信等平台可选择个人二维码图片；仅填写账号时，二维码展示账号文本", style = MaterialTheme.typography.bodySmall)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }, confirmButton = {

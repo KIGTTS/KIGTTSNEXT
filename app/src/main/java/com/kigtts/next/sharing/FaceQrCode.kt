@@ -45,7 +45,7 @@ internal fun FaceQrCode(data: String, description: String, size: Dp = 240.dp) {
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape).padding(12.dp),
             contentAlignment = Alignment.Center) {
             if (shown != null) Image(shown, description, Modifier.fillMaxSize())
-            else if (failed) Text("二维码未能生成，请重试。", color = Color.DarkGray, style = MaterialTheme.typography.bodyMedium)
+            else if (failed) Text("二维码未能生成，请重试", color = Color.DarkGray, style = MaterialTheme.typography.bodyMedium)
             else CircularProgressIndicator()
         }
     }

@@ -68,7 +68,7 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text("嵌入源数据", style = MaterialTheme.typography.labelLarge)
-                        Text("用于还原图片磁贴；按图片发送时，压缩可能丢失源数据。",
+                        Text("用于还原图片磁贴；按图片发送时，压缩可能丢失源数据",
                             style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(includeSource, onCheckedChange = null)

@@ -35,7 +35,7 @@ internal fun CardDesignTools(cards: CardRepository, draft: PolaroidCard, enabled
     }
     CardEditorSection("相框预设", Icons.Default.Bookmarks, "card-frame-presets") {
         PillButton("保存当前设计为默认预设", Icons.Default.BookmarkAdd, { naming = true }, enabled = enabled && !busy)
-        Text("新照片沿用这套边框、贴纸和文字样式。", style = MaterialTheme.typography.bodySmall)
+        Text("新照片沿用这套边框、贴纸和文字样式", style = MaterialTheme.typography.bodySmall)
         state.presets.forEach { preset ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(state.defaultId == preset.id, { work { cards.designs.defaultPreset(preset.id) } }, enabled = enabled && !busy)
