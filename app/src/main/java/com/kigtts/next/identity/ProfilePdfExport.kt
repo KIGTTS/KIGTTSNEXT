@@ -24,7 +24,20 @@ internal object ProfilePdfExport {
         var page = Sheet("home")
         fun next() { pages += page.finish(); page = Sheet("main-${pages.size}") }
         fun space(height: Float) { if (page.y + height > 780) next() }
-        page.image(banner, RectF(32f, 32f, 563f, 331f)); page.y = 358f
+        page.image(banner, RectF(32f, 32f, 563f, 331f))?.let { cover ->
+            val height = cover.height()
+            val edge = height * .085f * 32 / 22
+            val top = cover.top + height * .04f
+            val shortcuts = identity.contacts.take(5) + identity.contacts.drop(5).take(1)
+            shortcuts.forEachIndexed { i, contact ->
+                val target = contacts.indexOfFirst { contactPayload(it) == contactPayload(contact) }
+                if (target >= 0) {
+                    val left = cover.left + height * .04f + i * edge * 1.125f
+                    page.links += ProfilePdfLink(RectF(left, top, left + edge, top + edge), page = "contact-$target")
+                }
+            }
+        }
+        page.y = 358f
         fun paragraph(text: String, size: Float, bold: Boolean = false) {
             if (text.isBlank()) return
             text.chunked(350).forEach { chunk -> space(page.height(chunk, size, bold)); page.paragraph(chunk, size, bold) }
@@ -43,6 +56,9 @@ internal object ProfilePdfExport {
         }
         identity.tiles.forEach { tile ->
             when (tile.kind) {
+                ProfileTileKind.DIVIDER -> {
+                    space(26f); page.separator(tile.title, tile.dividerStyle)
+                }
                 ProfileTileKind.IMAGE -> images.firstOrNull { it.first.id == tile.id }?.let { (_, file) ->
                     space(164f); val top = page.y; page.box(top, 152f); page.y = top
                     page.image(file, RectF(40f, page.y + 8, 555f, page.y + 142))
@@ -119,14 +135,28 @@ internal object ProfilePdfExport {
             canvas.save(); canvas.translate(x, y); layout.draw(canvas); canvas.restore(); y += layout.height + 12
         }
         fun box(top: Float, height: Float) { canvas.drawRoundRect(32f, top, 563f, top + height, 16f, 16f, Paint().apply { color = Color.WHITE }); y += 10 }
-        fun image(file: File, area: RectF) {
+        fun separator(title: String, style: ProfileDividerStyle) {
+            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xff48696a.toInt(); strokeWidth = 1f; this.style = Paint.Style.STROKE }
+            val text = title.takeIf(String::isNotBlank)?.let { layout(it, 12f, true, 32f, 1) }
+            val center = 297.5f
+            val half = text?.getLineWidth(0)?.div(2)?.plus(8f) ?: 0f
+            fun draw(left: Float, right: Float) = canvas.drawPath(profileDividerPath(left, right, y + 8,
+                style == ProfileDividerStyle.WAVE, 2f, 14f), paint)
+            if (text == null) draw(32f, 563f) else {
+                draw(32f, center - half); draw(center + half, 563f)
+                canvas.save(); canvas.translate(center - (half - 8f), y); text.draw(canvas); canvas.restore()
+            }
+            y += 26f
+        }
+        fun image(file: File, area: RectF): RectF? {
             val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }; BitmapFactory.decodeFile(file.path, bounds)
             bounds.inSampleSize = (maxOf(bounds.outWidth, bounds.outHeight) / 1600).coerceAtLeast(1); bounds.inJustDecodeBounds = false
-            val source = BitmapFactory.decodeFile(file.path, bounds) ?: return
-            try {
+            val source = BitmapFactory.decodeFile(file.path, bounds) ?: return null
+            return try {
                 val scale = minOf(area.width() / source.width, area.height() / source.height)
                 val width = source.width * scale; val height = source.height * scale
-                canvas.drawBitmap(source, null, RectF(area.centerX() - width / 2, area.centerY() - height / 2, area.centerX() + width / 2, area.centerY() + height / 2), Paint(Paint.FILTER_BITMAP_FLAG))
+                RectF(area.centerX() - width / 2, area.centerY() - height / 2, area.centerX() + width / 2, area.centerY() + height / 2)
+                    .also { canvas.drawBitmap(source, null, it, Paint(Paint.FILTER_BITMAP_FLAG)) }
             } finally { source.recycle() }
         }
         fun back() { y = 780f; paragraph("返回个人主页  ↗", 12f); links += ProfilePdfLink(RectF(32f, 774f, 270f, 812f), page = "home") }

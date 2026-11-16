@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
@@ -30,6 +31,7 @@ import kotlin.math.roundToInt
     openLink: (String) -> Unit = {}) {
     if (tiles.isEmpty()) return
     var preview by remember { mutableStateOf<Pair<File, String>?>(null) }
+    var qrPreview by remember { mutableStateOf<ProfileTile?>(null) }
     val latestTiles by rememberUpdatedState(tiles)
     val latestChange by rememberUpdatedState(change)
     BoxWithConstraints(modifier.fillMaxWidth().testTag("profile-tiles")) {
@@ -55,7 +57,9 @@ import kotlin.math.roundToInt
                 SideEffect { motions[tile.id] = motion }
                 LaunchedEffect(target, motion.gesture) { motion.settle(target) }
                 DisposableEffect(editing, geometry.unit) { onDispose { feedback.finish(cancelled = true); motion.release() } }
-                val elevation by animateDpAsState(if (motion.raised) 8.dp else 0.dp, tween(140), label = "tile-lift")
+                val section = tile.kind.isSectionRow
+                val crossingGap = with(density) { 14.dp.toPx() }
+                val elevation by animateDpAsState(if (motion.raised && !section) 8.dp else 0.dp, tween(140), label = "tile-lift")
                 Box(Modifier.offset { motion.bounds.topLeft.let { IntOffset(it.x.roundToInt(), it.y.roundToInt()) } }
                     .layout { measurable, _ ->
                         val bounds = motion.bounds
@@ -65,40 +69,56 @@ import kotlin.math.roundToInt
                     }.zIndex(if (motion.raised) 1f else 0f).testTag("profile-tile/${tile.id}")
                     .then(if (editing) Modifier.pointerInput(tile.id, geometry.unit) {
                         var start = Rect.Zero; var delta = Offset.Zero
-                        detectDragGesturesAfterLongPress(onDragStart = { start = motion.begin(TileGesture.MOVE); delta = Offset.Zero; feedback.start(0f) },
+                        var drop: ProfileTileDrop? = null
+                        var lastSwapY: Float? = null
+                        var current: List<ProfileTile> = emptyList()
+                        detectDragGesturesAfterLongPress(onDragStart = {
+                            current = latestTiles; drop = ProfileTileDrop(current, tile.id, latestGeometry)
+                            start = motion.begin(TileGesture.MOVE); delta = Offset.Zero; lastSwapY = null; feedback.start(0f)
+                        },
                             onDragEnd = { feedback.finish(); motion.release() }, onDragCancel = { feedback.finish(cancelled = true); motion.release() }) { event, amount ->
-                            event.consume(); delta += amount; val floating = start.translate(delta); motion.follow(floating)
-                            val hovered = latestGeometry.bounds.entries.firstOrNull { it.value.contains(floating.center) }?.key
-                            if (hovered != null && hovered != tile.id) {
-                                val next = latestTiles.toMutableList(); val from = next.indexOfFirst { it.id == tile.id }; val to = next.indexOfFirst { it.id == hovered }
-                                if (from >= 0 && to >= 0) { val item = next.removeAt(from); next.add(to.coerceAtMost(next.size), item); latestChange(next); feedback.step() }
+                            event.consume(); delta += amount
+                            val floating = start.translate(if (section) Offset(0f, delta.y) else delta); motion.follow(floating)
+                            val y = floating.center.y
+                            if (section && lastSwapY?.let { kotlin.math.abs(y - it) < crossingGap } == true) return@detectDragGesturesAfterLongPress
+                            val next = drop?.at(floating) ?: return@detectDragGesturesAfterLongPress
+                            if (next != current) {
+                                current = next
+                                if (section) lastSwapY = y
+                                latestChange(next); feedback.step()
                             }
                         }
                     } else Modifier)) {
                     val contact = tile.resolveContact(contacts)
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
-                    val clickable = editing || tile.kind == ProfileTileKind.LINK || tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank() || (tile.kind == ProfileTileKind.CONTACT && contact != null)
+                    val clickable = editing || tile.kind == ProfileTileKind.LINK || tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank() ||
+                        tile.kind == ProfileTileKind.QR && tile.text.isNotBlank() || (tile.kind == ProfileTileKind.CONTACT && contact != null)
                     Surface(onClick = feedbackClick {
                         when {
                             editing -> edit(tile)
                             tile.kind == ProfileTileKind.IMAGE -> image(tile.image)?.let { preview = it to tile.title.ifBlank { "图片" } }
                             tile.kind == ProfileTileKind.LINK -> openLink(tile.text)
+                            tile.kind == ProfileTileKind.QR -> qrPreview = tile
                             else -> contact?.let(openContact)
                         }
                     },
                         enabled = clickable, modifier = Modifier.fillMaxSize().then(if (iconOnly) Modifier.semantics {
                             contentDescription = tile.title.ifBlank { contact?.label ?: "链接" }
                         } else Modifier),
-                        shape = if (tile.kind == ProfileTileKind.TITLE) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.extraLarge,
-                        color = if (tile.kind == ProfileTileKind.TITLE) MaterialTheme.colorScheme.surface.copy(alpha = 0f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+                        shape = if (section) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.extraLarge,
+                        color = when (tile.kind) {
+                            ProfileTileKind.TITLE, ProfileTileKind.DIVIDER -> Color.Transparent
+                            ProfileTileKind.QR -> Color(nativeProfileQrPalette(tile.qrStyle, tile.qrKeepLight).paper)
+                            else -> MaterialTheme.colorScheme.surfaceContainerHigh
+                        },
                         shadowElevation = elevation) { ProfileTileContent(tile, contact, image, editing) }
                     AnimatedVisibility(editing, Modifier.align(Alignment.TopStart),
                         enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),
                         exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .85f)) {
-                        IconButton(feedbackClick { remove(tile) }, Modifier.then(if (tile.kind == ProfileTileKind.TITLE) Modifier else Modifier.offset((-6).dp, (-6).dp))
+                        IconButton(feedbackClick { remove(tile) }, Modifier.then(if (section) Modifier else Modifier.offset((-6).dp, (-6).dp))
                             .size(32.dp).testTag("tile-remove/${tile.id}")) { Icon(Icons.Default.RemoveCircle, "移除磁贴", Modifier.size(22.dp)) }
                     }
-                    AnimatedVisibility(editing && tile.kind != ProfileTileKind.TITLE, Modifier.align(Alignment.BottomEnd),
+                    AnimatedVisibility(editing && !section, Modifier.align(Alignment.BottomEnd),
                         enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),
                         exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .85f)) {
                         ProfileTileResizeHandle(tile, motion, geometry, { columns, rows ->
@@ -110,4 +130,5 @@ import kotlin.math.roundToInt
         }
     }
     preview?.let { (file, description) -> ProfileImagePreview(file, description, { preview = null }) }
+    qrPreview?.let { ProfileQrPreview(it) { qrPreview = null } }
 }

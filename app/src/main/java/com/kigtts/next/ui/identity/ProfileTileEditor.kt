@@ -11,11 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.*
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.settings.SettingItem
+import com.kigtts.next.ui.settings.SettingPosition
 import kotlinx.coroutines.*
 import java.io.File
 
@@ -28,7 +31,8 @@ import java.io.File
     var social by remember(tile?.id) { mutableStateOf(tile?.social) }
     var image by remember(tile?.id) { mutableStateOf(tile?.image.orEmpty()) }
     var qrStyle by remember(tile?.id) { mutableStateOf(tile?.qrStyle ?: ProfileQrStyle.THEME) }
-    var qrLarge by remember(tile?.id) { mutableStateOf(tile?.let { it.rows == 4 && it.columns == 4 } ?: false) }
+    var qrKeepLight by remember(tile?.id) { mutableStateOf(tile?.qrKeepLight ?: false) }
+    var dividerStyle by remember(tile?.id) { mutableStateOf(tile?.dividerStyle ?: ProfileDividerStyle.LINE) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -54,18 +58,28 @@ import java.io.File
         catch (e: Exception) { error = e.message ?: "图片未能打开" }
         finally { working = false }
     } }
-    val names = linkedMapOf(ProfileTileKind.LINK to "链接", ProfileTileKind.CONTACT to "社媒", ProfileTileKind.TITLE to "标题",
-        ProfileTileKind.TEXT to "文字", ProfileTileKind.IMAGE to "图片 / GIF", ProfileTileKind.QR to "二维码")
+    val kinds = linkedMapOf(ProfileTileKind.LINK to ("链接" to Icons.Default.Link),
+        ProfileTileKind.CONTACT to ("社媒" to Icons.Default.AlternateEmail), ProfileTileKind.TITLE to ("标题" to Icons.Default.Title),
+        ProfileTileKind.DIVIDER to ("分隔线" to Icons.Default.HorizontalRule), ProfileTileKind.TEXT to ("文字" to Icons.Default.Subject),
+        ProfileTileKind.IMAGE to ("图片 / GIF" to Icons.Default.Image), ProfileTileKind.QR to ("二维码" to Icons.Default.QrCode))
     val keyboard = LocalSoftwareKeyboardController.current
     val changeKind = { keyboard?.hide(); kind = null; error = null }
     MotionAlertDialog(close, title = { Text(if (tile == null) "添加磁贴" else "编辑磁贴") },
         onNavigateUp = if (tile == null && kind != null && !working) changeKind else null, text = {
       ModalPageTransition(kind, { if (it == null) 0 else 1 }, Modifier.fillMaxWidth()) { displayedKind ->
         Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (displayedKind == null) names.forEach { (value, name) -> OutlinedButton(feedbackClick { kind = value }, Modifier.fillMaxWidth()) { Text(name) } }
+            if (displayedKind == null) Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Column(Modifier.fillMaxWidth().padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    kinds.entries.forEachIndexed { index, (value, option) ->
+                        val position = when (index) { 0 -> SettingPosition.FIRST; kinds.size - 1 -> SettingPosition.LAST; else -> SettingPosition.MIDDLE }
+                        SettingItem(option.first, "", option.second, position, onClick = { kind = value })
+                    }
+                }
+            }
             else {
-                Text(names[displayedKind] ?: "状态", style = MaterialTheme.typography.titleSmall)
-                if (displayedKind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(if (displayedKind == ProfileTileKind.TITLE) "标题" else "名称") }, singleLine = true)
+                Text(kinds[displayedKind]?.first ?: "状态", style = MaterialTheme.typography.titleSmall)
+                if (displayedKind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(),
+                    label = { Text(when (displayedKind) { ProfileTileKind.TITLE -> "标题"; ProfileTileKind.DIVIDER -> "中间文字（可选）"; else -> "名称" }) }, singleLine = true)
                 when (displayedKind) {
                     ProfileTileKind.CONTACT -> ProfileTileContactField(social, contact, contacts,
                         { social = it; contact = ""; error = null }, { social = null; contact = it.value; error = null })
@@ -75,6 +89,16 @@ import java.io.File
                         FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) "正在打开…" else "选择图片或 GIF") }
                     }
                     ProfileTileKind.TITLE -> Unit
+                    ProfileTileKind.DIVIDER -> {
+                        SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                            ProfileDividerStyle.entries.forEachIndexed { index, style ->
+                                SegmentedButton(dividerStyle == style, feedbackClick { dividerStyle = style },
+                                    SegmentedButtonDefaults.itemShape(index, ProfileDividerStyle.entries.size), icon = {}) { Text(style.label) }
+                            }
+                        }
+                        ProfileHeadingTile(ProfileTile(kind = ProfileTileKind.DIVIDER, title = title, dividerStyle = dividerStyle),
+                            false, Modifier.fillMaxWidth().height(42.dp))
+                    }
                     ProfileTileKind.QR -> {
                         OutlinedTextField(text, { text = it.take(PROFILE_QR_MAX_BYTES); error = null },
                             Modifier.fillMaxWidth(), label = { Text("文字或链接") }, minLines = 2, maxLines = 4)
@@ -87,10 +111,12 @@ import java.io.File
                             }
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("超大尺寸（4 × 4）")
-                            Switch(qrLarge, { qrLarge = it })
+                            Text("保持亮色")
+                            Switch(qrKeepLight, { qrKeepLight = it })
                         }
-                        ProfileQrTile(text, qrStyle, title, Modifier.fillMaxWidth().height(144.dp))
+                        Surface(shape = MaterialTheme.shapes.medium, color = Color(nativeProfileQrPalette(qrStyle, qrKeepLight).paper)) {
+                            ProfileQrTile(text, qrStyle, title, Modifier.fillMaxWidth().height(148.dp).padding(8.dp), qrKeepLight)
+                        }
                     }
                     else -> OutlinedTextField(text, { text = it.take(400) }, Modifier.fillMaxWidth(), label = { Text("内容") }, minLines = 2)
                 }
@@ -110,13 +136,10 @@ import java.io.File
         if (selected == ProfileTileKind.QR && text.trim().toByteArray(Charsets.UTF_8).size > PROFILE_QR_MAX_BYTES) {
             error = "二维码内容太长，请缩短后重试"; return@feedbackClick
         }
-        val wasLarge = tile?.rows == 4 && tile.columns == 4
         save((tile ?: ProfileTile()).copy(kind = selected, title = title.trim(), text = text.trim(), contact = if (selected == ProfileTileKind.CONTACT) contact else "", image = image,
-            social = social.takeIf { selected == ProfileTileKind.CONTACT }, qrStyle = qrStyle,
-            columns = if (selected == ProfileTileKind.TITLE || selected == ProfileTileKind.QR && qrLarge) 4
-                else if (selected == ProfileTileKind.QR && wasLarge) 2 else tile?.columns ?: 2,
-            rows = if (selected == ProfileTileKind.TITLE) 1 else if (selected == ProfileTileKind.QR && qrLarge) 4
-                else if (selected == ProfileTileKind.QR && wasLarge) 2 else tile?.rows ?: 2))
+            social = social.takeIf { selected == ProfileTileKind.CONTACT }, qrStyle = qrStyle, qrKeepLight = qrKeepLight, dividerStyle = dividerStyle,
+            columns = if (selected.isSectionRow || selected == ProfileTileKind.QR && tile == null) 4 else tile?.columns ?: 2,
+            rows = if (selected.isSectionRow) 1 else if (selected == ProfileTileKind.QR && tile == null) 4 else tile?.rows ?: 2))
     }) { Text("完成") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
 }
 

@@ -4,6 +4,7 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
+import android.graphics.Canvas
 import android.graphics.Rect
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.ExternalFileType
@@ -84,20 +85,17 @@ class OfflineProfileTest {
         val links = ProfileLongImage.links(identity)
         assertEquals(2, links.size)
         assertEquals(listOf("官网", "同一链接"), links.first().labels)
-        val normal = ProfileLongImage.write(identity, model.stickers, temporary.newFolder("long"))
-        val withPhoto = ProfileLongImage.write(identity.copy(tiles = identity.tiles + ProfileTile(kind = ProfileTileKind.IMAGE,
-            title = "不带图片预览")), model.stickers, temporary.newFolder("long-photos"))
+        val photo = ProfileTile(kind = ProfileTileKind.IMAGE, title = "图片磁贴")
+        val withPlaceholder = identity.copy(tiles = identity.tiles + photo)
+        val normal = ProfileLongImage.write(withPlaceholder, model.stickers, temporary.newFolder("long"))
+        val withPhoto = ProfileLongImage.write(withPlaceholder.copy(tiles = identity.tiles +
+            photo.copy(image = "different-private-image")), model.stickers, temporary.newFolder("long-photos"))
+        assertArrayEquals(normal.readBytes(), withPhoto.readBytes())
         val image = BitmapFactory.decodeFile(normal.path)
         try {
             assertEquals(840, image.width)
             assertTrue(image.height > 800)
         } finally { image.recycle() }
-        val withImageTile = BitmapFactory.decodeFile(withPhoto.path)
-        val noImageTile = BitmapFactory.decodeFile(normal.path)
-        try {
-            for (row in 0..750 step 25) for (col in 0 until 840 step 20)
-                assertEquals(noImageTile.getPixel(col, row), withImageTile.getPixel(col, row))
-        } finally { withImageTile.recycle(); noImageTile.recycle() }
     }
 
     @Test fun longImageRestoresFromColorStripAfterRecompressionAndKeepsPhotosOnlyWithEmbeddedSource() {
@@ -118,6 +116,11 @@ class OfflineProfileTest {
         assertFalse(ProfilePngPayload.extract(naked, File(temporary.root, "no-data.mhtml")))
         val jpeg = File(temporary.root, "compressed.jpg")
         val bitmap = BitmapFactory.decodeFile(naked.path)
+        // Both sides and the bottom are occupied by the same four-level pattern.
+        fun lastCell(x: Int) = bitmap.getPixel(x, bitmap.height - 1)
+        assertEquals(lastCell(36 + (192 - 9) * 4), lastCell(0))
+        assertEquals(lastCell(36 + 8 * 4), lastCell(bitmap.width - 1))
+        assertTrue((2 until bitmap.width step 4).map(::lastCell).toSet().size == 4)
         val resized = Bitmap.createScaledBitmap(bitmap, 630, (bitmap.height * .75f).toInt(), true)
         jpeg.outputStream().use { assertTrue(resized.compress(Bitmap.CompressFormat.JPEG, 84, it)) }
         resized.recycle(); bitmap.recycle()
@@ -136,6 +139,20 @@ class OfflineProfileTest {
             assertEquals(imported.id, restored.id)
             assertTrue(favorites.image(PublicIdentityProfile.from(JSONObject(restored.profile)).tiles.first().image)?.isFile == true)
         } finally { favorites.remove(imported.id) }
+    }
+
+    @Test fun grayCodeCanStillReadBothOlderMargins() {
+        val payload = """{"nickname":"之前分享的名片"}"""
+        val code = ProfileGrayCode.encode(payload)
+        for (margin in listOf(32, 76)) {
+            val bitmap = Bitmap.createBitmap(840, 500, Bitmap.Config.ARGB_8888)
+            try {
+                code.draw(Canvas(bitmap), bitmap.height - margin, 0xff5346bc.toInt())
+                assertEquals(payload, ProfileGrayCode.decode(bitmap.width, bitmap.height) { band ->
+                    Bitmap.createBitmap(bitmap, 0, bitmap.height - band, bitmap.width, band)
+                })
+            } finally { bitmap.recycle() }
+        }
     }
 }
 

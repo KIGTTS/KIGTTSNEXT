@@ -18,14 +18,13 @@ import java.io.File
 
 @Composable internal fun ProfileTileContent(tile: ProfileTile, contact: ContactLink?, image: (String) -> File?, editing: Boolean) {
     if (tile.kind == ProfileTileKind.QR) {
-        ProfileQrTile(tile.text, tile.qrStyle, tile.title, Modifier.fillMaxSize().padding(8.dp)); return
+        ProfileQrTile(tile.text, tile.qrStyle, tile.title, Modifier.fillMaxSize().padding(8.dp), tile.qrKeepLight); return
     }
     if (tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank()) {
         ProfileTileImage(image(tile.image), Modifier.fillMaxSize(), tile.title.ifBlank { "图片" }); return
     }
-    if (tile.kind == ProfileTileKind.TITLE) {
-        Text(tile.title, Modifier.padding(start = if (editing) 36.dp else 4.dp, top = 4.dp, end = 4.dp),
-            style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis); return
+    if (tile.kind.isSectionRow) {
+        ProfileHeadingTile(tile, editing); return
     }
     if (tile.isTitleOnlyText) {
         Box(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {

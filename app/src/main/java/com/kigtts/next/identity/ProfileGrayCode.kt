@@ -18,6 +18,7 @@ internal object ProfileGrayCode {
     const val WIDTH = 840
     const val CELL = 4
     const val MARGIN = 32
+    private const val LEGACY_LOGO_FOOTER = 76
     private const val LEFT = 36
     private const val COLUMNS = 192
     private const val ROW_BYTES = COLUMNS / 4
@@ -30,8 +31,11 @@ internal object ProfileGrayCode {
     private val magic = "KIGCARD1".toByteArray(Charsets.US_ASCII)
     private val ruler = intArrayOf(0, 3, 1, 3, 0, 2, 2, 1, 3, 0, 1, 2, 0, 3, 2, 1)
 
-    internal class Code(private val rows: List<IntArray>) {
+    internal class Code(private val rows: List<IntArray>, private val crc: Int) {
         val height = rows.size * CELL
+        val identifier = "KG-" + crc.toUInt().toString(16).padStart(8, '0').uppercase()
+        fun signatureLevel(index: Int): Int = crc ushr ((15 - index) * 2) and 3
+
         fun draw(canvas: Canvas, bottom: Int, accent: Int) {
             val paint = Paint()
             val colors = intArrayOf(18, 91, 163, 244).map { neutral ->
@@ -40,9 +44,10 @@ internal object ProfileGrayCode {
             }
             rows.forEachIndexed { row, values ->
                 val y = bottom - (row + 1) * CELL
-                values.forEachIndexed { column, value ->
-                    val x = LEFT + column * CELL
-                    paint.color = colors[value]
+                // Extend the pattern through the sides without shifting the original sampling grid.
+                for (x in 0 until WIDTH step CELL) {
+                    val column = (x - LEFT) / CELL
+                    paint.color = colors[values[(column + COLUMNS) % COLUMNS]]
                     canvas.drawRect(x.toFloat(), y.toFloat(), (x + CELL).toFloat(), (y + CELL).toFloat(), paint)
                 }
             }
@@ -57,7 +62,8 @@ internal object ProfileGrayCode {
         val data = out.toByteArray()
         require(data.size in 1..DATA_LIMIT) { "名片资料过多，无法生成还原码" }
         val encoder = ReedSolomonEncoder(field)
-        val header = ByteBuffer.allocate(32).put(magic).putInt(data.size).putInt(checksum(data)).array()
+        val crc = checksum(data)
+        val header = ByteBuffer.allocate(32).put(magic).putInt(data.size).putInt(crc).array()
         fun coded(source: ByteArray, start: Int, count: Int, total: Int) =
             IntArray(total) { i -> if (i < count && start + i < source.size) source[start + i].toInt() and 255 else 0 }
                 .also { encoder.encode(it, total - count) }
@@ -68,7 +74,7 @@ internal object ProfileGrayCode {
                 val block = coded(data, start, BLOCK_DATA, BLOCK_TOTAL)
                 repeat(DATA_ROWS) { add(block.cells(it * ROW_BYTES)) }
             }
-        })
+        }, crc)
     }
 
     private fun IntArray.cells(start: Int) = IntArray(COLUMNS) { column ->
@@ -81,8 +87,12 @@ internal object ProfileGrayCode {
     /** The reader works on a bottom band, rather than allocating the full long image. */
     fun decode(width: Int, height: Int, band: (Int) -> Bitmap?): String? {
         if (width !in 420..4096 || height < width / 2 || height > 40000) return null
+        return listOf(0, LEGACY_LOGO_FOOTER, MARGIN).firstNotNullOfOrNull { margin -> decode(width, height, margin, band) }
+    }
+
+    private fun decode(width: Int, height: Int, margin: Int, band: (Int) -> Bitmap?): String? {
         val scale = width.toDouble() / WIDTH
-        val footer = (MARGIN * scale).roundToInt()
+        val footer = (margin * scale).roundToInt()
         val rowHeight = CELL * scale
         val headerBand = (footer + rowHeight * 3 + 4).roundToInt().coerceAtMost(height)
         val decoder = ReedSolomonDecoder(field)

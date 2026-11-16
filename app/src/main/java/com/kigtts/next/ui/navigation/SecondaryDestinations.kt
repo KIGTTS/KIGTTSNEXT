@@ -23,6 +23,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.PersonalCards -> "个人信息"
             Destination.PersonalInformationEditor -> "个人信息"
             Destination.ContactFavorites -> "扩列收藏夹"
+            is Destination.ContactFavoriteDetail -> "名片详情"
             Destination.Fonts -> "字体"
             is Destination.SettingsDetail -> destination.category.title
             Destination.Plugins -> "插件管理"
@@ -66,11 +67,12 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme)
         return
     }
-    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && !chatPage,
+    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         subtitle = if (destination == Destination.Plugins) "管理已安装的插件" else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
-            destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.PersonalInformationEditor || destination == Destination.ContactFavorites || destination == Destination.Plugins ||
+            destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.PersonalInformationEditor ||
+            destination == Destination.ContactFavorites || destination is Destination.ContactFavoriteDetail || destination == Destination.Plugins ||
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
@@ -83,6 +85,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 Destination.PersonalCards -> com.kigtts.next.ui.identity.PersonalCardsScreen(model)
                 Destination.PersonalInformationEditor -> com.kigtts.next.ui.identity.PersonalInformationEditorScreen(model)
                 Destination.ContactFavorites -> com.kigtts.next.ui.identity.ContactFavoritesScreen(model)
+                is Destination.ContactFavoriteDetail -> com.kigtts.next.ui.identity.ContactFavoriteDetailScreen(model, destination.id)
                 Destination.Fonts -> FontSettingsScreen(state.theme, model::theme,
                     fromStore = if (model.registry.plugins.any { it.descriptor.id == com.kigtts.next.plugins.control.STORE_ID && model.registry.available(it) })
                         ({ model.invoke(com.kigtts.next.plugins.control.STORE_ID, "font-library") }) else null)

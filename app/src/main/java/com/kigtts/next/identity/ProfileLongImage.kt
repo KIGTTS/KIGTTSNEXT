@@ -3,15 +3,8 @@ package com.kigtts.next.identity
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.Typeface
-import android.text.StaticLayout
-import android.text.TextPaint
 import com.kigtts.next.cards.StickerRepository
-import com.kigtts.next.media.WebThemeState
-import com.kigtts.next.sharing.faceWebTheme
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -62,37 +55,21 @@ internal object ProfileLongImage {
 
     fun write(identity: IdentityCard, stickers: StickerRepository, directory: File, embedSource: Boolean = false): File {
         directory.mkdirs()
-        val file = exportIdentityCard(identity, stickers, directory)
+        val style = ProfileLongStyle(stickers.context)
+        val file = exportIdentityCard(identity, stickers, directory, includeContactButtons = false, typeface = style::face)
         val banner = checkNotNull(BitmapFactory.decodeFile(file.path)) { "无法读取名片封面" }
-        val theme = faceWebTheme(WebThemeState.current)
-        fun role(name: String, fallback: Int) = theme.colors[name]?.let { runCatching { Color.parseColor(it) }.getOrNull() } ?: fallback
-        val surface = role("surface", Color.WHITE)
-        val tile = role("surface-container-high", 0xffe5eeee.toInt())
-        val ink = role("on-surface", Color.BLACK)
-        val muted = role("on-surface-variant", ink)
-        val primary = role("primary", ink)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        val radius = (theme.corner * 2f).coerceAtLeast(12f)
+        val paint = style.paint
+        val radius = style.radius
         val sections = mutableListOf<Pair<Int, (Canvas, Int) -> Unit>>()
-        fun layout(text: String, size: Float, color: Int, width: Int, lines: Int, bold: Boolean = false): StaticLayout {
-            val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                this.color = color; textSize = size; typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-            }
-            return StaticLayout.Builder.obtain(text, 0, text.length, textPaint, width).setIncludePad(false)
-                .setMaxLines(lines).setEllipsize(android.text.TextUtils.TruncateAt.END).build()
-        }
-        fun drawText(canvas: Canvas, text: StaticLayout, x: Int, y: Int) {
-            canvas.save(); canvas.translate(x.toFloat(), y.toFloat()); text.draw(canvas); canvas.restore()
-        }
         fun label(value: String, size: Float, color: Int, bold: Boolean = false) {
             if (value.isBlank()) return
-            val text = layout(value, size, color, INNER, 3, bold)
-            sections += (text.height + 18) to { c, y -> drawText(c, text, PAD, y) }
+            val text = style.layout(value, size, color, INNER, 3, if (bold) 600 else 400)
+            sections += (text.height + 18) to { c, y -> style.text(c, text, PAD.toFloat(), y.toFloat()) }
         }
         val headerHeight = (INNER * banner.height.toFloat() / banner.width).toInt().coerceIn(1, INNER)
         val publicProfile = PublicIdentityProfile.from(identity.publicJson()).let {
             it.copy(avatar = null, tiles = it.tiles.map { tile -> tile.copy(image = "") })
-        }.json().put("identityId", identity.id)
+        }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
         val restoreCode = ProfileGrayCode.encode(JSONObject().put("profile", publicProfile)
             .put("cover", JSONArray(listOf(PAD, PAD, WIDTH - PAD, PAD + headerHeight))).toString())
         sections += (headerHeight + 20) to { c, y ->
@@ -100,53 +77,47 @@ internal object ProfileLongImage {
             val clip = android.graphics.Path().apply { addRoundRect(rect, radius, radius, android.graphics.Path.Direction.CW) }
             c.save(); c.clipPath(clip); c.drawBitmap(banner, null, rect, paint); c.restore()
         }
-        label(identity.tags.joinToString("   ·   "), 24f, primary)
-        identity.tiles.filter { it.kind in setOf(ProfileTileKind.TITLE, ProfileTileKind.TEXT, ProfileTileKind.STATUS) }.forEach { item ->
-            label(item.title, 31f, ink, true)
-            label(item.text, 25f, muted)
-        }
+        val tags = ProfileLongTags(identity.tags, style, INNER)
+        if (tags.height > 0) sections += (tags.height + 22) to { c, y -> tags.draw(c, PAD, y) }
+        val tiles = ProfileLongTiles(identity, INNER, style)
+        if (tiles.height > 0) sections += (tiles.height + 28) to { c, y -> tiles.draw(c, PAD, y) }
+        val fadeEdge = sections.sumOf { it.first } + PAD
         val links = links(identity)
-        if (links.isNotEmpty()) label("链接与二维码", 34f, ink, true)
+        if (links.isNotEmpty()) label("链接与二维码", 34f, style.ink, true)
         links.forEach { entry ->
             val qr = profileQrMatrix(entry.value, maxBytes = 2500)
             val edge = maxOf(176, (qr?.width ?: 0) * 2)
             val x = PAD + 16 + edge + 20
             val width = WIDTH - PAD - 16 - x
-            val title = layout(entry.labels.joinToString(" · "), 27f, ink, width, 2, true)
-            val body = layout(entry.detail, 24f, muted, width, 4)
+            val title = style.layout(entry.labels.joinToString(" · "), 27f, style.ink, width, 2, 500)
+            val body = style.layout(entry.detail, 24f, style.muted, width, 4)
             val row = maxOf(edge, title.height + body.height + 8) + 32
             sections += (row + 8) to { c, y ->
-                paint.color = tile
+                paint.color = style.tile
                 c.drawRoundRect(PAD.toFloat(), y.toFloat(), (WIDTH - PAD).toFloat(), (y + row).toFloat(), radius, radius, paint)
                 val left = PAD + 16
                 val top = y + (row - edge) / 2
-                if (qr != null) {
-                    paint.color = Color.WHITE
-                    c.drawRect(left.toFloat(), top.toFloat(), (left + edge).toFloat(), (top + edge).toFloat(), paint)
-                    paint.color = Color.BLACK
-                    val pitch = edge / qr.width
-                    val inset = (edge - pitch * qr.width) / 2
-                    for (dy in 0 until qr.height) for (dx in 0 until qr.width) if (qr[dx, dy]) {
-                        val l = left + inset + dx * pitch
-                        val t = top + inset + dy * pitch
-                        c.drawRect(l.toFloat(), t.toFloat(), (l + pitch).toFloat(), (t + pitch).toFloat(), paint)
-                    }
-                } else drawText(c, layout("二维码不可用", 20f, muted, edge, 2), left, y + row / 2)
+                if (qr != null) drawProfileLongQr(c, qr, RectF(left.toFloat(), top.toFloat(),
+                    (left + edge).toFloat(), (top + edge).toFloat()), paint)
+                else style.text(c, style.layout("二维码不可用", 20f, style.muted, edge, 2), left.toFloat(), y + row / 2f)
                 val textTop = y + (row - title.height - body.height - 8) / 2
-                drawText(c, title, x, textTop); drawText(c, body, x, textTop + title.height + 8)
+                style.text(c, title, x.toFloat(), textTop.toFloat())
+                style.text(c, body, x.toFloat(), (textTop + title.height + 8).toFloat())
             }
         }
-        label("KIGTTS · 名片还原码", 22f, muted, true)
-        val height = sections.sumOf { it.first } + PAD * 2 + restoreCode.height
+        val signatureTop = sections.sumOf { it.first } + PAD + 16
+        val height = signatureTop + PROFILE_SIGNATURE_HEIGHT + restoreCode.height
         try {
             require(height in 1..21_000) { "名片内容过多，无法生成长图" }
             val image = Bitmap.createBitmap(WIDTH, height, Bitmap.Config.ARGB_8888)
             try {
-                val canvas = Canvas(image).apply { drawColor(surface) }
+                val canvas = Canvas(image)
+                style.backdrop(canvas, WIDTH, (fadeEdge - 160).coerceAtLeast(0), fadeEdge)
                 var y = PAD
                 sections.forEach { (height, draw) -> draw(canvas, y); y += height }
-                val accent = if (identity.gradient) identity.gradientColor.toInt() else primary
-                restoreCode.draw(canvas, height - PAD, accent)
+                val accent = if (identity.gradient) identity.gradientColor.toInt() else style.primary
+                drawProfileCodeSignature(canvas, signatureTop, restoreCode, style)
+                restoreCode.draw(canvas, height, accent)
                 val png = File(directory, "profile-long.png").also { output ->
                     output.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                 }

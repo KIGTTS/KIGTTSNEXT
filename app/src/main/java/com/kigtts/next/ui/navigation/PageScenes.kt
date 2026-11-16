@@ -21,6 +21,7 @@ data class PageEntry(val scene: PageScene, val depth: Int,
             Destination.PersonalCards -> "personal-cards"
             Destination.PersonalInformationEditor -> "personal-information-editor"
             Destination.ContactFavorites -> "contact-favorites"
+            is Destination.ContactFavoriteDetail -> "contact-favorites/" + destination.id
             Destination.Fonts -> "fonts"
             is Destination.SettingsDetail -> "settings/" + destination.category.name
             Destination.Plugins -> "plugins"

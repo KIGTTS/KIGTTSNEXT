@@ -6,7 +6,11 @@ internal fun faceWebTiles(person: PublicIdentityProfile, path: String, media: Li
     val tags = person.tags.joinToString("") { "<span>${faceHtml(it)}</span>" }
     val placements = packProfileTiles(person.tiles)
     val rowCount = placements.maxOfOrNull { it.row + it.tile.rows } ?: 0
-    val rows = (0 until rowCount).joinToString(" ") { row -> if (placements.any { it.row == row && it.tile.kind == ProfileTileKind.TITLE }) "36px" else "var(--tile-unit)" }
+    val rows = (0 until rowCount).joinToString(" ") { row -> when (placements.firstOrNull { it.row == row && it.tile.kind.isSectionRow }?.tile?.kind) {
+        ProfileTileKind.TITLE -> "36px"
+        ProfileTileKind.DIVIDER -> "calc(var(--tile-unit) / 2)"
+        else -> "var(--tile-unit)"
+    } }
     val tiles = placements.mapIndexed { index, (tile, column, row) ->
         val style = "grid-column:${column + 1}/span ${tile.columns};grid-row:${row + 1}/span ${tile.rows}" +
             (if (tile.isTitleOnlyText) ";--tile-title-lines:${tile.rows * 2}" else "")
@@ -25,6 +29,7 @@ internal fun faceWebTiles(person: PublicIdentityProfile, path: String, media: Li
             ProfileTileKind.CONTACT -> "$tileIcon<strong>$label</strong><small>${faceHtml(link?.value ?: "联系方式已移除")}</small>"
             ProfileTileKind.LINK -> "$tileIcon<strong>$label</strong><span>${faceHtml(tile.text)}</span>"
             ProfileTileKind.TITLE -> "<strong>$label</strong>"
+            ProfileTileKind.DIVIDER -> profileDividerHtml(tile.title, tile.dividerStyle)
             ProfileTileKind.QR -> faceTileQr(tile)
             else -> if (tile.isTitleOnlyText) "<strong>$label</strong>" else "<strong>$label</strong><span>${faceHtml(tile.text)}</span>"
         }
@@ -38,7 +43,7 @@ internal fun faceWebTiles(person: PublicIdentityProfile, path: String, media: Li
             tile.kind == ProfileTileKind.CONTACT && link != null -> "<button class=\"profile-tile$compact\"$accessible style=\"$style\" data-contact=\"$contactId\">$content</button>"
             tile.kind == ProfileTileKind.LINK && faceContactUrl(ContactLink("链接", tile.text))?.startsWith("http") == true ->
                 "<a class=\"profile-tile$compact\"$accessible style=\"$style\" href=\"${faceHtml(tile.text)}\" target=\"_blank\" rel=\"noopener noreferrer\">$content</a>"
-            else -> "<section class=\"profile-tile$compact${if (tile.kind == ProfileTileKind.TITLE) " tile-title" else ""}${if (tile.kind == ProfileTileKind.IMAGE) " tile-image" else ""}\"$accessible style=\"$style\">$content</section>"
+            else -> "<section class=\"profile-tile$compact${if (tile.kind.isSectionRow) " tile-title" else ""}${if (tile.kind == ProfileTileKind.IMAGE) " tile-image" else ""}\"$accessible style=\"$style\">$content</section>"
         }
         markup + if (tile.kind == ProfileTileKind.CONTACT && tile.social != null && link != null) faceContactDialog(link, contactId) else ""
     }.joinToString("")

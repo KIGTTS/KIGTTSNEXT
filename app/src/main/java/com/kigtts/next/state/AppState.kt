@@ -12,6 +12,7 @@ sealed interface Destination {
     data object PersonalCards : Destination
     data object PersonalInformationEditor : Destination
     data object ContactFavorites : Destination
+    data class ContactFavoriteDetail(val id: String) : Destination
     data object Fonts : Destination
     data class SettingsDetail(val category: SettingsCategory) : Destination
     data object Plugins : Destination

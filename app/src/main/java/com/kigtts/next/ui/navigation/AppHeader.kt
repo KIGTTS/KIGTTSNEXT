@@ -31,6 +31,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
         Destination.PersonalCards -> "个人信息"
         Destination.PersonalInformationEditor -> "个人信息"
         Destination.ContactFavorites -> "扩列收藏夹"
+        is Destination.ContactFavoriteDetail -> "名片详情"
         Destination.Fonts -> "字体"
         is Destination.SettingsDetail -> destination.category.title
         Destination.Plugins -> "插件管理"

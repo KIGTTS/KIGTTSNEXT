@@ -26,7 +26,7 @@ internal object ProfileArchive {
 
     fun write(identity: IdentityCard, stickers: StickerRepository, directory: File): File {
         directory.mkdirs()
-        val cover = exportIdentityCard(identity, stickers, directory)
+        val cover = exportIdentityCard(identity, stickers, directory, includeContactButtons = false)
         val images = identity.tiles.take(24).mapIndexedNotNull { index, tile ->
             if (tile.kind != ProfileTileKind.IMAGE) return@mapIndexedNotNull null
             val source = profileImageFile(stickers, tile.image) ?: return@mapIndexedNotNull null
@@ -38,7 +38,7 @@ internal object ProfileArchive {
         val profile = PublicIdentityProfile.from(identity.publicJson()).let {
             it.copy(avatar = identity.avatar?.let(stickers::imageFile)?.let(::faceAvatarData),
                 tiles = it.tiles.map { tile -> tile.copy(image = "") })
-        }.json().put("identityId", identity.id)
+        }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
         val index = JSONObject()
         identity.tiles.take(24).forEachIndexed { i, tile -> images[i]?.let { index.put(it.name, tile.id) } }
         val metadata = JSONObject().put("profile", profile).put("images", index).toString().toByteArray(Charsets.UTF_8)

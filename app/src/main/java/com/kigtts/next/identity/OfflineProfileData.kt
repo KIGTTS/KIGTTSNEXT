@@ -36,14 +36,16 @@ internal object OfflineProfileData {
             .map { it.copyStrings(contactKeys) }))
         typed.put("tiles", JSONArray(source.optJSONArray("tiles").objects(24).mapNotNull { item ->
             if (ProfileTileKind.entries.none { it.name == item.opt("kind") }) return@mapNotNull null
-            item.copyStrings(setOf("id", "kind", "title", "text", "contact", "qrStyle")).also { tile ->
-                listOf("columns", "rows").forEach { key -> (item.opt(key) as? Int)?.let { tile.put(key, it) } }
+            item.copyStrings(setOf("id", "kind", "title", "text", "contact", "qrStyle", "dividerStyle")).also { tile ->
+                listOf("columns", "rows", "columnHint", "rowHint").forEach { key -> (item.opt(key) as? Int)?.let { tile.put(key, it) } }
+                (item.opt("qrKeepLight") as? Boolean)?.let { tile.put("qrKeepLight", it) }
                 item.optJSONObject("social")?.let { tile.put("social", it.copyStrings(contactKeys)) }
             }
         }))
         return PublicIdentityProfile.from(typed).json().apply {
             val identity = typed.optString("identityId").take(128)
             if (identity.isNotBlank()) put("identityId", identity)
+            (source.opt("coverButtonsBaked") as? Boolean)?.let { put("coverButtonsBaked", it) }
         }
     }
 

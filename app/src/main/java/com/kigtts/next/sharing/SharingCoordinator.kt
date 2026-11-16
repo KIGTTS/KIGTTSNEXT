@@ -14,6 +14,7 @@ import java.util.UUID
 internal class SharingCoordinator(private val model: AppViewModel, private val scope: CoroutineScope) {
     val deviceKey = UUID.randomUUID().toString().replace("-", "")
     private val context get() = model.getApplication<Application>()
+    private val sharingPreferences = context.getSharedPreferences("sharing", 0)
     private val receivePreferences = context.getSharedPreferences("face-receiving", 0)
     private val mutableReceiving = kotlinx.coroutines.flow.MutableStateFlow(CLOUD_SHARING_ENABLED && receivePreferences.getBoolean("enabled", false))
     val receiving = mutableReceiving.asStateFlow()
@@ -34,7 +35,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         }
     }
     fun openReceiving() = setReceiving(true)
-    val setup: CloudSharingSetup = CloudSharingSetup(context.getSharedPreferences("sharing", 0), scope,
+    val setup: CloudSharingSetup = CloudSharingSetup(sharingPreferences, scope,
         ready = { provider("sharing/open-v1") != null },
         installed = { model.pluginManager.status.any { it.installed.manifest.id == CLOUD_SHARING_ID } },
         install = { progress ->
@@ -193,6 +194,13 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     }
     private val mutableProfileFormat = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     val profileFormat = mutableProfileFormat.asStateFlow()
+    private val mutableEmbedLongImage = kotlinx.coroutines.flow.MutableStateFlow(sharingPreferences.getBoolean("long_image_embed_source", false))
+    val embedLongImage = mutableEmbedLongImage.asStateFlow()
+
+    fun setEmbedLongImage(enabled: Boolean) {
+        mutableEmbedLongImage.value = enabled
+        sharingPreferences.edit().putBoolean("long_image_embed_source", enabled).apply()
+    }
 
     fun shareMedia(ids: List<String>) {
         val personal = model.identities.current?.takeIf { ids.singleOrNull() == it.designId }
@@ -201,10 +209,10 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     }
 
     fun dismissProfileFormat() { mutableProfileFormat.value = null }
-    fun shareProfile(format: ProfileShareFormat, embedSource: Boolean = false) {
+    fun shareProfile(format: ProfileShareFormat) {
         val id = mutableProfileFormat.value ?: return
         dismissProfileFormat()
-        if (model.identities.current?.designId == id) shareMedia(listOf(id), format, embedSource, context::startActivity)
+        if (model.identities.current?.designId == id) shareMedia(listOf(id), format, embedLongImage.value, context::startActivity)
     }
 
     internal fun shareMedia(ids: List<String>, format: ProfileShareFormat = ProfileShareFormat.PDF, embedSource: Boolean = false,

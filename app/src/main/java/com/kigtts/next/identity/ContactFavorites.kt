@@ -45,6 +45,7 @@ internal class ContactFavorites private constructor(context: Context) {
         } ?: tile }
         snapshot.put("tiles", profileTileJson(tiles))
         profile.optString("identityId").take(128).takeIf(String::isNotBlank)?.let { snapshot.put("identityId", it) }
+        (profile.opt("coverButtonsBaked") as? Boolean)?.let { snapshot.put("coverButtonsBaked", it) }
         val now = System.currentTimeMillis()
         if (cover?.isFile == true) {
             require(cover.length() in 1..20_000_000) { "名片图片过大" }

@@ -38,6 +38,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
 
     fun accept(intent: Intent?) {
         val uri = localUri(intent) ?: return
+        model.sharing.dismissProfileFormat()
         acceptUri(uri, voiceOnly = false, mime = intent?.type)
     }
 
@@ -102,7 +103,10 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                 if (prepared == null) {
                     cleanup()
                     mutable.value = null
-                    if (model.state.value.destination != Destination.ContactFavorites) model.navigate(Destination.ContactFavorites)
+                    val navigation = model.state.value
+                    if (navigation.destination is Destination.ContactFavoriteDetail &&
+                        navigation.navigationStack.lastOrNull() == Destination.ContactFavorites) model.navigateBack()
+                    else if (navigation.destination != Destination.ContactFavorites) model.navigate(Destination.ContactFavorites)
                     model.message("已添加到扩列收藏夹")
                     return@launch
                 }
