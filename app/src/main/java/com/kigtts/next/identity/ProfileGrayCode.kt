@@ -31,10 +31,8 @@ internal object ProfileGrayCode {
     private val magic = "KIGCARD1".toByteArray(Charsets.US_ASCII)
     private val ruler = intArrayOf(0, 3, 1, 3, 0, 2, 2, 1, 3, 0, 1, 2, 0, 3, 2, 1)
 
-    internal class Code(private val rows: List<IntArray>, private val crc: Int) {
+    internal class Code(private val rows: List<IntArray>) {
         val height = rows.size * CELL
-        val identifier = "KG-" + crc.toUInt().toString(16).padStart(8, '0').uppercase()
-        fun signatureLevel(index: Int): Int = crc ushr ((15 - index) * 2) and 3
 
         fun draw(canvas: Canvas, bottom: Int, accent: Int) {
             val paint = Paint()
@@ -74,7 +72,7 @@ internal object ProfileGrayCode {
                 val block = coded(data, start, BLOCK_DATA, BLOCK_TOTAL)
                 repeat(DATA_ROWS) { add(block.cells(it * ROW_BYTES)) }
             }
-        }, crc)
+        })
     }
 
     private fun IntArray.cells(start: Int) = IntArray(COLUMNS) { column ->

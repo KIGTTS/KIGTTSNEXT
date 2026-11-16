@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.RectF
 import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.theme.ThemeSettings
+import com.kigtts.next.theme.ThemeSettingsStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -53,10 +55,12 @@ internal object ProfileLongImage {
         return links.values.toList()
     }
 
-    fun write(identity: IdentityCard, stickers: StickerRepository, directory: File, embedSource: Boolean = false): File {
+    fun write(identity: IdentityCard, stickers: StickerRepository, directory: File, embedSource: Boolean = false,
+        appearance: ThemeSettings = ThemeSettingsStore(stickers.context).load()): File {
         directory.mkdirs()
-        val style = ProfileLongStyle(stickers.context)
-        val file = exportIdentityCard(identity, stickers, directory, includeContactButtons = false, typeface = style::face)
+        val style = ProfileLongStyle(stickers.context, appearance)
+        val file = exportIdentityCard(identity, stickers, directory, includeContactButtons = false,
+            typeface = style::face, textScale = style.fontScale)
         val banner = checkNotNull(BitmapFactory.decodeFile(file.path)) { "无法读取名片封面" }
         val paint = style.paint
         val radius = style.radius
@@ -105,8 +109,8 @@ internal object ProfileLongImage {
                 style.text(c, body, x.toFloat(), (textTop + title.height + 8).toFloat())
             }
         }
-        val signatureTop = sections.sumOf { it.first } + PAD + 16
-        val height = signatureTop + PROFILE_SIGNATURE_HEIGHT + restoreCode.height
+        val wordmarkTop = sections.sumOf { it.first } + PAD + 16
+        val height = wordmarkTop + PROFILE_WORDMARK_HEIGHT + restoreCode.height
         try {
             require(height in 1..21_000) { "名片内容过多，无法生成长图" }
             val image = Bitmap.createBitmap(WIDTH, height, Bitmap.Config.ARGB_8888)
@@ -116,7 +120,7 @@ internal object ProfileLongImage {
                 var y = PAD
                 sections.forEach { (height, draw) -> draw(canvas, y); y += height }
                 val accent = if (identity.gradient) identity.gradientColor.toInt() else style.primary
-                drawProfileCodeSignature(canvas, signatureTop, restoreCode, style)
+                drawProfileWordmark(canvas, wordmarkTop, style)
                 restoreCode.draw(canvas, height, accent)
                 val png = File(directory, "profile-long.png").also { output ->
                     output.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }

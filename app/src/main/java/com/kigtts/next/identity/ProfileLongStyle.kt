@@ -13,8 +13,7 @@ import com.kigtts.next.theme.*
 import kotlin.math.max
 
 /** Snapshot the native theme and typeface at export time. */
-internal class ProfileLongStyle(val context: Context) {
-    private val settings = ThemeSettingsStore(context).load()
+internal class ProfileLongStyle(val context: Context, private val settings: ThemeSettings) {
     private val theme = faceWebTheme(WebThemeState.current)
     val dark get() = theme.dark
     private fun role(name: String, fallback: Int) = theme.colors[name]?.let { runCatching { Color.parseColor(it) }.getOrNull() } ?: fallback
@@ -29,22 +28,16 @@ internal class ProfileLongStyle(val context: Context) {
     val radius = (settings.cornerRadius + 8).coerceAtMost(24f) * 2f
     val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val background = AppearanceBackgrounds.load(context, settings.background, BackgroundBlur.CARD)
-    private val fontAsset = AppearanceAssets(context).file(settings.font)
-    private val axis = fontAsset?.let(::readFontWeightAxis)
+    private val font = AppearanceAssets(context).file(settings.font)?.let { AppearanceTypeface(it, settings.fontWeight) }
     private val faces = mutableMapOf<Int, Typeface>()
-    private val fontScale by lazy { if (fontAsset == null) 1f else AppearanceAssets.heightScale(face(400)) }
+    val fontScale by lazy { runCatching { font?.heightScale }.getOrNull() ?: 1f }
     private val systemTextScale = context.resources.displayMetrics.let {
         (TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16f, it) / (16f * it.density)).coerceIn(.8f, 1.6f)
     }
 
     fun face(weight: Int): Typeface = faces.getOrPut(weight) {
         val fallback = if (weight >= 500) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
-        fontAsset?.let { file ->
-            runCatching {
-                if (axis != null) Typeface.Builder(file).setFontVariationSettings("'wght' ${axis.forStyle(settings.fontWeight, weight)}").build()
-                else Typeface.createFromFile(file)
-            }.getOrNull()
-        } ?: fallback
+        runCatching { font?.forWeight(weight) }.getOrNull() ?: fallback
     }
 
     fun layout(text: String, size: Float, color: Int, width: Int, lines: Int, weight: Int = 400,

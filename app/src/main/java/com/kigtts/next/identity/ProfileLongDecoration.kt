@@ -2,6 +2,7 @@ package com.kigtts.next.identity
 
 import android.graphics.*
 import android.text.StaticLayout
+import com.kigtts.next.R
 import kotlin.math.ceil
 
 internal class ProfileLongTags(tags: List<String>, private val style: ProfileLongStyle, width: Int) {
@@ -29,37 +30,16 @@ internal class ProfileLongTags(tags: List<String>, private val style: ProfileLon
     }
 }
 
-internal const val PROFILE_SIGNATURE_HEIGHT = 64
+internal const val PROFILE_WORDMARK_HEIGHT = 64
 
-/** The wordmark and fingerprint sit above the full-bleed data strip. */
-internal fun drawProfileCodeSignature(canvas: Canvas, top: Int, code: ProfileGrayCode.Code, style: ProfileLongStyle) {
-    val centerY = top + PROFILE_SIGNATURE_HEIGHT / 2f
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG).apply {
-        color = style.muted
-        textSize = 21f
-        typeface = Typeface.MONOSPACE
-    }
-    val logoWidth = 128
-    val gap = 20
-    val barCount = 16
-    val barStep = 7
-    val width = logoWidth + gap * 2 + barCount * barStep + paint.measureText(code.identifier)
-    val left = ((ProfileGrayCode.WIDTH - width) / 2).toInt()
-    style.context.getDrawable(com.kigtts.next.R.drawable.logo_horizontal)?.mutate()?.let { logo ->
-        val logoHeight = logoWidth / 4
-        val y = centerY.toInt() - logoHeight / 2
+internal fun drawProfileWordmark(canvas: Canvas, top: Int, style: ProfileLongStyle) {
+    style.context.getDrawable(R.drawable.logo_kigtts_wordmark)?.mutate()?.let { logo ->
+        val width = 152
+        val height = width * logo.intrinsicHeight / logo.intrinsicWidth
+        val x = (ProfileGrayCode.WIDTH - width) / 2
+        val y = top + (PROFILE_WORDMARK_HEIGHT - height) / 2
         logo.setTint(style.ink)
-        logo.setBounds(left, y, left + logoWidth, y + logoHeight)
+        logo.setBounds(x, y, x + width, y + height)
         logo.draw(canvas)
     }
-    val waveLeft = left + logoWidth + gap
-    paint.color = style.primary
-    repeat(barCount) { i ->
-        val x = waveLeft + i * barStep.toFloat()
-        val half = 4f + 3f * code.signatureLevel(i)
-        canvas.drawRoundRect(x, centerY - half, x + 4, centerY + half, 2f, 2f, paint)
-    }
-    paint.color = style.muted
-    val baseline = centerY - (paint.ascent() + paint.descent()) / 2
-    canvas.drawText(code.identifier, (waveLeft + barCount * barStep + gap).toFloat(), baseline, paint)
 }

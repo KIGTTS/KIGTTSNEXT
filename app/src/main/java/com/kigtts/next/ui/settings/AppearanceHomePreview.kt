@@ -45,7 +45,7 @@ import com.kigtts.next.theme.*
     // The host deliberately raises compact light controls to medium contrast. Share its animated roles.
     val controls = LocalCompactControlPalette.current ?: compactControlPalette(settings,
         dark = settings.mode.usesDark(isSystemInDarkTheme()), base = colors)
-    val logo = painterResource(R.drawable.logo_horizontal)
+    val logo = painterResource(R.drawable.logo_kigtts_wordmark)
     val readIcon = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeOff)
     val settingsIcon = rememberVectorPainter(Icons.Default.Settings)
     val radius = settings.cornerRadius * density

@@ -6,10 +6,13 @@ import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Canvas
 import android.graphics.Rect
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.ExternalFileType
 import com.kigtts.next.state.ExternalFileTypes
 import com.kigtts.next.testAppModel
+import com.kigtts.next.theme.AppearanceAssets
+import com.kigtts.next.theme.ThemeSettings
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Rule
@@ -153,6 +156,32 @@ class OfflineProfileTest {
                 })
             } finally { bitmap.recycle() }
         }
+    }
+
+    @Test fun longImageUsesActiveVariableFontForBothCoverAndTiles() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        val font = File(temporary.root, "export-font.ttf")
+        requireNotNull(javaClass.getResourceAsStream("/fixtures/variable-font/fixture.ttf")).use { input ->
+            font.outputStream().use(input::copyTo)
+        }
+        val key = AppearanceAssets(app).importFont(Uri.fromFile(font))
+        val person = model.identities.create().copy(nickname = "KIGTTS", bio = "Ag KIGTTS",
+            tiles = listOf(ProfileTile(kind = ProfileTileKind.TEXT, title = "Ag KIGTTS", text = "KIGTTS")))
+        fun export(weight: Int) = ProfileLongImage.write(person, model.stickers, temporary.newFolder("weight-$weight"),
+            appearance = ThemeSettings(font = key, fontWeight = weight))
+        val light = BitmapFactory.decodeFile(export(200).path)
+        val heavyFile = export(700)
+        val heavy = BitmapFactory.decodeFile(heavyFile.path)
+        try {
+            fun pixels(bitmap: Bitmap, top: Int, rows: Int) = IntArray(bitmap.width * rows).also {
+                bitmap.getPixels(it, 0, bitmap.width, 0, top, bitmap.width, rows)
+            }
+            // Export geometry: 16:9 cover at y=32, followed by the first tile at y=488.
+            assertFalse("Cover did not use the selected weight", pixels(light, 300, 145).contentEquals(pixels(heavy, 300, 145)))
+            assertFalse("Tile did not use the selected weight", pixels(light, 488, 150).contentEquals(pixels(heavy, 488, 150)))
+            heavyFile.copyTo(File(File("build/previews").apply { mkdirs() }, "profile-long-wordmark.png"), overwrite = true)
+        } finally { light.recycle(); heavy.recycle() }
     }
 }
 

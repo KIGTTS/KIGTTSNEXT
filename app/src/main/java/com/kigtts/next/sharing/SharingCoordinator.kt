@@ -222,10 +222,12 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         try {
             if (personal != null) {
                 if (format != ProfileShareFormat.PDF) {
+                    val appearance = model.state.value.theme
                     val file = withContext(Dispatchers.IO) {
                         when (format) {
                             ProfileShareFormat.MHTML -> com.kigtts.next.identity.ProfileArchive.write(personal, model.stickers, root)
-                            ProfileShareFormat.LONG_IMAGE -> com.kigtts.next.identity.ProfileLongImage.write(personal, model.stickers, root, embedSource)
+                            ProfileShareFormat.LONG_IMAGE -> com.kigtts.next.identity.ProfileLongImage.write(
+                                personal, model.stickers, root, embedSource, appearance)
                             ProfileShareFormat.PDF -> error("意外的分享格式")
                         }
                     }

@@ -29,6 +29,11 @@ class AppearancePreviewUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     @Test fun allFourCornersUseHostControlPaletteAndBottomTabsRemainVisible() {
         val mode = mutableStateOf(ThemeMode.LIGHT)
+        // This is a settled-color screenshot test. Warm the asynchronous palette lookup first.
+        val defaults = ThemeSettings()
+        listOf(false, true).forEach { dark ->
+            ThemePalettes.resolve(ThemePaletteKey(defaults.effectiveSeed, defaults.contrast, defaults.deeperDark, dark, null))
+        }
         val geometry = HomePreviewGeometry().apply {
             update("viewport", Rect(0f, 0f, 1179f, 2556f))
             update("subtitle", Rect(36f, 192f, 1143f, 1920f))
@@ -42,6 +47,7 @@ class AppearancePreviewUiTest {
         }
         listOf(ThemeMode.LIGHT, ThemeMode.DARK).forEach { theme ->
             compose.runOnIdle { mode.value = theme }
+            compose.mainClock.advanceTimeBy(500)
             compose.waitForIdle()
             val path = "build/previews/appearance-control-" + theme.name.lowercase() + ".png"
             compose.onNodeWithTag("appearance-home-wireframe").captureRoboImage(path)
