@@ -4,7 +4,7 @@ import com.kigtts.next.state.*
 
 /** Native option paths. Plugin entrances are merged from their live contributions. */
 internal val nativeSettingsSearchEntries = listOf(
-    SettingsSearchResult("语言与文案", "设置 / 外观与交互 / 语言与文案", Destination.SettingsDetail(SettingsCategory.LANGUAGE)),
+    SettingsSearchResult("界面语言", "设置 / 外观 / 界面语言", Destination.SettingsDetail(SettingsCategory.LANGUAGE), alias = "语言与文案"),
     SettingsSearchResult("版本", "设置 / 关于 / 版本", Destination.SettingsDetail(SettingsCategory.ABOUT)),
     SettingsSearchResult("项目主页", "设置 / 关于 / 帮助与反馈 / 项目主页", Destination.SettingsDetail(SettingsCategory.ABOUT)),
     SettingsSearchResult("反馈问题", "设置 / 关于 / 帮助与反馈 / 反馈问题", Destination.SettingsDetail(SettingsCategory.ABOUT)),
@@ -63,6 +63,18 @@ internal val nativeSettingsSearchEntries = listOf(
 )
 
 internal val localizedSearchTitles = mapOf(
+    "背景与字体" to "appearance.background_fonts",
+    "背景图片" to "appearance.background_image",
+    "背景遮罩" to "appearance.background_dim",
+    "在其它页面显示背景" to "appearance.other_pages",
+    "显示与形状" to "appearance.display_shapes",
+    "对比度" to "appearance.contrast",
+    "圆角大小" to "appearance.corners",
+    "按键震动反馈" to "feedback.haptic",
+    "快捷文本" to "feedback.quick_phrases",
+    "长按快速排序" to "feedback.quick_sort",
+    "返回操作" to "feedback.back_action",
+    "二次返回退出" to "feedback.double_back",
     "更暗的深色模式" to "appearance.dark",
     "减弱字幕动效" to "appearance.less_motion",
     "展示时换行动效" to "appearance.reflow",

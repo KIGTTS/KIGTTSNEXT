@@ -26,12 +26,15 @@ def element(parent, tag, **attributes):
 
 
 class Lettering:
-    def __init__(self, folder):
+    def __init__(self, folder, hangul=None):
         self.fonts = [TTFont(folder / name) for name in ("google.ttf", "han.ttf")]
+        if hangul:
+            self.fonts.append(TTFont(hangul))
         self.maps = [font.getBestCmap() for font in self.fonts]
-        self.glyphs = [font.getGlyphSet(location={"wght": 600}) for font in self.fonts]
+        self.glyphs = {weight: [font.getGlyphSet(location={"wght": weight}) for font in self.fonts]
+                       for weight in (500, 700)}
 
-    def text(self, parent, value, x, y, size, fill, max_width=None):
+    def text(self, parent, value, x, y, size, fill, max_width=None, weight=500):
         runs = []
         advance = 0
         for char in value:
@@ -39,9 +42,10 @@ class Lettering:
             if index is None:
                 raise ValueError(f"No glyph for {char!r}")
             name = self.maps[index][ord(char)]
-            glyph = self.glyphs[index][name]
+            glyphs = self.glyphs[weight][index]
+            glyph = glyphs[name]
             scale = size / self.fonts[index]["head"].unitsPerEm
-            pen = SVGPathPen(self.glyphs[index])
+            pen = SVGPathPen(glyphs)
             glyph.draw(pen)
             runs.append((pen.getCommands(), advance, scale))
             advance += glyph.width * scale
@@ -72,7 +76,7 @@ def bloom(cx, cy, radius, petals=12, phase=0):
 def cover(package, design, lettering, symbols):
     colors = {"mint": "#CAEDE8", "sky": "#D4E7F7", "peach": "#F1DDCA", "lilac": "#E5DDF5", "lime": "#E0EBBC"}
     accent = colors[design["accent"]]
-    svg = ET.Element(f"{{{NS}}}svg", {"viewBox": "0 0 1600 800", "role": "img"})
+    svg = ET.Element(f"{{{NS}}}svg", {"viewBox": "0 0 900 1600", "role": "img"})
     element(svg, "title").text = package["name"]
     element(svg, "desc").text = design["tagline"]
     defs = element(svg, "defs")
@@ -82,30 +86,30 @@ def cover(package, design, lettering, symbols):
     flower = element(defs, "linearGradient", id="petals", x1="0", y1="0", x2="1", y2="1")
     element(flower, "stop", offset="0", stop_color="#D1F1F1")
     element(flower, "stop", offset="1", stop_color="#A9DDDE")
-    element(svg, "rect", width=1600, height=800, fill="url(#paper)")
-    element(svg, "path", d=bloom(1510, 110, 205, 8, .12), fill=accent)
-    element(svg, "path", d=bloom(1050, 725, 135, 8, .2), fill=accent)
-    element(svg, "path", d=bloom(1128, 128, 70, 8, .1), fill="#C9E9E7")
-    element(svg, "path", d=bloom(1325, 470, 277, 12, .13), fill="url(#petals)")
-    element(svg, "path", d=bloom(1325, 470, 219, 12, .24), fill="#038387")
-    element(svg, "path", d=bloom(969, 354, 36, 6, .3), fill="#83CDCE")
+    element(svg, "rect", width=900, height=1600, fill="url(#paper)")
+    element(svg, "path", d=bloom(865, 167, 180, 8, .12), fill=accent)
+    element(svg, "path", d=bloom(166, 1251, 145, 8, .20), fill=accent)
+    element(svg, "path", d=bloom(741, 1418, 72, 8, .10), fill="#C9E9E7")
+    element(svg, "path", d=bloom(533, 1049, 274, 12, .13), fill="url(#petals)")
+    element(svg, "path", d=bloom(533, 1049, 212, 12, .24), fill="#038387")
+    element(svg, "path", d=bloom(219, 900, 34, 6, .3), fill="#83CDCE")
     icon = package["icon"]["symbol"]
     icon = {"robot_2": "smart_toy", "gesture": "gesture"}.get(icon, icon)
     source = ET.parse(symbols / (icon + ".svg")).getroot()
-    nested = element(svg, "svg", x=1227, y=372, width=196, height=196, viewBox=source.attrib["viewBox"], fill="#FFFFFF")
+    nested = element(svg, "svg", x=435, y=951, width=196, height=196, viewBox=source.attrib["viewBox"], fill="#FFFFFF")
     for node in source:
         if node.tag.rsplit('}', 1)[-1] in ("path", "g", "circle", "rect", "polygon"):
             nested.append(copy.deepcopy(node))
     logo = ET.parse(ROOT / "ARTS/LOGOBlack.svg").getroot()
-    logo.attrib.update({"x": "94", "y": "76", "width": "246", "height": "61.5"})
+    logo.attrib.update({"x": "76", "y": "88", "width": "226", "height": "56.5"})
     svg.append(logo)
-    lettering.text(svg, "PLUGINS", 370, 119, 23, "#45686A")
-    top = 332 if len(design["title"]) == 1 else 286
+    lettering.text(svg, "PLUGINS", 79, 205, 25, "#45686A", weight=700)
+    top = 544 if len(design["title"]) == 1 else 472
     for i, line in enumerate(design["title"]):
-        lettering.text(svg, line, 94, top + i * 112, 90, "#173F40", 845)
-    lettering.text(svg, design["tagline"], 97, 500 if len(design["title"]) == 1 else 545, 32, "#476667", 830)
-    element(svg, "path", d="M 98 650 H 224", stroke="#038387", stroke_width=8, stroke_linecap="round")
-    lettering.text(svg, package["category"], 98, 716, 25, "#527273")
+        lettering.text(svg, line, 76, top + i * 114, 100, "#173F40", 748, weight=700)
+    lettering.text(svg, design["tagline"], 79, 667 if len(design["title"]) == 1 else 702, 36, "#476667", 740)
+    element(svg, "path", d="M 79 1406 H 201", stroke="#038387", stroke_width=8, stroke_linecap="round")
+    lettering.text(svg, package["category"], 79, 1476, 30, "#527273", 738, weight=700)
     for node in svg.iter():
         # Export presentation attributes, since the host deliberately rejects embedded CSS.
         for declaration in node.attrib.pop("style", "").split(";"):

@@ -1,5 +1,6 @@
 package com.kigtts.next.sharing
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -31,15 +32,16 @@ import com.kigtts.next.ui.settings.groupedSettingShape
 @Composable internal fun ProfileShareFormatDialog(sharing: SharingCoordinator) {
     val includeSource by sharing.embedLongImage.collectAsStateWithLifecycle()
     MotionAlertDialog(onDismissRequest = sharing::dismissProfileFormat,
-        title = { Text("分享个人主页") },
+        title = { Text(uiText("profile.share")) },
         text = { ProfileShareFormatTiles(includeSource, sharing::setEmbedLongImage, sharing::shareProfile) },
-        confirmButton = { TextButton(dialogFeedbackClick(sharing::dismissProfileFormat)) { Text("取消") } })
+        confirmButton = { TextButton(dialogFeedbackClick(sharing::dismissProfileFormat)) { Text(uiText("action.cancel")) } })
 }
 
 @Composable
 internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (Boolean) -> Unit,
     share: (ProfileShareFormat) -> Unit) {
     val colors = MaterialTheme.colorScheme
+    val embedLabel = uiText("profile.share.embed")
     val outer = MaterialTheme.shapes.medium
     val inner = CornerSize(4.dp)
     val bottomStart = RoundedCornerShape(inner, inner, inner, outer.bottomStart)
@@ -55,8 +57,8 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Image, contentDescription = null, Modifier.size(24.dp))
                         Column(Modifier.weight(1f)) {
-                            Text("分享长图", style = MaterialTheme.typography.titleMedium)
-                            Text("链接二维码附在图底", style = MaterialTheme.typography.bodySmall)
+                            Text(uiText("profile.share.long"), style = MaterialTheme.typography.titleMedium)
+                            Text(uiText("profile.share.long.hint"), style = MaterialTheme.typography.bodySmall)
                         }
                         Icon(Icons.Filled.Share, contentDescription = null, Modifier.size(20.dp))
                     }
@@ -64,11 +66,11 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
                 HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = colors.onPrimaryContainer.copy(alpha = .14f))
                 Row(Modifier.fillMaxWidth().testTag("profile-embed-source")
                     .toggleable(includeSource, role = Role.Switch, onValueChange = feedbackChange(setIncludeSource))
-                    .semantics { contentDescription = "嵌入源数据" }.padding(16.dp),
+                    .semantics { contentDescription = embedLabel }.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("嵌入源数据", style = MaterialTheme.typography.labelLarge)
-                        Text("用于还原图片磁贴；按图片发送时，压缩可能丢失源数据",
+                        Text(embedLabel, style = MaterialTheme.typography.labelLarge)
+                        Text(uiText("profile.share.embed.hint"),
                             style = MaterialTheme.typography.bodySmall)
                     }
                     Switch(includeSource, onCheckedChange = null)
@@ -76,9 +78,9 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
             }
         }
         Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            ShareFormatTile("PDF", "适合保存和打印", Icons.Filled.PictureAsPdf, bottomStart,
+            ShareFormatTile("PDF", uiText("profile.share.pdf.hint"), Icons.Filled.PictureAsPdf, bottomStart,
                 Modifier.weight(1f).fillMaxHeight().testTag("profile-share-pdf")) { share(ProfileShareFormat.PDF) }
-            ShareFormatTile("离线网页", "可点开图片和联系方式", Icons.Filled.Language, bottomEnd,
+            ShareFormatTile(uiText("profile.share.web"), uiText("profile.share.web.hint"), Icons.Filled.Language, bottomEnd,
                 Modifier.weight(1f).fillMaxHeight().testTag("profile-share-mhtml")) { share(ProfileShareFormat.MHTML) }
         }
     }

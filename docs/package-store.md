@@ -73,10 +73,13 @@ KPM（KIGTTS Package Manager）沿用目录schemaVersion=1，以下展示字段�
 | 源 `readme` / 包 `description` | 最多32000字符的Markdown，可含表格/列表/链接；HTML不执行 |
 | 源 `assets` | 素材ID → `{url, sha256, bytes, alt}`，HTTPS的PNG/JPEG/WebP或静态SVG |
 | 包 `thumbnails` | 最多8个已注册素材ID |
+| 源 / 包 `localizations` | 以 BCP 47 语言标签为键；源可覆盖名称、介绍和 README，包可覆盖名称、摘要、介绍或预览图列表 |
 
 每图最多8MiB，每源最多128图/64MiB。更新源时预取并校验素材，坏图不阻止有效目录；进入页面不自动连接介绍中的外部图片。Markdown图片以 `![说明](asset:icon-id)` 引用已注册资源。资源不改变包签名、发布者与权限。
 
-网页指引和独立GitHub Pages模板：[KIGTTS/KPM](https://github.com/KIGTTS/KPM)。网页从同一目录生成，提供浏览、Markdown介绍、二维码、复制源与 `kigtts://source/add?url=` 唤起。唤起后仍由软件确认，源链接不直接安装包。页面无需服务器或账户，不复制Poiyomi的代码或美术资源。
+网页指引和独立 GitHub Pages 模板：[KIGTTS/KPM](https://github.com/KIGTTS/KPM)。KPM 网页提供简体中文、English、한국어，默认跟随浏览器语言，可手动切换。每个字段按当前语言选择，没有翻译的内容沿用源的默认字段。语言图片仍须引用已登记并通过校验的素材。页面支持二维码、复制源与 `kigtts://source/add?url=` 唤起；打开后仍需在软件中确认。
+
+官方插件介绍图用 9:16 竖版。中文使用思源黑体 CN，拉丁字母使用 Google Sans，韩文使用 Hangul 字形补充，封面主标题为 700 字重。用 `tools/Build-LocalizedPluginCovers.py` 从 `distribution/plugin-artwork-locales.json` 和维护者字体目录生成；界面截图继续复用原图。
 
 `debug.ui` 已拆为独立可选包，主程序生产依赖不再包含UI调试类；配置位于它自己的插件目录。
 

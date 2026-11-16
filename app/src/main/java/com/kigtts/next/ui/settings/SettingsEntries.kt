@@ -17,7 +17,8 @@ internal data class SettingsCard(val id: String, val title: String, val subtitle
     val links: List<SettingsLink>)
 
 /** Formal entries share native cards. Old plugins retain their page entrances until rebuilt. */
-internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): List<SettingsCard> {
+internal fun settingsCards(registry: PluginRegistry?, context: PluginContext,
+    copy: (key: String, fallback: String) -> String = { _, fallback -> fallback }): List<SettingsCard> {
     val reserved = linkedMapOf(
         "sharing" to ("分享与收藏" to ""),
         "appearance" to ("外观与交互" to "调整显示效果和操作反馈"),
@@ -26,21 +27,25 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         "extensions" to ("功能与扩展" to ""),
         "about" to ("关于与反馈" to ""),
     )
-    fun category(id: String, category: SettingsCategory, icon: ImageVector) =
-        SettingsLink(id, category.title, category.summary, icon, Destination.SettingsDetail(category))
+    fun category(id: String, category: SettingsCategory, icon: ImageVector): SettingsLink {
+        val key = "settings.category.${category.name.lowercase()}"
+        return SettingsLink(id, copy(key, category.title),
+            category.summary.takeIf(String::isNotEmpty)?.let { copy("$key.summary", it) }.orEmpty(),
+            icon, Destination.SettingsDetail(category))
+    }
     val native = mapOf(
         "sharing" to buildList {
-            if (CLOUD_SHARING_ENABLED) add(SettingsLink("face-receive", "面对面接收", "", Icons.Default.MoveToInbox, Destination.Settings))
-            add(SettingsLink("contact-favorites", "扩列收藏夹", "", Icons.Default.Bookmarks, Destination.ContactFavorites))
+            if (CLOUD_SHARING_ENABLED) add(SettingsLink("face-receive", copy("settings.face_receive", "面对面接收"), "", Icons.Default.MoveToInbox, Destination.Settings))
+            add(SettingsLink("contact-favorites", copy("nav.favorites", "扩列收藏夹"), "", Icons.Default.Bookmarks, Destination.ContactFavorites))
         },
         "appearance" to listOf(category("appearance", SettingsCategory.APPEARANCE, Icons.Default.Palette),
-            category("ui-language", SettingsCategory.LANGUAGE, Icons.Default.Language),
             category("feedback", SettingsCategory.FEEDBACK, Icons.Default.Vibration),
             category("overlay", SettingsCategory.OVERLAY, Icons.Default.BubbleChart)),
         "content" to listOf(category("web", SettingsCategory.WEB, Icons.Default.Language),
             category("camera", SettingsCategory.CAMERA, Icons.Default.PhotoCamera),
             category("backup", SettingsCategory.BACKUP_RESTORE, Icons.Default.SettingsBackupRestore)),
-        "extensions" to listOf(SettingsLink("plugins", "插件管理", "管理插件", Icons.Default.Extension, Destination.Plugins),
+        "extensions" to listOf(SettingsLink("plugins", copy("nav.plugins", "插件管理"),
+            copy("settings.plugins.summary", "管理插件"), Icons.Default.Extension, Destination.Plugins),
             category("experimental", SettingsCategory.EXPERIMENTAL, Icons.Default.Science)),
         "about" to listOf(category("about", SettingsCategory.ABOUT, Icons.Default.Info)),
     )
@@ -64,7 +69,10 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext): L
         }
         val links = if (id in setOf("extensions", "about")) pluginLinks + native[id].orEmpty() else native[id].orEmpty() + pluginLinks
         if (links.isEmpty()) null else {
-            val heading = reserved[id] ?: (entries.first().entry.cardTitle.ifBlank { "扩展" } to "")
+            val heading = reserved[id]?.let { (title, summary) ->
+                copy("settings.section.$id", title) to summary.takeIf(String::isNotEmpty)
+                    ?.let { copy("settings.section.$id.summary", it) }.orEmpty()
+            } ?: (entries.first().entry.cardTitle.ifBlank { copy("settings.section.extension_default", "扩展") } to "")
             SettingsCard(id, heading.first, heading.second, links)
         }
     }

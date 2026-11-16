@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.reorder.*
 
 import androidx.compose.foundation.layout.*
@@ -57,7 +59,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                         Text(category, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false))
                         Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.Edit, "编辑分组", Modifier.size(16.dp))
+                        Icon(Icons.Default.Edit, uiText("quick.edit_group"), Modifier.size(16.dp))
                     }
                 }
                 ToolButton("新增快捷文本", Icons.Default.Add, addPhrase, Modifier.testTag("quick-edit-add"))
@@ -85,7 +87,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
         MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除这条快捷文本？") },
             text = { Text(phrase.text) },
             confirmButton = { TextButton(onClick = dialogFeedbackClick { model.quickTexts.remove(phrase.id); deleting = null },
-                modifier = Modifier.testTag("confirm-delete-phrase")) { Text("删除") } },
-            dismissButton = { TextButton(onClick = dialogFeedbackClick { deleting = null }, modifier = Modifier.testTag("cancel-delete-phrase")) { Text("取消") } })
+                modifier = Modifier.testTag("confirm-delete-phrase")) { Text(uiText("action.delete")) } },
+            dismissButton = { TextButton(onClick = dialogFeedbackClick { deleting = null }, modifier = Modifier.testTag("cancel-delete-phrase")) { Text(uiText("action.cancel")) } })
     }
 }

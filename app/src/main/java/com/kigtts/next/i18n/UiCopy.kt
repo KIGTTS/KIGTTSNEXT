@@ -9,10 +9,17 @@ import org.json.JSONObject
 
 internal enum class UiLanguage(val tag: String, val label: String) {
     STANDARD("zh-CN", "简体中文"),
-    CASUAL("zh-CN-x-casual", "简体中文（轻松版）");
+    CASUAL("zh-CN-x-casual", "简体中文（轻松版）"),
+    ENGLISH("en", "English"),
+    KOREAN("ko", "한국어");
 
     companion object {
-        fun fromTag(tag: String?) = entries.firstOrNull { it.tag == tag } ?: STANDARD
+        fun fromTag(tag: String?): UiLanguage {
+            val base = tag?.substringBefore('-')
+            return entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) }
+                ?: entries.firstOrNull { it.tag.equals(base, ignoreCase = true) }
+                ?: STANDARD
+        }
     }
 }
 

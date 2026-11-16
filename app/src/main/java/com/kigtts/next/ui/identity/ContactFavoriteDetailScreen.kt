@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -35,25 +36,26 @@ import kotlinx.coroutines.*
     }
     var removing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val removeFailed = uiText("profile.remove.failed")
     val details = entry?.takeIf { item != null && it.item.id == id }
     RegisterPageActions(if (details == null) emptyList() else listOf(
-        ToolbarAction("remove-contact-favorite", "移除收藏", Icons.Default.DeleteOutline) { removing = true }))
+        ToolbarAction("remove-contact-favorite", uiText("profile.remove"), Icons.Default.DeleteOutline) { removing = true }))
     SettingsLayout {
         if (details != null) Column(Modifier.fillMaxWidth().testTag("favorite-details/$id"),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             FavoriteCover(details)
             FaceProfileContent(details.profile, showHeader = details.item.cover == null, image = store::image)
-        } else EmptyContent(item == null, Icons.Default.ContactPage, "这张名片已移除")
+        } else EmptyContent(item == null, Icons.Default.ContactPage, uiText("profile.removed"))
     }
-    if (removing && details != null) MotionAlertDialog({ removing = false }, title = { Text("移除这张名片？") },
+    if (removing && details != null) MotionAlertDialog({ removing = false }, title = { Text(uiText("profile.remove.ask")) },
         confirmButton = { TextButton(dialogFeedbackClick { scope.launch {
             try {
                 withContext(Dispatchers.IO) { store.remove(id) }
                 if (model.state.value.destination == Destination.ContactFavoriteDetail(id)) model.navigateBack()
             } catch (cancel: CancellationException) { throw cancel
-            } catch (error: Exception) { model.message(error.message ?: "未能移除名片") }
+            } catch (error: Exception) { model.message(error.message ?: removeFailed) }
             finally { removing = false }
-        } }) { Text("移除") } }, dismissButton = { TextButton(dialogFeedbackClick { removing = false }) { Text("取消") } })
+        } }) { Text(uiText("action.remove")) } }, dismissButton = { TextButton(dialogFeedbackClick { removing = false }) { Text(uiText("action.cancel")) } })
 }
 
 @Composable private fun FavoriteCover(entry: IndexedFavorite) {

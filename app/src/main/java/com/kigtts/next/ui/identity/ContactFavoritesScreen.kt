@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -37,8 +38,8 @@ import kotlinx.coroutines.*
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { it?.let(model.externalFiles::profilePicked) }
     fun open(id: String) = model.navigate(Destination.ContactFavoriteDetail(id))
     RegisterPageActions(listOf(
-        ToolbarAction("search-contact-favorites", "搜索收藏夹", Icons.Default.Search) { searching = true },
-        ToolbarAction("import-contact-favorite", "导入离线名片", Icons.Default.FileOpen) { importer.launch(arrayOf("*/*")) }))
+        ToolbarAction("search-contact-favorites", uiText("profile.search_saved"), Icons.Default.Search) { searching = true },
+        ToolbarAction("import-contact-favorite", uiText("profile.import"), Icons.Default.FileOpen) { importer.launch(arrayOf("*/*")) }))
     if (searching) FavoriteSearch(filtered, entries.isNotEmpty() && indexed.isEmpty(), { searching = false }) {
         searching = false; open(it)
     }
@@ -67,8 +68,8 @@ import kotlinx.coroutines.*
                     }
                 }
             }
-            EmptyContent(entries.isEmpty(), Icons.Default.ContactPage, "还没有收藏的名片",
-                description = "打开 KIGTTS 导出的离线网页或长图，即可把名片添加到这里")
+            EmptyContent(entries.isEmpty(), Icons.Default.ContactPage, uiText("profile.empty"),
+                description = uiText("profile.empty.hint"))
         }
     }
 }

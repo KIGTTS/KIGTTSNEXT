@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -64,16 +65,16 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
                 tonalElevation = 6.dp, shadowElevation = 6.dp, modifier = Modifier.testTag("quick-text-context-menu")) {
                 Row(Modifier.padding(horizontal = 4.dp, vertical = 2.dp)) {
                     IconButton(enabled = target != null, onClick = feedbackClick { dismiss(); model.sharing.shareQuickText(selected.key, selected.group) }) {
-                        Icon(Icons.Default.Share, "分享", Modifier.size(22.dp))
+                        Icon(Icons.Default.Share, uiText("action.share"), Modifier.size(22.dp))
                     }
                     IconButton(enabled = target != null, onClick = feedbackClick {
                         dismiss()
                         if (selected.group) editGroup(selected.key)
                         else model.phrases.value.firstOrNull { it.id == selected.key }?.let { model.editPhraseDetails(it, it.category) }
-                    }) { Icon(Icons.Default.Edit, "编辑", Modifier.size(22.dp)) }
+                    }) { Icon(Icons.Default.Edit, uiText("action.edit"), Modifier.size(22.dp)) }
                     IconButton(enabled = target != null, onClick = feedbackClick { deleting = selected; dismiss() },
                         colors = IconButtonDefaults.iconButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                        Icon(Icons.Default.Delete, "删除", Modifier.size(22.dp))
+                        Icon(Icons.Default.Delete, uiText("action.delete"), Modifier.size(22.dp))
                     }
                 }
             }
@@ -89,7 +90,7 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
                     if (model.state.value.selectedCategory !in model.categories.value) model.category(model.categories.value.first())
                 } else model.quickTexts.remove(item.key)
                 deleting = null
-            }) { Text("删除") } }, dismissButton = { TextButton(onClick = { deleting = null }) { Text("取消") } })
+            }) { Text(uiText("action.delete")) } }, dismissButton = { TextButton(onClick = { deleting = null }) { Text(uiText("action.cancel")) } })
     }
 }
 

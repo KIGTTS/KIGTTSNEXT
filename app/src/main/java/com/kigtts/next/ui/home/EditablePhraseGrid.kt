@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.reorder.*
 
 import androidx.compose.foundation.gestures.scrollBy
@@ -78,7 +80,7 @@ fun EditablePhraseGrid(phrases: List<QuickPhrase>, model: AppViewModel, edit: (Q
             TextButton(onClick = feedbackClick(add), modifier = Modifier.height(QuickPhraseHeight).testTag("add-phrase"),
                 shapes = expressivePillShapes(), colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
                 Icon(Icons.Default.Add, null, Modifier.size(16.dp)); Spacer(Modifier.width(6.dp))
-                Text("添加快捷文本", style = MaterialTheme.typography.labelMedium)
+                Text(uiText("nav.add_phrase"), style = MaterialTheme.typography.labelMedium)
             }
         }
     }

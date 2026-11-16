@@ -17,10 +17,11 @@ import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.theme.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
+import com.kigtts.next.i18n.uiText
 
 /** The page background covers the full window; only its controls consume safe drawing insets. */
 @Composable
-fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String="返回上一页",largeBar:Boolean=true,
+fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String=uiText("nav.back"),largeBar:Boolean=true,
     actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,extendToBottom:Boolean=false,
     backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,contentScrollsHeader:Boolean=true,
     backgroundDecoration:(@Composable BoxScope.()->Unit)?=null,content:@Composable ()->Unit) {

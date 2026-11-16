@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.runtime.*
 import android.net.Uri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
     var opening by remember { mutableStateOf(false) }
     val request by model.cardUi.previewRequest.collectAsStateWithLifecycle()
     val active = LocalPageActive.current
+    val openError = uiText("album.open_image_failed")
     var requestedUri by remember { mutableStateOf<Uri?>(null) }
     LaunchedEffect(active, request) {
         val id = request.cardId ?: return@LaunchedEffect
@@ -31,11 +33,11 @@ import kotlinx.coroutines.launch
             opening = true
             try { model.navigate(Destination.CardEditor(model.cards.documents.open(uri))) }
             catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "无法打开这张图片") }
+            catch (error: Exception) { model.message(error.message ?: openError) }
             finally { opening = false }
         }
     }, onCamera = { model.cardCapture.open(systemCamera = false) }, message = model::message, requestedUri = requestedUri,
         requestConsumed = { requestedUri = null })
-    if (opening) MotionAlertDialog(onDismissRequest = {}, title = { Text("正在打开图片") },
+    if (opening) MotionAlertDialog(onDismissRequest = {}, title = { Text(uiText("album.opening_image")) },
         text = { CircularProgressIndicator() }, confirmButton = {})
 }

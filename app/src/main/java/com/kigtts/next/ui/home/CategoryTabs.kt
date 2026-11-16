@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.reorder.*
 
 import androidx.compose.foundation.gestures.scrollBy
@@ -100,7 +102,7 @@ fun CategoryTabs(state: AppState, categories: List<String>, model: AppViewModel,
             if (editing) item(key = "add-category") {
                 val source = remember { MutableInteractionSource() }
                 ElasticTab(false, addGroup, source, CornerNeighbors(start = categories.isNotEmpty()), false,
-                    Modifier.testTag("add-category"), icon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) }, label = { Text("添加分组") })
+                    Modifier.testTag("add-category"), icon = { Icon(Icons.Default.Add, null, Modifier.size(16.dp)) }, label = { Text(uiText("quick.add_group")) })
             }
         }
         SlotActions(UiSlot.TAB_END, model.registry, model::invoke, context = model.context(), revision = state.pluginRevision)

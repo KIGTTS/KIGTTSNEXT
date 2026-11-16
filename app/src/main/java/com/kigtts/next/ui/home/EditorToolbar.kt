@@ -42,7 +42,7 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
         DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
             val media = model.mediaRepository.get(state.mediaId)
             if (state.mediaId == null || media?.kind == MediaKind.AUDIO) {
-                DropdownMenuItem(text = { Text("添加到快捷文本") },
+                DropdownMenuItem(text = { Text(uiText("quick.add_from_text")) },
                     leadingIcon = { Icon(Icons.Default.Add, null) },
                     enabled = state.editorText.isNotBlank(),
                     onClick = feedbackClick { menu = false; model.addEditorToQuickText() },
@@ -58,7 +58,7 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
                 trailingIcon = { if (appearance.bold) Icon(Icons.Default.Check, null) },
                 onClick = feedbackClick { model.setSubtitleAppearance(appearance.copy(bold = !appearance.bold)); menu = false },
                 modifier = Modifier.testTag("subtitle-bold"))
-            DropdownMenuItem(text = { Text("文本对齐") },
+            DropdownMenuItem(text = { Text(uiText("subtitle.align")) },
                 leadingIcon = { Icon(Icons.Default.FormatAlignCenter, null) },
                 trailingIcon = { Text(appearance.alignment.label, style = MaterialTheme.typography.labelMedium) },
                 onClick = feedbackClick { menu = false; alignmentDialog = true }, modifier = Modifier.testTag("subtitle-alignment"))

@@ -5,11 +5,7 @@ $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../ARTS/PluginStore'))
 $manifest = Get-Content (Join-Path $root 'index.json') -Raw -Encoding utf8 | ConvertFrom-Json
 $designs = @{}
 foreach ($entry in $manifest.packages) { $designs[$entry.id] = $entry }
-foreach ($package in $Catalog.packages) {
-    $entry = $designs[$package.id]
-    if (-not $entry -or $entry.images.Count -lt 3 -or $entry.images.Count -gt 8) { throw "Missing artwork: $($package.id)" }
-    $thumbnails = @()
-    foreach ($image in $entry.images) {
+function Register-Image($package, $image) {
         $file = [IO.Path]::GetFullPath((Join-Path $root $image.file))
         if (-not $file.StartsWith($root + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Artwork path escapes its folder' }
         $hash = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -24,9 +20,23 @@ foreach ($package in $Catalog.packages) {
             url = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Official-Plugins/resolve/master/$relative`?view=false"
             sha256 = $hash; bytes = $image.bytes; alt = $image.alt; width = $image.width; height = $image.height
         }
-        $thumbnails += $key
+        return $key
+}
+foreach ($package in $Catalog.packages) {
+    $entry = $designs[$package.id]
+    if (-not $entry -or $entry.images.Count -lt 1 -or $entry.images.Count -gt 8) { throw "Missing artwork: $($package.id)" }
+    $package.thumbnails = @($entry.images | ForEach-Object { Register-Image $package $_ })
+    if ($entry.localizations) {
+        $screenshots = @($package.thumbnails | Select-Object -Skip 1)
+        $package.localizations = [ordered]@{}
+        foreach ($variant in $entry.localizations.PSObject.Properties) {
+            $wording = $variant.Value
+            $translation = [ordered]@{ name = $wording.name; summary = $wording.summary
+                thumbnails = @((Register-Image $package $wording.cover)) + $screenshots }
+            if ($wording.description) { $translation.description = $wording.description }
+            $package.localizations[$variant.Name] = $translation
+        }
     }
-    $package.thumbnails = $thumbnails
 }
 if ($designs.Count -ne $Catalog.packages.Count) { throw 'Artwork and published plugins must match' }
 Write-Output "Registered $($Catalog.packages.Count) plugin galleries"

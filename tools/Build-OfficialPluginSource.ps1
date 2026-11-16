@@ -39,7 +39,8 @@ foreach ($item in $config) {
         }
         $key = Read-ZipBytes $archive 'signature/public.der'
         $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($key)).ToLowerInvariant()
-        if ($digest -ne $publisher) { throw "Unexpected publisher: $($spec.id)" }
+        $expected = if ($item.publisher) { $item.publisher } else { $publisher }
+        if ($expected -notmatch '^[a-f0-9]{64}$' -or $digest -ne $expected) { throw "Unexpected publisher: $($spec.id)" }
         $rsa = [Security.Cryptography.RSA]::Create()
         try {
             $used = 0; $rsa.ImportSubjectPublicKeyInfo($key, [ref]$used)
@@ -52,7 +53,7 @@ foreach ($item in $config) {
         $release = [ordered]@{
             version = $spec.version; versionCode = $spec.versionCode; format = 'NATIVE'
             sha256 = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
-            bytes = (Get-Item -LiteralPath $file).Length; expectedPublisher = $publisher
+            bytes = (Get-Item -LiteralPath $file).Length; expectedPublisher = $expected
             mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
             apiVersion = $spec.apiVersion; minSdk = $spec.minSdk; abis = @($spec.abis)
             notes = if ($item.notes) { $item.notes } else { '暂无更新说明。' }

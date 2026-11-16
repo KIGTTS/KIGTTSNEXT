@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
@@ -33,7 +34,7 @@ internal val SubtitleAlignment.textAlignment: TextAlign get() = when (column) {
 
 @Composable
 internal fun SubtitleAlignmentDialog(selected: SubtitleAlignment, choose: (SubtitleAlignment) -> Unit, dismiss: () -> Unit) {
-    MotionAlertDialog(onDismissRequest = dismiss, title = { Text("文本对齐") },
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("subtitle.align")) },
         text = {
             val finish = rememberDialogClose()
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -53,7 +54,7 @@ internal fun SubtitleAlignmentDialog(selected: SubtitleAlignment, choose: (Subti
                     } }
                 }
             }
-        }, confirmButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
+        }, confirmButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }
 
 @Composable

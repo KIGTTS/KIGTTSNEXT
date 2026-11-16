@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import com.kigtts.next.theme.*
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.ui.components.*
 import kotlin.math.roundToInt
 
@@ -30,7 +32,8 @@ import kotlin.math.roundToInt
 fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit,
     placeholder: String = "点击输入文字", onPlaceholderChange: (String) -> Unit = {},
     subtitle: com.kigtts.next.state.SubtitleAppearance = com.kigtts.next.state.SubtitleAppearance(),
-    onSubtitleChange: (com.kigtts.next.state.SubtitleAppearance) -> Unit = {}, onFonts: () -> Unit = {}) {
+    onSubtitleChange: (com.kigtts.next.state.SubtitleAppearance) -> Unit = {}, onFonts: () -> Unit = {},
+    languageName: String = "", onLanguage: (() -> Unit)? = null) {
     Box(Modifier.fillMaxSize()) {
       ReadablePage(840.dp) {
         BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
@@ -62,6 +65,8 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 .windowInsetsPadding(navigation).testTag("appearance-settings-sheet"),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 AppearanceAssetSettings(settings, onChange, onFonts)
+                if (onLanguage != null) SettingItem(uiText("settings.category.language"), languageName,
+                    Icons.Default.Language, SettingPosition.SINGLE, Modifier.testTag("appearance-ui-language"), onClick = onLanguage)
                 ThemeColorSettings(settings, onChange)
                 AppearanceDisplaySettings(settings, onChange)
                 SubtitlePlaceholderSetting(placeholder, onPlaceholderChange)

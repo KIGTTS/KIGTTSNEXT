@@ -1,0 +1,166 @@
+{
+  "backup.kigusay": {
+    "en": {
+      "name": "Kigusay preset compatibility",
+      "summary": "Bring familiar phrases with you"
+    },
+    "ko": {
+      "name": "Kigusay 프리셋 호환",
+      "summary": "익숙한 문구를 새 앱에서도 사용하세요"
+    }
+  },
+  "debug.ui": {
+    "en": {
+      "name": "Interface debugger",
+      "summary": "Inspect layouts and interface details"
+    },
+    "ko": {
+      "name": "인터페이스 디버거",
+      "summary": "레이아웃과 화면 구성을 자세히 살펴보세요"
+    }
+  },
+  "display.led": {
+    "en": {
+      "name": "LED captions",
+      "summary": "Make every word shine"
+    },
+    "ko": {
+      "name": "LED 자막",
+      "summary": "한 마디 한 마디를 빛나게 표시하세요"
+    }
+  },
+  "engine.cloud-asr": {
+    "en": {
+      "name": "Cloud speech recognition",
+      "summary": "Turn speech into captions"
+    },
+    "ko": {
+      "name": "클라우드 음성 인식",
+      "summary": "말소리를 자막으로 바꾸세요"
+    }
+  },
+  "engine.cloud-tts": {
+    "en": {
+      "name": "Cloud text to speech",
+      "summary": "Find a voice for what you want to say"
+    },
+    "ko": {
+      "name": "클라우드 읽어 주기",
+      "summary": "전하고 싶은 말을 읽어 줄 목소리를 찾아보세요"
+    }
+  },
+  "engine.piper": {
+    "en": {
+      "name": "Piper speech engine",
+      "summary": "Pick a voice that fits your mood"
+    },
+    "ko": {
+      "name": "Piper 음성 엔진",
+      "summary": "기분에 어울리는 목소리를 골라 보세요"
+    }
+  },
+  "engine.sensevoice": {
+    "en": {
+      "name": "SenseVoice recognition",
+      "summary": "Capture what you hear as text"
+    },
+    "ko": {
+      "name": "SenseVoice 음성 인식",
+      "summary": "들리는 말을 텍스트로 남기세요"
+    }
+  },
+  "engine.streaming-asr": {
+    "en": {
+      "name": "Streaming speech recognition",
+      "summary": "Offline live captions with built-in Chinese recognition",
+      "description": "Includes a lightweight Chinese model. Install the plugin and use it offline without downloading model files. Your existing model selection is kept when updating."
+    },
+    "ko": {
+      "name": "스트리밍 음성 인식",
+      "summary": "중국어 모델로 오프라인 실시간 자막을 만드세요",
+      "description": "경량 중국어 모델이 포함되어 있습니다. 플러그인을 설치하면 모델을 별도로 다운로드하지 않고 오프라인에서 사용할 수 있습니다. 업데이트해도 기존에 선택한 모델은 유지됩니다."
+    }
+  },
+  "input.quick-gestures": {
+    "en": {
+      "name": "Gesture shortcuts",
+      "summary": "Draw a gesture to say a phrase"
+    },
+    "ko": {
+      "name": "제스처 바로가기",
+      "summary": "제스처를 그려 필요한 문구를 사용하세요"
+    }
+  },
+  "runtime.lua": {
+    "en": {
+      "name": "Plugin editor",
+      "summary": "Turn small ideas into handy tools"
+    },
+    "ko": {
+      "name": "플러그인 편집기",
+      "summary": "작은 아이디어를 편리한 도구로 만들어 보세요"
+    }
+  },
+  "service.speech-recognition": {
+    "en": {
+      "name": "Speech recognition service",
+      "summary": "Make what you hear visible"
+    },
+    "ko": {
+      "name": "음성 인식 서비스",
+      "summary": "들리는 말을 화면에서 확인하세요"
+    }
+  },
+  "service.speech-synthesis": {
+    "en": {
+      "name": "Text-to-speech service",
+      "summary": "Give your words a voice"
+    },
+    "ko": {
+      "name": "읽어 주기 서비스",
+      "summary": "텍스트를 목소리로 전하세요"
+    }
+  },
+  "tools.cloud-agent": {
+    "en": {
+      "name": "AI assistant",
+      "summary": "Find answers and create together"
+    },
+    "ko": {
+      "name": "AI 도우미",
+      "summary": "함께 답을 찾고 새로운 것을 만들어 보세요"
+    }
+  },
+  "tools.native-builder": {
+    "en": {
+      "name": "Native build tools",
+      "summary": "Give small tools room to grow"
+    },
+    "ko": {
+      "name": "네이티브 빌드 도구",
+      "summary": "작은 도구에 더 많은 기능을 더하세요"
+    }
+  },
+  "tools.package-store": {
+    "en": {
+      "name": "Plugin store",
+      "summary": "Add new features to KIGTTS"
+    },
+    "ko": {
+      "name": "플러그인 스토어",
+      "summary": "KIGTTS에 새로운 기능을 추가하세요"
+    }
+  },
+  "engine.zipvoice-clone": {
+    "en": {
+      "name": "Voice cloning engine",
+      "summary": "Create a voice pack from a reference recording",
+      "description": "ZipVoice Distill with local voice packs and separate quality settings for live reading and background synthesis. The included ZipVoice weights are CC BY-NC 4.0 and are for non-commercial use only."
+    },
+    "ko": {
+      "name": "음성 복제 엔진",
+      "summary": "참고 녹음으로 음성 팩을 만드세요",
+      "description": "로컬 음성 팩과 실시간 읽기·백그라운드 합성의 개별 품질 설정을 지원하는 ZipVoice Distill 엔진입니다. 내장 ZipVoice 모델은 CC BY-NC 4.0에 따라 비상업적 용도로만 사용할 수 있습니다."
+    }
+  }
+}

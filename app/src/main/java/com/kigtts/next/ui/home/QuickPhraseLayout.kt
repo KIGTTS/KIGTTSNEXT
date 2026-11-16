@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.interaction.*
 import androidx.compose.foundation.layout.*
@@ -104,7 +106,7 @@ internal fun QuickPhraseLayout(filtered: List<QuickPhrase>, singleRow: Boolean, 
             }
         }
     }
-    EmptyContent(filtered.isEmpty(), Icons.Default.TextFields, "还没有快捷文本", description = "点击编辑添加")
+    EmptyContent(filtered.isEmpty(), Icons.Default.TextFields, uiText("quick.empty"), description = uiText("quick.empty.hint"))
     }
 }
 

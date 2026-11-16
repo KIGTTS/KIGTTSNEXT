@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
@@ -111,7 +112,7 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
             }
         } ?: FilledTonalButton(feedbackClick(::begin), Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Text("设置我的名片") }
         SettingsGroup("我的收藏") {
-            SettingItem("扩列收藏夹", "", Icons.Default.Bookmarks, SettingPosition.SINGLE,
+            SettingItem(uiText("nav.favorites"), "", Icons.Default.Bookmarks, SettingPosition.SINGLE,
                 onClick = { model.navigate(Destination.ContactFavorites) })
         }
     }

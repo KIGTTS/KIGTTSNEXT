@@ -1,17 +1,18 @@
 # 增量流式识别插件
 
-`engine.streaming-asr-0.8.0.kigplugin` 是独立的 Android DEX/JNI 插件，API9，源码 MIT。引擎、识别包格式、下载、端点与语言选择不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
+`engine.streaming-asr` 是独立的 Android DEX/JNI 插件，源码 MIT。0.8.6 起内置中文轻量 Zipformer 14M INT8 模型，装好插件即可离线流式识别。引擎、模型和识别包管理不进入主程序。现有 SenseVoice 继续提供完整录音与分段离线识别；本插件声明 `StreamingKind.INCREMENTAL`，使用固定 sherpa-onnx 1.12.38 的在线识别器。
 
 ## 使用
 
 安装、启用 [语音识别服务](recognition-service.md) 与流式识别引擎；在服务中选用该独立引擎，并进入其“流式识别包”页面管理模型。主界面通过服务调用引擎。
 
-- 下载识别包：目录提供中文轻量、英文轻量、中英双语三个固定官方模型包，下载按预先核验的 SHA-256 校验。可从自定义 HTTPS 地址下载其它在线包，需提供可信 SHA-256。
+- 内置中文识别包默认可用，随插件更新，不占用可编辑的下载目录。升级保留原先选中的自定义模型。
+- 下载识别包：可选目录另提供英文轻量、中英双语，下载按预先核验的 SHA-256 校验。可从自定义 HTTPS 地址下载其它在线包，需提供可信 SHA-256。
 - 导入识别包：支持 `.kigasr`、ZIP、官方 tar.bz2 和 tar.gz。可同时保留多个语言包，选用当前识别包，按语言筛选、置顶与拖动排序。
 - 条目详情支持名称、备注和语言说明修改、更新、导出与二次确认删除。修改或切换模型前需停止识别；文件更新先验证新包，再交换目录，保留包 ID、选择、名称、备注、置顶与顺序。
 - 单语言包识别对应语言；双语模型可在同一选用包中识别中文和英文。语言标签仅用于管理与筛选，不能为模型增加不支持的语言。`RecognitionConfig.language` 不会强行修改选用模型的词表。
 
-所有下载、模型、外部文件、暂存、配置及导出都在 `appdata/Kigtts/plugin/plugindata/engine.streaming-asr/`。模型没有打入主 APK、插件包或 Git。模型与许可证按发布者原样保留。
+可选下载、自行导入模型、暂存、配置及导出都在 `appdata/Kigtts/plugin/plugindata/engine.streaming-asr/`。内置模型从签名插件的只读资产目录直接加载，并随包提供来源与 Apache-2.0 许可证；不进入主 APK。
 
 ## 支持的模型与包格式
 

@@ -16,14 +16,24 @@ import com.kigtts.next.ui.components.MotionColumn
 import com.kigtts.plugin.api.PluginContext
 import com.kigtts.plugin.api.PluginRegistry
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.uiCopy
+import com.kigtts.next.i18n.uiText
 
 @Composable
 internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
     context: PluginContext = PluginContext("", ""), revision: Int = 0,
     receiving: (@Composable (SettingPosition) -> Unit)? = null, personalInformation: @Composable () -> Unit = {}) {
-    val cards = remember(registry, revision, context) { settingsCards(registry, context) }
+    val androidContext = LocalContext.current
+    val locale = LocalUiLocale.current
+    val cards = remember(registry, revision, context, androidContext, locale) {
+        settingsCards(registry, context) { key, fallback ->
+            androidContext.uiCopy(key, locale = locale).takeUnless { it == key } ?: fallback
+        }
+    }
     var searching by rememberSaveable { mutableStateOf(false) }
-    RegisterPageActions(listOf(ToolbarAction("search-settings", "搜索设置", Icons.Default.Search, click = { searching = true })))
+    RegisterPageActions(listOf(ToolbarAction("search-settings", uiText("settings.search"), Icons.Default.Search, click = { searching = true })))
     if (searching) SettingsSearchDialog(cards, { searching = false }, open)
     SettingsLayout {
         personalInformation()

@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -19,27 +20,27 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
-            Destination.Settings -> "设置"
-            Destination.PersonalCards -> "个人信息"
-            Destination.PersonalInformationEditor -> "个人信息"
-            Destination.ContactFavorites -> "扩列收藏夹"
-            is Destination.ContactFavoriteDetail -> "名片详情"
-            Destination.Fonts -> "字体"
-            is Destination.SettingsDetail -> destination.category.title
-            Destination.Plugins -> "插件管理"
-            is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: "插件页面"
-            is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) "页面库" else "媒体库"
-            is Destination.HtmlFiles -> "页面文件"
-            is Destination.HtmlPreview -> "页面预览"
-            is Destination.QuickTextReview -> "修改预览"
-            is Destination.ContentEditor -> model.content.editorDraft.value?.let { if(it.html)it.currentTitle else "文本编辑器" } ?: "内容编辑器"
-            is Destination.PhraseEditor -> if (destination.adding) "添加快捷文本" else "编辑快捷文本"
-            is Destination.CardEditor -> "编辑图片"
-            is Destination.CardPreview -> "照片预览"
-            Destination.Cards -> "相册"
-            is Destination.CardCamera -> "拍摄"
-            is Destination.StickerReview -> "修改预览"
-            is Destination.StickerLibrary -> "贴纸库"
+            Destination.Settings -> uiText("nav.settings")
+            Destination.PersonalCards -> uiText("nav.profile")
+            Destination.PersonalInformationEditor -> uiText("nav.profile")
+            Destination.ContactFavorites -> uiText("nav.favorites")
+            is Destination.ContactFavoriteDetail -> uiText("nav.card_details")
+            Destination.Fonts -> uiText("nav.fonts")
+            is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
+            Destination.Plugins -> uiText("nav.plugins")
+            is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: uiText("nav.plugin_page")
+            is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) uiText("nav.pages") else uiText("nav.media")
+            is Destination.HtmlFiles -> uiText("nav.page_files")
+            is Destination.HtmlPreview -> uiText("nav.page_preview")
+            is Destination.QuickTextReview -> uiText("nav.change_preview")
+            is Destination.ContentEditor -> model.content.editorDraft.value?.let { if(it.html)it.currentTitle else uiText("nav.text_editor") } ?: uiText("nav.content_editor")
+            is Destination.PhraseEditor -> if (destination.adding) uiText("nav.add_phrase") else uiText("nav.edit_phrase")
+            is Destination.CardEditor -> uiText("nav.edit_image")
+            is Destination.CardPreview -> uiText("nav.photo_preview")
+            Destination.Cards -> uiText("nav.album")
+            is Destination.CardCamera -> uiText("nav.camera")
+            is Destination.StickerReview -> uiText("nav.change_preview")
+            is Destination.StickerLibrary -> uiText("nav.stickers")
         }
     if (destination == Destination.Cards) {
         com.kigtts.next.ui.album.AlbumHost(model, model::navigateBack)
@@ -69,7 +70,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     }
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail && !chatPage,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
-        subtitle = if (destination == Destination.Plugins) "管理已安装的插件" else null,
+        subtitle = if (destination == Destination.Plugins) uiText("settings.plugins.subtitle") else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
             destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.PersonalInformationEditor ||
             destination == Destination.ContactFavorites || destination is Destination.ContactFavoriteDetail || destination == Destination.Plugins ||
@@ -91,7 +92,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                         ({ model.invoke(com.kigtts.next.plugins.control.STORE_ID, "font-library") }) else null)
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
-                        state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) })
+                        state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) },
+                        languageName = com.kigtts.next.i18n.UiLanguage.fromTag(state.uiLocale).label,
+                        onLanguage = { model.navigate(Destination.SettingsDetail(SettingsCategory.LANGUAGE)) })
                     SettingsCategory.LANGUAGE -> UiLanguageScreen(state.uiLocale, model::setUiLanguage)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()

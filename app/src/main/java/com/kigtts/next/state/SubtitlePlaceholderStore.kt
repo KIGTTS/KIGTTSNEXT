@@ -17,6 +17,7 @@ object SubtitlePlaceholder {
 /** A display preference only: it is never copied into the editable or spoken text. */
 class SubtitlePlaceholderStore(context: Context, private val defaultPlaceholder: String = SubtitlePlaceholder.DEFAULT) {
     private val preferences = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
-    fun load(): String = SubtitlePlaceholder.normalize(preferences.getString("subtitlePlaceholder", null) ?: defaultPlaceholder)
+    fun load(default: String = defaultPlaceholder): String =
+        SubtitlePlaceholder.normalize(preferences.getString("subtitlePlaceholder", null) ?: default)
     fun save(value: String) { preferences.edit { putString("subtitlePlaceholder", SubtitlePlaceholder.normalize(value)) } }
 }

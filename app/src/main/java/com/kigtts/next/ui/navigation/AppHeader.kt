@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,34 +28,34 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
     val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     val title = when (val destination = state.destination) {
         Destination.Home -> "KIGTTS"
-        Destination.Settings -> "设置"
-        Destination.PersonalCards -> "个人信息"
-        Destination.PersonalInformationEditor -> "个人信息"
-        Destination.ContactFavorites -> "扩列收藏夹"
-        is Destination.ContactFavoriteDetail -> "名片详情"
-        Destination.Fonts -> "字体"
-        is Destination.SettingsDetail -> destination.category.title
-        Destination.Plugins -> "插件管理"
-        is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: "插件页面"
-        is Destination.MediaLibrary -> "媒体库"
-        is Destination.HtmlFiles -> "页面文件"
-        is Destination.HtmlPreview -> "页面预览"
-        is Destination.QuickTextReview -> "修改预览"
-        is Destination.ContentEditor -> "内容编辑器"
-        is Destination.PhraseEditor -> "编辑快捷文本"
-        is Destination.CardEditor -> "编辑图片"
-        is Destination.CardPreview -> "照片预览"
-        Destination.Cards -> "相册"
-        is Destination.CardCamera -> "拍摄"
-        is Destination.StickerReview -> "修改预览"
-        is Destination.StickerLibrary -> "贴纸库"
+        Destination.Settings -> uiText("nav.settings")
+        Destination.PersonalCards -> uiText("nav.profile")
+        Destination.PersonalInformationEditor -> uiText("nav.profile")
+        Destination.ContactFavorites -> uiText("nav.favorites")
+        is Destination.ContactFavoriteDetail -> uiText("nav.card_details")
+        Destination.Fonts -> uiText("nav.fonts")
+        is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
+        Destination.Plugins -> uiText("nav.plugins")
+        is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: uiText("nav.plugin_page")
+        is Destination.MediaLibrary -> uiText("nav.media")
+        is Destination.HtmlFiles -> uiText("nav.page_files")
+        is Destination.HtmlPreview -> uiText("nav.page_preview")
+        is Destination.QuickTextReview -> uiText("nav.change_preview")
+        is Destination.ContentEditor -> uiText("nav.content_editor")
+        is Destination.PhraseEditor -> uiText("nav.edit_phrase")
+        is Destination.CardEditor -> uiText("nav.edit_image")
+        is Destination.CardPreview -> uiText("nav.photo_preview")
+        Destination.Cards -> uiText("nav.album")
+        is Destination.CardCamera -> uiText("nav.camera")
+        is Destination.StickerReview -> uiText("nav.change_preview")
+        is Destination.StickerLibrary -> uiText("nav.stickers")
     }
     Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             if (home) com.kigtts.next.ui.home.AutomaticReadButton(state, model)
             else IconButton(onClick = feedbackClick(model::navigateBack),
                 modifier=Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回上一页")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("nav.back"))
             }
             if (home) SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
@@ -65,7 +66,7 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
             if (home) SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
             if (home) IconButton(onClick = feedbackClick(openSettings), modifier = Modifier.testTag("open-settings").homePreviewRegion("header-end"),
-                colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
+                colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, uiText("nav.open_settings")) }
         }
     }
 }

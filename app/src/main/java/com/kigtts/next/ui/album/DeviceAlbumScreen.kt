@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.i18n.uiCopy
 
 import android.content.Intent
@@ -97,19 +99,20 @@ import kotlinx.coroutines.delay
     BackHandler(choosingAlbum || showingCollectionGrid || selecting) { back() }
     Scaffold(topBar = {
         TopAppBar(title = {
-            if (showingCollectionGrid) Text("相册")
+            if (showingCollectionGrid) Text(uiText("nav.album"))
             else AlbumTitle(album, choosingAlbum) { choosingAlbum = !choosingAlbum }
-        }, navigationIcon = { IconButton(feedbackClick(::back)) { Icon(Icons.Default.ArrowBack, "返回") } },
+        }, navigationIcon = { IconButton(feedbackClick(::back)) { Icon(Icons.Default.ArrowBack, uiText("action.back")) } },
             actions = {
                 if (!choosingAlbum && !showingCollectionGrid) {
                     if (choose == null && !selecting) IconButton(feedbackClick { openSystemAlbum(context, message) }) {
-                        Icon(Icons.Default.OpenInNew, "系统相册")
+                        Icon(Icons.Default.OpenInNew, uiText("album.system"))
                     }
-                    if (onCamera != null && !selecting) IconButton(feedbackClick(onCamera)) { Icon(Icons.Default.CameraAlt, "相机") }
+                    if (onCamera != null && !selecting) IconButton(feedbackClick(onCamera)) { Icon(Icons.Default.CameraAlt, uiText("album.camera")) }
                     if (choose == null) IconButton(feedbackClick { selecting = !selecting; selected = emptyList() }) {
                         Icon(if (selecting) Icons.Default.Close else Icons.Default.Checklist, if (selecting) "取消选择" else "选择照片")
                     } else if (multiple) TextButton(feedbackClick { choose(all.filter { it.uri.toString() in checked }) },
-                        enabled = selected.isNotEmpty()) { Text(if (selected.isEmpty()) "完成" else "完成 (${selected.size})") }
+                        enabled = selected.isNotEmpty()) { Text(if (selected.isEmpty()) uiText("action.done") else
+                            uiText("action.done_count", "count" to selected.size.toString())) }
                 }
             })
     }, bottomBar = {
@@ -119,14 +122,17 @@ import kotlinx.coroutines.delay
             TextButton(feedbackClick {
                 val ids = photos.map { it.uri.toString() }.toSet()
                 selected = (if (allChecked) checked - ids else checked + ids).toList()
-            }, enabled = photos.isNotEmpty()) { Text(if (allChecked) "取消全选" else "全选") }
+            }, enabled = photos.isNotEmpty()) { Text(if (allChecked) uiText("album.deselect_all") else uiText("album.select_all")) }
             Button(feedbackClick { shareAlbumMedia(context, all.filter { it.uri.toString() in checked }) },
-                enabled = selected.isNotEmpty()) { Icon(Icons.Default.Share, null); Text("分享 (${selected.size})") }
+                enabled = selected.isNotEmpty()) {
+                Icon(Icons.Default.Share, null)
+                Text(uiText("action.share_count", "count" to selected.size.toString()))
+            }
         }
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).testTag("device-album")) {
             if (!readable) TextButton(feedbackClick { request.launch(DeviceAlbum.permissions(imagesOnly)) },
-                Modifier.fillMaxWidth()) { Text("查看设备上的照片和视频") }
+                Modifier.fillMaxWidth()) { Text(uiText("album.view_device")) }
             if (failure != null) TextButton(feedbackClick { revision++ }, Modifier.fillMaxWidth()) { Text(failure.orEmpty()) }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
                 val availableHeight = maxHeight

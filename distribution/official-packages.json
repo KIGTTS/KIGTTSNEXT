@@ -514,6 +514,38 @@
     "dependencies": {
       "service.speech-recognition": "^0.8.1"
     },
+    "file": "engine.streaming-asr-0.8.6.kigplugin",
+    "category": "音频",
+    "summary": "内置中文轻量模型，安装后即可离线流式识别",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n内置中文轻量 INT8 模型，无需额外下载。更新时保留原先选中的识别包，可按需添加其它模型。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "内置中文轻量模型；保留已有的选用设置。"
+  },
+  {
+    "module": "zipvoice-clone",
+    "publisher": "d52d1d3706a8858d33a9d4521e348e160f74bd4bf92209775bb0dda2c8c53e05",
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.1"
+    },
+    "file": "engine.zipvoice-clone-0.3.6.kigplugin",
+    "category": "音频",
+    "summary": "用参考录音制作语音包，在设备上离线合成朗读音频",
+    "symbol": "record_voice_over",
+    "description": "## 语音克隆引擎\n\n内置 ZipVoice Distill INT8 与 Vocos，支持导入本地语音包并分别设置实时与后台合成质量。ZipVoice 模型为 CC BY-NC 4.0，仅限非商业用途。",
+    "tags": [
+      "朗读",
+      "语音克隆"
+    ],
+    "notes": "内置 CPU 模型，支持实时与后台质量分设，合成时自动裁剪首尾明显静音。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
     "file": "engine.streaming-asr-0.8.5.kigplugin",
     "category": "音频",
     "summary": "边说边转成文字，适合连续聆听与长时间语音输入。",

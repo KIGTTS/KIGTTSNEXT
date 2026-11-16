@@ -7,11 +7,11 @@
       "images": [
         {
           "file": "backup.kigusay/cover.svg",
-          "alt": "娃语预设兼容 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 137158,
-          "sha256": "26d67a030e4c500a73ad6df9e400d4778094d5ee03eb845b077723bc03613e46"
+          "alt": "娃语预设兼容",
+          "width": 900,
+          "height": 1600,
+          "bytes": 131133,
+          "sha256": "a0742970030895268a3858645c1692caa22d080e8f51f547d42647ce7b097373"
         },
         {
           "file": "backup.kigusay/preview-light.png",
@@ -29,18 +29,44 @@
           "bytes": 174471,
           "sha256": "29e6fc979762b1785b89153e4180f33919ed492da0f937f4e9d219ba4c413de6"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Kigusay preset compatibility",
+          "summary": "Bring familiar phrases with you",
+          "cover": {
+            "file": "backup.kigusay/cover-en.svg",
+            "alt": "Kigusay preset compatibility",
+            "width": 900,
+            "height": 1600,
+            "bytes": 107707,
+            "sha256": "ac3900d0b3863d92c8191dc6557324e6846fa395bed4948e0cce8a9442246c78"
+          }
+        },
+        "ko": {
+          "name": "Kigusay 프리셋 호환",
+          "summary": "익숙한 문구를 새 앱에서도 사용하세요",
+          "cover": {
+            "file": "backup.kigusay/cover-ko.svg",
+            "alt": "Kigusay 프리셋 호환",
+            "width": 900,
+            "height": 1600,
+            "bytes": 101169,
+            "sha256": "3a1d5d72550a954a7ea817e2cb12c645f94235160660b7580447439a25d0aaf2"
+          }
+        }
+      }
     },
     {
       "id": "debug.ui",
       "images": [
         {
           "file": "debug.ui/cover.svg",
-          "alt": "界面调试插件 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 117050,
-          "sha256": "8b35e8dbcd35b7ceb23b588e921f59a975e6bdc8ec7474630d2b8ae413ec304e"
+          "alt": "界面调试插件",
+          "width": 900,
+          "height": 1600,
+          "bytes": 110988,
+          "sha256": "412b371c986ce9b69fc83765571cc9e9a8f7a2b4a476aa9cf5c490aed32597a3"
         },
         {
           "file": "debug.ui/preview-light.png",
@@ -58,18 +84,44 @@
           "bytes": 151991,
           "sha256": "acfea6ef2d222dc2f23a504075579fde979c17ede71653bac60edff005a316d2"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Interface debugger",
+          "summary": "Inspect layouts and interface details",
+          "cover": {
+            "file": "debug.ui/cover-en.svg",
+            "alt": "Interface debugger",
+            "width": 900,
+            "height": 1600,
+            "bytes": 115877,
+            "sha256": "0e5be02012e725dd926225021383663a9ce099a80045aea94d742ba482f45f36"
+          }
+        },
+        "ko": {
+          "name": "인터페이스 디버거",
+          "summary": "레이아웃과 화면 구성을 자세히 살펴보세요",
+          "cover": {
+            "file": "debug.ui/cover-ko.svg",
+            "alt": "인터페이스 디버거",
+            "width": 900,
+            "height": 1600,
+            "bytes": 101077,
+            "sha256": "e972cb8c7f5a14b87da350d0e8513878cccd1fd5339c040f410ed4e9c2b9940f"
+          }
+        }
+      }
     },
     {
       "id": "display.led",
       "images": [
         {
           "file": "display.led/cover.svg",
-          "alt": "LED 灯珠字幕 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 117239,
-          "sha256": "1dd145a59cd3dd45b6f0aa91b39473e4c89d4e9f8b5dba4d25202af5070d1301"
+          "alt": "LED 灯珠字幕",
+          "width": 900,
+          "height": 1600,
+          "bytes": 110457,
+          "sha256": "118449451930552e4c567ce8da2e7c8ac616f7e99a1172c82979b0dd1e354f1f"
         },
         {
           "file": "display.led/preview-led.png",
@@ -95,18 +147,44 @@
           "bytes": 110927,
           "sha256": "f71c0effa16aee99b8223ac44e81a1e962e96d803b8b9546768215eb6d24d07f"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "LED captions",
+          "summary": "Make every word shine",
+          "cover": {
+            "file": "display.led/cover-en.svg",
+            "alt": "LED captions",
+            "width": 900,
+            "height": 1600,
+            "bytes": 89400,
+            "sha256": "64b3940a937ea872ed067e58e173659dff16df868a8461f4174edcee229af2b2"
+          }
+        },
+        "ko": {
+          "name": "LED 자막",
+          "summary": "한 마디 한 마디를 빛나게 표시하세요",
+          "cover": {
+            "file": "display.led/cover-ko.svg",
+            "alt": "LED 자막",
+            "width": 900,
+            "height": 1600,
+            "bytes": 84248,
+            "sha256": "f7df4801e65ab5ccfaf86a5647ec73ef688468d31e01f752561f5072b380b300"
+          }
+        }
+      }
     },
     {
       "id": "engine.cloud-asr",
       "images": [
         {
           "file": "engine.cloud-asr/cover.svg",
-          "alt": "云端语音识别 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 120701,
-          "sha256": "77fcbaef33057c26001f9e31f8bf9b98f4bbe9f189804ea98e1acbcd70964250"
+          "alt": "云端语音识别",
+          "width": 900,
+          "height": 1600,
+          "bytes": 114674,
+          "sha256": "cee777464520b92a98008a900fc3920f9436746230ee519103329589c020c65e"
         },
         {
           "file": "engine.cloud-asr/preview-light.png",
@@ -124,18 +202,44 @@
           "bytes": 114811,
           "sha256": "7cd8647d53f60567638797246032bdda60f0a4157b9947e822dbfd31a93ed585"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Cloud speech recognition",
+          "summary": "Turn speech into captions",
+          "cover": {
+            "file": "engine.cloud-asr/cover-en.svg",
+            "alt": "Cloud speech recognition",
+            "width": 900,
+            "height": 1600,
+            "bytes": 99850,
+            "sha256": "f8c86d13d7a890e11196b835fff2fe921f8a0766264e5ed1eb3aa3ddcaf3e158"
+          }
+        },
+        "ko": {
+          "name": "클라우드 음성 인식",
+          "summary": "말소리를 자막으로 바꾸세요",
+          "cover": {
+            "file": "engine.cloud-asr/cover-ko.svg",
+            "alt": "클라우드 음성 인식",
+            "width": 900,
+            "height": 1600,
+            "bytes": 89032,
+            "sha256": "d05435db99f53cd9cb8c738b4776ee38056df6132b5a69f6fd3bad445ddf70d9"
+          }
+        }
+      }
     },
     {
       "id": "engine.cloud-tts",
       "images": [
         {
           "file": "engine.cloud-tts/cover.svg",
-          "alt": "云端语音合成 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 134505,
-          "sha256": "f9358c9e205670544d309822eef11a8be9e000bd8a5bfccb2282d32d566cd7dd"
+          "alt": "云端语音合成",
+          "width": 900,
+          "height": 1600,
+          "bytes": 128501,
+          "sha256": "ee036a171fafc5bb7455323514ed79b2930df4a42fab89e0490287ecaaa615c0"
         },
         {
           "file": "engine.cloud-tts/preview-light.png",
@@ -153,18 +257,44 @@
           "bytes": 114807,
           "sha256": "ca8f3744b72f7484b5adb45233158a1edf9322fe2b038da34dbdc7338167f66f"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Cloud text to speech",
+          "summary": "Find a voice for what you want to say",
+          "cover": {
+            "file": "engine.cloud-tts/cover-en.svg",
+            "alt": "Cloud text to speech",
+            "width": 900,
+            "height": 1600,
+            "bytes": 104971,
+            "sha256": "f46b01616735e82f1de0008148fe1e12d411f4f5f6735fa19b694625a9f10cc6"
+          }
+        },
+        "ko": {
+          "name": "클라우드 읽어 주기",
+          "summary": "전하고 싶은 말을 읽어 줄 목소리를 찾아보세요",
+          "cover": {
+            "file": "engine.cloud-tts/cover-ko.svg",
+            "alt": "클라우드 읽어 주기",
+            "width": 900,
+            "height": 1600,
+            "bytes": 105879,
+            "sha256": "5ce34c966a2975dadf80c1acb9d6735b317baf2450e091cf16b6b3a4ccb2c0de"
+          }
+        }
+      }
     },
     {
       "id": "engine.piper",
       "images": [
         {
           "file": "engine.piper/cover.svg",
-          "alt": "Piper 语音引擎 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 127203,
-          "sha256": "c3ff9d0c6ff00ea90e9fe39e014ce0bc73aa820c1c68b02954fe4a4c16b12693"
+          "alt": "Piper 语音引擎",
+          "width": 900,
+          "height": 1600,
+          "bytes": 116851,
+          "sha256": "11b425fb33979bf55b60f3b99110529a6e3a633c7a27c4fc7888562bbde302dc"
         },
         {
           "file": "engine.piper/preview-light.png",
@@ -182,18 +312,44 @@
           "bytes": 67116,
           "sha256": "1cf29b3c752d28203023fbbcd922a542bba36130b110ca979752ccb474fb4661"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Piper speech engine",
+          "summary": "Pick a voice that fits your mood",
+          "cover": {
+            "file": "engine.piper/cover-en.svg",
+            "alt": "Piper speech engine",
+            "width": 900,
+            "height": 1600,
+            "bytes": 101297,
+            "sha256": "b052817916f05d001f88b57766c49dc428a097dab84023005a448bd494784d54"
+          }
+        },
+        "ko": {
+          "name": "Piper 음성 엔진",
+          "summary": "기분에 어울리는 목소리를 골라 보세요",
+          "cover": {
+            "file": "engine.piper/cover-ko.svg",
+            "alt": "Piper 음성 엔진",
+            "width": 900,
+            "height": 1600,
+            "bytes": 92393,
+            "sha256": "66cae8a4984812de04838ad5b395b9956fc17ca04f542d452b04350582002c10"
+          }
+        }
+      }
     },
     {
       "id": "engine.sensevoice",
       "images": [
         {
           "file": "engine.sensevoice/cover.svg",
-          "alt": "SenseVoice 语音识别 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 124118,
-          "sha256": "f5750edcf1787ba8dee355af1cf03db5e4e8547f3e45f310a5212eb87dfcf32f"
+          "alt": "SenseVoice 语音识别",
+          "width": 900,
+          "height": 1600,
+          "bytes": 107624,
+          "sha256": "d4f0d3d47ebbe44498b3f459561fe841d4130f74ac49fea012f2151d8a49f440"
         },
         {
           "file": "engine.sensevoice/preview-light.png",
@@ -211,18 +367,44 @@
           "bytes": 58085,
           "sha256": "378dad1382088e75e721bafa581efaeca111c41038a0cd9fc9940d46c1510fba"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "SenseVoice recognition",
+          "summary": "Capture what you hear as text",
+          "cover": {
+            "file": "engine.sensevoice/cover-en.svg",
+            "alt": "SenseVoice recognition",
+            "width": 900,
+            "height": 1600,
+            "bytes": 103499,
+            "sha256": "5344d8736fb7e02d289f24131bc737a35918c63da0aef6c138ec14e147da4d66"
+          }
+        },
+        "ko": {
+          "name": "SenseVoice 음성 인식",
+          "summary": "들리는 말을 텍스트로 남기세요",
+          "cover": {
+            "file": "engine.sensevoice/cover-ko.svg",
+            "alt": "SenseVoice 음성 인식",
+            "width": 900,
+            "height": 1600,
+            "bytes": 89799,
+            "sha256": "f00c9c59a2c85f1393cf3eb82b78fdb4c367e92bdc83010f1d4da68208db2928"
+          }
+        }
+      }
     },
     {
       "id": "engine.streaming-asr",
       "images": [
         {
           "file": "engine.streaming-asr/cover.svg",
-          "alt": "流式语音识别 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 136531,
-          "sha256": "551f1a28eb7b19edc65c9809c09949ca7d1fbbbf99607ae3b2ddaa27f2568693"
+          "alt": "流式语音识别",
+          "width": 900,
+          "height": 1600,
+          "bytes": 132389,
+          "sha256": "a2f81d6ab6d03f2a175588174ae7bacf1c172585b3804f04893e48c13d6cfb01"
         },
         {
           "file": "engine.streaming-asr/preview-light.png",
@@ -240,18 +422,87 @@
           "bytes": 63839,
           "sha256": "06075f1db289a8634022dde8865faed7ca39dcce17449300a3e1fea21ddd36da"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Streaming speech recognition",
+          "summary": "Offline live captions with built-in Chinese recognition",
+          "description": "Includes a lightweight Chinese model. Install the plugin and use it offline without downloading model files. Your existing model selection is kept when updating.",
+          "cover": {
+            "file": "engine.streaming-asr/cover-en.svg",
+            "alt": "Streaming speech recognition",
+            "width": 900,
+            "height": 1600,
+            "bytes": 128513,
+            "sha256": "86716ea6ffb16835ecba1f80b48eb684c2e1062acbc85e3bea9c5f2c53f878d1"
+          }
+        },
+        "ko": {
+          "name": "스트리밍 음성 인식",
+          "summary": "중국어 모델로 오프라인 실시간 자막을 만드세요",
+          "description": "경량 중국어 모델이 포함되어 있습니다. 플러그인을 설치하면 모델을 별도로 다운로드하지 않고 오프라인에서 사용할 수 있습니다. 업데이트해도 기존에 선택한 모델은 유지됩니다.",
+          "cover": {
+            "file": "engine.streaming-asr/cover-ko.svg",
+            "alt": "스트리밍 음성 인식",
+            "width": 900,
+            "height": 1600,
+            "bytes": 102960,
+            "sha256": "2ea96492341866eb8e256bd55c0bd520ecf29158be410490f72280d7d25d276a"
+          }
+        }
+      }
+    },
+    {
+      "id": "engine.zipvoice-clone",
+      "images": [
+        {
+          "file": "engine.zipvoice-clone/cover.svg",
+          "alt": "语音克隆引擎",
+          "width": 900,
+          "height": 1600,
+          "bytes": 124853,
+          "sha256": "51aded36ca37a988aa04dafa7c943ccd311f24bd2c78126673c59e975a67615e"
+        }
+      ],
+      "localizations": {
+        "en": {
+          "name": "Voice cloning engine",
+          "summary": "Create a voice pack from a reference recording",
+          "description": "ZipVoice Distill with local voice packs and separate quality settings for live reading and background synthesis. The included ZipVoice weights are CC BY-NC 4.0 and are for non-commercial use only.",
+          "cover": {
+            "file": "engine.zipvoice-clone/cover-en.svg",
+            "alt": "Voice cloning engine",
+            "width": 900,
+            "height": 1600,
+            "bytes": 123889,
+            "sha256": "3705459ce1cf490c10b7d186314f94b2bc5f63796de836e9d48000ba32be2d2e"
+          }
+        },
+        "ko": {
+          "name": "음성 복제 엔진",
+          "summary": "참고 녹음으로 음성 팩을 만드세요",
+          "description": "로컬 음성 팩과 실시간 읽기·백그라운드 합성의 개별 품질 설정을 지원하는 ZipVoice Distill 엔진입니다. 내장 ZipVoice 모델은 CC BY-NC 4.0에 따라 비상업적 용도로만 사용할 수 있습니다.",
+          "cover": {
+            "file": "engine.zipvoice-clone/cover-ko.svg",
+            "alt": "음성 복제 엔진",
+            "width": 900,
+            "height": 1600,
+            "bytes": 94016,
+            "sha256": "3d7009790b6e056428356df0726a7286f5899e433826434d527d905533a1ff2b"
+          }
+        }
+      }
     },
     {
       "id": "input.quick-gestures",
       "images": [
         {
           "file": "input.quick-gestures/cover.svg",
-          "alt": "手势触发 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 123679,
-          "sha256": "70cf7c9a28c9eee940259c94fd1ecafe0284ea2264607f3c3f62f72dede27c75"
+          "alt": "手势触发",
+          "width": 900,
+          "height": 1600,
+          "bytes": 117713,
+          "sha256": "055cd29c6924e65512d1d4e7867d4bce24e9c62d618c3e5da4e0e5260b61fe17"
         },
         {
           "file": "input.quick-gestures/preview-light.png",
@@ -269,18 +520,44 @@
           "bytes": 156391,
           "sha256": "654493b8e5d1d07b01e16ac511b71503d4d82cbcb49506292d40561bb6352f40"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Gesture shortcuts",
+          "summary": "Draw a gesture to say a phrase",
+          "cover": {
+            "file": "input.quick-gestures/cover-en.svg",
+            "alt": "Gesture shortcuts",
+            "width": 900,
+            "height": 1600,
+            "bytes": 105561,
+            "sha256": "d46db72a2626baef1ae45d93596929ff5b6d6053096d1276dcfc6c265231cb8c"
+          }
+        },
+        "ko": {
+          "name": "제스처 바로가기",
+          "summary": "제스처를 그려 필요한 문구를 사용하세요",
+          "cover": {
+            "file": "input.quick-gestures/cover-ko.svg",
+            "alt": "제스처 바로가기",
+            "width": 900,
+            "height": 1600,
+            "bytes": 95546,
+            "sha256": "1d763ff8a357ef8a8cd2061d54a1237e031cc8e091964e56876e933d98e2ff37"
+          }
+        }
+      }
     },
     {
       "id": "runtime.lua",
       "images": [
         {
           "file": "runtime.lua/cover.svg",
-          "alt": "插件编辑器 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 129009,
-          "sha256": "4c90565a88b4dd2a63f29dc768a72b8bc3f221752a36e6851127778bea5177c8"
+          "alt": "插件编辑器",
+          "width": 900,
+          "height": 1600,
+          "bytes": 122944,
+          "sha256": "62f6c70ad7af9b32c1c9150d17cadfab221b8544840c195df3d3c6e5a2d3028f"
         },
         {
           "file": "runtime.lua/preview-light.png",
@@ -298,18 +575,44 @@
           "bytes": 71830,
           "sha256": "84942d2130705c98aa63ed7c1b0445ac834f76cedac7bc49fedf33165b6dc368"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Plugin editor",
+          "summary": "Turn small ideas into handy tools",
+          "cover": {
+            "file": "runtime.lua/cover-en.svg",
+            "alt": "Plugin editor",
+            "width": 900,
+            "height": 1600,
+            "bytes": 103480,
+            "sha256": "29f65a5daed40f5d8a59022b6f0e652a91b983f3d3ad5c405d45b6ff3df7bfc6"
+          }
+        },
+        "ko": {
+          "name": "플러그인 편집기",
+          "summary": "작은 아이디어를 편리한 도구로 만들어 보세요",
+          "cover": {
+            "file": "runtime.lua/cover-ko.svg",
+            "alt": "플러그인 편집기",
+            "width": 900,
+            "height": 1600,
+            "bytes": 92502,
+            "sha256": "60a6a722adb07dc584cc57261c397d910f34c52fc170ab4f9c904c61716057c0"
+          }
+        }
+      }
     },
     {
       "id": "service.speech-recognition",
       "images": [
         {
           "file": "service.speech-recognition/cover.svg",
-          "alt": "语音识别服务 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 130784,
-          "sha256": "abacecbfa17b86921a1d386e3ffb6b4c4155f3c7dd1899916216beb09df21c45"
+          "alt": "语音识别服务",
+          "width": 900,
+          "height": 1600,
+          "bytes": 124760,
+          "sha256": "747ce117afb6c37feded9c126904b1df0e2d489985a073ded774d37310b8c674"
         },
         {
           "file": "service.speech-recognition/preview-light.png",
@@ -327,18 +630,44 @@
           "bytes": 149661,
           "sha256": "2954604399ce4a51ddeb780fe4175cf73cfa632690380055f2965b2755a394c9"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Speech recognition service",
+          "summary": "Make what you hear visible",
+          "cover": {
+            "file": "service.speech-recognition/cover-en.svg",
+            "alt": "Speech recognition service",
+            "width": 900,
+            "height": 1600,
+            "bytes": 98594,
+            "sha256": "e932c073c137ce12db23668bd1b81678f1880db2f3ef13ff3096d1cef3008593"
+          }
+        },
+        "ko": {
+          "name": "음성 인식 서비스",
+          "summary": "들리는 말을 화면에서 확인하세요",
+          "cover": {
+            "file": "service.speech-recognition/cover-ko.svg",
+            "alt": "음성 인식 서비스",
+            "width": 900,
+            "height": 1600,
+            "bytes": 96402,
+            "sha256": "b8d3136dcae6c9bdd669ac034542ccd4d451cde7300e5d9c6af92e01817821bb"
+          }
+        }
+      }
     },
     {
       "id": "service.speech-synthesis",
       "images": [
         {
           "file": "service.speech-synthesis/cover.svg",
-          "alt": "语音合成服务 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 120744,
-          "sha256": "d0346ed07135416785af06a705c47be6085887ad7665374f17bccd2ada153fde"
+          "alt": "语音合成服务",
+          "width": 900,
+          "height": 1600,
+          "bytes": 114754,
+          "sha256": "135a2b254c3ad6b4c9a4d6f89782b9c71d3508d2a03ab20b2015ff154393f339"
         },
         {
           "file": "service.speech-synthesis/preview-light.png",
@@ -356,18 +685,44 @@
           "bytes": 85984,
           "sha256": "8bfa64b29ea3c1017ab3e86615e602df21d656f482d3e590b97be6eb5a4f13e9"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Text-to-speech service",
+          "summary": "Give your words a voice",
+          "cover": {
+            "file": "service.speech-synthesis/cover-en.svg",
+            "alt": "Text-to-speech service",
+            "width": 900,
+            "height": 1600,
+            "bytes": 94202,
+            "sha256": "48f1473cfda60bc8b08c23ea958d6ce9fee1c4bb2e0c869dd08251c852c35ea0"
+          }
+        },
+        "ko": {
+          "name": "읽어 주기 서비스",
+          "summary": "텍스트를 목소리로 전하세요",
+          "cover": {
+            "file": "service.speech-synthesis/cover-ko.svg",
+            "alt": "읽어 주기 서비스",
+            "width": 900,
+            "height": 1600,
+            "bytes": 89314,
+            "sha256": "47cb974792b6b3587404476ce55787baa30fcf733393b8e0f64f1e67b124ae0c"
+          }
+        }
+      }
     },
     {
       "id": "tools.cloud-agent",
       "images": [
         {
           "file": "tools.cloud-agent/cover.svg",
-          "alt": "AI 助手 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 119180,
-          "sha256": "5fec7ee7bac901b346ed29ae1a3e70eb3f28f2965387580efe5864d563e9da86"
+          "alt": "AI 助手",
+          "width": 900,
+          "height": 1600,
+          "bytes": 112838,
+          "sha256": "6643d53dd48fb1501053c3f7aafd1bc07b923c1c267866ce738695fc51f407c3"
         },
         {
           "file": "tools.cloud-agent/preview-light.png",
@@ -385,18 +740,44 @@
           "bytes": 146364,
           "sha256": "2061fce33cd1752b63693707b497c8c6477151befe65f78091ed5175ba07e42a"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "AI assistant",
+          "summary": "Find answers and create together",
+          "cover": {
+            "file": "tools.cloud-agent/cover-en.svg",
+            "alt": "AI assistant",
+            "width": 900,
+            "height": 1600,
+            "bytes": 106693,
+            "sha256": "fe77ef64e405b47e1a88ddb0b09810896be63283cbf694aea71a88636d9bbcfe"
+          }
+        },
+        "ko": {
+          "name": "AI 도우미",
+          "summary": "함께 답을 찾고 새로운 것을 만들어 보세요",
+          "cover": {
+            "file": "tools.cloud-agent/cover-ko.svg",
+            "alt": "AI 도우미",
+            "width": 900,
+            "height": 1600,
+            "bytes": 95913,
+            "sha256": "fb4b23d2aa893350ccd49bf89836f74ef75e1928dbc2817f605b26b1c040927c"
+          }
+        }
+      }
     },
     {
       "id": "tools.native-builder",
       "images": [
         {
           "file": "tools.native-builder/cover.svg",
-          "alt": "原生构建扩展 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 122579,
-          "sha256": "de1ba3d6b9dd1c910ed901eca50c1d93463903200d7ef5107404b6566fe4e43e"
+          "alt": "原生构建扩展",
+          "width": 900,
+          "height": 1600,
+          "bytes": 116617,
+          "sha256": "7e8f93be10ed171350f60179e7d523fc152861899bdc981ba3e36a9394d4d9a2"
         },
         {
           "file": "tools.native-builder/preview-light.png",
@@ -414,18 +795,44 @@
           "bytes": 85272,
           "sha256": "b830676534037dea30def8c74c9851438564865653de4de1d39630147e269ee1"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Native build tools",
+          "summary": "Give small tools room to grow",
+          "cover": {
+            "file": "tools.native-builder/cover-en.svg",
+            "alt": "Native build tools",
+            "width": 900,
+            "height": 1600,
+            "bytes": 101414,
+            "sha256": "1fd04aa166b8db325d0e2086228b19cb5fe935a5118186cf6febfd002c6ca574"
+          }
+        },
+        "ko": {
+          "name": "네이티브 빌드 도구",
+          "summary": "작은 도구에 더 많은 기능을 더하세요",
+          "cover": {
+            "file": "tools.native-builder/cover-ko.svg",
+            "alt": "네이티브 빌드 도구",
+            "width": 900,
+            "height": 1600,
+            "bytes": 90115,
+            "sha256": "3241ab1da2b188529c2fd6fea2a1ec6dcc7aa49d0d23805ef2daaa166a207882"
+          }
+        }
+      }
     },
     {
       "id": "tools.package-store",
       "images": [
         {
           "file": "tools.package-store/cover.svg",
-          "alt": "插件商店 · 花型封面",
-          "width": 1600,
-          "height": 800,
-          "bytes": 121473,
-          "sha256": "3b0115f8d8b4d1434175d2b4f6766b9d762986efe522952b2032d87e606585b5"
+          "alt": "插件商店",
+          "width": 900,
+          "height": 1600,
+          "bytes": 115465,
+          "sha256": "9501203cd06d0fe4498e993e12522c55aa4973dc59d2069629f838932f9fbaaa"
         },
         {
           "file": "tools.package-store/preview-light.png",
@@ -443,7 +850,33 @@
           "bytes": 157819,
           "sha256": "ab090a41d56eeff48b683e9b4a2a3dfa1da969a1fa9dc3169914839754f54461"
         }
-      ]
+      ],
+      "localizations": {
+        "en": {
+          "name": "Plugin store",
+          "summary": "Add new features to KIGTTS",
+          "cover": {
+            "file": "tools.package-store/cover-en.svg",
+            "alt": "Plugin store",
+            "width": 900,
+            "height": 1600,
+            "bytes": 94443,
+            "sha256": "1f004224c11bc4b4f5a70882028399264c82d92c78e82a303715be5e928d3b5a"
+          }
+        },
+        "ko": {
+          "name": "플러그인 스토어",
+          "summary": "KIGTTS에 새로운 기능을 추가하세요",
+          "cover": {
+            "file": "tools.package-store/cover-ko.svg",
+            "alt": "플러그인 스토어",
+            "width": 900,
+            "height": 1600,
+            "bytes": 100466,
+            "sha256": "09b7d5ce24cbfe93969c1d47fc646cca565ae20af88cef01bc784f24f1df7cc3"
+          }
+        }
+      }
     }
   ],
   "provenance": [

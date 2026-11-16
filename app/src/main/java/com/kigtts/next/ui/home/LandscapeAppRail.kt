@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -24,7 +25,7 @@ fun LandscapeAppRail(state: AppState, model: AppViewModel, openSettings: () -> U
     val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     Column(Modifier.width(64.dp).fillMaxHeight().testTag("landscape-app-rail"), horizontalAlignment = Alignment.CenterHorizontally) {
         IconButton(feedbackClick(openSettings), modifier = Modifier.testTag("open-settings").homePreviewRegion("header-end"),
-            colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, "打开设置") }
+            colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, uiText("nav.open_settings")) }
         SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.width(40.dp), context = model.context(), revision = state.pluginRevision)
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             com.kigtts.next.ui.navigation.SafeModeBrand(recovery.active,

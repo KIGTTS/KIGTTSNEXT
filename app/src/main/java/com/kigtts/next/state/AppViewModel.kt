@@ -21,6 +21,7 @@ import android.icu.text.BreakIterator
 import androidx.core.content.edit
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.manager.HostPluginRuntime
+import com.kigtts.next.i18n.uiCopy
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
@@ -80,7 +81,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
     private val uiLanguage = com.kigtts.next.i18n.UiLanguageStore(application)
-    private val mutableState = MutableStateFlow(AppState(uiLocale = uiLanguage.load(), theme = themeStore.load(), subtitlePlaceholder = placeholderStore.load(), hapticsEnabled = feedbackStore.load(),
+    private val initialUiLocale = uiLanguage.load()
+    private val mutableState = MutableStateFlow(AppState(uiLocale = initialUiLocale, theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(initialUiLocale), hapticsEnabled = feedbackStore.load(),
         subtitleAppearance = subtitleAppearanceStore.load(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
@@ -208,8 +210,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal fun setUiLanguage(language: com.kigtts.next.i18n.UiLanguage) {
         if (state.value.uiLocale == language.tag) return
         uiLanguage.save(language)
-        update { it.copy(uiLocale = language.tag) }
+        update { it.copy(uiLocale = language.tag, subtitlePlaceholder = subtitlePlaceholder(language.tag)) }
     }
+    private fun subtitlePlaceholder(locale: String) =
+        placeholderStore.load(getApplication<Application>().uiCopy("subtitle.placeholder", locale = locale))
     fun navigate(destination: Destination) {
         if (destination is Destination.PluginPage && pluginManager.isPackagePaused(destination.pluginId)) return
         if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
