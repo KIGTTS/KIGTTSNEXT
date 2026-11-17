@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
@@ -37,6 +40,38 @@ class ProfileTileMotionUiTest {
     private fun tile(id: String) = compose.onNodeWithTag("profile-tile/$id")
     private fun width(id: String) = tile(id).getUnclippedBoundsInRoot().let { (it.right - it.left).value }
     private fun left(id: String) = tile(id).getUnclippedBoundsInRoot().left.value
+
+    @Test fun holdingTheTileFacePicksItUpBeforeMovementAndSmallMovesFollowOneForOne() {
+        val events = mutableListOf<HapticFeedbackType>()
+        var edits = 0
+        val tiles = listOf(ProfileTile(id = "a", title = "A"))
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CompositionLocalProvider(LocalHapticFeedback provides object : HapticFeedback {
+                override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) { events += hapticFeedbackType }
+            }) {
+                ProfileTileBoard(tiles, emptyList(), { null }, Modifier.width(360.dp), editing = true, edit = { edits++ })
+            }
+        } }
+        val initial = left("a")
+        val board = compose.onNodeWithTag("profile-tiles")
+        val tileBounds = tile("a").getUnclippedBoundsInRoot()
+        val boardBounds = board.getUnclippedBoundsInRoot()
+        val anchor = with(compose.density) {
+            Offset(((tileBounds.left + tileBounds.right) / 2 - boardBounds.left).toPx(),
+                ((tileBounds.top + tileBounds.bottom) / 2 - boardBounds.top).toPx())
+        }
+        board.performTouchInput { down(anchor) }
+        compose.mainClock.advanceTimeBy(700)
+        compose.runOnIdle { assertTrue(HapticFeedbackType.GestureThresholdActivate in events) }
+        board.performTouchInput { moveTo(anchor + Offset(6f, 0f)) }
+        assertEquals(initial + 2f, left("a"), .5f)
+        board.performTouchInput { moveTo(anchor + Offset(12f, 0f)) }
+        assertEquals(initial + 4f, left("a"), .5f)
+        tile("a").performTouchInput { up() }
+        compose.runOnIdle { assertEquals(0, edits) }
+        tile("a").performTouchInput { click(center) }
+        compose.runOnIdle { assertEquals(1, edits) }
+    }
 
     @Test fun fractionalResizeFollowsBeforeChangingSpanAndReturnsFromTheReleasedSize() {
         var tiles by mutableStateOf(listOf(ProfileTile(id = "a", title = "文字", columns = 2)))

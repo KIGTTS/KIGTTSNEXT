@@ -2,7 +2,6 @@ package com.kigtts.next.ui.identity
 
 import androidx.compose.animation.core.*
 import androidx.compose.animation.*
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RemoveCircle
@@ -12,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -21,7 +19,6 @@ import androidx.compose.ui.unit.*
 import androidx.compose.ui.zIndex
 import com.kigtts.next.identity.*
 import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.components.rememberDragFeedback
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -44,7 +41,9 @@ import kotlin.math.roundToInt
         val ids = tiles.map { it.id }.toSet()
         SideEffect { motions.keys.retainAll(ids) }
         val boardHeight = animateFloatAsState(geometry.height, tween(220, easing = FastOutSlowInEasing), label = "tile-board-height")
-        Box(Modifier.fillMaxWidth().layout { measurable, constraints ->
+        val moveGesture = if (editing) Modifier.profileTileMove(geometry.unit, motions,
+            tiles = { latestTiles }, geometry = { latestGeometry }, change = { latestChange(it) }) else Modifier
+        Box(Modifier.fillMaxWidth().then(moveGesture).layout { measurable, constraints ->
             val bottom = motions.values.maxOfOrNull { it.bounds.bottom } ?: 0f
             val height = constraints.constrainHeight(maxOf(boardHeight.value, bottom).roundToInt())
             val placeable = measurable.measure(constraints.copy(minHeight = height, maxHeight = height))
@@ -53,12 +52,9 @@ import kotlin.math.roundToInt
             tiles.forEach { tile -> key(tile.id) {
                 val target = geometry.bounds.getValue(tile.id)
                 val motion = remember { ProfileTileMotion(target) }
-                val feedback by rememberUpdatedState(rememberDragFeedback())
                 SideEffect { motions[tile.id] = motion }
                 LaunchedEffect(target, motion.gesture) { motion.settle(target) }
-                DisposableEffect(editing, geometry.unit) { onDispose { feedback.finish(cancelled = true); motion.release() } }
                 val section = tile.kind.isSectionRow
-                val crossingGap = with(density) { 14.dp.toPx() }
                 val elevation by animateDpAsState(if (motion.raised && !section) 8.dp else 0.dp, tween(140), label = "tile-lift")
                 Box(Modifier.offset { motion.bounds.topLeft.let { IntOffset(it.x.roundToInt(), it.y.roundToInt()) } }
                     .layout { measurable, _ ->
@@ -66,29 +62,7 @@ import kotlin.math.roundToInt
                         val width = bounds.width.roundToInt().coerceAtLeast(1); val height = bounds.height.roundToInt().coerceAtLeast(1)
                         val placeable = measurable.measure(Constraints.fixed(width, height))
                         layout(width, height) { placeable.place(0, 0) }
-                    }.zIndex(if (motion.raised) 1f else 0f).testTag("profile-tile/${tile.id}")
-                    .then(if (editing) Modifier.pointerInput(tile.id, geometry.unit) {
-                        var start = Rect.Zero; var delta = Offset.Zero
-                        var drop: ProfileTileDrop? = null
-                        var lastSwapY: Float? = null
-                        var current: List<ProfileTile> = emptyList()
-                        detectDragGesturesAfterLongPress(onDragStart = {
-                            current = latestTiles; drop = ProfileTileDrop(current, tile.id, latestGeometry)
-                            start = motion.begin(TileGesture.MOVE); delta = Offset.Zero; lastSwapY = null; feedback.start(0f)
-                        },
-                            onDragEnd = { feedback.finish(); motion.release() }, onDragCancel = { feedback.finish(cancelled = true); motion.release() }) { event, amount ->
-                            event.consume(); delta += amount
-                            val floating = start.translate(if (section) Offset(0f, delta.y) else delta); motion.follow(floating)
-                            val y = floating.center.y
-                            if (section && lastSwapY?.let { kotlin.math.abs(y - it) < crossingGap } == true) return@detectDragGesturesAfterLongPress
-                            val next = drop?.at(floating) ?: return@detectDragGesturesAfterLongPress
-                            if (next != current) {
-                                current = next
-                                if (section) lastSwapY = y
-                                latestChange(next); feedback.step()
-                            }
-                        }
-                    } else Modifier)) {
+                    }.zIndex(if (motion.raised) 1f else 0f).testTag("profile-tile/${tile.id}")) {
                     val contact = tile.resolveContact(contacts)
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
                     val clickable = editing || tile.kind == ProfileTileKind.LINK || tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank() ||
@@ -102,7 +76,8 @@ import kotlin.math.roundToInt
                             else -> contact?.let(openContact)
                         }
                     },
-                        enabled = clickable, modifier = Modifier.fillMaxSize().then(if (iconOnly) Modifier.semantics {
+                        enabled = clickable, modifier = Modifier.fillMaxSize()
+                            .then(if (iconOnly) Modifier.semantics {
                             contentDescription = tile.title.ifBlank { contact?.label ?: "链接" }
                         } else Modifier),
                         shape = if (section) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.extraLarge,
