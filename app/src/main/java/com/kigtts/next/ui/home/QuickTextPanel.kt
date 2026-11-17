@@ -13,6 +13,7 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -24,8 +25,11 @@ import com.kigtts.next.ui.components.reorder.*
 @Composable
 fun QuickTextPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel, motion: HomeSheetMotion, modifier: Modifier = Modifier) {
     val singleRow by remember(motion) { derivedStateOf { motion.height <= 192f } }
-    BoxWithConstraints(modifier) {
-        QuickTextContent(state, phrases, categories, model, singleRow, quickPhraseColumns(maxWidth.value - 16f), Modifier.fillMaxSize(),
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var width by remember { mutableIntStateOf(0) }
+    Box(modifier.onSizeChanged { width = it.width }) {
+        val columns = with(density) { quickPhraseColumns(width.toDp().value - 16f) }
+        QuickTextContent(state, phrases, categories, model, singleRow, columns, Modifier.fillMaxSize(),
             categoryOpacity = { ((motion.height - 96f) / (HomePanelSizes.PEEK - 96f)).coerceIn(0f, 1f) })
     }
 }
@@ -36,11 +40,12 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
     val feedback = rememberDragFeedback()
     val drag = rememberReorderDrag({ emptyList() }, horizontalOnly = singleRow, animateDrop = true,
         feedback = feedback, move = model.quickTexts::movePhrase)
-    val density = androidx.compose.ui.platform.LocalDensity.current
+    var width by remember { mutableIntStateOf(0) }
+    val grouped = remember(phrases) { phrases.groupBy { it.category } }
     val layouts = rememberSaveableStateHolder()
     var menu by remember { mutableStateOf<QuickTextMenuTarget?>(null) }
     var editGroup by remember { mutableStateOf<String?>(null) }
-    BoxWithConstraints(modifier.padding(horizontal = 8.dp).testTag("quick-sort-pane").reorderGestures(drag,
+    Box(modifier.padding(horizontal = 8.dp).onSizeChanged { width = it.width }.testTag("quick-sort-pane").reorderGestures(drag,
         onStart = model.quickSort::begin, onStationaryHold = { menu = it.menuTarget() })) {
         Column(Modifier.fillMaxSize()) {
             // The pager changes axis with the layout. Keep the fade outside that keyed
@@ -50,14 +55,14 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
                 layouts.SaveableStateProvider(isRow) {
                     CategoryContentMotion(state.selectedCategory, categories, drag.key == null && isRow == singleRow,
                         model::category, vertical = isRow) { category, active ->
-                        QuickPhraseLayout(phrases.filter { it.category == category }, isRow, columns, model, drag,
+                        QuickPhraseLayout(grouped[category].orEmpty(), isRow, columns, model, drag,
                             active && isRow == singleRow)
                     }
                 }
             }
             CategoryTabs(state, categories, model, Modifier.graphicsLayer { alpha = categoryOpacity() })
         }
-        PhraseEdgeTransfer(drag, state.selectedCategory, categories, with(density) { maxWidth.toPx() }, model, enabled = !singleRow)
+        PhraseEdgeTransfer(drag, state.selectedCategory, categories, width.toFloat(), model, enabled = !singleRow)
         QuickPhraseDragOverlay(drag, phrases, singleRow, columns, model)
     }
     QuickTextContextMenu(menu, model, { menu = null }, { editGroup = it })

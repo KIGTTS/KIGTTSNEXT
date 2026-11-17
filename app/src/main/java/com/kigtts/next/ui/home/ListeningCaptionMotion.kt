@@ -17,7 +17,7 @@ internal class ListeningCaptionMotion(val modifier: Modifier, val onLayout: (Tex
 
 /** Animate the first speech and changes to line geometry, not incremental word updates. */
 @Composable
-internal fun rememberListeningCaptionMotion(standby: Boolean, visuals: CaptionVisuals, viewport: Int): ListeningCaptionMotion {
+internal fun rememberListeningCaptionMotion(standby: Boolean, visuals: CaptionVisuals, viewport: () -> Int): ListeningCaptionMotion {
     val lift = with(LocalDensity.current) { 8.dp.toPx() }
     val scheme = MaterialTheme.motionScheme
     val entrance = remember { Animatable(1f) }
@@ -36,18 +36,18 @@ internal fun rememberListeningCaptionMotion(standby: Boolean, visuals: CaptionVi
         val now = geometry?.takeUnless { standby }
         history.previous = now
         if (!visuals.reducedMotion && visuals.reflow && before != null && now != null &&
-            before.lines != now.lines && viewport >= maxOf(before.height, now.height)) {
+            before.lines != now.lines && viewport() >= maxOf(before.height, now.height)) {
             val displacement = ((now.height - before.height) * .5f).coerceIn(-2 * lift, 2 * lift)
             reflow.snapTo(reflow.value + displacement)
             reflow.animateTo(0f, scheme.fastSpatialSpec())
         } else if (standby || visuals.reducedMotion || !visuals.reflow) reflow.snapTo(0f)
         else if (reflow.value != 0f) reflow.animateTo(0f, scheme.fastSpatialSpec())
     }
-    return ListeningCaptionMotion(Modifier.graphicsLayer {
+    return remember(entrance, reflow, visuals, standby, lift) { ListeningCaptionMotion(Modifier.graphicsLayer {
         val shown = entrance.value.coerceIn(0f, 1f)
         alpha = if (visuals.finalOnly || standby || visuals.reducedMotion) 1f else .45f + .55f * shown
         translationY = if (visuals.reducedMotion) 0f else lift * (1f - shown) + reflow.value
-    }) { layout -> geometry = CaptionGeometry(layout.lineCount, layout.size.height) }
+    }) { layout -> geometry = CaptionGeometry(layout.lineCount, layout.size.height) } }
 }
 
 private data class CaptionGeometry(val lines: Int, val height: Int)

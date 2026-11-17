@@ -69,7 +69,7 @@ internal fun ListeningCaptionContent(text: String, fontSize: Float, singleLine: 
         }
     }
     var viewport by remember { mutableIntStateOf(0) }
-    val motion = rememberListeningCaptionMotion(empty, CaptionVisuals(finalOnly, reducedMotion, animateReflow), viewport)
+    val motion = rememberListeningCaptionMotion(empty, CaptionVisuals(finalOnly, reducedMotion, animateReflow)) { viewport }
     Box(modifier.clipToBounds().onSizeChanged { viewport = it.height }, contentAlignment = Alignment.CenterStart) {
         Text(paragraph, Modifier.fillMaxWidth().testTag("listening-content").then(
             if (singleLine) Modifier else Modifier.nestedScroll(gesture).verticalScroll(scroll)).then(motion.modifier),

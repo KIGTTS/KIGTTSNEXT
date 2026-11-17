@@ -40,13 +40,13 @@ import com.kigtts.next.ui.components.textMenuAnchor
 internal fun SubtitleInput(state: AppState, model: AppViewModel, style: TextStyle, width: Int, height: Int, focus: FocusRequester,
     hintOpacity: State<Float> = animateFloatAsState(if (state.editing) .28f else 1f, tween(180))) {
     val formatted = remember(state.editorText, state.subtitleFormats) { formattedText(state.editorText, state.subtitleFormats) }
-    val measured = stableSubtitleFontSize(if (formatted.isEmpty()) androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder) else formatted,
-        style, width, height)
-    val fitted = style.copy(fontSize = measured.sp)
     // The departing hint belongs to a different paragraph. Never resize it using the
     // first typed character's metrics while AnimatedVisibility is fading it away.
-    val placeholderStyle = style.copy(fontSize = stableSubtitleFontSize(
-        androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder), style, width, height).sp)
+    val placeholder = remember(state.subtitlePlaceholder) { androidx.compose.ui.text.AnnotatedString(state.subtitlePlaceholder) }
+    val placeholderSize = stableSubtitleFontSize(placeholder, style, width, height)
+    val placeholderStyle = style.copy(fontSize = placeholderSize.sp)
+    val measured = if (formatted.isEmpty()) placeholderSize else stableSubtitleFontSize(formatted, style, width, height)
+    val fitted = style.copy(fontSize = measured.sp)
     val base = remember(state.subtitleFormats) { RichTextVisualTransformation(state.subtitleFormats) }
     val alignment = state.subtitleAppearance.alignment.boxAlignment
     val direction = LocalLayoutDirection.current

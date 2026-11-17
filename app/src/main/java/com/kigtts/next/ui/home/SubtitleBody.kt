@@ -60,6 +60,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     val density = LocalDensity.current
     val text = state.editorText
     LaunchedEffect(state.editing) { if (state.editing) { focus.requestFocus(); keyboard?.show() } }
+    CompositionLocalProvider(LocalSubtitleFitCache provides rememberSubtitleFitCache()) {
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
         .semantics { stateDescription = if (flipped) "倒置字幕" else "正向字幕" }
         .subtitleZoom(model) { model.setSubtitleSizePercent(model.state.value.subtitleSizePercent * it) }
@@ -83,5 +84,6 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
         } else SubtitleDisplay(state, model, text, style, width, height, hintOpacity)
         if (!state.editing && model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
             SubtitleStrokeOverlay(model, Modifier.matchParentSize())
+    }
     }
 }
