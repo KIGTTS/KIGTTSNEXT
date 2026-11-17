@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import com.kigtts.next.i18n.uiText
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -55,10 +56,17 @@ import com.kigtts.next.theme.*
     // Omit the listening panel; keep the actual subtitle bottom and drawer edges.
     val main = if (wide) original.copy(left = viewport.left + 88f * density)
         else original.copy(top = viewport.top + 64f * density)
-    val sample = rememberTextMeasurer().measure("你好", LocalAppearanceFont.current.apply(TextStyle(
+    val previewText = uiText("appearance.preview.greeting")
+    val previewDescription = uiText("appearance.preview.description", "sample" to previewText)
+    val measurer = rememberTextMeasurer()
+    val sampleStyle = LocalAppearanceFont.current.apply(TextStyle(
         color = colors.onSurface, fontSize = (minOf(main.width * .26f, main.height * .32f) / density).sp,
         fontWeight = if (subtitle.bold) FontWeight.Bold else FontWeight.Normal,
-        platformStyle = PlatformTextStyle(includeFontPadding = false))))
+        platformStyle = PlatformTextStyle(includeFontPadding = false)))
+    val measuredSample = measurer.measure(previewText, sampleStyle, softWrap = false, maxLines = 1)
+    val fit = (main.width * .86f / measuredSample.size.width.coerceAtLeast(1)).coerceAtMost(1f)
+    val sample = if (fit < 1f) measurer.measure(previewText, sampleStyle.copy(fontSize = sampleStyle.fontSize * fit), softWrap = false, maxLines = 1)
+        else measuredSample
     val drawer = measured["phrases"] ?: if (wide)
         Rect(viewport.right - 196f * density, 8f * density, viewport.right - 12f * density, viewport.bottom - 12f * density)
         else Rect(12f * density, 456f * density, viewport.right - 12f * density, 818f * density)
@@ -68,7 +76,7 @@ import com.kigtts.next.theme.*
             .clip(RoundedCornerShape(4.dp)).testTag("appearance-home-thumbnail")) {
             AppearanceBackdrop(settings, Modifier.matchParentSize(), screenAnchored = false)
             Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
-                .semantics { contentDescription = "主界面预览，示例文字：你好" }) {
+                .semantics { contentDescription = previewDescription }) {
                 withTransform({ scale(scale, scale, Offset.Zero); translate(-viewport.left, -viewport.top) }) {
                     fun panel(rect: Rect, color: Color, r: Float = radius) {
                         if (rect.width > 0 && rect.height > 0) drawRoundRect(color, rect.topLeft, rect.size,

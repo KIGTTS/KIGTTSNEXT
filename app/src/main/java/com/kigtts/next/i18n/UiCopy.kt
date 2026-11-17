@@ -25,8 +25,10 @@ internal enum class UiLanguage(val tag: String, val label: String) {
     }
 }
 
+internal const val UI_LANGUAGE_PREFERENCES = "ui-language"
+
 internal class UiLanguageStore(context: Context) {
-    private val preferences = context.getSharedPreferences("ui-language", Context.MODE_PRIVATE)
+    private val preferences = context.getSharedPreferences(UI_LANGUAGE_PREFERENCES, Context.MODE_PRIVATE)
     fun load() = UiLanguage.fromTag(preferences.getString("locale", null)).tag
     fun save(language: UiLanguage) { preferences.edit().putString("locale", language.tag).apply() }
 }

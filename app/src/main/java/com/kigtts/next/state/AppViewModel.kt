@@ -22,6 +22,7 @@ import androidx.core.content.edit
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.manager.HostPluginRuntime
 import com.kigtts.next.i18n.uiCopy
+import com.kigtts.next.plugins.control.hideBundledEntries
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
@@ -39,11 +40,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         val page = audioDevices.decorate(plugin, plugin.page(pageId, context()))
-        if (pluginId == com.kigtts.next.plugins.control.STORE_ID && page != null) {
-            page.copy(management = page.management?.let { list ->
-                list.copy(items = list.items.filterNot { it.id in pluginManager.bundledIds })
-            })
-        } else page
+        if (pluginId == com.kigtts.next.plugins.control.STORE_ID) page?.hideBundledEntries(pluginManager.bundledIds) else page
     }
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)

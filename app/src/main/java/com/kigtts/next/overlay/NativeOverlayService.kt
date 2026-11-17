@@ -14,6 +14,10 @@ import android.provider.Settings
 import android.view.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.geometry.Offset
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.UI_LANGUAGE_PREFERENCES
+import com.kigtts.next.i18n.UiLanguageStore
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.R
 import com.kigtts.next.state.FeedbackSettingsStore
 import com.kigtts.next.theme.*
@@ -65,6 +69,12 @@ class NativeOverlayService : Service() {
     private var idle: Job? = null
     private lateinit var appearance: SharedPreferences
     private lateinit var feedback: SharedPreferences
+    private lateinit var language: SharedPreferences
+    private var locale by mutableStateOf("zh-CN")
+    private val languageListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        locale = UiLanguageStore(this).load()
+        foreground()
+    }
     private val preferenceListener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
         theme = ThemeSettingsStore(this).load(); haptics = FeedbackSettingsStore(this).load()
         com.kigtts.next.ui.components.MaterialSymbols.initialize(this)
@@ -72,6 +82,7 @@ class NativeOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         store = OverlayStore.get(this); hub = OverlayHub.get(this)
+        locale = UiLanguageStore(this).load()
         config = store.settings.value
         if (!config.enabled || !Settings.canDrawOverlays(this)) { stopSelf(); return }
         try {
@@ -86,18 +97,23 @@ class NativeOverlayService : Service() {
         com.kigtts.next.ui.components.MaterialSymbols.initialize(this)
         appearance = getSharedPreferences("appearance", MODE_PRIVATE); feedback = getSharedPreferences("interaction", MODE_PRIVATE)
         appearance.registerOnSharedPreferenceChangeListener(preferenceListener); feedback.registerOnSharedPreferenceChangeListener(preferenceListener)
+        language = getSharedPreferences(UI_LANGUAGE_PREFERENCES, MODE_PRIVATE)
+        language.registerOnSharedPreferenceChangeListener(languageListener)
         dial = OverlayWindow(windowContext, wm, { collapse() }, { store.update { it.copy(enabled = false) }; stopSelf() },
             transitionAnchor = { visibleFabCenter }).also { host -> host.content {
-            KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
-                OverlayDial(config, renderedLayout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
-                    { open(OverlayShortcut("overlay-settings", "悬浮窗设置", "tune", "overlay-settings")) }, ::finishCollapse, { id, direction ->
+            CompositionLocalProvider(LocalUiLocale provides locale) { KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
+                val localConfig = remember(config, locale) { config.copy(shortcuts = config.shortcuts.map { item ->
+                    item.copy(title = item.localizedTitle { key -> uiCopy(key, locale = locale) })
+                }) }
+                OverlayDial(localConfig, renderedLayout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
+                    { open(OverlayShortcut("overlay-settings", uiCopy("settings.category.overlay", locale = locale), "tune", "overlay-settings")) }, ::finishCollapse, { id, direction ->
                         val before = store.settings.value.shortcuts.indexOfFirst { it.id == id }
                         store.move(id, direction)
                         before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
                     }, edgeRetraction = retraction, initialCenter = motionStart,
                     collapsedCenter = if (windowExpanded) renderedLayout.local(compactPlacement().centerOnScreen()) else null,
                     dragging = isDragging, centerChanged = { visibleFabCenter = it })
-            } }
+            } } }
         } }
         place(); interact()
         if (Build.VERSION.SDK_INT >= 31) windowContext.registerComponentCallbacks(windowConfiguration)
@@ -226,7 +242,9 @@ class NativeOverlayService : Service() {
     private fun open(item: OverlayShortcut) { collapse(); OverlayLaunch.open(this, item) }
     private fun showBubble(value: OverlayNotice) {
         bubble = OverlayWindow(windowContext, wm, {}).also { host -> host.content {
-            KigttsTheme(theme) { ProvideButtonFeedback(haptics) { OverlayBubbleContent(value, { hub.clear(value.owner) }, { hub.clear(value.owner); open(it) }) } }
+            CompositionLocalProvider(LocalUiLocale provides locale) { KigttsTheme(theme) { ProvideButtonFeedback(haptics) {
+                OverlayBubbleContent(value, { hub.clear(value.owner) }, { hub.clear(value.owner); open(it) })
+            } } }
         } }
         placeBubble()
     }
@@ -255,12 +273,12 @@ class NativeOverlayService : Service() {
     override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); resetPlacement() }
     private fun foreground() {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "悬浮快捷入口", NotificationManager.IMPORTANCE_LOW))
+        manager.createNotificationChannel(NotificationChannel(CHANNEL, uiCopy("overlay.entry.title", locale = locale), NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 180, Intent(this, com.kigtts.next.MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val stop = PendingIntent.getService(this, 181, Intent(this, NativeOverlayService::class.java).setAction(STOP), PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_stat_listening)
-            .setContentTitle("悬浮快捷入口已开启").setContentText("长按悬浮按钮可调整入口").setContentIntent(open).setOngoing(true)
-            .addAction(Notification.Action.Builder(null, "关闭悬浮窗", stop).build()).build()
+            .setContentTitle(uiCopy("overlay.notification.title", locale = locale)).setContentText(uiCopy("overlay.notification.body", locale = locale)).setContentIntent(open).setOngoing(true)
+            .addAction(Notification.Action.Builder(null, uiCopy("overlay.notification.stop", locale = locale), stop).build()).build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(180, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         else startForeground(180, notification)
     }
@@ -280,6 +298,7 @@ class NativeOverlayService : Service() {
         if (Build.VERSION.SDK_INT >= 31 && ::windowContext.isInitialized) windowContext.unregisterComponentCallbacks(windowConfiguration)
         if (::appearance.isInitialized) appearance.unregisterOnSharedPreferenceChangeListener(preferenceListener)
         if (::feedback.isInitialized) feedback.unregisterOnSharedPreferenceChangeListener(preferenceListener)
+        if (::language.isInitialized) language.unregisterOnSharedPreferenceChangeListener(languageListener)
         stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy()
     }
     companion object {

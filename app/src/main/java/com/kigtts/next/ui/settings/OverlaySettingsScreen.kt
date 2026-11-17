@@ -37,7 +37,9 @@ fun OverlaySettingsScreen() {
             kotlinx.coroutines.delay(1500)
         }
     }
-    val displayEntries = resolveOverlayShortcuts(state.shortcuts, candidates, availableApps)
+    val displayEntries = resolveOverlayShortcuts(state.shortcuts, candidates, availableApps).map { item ->
+        item.copy(title = item.localizedTitle { copy(it) })
+    }
     var permissionExplanation by remember { mutableStateOf(false) }
     var add by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<OverlayShortcut?>(null) }
@@ -76,7 +78,7 @@ fun OverlaySettingsScreen() {
     }
     editing?.let { item ->
         val current = state.shortcuts.firstOrNull { it.id == item.id }
-        if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.title) }, text = {
+        if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.localizedTitle { copy(it) }) }, text = {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) { Text(uiText("overlay.labels.short"), Modifier.weight(1f)); Switch(current.showLabel, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(showLabel = enabled) else old }) } }) }
             }

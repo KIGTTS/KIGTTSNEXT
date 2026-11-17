@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.overlay
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
@@ -163,7 +165,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
         Column(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.Top) {
                 Text(notice.text, Modifier.weight(1f).padding(top = 8.dp), style = MaterialTheme.typography.bodyMedium, maxLines = 4, overflow = TextOverflow.Ellipsis)
-                IconButton(onClick = feedbackClick(dismiss), modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Close, "关闭气泡", Modifier.size(18.dp)) }
+                IconButton(onClick = feedbackClick(dismiss), modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Close, uiText("overlay.bubble.close"), Modifier.size(18.dp)) }
             }
             notice.shortcut?.let { item ->
                 FilledTonalButton(onClick = feedbackClick { open(item) }) {

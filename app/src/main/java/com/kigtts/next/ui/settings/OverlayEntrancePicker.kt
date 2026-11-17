@@ -40,7 +40,7 @@ import kotlinx.coroutines.delay
         val runtime = HostPluginRuntime.get(context.applicationContext as Application)
         while (true) { refreshOverlayPlugins(context, runtime.manager); delay(1500) }
     }
-    val builtIns = remember { overlayBuiltInChoices() }
+    val builtIns = remember(copy) { overlayBuiltInChoices().map { item -> item.copy(title = item.localizedTitle { copy(it) }) } }
     val categories = listOf("KIGTTS", "插件", "应用")
     fun sectionName(name: String) = when (name) {
         "插件" -> copy("overlay.category.plugins"); "应用" -> copy("overlay.category.apps")

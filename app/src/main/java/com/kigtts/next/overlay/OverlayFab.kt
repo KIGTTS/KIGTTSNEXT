@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.overlay
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -54,10 +56,11 @@ internal fun OverlayFab(motion: OverlayDialMotion, expanded: Boolean, rightEdge:
             alpha = 1f - retraction * .48f
         }
         .overlayFabDrag(move, drop, interact, enabled = !expanded)) {
-        IconActionHint(if (expanded) "收起快捷入口" else "展开快捷入口", hasLongAction = true) {
+        val label = if (expanded) uiText("overlay.dial.collapse") else uiText("overlay.dial.expand")
+        IconActionHint(label, hasLongAction = true) {
             Surface(onClick = feedbackClick(toggle), modifier = Modifier.fillMaxSize()
                 .iconLongAction(true, configure)
-                .semantics { contentDescription = if (expanded) "收起快捷入口" else "展开快捷入口" }
+                .semantics { contentDescription = label }
                 .graphicsLayer { rotationZ = progress * 90f },
                 shape = shape,
                 color = MaterialTheme.colorScheme.primary,

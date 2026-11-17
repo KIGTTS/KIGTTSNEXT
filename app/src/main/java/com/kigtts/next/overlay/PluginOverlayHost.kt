@@ -1,5 +1,7 @@
 package com.kigtts.next.overlay
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.provider.Settings
 import com.kigtts.plugin.api.*
 import com.kigtts.plugin.runtime.PluginManager
@@ -12,17 +14,17 @@ internal class PluginOverlayHost(private val manager: PluginManager) {
     private val hub = OverlayHub.get(context)
     fun removeOwner(owner: String) = hub.removeOwner(owner)
     suspend fun request(owner: String, capabilities: Set<String>, command: AppCommand.Overlay): AppReply = try {
-        require(command.operation in setOf("status", "register", "request-add", "bubble", "clear-bubble")) { "未知悬浮窗操作" }
-        if ("overlay" !in capabilities) AppReply.Failure("PERMISSION_DENIED", "插件未声明悬浮窗权限") else {
+        require(command.operation in setOf("status", "register", "request-add", "bubble", "clear-bubble")) { manager.applicationContext.uiCopy("overlay.host.unknown") }
+        if ("overlay" !in capabilities) AppReply.Failure("PERMISSION_DENIED", manager.applicationContext.uiCopy("overlay.host.no_permission")) else {
             val installed = withContext(Dispatchers.IO) { manager.packages.installed().singleOrNull { it.manifest.id == owner && it.enabled } }
-            if (installed == null || manager.safeMode()) AppReply.Failure("UNAVAILABLE", "插件未启用")
+            if (installed == null || manager.safeMode()) AppReply.Failure("UNAVAILABLE", manager.applicationContext.uiCopy("overlay.host.no_plugin"))
             else if (command.operation == "status") data {
                 put("enabled", OverlayStore.get(context).settings.value.enabled && Settings.canDrawOverlays(context))
                 put("authorized", manager.permissions.access("$owner:${installed.publisherSha256}", "overlay") == com.kigtts.plugin.runtime.PermissionAccess.ALLOW)
                 put("userConfirmationRequired", true)
             }
             else if (command.operation == "clear-bubble") { withContext(Dispatchers.Main) { hub.clear(owner) }; data { put("cleared", true) } }
-            else if (!manager.requestPermission(owner, "overlay")) AppReply.Failure("PERMISSION_DENIED", "悬浮窗权限尚未授权或已禁用")
+            else if (!manager.requestPermission(owner, "overlay")) AppReply.Failure("PERMISSION_DENIED", manager.applicationContext.uiCopy("overlay.host.permission"))
             else withContext(Dispatchers.Main) {
                 when (command.operation) {
                     "register", "request-add" -> {
@@ -38,7 +40,7 @@ internal class PluginOverlayHost(private val manager: PluginManager) {
                     }
                     "bubble" -> {
                         if (!OverlayStore.get(context).settings.value.enabled || !Settings.canDrawOverlays(context))
-                            AppReply.Failure("OVERLAY_DISABLED", "请由用户在设置中开启悬浮窗") else {
+                            AppReply.Failure("OVERLAY_DISABLED", manager.applicationContext.uiCopy("overlay.host.disabled")) else {
                             val item = requireNotNull(command.bubble); require(item.text.isNotBlank() && item.text.length <= 180); symbol(item.symbol)
                             require((item.actionLabel?.length ?: 0) <= 24)
                             val actionable = item.actionId != null || item.pageId != null
@@ -54,11 +56,11 @@ internal class PluginOverlayHost(private val manager: PluginManager) {
             }
         }
     } catch (cancel: CancellationException) { throw cancel }
-    catch (error: IllegalArgumentException) { AppReply.Failure("INVALID", error.message ?: "悬浮窗参数无效") }
-    catch (_: Exception) { AppReply.Failure("UNAVAILABLE", "悬浮窗暂时不可用") }
+    catch (error: IllegalArgumentException) { AppReply.Failure("INVALID", error.message ?: manager.applicationContext.uiCopy("overlay.host.invalid")) }
+    catch (_: Exception) { AppReply.Failure("UNAVAILABLE", manager.applicationContext.uiCopy("overlay.host.unsupported")) }
     private fun symbol(value: String) { require(value.matches(Regex("[a-z0-9_]{1,80}"))) }
     private fun destination(action: String?, page: String?) {
-        require((action != null) xor (page != null)) { "指定一个操作或页面" }
+        require((action != null) xor (page != null)) { manager.applicationContext.uiCopy("overlay.host.bad_target") }
         require((action ?: page!!).matches(Regex("[a-zA-Z0-9_.:/-]{1,120}")))
     }
     private fun data(block: JsonObjectBuilder.() -> Unit) = AppReply.Data(buildJsonObject(block))
