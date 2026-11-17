@@ -6732,3 +6732,9 @@ GIF实际绘制/启停在API28和35均通过；静态图片解码也通过，损
 - AI assistant catalogs now declare the app-supported locales and localize the entry, model/access controls, and composer placeholder.
 - The chat composer keeps model and permission chips at the bottom, sends with the keyboard Send action, and exposes a hold-to-speak microphone button only while a recognition service is available.
 - Voice recognition text is submitted to the active AI conversation after release; the same control stays hidden when recognition is unavailable.
+
+## 2026-11-17 Release install and AI composer verification
+
+- Release APK rebuilt after the chat composer and optional voice-input API changes: 7,751,687 bytes, SHA-256 `f283cc7dbc424c16f5ea9eb6e72b178518b26ab58238c8c213a4bca8d9237aa3`.
+- K70 `cfc8ef16` accepted the incremental reinstall; device hash matches, first install time stayed unchanged, and the update time is 2026-11-17 22:43:52.
+- Device checks: `SYSTEM_ALERT_WINDOW` allow and `RECORD_AUDIO` allow. The phone returned to lock screen/AOD immediately after launch, so direct tap-through of the new AI composer and settings remains pending.
