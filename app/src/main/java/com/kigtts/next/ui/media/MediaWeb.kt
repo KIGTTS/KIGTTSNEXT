@@ -83,6 +83,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val relative = if(source!=null && localRoot!=null)source.relativeTo(localRoot).invariantSeparatorsPath else ""
             devices[0] = WebPagePrivileges(this, model.pluginManager.permissions, entryKey,
                 draft?.title?.ifBlank { draft.text }?.take(60) ?: entry.name, scope, { currentActive }, networkGate::authorize).also { it.install() }
+            installKigttsThemeAtDocumentStart()
             loadUrl(if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN + "/content/" + android.net.Uri.encode(relative,"/"))
         }
     }

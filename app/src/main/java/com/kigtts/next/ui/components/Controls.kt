@@ -88,10 +88,12 @@ fun PillButton(
     colors: ButtonColors = compactTonalButtonColors(),
     enabled: Boolean = true,
     badge: com.kigtts.plugin.api.PluginBadge? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
     val press=rememberImmediateButtonPress(interactionSource)
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
-    FilledTonalButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(32.dp),
+    FilledTonalButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.iconLongAction(enabled, onLongClick)
+        .then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(32.dp),
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
         AnimatedButtonContent(icon to label) { (image, text) ->

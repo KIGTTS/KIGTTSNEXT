@@ -5,6 +5,8 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.RectF
 import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.media.WebTheme
+import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeSettingsStore
 import org.json.JSONArray
@@ -56,9 +58,9 @@ internal object ProfileLongImage {
     }
 
     fun write(identity: IdentityCard, stickers: StickerRepository, directory: File, embedSource: Boolean = false,
-        appearance: ThemeSettings = ThemeSettingsStore(stickers.context).load()): File {
+        appearance: ThemeSettings = ThemeSettingsStore(stickers.context).load(), theme: WebTheme = WebThemeState.current): File {
         directory.mkdirs()
-        val style = ProfileLongStyle(stickers.context, appearance)
+        val style = ProfileLongStyle(stickers.context, appearance, theme)
         val file = exportIdentityCard(identity, stickers, directory, includeContactButtons = false,
             typeface = style::face, textScale = style.fontScale)
         val banner = checkNotNull(BitmapFactory.decodeFile(file.path)) { "无法读取名片封面" }
@@ -83,7 +85,7 @@ internal object ProfileLongImage {
         }
         val tags = ProfileLongTags(identity.tags, style, INNER)
         if (tags.height > 0) sections += (tags.height + 22) to { c, y -> tags.draw(c, PAD, y) }
-        val tiles = ProfileLongTiles(identity, INNER, style)
+        val tiles = ProfileLongTiles(identity, INNER, style, stickers)
         if (tiles.height > 0) sections += (tiles.height + 28) to { c, y -> tiles.draw(c, PAD, y) }
         val fadeEdge = sections.sumOf { it.first } + PAD
         val links = links(identity)
@@ -127,7 +129,7 @@ internal object ProfileLongImage {
                 }
                 if (!embedSource) return png
                 image.recycle()
-                val archive = ProfileArchive.write(identity, stickers, File(directory, "source"))
+                val archive = ProfileArchive.write(identity, stickers, File(directory, "source"), theme)
                 return File(directory, "profile-with-source.png").also { ProfilePngPayload.embed(png, archive, it) }
             } finally { if (!image.isRecycled) image.recycle() }
         } finally { banner.recycle() }

@@ -42,9 +42,7 @@ fun createBrowserView(context: Context, document: BrowserDocument, ready: (WebVi
             return true
         }
     }
-    if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
-        WebViewCompat.addDocumentStartJavaScript(this, WebThemeState.current.script(), setOf("*"))
-    }
+    installKigttsThemeAtDocumentStart()
     if (document.root != null && document.actions.isNotEmpty() && WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
         WebViewCompat.addWebMessageListener(this, "Kigtts", setOf(WebContentPolicy.ORIGIN)) { _, message, origin, mainFrame, _ ->
             runCatching {

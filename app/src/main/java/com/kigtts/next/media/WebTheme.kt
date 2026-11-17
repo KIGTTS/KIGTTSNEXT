@@ -2,6 +2,10 @@ package com.kigtts.next.media
 
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import androidx.webkit.ScriptHandler
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
+import com.kigtts.next.R
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,12 +16,12 @@ data class WebTheme(val dark: Boolean = false, val colors: Map<String, String> =
     fun json() = JSONObject().put("dark", dark).put("colors", JSONObject(colors)).put("corner", corner)
     fun css() = ":root{color-scheme:${if (dark) "dark" else "light"};" + colors.entries.joinToString("") { "--md-sys-color-${it.key}:${it.value};" } +
         "--kigtts-primary:var(--md-sys-color-primary);--kigtts-surface:var(--md-sys-color-surface);--kigtts-on-surface:var(--md-sys-color-on-surface);--kigtts-corner:${corner}px;}"
-    fun script() = """(()=>{const t=${json()};Object.freeze(t.colors);window.KigttsTheme=Object.freeze(t);
+    fun script() = """(()=>{if(window!==window.top)return;const t=${json()};Object.freeze(t.colors);window.KigttsTheme=Object.freeze(t);
       const apply=()=>{const r=document.documentElement;if(!r)return false;
         r.dataset.kigttsTheme=t.dark?'dark':'light';r.style.colorScheme=t.dark?'dark':'light';
         for(const [role,value] of Object.entries(t.colors))r.style.setProperty('--md-sys-color-'+role,value);
-        let s=document.getElementById('kigtts-theme');if(!s){s=document.createElement('style');s.id='kigtts-theme';r.appendChild(s)}
-        s.textContent=${JSONObject.quote(css())};return true;};
+        for(const role of ['primary','surface','on-surface'])r.style.setProperty('--kigtts-'+role,'var(--md-sys-color-'+role+')');
+        r.style.setProperty('--kigtts-corner',t.corner+'px');return true;};
       if(!apply()){const o=new MutationObserver(()=>{if(apply())o.disconnect()});o.observe(document,{childList:true,subtree:true});}
       window.dispatchEvent(new CustomEvent('kigtts-theme-change',{detail:t}));})()""".trimIndent()
 }
@@ -39,4 +43,20 @@ object WebUiResources {
         }
     }
 }
-fun WebView.applyKigttsTheme() { evaluateJavascript(WebThemeState.current.script(), null) }
+private data class WebThemeScript(val theme: WebTheme, val handler: ScriptHandler)
+
+internal fun WebView.installKigttsThemeAtDocumentStart(theme: WebTheme = WebThemeState.current) {
+    if (WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
+        val previous = getTag(R.id.kigtts_web_theme_script) as? WebThemeScript
+        if (previous?.theme == theme) return
+        previous?.handler?.remove()
+        val handler = WebViewCompat.addDocumentStartJavaScript(this, theme.script(), setOf("*"))
+        setTag(R.id.kigtts_web_theme_script, WebThemeScript(theme, handler))
+    }
+}
+
+fun WebView.applyKigttsTheme() {
+    val theme = WebThemeState.current
+    installKigttsThemeAtDocumentStart(theme)
+    evaluateJavascript(theme.script(), null)
+}

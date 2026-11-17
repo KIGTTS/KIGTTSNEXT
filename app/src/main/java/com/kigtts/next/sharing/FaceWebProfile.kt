@@ -16,10 +16,12 @@ internal fun faceHtml(value: String) = value.replace("&", "&amp;").replace("<", 
 /** Only bundled Remix vectors reach HTML; received profile data cannot inject markup. */
 internal class FaceWebIcons(private val context: Context) {
     private val cached = ConcurrentHashMap<SocialPlatform, String>()
+    fun icon(link: ContactLink): String = icon(socialPlatform(link))
+
     // Resources.getXml also reads compiled vector drawables; only bundled vectors are used here.
     @SuppressLint("ResourceType")
-    fun icon(link: ContactLink): String = cached.getOrPut(socialPlatform(link)) {
-        context.resources.getXml(socialPlatform(link).icon).use { xml ->
+    fun icon(platform: SocialPlatform): String = cached.getOrPut(platform) {
+        context.resources.getXml(platform.icon).use { xml ->
             val paths = mutableListOf<String>()
             while (xml.eventType != XmlPullParser.END_DOCUMENT) {
                 if (xml.eventType == XmlPullParser.START_TAG && xml.name == "path")

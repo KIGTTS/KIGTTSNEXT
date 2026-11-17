@@ -76,7 +76,7 @@ fun themeColors(settings: ThemeSettings, wallpaperColors: ColorScheme? = null,
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
+fun KigttsTheme(settings: ThemeSettings, publishWebTheme: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val dark = settings.mode.usesDark(isSystemInDarkTheme())
@@ -88,6 +88,7 @@ fun KigttsTheme(settings: ThemeSettings, content: @Composable () -> Unit) {
         } else null
     }
     val (colors, controls) = rememberThemePalette(ThemePaletteKey(settings.effectiveSeed, settings.contrast, settings.deeperDark, dark, wallpaper))
+    if (publishWebTheme) com.kigtts.next.ui.media.PublishWebTheme(colors, dark, settings.cornerRadius.toInt())
     val radius by animateFloatAsState(settings.cornerRadius,tween(220,easing=FastOutSlowInEasing),label="theme-corner-radius")
     val shapes = remember(radius) { Shapes(
         extraSmall = RoundedCornerShape((radius * .3f).coerceAtLeast(4f).dp),

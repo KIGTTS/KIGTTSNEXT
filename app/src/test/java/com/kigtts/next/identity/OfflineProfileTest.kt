@@ -77,7 +77,7 @@ class OfflineProfileTest {
         } finally { favorites.remove(added.id) }
     }
 
-    @Test fun longImageDeduplicatesTargetsAndLeavesPhotoTilePreviewsOut() {
+    @Test fun linkAppendixDeduplicatesTargetsAndMissingPhotoGetsAPlaceholder() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = testAppModel(app)
         val identity = model.identities.create().copy(nickname = "测试名片",
@@ -119,6 +119,8 @@ class OfflineProfileTest {
         assertFalse(ProfilePngPayload.extract(naked, File(temporary.root, "no-data.mhtml")))
         val jpeg = File(temporary.root, "compressed.jpg")
         val bitmap = BitmapFactory.decodeFile(naked.path)
+        // The flattened preview retains the photo, even when original image data is not embedded.
+        assertEquals(0xff2284dd.toInt(), bitmap.getPixel(200, 570))
         // Both sides and the bottom are occupied by the same four-level pattern.
         fun lastCell(x: Int) = bitmap.getPixel(x, bitmap.height - 1)
         assertEquals(lastCell(36 + (192 - 9) * 4), lastCell(0))
@@ -142,6 +144,22 @@ class OfflineProfileTest {
             assertEquals(imported.id, restored.id)
             assertTrue(favorites.image(PublicIdentityProfile.from(JSONObject(restored.profile)).tiles.first().image)?.isFile == true)
         } finally { favorites.remove(imported.id) }
+    }
+
+    @Test fun archiveUsesTheExportPaletteAndKeepsContactAndLinkTileSymbols() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        val contact = ContactLink("GitHub", "https://github.com/KIGTTS")
+        val identity = model.identities.create().copy(contacts = listOf(contact), tiles = listOf(
+            ProfileTile(kind = ProfileTileKind.CONTACT, columns = 1, social = contact),
+            ProfileTile(kind = ProfileTileKind.LINK, columns = 1, title = "首页", text = "https://example.org"),
+        ))
+        val theme = com.kigtts.next.media.WebTheme(true, mapOf("primary" to "#ddaa11", "surface" to "#102030"))
+        val html = profileArchiveHtml(identity, app, emptySet(), theme)
+        assertTrue(html.contains("--md-sys-color-primary:#ddaa11"))
+        assertTrue(html.contains("color-scheme:dark"))
+        assertEquals(2, Regex("""class="tile-symbol" aria-hidden="true"><svg[^>]+><path""").findAll(html).count())
+        assertTrue(html.contains("""href="https://example.org" aria-label="首页""""))
     }
 
     @Test fun grayCodeCanStillReadBothOlderMargins() {

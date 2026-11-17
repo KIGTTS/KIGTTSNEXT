@@ -19,8 +19,11 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     var menu by remember { mutableStateOf(false) }
     var alignmentDialog by remember { mutableStateOf(false) }
     var fontBar by remember { mutableStateOf(false) }
+    var listeningSettings by remember { mutableStateOf(false) }
     val context = model.context()
-    val registeredStart = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_START, model) }
+    val registeredStart = remember(context, state.pluginRevision) {
+        cornerActions(UiSlot.EDITOR_TOP_START, model, listenSettings = { listeningSettings = true })
+    }
     val registeredEnd = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_END, model) }
     val start = listOf(ElasticAction("editor-menu", "文本菜单", Icons.Default.MoreVert, { menu = true }),
         ElasticAction("editor-flip", uiText("subtitle.flip"), Icons.Default.SwapVert, model::flipSubtitle)) + registeredStart
@@ -74,11 +77,13 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
         }
         if (alignmentDialog) SubtitleAlignmentDialog(state.subtitleAppearance.alignment,
             { model.setSubtitleAppearance(model.state.value.subtitleAppearance.copy(alignment = it)) }, { alignmentDialog = false })
+        if (listeningSettings) ListeningQuickSettings(model, state.captionTextSize) { listeningSettings = false }
     }
 }
 
-fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null) = model.registry.actions(slot, model.context())
+fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null, listenSettings: (() -> Unit)? = null) = model.registry.actions(slot, model.context())
     .filter { owner == null || it.plugin.descriptor.id == owner }.map { registered ->
     ElasticAction(registered.key, registered.action.label, registered.action.icon.vector(registered.action.symbol),
-        { model.invoke(registered) }, iconOnly = registered.action.buttonStyle == UiButtonStyle.ICON, busy = registered.action.busy)
+        { model.invoke(registered) }, iconOnly = registered.action.buttonStyle == UiButtonStyle.ICON, busy = registered.action.busy,
+        onLongClick = listenSettings.takeIf { registered.plugin.descriptor.id == "service.speech-recognition" && registered.action.id == "listen" })
 }

@@ -2,13 +2,15 @@ package com.kigtts.next.identity
 
 import android.content.Context
 import android.graphics.Color
+import com.kigtts.next.media.WebTheme
 import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.sharing.FaceWebIcons
 import com.kigtts.next.sharing.faceWebTheme
 import java.net.URI
 
-internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images: Set<Int>): String {
-    val theme = faceWebTheme(WebThemeState.current)
+internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images: Set<Int>,
+    exportTheme: WebTheme = WebThemeState.current): String {
+    val theme = faceWebTheme(exportTheme)
     val icons = FaceWebIcons(context)
     val name = identity.nickname.ifBlank { "KIGTTS 用户" }.html()
     val css = context.assets.open("kigtts/profile-archive.css").bufferedReader(Charsets.UTF_8).use { it.readText() }
@@ -63,19 +65,32 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
                 Color.parseColor(theme.colors.getValue("primary")), Color.parseColor(theme.colors.getValue("surface-container-high"))) else null
             val qrLayout = when { qrPalette == null || label.isBlank() -> ""; width > height -> " qr-wide"; height > width -> " qr-tall"; else -> "" }
             val qrCss = qrPalette?.let { ";background:${cssColor(it.paper)};color:${cssColor(it.ink)}" }.orEmpty()
-            append("<article class=\"tile $kind$qrLayout\" style=\"grid-column: ${placement.column + 1}/span $width;grid-row: ${placement.row + 1}/span $height$qrCss\">")
+            val hasSymbol = tile.kind == ProfileTileKind.CONTACT || tile.kind == ProfileTileKind.LINK
+            val iconOnly = hasSymbol && width == 1 && height == 1
+            val symbolClass = if (iconOnly) " icon-only" else if (hasSymbol && height == 1) " icon-row" else ""
+            fun symbol(svg: String, title: String, detail: String): String =
+                "<span class=\"tile-symbol\" aria-hidden=\"true\">$svg</span>" + if (iconOnly) "" else
+                    "<span class=\"tile-caption\"><strong>${title.html()}</strong><span>${detail.html()}</span></span>"
+            append("<article class=\"tile $kind$qrLayout$symbolClass\" style=\"grid-column: ${placement.column + 1}/span $width;grid-row: ${placement.row + 1}/span $height$qrCss\">")
             when (tile.kind) {
                 ProfileTileKind.TITLE -> append("<h2>$label</h2>")
                 ProfileTileKind.DIVIDER -> append(profileDividerHtml(tile.title, tile.dividerStyle))
                 ProfileTileKind.CONTACT -> {
                     val link = tile.resolveContact(identity.contacts)
-                    if (link != null) contact(link)
-                    else append("<strong>$label</strong><span>${body.html()}</span>")
+                    val name = tile.title.ifBlank { link?.label?.ifBlank { "联系方式" } ?: "联系方式" }
+                    val graphic = symbol(icons.icon(link ?: ContactLink("", "")), name, link?.value ?: body)
+                    val payload = link?.let(::contactPayload).orEmpty()
+                    if (link != null && payload.isNotBlank()) {
+                        val open = profileExportLink(payload)?.let { "<a class=\"button\" href=\"${it.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">打开链接 ↗</a>" }.orEmpty()
+                        preview(name, graphic, profileArchiveQr(payload, ProfileQrStyle.INK) + "<p class=\"detail\">${link.value.html()}</p>$open")
+                    } else append(graphic)
                 }
                 ProfileTileKind.LINK -> {
                     val link = profileExportLink(body)
-                    if (link != null) append("<a href=\"${link.html()}\" target=\"_blank\" rel=\"noopener noreferrer\"><strong>${label.ifBlank { "链接" }} ↗</strong><span>${body.html()}</span></a>")
-                    else append("<strong>$label</strong><span>${body.html()}</span>")
+                    val name = tile.title.ifBlank { "链接" }
+                    val graphic = symbol(icons.icon(SocialPlatform.LINK), name, body)
+                    if (link != null) append("<a href=\"${link.html()}\" aria-label=\"${name.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">$graphic</a>")
+                    else append(graphic)
                 }
                 ProfileTileKind.IMAGE -> if (i in images) {
                     val alt = tile.title.ifBlank { "图片预览" }

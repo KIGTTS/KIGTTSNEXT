@@ -123,9 +123,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { legacyImports.migrateOriginalInstallation() }
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback)
-    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message)
+    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message) {
+        selectedAsrId ?: registry.plugins.firstOrNull { it.asr?.info?.role == AsrRole.SERVICE }?.descriptor?.id
+    }
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
+    fun openCaptionWindow() = captionOutput.openWindow()
+    fun resumeCaptionWindow() = captionOutput.resume()
     val voiceInputGesture = VoiceInputGestureState()
     fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
     fun continueVoiceInput() = speech.continueInput()

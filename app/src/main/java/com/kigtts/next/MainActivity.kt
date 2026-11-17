@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
     }
     override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); model.sourceLink(intent.data); model.externalIntent(intent); model.notificationLink(intent); model.overlayLink(intent) }
     override fun onStart() { super.onStart(); com.kigtts.next.overlay.NativeOverlayService.sync(this) }
-    override fun onResume() { super.onResume(); com.kigtts.next.overlay.OverlayHostWindow.resume(this) }
+    override fun onResume() { super.onResume(); com.kigtts.next.overlay.OverlayHostWindow.resume(this); model.resumeCaptionWindow() }
     override fun onPause() { com.kigtts.next.overlay.OverlayHostWindow.pause(this); super.onPause() }
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean =
         cameraShutterKeys.dispatch(event) || super.onKeyDown(keyCode, event)

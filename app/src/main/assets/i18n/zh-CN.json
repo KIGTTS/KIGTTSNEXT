@@ -126,7 +126,7 @@
   "profile.share.long": "分享长图",
   "profile.share.long.hint": "链接二维码附在图底",
   "profile.share.embed": "嵌入源数据",
-  "profile.share.embed.hint": "用于还原图片磁贴；按图片发送时，压缩可能丢失源数据",
+  "profile.share.embed.hint": "可还原图片磁贴，压缩可能丢失",
   "profile.share.pdf.hint": "适合保存和打印",
   "profile.share.web": "离线网页",
   "profile.share.web.hint": "可点开图片和联系方式",

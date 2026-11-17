@@ -32,6 +32,7 @@ data class ElasticAction(
     val iconOnly: Boolean = true, val weight: Float = 1f,
     val busy: Boolean = false,
     val badge: com.kigtts.plugin.api.PluginBadge? = null,
+    val onLongClick: (() -> Unit)? = null,
 )
 
 /** The first action stays at the outside edge; excess actions remain reachable in a menu. */
@@ -51,7 +52,8 @@ fun ElasticButtonGroup(actions: List<ElasticAction>, modifier: Modifier = Modifi
     }
     AnimatedActionSet(actions, { listOf(it.id, it.label, it.icon, it.iconOnly) }, modifier,
         alignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart) { shown ->
-        ElasticButtonStrip(shown.map { action -> action.copy(onClick = { current.firstOrNull { it.id == action.id }?.onClick?.invoke() }) },
+        ElasticButtonStrip(shown.map { action -> action.copy(onClick = { current.firstOrNull { it.id == action.id }?.onClick?.invoke() },
+            onLongClick = action.onLongClick?.let { { current.firstOrNull { it.id == action.id }?.onLongClick?.invoke(); Unit } }) },
             Modifier, plain, alignEnd, overflowTag, overflowLabel)
     }
 }
@@ -97,10 +99,10 @@ private fun ElasticButtonStrip(actions: List<ElasticAction>, modifier: Modifier,
                 if (action.iconOnly || !allTextFits) ToolButton(action.label, action.icon, action.onClick, button,
                     sources[index], IconButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
                     if (plain) compactPlainIconColors() else compactTonalIconColors(), busy = action.busy,
-                    iconSize = if (plain) 24.dp else 16.dp, badge = action.badge)
+                    iconSize = if (plain) 24.dp else 16.dp, badge = action.badge, onLongClick = action.onLongClick)
                 else PillButton(action.label, action.icon, action.onClick, button, sources[index],
                     ButtonDefaults.shapes(shape, RoundedCornerShape(8.dp)),
-                    if (plain) compactPlainButtonColors() else compactTonalButtonColors(), badge = action.badge)
+                    if (plain) compactPlainButtonColors() else compactTonalButtonColors(), badge = action.badge, onLongClick = action.onLongClick)
                 }
             } }
         }) { children, constraints ->

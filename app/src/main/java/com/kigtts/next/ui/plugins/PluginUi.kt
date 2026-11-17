@@ -43,10 +43,10 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, invoke: (String, Map<String, String>) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, extraSettings: (@Composable () -> Unit)? = null, invoke: (String, Map<String, String>) -> Unit) {
     page?.search?.let { search ->
         PluginSearchScreen(search, onBack, invoke) {
-            PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, invoke)
+            PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, extraSettings, invoke)
         }
         return
     }
@@ -86,6 +86,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
             list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             else -> ReadablePage(840.dp) { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(com.kigtts.next.ui.navigation.pageContentPadding()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke)
+                extraSettings?.invoke()
                 PluginBlocks(blocks,!busy,invoke, resolve = resolve)
             } }
         }

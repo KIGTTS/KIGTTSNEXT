@@ -131,7 +131,11 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     PluginPageScreen(model.pluginPage(destination.pluginId, destination.pageId), destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
-                    historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/") { action, inputs ->
+                    historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/",
+                    extraSettings = {
+                        if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
+                            com.kigtts.next.ui.home.CaptionWindowSetting(model::openCaptionWindow)
+                    }) { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
                     }
                 }

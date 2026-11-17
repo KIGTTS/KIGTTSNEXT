@@ -65,12 +65,14 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 .windowInsetsPadding(navigation).testTag("appearance-settings-sheet"),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 AppearanceAssetSettings(settings, onChange, onFonts)
-                if (onLanguage != null) SettingItem(uiText("settings.category.language"), languageName,
-                    Icons.Default.Language, SettingPosition.SINGLE, Modifier.testTag("appearance-ui-language"), onClick = onLanguage)
                 ThemeColorSettings(settings, onChange)
                 AppearanceDisplaySettings(settings, onChange)
                 SubtitlePlaceholderSetting(placeholder, onPlaceholderChange)
                 SubtitleMotionSettings(subtitle, onSubtitleChange)
+                if (onLanguage != null) SettingsGroup(uiText("language.screen")) {
+                    SettingItem(uiText("settings.category.language"), languageName, Icons.Default.Language,
+                        SettingPosition.SINGLE, Modifier.testTag("appearance-ui-language"), onClick = onLanguage)
+                }
                 OutlinedButton(shapes = expressivePillShapes(), onClick = feedbackClick { onChange(ThemeSettings()) },
                   modifier = Modifier.fillMaxWidth()) {
                   Icon(Icons.Default.Restore, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("恢复默认外观")

@@ -2,6 +2,8 @@ package com.kigtts.next.identity
 
 import android.graphics.BitmapFactory
 import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.media.WebTheme
+import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.sharing.faceAvatarData
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -24,7 +26,8 @@ internal object ProfileArchive {
     private val imageName = Regex("(cover|tile-([0-9]|1[0-9]|2[0-3]))\\.jpg")
     private val ascii = Charsets.US_ASCII
 
-    fun write(identity: IdentityCard, stickers: StickerRepository, directory: File): File {
+    fun write(identity: IdentityCard, stickers: StickerRepository, directory: File,
+        theme: WebTheme = WebThemeState.current): File {
         directory.mkdirs()
         val cover = exportIdentityCard(identity, stickers, directory, includeContactButtons = false)
         val images = identity.tiles.take(24).mapIndexedNotNull { index, tile ->
@@ -43,7 +46,7 @@ internal object ProfileArchive {
         identity.tiles.take(24).forEachIndexed { i, tile -> images[i]?.let { index.put(it.name, tile.id) } }
         val metadata = JSONObject().put("profile", profile).put("images", index).toString().toByteArray(Charsets.UTF_8)
         require(metadata.size <= MAX_JSON) { "名片内容过多" }
-        val html = profileArchiveHtml(identity, stickers.context, images.keys).toByteArray(Charsets.UTF_8)
+        val html = profileArchiveHtml(identity, stickers.context, images.keys, theme).toByteArray(Charsets.UTF_8)
         return File(directory, "profile.mhtml").also { file ->
             file.outputStream().buffered().use { output ->
                 val boundary = "kigtts-${UUID.randomUUID()}"

@@ -72,6 +72,10 @@ class AdminCommands(private val context: Context, private val host: HostPluginRu
             val outcome=withTimeout(30_000) { plugin.execute(args.getString("action"),host.context().copy(inputs=values)) }
             manager.refreshContext(host.context());JSONObject().put("outcome",JSONObject(PluginJson.encodeToString<PluginOutcome>(outcome)))
         }
+        "asr-test" -> host.mutate {
+            val engine = requireNotNull(manager.registry.plugin(args.getString("id"))?.asr) { "语音识别插件未加载" }
+            probeInstalledAsr(engine, requireNotNull(file))
+        }
         "tts-test" -> host.mutate {
             val plugin=requireNotNull(manager.registry.plugin(args.getString("id")));val engine=requireNotNull(plugin.tts)
             val text=args.optString("text","你好，这是插件测试。");require(text.length in 1..1024)

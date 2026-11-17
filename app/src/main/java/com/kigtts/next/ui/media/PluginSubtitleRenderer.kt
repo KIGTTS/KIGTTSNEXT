@@ -18,6 +18,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kigtts.next.media.WebContentPolicy
 import com.kigtts.next.media.applyKigttsTheme
+import com.kigtts.next.media.installKigttsThemeAtDocumentStart
 import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.state.SubtitleRendererSelection
 import com.kigtts.next.ui.navigation.LocalPageActive
@@ -142,6 +143,7 @@ fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, p
                     unavailable(); return true
                 }
             }
+            installKigttsThemeAtDocumentStart()
             loadUrl(origin + "/content/" + Uri.encode(selection.mainPage, "/"))
         }
     }

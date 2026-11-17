@@ -7,14 +7,14 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.util.TypedValue
 import androidx.core.graphics.ColorUtils
-import com.kigtts.next.media.WebThemeState
+import com.kigtts.next.media.WebTheme
 import com.kigtts.next.sharing.faceWebTheme
 import com.kigtts.next.theme.*
 import kotlin.math.max
 
 /** Snapshot the native theme and typeface at export time. */
-internal class ProfileLongStyle(val context: Context, private val settings: ThemeSettings) {
-    private val theme = faceWebTheme(WebThemeState.current)
+internal class ProfileLongStyle(val context: Context, private val settings: ThemeSettings, exportTheme: WebTheme) {
+    private val theme = faceWebTheme(exportTheme)
     val dark get() = theme.dark
     private fun role(name: String, fallback: Int) = theme.colors[name]?.let { runCatching { Color.parseColor(it) }.getOrNull() } ?: fallback
     val surface = role("background", role("surface", Color.WHITE))

@@ -22,6 +22,11 @@ summary{cursor:pointer;list-style:none}
 summary::-webkit-details-marker{display:none}
 .tile span,.contacts span,.detail{white-space:pre-wrap;color:var(--md-sys-color-on-surface-variant)}
 .tile span{font-size:.88em}
+.tile .tile-symbol{display:inline-flex;color:inherit;flex:none;width:24px;height:24px}
+.tile-symbol svg{width:100%;height:100%;fill:currentColor}
+.tile .tile-caption{display:flex;min-width:0;flex-direction:column;color:inherit;font-size:inherit}
+.tile.icon-row>a,.tile.icon-row summary{flex-direction:row;align-items:center;justify-content:flex-start;gap:8px}
+.tile.icon-only,.tile.icon-only>a,.tile.icon-only summary{align-items:center;justify-content:center}
 .tile.title,.tile.divider{background:none;padding:0 4px}
 h2{font-size:1rem;margin:4px 0 8px}
 .tile.image,.tile.qr{padding:0;overflow:hidden}

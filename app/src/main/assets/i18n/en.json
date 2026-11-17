@@ -126,7 +126,7 @@
   "profile.share.long": "Share long image",
   "profile.share.long.hint": "Link QR codes appear at the bottom",
   "profile.share.embed": "Embed source data",
-  "profile.share.embed.hint": "Restores image tiles; sending as a photo may strip this data",
+  "profile.share.embed.hint": "Restores image tiles; compression may strip data",
   "profile.share.pdf.hint": "Good for saving and printing",
   "profile.share.web": "Offline web page",
   "profile.share.web.hint": "Open images and contact links",

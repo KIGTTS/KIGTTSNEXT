@@ -48,22 +48,22 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
     val bottomEnd = RoundedCornerShape(inner, inner, outer.bottomEnd, inner)
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Surface(Modifier.fillMaxWidth().testTag("profile-format-long"), shape = groupedSettingShape(SettingPosition.FIRST, outer),
-            color = colors.primaryContainer, contentColor = colors.onPrimaryContainer) {
+            color = colors.surfaceContainerLow, contentColor = colors.onSurface) {
             Column {
                 Surface(onClick = dialogFeedbackClick { share(ProfileShareFormat.LONG_IMAGE) },
-                    modifier = Modifier.fillMaxWidth().testTag("profile-share-long"), color = colors.primaryContainer,
-                    contentColor = colors.onPrimaryContainer) {
+                    modifier = Modifier.fillMaxWidth().testTag("profile-share-long"), color = colors.surfaceContainerLow,
+                    contentColor = colors.onSurface) {
                     Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Image, contentDescription = null, Modifier.size(24.dp))
+                        Icon(Icons.Filled.Image, contentDescription = null, Modifier.size(24.dp), tint = colors.onSurfaceVariant)
                         Column(Modifier.weight(1f)) {
                             Text(uiText("profile.share.long"), style = MaterialTheme.typography.titleMedium)
-                            Text(uiText("profile.share.long.hint"), style = MaterialTheme.typography.bodySmall)
+                            Text(uiText("profile.share.long.hint"), style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                         }
                         Icon(Icons.Filled.Share, contentDescription = null, Modifier.size(20.dp))
                     }
                 }
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = colors.onPrimaryContainer.copy(alpha = .14f))
+                HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = colors.outlineVariant)
                 Row(Modifier.fillMaxWidth().testTag("profile-embed-source")
                     .toggleable(includeSource, role = Role.Switch, onValueChange = feedbackChange(setIncludeSource))
                     .semantics { contentDescription = embedLabel }.padding(16.dp),
@@ -71,7 +71,7 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(embedLabel, style = MaterialTheme.typography.labelLarge)
                         Text(uiText("profile.share.embed.hint"),
-                            style = MaterialTheme.typography.bodySmall)
+                            style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                     }
                     Switch(includeSource, onCheckedChange = null)
                 }
@@ -90,10 +90,10 @@ internal fun ProfileShareFormatTiles(includeSource: Boolean, setIncludeSource: (
 private fun ShareFormatTile(label: String, hint: String, icon: ImageVector, shape: RoundedCornerShape,
     modifier: Modifier, onShare: () -> Unit) {
     Surface(onClick = dialogFeedbackClick(onShare), modifier = modifier, shape = shape,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest) {
+        color = MaterialTheme.colorScheme.surfaceContainerLow) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Icon(icon, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(label, style = MaterialTheme.typography.titleSmall)
             Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

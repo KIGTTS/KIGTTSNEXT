@@ -1,5 +1,5 @@
 #Requires -Version 7.0
-param([ValidateSet('snapshot','inspect','install','enable','restart','uninstall','refresh','resource','execute','tts-test','present','select-media','remove-media','navigate','back','browser-capture','browser-session')]
+param([ValidateSet('snapshot','inspect','install','enable','restart','uninstall','refresh','resource','execute','tts-test','asr-test','present','select-media','remove-media','navigate','back','browser-capture','browser-session')]
     [string]$Command='snapshot',[string]$Payload='{}',[string]$File,[string]$Device,[int]$TimeoutSeconds=120)
 $ErrorActionPreference='Stop'
 $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))

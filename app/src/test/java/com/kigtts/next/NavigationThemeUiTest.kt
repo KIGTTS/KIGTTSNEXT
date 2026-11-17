@@ -31,6 +31,19 @@ class NavigationThemeUiTest {
     }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+
+    @Test fun webThemeUsesTheSameWallpaperAndContrastPaletteAsTheApp() {
+        val model = show()
+        val context = compose.activity
+        val settings = ThemeSettings(wallpaperEnabled = true, contrast = ContrastLevel.HIGH, mode = ThemeMode.DARK)
+        compose.runOnIdle { model.theme(settings) }
+        val wallpaper = androidx.compose.material3.dynamicDarkColorScheme(context)
+        val expected = com.kigtts.next.media.webThemeColors(themeColors(settings, wallpaper, isDark = true))
+        compose.waitUntil(timeoutMillis = 8_000) {
+            com.kigtts.next.media.WebThemeState.current.colors == expected
+        }
+        assertTrue(com.kigtts.next.media.WebThemeState.current.dark)
+    }
     @Test fun appearanceUsesMeasuredHomeWireframeWithoutListeningOrLabels() {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f); model.toggleListening() }

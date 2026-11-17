@@ -4,11 +4,15 @@ import android.graphics.*
 import android.text.Layout
 import androidx.core.content.ContextCompat
 import com.google.zxing.common.BitMatrix
+import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.media.MediaBitmapDecoder
 import com.kigtts.next.ui.identity.profileBoardGeometry
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.roundToInt
 
-internal class ProfileLongTiles(private val identity: IdentityCard, width: Int, private val style: ProfileLongStyle) {
+internal class ProfileLongTiles(private val identity: IdentityCard, width: Int, private val style: ProfileLongStyle,
+    private val stickers: StickerRepository) {
     private val tiles = identity.tiles.take(24)
     private val geometry = profileBoardGeometry(tiles, width.toFloat(), 24f, 72f)
     val height = geometry.height.roundToInt()
@@ -72,6 +76,7 @@ internal class ProfileLongTiles(private val identity: IdentityCard, width: Int, 
             }
             return
         }
+        if (tile.kind == ProfileTileKind.IMAGE && drawImage(canvas, tile, area)) return
         if (tile.isTitleOnlyText || tile.kind == ProfileTileKind.IMAGE) {
             val title = if (tile.kind == ProfileTileKind.IMAGE) tile.title.ifBlank { "图片" } else tile.title
             val heading = style.layout(title, if (tile.kind == ProfileTileKind.IMAGE) 28f else 44f, style.ink,
@@ -106,9 +111,26 @@ internal class ProfileLongTiles(private val identity: IdentityCard, width: Int, 
         if (detail.isNotBlank()) style.text(canvas, body, x, y + header.height + between)
     }
 
+    private fun drawImage(canvas: Canvas, tile: ProfileTile, area: RectF): Boolean {
+        val file = profileImageFile(stickers, tile.image) ?: return false
+        val bitmap = runCatching { MediaBitmapDecoder.decode(file, 1600) }.getOrNull() ?: return false
+        try {
+            val scale = max(area.width() / bitmap.width, area.height() / bitmap.height)
+            val halfWidth = bitmap.width * scale / 2
+            val halfHeight = bitmap.height * scale / 2
+            val destination = RectF(area.centerX() - halfWidth, area.centerY() - halfHeight,
+                area.centerX() + halfWidth, area.centerY() + halfHeight)
+            canvas.drawBitmap(bitmap, null, destination, imagePaint)
+            return true
+        } finally { bitmap.recycle() }
+    }
+
+    private val imagePaint = Paint(Paint.FILTER_BITMAP_FLAG)
+
     private fun glyph(canvas: Canvas, contact: ContactLink?, x: Float, y: Float, edge: Int, kind: ProfileTileKind) {
-        ContextCompat.getDrawable(style.context, socialPlatform(contact ?: ContactLink(
-            if (kind == ProfileTileKind.LINK) "链接" else "", "")).icon)?.mutate()?.let {
+        val icon = if (kind == ProfileTileKind.LINK) SocialPlatform.LINK.icon
+            else socialPlatform(contact ?: ContactLink("", "")).icon
+        ContextCompat.getDrawable(style.context, icon)?.mutate()?.let {
             it.setTint(style.ink); it.setBounds(x.toInt(), y.toInt(), x.toInt() + edge, y.toInt() + edge); it.draw(canvas)
         }
     }
