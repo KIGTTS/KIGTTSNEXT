@@ -3,6 +3,9 @@ package com.kigtts.plugin.runtime
 import android.os.ParcelFileDescriptor
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import java.io.DataOutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -11,6 +14,16 @@ import java.util.concurrent.ConcurrentHashMap
 internal class HostSpeechBroker(private val owner: String, private val registry: PluginRegistry,
     private val paths: PluginPaths, private val allowTts: Boolean = true, private val allowAsr: Boolean = false) : IHostSpeechBroker.Stub() {
     private val recognition = HostRecognitionBroker(owner, registry, paths)
+    /** A built-in service calls the same authorized provider proxies without a second audio pipe. */
+    fun builtinRecognition(): RecognitionBroker = object : RecognitionBroker {
+        override fun providers(): List<AsrProvider> = recognition.providers()
+        override suspend fun control(pluginId: String, command: AsrControl): Boolean = recognition.control(pluginId, command)
+        override suspend fun recognize(pluginId: String, audio: PcmAudio, config: RecognitionConfig) =
+            requireNotNull(recognition.provider(pluginId).asr).recognize(audio, config)
+        override fun recognizeStream(pluginId: String, audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
+            emitAll(requireNotNull(recognition.provider(pluginId).asr).recognizeStream(audio, config))
+        }
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private data class Session(val job: Job, val output: ParcelFileDescriptor)
     private val sessions = ConcurrentHashMap<String, Session>()

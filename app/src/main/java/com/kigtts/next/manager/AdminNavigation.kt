@@ -17,6 +17,11 @@ suspend fun adminNavigate(model:AppViewModel,args:JSONObject,back:Boolean):JSONO
         "experimental" -> model.navigate(Destination.SettingsDetail(SettingsCategory.EXPERIMENTAL))
         "plugins" -> model.navigate(Destination.Plugins)
         "media" -> model.content.picker()
+        "html-preview" -> {
+            val entry = requireNotNull(model.mediaRepository.get(args.getString("mediaId"))) { "网页不存在" }
+            require(entry.kind in setOf(com.kigtts.next.media.MediaKind.HTML, com.kigtts.next.media.MediaKind.WEB))
+            model.navigate(Destination.HtmlPreview(entry.id))
+        }
         "sketch" -> model.openSidePage(SidePage.SKETCH)
         "cards" -> model.openSidePage(SidePage.CARDS)
         "plugin" -> { val id=args.getString("id");require(model.registry.plugin(id)!=null);model.navigate(Destination.PluginPage(id,args.getString("pageId"))) }

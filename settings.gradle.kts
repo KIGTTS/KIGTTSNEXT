@@ -14,7 +14,7 @@ project(":plugin-api").projectDir = file(".sdk/plugin-api")
 project(":plugin-android-api").projectDir = file(".sdk/plugin-android-api")
 check(file(".sdk/plugin-api/build.gradle.kts").isFile) { "Initialize the pinned SDK: git submodule update --init .sdk" }
 include(":manager-protocol", ":plugin-manager")
-include(":reading")
+include(":reading", ":speech-recognition")
 
 // Optional cross-repository tests; a normal application build never configures plugin projects.
 if (providers.gradleProperty("pluginIntegration").orNull == "true") {

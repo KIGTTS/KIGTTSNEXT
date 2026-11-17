@@ -82,8 +82,18 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
 }
 
 fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null, listenSettings: (() -> Unit)? = null) = model.registry.actions(slot, model.context())
-    .filter { owner == null || it.plugin.descriptor.id == owner }.map { registered ->
-    ElasticAction(registered.key, registered.action.label, registered.action.icon.vector(registered.action.symbol),
-        { model.invoke(registered) }, iconOnly = registered.action.buttonStyle == UiButtonStyle.ICON, busy = registered.action.busy,
-        onLongClick = listenSettings.takeIf { registered.plugin.descriptor.id == "service.speech-recognition" && registered.action.id == "listen" })
+    .filter { (owner == null || it.plugin.descriptor.id == owner) &&
+        (it.plugin.descriptor.id != "service.speech-recognition" || model.captionServiceReady) }.map { registered ->
+    val service = registered.plugin.descriptor.id
+    val listen = service == "service.speech-recognition" && registered.action.id == "listen"
+    val dismiss = service == "service.speech-recognition" && registered.action.id == "close" && slot == UiSlot.LISTENING_BOTTOM_END
+    val label = when {
+        dismiss || listen && model.state.value.captionsVisible -> "关闭聆听字幕"
+        listen -> "开始聆听"
+        else -> registered.action.label
+    }
+    ElasticAction(registered.key, label, registered.action.icon.vector(registered.action.symbol),
+        { when { listen -> model.toggleCaptionPanel(service); dismiss -> model.dismissCaptionPanel(); else -> model.invoke(registered) } },
+        iconOnly = registered.action.buttonStyle == UiButtonStyle.ICON, busy = registered.action.busy,
+        onLongClick = listenSettings.takeIf { listen })
 }

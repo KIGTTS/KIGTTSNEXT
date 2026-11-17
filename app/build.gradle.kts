@@ -102,6 +102,7 @@ android {
 }
 dependencies {
     implementation(project(":reading"))
+    implementation(project(":speech-recognition"))
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")
     implementation("com.caverock:androidsvg-aar:1.4")
     implementation(project(":plugin-api"))

@@ -22,9 +22,9 @@ import com.kigtts.next.ui.settings.SettingPosition
 import com.kigtts.next.ui.settings.SettingsGroup
 
 @Composable
-internal fun CaptionWindowSetting(open: () -> Unit) {
+internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
     SettingItem("打开字幕浮窗", "可先打开浮窗，再开始聆听",
-        MaterialSymbols.vector("open_in_new") ?: Icons.Default.OpenInNew, SettingPosition.SINGLE, onClick = open)
+        MaterialSymbols.vector("open_in_new") ?: Icons.Default.OpenInNew, SettingPosition.SINGLE, onClick = open, enabled = ready)
 }
 
 @Composable

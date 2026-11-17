@@ -13,16 +13,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.overlay.OverlayViewOwner
@@ -31,10 +32,12 @@ import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.components.MaterialSymbols
 import com.kigtts.next.ui.components.ProvideButtonFeedback
 import com.kigtts.next.ui.components.ToolButton
+import com.kigtts.next.ui.home.ListeningCaptionContent
 import kotlin.math.roundToInt
 
 /** The overlay observes the same appearance as the app, but owns its own window lifecycle. */
-internal class FloatingCaptions(context: Context, private val toggle: () -> Unit, private val dismiss: () -> Unit) {
+internal class FloatingCaptions(context: Context, private val toggle: () -> Unit, private val dismiss: () -> Unit,
+    private val resize: (Float) -> Unit, private val saveSize: () -> Unit) {
     private val context by lazy { if (Build.VERSION.SDK_INT >= 30) runCatching {
         val display = context.getSystemService(android.hardware.display.DisplayManager::class.java)?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
         if (display == null) context else context.createDisplayContext(display)
@@ -69,7 +72,7 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
                 val state = content
                 KigttsTheme(state.theme) {
                     ProvideButtonFeedback(state.haptics) {
-                        FloatingCaptionContent(state, ::dragBy, toggle, dismiss)
+                        FloatingCaptionContent(state, ::dragBy, toggle, dismiss, resize, saveSize)
                     }
                 }
             }
@@ -125,11 +128,14 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float) -> Unit, toggle: () -> Unit, close: () -> Unit) {
+private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float) -> Unit, toggle: () -> Unit, close: () -> Unit,
+    resize: (Float) -> Unit, saveSize: () -> Unit) {
     val colors = MaterialTheme.colorScheme
+    var showSize by remember { mutableStateOf(false) }
     Surface(shape = MaterialTheme.shapes.medium, color = colors.surfaceContainerHigh, contentColor = colors.onSurface) {
         Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                CaptionTool("调整浮窗字号", "format_size", Icons.Default.FormatSize) { showSize = !showSize }
                 Box(Modifier.weight(1f).height(44.dp)
                     .draggable(rememberDraggableState(move), Orientation.Vertical)
                     .semantics { contentDescription = "拖动字幕浮窗" }, contentAlignment = Alignment.CenterStart) {
@@ -141,11 +147,13 @@ private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float
                 Spacer(Modifier.width(4.dp))
                 CaptionTool("关闭字幕浮窗", "close", Icons.Default.Close, close)
             }
-            val size = (if (state.active && state.text.isNotBlank()) state.size else 16f).sp
-            Text(state.text.ifBlank { if (state.active) "正在聆听…" else "待命" }, Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = size, lineHeight = (size.value * 1.3).toFloat().sp),
-                color = if (state.active) colors.onSurface else colors.onSurfaceVariant,
-                maxLines = 4, overflow = TextOverflow.Ellipsis)
+            if (showSize) Slider(state.size, resize, Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+                .semantics { contentDescription = "浮窗字号" }, valueRange = CaptionFontSettings.WINDOW_RANGE, onValueChangeFinished = saveSize)
+            val maxHeight = with(LocalDensity.current) { (state.size * 5.4f).sp.toDp() }.coerceAtMost(240.dp)
+            if (state.text.isNotBlank()) ListeningCaptionContent(state.text, state.size, singleLine = false,
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp).heightIn(max = maxHeight))
+            else Text(if (state.active) "正在聆听…" else "待命", Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
         }
     }
 }
@@ -153,5 +161,5 @@ private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CaptionTool(label: String, symbol: String, fallback: ImageVector, action: () -> Unit) {
-    ToolButton(label, MaterialSymbols.vector(symbol) ?: fallback, action, size = 40.dp, iconSize = 20.dp)
+    ToolButton(label, MaterialSymbols.vector(symbol) ?: fallback, action)
 }

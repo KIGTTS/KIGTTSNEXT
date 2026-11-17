@@ -20,7 +20,10 @@ class HostPluginRuntime private constructor(private val application: Application
             emit(phrases.filter { it.cardType() == com.kigtts.next.state.QuickCardType.TEXT && it.text.isNotBlank() }
                 .associate { it.id to it.text })
         } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice)
-    val manager = PluginManager(application, listOf(reading), com.kigtts.next.sharing.pausedSharingPlugins)
+    private val recognition = com.kigtts.engines.recognitionservice.RecognitionServicePlugin(::legacyRecognitionEnabled)
+    val manager = PluginManager(application, listOf(reading, recognition), com.kigtts.next.sharing.pausedSharingPlugins)
+    private fun legacyRecognitionEnabled(): Boolean? = manager.packages.installed()
+        .firstOrNull { it.manifest.id == recognition.descriptor.id }?.enabled
     private fun voicePluginRevisions(): Map<String, String>? = if (!manager.installedCatalogReady) null
         else manager.status.associate { status ->
             val pkg = status.installed
@@ -41,7 +44,8 @@ class HostPluginRuntime private constructor(private val application: Application
         { target, id -> ui()?.cardUi?.open(target, id) ?: false },
         { state()?.editingCardId() }, { owner -> ui()?.agentAccess?.consume(owner) == true })
     val quickTextPlugins=com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,manager.paths,::ui)
-    val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, ::ui)
+    internal val browserHost = com.kigtts.next.plugins.control.BrowserHost(application, manager, mediaRepository, { quickTexts.phrases.value }, ::context)
+    val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, browserHost, ::ui)
     init {manager.safeMode = recovery::safeMode; manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin
         manager.stickerBrokerFactory = stickerPlugins::forPlugin }
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()

@@ -16,14 +16,17 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.*
 
-internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: String, block: PageBlock.Browser): BrowserDocument {
+internal fun pluginBrowserDocument(model: AppViewModel, owner: String, pageId: String, block: PageBlock.Browser) =
+    pluginBrowserDocument(model.pluginManager, owner, pageId, block)
+
+internal fun pluginBrowserDocument(manager: com.kigtts.plugin.runtime.PluginManager, owner: String, pageId: String, block: PageBlock.Browser): BrowserDocument {
     require(block.root?.pluginId == null || block.root?.pluginId == owner) { "网页资源不属于此插件" }
-    val capabilities = model.pluginManager.status.firstOrNull { it.installed.manifest.id == owner }?.installed?.manifest?.capabilities.orEmpty()
+    val capabilities = manager.status.firstOrNull { it.installed.manifest.id == owner }?.installed?.manifest?.capabilities.orEmpty()
     require(!(block.allowNetwork || block.url != null) || "network" in capabilities) { "插件未声明network能力" }
-    val root = block.root?.let { model.pluginManager.paths.storage(owner).file(it.path) }
+    val root = block.root?.let { manager.paths.storage(owner).file(it.path) }
     if (root != null) require(root.isDirectory && WebContentPolicy.file(root, block.mainPage) != null) { "网页主文件不存在" }
     val url = block.url?.also { require(WebContentPolicy.https(it)) } ?: (WebContentPolicy.ORIGIN + "/content/" + Uri.encode(block.mainPage, "/"))
-    return BrowserDocument("plugin:$owner:$pageId", url, root, model.pluginManager.paths.storage(owner).file("cache/browser/$pageId"), block.allowNetwork || block.url != null, block.allowedActions)
+    return BrowserDocument("plugin:$owner:$pageId", url, root, manager.paths.storage(owner).file("cache/browser/$pageId"), block.allowNetwork || block.url != null, block.allowedActions)
 }
 @Composable internal fun PluginBrowserScreen(model: AppViewModel, owner: String, pageId: String, block: PageBlock.Browser,
     contextUpdate: String? = null, transparentBackground: Boolean = false) {

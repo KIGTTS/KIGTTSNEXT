@@ -81,7 +81,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                 try {
                     withContext(Dispatchers.IO) { plugin.attach(ScopedEnvironment(context, paths.storage(plugin.descriptor.id),
                         File(context.filesDir, "builtin-assets/${plugin.descriptor.id}").apply { mkdirs() }, false,
-                        speechBroker = BuiltinSpeechBroker(plugin.descriptor.id, registry, broker))) }
+                        speechBroker = BuiltinSpeechBroker(plugin.descriptor.id, registry, broker),
+                        recognitionBroker = broker.builtinRecognition())) }
                     builtinBrokers += broker
                 } catch (error: Exception) { broker.close(); throw error }
             }
@@ -144,7 +145,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false) = mutation.withLock {
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
         require(!isPackagePaused(id)) { "此插件暂不可用" }
-        require(builtins.none { it.descriptor.id == id }) { "此功能已内置，请在设置中打开朗读设置" }
+        require(id !in builtinIds) { "此功能已内置，请在软件设置中使用" }
         unload(id)
         try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
         finally { reloadLocked() }

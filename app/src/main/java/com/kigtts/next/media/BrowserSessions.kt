@@ -1,8 +1,8 @@
 package com.kigtts.next.media
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.view.MotionEvent
 import android.view.ViewGroup
 import android.webkit.WebView
 import com.kigtts.plugin.api.AppCommand
@@ -16,7 +16,8 @@ import java.util.UUID
 /** Isolated inspection state persists between tools; no native actions, haptics, sensors, microphone or camera. */
 internal object BrowserSessions {
     private data class Session(val owner: String, val web: WebView, val width: Int, val height: Int, val diagnostics: MutableList<String>,
-        val subtitle: BrowserSubtitleLayout? = null, var touched: Long = android.os.SystemClock.elapsedRealtime())
+        val surface: BrowserInspectionSurface.Lease, val subtitle: BrowserSubtitleLayout? = null,
+        var touched: Long = android.os.SystemClock.elapsedRealtime())
     private val sessions = linkedMapOf<String, Session>()
     private val gate = Mutex()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -25,8 +26,26 @@ internal object BrowserSessions {
         if (themeUpdates?.isActive == true) return
         themeUpdates = scope.launch { WebThemeState.themes.collect { sessions.values.toList().forEach { it.web.applyKigttsTheme() } } }
     }
-    fun closeAll() { themeUpdates?.cancel(); themeUpdates = null; sessions.values.toList().forEach { release(it) }; sessions.clear() }
-    private fun release(session: Session) { val view = session.subtitle ?: session.web; (view.parent as? ViewGroup)?.removeView(view); session.web.stopLoading(); session.web.destroy() }
+    private var cleanup: Job? = null
+    private fun observeIdleSessions() {
+        if (cleanup?.isActive == true) return
+        cleanup = scope.launch {
+            while (sessions.isNotEmpty()) {
+                delay(60_000)
+                gate.withLock {
+                    val cutoff = android.os.SystemClock.elapsedRealtime() - 10 * 60_000
+                    sessions.filterValues { it.touched < cutoff }.keys.toList().forEach { id -> sessions.remove(id)?.let(::release) }
+                }
+            }
+        }
+    }
+    private fun release(session: Session) {
+        try {
+            val view = session.subtitle ?: session.web
+            (view.parent as? ViewGroup)?.removeView(view)
+            session.web.stopLoading(); session.web.destroy()
+        } finally { session.surface.close() }
+    }
     private suspend fun state(session: Session): JSONObject {
         val result = session.web.browserJson(BrowserDriverScripts.state)
         // innerWidth can include horizontal overflow and is not the visible CSS viewport.
@@ -42,13 +61,13 @@ internal object BrowserSessions {
             .put("layout", if (session.subtitle != null) "subtitle-simulation" else "webview-viewport")
             .also { result -> session.subtitle?.let { result.put("viewport", it.geometryJson()) } }
     }
-    suspend fun run(owner: String, command: AppCommand.BrowserSession, document: BrowserDocument?, output: File?): JSONObject = gate.withLock {
+    suspend fun run(context: Context, owner: String, command: AppCommand.BrowserSession, document: BrowserDocument?, output: File?): JSONObject = gate.withLock {
         withContext(Dispatchers.Main) {
             observeTheme()
             require(command.operation in setOf("devices", "sessions", "open", "open-subtitle", "state", "wait", "screenshot", "close") + BrowserInput.operations)
             if (command.operation == "devices")
-                return@withContext BrowserSimulation.devices(requireNotNull(BrowserInspector.attachedRoot()).context)
-                    .put("continuousSessions", true).put("maxSessionsPerOwner", 3)
+                return@withContext BrowserSimulation.devices(context)
+                    .put("continuousSessions", true).put("background", true).put("maxSessionsPerOwner", 3)
                     .put("inputOperations", org.json.JSONArray(BrowserInput.operations.toList()))
             if (command.operation == "sessions") return@withContext JSONObject().put("ok", true).put("sessions", org.json.JSONArray(
                 sessions.filterValues { it.owner == owner }.map { (id, session) -> JSONObject().put("sessionId", id)
@@ -57,32 +76,46 @@ internal object BrowserSessions {
             if (command.operation in setOf("open", "open-subtitle")) {
                 require(command.width in 240..2048 && command.height in 240..2048 && command.width.toLong() * command.height <= 3_000_000)
                 check(sessions.values.count { it.owner == owner } < 3 && sessions.size < 6) { "浏览器会话过多，请先关闭不用的会话" }
-                val parent = BrowserInspector.attachedRoot() ?: error("请保持KIGTTS在前台以建立独立浏览器")
+                val page = requireNotNull(document).copy(actions = emptyList())
+                val surface = BrowserInspectionSurface.acquire(context)
+                val parent = surface.root
                 val ready = CompletableDeferred<Unit>(); val diagnostics = mutableListOf<String>()
-                val web = createBrowserView(parent.context, requireNotNull(document).copy(actions = emptyList()),
-                    ready = { ready.complete(Unit) }, error = { if (diagnostics.size < 20) diagnostics += it.take(600) })
-                BrowserSimulation.prepare(web)
-                val subtitle = if (command.operation == "open-subtitle") BrowserSubtitleLayout(parent.context, command.width, command.height, web) else null
-                val view = subtitle ?: web
-                view.alpha = 0f; web.isFocusable = false; web.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-                val session = Session(owner, web, command.width, command.height, diagnostics, subtitle)
+                var created: WebView? = null
+                var session: Session? = null
                 try {
+                    val web = createBrowserView(parent.context, page,
+                        ready = { ready.complete(Unit) }, error = { if (diagnostics.size < 20) diagnostics += it.take(600) })
+                    created = web
+                    BrowserSimulation.prepare(web)
+                    val subtitle = if (command.operation == "open-subtitle") BrowserSubtitleLayout(parent.context, command.width, command.height, web) else null
+                    val view = subtitle ?: web
+                    // System input is never directed here; the session uses view-local input only.
+                    web.isFocusable = false; web.importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    val active = Session(owner, web, command.width, command.height, diagnostics, surface, subtitle)
+                    session = active
                     parent.addView(view, 0, ViewGroup.LayoutParams(command.width, command.height))
                     view.measure(android.view.View.MeasureSpec.makeMeasureSpec(command.width, android.view.View.MeasureSpec.EXACTLY), android.view.View.MeasureSpec.makeMeasureSpec(command.height, android.view.View.MeasureSpec.EXACTLY))
-                    view.layout(0, 0, command.width, command.height); web.loadUrl(document.url)
+                    view.layout(0, 0, command.width, command.height); web.loadUrl(page.url)
                     withTimeout(command.timeoutMs.toLong().coerceIn(500, 30000)) { ready.await() }
                     BrowserSimulation.calibrate(web)
                     subtitle?.applySafeArea()
                     diagnostics += web.awaitBrowserReady(command.waitMs, command.timeoutMs, command.selector)
-                    val id = UUID.randomUUID().toString(); sessions[id] = session; web.applyKigttsTheme()
-                    state(session).put("ok", true).put("sessionId", id).put("diagnostics", org.json.JSONArray(diagnostics))
-                } catch (failure: Throwable) { release(session); throw failure }
+                    val result = state(active)
+                    val id = UUID.randomUUID().toString(); sessions[id] = active; observeIdleSessions()
+                    result.put("ok", true).put("sessionId", id).put("diagnostics", org.json.JSONArray(diagnostics))
+                } catch (failure: Throwable) {
+                    if (session != null) release(session)
+                    else { try { created?.destroy() } finally { surface.close() } }
+                    throw failure
+                }
             } else {
                 val id = requireNotNull(command.sessionId)
                 val session = sessions[id]?.takeIf { it.owner == owner } ?: error("SESSION_EXPIRED：请重新打开浏览器会话")
                 session.touched = android.os.SystemClock.elapsedRealtime()
                 val web = session.web
-                check(web.isAttachedToWindow) { "SESSION_EXPIRED：主界面已重建" }
+                if (!web.isAttachedToWindow && command.operation != "close") {
+                    sessions.remove(id); release(session); error("SESSION_EXPIRED：后台浏览器已关闭，请重新打开")
+                }
                 when (command.operation) {
                     "close" -> { sessions.remove(id); release(session); JSONObject().put("ok", true).put("closed", true) }
                     else -> {

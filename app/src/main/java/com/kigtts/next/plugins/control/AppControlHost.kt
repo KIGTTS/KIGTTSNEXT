@@ -8,7 +8,8 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 
 /** Formal, versioned app operations for user-installed agents. No arbitrary preference/file access. */
-class AppControlHost(private val manager: PluginManager, private val ui: () -> AppViewModel?) {
+class AppControlHost(private val manager: PluginManager, private val backgroundBrowser: BrowserHost? = null, private val ui: () -> AppViewModel?) {
+    private fun browserHost() = backgroundBrowser ?: requireNotNull(ui()) { "后台浏览器不可用" }.browserHost()
     private val notifications = com.kigtts.next.notifications.PluginNotifications(manager)
     private val overlay = com.kigtts.next.overlay.PluginOverlayHost(manager)
     init { manager.onNotificationsUnavailable = { owner -> notifications.cancelAll(owner); overlay.removeOwner(owner) } }
@@ -36,8 +37,8 @@ class AppControlHost(private val manager: PluginManager, private val ui: () -> A
                 return try {
                     val readsMedia = command is AppCommand.BrowserCapture && command.mediaId != null || command is AppCommand.BrowserSession && command.operation in setOf("open", "open-subtitle") && command.mediaId != null
                     if (readsMedia && installedCaller && !manager.requestPermission(owner, "quick-text-read")) return AppReply.Failure("PERMISSION_DENIED", "网页读取权限尚未授权")
-                    if (command is AppCommand.BrowserSession) return withContext(Dispatchers.Main) { sessionBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
-                    if (command is AppCommand.BrowserCapture) return withContext(Dispatchers.Main) { captureBrowser(requireNotNull(ui()) { "请先打开KIGTTS" }, owner, capabilities, command) }
+                    if (command is AppCommand.BrowserSession) return withContext(Dispatchers.Main) { sessionBrowser(browserHost(), owner, capabilities, command) }
+                    if (command is AppCommand.BrowserCapture) return withContext(Dispatchers.Main) { captureBrowser(browserHost(), owner, capabilities, command) }
                     if (command is AppCommand.DeliverResource) return deliver(owner, command)
                     if (command is AppCommand.ResourcePackage) return requireNotNull(ui()).resourceInstalls.request(owner, command)
                     if (command is AppCommand.PluginCall) return call(owner, command)

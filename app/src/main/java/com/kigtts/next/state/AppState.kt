@@ -59,7 +59,7 @@ data class AppState(
     val streaming: Boolean = true,
     val subtitleSizePercent: Float = SubtitleSize.DEFAULT_PERCENT,
     val subtitleAppearance: SubtitleAppearance = SubtitleAppearance(),
-    val captionTextSize: Float = 14f,
+    val captionTextSize: Float = 20f,
     val subtitleFlipped: Boolean = false,
     val selectedCategory: String = "常用",
     val theme: ThemeSettings = ThemeSettings(),

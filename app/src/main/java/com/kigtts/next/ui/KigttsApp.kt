@@ -28,7 +28,6 @@ import org.json.JSONArray
 @Composable
 fun KigttsApp(model: AppViewModel) {
     com.kigtts.next.ui.media.WebAndroidPermissionHost()
-    com.kigtts.next.ui.media.RegisterBrowserInspectionRoot()
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
     val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
@@ -119,7 +118,7 @@ fun KigttsApp(model: AppViewModel) {
             state.webCanGoBack -> model.webBack()
             state.subtitleExpanded -> { focus.clearFocus(); keyboard?.hide(); model.exitSubtitleFullscreen() }
             state.panel != null -> model.closePanel()
-            else -> model.closeListeningPanel()
+            else -> model.dismissCaptionPanel()
         }
     }
     KigttsTheme(state.theme, publishWebTheme = true) {

@@ -134,7 +134,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/",
                     extraSettings = {
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
-                            com.kigtts.next.ui.home.CaptionWindowSetting(model::openCaptionWindow)
+                            com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
                     }) { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
                     }

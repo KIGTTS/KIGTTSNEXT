@@ -33,6 +33,11 @@ internal object OverlayLaunch {
     fun open(context: Context, item: OverlayShortcut) {
         try {
             require(item.enabled) { "这个入口暂时不可用" }
+            if (item.target == "caption-window" && item.owner == null) {
+                HostPluginRuntime.get(context.applicationContext as Application).ui()?.let { model ->
+                    model.openCaptionWindow(); return
+                }
+            }
             val intent = if (item.component == null) intent(context, item) else {
                 val component = requireNotNull(ComponentName.unflattenFromString(item.component))
                 val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(component)
@@ -81,6 +86,7 @@ internal fun AppViewModel.overlayLink(intent: Intent?) {
             "sketch" -> openSidePage(SidePage.SKETCH)
             "quick-text" -> { navigate(Destination.Home); openPanel(HomePanel.QUICK_TEXT) }
             "listen" -> toggleListening()
+            "caption-window" -> openCaptionWindow()
             "speak" -> speak()
             "settings" -> navigate(Destination.Settings)
             "overlay-settings" -> navigate(Destination.SettingsDetail(SettingsCategory.OVERLAY))

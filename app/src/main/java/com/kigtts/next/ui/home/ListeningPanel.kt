@@ -3,6 +3,7 @@ package com.kigtts.next.ui.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ZoomIn
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -24,6 +25,9 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
     val controlsOwner = custom?.takeIf { it.replaceControls }?.owner
     val context = model.context()
     val left = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_START, model, controlsOwner) }
+    val floating = if (model.captionServiceReady && controlsOwner == null) listOf(
+        ElasticAction("listening-open-window", "打开字幕浮窗", MaterialSymbols.vector("open_in_new")
+            ?: Icons.AutoMirrored.Filled.OpenInNew, model::openCaptionWindow)) else emptyList()
     val right = remember(context, state.pluginRevision, controlsOwner) { cornerActions(UiSlot.LISTENING_BOTTOM_END, model, controlsOwner) }
     LaunchedEffect(controlsOwner) { if (controlsOwner != null) fontBar = false }
     ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions").panelIdleWake(idle), singleLine, availableHeight,
@@ -41,7 +45,7 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
                 FontToolbarSwap(fontBar, "聆听字号", Modifier.weight(if (horizontal) 1f else .65f)) { expanded ->
                 if (expanded) InlineFontBar("聆听字号", state.captionTextSize, 10f..64f, model::setCaptionTextSize,
                     { fontBar = false }, Modifier.fillMaxWidth())
-                else ElasticButtonGroup(left, Modifier.fillMaxWidth(), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
+                else ElasticButtonGroup(floating + left, Modifier.fillMaxWidth(), overflowTag = "listening-start-more", overflowLabel = "聆听左下更多操作")
                 }
                 Spacer(if (horizontal) Modifier.width(4.dp) else Modifier.weight(.05f))
                 ElasticButtonGroup(listOf(ElasticAction("listening-font-size", "调整聆听字号", Icons.Default.ZoomIn,

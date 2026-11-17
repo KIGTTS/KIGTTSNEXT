@@ -82,8 +82,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val cardAudio get() = audioSessionDelegate.value
     private val uiLanguage = com.kigtts.next.i18n.UiLanguageStore(application)
     private val initialUiLocale = uiLanguage.load()
+    private val captionFonts = CaptionFontSettings(application)
     private val mutableState = MutableStateFlow(AppState(uiLocale = initialUiLocale, theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(initialUiLocale), hapticsEnabled = feedbackStore.load(),
         subtitleAppearance = subtitleAppearanceStore.load(),
+        captionTextSize = captionFonts.panel(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
         appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
         autoPlayback = playbackPreferences.getBoolean("automatic", false),
@@ -123,13 +125,29 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { legacyImports.migrateOriginalInstallation() }
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback)
-    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message) {
-        selectedAsrId ?: registry.plugins.firstOrNull { it.asr?.info?.role == AsrRole.SERVICE }?.descriptor?.id
-    }
+    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message, ::readyCaptionService)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
-    fun openCaptionWindow() = captionOutput.openWindow()
+    val captionServiceReady get() = readyCaptionService() != null
+    private fun readyCaptionService(): String? {
+        val selected = selectedAsrId
+        return registry.plugins.firstOrNull { plugin ->
+            (selected == null || selected == plugin.descriptor.id) &&
+                plugin.asr?.info?.let { it.role == AsrRole.SERVICE && it.availability == EngineAvailability.READY } == true
+        }?.descriptor?.id
+    }
+    fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message("请先选择可用的语音识别引擎") }
     fun resumeCaptionWindow() = captionOutput.resume()
+    fun dismissCaptionPanel() {
+        if (captionOutput.windowOpen()) update { it.copy(captionsVisible = false) } else speech.closeListening()
+    }
+    fun toggleCaptionPanel(owner: String) {
+        if (state.value.captionsVisible) { dismissCaptionPanel(); return }
+        if (state.value.listening && !state.value.voiceInputActive) {
+            update { it.copy(captionsVisible = true) }; return
+        }
+        invoke(owner, "listen")
+    }
     val voiceInputGesture = VoiceInputGestureState()
     fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
     fun continueVoiceInput() = speech.continueInput()
@@ -351,7 +369,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         subtitleSizeStore.save(value)
         update { it.copy(subtitleSizePercent = value) }
     }
-    fun setCaptionTextSize(size: Float) { update { it.copy(captionTextSize = size.coerceIn(10f, 64f)) } }
+    fun setCaptionTextSize(size: Float) { val saved = captionFonts.savePanel(size); update { it.copy(captionTextSize = saved) } }
     fun flipSubtitle() { update { it.copy(subtitleFlipped = !it.subtitleFlipped) } }
     fun setSubtitleAppearance(value: SubtitleAppearance) {
         subtitleAppearanceStore.save(value); update { it.copy(subtitleAppearance = value) }
@@ -421,7 +439,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 when (outcome) {
                     is PluginOutcome.StartRecognition -> {
                         check(plugin.asr?.info?.role == AsrRole.SERVICE && outcome.session.serviceId == pluginId) { "只有识别服务可以创建识别会话" }
-                        captionOutput.start(outcome.session)
+                        val session = outcome.session
+                        captionOutput.start(if (pluginId == "service.speech-recognition" && session.purpose == RecognitionPurpose.CAPTIONS)
+                            session.copy(output = CaptionOutput.PANEL) else session)
                     }
                     is PluginOutcome.EndRecognition -> { check(plugin.asr?.info?.role == AsrRole.SERVICE); speech.end(outcome.submit) }
                     is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
@@ -503,7 +523,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
         synthesisGuidance.refresh()
-        if (registry.plugins.none { it.asr?.info?.role == AsrRole.SERVICE }) speech.closeListening()
+        if (!captionServiceReady) { speech.closeListening(); captionOutput.resetWindow() }
         pluginCatalogReady = true
         sharing.deliver()
         externalFiles.pluginsChanged()
@@ -538,7 +558,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     suspend fun stopSpeech() = speech.stopAll()
-    fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || state.value.recognitionOutput == CaptionOutput.PANEL) viewModelScope.launch { speech.stopAll() } }
+    fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || !captionOutput.windowOpen()) viewModelScope.launch { speech.stopAll() } }
     override fun onCleared() {
         super.onCleared()
         storeBootstrap.close()
