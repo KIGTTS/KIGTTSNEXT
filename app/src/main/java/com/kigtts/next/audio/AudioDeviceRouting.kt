@@ -10,12 +10,18 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.kigtts.plugin.api.*
+import com.kigtts.next.i18n.UiLanguage
+import com.kigtts.next.i18n.uiCopy
 
 private const val NOISE_ACTION = "host-audio/input-noise/value"
 private const val NOISE_PREF = "input-noise-suppression"
 
 /** Per-stream preferences never change the device-wide communication route. */
 class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = {}) : AutoCloseable {
+    private val appContext = context.applicationContext
+    @Volatile private var locale = UiLanguage.STANDARD.tag
+    internal fun setLocale(value: String) { locale = value }
+    private fun copy(key: String, fallback: String) = appContext.uiCopy(key, locale = locale).ifBlank { fallback }
     private val manager = context.getSystemService(AudioManager::class.java)
     private val preferences = context.getSharedPreferences("speech-audio-devices", Context.MODE_PRIVATE)
     private var closed = false
@@ -32,16 +38,17 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
     private fun side(input: Boolean) = if (input) "input" else "output"
     private fun devices(input: Boolean) = manager.getDevices(if (input) AudioManager.GET_DEVICES_INPUTS else AudioManager.GET_DEVICES_OUTPUTS).toList()
     private fun endpoint(device: AudioDeviceInfo): AudioEndpoint {
-        val kind = when (device.type) {
-            AudioDeviceInfo.TYPE_BUILTIN_MIC -> "内置麦克风"
-            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "手机扬声器"
-            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "听筒"
+        val kindKey = when (device.type) {
+            AudioDeviceInfo.TYPE_BUILTIN_MIC -> "audio.device.kind.builtin_mic" to "内置麦克风"
+            AudioDeviceInfo.TYPE_BUILTIN_SPEAKER, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE -> "audio.device.kind.speaker" to "手机扬声器"
+            AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "audio.device.kind.earpiece" to "听筒"
             AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
-            AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER -> "蓝牙设备"
-            AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET -> "USB 音频"
-            AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "有线耳机"
-            else -> "音频设备"
+            AudioDeviceInfo.TYPE_BLE_HEADSET, AudioDeviceInfo.TYPE_BLE_SPEAKER -> "audio.device.kind.bluetooth" to "蓝牙设备"
+            AudioDeviceInfo.TYPE_USB_DEVICE, AudioDeviceInfo.TYPE_USB_HEADSET -> "audio.device.kind.usb" to "USB 音频"
+            AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "audio.device.kind.wired" to "有线耳机"
+            else -> "audio.device.kind.generic" to "音频设备"
         }
+        val kind = copy(kindKey.first, kindKey.second)
         val name = device.productName?.toString().orEmpty()
         val label = if (device.type in setOf(AudioDeviceInfo.TYPE_BUILTIN_MIC, AudioDeviceInfo.TYPE_BUILTIN_SPEAKER,
                 AudioDeviceInfo.TYPE_BUILTIN_SPEAKER_SAFE, AudioDeviceInfo.TYPE_BUILTIN_EARPIECE) || name.isBlank()) kind else "$name · $kind"
@@ -56,10 +63,10 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
         preferences.edit().putFloat("output-gain", value).apply()
     }
     fun summary(input: Boolean): String = selected(input)?.let { key ->
-        endpoints(input).firstOrNull { it.key == key }?.label ?: (preferences.getString(side(input) + "-name", "音频设备") + "（未连接）")
-    } ?: "系统默认"
+        endpoints(input).firstOrNull { it.key == key }?.label ?: (preferences.getString(side(input) + "-name", copy("audio.devices", "音频设备")) + " · " + copy("audio.unavailable", "未连接"))
+    } ?: copy("audio.default", "系统默认")
     @Synchronized internal fun select(input: Boolean, key: String?) {
-        val endpoint = key?.let { value -> endpoints(input).firstOrNull { it.key == value } ?: error("设备已断开，请重新选择") }
+        val endpoint = key?.let { value -> endpoints(input).firstOrNull { it.key == value } ?: error(copy("audio.device.disconnected", "设备已断开，请重新选择")) }
         preferences.edit().putString(side(input), endpoint?.key).putString(side(input) + "-name", endpoint?.label).apply()
     }
     @Synchronized internal fun bind(stream: AudioRouting, input: Boolean) {
@@ -125,7 +132,7 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
         }
         val parts = action.split('/', limit = 3)
         require(parts.size == 3)
-        val input = when (parts[1]) { "input" -> true; "output" -> false; else -> error("音频设备选项无效") }
+        val input = when (parts[1]) { "input" -> true; "output" -> false; else -> error(copy("audio.device.invalid", "音频设备选项无效")) }
         require(if (input) plugin.asr?.info?.role == AsrRole.SERVICE else plugin.tts?.info?.role == TtsRole.SERVICE)
         val key = parts[2].takeUnless { it == "default" }
         if (key != selected(input)) select(input, key)

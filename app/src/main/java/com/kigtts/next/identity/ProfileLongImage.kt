@@ -73,11 +73,6 @@ internal object ProfileLongImage {
             sections += (text.height + 18) to { c, y -> style.text(c, text, PAD.toFloat(), y.toFloat()) }
         }
         val headerHeight = (INNER * banner.height.toFloat() / banner.width).toInt().coerceIn(1, INNER)
-        val publicProfile = PublicIdentityProfile.from(identity.publicJson()).let {
-            it.copy(avatar = null, tiles = it.tiles.map { tile -> tile.copy(image = "") })
-        }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
-        val restoreCode = ProfileGrayCode.encode(JSONObject().put("profile", publicProfile)
-            .put("cover", JSONArray(listOf(PAD, PAD, WIDTH - PAD, PAD + headerHeight))).toString())
         sections += (headerHeight + 20) to { c, y ->
             val rect = RectF(PAD.toFloat(), y.toFloat(), (WIDTH - PAD).toFloat(), (y + headerHeight).toFloat())
             val clip = android.graphics.Path().apply { addRoundRect(rect, radius, radius, android.graphics.Path.Direction.CW) }
@@ -86,7 +81,20 @@ internal object ProfileLongImage {
         val tags = ProfileLongTags(identity.tags, style, INNER)
         if (tags.height > 0) sections += (tags.height + 22) to { c, y -> tags.draw(c, PAD, y) }
         val tiles = ProfileLongTiles(identity, INNER, style, stickers)
+        val tilesTop = sections.sumOf { it.first } + PAD
         if (tiles.height > 0) sections += (tiles.height + 28) to { c, y -> tiles.draw(c, PAD, y) }
+        val tileCrops = JSONArray().also { array ->
+            tiles.imageRects(PAD, tilesTop).forEach { (id, rect) ->
+                array.put(JSONObject().put("id", id).put("left", rect.left).put("top", rect.top)
+                    .put("right", rect.right).put("bottom", rect.bottom))
+            }
+        }
+        val publicProfile = PublicIdentityProfile.from(identity.publicJson()).let {
+            it.copy(avatar = null, tiles = it.tiles.map { tile -> tile.copy(image = "") })
+        }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
+        val restoreCode = ProfileGrayCode.encode(JSONObject().put("profile", publicProfile)
+            .put("cover", JSONArray(listOf(PAD, PAD, WIDTH - PAD, PAD + headerHeight)))
+            .put("tileCrops", tileCrops).toString())
         val fadeEdge = sections.sumOf { it.first } + PAD
         val links = links(identity)
         if (links.isNotEmpty()) label("链接与二维码", 34f, style.ink, true)

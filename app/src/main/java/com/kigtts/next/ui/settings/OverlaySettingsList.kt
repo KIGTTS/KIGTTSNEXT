@@ -24,6 +24,7 @@ import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.rememberDragFeedback
 import com.kigtts.next.ui.management.managedItemShape
 import com.kigtts.next.ui.components.reorder.*
+import com.kigtts.next.i18n.uiText
 
 /** One stable pointer owner, animated neighbors, and a single durable write on release. */
 @Composable internal fun OverlaySettingsList(entries: List<OverlayShortcut>, order: (List<String>) -> Unit,
@@ -80,7 +81,7 @@ import com.kigtts.next.ui.components.reorder.*
             LazyColumn(Modifier.fillMaxSize().testTag("overlay-shortcuts-list"), state = state,
                 contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 item(key = "controls") { Column(Modifier.padding(bottom = 20.dp)) { controls() } }
-                item(key = "title") { Text("快捷入口", Modifier.padding(8.dp), style = MaterialTheme.typography.titleMedium) }
+                item(key = "title") { Text(uiText("overlay.list.title"), Modifier.padding(8.dp), style = MaterialTheme.typography.titleMedium) }
                 items(positions, key = { it }) { id ->
                     DisposableEffect(id) { onDispose { bounds.remove(id) } }
                     Entry(id, Modifier.fillMaxWidth().testTag("overlay-entry:$id").animateItem(fadeInSpec = null, fadeOutSpec = null,
@@ -88,7 +89,7 @@ import com.kigtts.next.ui.components.reorder.*
                         .then(if (drag.key == id) Modifier.alpha(0f).clearAndSetSemantics { } else Modifier), Modifier.reorderGrip(id, drag))
                 }
                 item(key = "add") { FilledTonalButton(onClick = feedbackClick(add), Modifier.fillMaxWidth().padding(top = 12.dp), enabled = entries.size < 100) {
-                    Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("添加入口")
+                    Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(uiText("overlay.list.add"))
                 } }
             }
             ReorderAutoScroll(drag, { state.layoutInfo.viewportSize.height.toFloat() }, { state.scrollBy(it) })

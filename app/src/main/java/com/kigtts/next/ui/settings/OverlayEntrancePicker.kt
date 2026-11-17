@@ -18,10 +18,12 @@ import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.next.ui.components.MotionAlertDialog as AlertDialog
+import com.kigtts.next.i18n.rememberUiCopy
 import kotlinx.coroutines.delay
 
 @Composable internal fun OverlayEntrancePicker(existing: Set<String>, onDismiss: () -> Unit, add: (OverlayShortcut) -> Unit) {
     val context = LocalContext.current
+    val copy = rememberUiCopy()
     val plugins by remember { OverlayHub.get(context).candidates }.collectAsState()
     var apps by remember { mutableStateOf<List<OverlayShortcut>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -52,12 +54,12 @@ import kotlinx.coroutines.delay
         path.size == 2 && path[0] == "插件" -> listOf("页面", "操作").filter { section -> scoped.any { if (section == "页面") it.target.startsWith("page:") else !it.target.startsWith("page:") } }
         else -> emptyList()
     }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("添加入口") }, text = {
+    AlertDialog(onDismissRequest = onDismiss, title = { Text(copy("overlay.picker.title")) }, text = {
         Column(Modifier.fillMaxWidth().heightIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(query, { query = it }, label = { Text("搜索入口或应用") },
+            OutlinedTextField(query, { query = it }, label = { Text(copy("overlay.picker.search")) },
                 leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             if (path.isNotEmpty() && !searching) Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = feedbackClick { path = path.dropLast(1) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回上一级") }
+                IconButton(onClick = feedbackClick { path = path.dropLast(1) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, copy("overlay.picker.back")) }
                 Text(path.last(), style = MaterialTheme.typography.titleSmall)
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
@@ -72,21 +74,21 @@ import kotlinx.coroutines.delay
                     TextButton(onClick = feedbackClick { if (!added && entry.enabled) add(entry) }, enabled = !added && entry.enabled,
                         modifier = Modifier.fillMaxWidth()) {
                         OverlayShortcutIcon(entry); Spacer(Modifier.width(12.dp)); Text(entry.title, Modifier.weight(1f))
-                        if (added) Icon(Icons.Default.Check, "已添加")
-                        else if (!entry.enabled) Text("暂不可用", style = MaterialTheme.typography.labelSmall)
+                        if (added) Icon(Icons.Default.Check, copy("overlay.picker.added"))
+                        else if (!entry.enabled) Text(copy("overlay.picker.unavailable"), style = MaterialTheme.typography.labelSmall)
                     }
                 }
                 if ((path.firstOrNull() == "应用" || searching) && loading) item {
                     Row(Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.Center) { CircularProgressIndicator(Modifier.size(24.dp)) }
                 }
                 if ((path.firstOrNull() == "应用" || searching) && failed) item {
-                    TextButton(onClick = feedbackClick { retry++ }) { Text("应用列表未能加载，重试") }
+                    TextButton(onClick = feedbackClick { retry++ }) { Text(copy("overlay.picker.retry")) }
                 }
             }
             EmptyContent(sections.isEmpty() && items.isEmpty() && !loading && !failed,
                 if (searching) Icons.Default.Search else Icons.Default.Widgets,
-                if (searching) "没有找到入口" else "暂无可添加的入口")
+                if (searching) copy("overlay.picker.empty.search") else copy("overlay.picker.empty"))
             }
         }
-    }, confirmButton = { TextButton(onClick = feedbackClick(onDismiss)) { Text("取消") } })
+    }, confirmButton = { TextButton(onClick = feedbackClick(onDismiss)) { Text(copy("overlay.add.cancel")) } })
 }

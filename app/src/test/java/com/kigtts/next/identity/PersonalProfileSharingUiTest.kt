@@ -36,10 +36,10 @@ class PersonalProfileSharingUiTest {
                 Box(Modifier.width(360.dp)) { PersonalCardView(card, model.stickers) }
             }
         } }
-        compose.onNodeWithTag("personal-face-share").assertWidthIsEqualTo(32.dp).assertHeightIsEqualTo(32.dp)
+        compose.onNodeWithTag("personal-face-share").assertWidthIsAtLeast(64.dp).assertHeightIsAtLeast(32.dp)
         compose.onNodeWithTag("personal-contact-0").assertWidthIsEqualTo(32.dp).assertHeightIsEqualTo(32.dp)
         compose.onRoot().captureRoboImage("build/previews/personal-card-compact-corners.png")
-        compose.onNodeWithContentDescription("开启面对面").performClick()
+        compose.onNodeWithContentDescription("分享").performClick()
         assertEquals(listOf(card.designId), sent)
         compose.onNodeWithContentDescription("联系方式：QQ").performClick()
         compose.onNodeWithText("12345").assertIsDisplayed()

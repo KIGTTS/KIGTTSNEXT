@@ -3,6 +3,7 @@ package com.kigtts.next.ui.identity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,11 +23,12 @@ import com.kigtts.next.ui.cards.rememberCardImage
 
 @Composable
 internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepository, modifier: Modifier = Modifier, interactive: Boolean = true,
-    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}) {
+    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}, onLongClick: (() -> Unit)? = null) {
     val designs by stickers.identityDesigns.items.collectAsState()
     val card = designs.firstOrNull { it.id == identity.designId }
     Surface(modifier.aspectRatio(16f / 9f).then(if (editing) Modifier.clickable(onClickLabel = "编辑名片背景",
-        onClick = com.kigtts.next.ui.components.feedbackClick(editBackground)) else Modifier),
+        onClick = com.kigtts.next.ui.components.feedbackClick(editBackground)) else onLongClick?.let { action -> Modifier.combinedClickable(
+            onClick = {}, onLongClick = com.kigtts.next.ui.components.feedbackClick(action)) } ?: Modifier),
         shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
         BoxWithConstraints {
             val height = with(LocalDensity.current) { maxHeight.roundToPx() }

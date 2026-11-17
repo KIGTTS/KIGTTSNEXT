@@ -17,6 +17,15 @@ internal class ProfileLongTiles(private val identity: IdentityCard, width: Int, 
     private val geometry = profileBoardGeometry(tiles, width.toFloat(), 24f, 72f)
     val height = geometry.height.roundToInt()
 
+    /** Absolute image tile bounds in the flattened long image coordinate space. */
+    internal fun imageRects(left: Int, top: Int): Map<String, Rect> = tiles.asSequence()
+        .filter { it.kind == ProfileTileKind.IMAGE }
+        .map { tile ->
+            val box = geometry.bounds.getValue(tile.id)
+            tile.id to Rect((left + box.left).roundToInt(), (top + box.top).roundToInt(),
+                (left + box.right).roundToInt(), (top + box.bottom).roundToInt())
+        }.toMap()
+
     fun draw(canvas: Canvas, left: Int, top: Int) {
         for (tile in tiles) {
             val box = geometry.bounds.getValue(tile.id)

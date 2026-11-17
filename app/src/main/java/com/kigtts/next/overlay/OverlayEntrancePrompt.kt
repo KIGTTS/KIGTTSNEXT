@@ -9,9 +9,11 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
+import com.kigtts.next.i18n.rememberUiCopy
 
 @Composable internal fun OverlayEntrancePrompt(model: AppViewModel) {
     val context = LocalContext.current
+    val copy = rememberUiCopy()
     val hub = remember { OverlayHub.get(context) }
     val requests by hub.requests.collectAsState()
     val entry = requests.firstOrNull() ?: return
@@ -20,8 +22,8 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
         LaunchedEffect(entry.id) { hub.answer(entry.id, false) }; return
     }
     MotionAlertDialog(onDismissRequest = { hub.answer(entry.id, false) },
-        icon = { Icon(Icons.Default.AddCircleOutline, null) }, title = { Text("添加悬浮入口？") },
-        text = { Text("${plugin.manifest.name}希望将「${entry.title}」添加到悬浮快捷入口。你可以在悬浮窗设置中排序或移除。") },
-        confirmButton = { FilledTonalButton(onClick = dialogFeedbackClick { hub.answer(entry.id, true) }) { Text("添加入口") } },
-        dismissButton = { TextButton(onClick = dialogFeedbackClick { hub.answer(entry.id, false) }) { Text("取消") } })
+        icon = { Icon(Icons.Default.AddCircleOutline, null) }, title = { Text(copy("overlay.add.title")) },
+        text = { Text(copy("overlay.add.body", "plugin" to plugin.manifest.name, "entry" to entry.title)) },
+        confirmButton = { FilledTonalButton(onClick = dialogFeedbackClick { hub.answer(entry.id, true) }) { Text(copy("overlay.add.confirm")) } },
+        dismissButton = { TextButton(onClick = dialogFeedbackClick { hub.answer(entry.id, false) }) { Text(copy("overlay.add.cancel")) } })
 }

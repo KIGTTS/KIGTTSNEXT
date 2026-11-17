@@ -17,12 +17,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.audio.AudioDeviceRouting
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.settings.*
 import com.kigtts.next.ui.plugins.SpeechGainSlider
 import com.kigtts.plugin.api.PluginControl
 
 @Composable internal fun AudioDevicePicker(devices: AudioDeviceRouting, onDismiss: () -> Unit) {
+    val copy = rememberUiCopy()
+    val locale = LocalUiLocale.current
+    SideEffect { devices.setLocale(locale) }
     var revision by remember { mutableIntStateOf(0) }
     val manager = LocalContext.current.getSystemService(AudioManager::class.java)
     DisposableEffect(manager) {
@@ -34,41 +39,45 @@ import com.kigtts.plugin.api.PluginControl
         onDispose { manager.unregisterAudioDeviceCallback(callback) }
     }
     var error by remember { mutableStateOf<String?>(null) }
-    MotionAlertDialog(onDismissRequest = onDismiss, title = { Text("音频设备") },
+    MotionAlertDialog(onDismissRequest = onDismiss, title = { Text(copy("audio.devices")) },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                SettingsGroup(copy("audio.devices")) {
                 listOf(true, false).forEach { input ->
                     val side = if (input) "input" else "output"
                     val endpoints = remember(input, revision) { devices.endpoints(input) }
                     var expanded by remember(input) { mutableStateOf(false) }
                     Box {
-                        SettingItem(if (input) "音频输入设备" else "音频输出设备", devices.summary(input),
+                        SettingItem(if (input) copy("audio.input") else copy("audio.output"), devices.summary(input),
                             if (input) Icons.Default.Mic else Icons.Default.Speaker,
                             if (input) SettingPosition.FIRST else SettingPosition.MIDDLE,
                             Modifier.testTag("audio-device-menu/$side"), onClick = { expanded = true },
                             trailing = { Icon(Icons.Default.ArrowDropDown, null) })
                         DropdownMenu(expanded, { expanded = false }) {
-                            (listOf(null to "系统默认") + endpoints.map { it.key to it.label }).forEach { (key, name) ->
+                            (listOf(null to copy("audio.default")) + endpoints.map { it.key to it.label }).forEach { (key, name) ->
                                 DropdownMenuItem(text = { Text(name) }, onClick = feedbackClick {
                                     expanded = false
                                     runCatching { devices.select(input, key) }.onSuccess { error = null }
-                                        .onFailure { error = it.message ?: "设备未能切换，请重试" }
+                                        .onFailure { error = it.message ?: copy("audio.device.switch_failed") }
                                     revision++
                                 }, modifier = Modifier.testTag("audio-device-option/$side/${key ?: "default"}"),
-                                    trailingIcon = { if (devices.selected(input) == key) Icon(Icons.Default.Check, "已选用") })
+                                    trailingIcon = { if (devices.selected(input) == key) Icon(Icons.Default.Check, copy("audio.selected")) })
                             }
                         }
                     }
                 }
-                Surface(shape = groupedSettingShape(SettingPosition.LAST, MaterialTheme.shapes.small),
+                }
+                SettingsGroup(copy("audio.output")) {
+                Surface(shape = groupedSettingShape(SettingPosition.SINGLE, MaterialTheme.shapes.small),
                     color = MaterialTheme.colorScheme.surfaceContainerLow) {
-                    SpeechGainSlider(PluginControl.Slider("语音合成音量", "gain", devices.outputGain, 0f, 10f),
+                    SpeechGainSlider(PluginControl.Slider(copy("audio.gain"), "gain", devices.outputGain, 0f, 10f),
                         Modifier.padding(16.dp), enabled = true, continuous = false) { value ->
                         devices.setOutputGain(value.toFloat()); revision++
                     }
                 }
+                }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
-        }, confirmButton = { TextButton(onClick = feedbackClick(onDismiss)) { Text("完成") } })
+        }, confirmButton = { TextButton(onClick = feedbackClick(onDismiss)) { Text(copy("audio.done")) } })
 }

@@ -17,6 +17,8 @@ import com.kigtts.next.sharing.LocalFaceShare
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.kigtts.next.ui.components.feedbackClick
 
 /** Reused by the card page, personal-information preview and the live background editor. */
@@ -27,6 +29,7 @@ import com.kigtts.next.ui.components.feedbackClick
     var contact by remember { mutableStateOf<ContactLink?>(null) }
     val faceShare = LocalFaceShare.current
     val sampledInk = remember(backgroundPixels) { backgroundPixels?.let(::identityInk) }
+    val shareLabel = com.kigtts.next.i18n.uiText("profile.share_face")
     val ink = (backgroundInk ?: sampledInk)?.let(::Color) ?:
         if (!hasImage && Color(if (identity.gradient) identity.gradientColor else backgroundColor).luminance() > .42f) Color(0xFF202020) else Color.White
     val shadow = androidx.compose.ui.graphics.Shadow(Color.Black.copy(alpha = .5f), androidx.compose.ui.geometry.Offset(0f, 1.5f), 4f)
@@ -45,9 +48,16 @@ import com.kigtts.next.ui.components.feedbackClick
                     Icon(Icons.Default.Wallpaper, null, Modifier.size(22.dp), tint = Color.White)
                 }
             }
-            if (!editing && interactive && faceShare != null) PersonalCardActionButton("开启面对面", "personal-face-share", true,
-                { faceShare.send(listOf(identity.designId)) }, Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                Icon(Icons.Default.WifiTethering, "开启面对面", tint = Color.White, modifier = Modifier.size(22.dp))
+            if (!editing && interactive && faceShare != null) {
+                FilledTonalButton(onClick = feedbackClick { faceShare.send(listOf(identity.designId)) },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).height(36.dp).testTag("personal-face-share")
+                        .semantics { contentDescription = shareLabel },
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = Color.Black.copy(alpha = .36f), contentColor = Color.White)) {
+                    Icon(Icons.Default.Share, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(com.kigtts.next.i18n.uiText("profile.share_face"))
+                }
             }
             Row(Modifier.align(Alignment.BottomStart).padding(padding).animateContentSize(tween(220))
                 .then(if (editing) Modifier.clickable(onClickLabel = "编辑头像与昵称", onClick = feedbackClick(editInformation))

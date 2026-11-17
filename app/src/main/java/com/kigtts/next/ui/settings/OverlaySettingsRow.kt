@@ -15,31 +15,33 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.management.managedItemShape
+import com.kigtts.next.i18n.rememberUiCopy
 
 /** Uses the same segmented surface and reveal rail as other management lists. */
 @Composable internal fun OverlaySettingsRow(entry: OverlayShortcut, position: SettingPosition,
     modifier: Modifier, grip: Modifier, elevated: Boolean, active: Boolean, activate: () -> Unit,
     edit: () -> Unit, remove: () -> Unit, move: (Int) -> Unit, holdRequest: Int = 0) {
+    val copy = rememberUiCopy()
     val content: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggle, close ->
         val menu = feedbackClick(toggle)
         Surface(shape = managedItemShape(position, revealed), color = MaterialTheme.colorScheme.surfaceContainer) {
             Row(Modifier.fillMaxWidth().heightIn(min = 80.dp)
                 .then(if (elevated) Modifier else Modifier.combinedClickable(
-                    onClick = feedbackClick { if (revealed) close() }).semantics { onLongClick("更多操作") { menu(); true } })
+                    onClick = feedbackClick { if (revealed) close() }).semantics { onLongClick(copy("overlay.row.more")) { menu(); true } })
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.alpha(if (entry.enabled) 1f else .45f)) { OverlayShortcutIcon(entry) }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(entry.title, style = MaterialTheme.typography.titleMedium)
-                    if (!entry.enabled) Text("暂不可用", style = MaterialTheme.typography.bodySmall,
+                    if (!entry.enabled) Text(copy("overlay.row.unavailable"), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 MotionIconButton(onClick = feedbackClick(toggle), modifier = Modifier.size(40.dp)
-                    .testTag("overlay-more/${entry.id}")) { Icon(Icons.Default.MoreHoriz, "更多操作") }
+                    .testTag("overlay-more/${entry.id}")) { Icon(Icons.Default.MoreHoriz, copy("overlay.row.more")) }
                 Box(Modifier.size(40.dp).then(grip).semantics {
-                    contentDescription = "拖动排序${entry.title}"
-                    customActions = listOf(CustomAccessibilityAction("上移") { move(-1); true },
-                        CustomAccessibilityAction("下移") { move(1); true })
+                    contentDescription = copy("overlay.row.drag", "title" to entry.title)
+                    customActions = listOf(CustomAccessibilityAction(copy("overlay.row.up")) { move(-1); true },
+                        CustomAccessibilityAction(copy("overlay.row.down")) { move(1); true })
                 }, contentAlignment = Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(22.dp)) }
             }
         }
@@ -47,8 +49,8 @@ import com.kigtts.next.ui.management.managedItemShape
     Box(modifier) {
     if (elevated) content(false, {}, {})
     else SwipeRevealRow("overlay/${entry.id}", active, activate, modifier = Modifier.fillMaxWidth(),
-        endActions = listOf(RevealAction("settings", "配置${entry.title}", Icons.Default.Tune),
-            RevealAction("delete", "移除${entry.title}", Icons.Default.Delete, destructive = true)),
+        endActions = listOf(RevealAction("settings", copy("overlay.row.configure", "title" to entry.title), Icons.Default.Tune),
+            RevealAction("delete", copy("overlay.row.remove", "title" to entry.title), Icons.Default.Delete, destructive = true)),
         invoke = { when (it) { "settings" -> edit(); "delete" -> remove() } }, holdRequest = holdRequest, content = content)
     }
 }

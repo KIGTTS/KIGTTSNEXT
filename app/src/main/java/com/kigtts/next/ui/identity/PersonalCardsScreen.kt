@@ -82,8 +82,12 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
             finally { working = false }
         }
     }
-    RegisterPageActions(listOf(ToolbarAction("edit-personal-information", if (editing) "完成编辑" else "编辑",
-        if (editing) Icons.Default.Check else Icons.Default.Edit) { if (editing) finish() else begin() }))
+    RegisterPageActions(listOfNotNull(
+        card?.takeIf { !editing }?.let { ToolbarAction("share-personal-information", uiText("profile.share"), Icons.Default.Share) {
+            model.sharing.shareMedia(listOf(it.designId))
+        } },
+        ToolbarAction("edit-personal-information", if (editing) "完成编辑" else "编辑",
+            if (editing) Icons.Default.Check else Icons.Default.Edit) { if (editing) finish() else begin() }))
     RegisterPageLoading(working)
     RegisterPageBackGuard(editing && draft != null, ::finish)
     BackHandler(editing && draft != null, ::finish)
@@ -92,7 +96,7 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
             PersonalCardView(displayed, model.stickers, Modifier.fillMaxWidth().testTag("personal-card-${displayed.id}"),
                 editing = editing, editInformation = { information = true }, editBackground = {
                     persist { model.navigate(Destination.CardEditor(displayed.designId)) }
-                })
+                }, onLongClick = if (!editing) ({ model.sharing.shareMedia(listOf(displayed.designId)) }) else null)
             ProfileEditableTags(displayed.tags, editing, { draft = displayed.copy(tags = it) }, { tags = true })
             ProfileTileBoard(displayed.tiles, displayed.contacts, { profileImageFile(model.stickers, it) },
                 editing = editing, change = { draft = displayed.copy(tiles = it) }, edit = { tileEditor = it },

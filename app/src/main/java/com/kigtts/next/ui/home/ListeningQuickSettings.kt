@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Slider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -41,12 +42,15 @@ internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
 internal fun ListeningQuickSettings(model: AppViewModel, size: Float, dismiss: () -> Unit) {
     MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("listening.panel")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsGroup(uiText("listening.text_size")) {
+            SettingsGroup(uiText("listening.options")) {
+                Text(uiText("listening.text_size"), style = MaterialTheme.typography.titleMedium)
                 Slider(size, model::setCaptionTextSize, Modifier.fillMaxWidth(), valueRange = 10f..64f)
             }
-            CaptionWindowSetting { dismiss(); model.openCaptionWindow() }
-            SettingItem(uiText("listening.settings"), "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
-                SettingPosition.SINGLE, onClick = { dismiss(); model.navigate(Destination.PluginPage("service.speech-recognition", "manager")) })
+            SettingsGroup(uiText("listening.window_group")) {
+                CaptionWindowSetting { dismiss(); model.openCaptionWindow() }
+                SettingItem(uiText("listening.settings"), "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
+                    SettingPosition.SINGLE, onClick = { dismiss(); model.navigate(Destination.PluginPage("service.speech-recognition", "manager")) })
+            }
         }
     }, confirmButton = { TextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.done")) } })
 }
