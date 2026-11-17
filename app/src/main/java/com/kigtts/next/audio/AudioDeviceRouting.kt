@@ -10,7 +10,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.kigtts.plugin.api.*
-import com.kigtts.next.i18n.UiLanguage
 import com.kigtts.next.i18n.uiCopy
 
 private const val NOISE_ACTION = "host-audio/input-noise/value"
@@ -19,9 +18,7 @@ private const val NOISE_PREF = "input-noise-suppression"
 /** Per-stream preferences never change the device-wide communication route. */
 class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = {}) : AutoCloseable {
     private val appContext = context.applicationContext
-    @Volatile private var locale = UiLanguage.STANDARD.tag
-    internal fun setLocale(value: String) { locale = value }
-    private fun copy(key: String, fallback: String) = appContext.uiCopy(key, locale = locale).ifBlank { fallback }
+    private fun copy(key: String, fallback: String) = appContext.uiCopy(key).ifBlank { fallback }
     private val manager = context.getSystemService(AudioManager::class.java)
     private val preferences = context.getSharedPreferences("speech-audio-devices", Context.MODE_PRIVATE)
     private var closed = false

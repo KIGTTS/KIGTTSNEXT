@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.feedbackClick
 
 import android.graphics.BitmapFactory
@@ -23,7 +25,7 @@ import java.io.File
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         images.forEachIndexed { index, image -> key(image.source) { Box {
             ChatImageContent(image, resolve, Modifier.size(96.dp).clickable(onClick = feedbackClick { preview = image }))
-            if (remove != null) IconButton(onClick = feedbackClick { remove(index) }) { Icon(Icons.Default.Close, "移除图片") }
+            if (remove != null) IconButton(onClick = feedbackClick { remove(index) }) { Icon(Icons.Default.Close, uiText("chat.remove_image")) }
         } } }
     }
     preview?.let { image -> Dialog(onDismissRequest = { preview = null }) {
@@ -38,5 +40,5 @@ import java.io.File
             BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
         } }.getOrNull() }
     }
-    bitmap?.let { Image(it.asImageBitmap(), image.description, modifier) } ?: Box(modifier) { Text("图片加载中", style = MaterialTheme.typography.labelSmall) }
+    bitmap?.let { Image(it.asImageBitmap(), image.description, modifier) } ?: Box(modifier) { Text(uiText("chat.loading_image"), style = MaterialTheme.typography.labelSmall) }
 }

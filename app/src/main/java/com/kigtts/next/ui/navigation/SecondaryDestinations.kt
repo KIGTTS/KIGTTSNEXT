@@ -18,6 +18,8 @@ import com.kigtts.next.ui.cards.CardPageScaffold
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
     val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
+    val pluginPage = (destination as? Destination.PluginPage)?.let { model.pluginPage(it.pluginId, it.pageId) }
+    val chatHandlesIme = destination.assistantChatHandlesIme()
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
             Destination.Settings -> uiText("nav.settings")
@@ -28,7 +30,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> uiText("nav.fonts")
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
-            is Destination.PluginPage -> model.pluginPage(destination.pluginId, destination.pageId)?.title ?: uiText("nav.plugin_page")
+            is Destination.PluginPage -> pluginPage?.title ?: uiText("nav.plugin_page")
             is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) uiText("nav.pages") else uiText("nav.media")
             is Destination.HtmlFiles -> uiText("nav.page_files")
             is Destination.HtmlPreview -> uiText("nav.page_preview")
@@ -54,7 +56,6 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         com.kigtts.next.ui.cards.CardEditorRoute(model, destination)
         return
     }
-    val pluginPage = (destination as? Destination.PluginPage)?.let { model.pluginPage(it.pluginId, it.pageId) }
     if (destination is Destination.PluginPage && pluginPage?.search != null) {
         PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
             resolve = { model.pluginManager.paths.existingResource(it.pluginId ?: destination.pluginId, it.path) },
@@ -78,6 +79,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
         backgroundSettings = state.theme,
+        contentHandlesIme = chatHandlesIme,
         contentScrollsHeader = destination != Destination.SettingsDetail(SettingsCategory.APPEARANCE)) {
             when (destination) {
                 Destination.Home -> Unit
@@ -98,7 +100,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     SettingsCategory.LANGUAGE -> UiLanguageScreen(state.uiLocale, model::setUiLanguage)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
-                    SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state.appleLivePhotos, model::appleLivePhotos)
+                    SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state, model)
                     SettingsCategory.WEB -> WebSettingsScreen()
                     SettingsCategory.BACKUP_RESTORE -> BackupRestoreScreen(model)
                     SettingsCategory.CAMERA -> CameraSettingsScreen { model.navigate(Destination.SettingsDetail(SettingsCategory.PHOTO_WEATHER)) }
@@ -128,20 +130,24 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.PluginPage -> {
                     if (destination.pluginId == "service.speech-synthesis" && destination.pageId == "manager")
                         model.readingCacheBytes?.collectAsStateWithLifecycle()?.value
-                    PluginPageScreen(model.pluginPage(destination.pluginId, destination.pageId), destination.pluginId in state.busyPlugins,
+                    PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/",
                     extraSettings = {
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
                             com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
+                        if ((destination.pluginId == "tools.cloud-agent" && destination.pageId == "settings") ||
+                            (destination.pluginId == "runtime.lua" && destination.pageId == "manager"))
+                            BuiltInToolPermissionEntry(model, destination.pluginId)
                     },
-                    voiceInputAvailable = destination.pluginId == "tools.cloud-agent" && model.captionServiceReady,
-                    startVoiceInput = if (destination.pluginId == "tools.cloud-agent" && model.captionServiceReady) model::startChatVoiceInput else null,
-                    stopVoiceInput = if (destination.pluginId == "tools.cloud-agent" && model.captionServiceReady) model::stopChatVoiceInput else null) { action, inputs ->
+                    startVoiceInput = (model::startChatVoiceInput).takeIf { destination.pluginId == "tools.cloud-agent" && model.captionServiceReady },
+                    followIme = chatHandlesIme) { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
                     }
                 }
             }
     }
 }
+
+internal fun Destination.assistantChatHandlesIme() = this is Destination.PluginPage && pluginId == "tools.cloud-agent" && pageId == "chat"

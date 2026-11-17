@@ -1,5 +1,7 @@
 package com.kigtts.next.recovery
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,14 +23,14 @@ import kotlinx.coroutines.launch
 }
 
 @Composable internal fun SafeModePrompt(state: SafeModeStatus, restore: () -> Unit, manage: () -> Unit, enter: () -> Unit) {
-    MotionAlertDialog(onDismissRequest = { if (!state.restoring) enter() }, title = { Text("已进入安全模式") },
+    MotionAlertDialog(onDismissRequest = { if (!state.restoring) enter() }, title = { Text(uiText("recovery.title")) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("KIGTTS 连续多次崩溃，已暂时停用插件。你可以恢复插件、检查插件，或先进入软件。")
+            Text(uiText("recovery.body"))
             state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (state.restoring) LinearProgressIndicator(Modifier.fillMaxWidth())
         } }, confirmButton = { Column(Modifier.fillMaxWidth()) {
-            FilledTonalButton(feedbackClick { if (!state.restoring) restore() }, Modifier.fillMaxWidth()) { Text("恢复插件") }
-            MotionTextButton(dialogFeedbackClick { if (!state.restoring) manage() }, Modifier.fillMaxWidth()) { Text("进入插件管理") }
-            MotionTextButton(dialogFeedbackClick { if (!state.restoring) enter() }, Modifier.fillMaxWidth()) { Text("进入软件") }
+            FilledTonalButton(feedbackClick { if (!state.restoring) restore() }, Modifier.fillMaxWidth()) { Text(uiText("recovery.restore")) }
+            MotionTextButton(dialogFeedbackClick { if (!state.restoring) manage() }, Modifier.fillMaxWidth()) { Text(uiText("recovery.manage")) }
+            MotionTextButton(dialogFeedbackClick { if (!state.restoring) enter() }, Modifier.fillMaxWidth()) { Text(uiText("recovery.enter")) }
         } })
 }

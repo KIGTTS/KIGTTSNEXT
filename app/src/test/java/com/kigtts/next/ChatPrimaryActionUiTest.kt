@@ -20,7 +20,7 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED) @Config(sdk = [35], qualifiers = "zh-rCN-w480dp-h800dp-xhdpi")
 class ChatPrimaryActionUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
-    @Test fun onlyOnePrimaryActionChangesBetweenSendStopAndQueueInThisConversation() {
+    @Test fun stopIsIndependentOfTheSendAndQueueActionInThisConversation() {
         var running by mutableStateOf(false)
         val actions = mutableListOf<String>()
         compose.setContent { KigttsTheme(ThemeSettings()) { Box(Modifier.width(450.dp)) {
@@ -31,7 +31,7 @@ class ChatPrimaryActionUiTest {
         compose.onNodeWithTag("plugin-chat-stop").assertDoesNotExist()
         compose.runOnIdle { running = true }
         compose.onNodeWithTag("plugin-chat-stop").assertExists()
-        compose.onNodeWithTag("plugin-chat-send").assertDoesNotExist()
+        compose.onNodeWithTag("plugin-chat-send").assertIsNotEnabled()
         compose.onNodeWithTag("plugin-chat-input").performTextInput("稍后继续")
         compose.onNodeWithTag("plugin-chat-send").performClick()
         assertEquals(listOf("queue"), actions)
@@ -40,6 +40,24 @@ class ChatPrimaryActionUiTest {
         compose.runOnIdle { running = false }
         compose.onNodeWithTag("plugin-chat-send").assertExists()
         compose.onNodeWithTag("plugin-chat-stop").assertDoesNotExist()
+    }
+    @Test fun emptyFieldHoldsToDictateAndTypingReplacesTheMicWithSend() {
+        val actions = mutableListOf<Pair<String, String>>()
+        var starts = 0
+        compose.setContent { KigttsTheme(ThemeSettings()) { ChatInputBar(
+            PageBlock.Chat(emptyList(), "send", "stop", queueAction = "queue"), true, { null },
+            { action, args -> actions += action to args.getValue("message") }, startVoiceInput = {
+                starts++
+                { released -> "speech".takeIf { released } }
+            }) {} } }
+        compose.onNodeWithTag("plugin-chat-voice").assertExists()
+        compose.onNodeWithTag("plugin-chat-input-hold").performTouchInput { longClick() }
+        compose.runOnIdle { assertEquals(1, starts); assertEquals(listOf("send" to "speech"), actions) }
+        compose.onNodeWithTag("plugin-chat-input-hold").performTouchInput { click() }
+        compose.onNodeWithTag("plugin-chat-input").assertIsFocused().performTextInput("typed")
+        compose.onNodeWithTag("plugin-chat-voice").assertDoesNotExist()
+        compose.onNodeWithTag("plugin-chat-send").assertIsEnabled().performClick()
+        compose.runOnIdle { assertEquals(listOf("send" to "speech", "send" to "typed"), actions) }
     }
     @Test fun backgroundConversationDoesNotReplaceThisConversationsSendButton() {
         val actions = mutableListOf<String>()

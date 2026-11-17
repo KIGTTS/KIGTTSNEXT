@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -27,6 +29,6 @@ import com.kigtts.next.ui.components.feedbackClick
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
         if (running) ContainedLoadingIndicator(Modifier.size(24.dp).testTag("chat-step-loading"))
         if (expandable) Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            if (expanded) "收起步骤" else "展开步骤", Modifier.size(20.dp))
+            if (expanded) uiText("chat.steps.collapse") else uiText("chat.steps.expand"), Modifier.size(20.dp))
     }
 }

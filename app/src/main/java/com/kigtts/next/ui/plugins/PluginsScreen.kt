@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.MotionTextButton
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -51,10 +53,10 @@ fun PluginsScreen(model: AppViewModel) {
     }
     val rows = pluginManagementItems(model)
     RegisterPageActions(listOf(
-        ToolbarAction("install-plugin","安装插件",Icons.Default.Extension,!working,preserveColorWhenLocked=true) { importer.launch(arrayOf("*/*")) },
-        ToolbarAction("refresh-plugins","刷新插件",Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
+        ToolbarAction("install-plugin",uiText("plugin.install"),Icons.Default.Extension,!working,preserveColorWhenLocked=true) { importer.launch(arrayOf("*/*")) },
+        ToolbarAction("refresh-plugins",uiText("plugin.refresh"),Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
-    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order", emptyText = "还没有安装插件"), working, compactActions = true,
+    com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order", emptyText = uiText("plugin.empty")), working, compactActions = true,
         invoke = { action, inputs ->
             val pieces = action.split('/')
             when (pieces[0]) {
@@ -71,24 +73,24 @@ fun PluginsScreen(model: AppViewModel) {
             }
         }) {
         if (recovery.active) {
-            Text("安全模式中，插件已暂时停用。", color = MaterialTheme.colorScheme.error)
+            Text(uiText("plugin.safe"), color = MaterialTheme.colorScheme.error)
             MotionTextButton(enabled = !working, onClick = feedbackClick { scope.launch { busy = true
                 try { model.safeModeSession.restorePlugins() } finally { busy = false }
-            } }) { Text("恢复插件") }
+            } }) { Text(uiText("recovery.restore")) }
         }
     }
     permission?.let { (id, project) -> PluginPermissionSettings(model, id, project) { permission = null } }
     about?.let { id -> InstalledPluginAbout(model, id) { about = null } }
-    managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text("卸载插件？") }, text = { Text("将删除这个 Lua 插件及其保存的数据。") },
+    managedRemove?.let { (runtime, id) -> MotionAlertDialog(onDismissRequest = { managedRemove = null }, title = { Text(uiText("plugin.uninstall.title")) }, text = { Text(uiText("plugin.uninstall.lua")) },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick {
             model.registry.plugin(runtime)?.contributions?.managedPackages?.firstOrNull { it.id == id }?.removeAction?.let { action -> model.invoke(runtime, action) }
             model.pluginManager.permissions.clear(model.pluginManager.permissionOwner(runtime, id)); managedRemove = null
-        }) { Text("卸载") } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { managedRemove = null }) { Text("取消") } }) }
+        }) { Text(uiText("plugin.uninstall")) } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { managedRemove = null }) { Text(uiText("action.cancel")) } }) }
     pending?.let { candidate ->
         LocalPackageInstaller(model, candidate) { candidate.file.delete(); pending = null }
     }
-    remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text("卸载插件？") },
-        text = { Text("将删除这个插件及其保存的数据，包括模型、下载文件和设置。") },
-        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text("卸载") } },
-        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
+    remove?.let { id -> MotionAlertDialog(onDismissRequest = { remove = null }, title = { Text(uiText("plugin.uninstall.title")) },
+        text = { Text(uiText("plugin.uninstall.native")) },
+        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { model.changePlugin(id); remove = null }) { Text(uiText("plugin.uninstall")) } },
+        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text(uiText("action.cancel")) } }) }
 }

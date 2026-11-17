@@ -42,6 +42,11 @@ import kotlinx.coroutines.delay
     }
     val builtIns = remember { overlayBuiltInChoices() }
     val categories = listOf("KIGTTS", "插件", "应用")
+    fun sectionName(name: String) = when (name) {
+        "插件" -> copy("overlay.category.plugins"); "应用" -> copy("overlay.category.apps")
+        "页面" -> copy("overlay.category.pages"); "操作" -> copy("overlay.category.actions")
+        "设置" -> copy("overlay.category.settings"); else -> name
+    }
     val source = when (path.firstOrNull()) { "KIGTTS" -> builtIns; "插件" -> plugins; "应用" -> apps; else -> emptyList() }
     val searching = query.isNotBlank()
     val scoped = if (path.size > 1) source.filter { it.category == path[1] } else source
@@ -60,14 +65,14 @@ import kotlinx.coroutines.delay
                 leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             if (path.isNotEmpty() && !searching) Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = feedbackClick { path = path.dropLast(1) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, copy("overlay.picker.back")) }
-                Text(path.last(), style = MaterialTheme.typography.titleSmall)
+                Text(sectionName(path.last()), style = MaterialTheme.typography.titleSmall)
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(Modifier.fillMaxSize()) {
                 if (sections.isNotEmpty()) items(sections, key = { "section:$it" }) { title ->
                     TextButton(onClick = feedbackClick { path = path + title }, modifier = Modifier.fillMaxWidth()) {
                         Icon(when (title) { "应用" -> Icons.Default.Apps; "插件" -> Icons.Default.Extension; "操作" -> Icons.Default.TouchApp; "设置" -> Icons.Default.Settings; else -> Icons.Default.Widgets }, null)
-                        Spacer(Modifier.width(12.dp)); Text(title, Modifier.weight(1f)); Icon(Icons.Default.ChevronRight, null)
+                        Spacer(Modifier.width(12.dp)); Text(sectionName(title), Modifier.weight(1f)); Icon(Icons.Default.ChevronRight, null)
                     }
                 } else items(items, key = { it.id }) { entry ->
                     val added = entry.id in existing

@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.ui.components.feedbackClick
 
 import androidx.compose.animation.animateColorAsState
@@ -20,12 +21,13 @@ import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.plugin.api.*
 
 @Composable internal fun ChatModelControl(control: ChatControl, enabled: Boolean, invoke: (String, Map<String, String>) -> Unit,
-    reasoning: ChatControl? = null) {
+    reasoning: ChatControl? = null, modifier: Modifier = Modifier) {
     var open by remember { mutableStateOf(false) }
     val selected = control.options.firstOrNull { it.action == control.selected }
-    AssistChip(onClick = feedbackClick { open = true }, enabled = enabled, label = { Text(selected?.label ?: "模型") },
-        leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) }, trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
-        modifier = Modifier.testTag("plugin-chat-control/MODEL"))
+    AssistChip(onClick = feedbackClick { open = true }, enabled = enabled,
+        label = { Text(selected?.label ?: uiText("chat.model"), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
+        leadingIcon = { Icon(Icons.Default.AutoAwesome, null, Modifier.size(18.dp)) },
+        modifier = modifier.testTag("plugin-chat-control/MODEL"))
     if (open) ModelDialog(control, reasoning, enabled, invoke, { open = false }) { action ->
         if (control.options.firstOrNull { it.action == action }?.section.isNullOrBlank()) open = false
         invoke(action, emptyMap())
@@ -34,8 +36,8 @@ import com.kigtts.plugin.api.*
 @Composable private fun ModelDialog(control: ChatControl, reasoning: ChatControl?, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit, dismiss: () -> Unit, choose: (String) -> Unit) {
     var search by remember { mutableStateOf("") }
-    MotionAlertDialog(onDismissRequest = dismiss, title = { Text("提供商与模型") }, text = { Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(search, { search = it }, singleLine = true, placeholder = { Text("搜索模型或供应商") },
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("chat.models")) }, text = { Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(search, { search = it }, singleLine = true, placeholder = { Text(uiText("chat.model_search")) },
             leadingIcon = { Icon(Icons.Default.Search, null) }, shape = MaterialTheme.shapes.extraLarge,
             modifier = Modifier.fillMaxWidth())
         LazyColumn(Modifier.fillMaxWidth().weight(1f, fill = false).heightIn(min = 80.dp, max = 400.dp).testTag("chat-model-list")) {
@@ -52,7 +54,7 @@ import com.kigtts.plugin.api.*
             HorizontalDivider()
             ChatReasoningSlider(it, enabled, invoke)
         }
-    } }, confirmButton = { TextButton(onClick = feedbackClick(dismiss)) { Text("关闭") } })
+    } }, confirmButton = { TextButton(onClick = feedbackClick(dismiss)) { Text(uiText("action.close")) } })
 }
 @Composable private fun ModelOptionRow(option: ChatOption, selected: Boolean, index: Int, count: Int,
     enabled: Boolean, choose: () -> Unit) {

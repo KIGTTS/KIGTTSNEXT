@@ -50,7 +50,29 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         if (service(id) == null) return
         start(RecognitionSession(requireNotNull(id), RecognitionPurpose.VOICE_INPUT))
     }
-    fun start(session: RecognitionSession) {
+    fun chatInput(): (suspend (Boolean) -> String?)? {
+        val id = selection() ?: return null
+        if (service(id) == null) return null
+        if (!audio.hasMicrophonePermission()) { requests.trySend(Unit); return null }
+        val result = CompletableDeferred<String?>()
+        start(RecognitionSession(id, RecognitionPurpose.VOICE_INPUT), result)
+        val epoch = generation
+        val stop = stopInput
+        return { send ->
+            try {
+                if (send && epoch == generation) {
+                    stop?.complete(Unit)
+                    withTimeoutOrNull(30_000) { result.await() }?.takeIf { epoch == generation }
+                } else null
+            } finally {
+                if (epoch == generation && (!send || !result.isCompleted)) cancel()
+            }
+        }
+    }
+
+    fun start(session: RecognitionSession) = start(session, null)
+
+    private fun start(session: RecognitionSession, chatResult: CompletableDeferred<String?>?) {
         val engine = service(session.serviceId) ?: return
         val streaming = engine.info.streaming != StreamingKind.NONE
         if (!streaming && (session.purpose == RecognitionPurpose.CAPTIONS || session.continuous)) {
@@ -74,7 +96,9 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 transcript = "", recognitionFinalOnly = segmentedSession, voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
                 voiceInputSubmitting = false, recognitionOutput = session.output) }
             var finalizedSequence = 0L
-            fun display(text: String) { update { if (voice) it.copy(voiceInputText = text) else it.copy(transcript = text) } }
+            fun display(text: String) {
+                if (chatResult == null) update { if (voice) it.copy(voiceInputText = text) else it.copy(transcript = text) }
+            }
             fun final(text: String) {
                 if (voice && state().continuousRecognition && text.isNotBlank()) replaceText(text)
                 if (currentSession?.readFinalized == true && state().autoPlayback && text.isNotBlank()) finalizedSpeech(text, false)
@@ -99,10 +123,12 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                     }
                 } else {
                     val result = engine.recognize(recording(engine.info.inputFormat, stop, minOf(5, engine.info.maxBatchSeconds)), session.config)
+                    committedText = result.text
                     display(result.text)
                     submit = true // A recorded-only provider completes a bounded recording itself.
                 }
-                if (voice && !state().continuousRecognition && submit && epoch == generation) {
+                if (chatResult != null && epoch == generation) chatResult.complete(committedText.takeIf(String::isNotBlank))
+                if (chatResult == null && voice && !state().continuousRecognition && submit && epoch == generation) {
                     state().voiceInputText.takeIf(String::isNotBlank)?.let { text ->
                         replaceText(text)
                         if (readOnSubmit || state().autoPlayback) finalizedSpeech(text, readOnSubmit)
@@ -115,7 +141,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 initialized.complete(Unit)
                 if (epoch == generation) update { it.copy(listening = false, voiceInputActive = false, voiceInputSubmitting = false, continuousRecognition = false) }
             }
-        }
+        }.also { task -> task.invokeOnCompletion { chatResult?.complete(null) } }
     }
     private fun captureUntil(format: AudioFormat, stop: Deferred<Unit>): Flow<PcmAudio> = channelFlow {
         val capture = launch { audio.capture(format).collect { send(it) } }

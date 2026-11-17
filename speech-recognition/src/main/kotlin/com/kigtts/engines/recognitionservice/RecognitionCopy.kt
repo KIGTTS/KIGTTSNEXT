@@ -7,7 +7,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 internal object RecognitionCopy {
-    val localization = PluginLocalization(supportedLocales = listOf("zh-CN", "en", "ko"))
+    val localization = PluginLocalization(supportedLocales = listOf("zh-CN", "en", "ko", "ja"))
     private val catalog by lazy {
         val loader = requireNotNull(javaClass.classLoader)
         PluginStrings(localization.supportedLocales.associateWith { tag ->

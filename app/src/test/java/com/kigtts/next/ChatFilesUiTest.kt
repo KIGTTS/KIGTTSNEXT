@@ -29,7 +29,9 @@ class ChatFilesUiTest {
         } } }
         compose.onNodeWithText("test.mid").assertExists()
         compose.onNodeWithTag("plugin-chat-send").assertIsEnabled().performClick()
-        compose.onNodeWithTag("plugin-chat-file").performClick()
+        compose.onNodeWithContentDescription("添加附件").performClick()
+        compose.onNodeWithText("添加图片").assertExists()
+        compose.onNodeWithText("添加文件").performClick()
         compose.onNodeWithContentDescription("移除 test.mid").performClick()
         assertEquals(listOf("send", "file", "remove"), actions.map { it.first })
         assertEquals("imports/test.mid", actions.last().second["value"])

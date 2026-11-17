@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,8 +24,8 @@ import com.kigtts.next.ui.components.feedbackClick
         color = MaterialTheme.colorScheme.surfaceContainerLowest) {
         Column {
             Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(info.substringBefore(' ').ifBlank { "代码" }, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
-                IconButton(feedbackClick { clipboard.setText(AnnotatedString(code)) }) { Icon(Icons.Default.ContentCopy, "复制代码", Modifier.size(18.dp)) }
+                Text(info.substringBefore(' ').ifBlank { uiText("chat.code") }, Modifier.weight(1f), style = MaterialTheme.typography.labelSmall)
+                IconButton(feedbackClick { clipboard.setText(AnnotatedString(code)) }) { Icon(Icons.Default.ContentCopy, uiText("chat.copy_code"), Modifier.size(18.dp)) }
             }
             Text(code.trimEnd('\n'), Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                 style = (if (small) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium).copy(fontFamily = FontFamily.Monospace))

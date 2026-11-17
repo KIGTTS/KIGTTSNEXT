@@ -2,6 +2,7 @@
 
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -44,18 +45,18 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 
 @Composable
 fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, extraSettings: (@Composable () -> Unit)? = null,
-    voiceInputAvailable: Boolean = false, startVoiceInput: (() -> Unit)? = null, stopVoiceInput: (() -> String)? = null,
+    startVoiceInput: (() -> (suspend (Boolean) -> String?)?)? = null, followIme: Boolean = false,
     invoke: (String, Map<String, String>) -> Unit) {
     page?.search?.let { search ->
         PluginSearchScreen(search, onBack, invoke) {
             PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, extraSettings,
-                voiceInputAvailable, startVoiceInput, stopVoiceInput, invoke)
+                startVoiceInput, followIme, invoke)
         }
         return
     }
     PluginPageEntry(page, busy, invoke)
     RegisterPageLoading(busy || page?.loading == true)
-    if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)"正在加载插件页面…" else "插件页面暂不可用", Modifier.padding(24.dp)) }; return }
+    if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)uiText("plugin.page.loading") else uiText("plugin.page.unavailable"), Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
     val actionGroups = page.blocks.filterIsInstance<PageBlock.Actions>()
     if(toolbar)RegisterPageActions(actionGroups.flatMap { it.actions }.map { action ->
@@ -66,7 +67,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
             (block is PageBlock.Text && block.heading && block.text.trim() == page.title.trim())
     }
     blocks.filterIsInstance<PageBlock.Browser>().firstOrNull()?.let { block ->
-        if (browser != null) browser(block) else Text("网页容器暂不可用", Modifier.padding(24.dp))
+        if (browser != null) browser(block) else Text(uiText("plugin.browser.unavailable"), Modifier.padding(24.dp))
         return
     }
     blocks.filterIsInstance<PageBlock.SourceEditor>().firstOrNull()?.let { editor ->
@@ -74,7 +75,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         return
     }
     blocks.filterIsInstance<PageBlock.Chat>().firstOrNull()?.let { chat ->
-        PluginChatScreen(chat, !busy, invoke, resolve, historyCache, historyKey + chat.conversationId, voiceInputAvailable, startVoiceInput, stopVoiceInput) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
+        PluginChatScreen(chat, !busy, invoke, resolve, historyCache, historyKey + chat.conversationId, startVoiceInput, followIme) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
         return
     }
     blocks.filterIsInstance<PageBlock.Files>().firstOrNull()?.let { files ->
@@ -86,7 +87,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         when {
             list?.style == ManagementListStyle.CATALOG -> PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             list != null && list.usesSettingsLayout() -> PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
-            list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
+            list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); extraSettings?.invoke(); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             else -> ReadablePage(840.dp) { Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(com.kigtts.next.ui.navigation.pageContentPadding()), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke)
                 extraSettings?.invoke()

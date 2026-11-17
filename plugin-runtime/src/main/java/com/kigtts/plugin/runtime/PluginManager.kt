@@ -14,13 +14,18 @@ data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
 class PluginManager(private val context: Context, private val builtins: List<KigPlugin>,
-    private val pausedPackages: Set<String> = emptySet()) {
+    private val pausedPackages: Set<String> = emptySet(), bundled: List<BundledPlugin> = emptyList(),
+    bundledEnabled: (String) -> Boolean = { false }) {
     fun isPackagePaused(id: String): Boolean = id in pausedPackages
     val builtinIds: Set<String> = builtins.map { it.descriptor.id }.toSet()
     val applicationContext: Context get() = context.applicationContext
     @Volatile var onNotificationsUnavailable: (String) -> Unit = {}
     val paths = PluginPaths(context)
     val packages = PluginPackageStore(paths)
+    private val bundles = BundledPlugins(context, packages, bundled, bundledEnabled)
+    val bundledIds: Set<String> = bundles.ids
+    @Volatile var bundledErrors: Map<String, String> = emptyMap()
+        private set
     val registry = PluginRegistry(builtins)
     val permissions = PluginPermissions(context)
     @Volatile var automaticPermission: (String, String) -> Boolean = { _, _ -> false }
@@ -96,7 +101,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         // A previous standalone build may still be installed. Keep its data and package,
         // but never start a second service or expose it as an independently managed plugin.
         val installed = withContext(Dispatchers.IO) {
-            packages.installed().filterNot { it.manifest.id in builtinIds || isPackagePaused(it.manifest.id) }
+            bundledErrors = if (safeMode()) emptyMap() else bundles.prepare()
+            packages.installed().filterNot { it.manifest.id in builtinIds || isPackagePaused(it.manifest.id) ||
+                !bundles.allowed(it.manifest.id) || it.manifest.id in bundledErrors }
+                .map { if (it.manifest.id in bundledIds) it.copy(enabled = true) else it }
         }
         loaded.filterValues { !it.second.alive }.keys.toList().forEach { unload(it) }
         loaded.keys.filter { id -> safeMode() || installed.none { it.manifest.id == id && it.enabled } }.toList().forEach { unload(it) }
@@ -130,7 +138,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                         catch (failure: Exception) { proxy.close(); throw failure }
                         loaded[info.manifest.id] = slot to proxy
                         ProviderCatalog(paths).save(proxy)
-                    } catch (failure: Exception) { error = failure.message ?: "插件启动失败" }
+                    } catch (cancel: CancellationException) { throw cancel }
+                    catch (failure: Exception) { error = failure.message ?: "插件启动失败" }
                 }
             }
             PluginStatus(info, error)
@@ -152,17 +161,20 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
         require(!isPackagePaused(id)) { "此插件暂不可用" }
         require(id !in builtinIds) { "此功能已内置，请在软件设置中使用" }
+        require(id !in bundledIds) { "此功能已内置，请在软件设置中使用" }
         unload(id)
         try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
         finally { reloadLocked() }
     }
     suspend fun enable(id: String, enabled: Boolean) = mutation.withLock {
+        require(id !in bundledIds) { "此功能已内置，请在软件设置中使用" }
         require(!enabled || !isPackagePaused(id)) { "此插件暂不可用" }
         if (!enabled) unload(id)
         withContext(Dispatchers.IO) { packages.enabled(id, enabled) }
         reloadLocked()
     }
     suspend fun uninstall(id: String) = mutation.withLock {
+        require(id !in bundledIds) { "此功能已内置，请在软件设置中使用" }
         permissions.clear(permissionOwner(id))
         unload(id)
         withContext(Dispatchers.IO) { packages.uninstall(id) }

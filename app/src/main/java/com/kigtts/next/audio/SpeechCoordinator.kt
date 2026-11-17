@@ -22,6 +22,7 @@ class SpeechCoordinator(scope: CoroutineScope, registry: PluginRegistry, audio: 
     fun closeListening() = recording.cancel()
     fun toggleListening() = recording.toggleListening()
     fun voiceInput() = recording.voiceInput()
+    internal fun chatInput() = recording.chatInput()
     fun speak(replace: Boolean = false) = playback.speak(replace)
     suspend fun stopSpeaking() = playback.stop()
     suspend fun stopAll() { recording.stop(); playback.stop() }

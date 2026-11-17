@@ -7,7 +7,8 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
     val external = model.pluginManager.status.associateBy { it.installed.manifest.id }
     val managed = model.registry.plugins.flatMap { runtime -> runtime.contributions.managedPackages.map { "${runtime.descriptor.id}::${it.id}" to (runtime.descriptor.id to it) } }.toMap()
     val all = (external.keys + model.registry.plugins.map { it.descriptor.id } + managed.keys).distinct()
-        .filterNot { it in setOf("service.speech-synthesis", "service.speech-recognition") }
+        .filterNot { it in model.pluginManager.builtinIds || it in model.pluginManager.bundledIds ||
+            it in setOf("service.speech-synthesis", "service.speech-recognition") }
     return model.pluginOrder(all).map { id ->
         managed[id]?.let { (runtime, item) ->
             val primary = item.manageAction?.let { PageAction("managed/$runtime/$it", "设置", PluginIcon.SETTINGS) }

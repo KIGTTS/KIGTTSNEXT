@@ -23,7 +23,7 @@ import com.kigtts.next.i18n.uiText
 @Composable
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String=uiText("nav.back"),largeBar:Boolean=true,
     actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,extendToBottom:Boolean=false,
-    backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,contentScrollsHeader:Boolean=true,
+    backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,contentScrollsHeader:Boolean=true,contentHandlesIme:Boolean=false,
     backgroundDecoration:(@Composable BoxScope.()->Unit)?=null,content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
@@ -31,10 +31,11 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val ime = WindowInsets.ime
     val density = LocalDensity.current
     val multiWindow = com.kigtts.next.ui.components.rememberMultiWindowMode()
-    val safe = if (multiWindow) WindowInsets.safeDrawing.union(WindowInsets.systemGestures) else WindowInsets.safeDrawing
-    val bottomClearance = with(density) { safe.getBottom(density).toDp() }
+    val drawing = if (contentHandlesIme) WindowInsets.systemBars.union(WindowInsets.displayCutout) else WindowInsets.safeDrawing
+    val safe = if (multiWindow) drawing.union(WindowInsets.systemGestures) else drawing
+    val bottomClearance = if (extendToBottom) with(density) { safe.getBottom(density).toDp() } else androidx.compose.ui.unit.Dp(0f)
     val keyboard by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
-    val input = rememberUpdatedState(host.input.focused || keyboard)
+    val input = rememberUpdatedState(largeBar && (host.input.focused || keyboard))
     val behavior=TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState,snapAnimationSpec=tween(220),
         canScroll={ active.value && !input.value })
     // Match Material's switch between the expanded and single-line title semantics.

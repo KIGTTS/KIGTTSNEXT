@@ -38,7 +38,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val readingBakeProgress get() = hostRuntime?.reading?.bakeProgress
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
-        audioDevices.decorate(plugin, plugin.page(pageId, context()))
+        val page = audioDevices.decorate(plugin, plugin.page(pageId, context()))
+        if (pluginId == com.kigtts.next.plugins.control.STORE_ID && page != null) {
+            page.copy(management = page.management?.let { list ->
+                list.copy(items = list.items.filterNot { it.id in pluginManager.bundledIds })
+            })
+        } else page
     }
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)
@@ -179,13 +184,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
-    /** Chat composers use a hold gesture, so they need a scoped start/stop pair. */
-    fun startChatVoiceInput() = speech.voiceInput()
-    fun stopChatVoiceInput(): String {
-        val text = state.value.voiceInputText
-        speech.end(false)
-        return text
-    }
+    internal fun startChatVoiceInput() = speech.chatInput()
     fun continueVoiceInput() = speech.continueInput()
     val microphoneRequests = speech.permissionRequests
     fun microphoneResult(granted: Boolean) {
@@ -305,6 +304,18 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun appleLivePhotos(enabled: Boolean) {
         experiments.edit { putBoolean("apple-live-photos", enabled) }
         update { it.copy(appleLivePhotos = enabled) }
+    }
+    internal fun experimentalToolEnabled(tool: com.kigtts.next.manager.ExperimentalTool) =
+        com.kigtts.next.manager.ExperimentalTool.enabled(getApplication<Application>(), tool.id)
+
+    internal fun setExperimentalTool(tool: com.kigtts.next.manager.ExperimentalTool, enabled: Boolean) {
+        if (tool.id in state.value.busyPlugins) return
+        update { it.copy(busyPlugins = it.busyPlugins + tool.id) }
+        com.kigtts.next.manager.ExperimentalTool.setEnabled(getApplication<Application>(), tool, enabled)
+        viewModelScope.launch {
+            try { refreshPlugins() }
+            finally { update { it.copy(busyPlugins = it.busyPlugins - tool.id) } }
+        }
     }
     fun mediaEditing(enabled: Boolean) { update { it.copy(mediaEditing = enabled) } }
     fun mediaScale(mode: com.kigtts.next.media.MediaScale) { state.value.mediaId?.let { id ->

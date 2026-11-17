@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
@@ -35,7 +37,7 @@ import com.kigtts.plugin.api.*
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!user) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(Icons.Default.ChatBubbleOutline, null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("回答", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(uiText("chat.answer"), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (message.images.isNotEmpty()) ChatImages(message.images, resolve)
                 if (message.files.isNotEmpty()) ChatFiles(message.files, invoke)
@@ -53,7 +55,7 @@ import com.kigtts.plugin.api.*
                     }
                 }
                 if (message.state == ChatMessageState.CANCELLED || message.state == ChatMessageState.FAILED)
-                    Text(if (message.state == ChatMessageState.CANCELLED) "已停止" else "回复未完成", style = MaterialTheme.typography.labelSmall)
+                    Text(if (message.state == ChatMessageState.CANCELLED) uiText("chat.stopped") else uiText("chat.incomplete"), style = MaterialTheme.typography.labelSmall)
             }
         }
     }

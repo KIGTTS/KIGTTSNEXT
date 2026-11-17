@@ -15,7 +15,7 @@ suspend fun adminSnapshot(context: Context, host: HostPluginRuntime, journal: Ad
         val process=worker?.let { processes.firstOrNull { process -> process.processName==context.packageName+":plugin"+it.slot } }
         plugins.put(JSONObject().put("id",manifest.id).put("name",manifest.name).put("version",manifest.version)
             .put("api",manifest.apiVersion).put("enabled",installed.enabled).put("loaded",worker?.alive==true)
-            .put("builtin",false).put("pid",process?.pid ?: 0).put("error",status.error ?: if(worker?.alive==false)"工作进程已退出" else "")
+            .put("builtin",manifest.id in manager.bundledIds).put("pid",process?.pid ?: 0).put("error",status.error ?: if(worker?.alive==false)"工作进程已退出" else "")
             .put("publisher",installed.publisherSha256).put("capabilities",JSONArray(manifest.capabilities)))
     }
     manager.registry.plugins.filter { plugin -> manager.status.none { it.installed.manifest.id==plugin.descriptor.id } }.forEach { plugin ->

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -33,7 +35,8 @@ import kotlinx.coroutines.channels.Channel
 internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit, resolve: (PluginResource) -> java.io.File? = { null },
     historyCache: ChatHistoryCache? = null, historyKey: String = chat.conversationId,
-    voiceInputAvailable: Boolean = false, startVoiceInput: (() -> Unit)? = null, stopVoiceInput: (() -> String)? = null,
+    startVoiceInput: (() -> (suspend (Boolean) -> String?)?)? = null,
+    followIme: Boolean = false,
     header: @Composable ColumnScope.() -> Unit) {
     val list = remember(chat.conversationId) { LazyListState() }
     val dispatch: (String, Map<String, String>) -> Unit = { action, inputs -> invoke(action, inputs + ("_chatConversation" to chat.conversationId)) }
@@ -108,15 +111,15 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
             scrollRequests.trySend(ChatScrollRequest.UPDATE)
         }
     }
-    ChatViewport(Modifier.fillMaxSize().testTag("plugin-chat"), overlay = {
+    ChatViewport(Modifier.fillMaxSize().testTag("plugin-chat"), followIme = followIme, overlay = {
         EmptyContent(rows.isEmpty() && !chat.running && chat.approval == null, Icons.Default.AutoAwesome,
-            "开始新的对话", Modifier.testTag("chat-empty"), "有什么想聊的？")
+            uiText("chat.empty"), Modifier.testTag("chat-empty"), uiText("chat.empty.hint"))
         androidx.compose.animation.AnimatedVisibility(!follow && !atBottom,
             Modifier.align(Alignment.BottomEnd).padding(16.dp), enter = fadeIn(), exit = fadeOut()) {
             SmallFloatingActionButton(onClick = feedbackClick {
                 chat.historyAction?.let { dispatch(it, mapOf("latest" to "true")) }
                 scrollRequests.trySend(ChatScrollRequest.JUMP)
-            }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, "回到底部") }
+            }, modifier = Modifier.testTag("plugin-chat-bottom")) { Icon(Icons.Default.ArrowDownward, uiText("chat.bottom")) }
         }
     }, history = {
         PullToRefreshBox(isRefreshing = loadingBefore != null, onRefresh = ::loadEarlier, state = pull, modifier = Modifier.fillMaxSize(), indicator = {
@@ -141,7 +144,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
 
         }
     }, composer = {
-        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/'), voiceInputAvailable, startVoiceInput, stopVoiceInput) { expansionActive = false; follow = true }
+        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/'), startVoiceInput) { expansionActive = false; follow = true }
     })
 }
 private enum class ChatScrollRequest { UPDATE, SNAP, JUMP }

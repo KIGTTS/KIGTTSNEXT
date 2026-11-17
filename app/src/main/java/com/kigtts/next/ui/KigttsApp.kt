@@ -159,13 +159,14 @@ fun KigttsApp(model: AppViewModel) {
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
-                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (state.destination is Destination.CardEditor) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture, model::dispatchVoiceGestureRelease)) {
+                    val ownsIme = state.destination is Destination.CardEditor || state.destination.assistantChatHandlesIme()
+                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (ownsIme) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture, model::dispatchVoiceGestureRelease)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, false) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },
                                 if (active) back.progress else 0f, back.edge)
                         }
-                        com.kigtts.next.ui.home.VoiceInputSurface(state, model)
+                        if (!state.destination.assistantChatHandlesIme()) com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }
                 }
             com.kigtts.next.ui.cards.PolaroidPrintPreviewHost(model)

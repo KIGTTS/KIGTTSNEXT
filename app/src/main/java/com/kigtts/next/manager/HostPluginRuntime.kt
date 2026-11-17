@@ -24,7 +24,8 @@ class HostPluginRuntime private constructor(private val application: Application
         } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice,
         catalogUpdates = flow<Unit> { voiceCatalogUpdates().collect { emit(it) } })
     private val recognition = com.kigtts.engines.recognitionservice.RecognitionServicePlugin(::legacyRecognitionEnabled)
-    val manager = PluginManager(application, listOf(reading, recognition), com.kigtts.next.sharing.pausedSharingPlugins)
+    val manager = PluginManager(application, listOf(reading, recognition), com.kigtts.next.sharing.pausedSharingPlugins,
+        ExperimentalTool.bundles) { ExperimentalTool.enabled(application, it) }
     private fun voiceCatalogUpdates(): Flow<Unit> = manager.catalogChanges.map { Unit }
     private fun legacyRecognitionEnabled(): Boolean? = manager.packages.installed()
         .firstOrNull { it.manifest.id == recognition.descriptor.id }?.enabled

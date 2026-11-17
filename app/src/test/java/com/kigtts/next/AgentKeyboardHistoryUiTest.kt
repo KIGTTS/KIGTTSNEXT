@@ -29,6 +29,30 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w480dp-h900dp-xhdpi")
 class AgentKeyboardHistoryUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @OptIn(ExperimentalLayoutApi::class)
+    @Test fun viewportOwnsKeyboardMotionAndSubtractsAlreadyConsumedBottomInset() {
+        val keyboard = MutableWindowInsets(WindowInsets(bottom = 0))
+        var composerMeasures = 0
+        compose.setContent { Box(Modifier.width(420.dp).height(620.dp).consumeWindowInsets(WindowInsets(bottom = 30))) {
+            ChatViewport(Modifier.fillMaxSize(), followIme = true, keyboardInsets = keyboard, history = {}, composer = {
+                Box(Modifier.fillMaxWidth().height(52.dp).layout { measurable, constraints ->
+                    composerMeasures++
+                    val child = measurable.measure(constraints)
+                    layout(child.width, child.height) { child.place(0, 0) }
+                }.testTag("ime-composer"))
+            })
+        } }
+        fun top() = compose.onNodeWithTag("ime-composer").fetchSemanticsNode().boundsInRoot.top
+        val start = top(); val initialMeasures = composerMeasures
+        for (frame in 1..8) {
+            val bottom = 30 + 24 * frame
+            compose.runOnIdle { keyboard.insets = WindowInsets(bottom = bottom) }
+            assertEquals(start - (bottom - 30), top(), 1f)
+        }
+        compose.runOnIdle { keyboard.insets = WindowInsets(bottom = 0) }
+        assertEquals(start, top(), 1f)
+        assertEquals(initialMeasures, composerMeasures)
+    }
     @Test fun imeHeightFramesMoveComposerWithoutRemeasuringMarkdownHistory() {
         var height by mutableStateOf(720.dp); var measures = 0
         compose.setContent { KigttsTheme(ThemeSettings()) { Box(Modifier.width(450.dp).layout { measurable, constraints ->
@@ -60,7 +84,7 @@ class AgentKeyboardHistoryUiTest {
         compose.onNodeWithTag("plugin-chat-steer").assertDoesNotExist()
         compose.onNodeWithTag("chat-queue-steer/q").performClick(); assertEquals("steer", actions.last().first)
         compose.onNodeWithTag("plugin-chat-input").assertTextContains("优先消息")
-        compose.onNodeWithTag("plugin-chat-stop").assertDoesNotExist()
+        compose.onNodeWithTag("plugin-chat-stop").assertExists()
         compose.onNodeWithTag("plugin-chat-input").performTextClearance()
         compose.onNodeWithTag("plugin-chat-stop").performClick(); assertEquals("stop", actions.last().first)
     }

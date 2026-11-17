@@ -27,7 +27,6 @@ import com.kigtts.plugin.api.PluginControl
 @Composable internal fun AudioDevicePicker(devices: AudioDeviceRouting, onDismiss: () -> Unit) {
     val copy = rememberUiCopy()
     val locale = LocalUiLocale.current
-    SideEffect { devices.setLocale(locale) }
     var revision by remember { mutableIntStateOf(0) }
     val manager = LocalContext.current.getSystemService(AudioManager::class.java)
     DisposableEffect(manager) {
@@ -46,7 +45,7 @@ import com.kigtts.plugin.api.PluginControl
                 SettingsGroup(copy("audio.devices")) {
                 listOf(true, false).forEach { input ->
                     val side = if (input) "input" else "output"
-                    val endpoints = remember(input, revision) { devices.endpoints(input) }
+                    val endpoints = remember(input, revision, locale) { devices.endpoints(input) }
                     var expanded by remember(input) { mutableStateOf(false) }
                     Box {
                         SettingItem(if (input) copy("audio.input") else copy("audio.output"), devices.summary(input),

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,7 +37,7 @@ import com.kigtts.plugin.api.*
     Surface(Modifier.fillMaxWidth(.94f).testTag("chat-tools/" + firstId), shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.surfaceContainer) {
         Column {
-            ChatStepHeader(if (allTools) "工具调用 · ${steps.size} 项" else "思考与工具 · ${steps.size} 步",
+            ChatStepHeader(if (allTools) uiText("chat.tools.count", "count" to steps.size.toString()) else uiText("chat.steps.count", "count" to steps.size.toString()),
                 if (allTools) Icons.Default.Build else Icons.Default.AutoAwesome, expanded, steps.any { it.running },
                 Modifier.testTag("chat-tools-toggle/" + firstId)) { readingInteraction(); expanded = !expanded }
             AnimatedVisibility(expanded) {
@@ -53,14 +55,14 @@ import com.kigtts.plugin.api.*
 @Composable private fun ChatToolItem(message: ChatMessage, readingInteraction: () -> Unit) {
     var expanded by remember(message.id) { mutableStateOf(false) }
     Column {
-        ChatStepHeader(message.toolName.ifBlank { "工具调用" }, message.icon.vector(), expanded,
+        ChatStepHeader(message.toolName.ifBlank { uiText("chat.tools.name") }, message.icon.vector(), expanded,
             message.state == ChatMessageState.STREAMING, Modifier.testTag("chat-tool/" + message.id),
-            status = if (message.state == ChatMessageState.STREAMING) "执行中" else message.summary.ifBlank { "完成" }) {
+            status = if (message.state == ChatMessageState.STREAMING) uiText("chat.tools.running") else message.summary.ifBlank { uiText("action.done") }) {
             readingInteraction(); expanded = !expanded
         }
         AnimatedVisibility(expanded) { Column(Modifier.padding(start = 12.dp)) {
-            if (message.detail.isNotBlank()) ToolSection("执行过程", message.detail, readingInteraction)
-            if (message.text.isNotBlank()) ToolSection("执行结果", message.text, readingInteraction)
+            if (message.detail.isNotBlank()) ToolSection(uiText("chat.tools.process"), message.detail, readingInteraction)
+            if (message.text.isNotBlank()) ToolSection(uiText("chat.tools.result"), message.text, readingInteraction)
         } }
     }
 }

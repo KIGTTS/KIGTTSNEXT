@@ -26,6 +26,28 @@ class RecognitionSessionTest {
         override val asr = engine; override val tts = synthesis
         override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
     }
+    @Test fun chatDictationAwaitsFinalAfterReleaseAndNeverWritesSubtitles() = runTest {
+        var state = AppState(); val subtitles = mutableListOf<String>(); val audio = Hardware()
+        val engine = object : AsrEngine {
+            override val info = AsrInfo(role = AsrRole.SERVICE, streaming = StreamingKind.SEGMENTED)
+            override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("not batch")
+            override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
+                audio.collect { emit(RecognitionEvent.Partial("partial")) }
+                delay(1_000)
+                emit(RecognitionEvent.Transcript("final sentence", "", 1))
+            }
+        }
+        val speech = SpeechCoordinator(this, PluginRegistry(listOf(plugin(engine))), audio,
+            { state }, { state = it(state) }, {}, subtitles::add, { "test.service" })
+        val finish = requireNotNull(speech.chatInput())
+        runCurrent(); assertEquals("", state.voiceInputText)
+        val sent = async { finish(true) }
+        runCurrent(); assertFalse(sent.isCompleted); assertEquals(1, audio.released)
+        advanceTimeBy(1_001); assertEquals("final sentence", sent.await())
+        val cancel = requireNotNull(speech.chatInput())
+        runCurrent(); assertNull(cancel(false)); runCurrent()
+        assertEquals(2, audio.released); assertTrue(subtitles.isEmpty())
+    }
     @Test fun emptyRecognitionDoesNotCreateUserFacingNoiseButRealErrorsStillReport() = runTest {
         var state = AppState(); val messages = mutableListOf<String>()
         var fail = false
