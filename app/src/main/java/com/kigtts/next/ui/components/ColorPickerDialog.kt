@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.components
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,8 +27,9 @@ val ColorPickerPresets=listOf(0xFF00696E,0xFF6750A4,0xFF386A20,0xFF984061,0xFFFF
 
 /** Reusable opaque HSV picker. Editing is local until the caller confirms the result. */
 @Composable
-fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,title:String="取色器",
+fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,title:String?=null,
     presets:List<Long> = ColorPickerPresets) {
+    val copy = rememberUiCopy()
     val initialHsv=remember(initial) { FloatArray(3).also { AndroidColor.colorToHSV(initial.toInt(),it) } }
     var hue by remember { mutableFloatStateOf(initialHsv[0]) }
     var saturation by remember { mutableFloatStateOf(initialHsv[1]) }
@@ -56,32 +59,32 @@ fun ColorPickerDialog(initial:Long,onConfirm:(Long)->Unit,onDismiss:()->Unit,tit
         }
     }
     val color=AndroidColor.HSVToColor(floatArrayOf(hue,saturation,brightness)).toLong() and 0xFFFFFFFF
-    MotionAlertDialog(onDismissRequest=onDismiss,title={ Text(title) },text={
+    MotionAlertDialog(onDismissRequest=onDismiss,title={ Text(title ?: copy("color.picker")) },text={
         Column(Modifier.heightIn(max=380.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)) {
             Box(Modifier.fillMaxWidth().height(44.dp).dialogElementMorph().background(Color(color),MaterialTheme.shapes.medium)
                 .testTag("color-preview").semantics { stateDescription="#%06X".format(Locale.ROOT,color and 0xFFFFFF) })
-            Text("预设颜色",style=MaterialTheme.typography.labelLarge)
+            Text(copy("color.presets"),style=MaterialTheme.typography.labelLarge)
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                 presets.distinct().forEach { preset ->
                     MotionIconButton(feedbackClick { choosePreset(preset) },Modifier.size(40.dp).semantics {
-                        contentDescription="预设颜色 #%06X".format(Locale.ROOT,preset and 0xFFFFFF);selected=color==preset
+                        contentDescription=copy("color.preset", "color" to "#%06X".format(Locale.ROOT,preset and 0xFFFFFF));selected=color==preset
                     }) {
                         Box(Modifier.size(28.dp).background(Color(preset),CircleShape)
                             .border(if(color==preset)3.dp else 1.dp,MaterialTheme.colorScheme.outline,CircleShape))
                     }
                 }
             }
-            OutlinedTextField(state=hexState,lineLimits=TextFieldLineLimits.SingleLine,isError=!validHex,label={ Text("HEX 颜色") },
+            OutlinedTextField(state=hexState,lineLimits=TextFieldLineLimits.SingleLine,isError=!validHex,label={ Text(copy("color.hex")) },
                 inputTransformation=InputTransformation {
                     val value=asCharSequence().toString().removePrefix("#").uppercase(Locale.ROOT)
                     if(value.length>6||value.any { it !in '0'..'9'&&it !in 'A'..'F' })revertAllChanges() else replace(0,length,value)
-                },modifier=Modifier.fillMaxWidth().semantics { contentDescription="HEX 颜色" })
-            ColorSlider("色相",hue,0f..360f) { hue=it;updateHex() }
-            ColorSlider("饱和度",saturation) { saturation=it;updateHex() }
-            ColorSlider("明度",brightness) { brightness=it;updateHex() }
+                },modifier=Modifier.fillMaxWidth().semantics { contentDescription=copy("color.hex") })
+            ColorSlider(copy("color.hue"),hue,0f..360f) { hue=it;updateHex() }
+            ColorSlider(copy("color.saturation"),saturation) { saturation=it;updateHex() }
+            ColorSlider(copy("color.brightness"),brightness) { brightness=it;updateHex() }
         }
-    },confirmButton={ MotionTextButton(dialogFeedbackClick { onConfirm(color) },enabled=validHex) { Text("应用颜色") } },
-        dismissButton={ MotionTextButton(dialogFeedbackClick(onDismiss)) { Text("取消") } })
+    },confirmButton={ MotionTextButton(dialogFeedbackClick { onConfirm(color) },enabled=validHex) { Text(copy("color.apply")) } },
+        dismissButton={ MotionTextButton(dialogFeedbackClick(onDismiss)) { Text(copy("action.cancel")) } })
 }
 
 @Composable

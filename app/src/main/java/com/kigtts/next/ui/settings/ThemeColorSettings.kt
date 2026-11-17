@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.i18n.uiText
 import android.os.Build
 import android.widget.Toast
@@ -28,6 +30,7 @@ import com.kigtts.next.ui.components.*
 import kotlinx.coroutines.*
 
 @Composable internal fun ThemeColorSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
+    val copy = rememberUiCopy()
     var picker by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -36,15 +39,15 @@ import kotlinx.coroutines.*
     val custom = settings.colorSource == ThemeColorSource.CUSTOM
     SettingsGroup(uiText("appearance.theme_palette")) {
         SettingItem(uiText("appearance.theme_mode"), "", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
-            SettingChoiceGroup(uiText("appearance.theme_mode"), ThemeMode.entries, settings.mode, { it.label }, { onChange(settings.copy(mode = it)) })
+            SettingChoiceGroup(uiText("appearance.theme_mode"), ThemeMode.entries, settings.mode, { copy("appearance.mode." + it.name.lowercase(java.util.Locale.ROOT)) }, { onChange(settings.copy(mode = it)) })
         }
         SettingItem(uiText("appearance.color_source"), "", Icons.Default.Palette, if (custom) SettingPosition.MIDDLE else SettingPosition.LAST,
             modifier = Modifier.testTag("theme-color-source")) {
-            ChoiceButtonGroup(uiText("appearance.color_source"), ThemeColorSource.entries, settings.colorSource, { it.label }, { source ->
+            ChoiceButtonGroup(uiText("appearance.color_source"), ThemeColorSource.entries, settings.colorSource, { copy("appearance.source." + it.name.lowercase(java.util.Locale.ROOT)) }, { source ->
                 val request = ++selectionRequest
                 val message = when {
-                    source == ThemeColorSource.WALLPAPER && Build.VERSION.SDK_INT < 31 -> "壁纸取色需要 Android 12 及以上"
-                    source == ThemeColorSource.BACKGROUND && settings.background == null -> "请先选择背景图片"
+                    source == ThemeColorSource.WALLPAPER && Build.VERSION.SDK_INT < 31 -> copy("appearance.wallpaper_requirement")
+                    source == ThemeColorSource.BACKGROUND && settings.background == null -> copy("appearance.background_pick_first")
                     else -> null
                 }
                 if (message != null) Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -54,7 +57,7 @@ import kotlinx.coroutines.*
                         val seed = withContext(Dispatchers.IO) { AppearanceBackgrounds.load(context, background)?.let(::backgroundThemeSeed) }
                         if (request == selectionRequest && current.background == background) {
                             if (seed != null) onChange(current.copy(backgroundSeed = seed).withColorSource(source))
-                            else Toast.makeText(context, "无法读取背景图片，请重新选择", Toast.LENGTH_SHORT).show()
+                            else Toast.makeText(context, copy("appearance.background_read_failed"), Toast.LENGTH_SHORT).show()
                         }
                     }
                 } else onChange(settings.withColorSource(source))

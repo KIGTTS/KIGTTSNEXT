@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,10 +32,12 @@ import kotlin.math.roundToInt
 
 @Composable
 fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit,
-    placeholder: String = "点击输入文字", onPlaceholderChange: (String) -> Unit = {},
+    placeholder: String? = null, onPlaceholderChange: (String) -> Unit = {},
     subtitle: com.kigtts.next.state.SubtitleAppearance = com.kigtts.next.state.SubtitleAppearance(),
     onSubtitleChange: (com.kigtts.next.state.SubtitleAppearance) -> Unit = {}, onFonts: () -> Unit = {},
     languageName: String = "", onLanguage: (() -> Unit)? = null) {
+    val copy = rememberUiCopy()
+    val displayedPlaceholder = placeholder ?: copy("subtitle.placeholder")
     Box(Modifier.fillMaxSize()) {
       ReadablePage(840.dp) {
         BoxWithConstraints(Modifier.fillMaxSize().clipToBounds()) {
@@ -45,7 +49,7 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
           val range = rememberUpdatedState(with(density) { (viewport - (viewport * .53f).coerceIn(180.dp, 420.dp).coerceAtMost(viewport)).toPx() })
           val sheet = remember(scope, density.density) { AppearanceSheetMotion(scope, range, density.density, expanded) { expanded = it } }
           LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.expand() }
-          AppearanceHomePreview(settings, placeholder, subtitle,
+          AppearanceHomePreview(settings, displayedPlaceholder, subtitle,
             Modifier.fillMaxWidth().height(viewport * .43f).padding(12.dp).testTag("appearance-preview"))
           Surface(Modifier.fillMaxWidth().height(viewport).offset { IntOffset(0, sheet.offset.roundToInt()) }
             .nestedScroll(sheet).interruptAppearanceSheet(sheet),
@@ -56,8 +60,8 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 .draggable(rememberDraggableState { sheet.drag(it) }, Orientation.Vertical, startDragImmediately = sheet.animating,
                   onDragStarted = { sheet.interrupt() }, onDragStopped = { sheet.settle(it) })
                 .clickable(onClick = feedbackClick { sheet.toggle() }).semantics {
-                    contentDescription = "调整外观面板高度"
-                    stateDescription = if (sheet.fraction < .5f) "已展开" else "已收起"
+                    contentDescription = copy("appearance.resize_sheet")
+                    stateDescription = if (sheet.fraction < .5f) copy("camera.expanded") else copy("camera.collapsed")
                     expand { sheet.expand(); true }; collapse { if (sheet.fraction < .5f) sheet.toggle(); true }
                 }, contentAlignment = Alignment.Center) { BottomSheetDefaults.DragHandle() }
               Column(Modifier.fillMaxWidth().weight(1f)
@@ -67,7 +71,7 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 AppearanceAssetSettings(settings, onChange, onFonts)
                 ThemeColorSettings(settings, onChange)
                 AppearanceDisplaySettings(settings, onChange)
-                SubtitlePlaceholderSetting(placeholder, onPlaceholderChange)
+                SubtitlePlaceholderSetting(displayedPlaceholder, onPlaceholderChange)
                 SubtitleMotionSettings(subtitle, onSubtitleChange)
                 if (onLanguage != null) SettingsGroup(uiText("language.screen")) {
                     SettingItem(uiText("settings.category.language"), languageName, Icons.Default.Language,

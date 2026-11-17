@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -20,6 +22,7 @@ import java.util.Date
 
 @Composable internal fun SketchGalleryScreen(repository: SketchAlbumRepository, open: (String) -> Unit,
     close: () -> Unit, message: (String) -> Unit) {
+    val copy = rememberUiCopy()
     var works by remember { mutableStateOf<List<SketchArtwork>>(emptyList()) }
     var loaded by remember { mutableStateOf(false) }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -34,11 +37,11 @@ import java.util.Date
             try {
                 works = withContext(Dispatchers.IO) { repository.remove(id); repository.list() }
                 deleting = null; selectedId = null
-            } catch (failure: Exception) { if (failure is CancellationException) throw failure; message(failure.message ?: "无法删除作品") }
+            } catch (failure: Exception) { if (failure is CancellationException) throw failure; message(failure.message ?: copy("sketch.remove_failed")) }
             finally { busy = false }
         }
     }
-    PageScaffold("画板作品", close, backLabel = "返回画板") {
+    PageScaffold(copy("sketch.artwork"), close, backLabel = copy("sketch.back")) {
         Box(Modifier.fillMaxSize()) {
         LazyVerticalGrid(GridCells.Adaptive(150.dp), Modifier.fillMaxSize().testTag("sketch-album"),
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -51,24 +54,24 @@ import java.util.Date
                 }
             }
         }
-        EmptyContent(loaded && works.isEmpty(), Icons.Default.Draw, "还没有保存的作品")
+        EmptyContent(loaded && works.isEmpty(), Icons.Default.Draw, copy("sketch.no_works"))
         }
     }
     val selected = works.firstOrNull { it.id == selectedId }
-    if (selected != null) MotionAlertDialog(onDismissRequest = { if (!busy) selectedId = null }, title = { Text("画板作品") }, text = {
+    if (selected != null) MotionAlertDialog(onDismissRequest = { if (!busy) selectedId = null }, title = { Text(copy("sketch.artwork")) }, text = {
         Column {
             Box(Modifier.fillMaxWidth().height(280.dp)) { SketchArtworkImage(repository, selected.id) }
             Row {
-                MotionTextButton(feedbackClick { runCatching { shareSketchArtwork(context, selected) }.onFailure { message("无法分享作品") } }, enabled = !busy) {
-                    Icon(Icons.Default.Share, null); Text("分享")
+                MotionTextButton(feedbackClick { runCatching { shareSketchArtwork(context, selected) }.onFailure { message(copy("sketch.share_failed")) } }, enabled = !busy) {
+                    Icon(Icons.Default.Share, null); Text(copy("action.share"))
                 }
-                MotionTextButton(feedbackClick { deleting = selected.id }, enabled = !busy) { Text("删除") }
+                MotionTextButton(feedbackClick { deleting = selected.id }, enabled = !busy) { Text(copy("action.delete")) }
             }
         }
-    }, confirmButton = { MotionTextButton(dialogFeedbackClick { selectedId = null; open(selected.id) }, enabled = !busy) { Text("在画板中打开") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { selectedId = null }, enabled = !busy) { Text("关闭") } })
-    if (deleting != null) MotionAlertDialog(onDismissRequest = { if (!busy) deleting = null }, title = { Text("删除这幅作品？") },
-        text = { Text("本地作品和系统相册中的图片将一并删除。") },
-        confirmButton = { MotionTextButton(dialogFeedbackClick { deleting?.let(::remove) }, enabled = !busy) { Text("删除") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { deleting = null }, enabled = !busy) { Text("取消") } })
+    }, confirmButton = { MotionTextButton(dialogFeedbackClick { selectedId = null; open(selected.id) }, enabled = !busy) { Text(copy("sketch.open_in_board")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { selectedId = null }, enabled = !busy) { Text(copy("action.close")) } })
+    if (deleting != null) MotionAlertDialog(onDismissRequest = { if (!busy) deleting = null }, title = { Text(copy("sketch.remove_work")) },
+        text = { Text(copy("sketch.remove_work_body")) },
+        confirmButton = { MotionTextButton(dialogFeedbackClick { deleting?.let(::remove) }, enabled = !busy) { Text(copy("action.delete")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { deleting = null }, enabled = !busy) { Text(copy("action.cancel")) } })
 }

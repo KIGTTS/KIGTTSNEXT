@@ -1,6 +1,9 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.uiCopy
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -16,6 +19,7 @@ import com.kigtts.next.media.*
 
 @Composable
 fun EditorToolbar(state: AppState, model: AppViewModel) {
+    val copy = rememberUiCopy()
     var menu by remember { mutableStateOf(false) }
     var alignmentDialog by remember { mutableStateOf(false) }
     var fontBar by remember { mutableStateOf(false) }
@@ -25,21 +29,21 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
         cornerActions(UiSlot.EDITOR_TOP_START, model, listenSettings = { listeningSettings = true })
     }
     val registeredEnd = remember(context, state.pluginRevision) { cornerActions(UiSlot.EDITOR_TOP_END, model) }
-    val start = listOf(ElasticAction("editor-menu", "文本菜单", Icons.Default.MoreVert, { menu = true }),
+    val start = listOf(ElasticAction("editor-menu", copy("subtitle.menu"), Icons.Default.MoreVert, { menu = true }),
         ElasticAction("editor-flip", uiText("subtitle.flip"), Icons.Default.SwapVert, model::flipSubtitle)) + registeredStart
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) fontBar = false }
-    val end = (if (state.mediaId == null) listOf(ElasticAction("editor-font-size", "调整字幕字号", Icons.Default.ZoomIn, { fontBar = !fontBar })) else emptyList()) + registeredEnd
+    val end = (if (state.mediaId == null) listOf(ElasticAction("editor-font-size", copy("subtitle.adjust_font"), Icons.Default.ZoomIn, { fontBar = !fontBar })) else emptyList()) + registeredEnd
     Box {
         Row(Modifier.fillMaxWidth()) {
-            FontToolbarSwap(fontBar, "字幕字号", Modifier.weight(.68f)) { expanded ->
-            if (expanded) InlineFontBar("字幕字号", state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
+            FontToolbarSwap(fontBar, copy("subtitle.font"), Modifier.weight(.68f)) { expanded ->
+            if (expanded) InlineFontBar(copy("subtitle.font"), state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
                 { fontBar = false }, Modifier.fillMaxWidth(),
                 valueDescription = uiText("subtitle.size", "size" to "%.1f".format(state.subtitleSizePercent)))
-            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = "字幕左上更多操作", stableItems = true)
+            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = copy("subtitle.more_top_start"), stableItems = true)
             }
             Spacer(Modifier.weight(.02f))
             ElasticButtonGroup(end, Modifier.weight(.3f), alignEnd = true,
-                overflowTag = "editor-top-end-more", overflowLabel = "字幕右上更多操作", stableItems = true)
+                overflowTag = "editor-top-end-more", overflowLabel = copy("subtitle.more_top_end"), stableItems = true)
         }
         androidx.activity.compose.BackHandler(menu) { menu = false }
         DropdownMenu(menu, { menu = false }, properties = androidx.compose.ui.window.PopupProperties(focusable = false)) {
@@ -52,20 +56,20 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
                     modifier = Modifier.testTag("subtitle-add-quick-text"))
             }
             if (media?.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)) MediaScale.entries.forEach { mode ->
-                DropdownMenuItem(text = { Text(mode.label) }, leadingIcon = { if (media?.scale == mode) Icon(Icons.Default.Check, null) },
+                DropdownMenuItem(text = { Text(copy("subtitle.media." + mode.name.lowercase(java.util.Locale.ROOT))) }, leadingIcon = { if (media?.scale == mode) Icon(Icons.Default.Check, null) },
                     onClick = feedbackClick { model.mediaScale(mode); menu = false }, modifier = Modifier.testTag("media-scale-" + mode.name.lowercase()))
             }
             val appearance = state.subtitleAppearance
-            DropdownMenuItem(text = { Text(if (appearance.bold) "关闭粗体" else "打开粗体") },
+            DropdownMenuItem(text = { Text(if (appearance.bold) copy("subtitle.bold_off") else copy("subtitle.bold_on")) },
                 leadingIcon = { Icon(Icons.Default.FormatBold, null) },
                 trailingIcon = { if (appearance.bold) Icon(Icons.Default.Check, null) },
                 onClick = feedbackClick { model.setSubtitleAppearance(appearance.copy(bold = !appearance.bold)); menu = false },
                 modifier = Modifier.testTag("subtitle-bold"))
             DropdownMenuItem(text = { Text(uiText("subtitle.align")) },
-                leadingIcon = { Icon(Icons.Default.FormatAlignCenter, null) },
-                trailingIcon = { Text(appearance.alignment.label, style = MaterialTheme.typography.labelMedium) },
+                leadingIcon = { Icon(MaterialSymbols.vector("segment") ?: Icons.Default.FormatAlignCenter, null) },
+                trailingIcon = { Text(copy("subtitle.alignment." + appearance.alignment.name.lowercase(java.util.Locale.ROOT)), style = MaterialTheme.typography.labelMedium) },
                 onClick = feedbackClick { menu = false; alignmentDialog = true }, modifier = Modifier.testTag("subtitle-alignment"))
-            DropdownMenuItem(text = { Text(if (appearance.richTextEditing) "关闭富文本编辑" else "开启富文本编辑") },
+            DropdownMenuItem(text = { Text(if (appearance.richTextEditing) copy("subtitle.rich_off") else copy("subtitle.rich_on")) },
                 leadingIcon = { Icon(Icons.Default.FormatPaint, null) },
                 trailingIcon = { if (appearance.richTextEditing) Icon(Icons.Default.Check, null) },
                 onClick = feedbackClick { model.setSubtitleAppearance(appearance.copy(richTextEditing = !appearance.richTextEditing)); menu = false },
@@ -88,8 +92,9 @@ fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null, list
     val listen = service == "service.speech-recognition" && registered.action.id == "listen"
     val dismiss = service == "service.speech-recognition" && registered.action.id == "close" && slot == UiSlot.LISTENING_BOTTOM_END
     val label = when {
-        dismiss || listen && model.state.value.captionsVisible -> "关闭聆听字幕"
-        listen -> "开始聆听"
+        dismiss || listen && model.state.value.captionsVisible ->
+            model.getApplication<android.app.Application>().uiCopy("listening.close", locale = model.state.value.uiLocale)
+        listen -> model.getApplication<android.app.Application>().uiCopy("listening.start", locale = model.state.value.uiLocale)
         else -> registered.action.label
     }
     ElasticAction(registered.key, label, registered.action.icon.vector(registered.action.symbol),

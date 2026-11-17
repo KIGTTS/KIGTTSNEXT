@@ -15,6 +15,8 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.*
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.UiLanguage
 import com.kigtts.next.state.*
 import com.kigtts.next.text.*
 import com.kigtts.next.ui.home.*
@@ -44,7 +46,7 @@ class SubtitleAppearanceUiTest {
                 } }
                 return@setContent
             }
-            CompositionLocalProvider(LocalDensity provides Density(1f), LocalWindowInfo provides window) {
+            CompositionLocalProvider(LocalDensity provides Density(1f), LocalWindowInfo provides window, LocalUiLocale provides state.uiLocale) {
                 MaterialTheme { ProvideIconTextContextMenu {
                     Box(Modifier.fillMaxSize()) {
                         if (bodyOnly) SubtitleBody(state, model, Modifier.width(350.dp).height(500.dp))
@@ -75,6 +77,27 @@ class SubtitleAppearanceUiTest {
             assertEquals("测试字幕", model.state.value.editorText)
         }
     }
+    @Test fun menuAndAlignmentFollowAppLanguageWithoutChangingTheCaptions() {
+        val model = show()
+        compose.runOnIdle { model.setUiLanguage(UiLanguage.ENGLISH) }
+        compose.onNodeWithTag("editor-menu").performClick()
+        compose.onNodeWithText("Turn bold on").assertIsDisplayed()
+        compose.onNodeWithText("Text alignment").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Top left").assertIsDisplayed()
+        compose.onNodeWithText("Bottom right").assertIsDisplayed().performClick()
+
+        compose.runOnIdle {
+            model.setUiLanguage(UiLanguage.KOREAN)
+            model.setSubtitleAppearance(model.state.value.subtitleAppearance.copy(richTextEditing = true))
+        }
+        compose.onNodeWithTag("editor-menu").performClick()
+        compose.onNodeWithTag("subtitle-rich-editing").assert(hasText("서식 있는 텍스트 편집 끄기"))
+        compose.runOnIdle {
+            assertEquals(SubtitleAlignment.BOTTOM_RIGHT, model.state.value.subtitleAppearance.alignment)
+            assertEquals("测试字幕", model.state.value.editorText)
+        }
+    }
+
     @Test fun allNinePositionsApplyToBothEditableAndDisplayTextWithoutChangingTheViewport() {
         val model = show(bodyOnly = true)
         listOf(false, true).forEach { editing ->

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -18,6 +20,7 @@ internal val LocalSketchChrome = compositionLocalOf<SketchChrome?> { null }
 
 /** Chrome floats over a full-size drawable surface; its empty space never intercepts the pen. */
 @Composable fun SketchPageScaffold(back: () -> Unit, share: () -> Unit, content: @Composable () -> Unit) {
+    val copy = rememberUiCopy()
     val host = remember { PageToolbarActions() }; val chrome = remember { SketchChrome() }
     val active = LocalPageActive.current
     SketchFullscreen(active && chrome.drawing)
@@ -30,10 +33,10 @@ internal val LocalSketchChrome = compositionLocalOf<SketchChrome?> { null }
                 verticalAlignment = Alignment.CenterVertically) {
                 MotionIconButton(feedbackClick { if (host.backGuard?.value?.invoke() != true) back() },
                     Modifier.testTag("page-back"), enabled = active, colors = compactPlainIconColors()) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回大字幕")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, copy("sketch.back_to_captions"))
                 }
-                Text("画板", Modifier.weight(1f).padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
-                PageActionButtons(host.source?.value.orEmpty() + ToolbarAction("share-sketch", "分享画板", Icons.Default.Share, active, click = share))
+                Text(copy("sketch.title"), Modifier.weight(1f).padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
+                PageActionButtons(host.source?.value.orEmpty() + ToolbarAction("share-sketch", copy("sketch.share"), Icons.Default.Share, active, click = share))
             }
         }
     }

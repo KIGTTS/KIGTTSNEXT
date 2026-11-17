@@ -1,5 +1,7 @@
 package com.kigtts.next.audio
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.Build
@@ -142,22 +144,23 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
 @Composable
 private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float) -> Unit, toggle: () -> Unit, close: () -> Unit,
     resize: (Float) -> Unit, scaleSize: (Float) -> Unit, saveSize: () -> Unit) {
+    val copy = rememberUiCopy()
     val colors = MaterialTheme.colorScheme
     var showSize by remember { mutableStateOf(false) }
     Surface(shape = MaterialTheme.shapes.medium, color = colors.surfaceContainerHigh, contentColor = colors.onSurface) {
         Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 8.dp, bottom = 10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CaptionTool("调整浮窗字号", "format_size", Icons.Default.FormatSize) { showSize = !showSize }
+                CaptionTool(copy("listening.window_font"), "format_size", Icons.Default.FormatSize) { showSize = !showSize }
                 Box(Modifier.weight(1f).height(44.dp)
                     .draggable(rememberDraggableState(move), Orientation.Vertical)
-                    .semantics { contentDescription = "拖动字幕浮窗" }, contentAlignment = Alignment.CenterStart) {
+                    .semantics { contentDescription = copy("listening.window_drag") }, contentAlignment = Alignment.CenterStart) {
                     Surface(Modifier.padding(start = 4.dp).size(32.dp, 4.dp),
                         shape = MaterialTheme.shapes.extraSmall, color = colors.outlineVariant) {}
                 }
                 CaptionWindowActions(state.active, toggle, close)
             }
             if (showSize) Slider(state.size, resize, Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-                .semantics { contentDescription = "浮窗字号" }, valueRange = CaptionFontSettings.WINDOW_RANGE, onValueChangeFinished = saveSize)
+                .semantics { contentDescription = copy("listening.window_size") }, valueRange = CaptionFontSettings.WINDOW_RANGE, onValueChangeFinished = saveSize)
             val maxHeight = with(LocalDensity.current) { (state.size * 5.4f).sp.toDp() }.coerceAtMost(240.dp)
             ListeningCaptionContent(state.text, state.size, singleLine = false,
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp).heightIn(max = maxHeight)
@@ -179,6 +182,7 @@ private fun CaptionTool(label: String, symbol: String, fallback: ImageVector, ac
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CaptionWindowActions(active: Boolean, toggle: () -> Unit, close: () -> Unit) {
+    val copy = rememberUiCopy()
     val start = remember { MutableInteractionSource() }; val end = remember { MutableInteractionSource() }
     val startPressed by start.collectIsPressedAsState(); val endPressed by end.collectIsPressedAsState()
     val radius = LocalCornerRadius.current.coerceAtMost(16.dp)
@@ -186,10 +190,10 @@ private fun CaptionWindowActions(active: Boolean, toggle: () -> Unit, close: () 
         connectedShape(neighbors, neighborPressed = adjacentPressed, outer = radius),
         connectedShape(neighbors, pressed = true, outer = radius))
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-        ToolButton(if (active) "停止聆听" else "开始聆听",
+        ToolButton(if (active) copy("listening.stop") else copy("listening.start"),
             if (active) MaterialSymbols.vector("stop") ?: Icons.Default.Stop else MaterialSymbols.vector("mic") ?: Icons.Default.Mic,
             toggle, interactionSource = start, shapes = shape(CornerNeighbors(end = true), endPressed))
-        ToolButton("关闭字幕浮窗", MaterialSymbols.vector("close") ?: Icons.Default.Close, close,
+        ToolButton(copy("listening.close_window"), MaterialSymbols.vector("close") ?: Icons.Default.Close, close,
             interactionSource = end, shapes = shape(CornerNeighbors(start = true), startPressed))
     }
 }

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.components
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,22 +14,23 @@ import androidx.compose.ui.platform.testTag
 @Composable
 fun SaveChangesDialog(save: (finish: (() -> Unit) -> Unit) -> Unit, discard: () -> Unit, keepEditing: () -> Unit,
     canSave: Boolean = true, busy: Boolean = false, error: String? = null, completed: (() -> Unit)? = null) {
-    MotionAlertDialog(onDismissRequest = { if (!busy) keepEditing() }, dismissEnabled = !busy, title = { Text("保存修改？") },
+    val copy = rememberUiCopy()
+    MotionAlertDialog(onDismissRequest = { if (!busy) keepEditing() }, dismissEnabled = !busy, title = { Text(copy("dialog.save_changes")) },
         text = error?.let { message -> { Text(message) } },
         confirmButton = {
             val finish = rememberDialogClose()
             val completion = rememberUpdatedState(completed)
             LaunchedEffect(completed != null) { completion.value?.let(finish) }
             MotionTextButton(feedbackClick { save(finish) }, Modifier.testTag("save-changes-save"), enabled = canSave && !busy) {
-                Text("保存")
+                Text(copy("action.save"))
             }
         }, dismissButton = {
             Row {
                 MotionTextButton(dialogFeedbackClick(discard), Modifier.testTag("save-changes-discard"), enabled = !busy) {
-                    Text("不保存")
+                    Text(copy("dialog.discard"))
                 }
                 MotionTextButton(dialogFeedbackClick(keepEditing), Modifier.testTag("save-changes-keep"), enabled = !busy) {
-                    Text("继续编辑")
+                    Text(copy("dialog.keep_editing"))
                 }
             }
         })

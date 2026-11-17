@@ -1,15 +1,12 @@
 package com.kigtts.next.ui.home
 
 import com.kigtts.next.i18n.uiText
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -48,26 +45,12 @@ internal fun SubtitleAlignmentDialog(selected: SubtitleAlignment, choose: (Subti
                             contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) {
                             Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                 AlignmentPreview(alignment)
-                                Text(alignment.label, style = MaterialTheme.typography.labelLarge)
+                                Text(uiText("subtitle.alignment." + alignment.name.lowercase(java.util.Locale.ROOT)),
+                                    style = MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
                             }
                         }
                     } }
                 }
             }
         }, confirmButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
-}
-
-@Composable
-private fun AlignmentPreview(alignment: SubtitleAlignment) {
-    val ink = LocalContentColor.current
-    Canvas(Modifier.size(48.dp, 36.dp)) {
-        val lineHeight = 5.dp.toPx()
-        val top = 3.dp.toPx() + alignment.row * (size.height - 6.dp.toPx() - lineHeight * 2) / 2
-        listOf(.7f, .46f, .6f).forEachIndexed { index, fraction ->
-            val width = size.width * fraction
-            val left = (size.width - width) * alignment.column / 2
-            drawLine(ink, Offset(left, top + index * lineHeight), Offset(left + width, top + index * lineHeight),
-                2.dp.toPx(), StrokeCap.Round)
-        }
-    }
 }

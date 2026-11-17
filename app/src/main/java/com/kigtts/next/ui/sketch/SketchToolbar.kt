@@ -2,6 +2,8 @@
 
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.feedbackChange
 import com.kigtts.next.ui.components.MotionIconButton
@@ -27,6 +29,7 @@ private enum class SketchMenu { PEN, ERASER }
 @Composable
 fun SketchToolbar(state: SketchState, save: () -> Unit, clear: () -> Unit, modifier: Modifier = Modifier,
     vertical: Boolean = false, enabled: Boolean = true) {
+    val copy = rememberUiCopy()
     var menu by remember { mutableStateOf<SketchMenu?>(null) }
     var picker by remember { mutableStateOf(false) }
     val tools: @Composable () -> Unit = {
@@ -35,16 +38,16 @@ fun SketchToolbar(state: SketchState, save: () -> Unit, clear: () -> Unit, modif
                 enabled = enabled, onCheckedChange = {
                     if (state.tool == SketchTool.PEN) menu = SketchMenu.PEN
                     else { state.tool = SketchTool.PEN; menu = null }
-                }) { Icon(Icons.Default.Edit, "画笔") }
+                }) { Icon(Icons.Default.Edit, copy("sketch.brush")) }
             DropdownMenu(expanded = menu == SketchMenu.PEN, onDismissRequest = { menu = null }) {
                 Column(Modifier.width(264.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text("画笔笔触", style = MaterialTheme.typography.titleMedium)
-                    Text("笔触大小", style = MaterialTheme.typography.labelLarge)
+                    Text(copy("sketch.brush_stroke"), style = MaterialTheme.typography.titleMedium)
+                    Text(copy("sketch.stroke_size"), style = MaterialTheme.typography.labelLarge)
                     Slider(state.penSize, { state.penSize = it }, valueRange = 1f..36f,
-                        modifier = Modifier.semantics { contentDescription = "画笔大小" })
+                        modifier = Modifier.semantics { contentDescription = copy("sketch.pen_size") })
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         PenType.entries.forEach { type ->
-                            FilterChip(state.penType == type, feedbackClick { state.penType = type }, label = { Text(type.label) })
+                            FilterChip(state.penType == type, feedbackClick { state.penType = type }, label = { Text(copy("sketch.pen." + type.name.lowercase(java.util.Locale.ROOT))) })
                         }
                     }
                 }
@@ -55,28 +58,28 @@ fun SketchToolbar(state: SketchState, save: () -> Unit, clear: () -> Unit, modif
                 enabled = enabled, onCheckedChange = {
                     if (state.tool == SketchTool.ERASER) menu = SketchMenu.ERASER
                     else { state.tool = SketchTool.ERASER; menu = null }
-                }) { Icon(SketchEraserIcon, "橡皮擦") }
+                }) { Icon(SketchEraserIcon, copy("sketch.eraser")) }
             DropdownMenu(expanded = menu == SketchMenu.ERASER, onDismissRequest = { menu = null }) {
                 Column(Modifier.width(264.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text("橡皮擦笔触", style = MaterialTheme.typography.titleMedium)
-                    Text("擦除大小", style = MaterialTheme.typography.labelLarge)
+                    Text(copy("sketch.eraser_stroke"), style = MaterialTheme.typography.titleMedium)
+                    Text(copy("sketch.erase_size"), style = MaterialTheme.typography.labelLarge)
                     Slider(state.eraserSize, { state.eraserSize = it }, valueRange = 8f..96f,
-                        modifier = Modifier.semantics { contentDescription = "橡皮擦大小" })
+                        modifier = Modifier.semantics { contentDescription = copy("sketch.eraser_size") })
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         EraserType.entries.forEach { type ->
-                            FilterChip(state.eraserType == type, feedbackClick { state.eraserType = type }, label = { Text(type.label) })
+                            FilterChip(state.eraserType == type, feedbackClick { state.eraserType = type }, label = { Text(copy("sketch.eraser." + type.name.lowercase(java.util.Locale.ROOT))) })
                         }
                     }
                 }
             }
         }
         MotionIconButton(onClick = feedbackClick { menu = null; picker = true }, enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = "画笔颜色" }) {
+            modifier = Modifier.semantics { contentDescription = copy("sketch.pen_color") }) {
             Box(Modifier.size(26.dp).background(Color(state.color), CircleShape)
                 .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
         }
-        MotionIconButton(onClick = feedbackClick(save), enabled = enabled) { Icon(Icons.Default.Save, "保存画板") }
-        MotionIconButton(onClick = feedbackClick(clear), enabled = enabled) { Icon(Icons.Default.DeleteOutline, "清空画板") }
+        MotionIconButton(onClick = feedbackClick(save), enabled = enabled) { Icon(Icons.Default.Save, copy("sketch.save_board")) }
+        MotionIconButton(onClick = feedbackClick(clear), enabled = enabled) { Icon(Icons.Default.DeleteOutline, copy("sketch.clear_board")) }
     }
     if (vertical) VerticalFloatingToolbar(expanded = true, modifier = modifier) { tools() }
     else HorizontalFloatingToolbar(expanded = true, modifier = modifier) { tools() }

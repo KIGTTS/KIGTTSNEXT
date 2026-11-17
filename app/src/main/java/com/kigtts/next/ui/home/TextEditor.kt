@@ -2,6 +2,8 @@
 
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -56,26 +58,27 @@ fun TextEditor(
 
 @Composable
 private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifier = Modifier) {
+    val copy = rememberUiCopy()
     val readVisible by model.synthesisGuidance.visible.collectAsState()
     val reveal = animateFloatAsState(if (state.editing) 1f else 0f,
         tween(220, easing = FastOutSlowInEasing), label = "cursor-slot-reveal")
     Column(modifier.fillMaxWidth().padding(horizontal = subtitleControlsInset).padding(bottom = subtitleControlsInset).testTag("editor-footer")) {
       EditorFooterSlots(reveal, Modifier.fillMaxWidth().testTag("editor-footer-actions"), start = {
         val contentOpen = state.mediaId != null || state.audioId != null
-        ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)"关闭" else "清空", if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,
+        ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)copy("action.close") else copy("action.clear"), if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,
             { if(contentOpen)model.content.closeContent() else { model.content.clearHistory();model.text("") } }, iconOnly = false)) + cornerActions(UiSlot.EDITOR_BOTTOM_START, model))
       }, middle = {
         CursorTrackSlot(state.editing, model, reveal, Modifier.fillMaxWidth())
       }, end = {
             val expanded = state.subtitleExpanded || state.forcedFullscreen
-            val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", if (expanded) "退出全屏" else "全屏",
+            val primary = if (state.mediaId != null) ElasticAction("editor-fullscreen", if (expanded) copy("subtitle.exit_fullscreen") else copy("subtitle.fullscreen"),
                 if (expanded) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
                 { if (expanded) model.exitSubtitleFullscreen() else model.enterSubtitleFullscreen() }, iconOnly = false)
-                else if (readVisible || state.speaking) ElasticAction("editor-read", if (state.speaking) "停止" else "朗读",
+                else if (readVisible || state.speaking) ElasticAction("editor-read", if (state.speaking) copy("subtitle.stop") else copy("subtitle.read_aloud"),
                     if (state.speaking) Icons.Default.Stop else Icons.Default.PlayArrow, model::speak, iconOnly = false)
                 else null
             ElasticButtonGroup(listOfNotNull(primary) + cornerActions(UiSlot.EDITOR_BOTTOM_END, model), alignEnd = true,
-                overflowTag = "editor-bottom-end-more", overflowLabel = "字幕右下更多操作", stableItems = true)
+                overflowTag = "editor-bottom-end-more", overflowLabel = copy("subtitle.more_bottom_end"), stableItems = true)
       })
     }
 }

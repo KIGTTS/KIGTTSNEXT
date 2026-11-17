@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -19,32 +21,33 @@ internal const val ABOUT_PROJECT_URL = "https://github.com/KIGTTS/KIGTTSNEXT"
 @Composable
 internal fun AboutScreen(openLink: (String) -> Unit, openDocument: (SettingsCategory) -> Unit,
     version: String? = null) {
+    val copy = rememberUiCopy()
     val context = LocalContext.current
     val installedVersion = version ?: remember(context) {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     }
     SettingsLayout {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("about-brand")
-            .settingFocus("版本"), horizontalAlignment = Alignment.CenterHorizontally,
+            .settingFocus(copy("about.version_label")), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AboutBrand()
-            Text("让想说的话，更好地被看见。", style = MaterialTheme.typography.bodyMedium,
+            Text(copy("about.tagline"), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("版本 $installedVersion", style = MaterialTheme.typography.labelLarge,
+            Text(copy("about.version", "version" to installedVersion), style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary)
         }
-        SettingsGroup("协议与隐私") {
-            SettingItem("用户协议", "", Icons.Default.Description, SettingPosition.FIRST,
+        SettingsGroup(copy("about.legal")) {
+            SettingItem(copy("settings.category.user_agreement"), "", Icons.Default.Description, SettingPosition.FIRST,
                 onClick = { openDocument(SettingsCategory.USER_AGREEMENT) })
-            SettingItem("隐私政策", "", Icons.Default.PrivacyTip, SettingPosition.MIDDLE,
+            SettingItem(copy("settings.category.privacy_policy"), "", Icons.Default.PrivacyTip, SettingPosition.MIDDLE,
                 onClick = { openDocument(SettingsCategory.PRIVACY_POLICY) })
-            SettingItem("开源许可证", "", Icons.AutoMirrored.Filled.Article, SettingPosition.LAST,
+            SettingItem(copy("about.licenses"), "", Icons.AutoMirrored.Filled.Article, SettingPosition.LAST,
                 onClick = { openDocument(SettingsCategory.OPEN_SOURCE_LICENSES) })
         }
-        SettingsGroup("帮助与反馈") {
-            SettingItem("项目主页", "了解更新与使用方法", Icons.Default.Code, SettingPosition.FIRST,
+        SettingsGroup(copy("about.help_feedback")) {
+            SettingItem(copy("about.project_home"), copy("about.project_hint"), Icons.Default.Code, SettingPosition.FIRST,
                 onClick = { openLink(ABOUT_PROJECT_URL) }, trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) })
-            SettingItem("反馈问题", "告诉我们哪里不顺手", Icons.Default.Feedback, SettingPosition.LAST,
+            SettingItem(copy("about.feedback"), copy("about.feedback_hint"), Icons.Default.Feedback, SettingPosition.LAST,
                 onClick = { openLink("$ABOUT_PROJECT_URL/issues") }, trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) })
         }
     }

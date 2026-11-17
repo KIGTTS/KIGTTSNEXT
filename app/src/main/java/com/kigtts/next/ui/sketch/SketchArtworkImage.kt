@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable internal fun SketchArtworkImage(repository: SketchAlbumRepository, id: String, modifier: Modifier = Modifier) {
+    val copy = rememberUiCopy()
     val image by produceState<ImageBitmap?>(null, repository, id) {
         value = withContext(Dispatchers.IO) { runCatching {
             val file = repository.imageFile(id)
@@ -28,6 +31,6 @@ import kotlinx.coroutines.withContext
         }.getOrNull() }
     }
     val bitmap = image
-    if (bitmap != null) Image(bitmap, "画板作品", modifier.fillMaxSize(), contentScale = ContentScale.Fit)
-    else Icon(Icons.Default.Image, "正在加载作品", modifier)
+    if (bitmap != null) Image(bitmap, copy("sketch.artwork"), modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+    else Icon(Icons.Default.Image, copy("sketch.loading_artwork"), modifier)
 }

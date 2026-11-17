@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.settings.*
@@ -48,6 +49,22 @@ class AboutScreenUiTest {
             assertEquals(listOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY,
                 SettingsCategory.OPEN_SOURCE_LICENSES), documents)
         }
+    }
+
+    @Test fun aboutPageRefreshesWhenTheAppLanguageChanges() {
+        var locale by mutableStateOf("en")
+        compose.setContent { CompositionLocalProvider(LocalUiLocale provides locale) {
+            KigttsTheme(ThemeSettings()) { AboutPage({}, {}, {}, version = "0.1.0") }
+        } }
+        compose.onNodeWithText("About").assertIsDisplayed()
+        compose.onNodeWithText("Version 0.1.0").assertIsDisplayed()
+        compose.onNode(hasText("Privacy policy", ignoreCase = true) and hasClickAction()).performScrollTo().assertIsDisplayed()
+
+        compose.runOnIdle { locale = "ko" }
+        compose.onNodeWithText("앱 정보").assertIsDisplayed()
+        compose.onNodeWithText("버전 0.1.0").assertExists()
+        compose.onNode(hasText("개인정보 처리방침") and hasClickAction()).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("隐私政策").assertDoesNotExist()
     }
 
     @Test fun searchRoutesDirectlyToTheAboutOption() {

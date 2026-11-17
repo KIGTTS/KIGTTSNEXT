@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.i18n.uiText
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,6 +21,7 @@ import com.kigtts.next.ui.components.*
 import kotlinx.coroutines.*
 
 @Composable internal fun AppearanceAssetSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit, onFonts: () -> Unit) {
+    val copy = rememberUiCopy()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val current by rememberUpdatedState(settings)
@@ -29,7 +32,7 @@ import kotlinx.coroutines.*
         scope.launch { busy = true; try {
             crop = withContext(Dispatchers.IO) { AppearanceAssets(context).importBackground(it) }
         } catch (cancel: CancellationException) { throw cancel }
-        catch (e: Exception) { android.widget.Toast.makeText(context, e.message ?: "无法读取这张图片", android.widget.Toast.LENGTH_SHORT).show() }
+        catch (e: Exception) { android.widget.Toast.makeText(context, copy("camera.image_unreadable"), android.widget.Toast.LENGTH_SHORT).show() }
         finally { busy = false } }
     } }
     SettingsGroup(uiText("appearance.background_fonts")) {
@@ -38,7 +41,7 @@ import kotlinx.coroutines.*
                 if (busy) CircularProgressIndicator(Modifier.size(24.dp))
                 else if (settings.background != null) IconButton(feedbackClick {
                     onChange(settings.copy(background = null, backgroundSeed = null, backgroundColorEnabled = false))
-                }) { Icon(Icons.Default.Close, "移除背景图片") }
+                }) { Icon(Icons.Default.Close, copy("appearance.remove_background")) }
             })
         if (settings.background != null) SettingItem(uiText("appearance.background_dim"), "", Icons.Default.Opacity, SettingPosition.MIDDLE) {
             Slider(settings.backgroundDim, { onChange(settings.copy(backgroundDim = it)) })

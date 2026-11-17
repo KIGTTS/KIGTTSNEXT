@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +25,7 @@ fun ResizableTopPanel(
     color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     controls: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit,
 ) {
+    val copy = rememberUiCopy()
     val density = LocalDensity.current.density
     val latestHeight by rememberUpdatedState(height)
     val latestResize by rememberUpdatedState(resize)
@@ -63,7 +66,7 @@ fun ResizableTopPanel(
     val handle: @Composable () -> Unit = {
         Box((if (horizontal) Modifier.fillMaxHeight().width(LISTENING_HANDLE_GAP.dp) else Modifier.fillMaxWidth().height(LISTENING_HANDLE_GAP.dp))
             .testTag("top-panel-resize").semantics {
-            contentDescription = if (horizontal) "调整聆听面板宽度" else "调整聆听面板高度"
+            contentDescription = if (horizontal) copy("listening.resize_width") else copy("listening.resize_height")
             progressBarRangeInfo = ProgressBarRangeInfo(current.value, minimum..maximum)
             setProgress { latestResize(it.coerceIn(minimum, maximum)); true }
         }.then(gestures), contentAlignment = Alignment.Center) {

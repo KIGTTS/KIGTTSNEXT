@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -11,8 +13,9 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.R
 
 @Composable internal fun AboutBrand(modifier: Modifier = Modifier) {
+    val copy = rememberUiCopy()
     Box(modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
-        Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS 横版字标",
+        Icon(painterResource(R.drawable.logo_horizontal), copy("about.wordmark"),
             Modifier.width(224.dp).height(56.dp).testTag("about-logo"), tint = MaterialTheme.colorScheme.onSurface)
     }
 }

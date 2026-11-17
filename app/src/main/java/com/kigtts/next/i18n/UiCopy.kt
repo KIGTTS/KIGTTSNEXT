@@ -2,6 +2,7 @@ package com.kigtts.next.i18n
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import com.kigtts.plugin.api.PluginStrings
@@ -45,6 +46,17 @@ private object AppCopyCatalog {
 
 internal fun Context.uiCopy(key: String, vararg values: Pair<String, String>, locale: String = UiLanguageStore(this).load()) =
     AppCopyCatalog.get(this).text(key, locale, values.toMap())
+
+internal class UiCopy(private val catalog: PluginStrings, private val locale: String) {
+    operator fun invoke(key: String, vararg values: Pair<String, String>): String = catalog.text(key, locale, values.toMap())
+}
+
+/** For Compose callbacks and accessibility lambdas which cannot call a composable lookup. */
+@Composable internal fun rememberUiCopy(): UiCopy {
+    val context = LocalContext.current
+    val locale = LocalUiLocale.current
+    return remember(context, locale) { UiCopy(AppCopyCatalog.get(context), locale) }
+}
 
 @Composable internal fun uiText(key: String, vararg values: Pair<String, String>) =
     LocalContext.current.uiCopy(key, *values, locale = LocalUiLocale.current)

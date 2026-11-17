@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
@@ -33,12 +35,13 @@ import com.kigtts.next.ui.navigation.PageScaffold
 /** Decorations belong to the window backdrop, including the transparent large toolbar. */
 @Composable internal fun AboutPage(back: () -> Unit, openLink: (String) -> Unit,
     openDocument: (com.kigtts.next.state.SettingsCategory) -> Unit, settings: ThemeSettings? = null, version: String? = null) {
+    val copy = rememberUiCopy()
     val flowers = rememberSaveable(saver = listSaver<AboutFlowers, String>(
         save = { it.shapes.mapIndexed { i, shape -> "$shape:${it.turns[i]}" } },
         restore = { AboutFlowers(it.map { s -> s.substringBeforeLast(':') }, it.map { s -> s.substringAfterLast(':').toInt() }) }
     )) { AboutFlowers() }
     val taps = flowers.shapes.indices.map { index -> feedbackClick { flowers.change(index) } }
-    PageScaffold("关于", back, Modifier.aboutFlowerTaps { point, size ->
+    PageScaffold(copy("settings.category.about"), back, Modifier.aboutFlowerTaps { point, size ->
         aboutFlowerBounds(size).indexOfLast { it.contains(point) }.takeIf { it >= 0 }?.let { taps[it]() }
     }, extendToBottom = true, backgroundSettings = settings,
         backgroundDecoration = { AboutBackdrop(flowers, taps, Modifier.matchParentSize()) }) {
@@ -67,6 +70,7 @@ private fun Modifier.aboutFlowerTaps(tap: (Offset, Size) -> Unit) = pointerInput
 }
 
 @Composable private fun AboutBackdrop(flowers: AboutFlowers, taps: List<() -> Unit>, modifier: Modifier) {
+    val copy = rememberUiCopy()
     val colors = MaterialTheme.colorScheme
     val tints = listOf(colors.primaryContainer.copy(alpha = .65f), colors.tertiaryContainer.copy(alpha = .60f),
         colors.secondaryContainer.copy(alpha = .65f), colors.primary.copy(alpha = .12f),
@@ -78,10 +82,10 @@ private fun Modifier.aboutFlowerTaps(tap: (Offset, Size) -> Unit) = pointerInput
             val shape = rememberAvatarShape(flowers.shapes[index])
             Box(Modifier.offset(bounds.left.dp, bounds.top.dp).size(bounds.width.dp).testTag("about-flower/$index")
                 .semantics {
-                    contentDescription = "花型装饰 ${index + 1}"
+                    contentDescription = copy("about.flower", "number" to (index + 1).toString())
                     stateDescription = "${flowers.shapes[index]}:${flowers.turns[index]}"
                     role = Role.Button
-                    onClick("换个花样") { taps[index](); true }
+                    onClick(copy("about.flower_shuffle")) { taps[index](); true }
                 }.graphicsLayer { rotationZ = rotation + index * 18f }.clip(shape).background(tints[index]))
         }
     }

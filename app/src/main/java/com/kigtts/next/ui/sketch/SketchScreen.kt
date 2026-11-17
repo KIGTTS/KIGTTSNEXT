@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.i18n.uiCopy
 
 import com.kigtts.next.i18n.uiText
@@ -27,6 +29,7 @@ import com.kigtts.next.ui.navigation.*
 import kotlinx.coroutines.*
 
 @Composable fun SketchScreen(state: SketchState, shareRequest: Int, shareConsumed: () -> Unit, message: (String) -> Unit) {
+    val copy = rememberUiCopy()
     val context = LocalContext.current; val scope = rememberCoroutineScope()
     val repository = remember(context.applicationContext) { SketchAlbumRepository(context.applicationContext) }
     val background = MaterialTheme.colorScheme.surfaceContainerLowest
@@ -63,7 +66,7 @@ import kotlinx.coroutines.*
         busy = true
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
             try { operation() }
-            catch (failure: Exception) { if (failure is CancellationException) throw failure; message(failure.message ?: "操作未完成，请重试") }
+            catch (failure: Exception) { if (failure is CancellationException) throw failure; message(failure.message ?: copy("sketch.failed")) }
             finally { busy = false }
         }
     }
@@ -81,9 +84,9 @@ import kotlinx.coroutines.*
     } }
     RegisterPageLoading(busy || !ready)
     RegisterPageActions(listOf(
-        ToolbarAction("sketch-album-open", "画板作品", Icons.Default.Collections, enabled, preserveColorWhenLocked = busy, click = { album = true }),
-        ToolbarAction("sketch-reset-view", "显示全部笔迹", Icons.Default.FitScreen, enabled, click = state::resetViewport),
-        ToolbarAction("sketch-paper", "画布背景", Icons.Default.GridOn, enabled, click = { paper = true })))
+        ToolbarAction("sketch-album-open", copy("sketch.artwork"), Icons.Default.Collections, enabled, preserveColorWhenLocked = busy, click = { album = true }),
+        ToolbarAction("sketch-reset-view", copy("sketch.show_all"), Icons.Default.FitScreen, enabled, click = state::resetViewport),
+        ToolbarAction("sketch-paper", copy("sketch.paper"), Icons.Default.GridOn, enabled, click = { paper = true })))
     RegisterPageBackGuard(active && (busy || galleryOnScreen)) { if (!busy) album = false }
     PredictiveBackHandler(active && (busy || galleryOnScreen) && opening == null && !clear) { progress ->
         try { progress.collect { }; if (!busy) album = false } catch (_: CancellationException) { }
@@ -109,10 +112,10 @@ import kotlinx.coroutines.*
     if (active && paper) SketchBackgroundDialog(state) { paper = false }
     if (active && clear) MotionAlertDialog(onDismissRequest = { clear = false }, title = { Text(uiText("sketch.clear")) },
         text = { Text(uiText("sketch.clear_body")) },
-        confirmButton = { MotionTextButton(dialogFeedbackClick { state.clear(); clear = false }) { Text("清空") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { clear = false }) { Text("取消") } })
+        confirmButton = { MotionTextButton(dialogFeedbackClick { state.clear(); clear = false }) { Text(copy("action.clear")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { clear = false }) { Text(copy("action.cancel")) } })
     if (active && opening != null) MotionAlertDialog(onDismissRequest = { opening = null }, title = { Text(uiText("sketch.open")) },
         text = { Text(uiText("sketch.open_body")) },
-        confirmButton = { MotionTextButton(dialogFeedbackClick { opening?.let(::openWork) }, enabled = !busy) { Text("打开") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { opening = null }, enabled = !busy) { Text("取消") } })
+        confirmButton = { MotionTextButton(dialogFeedbackClick { opening?.let(::openWork) }, enabled = !busy) { Text(copy("action.open")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { opening = null }, enabled = !busy) { Text(copy("action.cancel")) } })
 }

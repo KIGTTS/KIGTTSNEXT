@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.sketch
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.ui.components.feedbackClick
 
 import androidx.compose.foundation.background
@@ -27,14 +29,15 @@ val SketchPresetColors = listOf(0xFF65D7DE, 0xFFFFFFFF, 0xFF171D1D, 0xFFFFB4AB, 
 
 @Composable
 fun SketchPalette(current: Long, select: (Long) -> Unit, openPicker: () -> Unit) {
+    val copy = rememberUiCopy()
     Column(Modifier.width(312.dp).padding(12.dp)) {
-        Text("画笔颜色", style = MaterialTheme.typography.titleMedium)
+        Text(copy("sketch.pen_color"), style = MaterialTheme.typography.titleMedium)
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             FilledTonalIconButton(onClick = feedbackClick(openPicker), modifier = Modifier.size(48.dp).testTag("current-sketch-color")) {
                 Box(Modifier.size(32.dp).background(Color(current), CircleShape)
                     .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Colorize, "当前颜色，打开取色器", Modifier.size(18.dp),
+                    Icon(Icons.Default.Colorize, copy("sketch.current_color"), Modifier.size(18.dp),
                         tint = contrastingColor(current))
                 }
             }
@@ -43,7 +46,7 @@ fun SketchPalette(current: Long, select: (Long) -> Unit, openPicker: () -> Unit)
                 horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 SketchPresetColors.forEach { color ->
                     IconButton(onClick = feedbackClick { select(color) }, modifier = Modifier.size(40.dp).semantics {
-                        contentDescription = "预设颜色 #%06X".format(color and 0xFFFFFF)
+                        contentDescription = copy("color.preset", "color" to "#%06X".format(color and 0xFFFFFF))
                         selected = color == current
                     }) {
                         Box(Modifier.size(28.dp).background(Color(color), CircleShape)
