@@ -35,6 +35,7 @@ internal fun closestCaptureFormat(width: Int, height: Int): PolaroidFormat = cap
 /** A viewport transform only. The camera's original JPEG never passes through a crop encoder. */
 @Composable internal fun CameraFramingScreen(request: CardFrameRequest, busy: Boolean, cancel: () -> Unit,
     confirm: (PolaroidFormat, Double, Double, Double) -> Unit) {
+    val copy = rememberCameraCopy()
     val image by produceState<Bitmap?>(null, request.original) {
         value = withContext(Dispatchers.IO) { MediaBitmapDecoder.decode(request.display, 2048) }
     }
@@ -51,13 +52,13 @@ internal fun closestCaptureFormat(width: Int, height: Int): PolaroidFormat = cap
     val current = format ?: PolaroidFormat.SQUARE
     val card = PolaroidCard(id = "system-camera-framing", title = "", photoX = x, photoY = y, photoZoom = zoom)
     Column(Modifier.fillMaxSize().safeDrawingPadding().testTag("camera-framing")) {
-        TopAppBar(title = { Text("照片构图") }, navigationIcon = {
-            IconButton(onClick = feedbackClick(cancel), enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消") }
+        TopAppBar(title = { Text(copy.text("camera.framing")) }, navigationIcon = {
+            IconButton(onClick = feedbackClick(cancel), enabled = !busy) { Icon(Icons.AutoMirrored.Filled.ArrowBack, copy.text("action.cancel")) }
         }, actions = {
-            IconActionHint("使用照片") {
+            IconActionHint(copy.text("camera.use_photo")) {
                 IconButton(onClick = feedbackClick { confirm(current, x, y, zoom) },
                     Modifier.testTag("capture-frame-confirm").iconLongAction(!busy && image != null, null), enabled = !busy && image != null) {
-                    Icon(Icons.Default.Check, "使用照片")
+                    Icon(Icons.Default.Check, copy.text("camera.use_photo"))
                 }
             }
         })
@@ -80,12 +81,12 @@ internal fun closestCaptureFormat(width: Int, height: Int): PolaroidFormat = cap
                 photo(Modifier.weight(1f).fillMaxHeight())
                 Column(Modifier.width(144.dp).fillMaxHeight().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) { choices() }
-                    Text("双指调整位置与缩放", style = MaterialTheme.typography.bodySmall)
+                    Text(copy.text("camera.pinch_frame"), style = MaterialTheme.typography.bodySmall)
                 }
             } else Column(Modifier.fillMaxSize()) {
                 photo(Modifier.weight(1f).fillMaxWidth())
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) { choices() }
-                Text("双指调整位置与缩放", Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp), style = MaterialTheme.typography.bodySmall)
+                Text(copy.text("camera.pinch_frame"), Modifier.align(Alignment.CenterHorizontally).padding(bottom = 16.dp), style = MaterialTheme.typography.bodySmall)
             }
         }
     }

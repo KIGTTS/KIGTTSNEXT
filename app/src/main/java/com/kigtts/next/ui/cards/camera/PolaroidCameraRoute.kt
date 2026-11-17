@@ -40,6 +40,7 @@ import kotlinx.coroutines.isActive
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera) {
+    val copy = rememberCameraCopy()
     if (destination.cardId == null && !destination.systemCamera) {
         // A new camera visit starts with the gallery icon, independent of earlier queued saves.
         val gallery = remember { CameraVisitGalleryPreview() }
@@ -85,7 +86,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
                             selected.photo.format, print = destination.cardId == null, motion = selected.photo.motion, fromCamera = false)
                     }
                 } catch (cancel: CancellationException) { throw cancel }
-                catch (failure: Exception) { model.message(failure.message ?: "照片未能导入，请重试") }
+                catch (failure: Exception) { model.message(failure.message ?: copy.text("camera.import_photo_failed")) }
                 finally { if (!delivered) shot?.discard(); runCatching(selection.release); importing = false }
             }
         }
@@ -115,13 +116,13 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
         else if (destination.systemCamera && print == null) Column(Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), horizontalAlignment = Alignment.CenterHorizontally) {
             ContainedLoadingIndicator(Modifier.size(48.dp))
-            Text(if (picker.processing || importing || copying) "正在接收照片" else "正在打开系统相机",
+            Text(if (picker.processing || importing || copying) copy.text("camera.receive_photos") else copy.text("camera.open_system_camera"),
                 style = MaterialTheme.typography.bodyMedium)
         }
         else if (!destination.systemCamera)
         CardCameraScreen(
             onCapture = { shot -> check(model.cardCapture.captured(destination, shot.original, shot.displayFile,
-                shot.format, print = destination.cardId == null, motion = shot.motion, photoStyle = shot.photoStyle)) { "照片正在处理，请稍候重试" } },
+                shot.format, print = destination.cardId == null, motion = shot.motion, photoStyle = shot.photoStyle)) { copy.text("camera.photo_processing") } },
             onCancel = model::navigateBack, message = model::message,
             initialFormat = destination.cardId?.let { id -> model.cards.cards.value.firstOrNull { it.id == id } }
                 ?.let { model.stickers.frameStyle(it).format }, suspended = print != null || importing || copying,

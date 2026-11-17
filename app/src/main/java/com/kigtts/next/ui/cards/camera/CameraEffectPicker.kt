@@ -24,6 +24,7 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraEffectPicker(selected: PhotoEffect, effects: PhotoEffects, enabled: Boolean, vertical: Boolean,
     choose: (PhotoEffect) -> Unit) {
+    val copy = rememberCameraCopy()
     val assets = LocalContext.current.assets
     val previews by produceState<Map<PhotoEffect, ImageBitmap>>(emptyMap(), assets) {
         value = withContext(Dispatchers.Default) {
@@ -45,7 +46,7 @@ import kotlinx.coroutines.withContext
             Box(Modifier.fillMaxSize()) {
                 previews[effect]?.let { Image(it, null, Modifier.fillMaxSize()) }
                 Surface(Modifier.align(Alignment.BottomStart), color = Color.Black.copy(alpha = .68f)) {
-                    Text((if (active && effect != PhotoEffect.NONE) "• " else "") + effect.label,
+                    Text((if (active && effect != PhotoEffect.NONE) "• " else "") + copy.label(effect),
                         Modifier.padding(6.dp), color = Color.White, style = MaterialTheme.typography.labelSmall)
                 }
             }

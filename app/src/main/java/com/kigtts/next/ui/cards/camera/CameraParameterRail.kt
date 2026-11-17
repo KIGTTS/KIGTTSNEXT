@@ -17,6 +17,7 @@ import com.kigtts.next.ui.components.ToolButton
 internal fun BoxScope.CameraParameterRail(session: PolaroidCameraSession, bounds: Rect, vertical: Boolean,
     zoomEnabled: Boolean, rulerEnabled: Boolean, selection: ProControl?, globalExposure: Boolean, close: () -> Unit,
     dialVisibilityChanged: (Boolean) -> Unit) {
+    val copy = rememberCameraCopy()
     val active = selection?.takeIf { proControlAvailable(it, session.manual, session.exposure) }
     var measured by remember { mutableStateOf<CameraMeteringSample?>(null) }
     LaunchedEffect(active, rulerEnabled) {
@@ -31,7 +32,7 @@ internal fun BoxScope.CameraParameterRail(session: PolaroidCameraSession, bounds
         session::zoomTo, vertical, Modifier.matchParentSize(), bounds, dialVisibilityChanged, adjustment = active) { key ->
         if (key == ProControl.EV) {
             CameraExposureRuler(session.exposure, rulerEnabled && key == active, session::setGlobalExposure,
-                close, Modifier.fillMaxSize(), if (globalExposure) "全局曝光补偿" else "专业曝光补偿", outerPadding = false, background = false)
+                close, Modifier.fillMaxSize(), if (globalExposure) copy.text("camera.global_ev") else copy.text("camera.pro_ev"), outerPadding = false, background = false)
         } else CameraProAdjustment(key, session.manual, measured, rulerEnabled && key == active, Modifier.fillMaxSize(), background = false)
     }
 }

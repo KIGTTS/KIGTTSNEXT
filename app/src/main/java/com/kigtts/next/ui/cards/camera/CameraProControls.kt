@@ -25,6 +25,7 @@ internal enum class ProControl(val label: String, val short: String) {
 internal fun CameraProControls(controller: CameraManualController, exposure: CameraExposureCompensation,
     enabled: Boolean, vertical: Boolean, changeEv: (Int) -> Unit, modifier: Modifier = Modifier,
     selected: ProControl? = null, select: (ProControl?) -> Unit = {}) {
+    val copy = rememberCameraCopy()
     var measured by remember(controller) { mutableStateOf<CameraMeteringSample?>(null) }
     LaunchedEffect(enabled, controller) {
         if (enabled) while (true) {
@@ -38,17 +39,17 @@ internal fun CameraProControls(controller: CameraManualController, exposure: Cam
         Surface(orientation.excludeCameraPull().testTag("camera-pro-controls"),
             color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .90f), shape = MaterialTheme.shapes.large) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CameraRulerIcon("重置全部专业参数", Icons.Default.RestartAlt, "camera-pro-reset", enabled) {
+                CameraRulerIcon(copy.text("camera.pro_reset"), Icons.Default.RestartAlt, "camera-pro-reset", enabled) {
                     select(null); controller.reset(); changeEv(0)
                 }
                 ProControl.entries.forEach { key ->
                     val value = when (key) {
                         ProControl.EV -> cameraEvLabel(exposure.baseline, exposure.step)
                         ProControl.SHUTTER -> (controller.shutterNanos ?: measured?.exposure)?.takeIf { it > 0 }?.let {
-                            shutterLabel(it).removeSuffix(" 秒")
-                        } ?: "自动"
-                        ProControl.ISO -> controller.sensorIso.takeIf { it > 0 }?.toString() ?: measured?.iso?.toString() ?: "自动"
-                        ProControl.WB -> controller.whiteBalance.label
+                            shutterDisplayValue(it)
+                        } ?: copy.text("option.auto")
+                        ProControl.ISO -> controller.sensorIso.takeIf { it > 0 }?.toString() ?: measured?.iso?.toString() ?: copy.text("option.auto")
+                        ProControl.WB -> copy.label(controller.whiteBalance)
                         ProControl.FOCUS -> if (controller.manualFocus) "MF" else "AF"
                     }
                     val isSelected = activeControl == key

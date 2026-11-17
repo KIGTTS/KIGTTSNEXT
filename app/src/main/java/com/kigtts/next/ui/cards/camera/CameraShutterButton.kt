@@ -38,6 +38,7 @@ internal fun cameraRecordAccent(): Color {
 internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: Boolean,
     capture: () -> Unit, modifier: Modifier = Modifier, burstStart: (() -> Unit)? = null,
     burstEnd: () -> Unit = {}, burstRunning: Boolean = false, burstHeld: Boolean = false, count: Int = 0) {
+    val copy = rememberCameraCopy()
     var pressed by remember { mutableStateOf(false) }
     val click = rememberUpdatedState(feedbackClick(capture))
     val start = rememberUpdatedState(burstStart); val end = rememberUpdatedState(burstEnd)
@@ -47,14 +48,14 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
     val colors = MaterialTheme.colorScheme
     val overlay = LocalCameraShutterOverlay.current
     val fill = cameraShutterAccent()
-    val label = when { burstHeld -> "松开结束连拍"; burstRunning -> "正在准备照片"; countingDown -> "取消倒计时"; else -> "拍照" }
+    val label = when { burstHeld -> copy.text("camera.burst_release"); burstRunning -> copy.text("camera.preparing_photos"); countingDown -> copy.text("camera.cancel_timer"); else -> copy.text("camera.take_photo") }
     fun longPress() { start.value?.let { feedback.performHapticFeedback(HapticFeedbackType.LongPress); it() } }
     Surface(modifier.size(76.dp).semantics {
         role = Role.Button; contentDescription = label
         if (!enabled) disabled()
-        if (burstRunning) stateDescription = "已拍摄 $count 张"
+        if (burstRunning) stateDescription = copy.text("camera.burst_count", "count" to count.toString())
         onClick { if (enabled) { if (running.value) end.value() else click.value() }; enabled }
-        if (burstStart != null) onLongClick("开始连拍") { if (enabled) longPress(); enabled }
+        if (burstStart != null) onLongClick(copy.text("camera.start_burst")) { if (enabled) longPress(); enabled }
     }.pointerInput(enabled, burstStart != null) {
         if (enabled) detectTapGestures(
             onTap = { if (running.value) end.value() else click.value() },
@@ -77,13 +78,14 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
 
 @Composable
 internal fun CameraBurstStatus(burst: CameraBurstCapture, modifier: Modifier = Modifier) {
+    val copy = rememberCameraCopy()
     androidx.compose.animation.AnimatedVisibility(burst.running && !burst.held, modifier,
         enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
         Surface(shape = RoundedCornerShape(24.dp), tonalElevation = 6.dp) {
             Column(Modifier.padding(20.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 2.dp)
-                Text(if (burst.count == 0) "正在接收照片" else "正在准备照片 ${burst.processed} / ${burst.count}")
+                Text(if (burst.count == 0) copy.text("camera.receive_photos") else copy.text("camera.burst_processing", "done" to burst.processed.toString(), "total" to burst.count.toString()))
             }
         }
     }

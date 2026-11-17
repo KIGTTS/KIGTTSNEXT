@@ -31,6 +31,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
     zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null,
     dialVisibilityChanged: (Boolean) -> Unit = {}, adjustment: ProControl? = null,
     adjustmentContent: @Composable (ProControl) -> Unit = {}) {
+    val copy = rememberCameraCopy()
     val availableRange = cameraZoomRange(minimum, maximum)
     if (availableRange == null && adjustment == null) return
     val range = availableRange ?: (1f..2f)
@@ -96,7 +97,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                             stops.forEach { factor ->
                                 val active = factor == selected
                                 CameraZoomButton(if (active) zoomLabel(value) else zoomLabel(factor).removeSuffix("×").removeSuffix(".0"),
-                                    "变焦 ${zoomLabel(factor)}", zoomEnabled, { latestZoom(factor) },
+                                    copy.text("camera.status_zoom", "value" to zoomLabel(factor)), zoomEnabled, { latestZoom(factor) },
                                     Modifier.testTag("camera-zoom-stop/" + factor.toString().removeSuffix(".0")),
                                     if (active) "camera-zoom-value" else null, selected = active)
                             }
@@ -118,7 +119,7 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                 val touch = if (vertical) Modifier.align(Alignment.CenterEnd).fillMaxWidth(.4f).fillMaxHeight()
                     else Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(.4f)
                 Box(touch.excludeCameraPull().then(dragModifier()).testTag("camera-zoom-slider").semantics {
-                    contentDescription = "变焦轮盘"
+                    contentDescription = copy.text("camera.zoom_dial")
                     progressBarRangeInfo = ProgressBarRangeInfo(cameraZoomPosition(value, range), 0f..1f)
                     setProgress { change(it); true }
                 })

@@ -25,6 +25,7 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun CameraBurstPreview(photos: List<PolaroidCameraCapture>, initial: Int, selected: Set<Int>,
     busy: Boolean, close: () -> Unit, toggle: (Int) -> Unit) {
+    val copy = rememberCameraCopy()
     val pager = rememberPagerState(initialPage = initial) { photos.size }
     val scope = rememberCoroutineScope()
     Dialog(close, DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -35,7 +36,7 @@ internal fun CameraBurstPreview(photos: List<PolaroidCameraCapture>, initial: In
             }
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically) {
-                PreviewArrow("关闭预览", Icons.Default.Close, close)
+                PreviewArrow(copy.text("camera.close_preview"), Icons.Default.Close, close)
                 Spacer(Modifier.weight(1f))
                 Text("${pager.currentPage + 1} / ${photos.size}", color = Color.White,
                     modifier = Modifier.testTag("burst-preview-count"))
@@ -44,11 +45,11 @@ internal fun CameraBurstPreview(photos: List<PolaroidCameraCapture>, initial: In
                     Modifier.testTag("burst-preview-check"))
             }
             AnimatedVisibility(pager.currentPage > 0, Modifier.align(Alignment.CenterStart), enter = fadeIn(), exit = fadeOut()) {
-                PreviewArrow("上一张", Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                PreviewArrow(copy.text("camera.previous_photo"), Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     { scope.launch { pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0)) } })
             }
             AnimatedVisibility(pager.currentPage < photos.lastIndex, Modifier.align(Alignment.CenterEnd), enter = fadeIn(), exit = fadeOut()) {
-                PreviewArrow("下一张", Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                PreviewArrow(copy.text("camera.next_photo"), Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     { scope.launch { pager.animateScrollToPage((pager.currentPage + 1).coerceAtMost(photos.lastIndex)) } })
             }
         }

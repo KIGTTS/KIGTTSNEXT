@@ -14,7 +14,7 @@
   "subtitle.size": "一个字占屏幕宽度的 {size}%",
   "subtitle.auto_on": "打开自动播放和朗读",
   "subtitle.baking": "正在准备快捷文本的声音",
-  "listening.standby": "待命",
+  "listening.standby": "听到说话就会显示字幕",
   "listening.submitting": "正在发送…",
   "listening.mic_title": "系统识别需要麦克风权限",
   "listening.mic_guide": "请在系统设置中打开「{app}」的权限管理，允许使用麦克风，然后返回重试",

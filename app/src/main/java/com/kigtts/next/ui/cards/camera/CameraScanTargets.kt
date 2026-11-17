@@ -23,6 +23,7 @@ import com.kigtts.next.ui.navigation.excludeCameraPull
 
 @Composable
 internal fun CameraScanTargets(frame: CameraCodeFrame, dismiss: () -> Unit, choose: (String) -> Unit) {
+    val copy = rememberCameraCopy()
     val image = remember(frame.bitmap) { frame.bitmap.asImageBitmap() }
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black).excludeCameraPull()
         .pointerInput(Unit) { awaitPointerEventScope {
@@ -38,10 +39,10 @@ internal fun CameraScanTargets(frame: CameraCodeFrame, dismiss: () -> Unit, choo
             val x = ((maxWidth - width) / 2 + width * point.x - 22.dp).coerceIn(0.dp, (maxWidth - 44.dp).coerceAtLeast(0.dp))
             val y = ((maxHeight - height) / 2 + height * point.y - 22.dp).coerceIn(0.dp, (maxHeight - 44.dp).coerceAtLeast(0.dp))
             FilledIconButton(feedbackClick { choose(code.text) }, Modifier.offset(x, y).size(44.dp)
-                .testTag("camera-scan-target/$index"), shape = CircleShape) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "打开二维码 ${index + 1}") }
+                .testTag("camera-scan-target/$index"), shape = CircleShape) { Icon(Icons.AutoMirrored.Filled.ArrowForward, copy.text("camera.status_qr", "number" to (index + 1).toString())) }
         } }
         FilledTonalIconButton(feedbackClick(dismiss), Modifier.align(Alignment.TopEnd).padding(8.dp).testTag("camera-scan-resume")) {
-            Icon(Icons.Default.Close, "继续扫码")
+            Icon(Icons.Default.Close, copy.text("camera.scan_again"))
         }
     }
 }

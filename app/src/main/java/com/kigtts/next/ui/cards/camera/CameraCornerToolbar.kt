@@ -20,6 +20,7 @@ import com.kigtts.next.ui.navigation.excludeCameraPull
 internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEnabled: Boolean,
     back: () -> Unit, settings: () -> Unit, applyInsets: Boolean = true,
     vertical: Boolean = false, showSettings: Boolean = true, extraAction: @Composable () -> Unit = {}) {
+    val copy = rememberCameraCopy()
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
@@ -27,7 +28,7 @@ internal fun CameraCornerToolbar(active: Boolean, busy: Boolean, configurationEn
     Box(Modifier.fillMaxSize().then(if (applyInsets) Modifier.safeDrawingPadding() else Modifier).padding(horizontal = 8.dp, vertical = 8.dp)
         .testTag("camera-corner-toolbar")) {
         Box(Modifier.align(Alignment.TopStart).size(44.dp).excludeCameraPull()) {
-            ToolButton("返回", Icons.Default.ArrowBack, back, Modifier.fillMaxSize().testTag("camera-cancel"),
+            ToolButton(copy.text("action.back"), Icons.Default.ArrowBack, back, Modifier.fillMaxSize().testTag("camera-cancel"),
                 size = 44.dp, shapes = shape, colors = colors, enabled = active && !busy)
         }
         Row(Modifier.align(Alignment.TopEnd), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

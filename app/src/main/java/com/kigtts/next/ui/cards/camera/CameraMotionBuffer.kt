@@ -15,6 +15,7 @@ internal class CameraMotionTicket internal constructor(internal var shutterAtMs:
 internal class CameraMotionBuffer(private val directory: File, private val source: CameraMotionSource,
     private val scope: CoroutineScope, private val message: (String) -> Unit,
     private val now: () -> Long = SystemClock::elapsedRealtime,
+    private val resolve: (String, String) -> String = { _, fallback -> fallback },
     private val mux: (List<CameraMotionPart>, Long, File) -> CameraMotionVideo = CameraMotionMuxer::write) : Closeable {
     private class Active(val file: File, var startedAtMs: Long) {
         var recording: CameraMotionRecording? = null
@@ -95,10 +96,10 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             CameraMotionClip(destination, result.durationMs, result.rotationDegrees, result.shutterPositionMs, colorMatrix.copyOf(), lut, strength, effects)
         } catch (_: TimeoutCancellationException) {
             destination.delete(); currentCoroutineContext().ensureActive()
-            message("实况短片未能保存，本次保留照片"); null
+            message(resolve("camera.motion_save_warning", "实况短片未能保存，本次保留照片")); null
         }
         catch (cancel: CancellationException) { destination.delete(); throw cancel }
-        catch (_: Exception) { destination.delete(); message("实况短片未能保存，本次保留照片"); null }
+        catch (_: Exception) { destination.delete(); message(resolve("camera.motion_save_warning", "实况短片未能保存，本次保留照片")); null }
         finally {
             if (ticket === capture) {
                 ticket = null; stopJob?.cancel(); stopJob = null; ready = false
@@ -119,7 +120,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
         current?.recording?.stop(); current?.file?.delete(); current = null
         parts.forEach { it.file.delete() }; parts.clear()
         ticket?.finished?.complete(emptyList())
-        message("此相机暂不支持实况录制，仍可正常拍照")
+        message(resolve("camera.motion_device_unsupported", "此相机暂不支持实况录制，仍可正常拍照"))
     }
     override fun close() {
         if (closed) return

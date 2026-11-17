@@ -65,7 +65,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     fun startVideo(audio: Boolean, timeLapse: Boolean, saved: (File, Boolean) -> Unit) = video.start(binding?.motionCapture?.output, audio, timeLapse, saved)
     fun close() { unbind(); scan.close() }
     private val countdown = CameraCountdownState(scope)
-    val burst = CameraBurstCapture(scope)
+    val burst = CameraBurstCapture(scope) { key, _ -> context.uiCopy(key) }
     val manual = CameraManualController(context, message, ::clearFocus)
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
@@ -88,13 +88,13 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             val selfie = cameras.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA); canFlip = back && selfie
             val selector = if (front && selfie || !back && selfie) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             boundFront = selector == CameraSelector.DEFAULT_FRONT_CAMERA
-            require(cameras.hasCamera(selector)) { "没有可用相机" }
+            require(cameras.hasCamera(selector)) { context.uiCopy("camera.no_camera") }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
                 manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo,
                 barcode = scan.analyzer.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
-                        error = "实时滤镜暂时不可用，请重试"
+                        error = context.uiCopy("camera.live_filter_retry")
                         Log.w(CAMERA_LOG_TAG, "Live filter unavailable in the current session", failure)
                     }
                 }
@@ -108,9 +108,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             if (mode.takesPhotos && attached.previewEffect == null) message(context.uiCopy("camera.filter"))
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
-                    CameraMotionRecorder(context, video.output), scope, message).also { it.start() }
+                    CameraMotionRecorder(context, video.output), scope, message,
+                    resolve = { key, _ -> context.uiCopy(key) }).also { it.start() }
             }
-            if (motion && attached.motionCapture == null) message("此镜头暂不支持实况录制，仍可正常拍照")
+            if (motion && attached.motionCapture == null) message(context.uiCopy("camera.motion_unsupported"))
             flashAvailable = attached.camera.cameraInfo.hasFlashUnit()
             applyFlash()
             manual.bind(attached.camera, attached.processing)
@@ -142,7 +143,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                     state.error?.let { failure ->
                         countdown.cancel()
                         error = if (failure.code == CameraState.ERROR_CAMERA_IN_USE || failure.code == CameraState.ERROR_MAX_CAMERAS_IN_USE)
-                            "相机正被其它应用使用" else "相机暂时不可用，请重试"
+                            context.uiCopy("camera.camera_in_use") else context.uiCopy("camera.unavailable")
                     }
                 }
             }.also { attached.camera.cameraInfo.cameraState.observe(owner, it) }
@@ -160,7 +161,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             }
         } catch (cancel: CancellationException) { if (epoch == generation) unbind(keepFlashAvailability = true, keepZoomState = true); throw cancel }
         catch (failure: Exception) { if (epoch == generation) {
-            unbind(); error = "相机暂时无法打开，请重试"
+            unbind(); error = context.uiCopy("camera.open_failed")
             Log.w(CAMERA_LOG_TAG, "Camera leaf startup failed", failure)
         } }
         finally { if (epoch == generation) loading = false }

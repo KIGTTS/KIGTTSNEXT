@@ -35,6 +35,7 @@ import kotlinx.coroutines.delay
 /** The fixed page pitch keeps the selected mode at the shutter axis, including the two ends. */
 @Composable internal fun CameraModeStrip(mode: CameraMode, change: (CameraMode) -> Unit, enabled: Boolean,
     vertical: Boolean, allowVideo: Boolean = true) {
+    val copy = rememberCameraCopy()
     val modes = remember(allowVideo) { CameraMode.entries.filter { allowVideo || !it.recordsVideo } }
     val pager = rememberPagerState(initialPage = modes.indexOf(mode).coerceAtLeast(0)) { modes.size }
     val latestChange by rememberUpdatedState(change)
@@ -96,7 +97,7 @@ import kotlinx.coroutines.delay
                 .testTag("camera-mode/${value.name}").semantics { selected = value == mode }, enabled = enabled,
                 contentPadding = PaddingValues(horizontal = 4.dp),
                 colors = ButtonDefaults.textButtonColors(contentColor = ink).keepColorsWhenLocked()) {
-                Text(value.label, if (vertical) Modifier.verticalModeLabel() else Modifier,
+                Text(copy.label(value), if (vertical) Modifier.verticalModeLabel() else Modifier,
                     style = MaterialTheme.typography.titleSmall, maxLines = 1, softWrap = false)
             }
         }

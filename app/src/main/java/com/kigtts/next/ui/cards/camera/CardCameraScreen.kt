@@ -37,6 +37,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
     onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false,
     watermarkStore: (() -> Unit)? = null) {
+    val copy = rememberCameraCopy()
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
     val pageActive = LocalPageActive.current
@@ -68,7 +69,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             customLuts = customLuts.filterNot { it.id == choice.id } + choice
             selectedLut = choice.id; filter = PhotoFilter.CUSTOM
         } catch (cancel: CancellationException) { throw cancel }
-        catch (failure: Exception) { message(failure.message ?: "LUT 导入失败") }
+        catch (failure: Exception) { message(failure.message ?: copy.text("camera.lut_failed")) }
     } }
     val latestMessage = rememberUpdatedState(message)
     val session = remember(context, lifecycleOwner) { PolaroidCameraSession(context, lifecycleOwner, scope) { latestMessage.value(it) } }
@@ -93,10 +94,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             scope.launch {
                 try {
                     val result = withContext(Dispatchers.IO) { readCameraCodes(context, uri) }
-                    if (result == null) latestMessage.value("图片里没有识别到二维码或条形码")
+                    if (result == null) latestMessage.value(copy.text("camera.scan_image_empty"))
                     else pickedCodes = result
                 } catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { latestMessage.value("无法读取这张图片") }
+                catch (_: Exception) { latestMessage.value(copy.text("camera.image_unreadable")) }
                 finally { readingCodeImage = false }
             }
         }
@@ -166,7 +167,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val backAction = {
         if (session.video.active) session.video.stop()
         else if (session.scan.showing) session.scan.clear()
-        else if (session.busy) message("正在拍摄，请稍候")
+        else if (session.busy) message(copy.text("camera.capture_busy"))
         else if (exposureOpen) exposureOpen = false
         else if (proControl != null) proControl = null
         else filtersExpanded = false
@@ -183,7 +184,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     val leave = {
         if (session.video.active) session.video.stop()
         else if (session.scan.showing) session.scan.clear()
-        else if (session.busy) message("正在拍摄，请稍候")
+        else if (session.busy) message(copy.text("camera.capture_busy"))
         else if (exposureOpen) exposureOpen = false
         else if (proControl != null) proControl = null
         else if (filtersExpanded && !session.countingDown) filtersExpanded = false
@@ -218,7 +219,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                     CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
                         options.motion && (session.loading || session.motionAvailable && !session.motionReady),
                         active && granted && !locked && mode == CameraMode.PHOTO, options::setMotion)
-                }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.label.takeIf { modern },
+                }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.takeIf { modern }?.let(copy::label),
                 reserveBack = true)
             CameraParameterRail(session, layout.zoom, vertical,
                 active && displayReady && (!session.busy || modern), displayReady && interactive && !session.busy && !filtersExpanded,

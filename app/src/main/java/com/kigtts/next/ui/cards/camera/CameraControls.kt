@@ -23,10 +23,11 @@ import com.kigtts.next.ui.components.*
 
 @Composable
 internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry: () -> Unit) {
+    val copy = rememberCameraCopy()
     AnimatedVisibility(session.error != null, enter = fadeIn(), exit = fadeOut()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(session.error.orEmpty(), Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-            MotionTextButton(feedbackClick(retry), enabled = active && !session.busy && !session.countingDown) { Text("重试") }
+            MotionTextButton(feedbackClick(retry), enabled = active && !session.busy && !session.countingDown) { Text(copy.text("camera.retry")) }
         }
     }
 }
@@ -41,12 +42,13 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
     burstHeld: Boolean = false, burstCount: Int = 0, shutter: (@Composable () -> Unit)? = null,
     queueShutter: Boolean = false, galleryPreview: Uri? = null, configurationLocked: Boolean = locked,
     gallerySaving: Boolean = false, scanImage: Boolean = false) {
+    val copy = rememberCameraCopy()
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
         else Modifier.fillMaxWidth().height(92.dp).testTag("camera-bottom-controls")) {
         if (showCancel || gallery != null) Box(Modifier.align(if (vertical) Alignment.BottomCenter else Alignment.CenterStart)
             .padding(6.dp).size(56.dp), contentAlignment = Alignment.Center) {
-            ToolButton(if (scanImage) "选取图片" else if (gallery != null) "相册" else "取消拍摄",
+            ToolButton(if (scanImage) copy.text("camera.pick_image") else if (gallery != null) copy.text("camera.gallery") else copy.text("camera.cancel_capture"),
             if (scanImage) Icons.Default.Image else if (gallery != null) Icons.Default.PhotoLibrary else Icons.Default.Close, gallery ?: cancel,
             Modifier.testTag(if (gallery != null) "camera-gallery" else "camera-cancel"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
@@ -64,7 +66,7 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
             !busy && (countingDown || !locked && canCapture)), busy && !queueShutter,
             countingDown, if (countingDown) cancelCountdown else capture,
             Modifier.align(Alignment.Center).testTag("camera-shutter"), burstStart, burstEnd, burstRunning, burstHeld, burstCount)
-        ToolButton("切换镜头", Icons.Default.Cameraswitch, flip,
+        ToolButton(copy.text("camera.switch_lens"), Icons.Default.Cameraswitch, flip,
             Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterEnd).padding(12.dp).testTag("camera-flip"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),
             colors = tonal,

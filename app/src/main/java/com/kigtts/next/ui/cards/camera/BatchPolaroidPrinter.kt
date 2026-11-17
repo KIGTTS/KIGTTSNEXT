@@ -30,6 +30,7 @@ internal fun batchPrintRotation(seed: Int, ordinal: Int, feed: Float, settle: Fl
 @Composable
 internal fun BatchPolaroidPrinter(request: CardPrintRequest, imageFile: (String) -> File?,
     frame: (PolaroidCard) -> PolaroidFrameStyle?, active: Boolean, finished: () -> Boolean) {
+    val copy = rememberCameraCopy()
     var completed by rememberSaveable(request.requestId) { mutableIntStateOf(0) }
     var savedFeed by rememberSaveable(request.requestId) { mutableFloatStateOf(0f) }
     var savedSettle by rememberSaveable(request.requestId) { mutableFloatStateOf(0f) }
@@ -86,7 +87,7 @@ internal fun BatchPolaroidPrinter(request: CardPrintRequest, imageFile: (String)
             }
         }
         PrinterHousing(slot, insets.calculateTopPadding(), housing.value)
-        Text("正在保存 ${minOf(completed + 1, request.cards.size)} / ${request.cards.size}",
+        Text(copy.text("camera.burst_saving", "done" to minOf(completed + 1, request.cards.size).toString(), "total" to request.cards.size.toString()),
             Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp).testTag("batch-print-count"),
             style = MaterialTheme.typography.labelLarge)
     }

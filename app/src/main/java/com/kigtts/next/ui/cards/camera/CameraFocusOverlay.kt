@@ -56,6 +56,7 @@ internal fun CameraFocusOverlay(target: CameraFocusTarget?, index: Int, range: I
 
 @Composable
 private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> Unit, modifier: Modifier) {
+    val copy = rememberCameraCopy()
     val update = rememberUpdatedState(change)
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     var last by remember(range) { mutableIntStateOf(index) }
@@ -81,7 +82,7 @@ private fun CameraExposureHandle(index: Int, range: IntRange, change: (Int) -> U
         Column(Modifier.fillMaxSize().padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(Icons.Default.LightMode, null, Modifier.size(16.dp), tint = yellow)
             VerticalSlider(state, Modifier.weight(1f).fillMaxWidth().cameraSliderPressFeedback().testTag("camera-exposure")
-                .semantics { contentDescription = "对焦曝光补偿" }, reverseDirection = true, interactionSource = source,
+                .semantics { contentDescription = copy.text("camera.focus_ev") }, reverseDirection = true, interactionSource = source,
                 colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = yellow,
                     inactiveTrackColor = Color.White.copy(alpha = .7f), activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent))
         }

@@ -40,13 +40,14 @@ internal fun cameraPermission(active: Boolean): Pair<Boolean, () -> Unit> {
 
 @Composable
 internal fun CameraPermissionPanel(request: () -> Unit, active: Boolean) {
+    val copy = rememberCameraCopy()
     val context = LocalContext.current
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Text("允许使用相机后，就可以拍摄照片")
+        Text(copy.text("camera.permission_detail"))
         Spacer(Modifier.height(16.dp))
-        MotionOutlinedButton(feedbackClick(request), enabled = active) { Text("允许使用相机") }
+        MotionOutlinedButton(feedbackClick(request), enabled = active) { Text(copy.text("camera.allow_camera")) }
         MotionOutlinedButton(feedbackClick {
             context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
-        }, enabled = active) { Text("打开应用设置") }
+        }, enabled = active) { Text(copy.text("camera.app_settings")) }
     }
 }

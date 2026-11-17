@@ -42,11 +42,12 @@ import kotlin.math.roundToInt
 @Composable
 internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enabled: Boolean,
     store: (() -> Unit)?, edit: (CameraWatermarkAsset) -> Unit, back: () -> Unit) {
+    val copy = rememberCameraCopy()
     Column(Modifier.fillMaxWidth().padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        WatermarkHeader("边框水印", back, store)
+        WatermarkHeader(copy.text("camera.frame_watermark"), back, store)
         val active = options.activeWatermark
-        ChoiceButtonGroup("边框水印", listOf(false, true), options.watermarkEnabled,
-            { if (it) "开启" else "关闭" }, { options.chooseWatermark(if (it) active?.id else null) },
+        ChoiceButtonGroup(copy.text("camera.frame_watermark"), listOf(false, true), options.watermarkEnabled,
+            { if (it) copy.text("option.on") else copy.text("action.close") }, { options.chooseWatermark(if (it) active?.id else null) },
             Modifier.padding(horizontal = 20.dp), enabled = enabled && active != null)
         LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(options.watermarks, key = { it.id }) { asset ->
@@ -57,8 +58,8 @@ internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enab
                     .testTag("camera-watermark/${asset.id}").padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     WatermarkPreview(options.watermarkSettings(asset), snapshot, 132.dp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(asset.name, Modifier.weight(1f).padding(start = 6.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                        IconButton(feedbackClick { edit(asset) }, Modifier.size(40.dp), enabled = enabled) { Icon(Icons.Default.Edit, "编辑${asset.name}") }
+                        Text(copy.label(asset), Modifier.weight(1f).padding(start = 6.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                        IconButton(feedbackClick { edit(asset) }, Modifier.size(40.dp), enabled = enabled) { Icon(Icons.Default.Edit, copy.text("camera.status_edit", "value" to copy.label(asset))) }
                     }
                 }
             }
@@ -68,15 +69,16 @@ internal fun CameraWatermarkPage(options: CameraOptions, snapshot: Bitmap?, enab
 
 @Composable
 internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraOptions, snapshot: Bitmap?, enabled: Boolean, back: () -> Unit) {
+    val copy = rememberCameraCopy()
     val style = options.watermarkSettings(asset)
     fun change(value: CameraWatermarkStyle) = options.editWatermark(asset, value)
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        WatermarkHeader(asset.name, back)
+        WatermarkHeader(copy.label(asset), back)
         WatermarkPreview(style, snapshot, 170.dp, Modifier.padding(horizontal = 20.dp))
         Column(Modifier.padding(horizontal = 20.dp)) {
             CameraWatermarkControls(style, enabled, ::change,
                 drag = { options.editWatermark(asset, it, persist = false) }, finishDrag = { change(options.watermarkSettings(asset)) })
-            TextButton(feedbackClick { change(asset.defaults) }, enabled = enabled) { Text("恢复默认") }
+            TextButton(feedbackClick { change(asset.defaults) }, enabled = enabled) { Text(copy.text("camera.reset_default")) }
         }
     }
 }
@@ -84,35 +86,37 @@ internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraO
 @Composable
 internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boolean, change: (CameraWatermarkStyle) -> Unit,
     drag: (CameraWatermarkStyle) -> Unit = change, finishDrag: (() -> Unit)? = null) {
-    WatermarkChoices("背景", WatermarkPalette.entries, style.palette, { it.label }, enabled) { change(style.copy(palette = it)) }
-    WatermarkChoices("边条位置", WatermarkPosition.entries, style.position, { it.label }, enabled) { change(style.copy(position = it)) }
-    Text("内容大小", style = MaterialTheme.typography.titleSmall)
+    val copy = rememberCameraCopy()
+    WatermarkChoices(copy.text("camera.watermark_background"), WatermarkPalette.entries, style.palette, { copy.label(it) }, enabled) { change(style.copy(palette = it)) }
+    WatermarkChoices(copy.text("camera.watermark_band_position"), WatermarkPosition.entries, style.position, { copy.label(it) }, enabled) { change(style.copy(position = it)) }
+    Text(copy.text("camera.watermark_content_size"), style = MaterialTheme.typography.titleSmall)
     Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
         enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
-    WatermarkToggle("显示时间", style.showTime, enabled) { change(style.copy(showTime = it)) }
-    WatermarkToggle("显示日期", style.showDate, enabled) { change(style.copy(showDate = it)) }
-    WatermarkToggle("显示地点", style.showLocation, enabled) { change(style.copy(showLocation = it)) }
-    WatermarkToggle("显示天气", style.showWeather, enabled) { change(style.copy(showWeather = it)) }
+    WatermarkToggle(copy.text("camera.watermark_time"), style.showTime, enabled) { change(style.copy(showTime = it)) }
+    WatermarkToggle(copy.text("camera.watermark_date"), style.showDate, enabled) { change(style.copy(showDate = it)) }
+    WatermarkToggle(copy.text("camera.watermark_location"), style.showLocation, enabled) { change(style.copy(showLocation = it)) }
+    WatermarkToggle(copy.text("camera.watermark_weather"), style.showWeather, enabled) { change(style.copy(showWeather = it)) }
     if (style.layout == WatermarkLayout.CLASSIC) {
-        WatermarkToggle("显示拍摄参数", style.showExposure, enabled) { change(style.copy(showExposure = it)) }
+        WatermarkToggle(copy.text("camera.watermark_exposure"), style.showExposure, enabled) { change(style.copy(showExposure = it)) }
     }
     if (style.layout == WatermarkLayout.CLASSIC || style.palette == WatermarkPalette.GLASS || style.edge > 0) {
-        Text("边框宽度", style = MaterialTheme.typography.titleSmall)
+        Text(copy.text("camera.watermark_width"), style = MaterialTheme.typography.titleSmall)
         Slider(style.edge.toFloat(), { drag(style.copy(edge = it.roundToInt())) },
             enabled = enabled, valueRange = 0f..12f, steps = 11, onValueChangeFinished = finishDrag)
     }
-    if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle("内容居中", style.center, enabled) { change(style.copy(center = it)) }
-    WatermarkToggle("显示 KIGTTS 标志", style.showLogo, enabled) { change(style.copy(showLogo = it)) }
+    if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle(copy.text("camera.watermark_center"), style.center, enabled) { change(style.copy(center = it)) }
+    WatermarkToggle(copy.text("camera.watermark_logo"), style.showLogo, enabled) { change(style.copy(showLogo = it)) }
 }
 
 @Composable private fun WatermarkHeader(title: String, back: () -> Unit, store: (() -> Unit)? = null) {
+    val copy = rememberCameraCopy()
     Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
         IconButton(feedbackClick(back), Modifier.align(Alignment.CenterStart)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回")
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, copy.text("action.back"))
         }
         Text(title, style = MaterialTheme.typography.titleLarge)
         if (store != null) IconButton(feedbackClick(store), Modifier.align(Alignment.CenterEnd)) {
-            Icon(Icons.Default.Storefront, "从商店获取水印")
+            Icon(Icons.Default.Storefront, copy.text("camera.watermark_store"))
         }
     }
 }
@@ -131,6 +135,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
 }
 
 @Composable internal fun WatermarkPreview(style: CameraWatermarkStyle, snapshot: Bitmap?, height: Dp, modifier: Modifier = Modifier) {
+    val copy = rememberCameraCopy()
     val context = LocalContext.current
     val preview = remember(snapshot) { snapshot?.asImageBitmap() }
     val geometry = remember(preview, style) { PhotoFrameSpec(preview?.width ?: 4, preview?.height ?: 3, style.encode()).geometry() }
@@ -145,7 +150,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
             else Box(photo.background(Brush.linearGradient(listOf(Color(0xFF8ABACA), Color(0xFF486B76), Color(0xFFE0AB74)))))
             Canvas(Modifier.matchParentSize()) {
                 drawIntoCanvas { drawCameraWatermark(context, it.nativeCanvas, style, geometry,
-                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100", "上海市 · 徐汇区", "晴 22°C"), this.size.width, this.size.height, glass) }
+                    WatermarkFacts("2026.11.13", "09:41", "24mm  ·  ƒ/1.6  ·  1/250s  ·  ISO 100", copy.text("camera.sample_place"), copy.text("camera.sample_weather")), this.size.width, this.size.height, glass) }
             }
         }
     }

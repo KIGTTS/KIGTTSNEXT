@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
 
 @Composable internal fun CameraScanOverlay(scan: CameraScanState, message: (String) -> Unit) {
+    val copy = rememberCameraCopy()
     val text = scan.selected
     val dismiss = scan::clear
     val context = LocalContext.current
@@ -32,7 +33,7 @@ import com.kigtts.next.ui.components.feedbackClick
             if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) {
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(sharingLink))
                     .setClassName(context.packageName, "com.kigtts.next.MainActivity")) }
-            } else message("云分享暂不可用")
+            } else message(copy.text("camera.cloud_unavailable"))
             dismiss()
         }
         return
@@ -41,7 +42,7 @@ import com.kigtts.next.ui.components.feedbackClick
         LaunchedEffect(text) {
             if (openCameraCodeInQq(context, text)) dismiss()
             else {
-                message("未能打开 QQ")
+                message(copy.text("camera.qq_unavailable"))
                 dismiss()
             }
         }
@@ -62,18 +63,18 @@ import com.kigtts.next.ui.components.feedbackClick
                 }
             }
         }
-        Text("将二维码或条形码放入框内", color = Color.White, modifier = Modifier.offset(y = edge / 2 + 20.dp),
+        Text(copy.text("camera.scan_guide"), color = Color.White, modifier = Modifier.offset(y = edge / 2 + 20.dp),
             style = MaterialTheme.typography.labelLarge)
-    } else AlertDialog(dismiss, title = { Text("识别结果") }, text = {
+    } else AlertDialog(dismiss, title = { Text(copy.text("camera.scan_result")) }, text = {
         androidx.compose.foundation.text.selection.SelectionContainer { Text(text) }
     }, confirmButton = {
         if (Uri.parse(text).scheme in setOf("https", "http")) TextButton(feedbackClick {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(text))) }; dismiss()
-        }) { Text("打开链接") }
+        }) { Text(copy.text("camera.open_link")) }
         else TextButton(feedbackClick {
-            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("识别结果", text)); dismiss()
-        }) { Text("复制") }
-    }, dismissButton = { TextButton(feedbackClick(dismiss)) { Text("继续扫码") } })
+            (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText(copy.text("camera.scan_result"), text)); dismiss()
+        }) { Text(copy.text("action.copy")) }
+    }, dismissButton = { TextButton(feedbackClick(dismiss)) { Text(copy.text("camera.scan_again")) } })
 }
 
 private val qqCameraSchemes = setOf("mqq", "mqqapi", "mqqopensdkapi", "mqqwpa", "qqwallet", "qpay")

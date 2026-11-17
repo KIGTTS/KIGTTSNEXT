@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
@@ -18,7 +20,7 @@ internal data class CameraGalleryResult(val photo: PolaroidCameraCapture, val wa
 
 /** Copy the selected grant once, preserving its encoded still/EXIF before extracting Android's embedded video. */
 internal suspend fun cameraGalleryCapture(context: Context, uri: Uri, format: PolaroidFormat): CameraGalleryResult = withContext(Dispatchers.IO) {
-    require(uri.scheme in setOf("content", "file")) { "请选择本机图片" }
+    require(uri.scheme in setOf("content", "file")) { context.uiCopy("camera.gallery_local_only") }
     val directory = File(context.cacheDir, "polaroid-camera/gallery").apply { check(mkdirs() || isDirectory) }
     val key = UUID.randomUUID().toString()
     val raw = File(directory, "$key-selected")
@@ -31,15 +33,15 @@ internal suspend fun cameraGalleryCapture(context: Context, uri: Uri, format: Po
                 while (true) {
                     coroutineContext.ensureActive()
                     val size = input.read(buffer); if (size < 0) break
-                    count += size; require(count <= 128L * 1024 * 1024) { "照片文件过大" }
+                    count += size; require(count <= 128L * 1024 * 1024) { context.uiCopy("camera.gallery_size") }
                     output.write(buffer, 0, size)
                 }
-                require(count > 0) { "所选照片为空" }
+                require(count > 0) { context.uiCopy("camera.gallery_empty") }
             }
         }
         val embedded = MotionPhoto.locate(raw)
         val stillBytes = embedded?.offset ?: raw.length()
-        require(stillBytes in 1..32L * 1024 * 1024) { "图片不能超过 32 MB" }
+        require(stillBytes in 1..32L * 1024 * 1024) { context.uiCopy("camera.gallery_still_size") }
         raw.inputStream().use { input -> still.outputStream().use { output ->
             val buffer = ByteArray(64 * 1024); var remaining = stillBytes
             while (remaining > 0) {
@@ -50,7 +52,7 @@ internal suspend fun cameraGalleryCapture(context: Context, uri: Uri, format: Po
         } }
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         still.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
-        require(bounds.outWidth in 1..32768 && bounds.outHeight in 1..32768 && bounds.outWidth.toLong() * bounds.outHeight <= 80_000_000) { "请选择可读取的图片" }
+        require(bounds.outWidth in 1..32768 && bounds.outHeight in 1..32768 && bounds.outWidth.toLong() * bounds.outHeight <= 80_000_000) { context.uiCopy("camera.gallery_invalid") }
         var warning: String? = null
         val motion = if (embedded != null) try {
             check(MotionPhoto.extract(raw, video))
@@ -69,7 +71,7 @@ internal suspend fun cameraGalleryCapture(context: Context, uri: Uri, format: Po
                 val timestamp = cameraGalleryShutterPosition(header, duration)
                 CameraMotionClip(video, duration, rotation, timestamp, PhotoFilters.coefficients(PhotoFilter.ORIGINAL))
             } finally { retriever.release() }
-        } catch (_: Exception) { video.delete(); warning = "实况短片无法读取，本次保留照片"; null } else null
+        } catch (_: Exception) { video.delete(); warning = context.uiCopy("camera.gallery_motion_warning"); null } else null
         coroutineContext.ensureActive()
         CameraGalleryResult(PolaroidCameraCapture(still, null, format, PhotoFilter.ORIGINAL, motion), warning)
     } catch (failure: Throwable) { still.delete(); video.delete(); throw failure }

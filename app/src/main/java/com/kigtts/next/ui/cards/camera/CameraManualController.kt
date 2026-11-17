@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.hardware.camera2.*
 import androidx.camera.camera2.interop.*
@@ -45,7 +47,7 @@ internal class CameraManualController(private val context: Context, private val 
         val capability = readCameraManualCapabilities(context, camera, processing)
         runCatching { Camera2CameraControl.from(camera.cameraControl) }.fold({ control ->
             attach(capability) { options -> if (options == null) control.clearCaptureRequestOptions() else control.setCaptureRequestOptions(options) }
-        }, { attach(CameraManualCapabilities(reason = "当前镜头不支持手动调整"), null) })
+        }, { attach(CameraManualCapabilities(reason = "camera.manual_unavailable"), null) })
     }
     internal fun attach(value: CameraManualCapabilities, submit: ((CaptureRequestOptions?) -> ListenableFuture<Void?>)?) {
         version++; capabilities = value; sender = submit; pending = null
@@ -128,7 +130,7 @@ internal class CameraManualController(private val context: Context, private val 
     private fun failed() {
         version++; resetValues()
         pending = runCatching { sender?.invoke(null) }.getOrNull()
-        message("手动设置未能应用，正在恢复自动")
+        message(context.uiCopy("camera.manual_restore"))
     }
     suspend fun awaitConfigured() {
         val future = pending ?: return

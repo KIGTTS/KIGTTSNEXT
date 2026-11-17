@@ -35,12 +35,13 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     changeEffects: (com.kigtts.next.media.color.PhotoEffects) -> Unit = {}, aspectLabel: String? = null,
     showFilters: Boolean = true, showMotion: Boolean = motionButton != null, showFormat: Boolean = true,
     reserveBack: Boolean = false) {
+    val copy = rememberCameraCopy()
     val colors = IconButtonDefaults.filledTonalIconButtonColors(
         containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
         contentColor = MaterialTheme.colorScheme.onSurface).let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
     val formatButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-        ToolButton("画幅：" + (aspectLabel ?: format.cameraLabel(formats.size == 3)) + "，点按切换", if (aspectLabel != null) Icons.Default.AspectRatio else when (format) {
+        ToolButton(copy.text("camera.status_aspect", "value" to (aspectLabel ?: copy.aspect(format, formats.size == 3))), if (aspectLabel != null) Icons.Default.AspectRatio else when (format) {
             PolaroidFormat.MINI -> Icons.Default.CropPortrait
             PolaroidFormat.WIDE -> Icons.Default.CropLandscape
             else -> Icons.Default.CropSquare
@@ -49,7 +50,7 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     }
     val flashButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-            ToolButton("闪光灯：" + flash.label + "，点按切换", when (flash) {
+            ToolButton(copy.text("camera.status_flash", "value" to copy.label(flash)), when (flash) {
                 CameraFlash.OFF -> Icons.Default.FlashOff
                 CameraFlash.AUTO -> Icons.Default.FlashAuto
                 CameraFlash.ON -> Icons.Default.FlashOn
@@ -64,9 +65,9 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     }
     val filterButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-        ToolButton("滤镜", Icons.Default.PhotoFilter, toggleFilters,
+        ToolButton(copy.text("camera.filters"), Icons.Default.PhotoFilter, toggleFilters,
             Modifier.testTag("camera-filter-toggle")
-                .semantics { stateDescription = if (filtersExpanded) "已展开" else "已收起" },
+                .semantics { stateDescription = if (filtersExpanded) copy.text("camera.expanded") else copy.text("camera.collapsed") },
             size = 44.dp, shapes = shape, colors = colors, enabled = enabled && showFilters)
     }
     CameraControlGroup(vertical, listOf(flashAvailable, showFilters, showMotion, showFormat, showSettings), reserveBack) { index ->

@@ -4,7 +4,8 @@ import androidx.compose.runtime.*
 import kotlinx.coroutines.*
 
 /** Files, rather than full-size bitmaps, are queued. Only one exposure and one filter run at a time. */
-internal class CameraBurstCapture(private val scope: CoroutineScope) {
+internal class CameraBurstCapture(private val scope: CoroutineScope,
+    private val resolve: (String, String) -> String = { _, fallback -> fallback }) {
     var running by mutableStateOf(false); private set
     var held by mutableStateOf(false); private set
     var count by mutableIntStateOf(0); private set
@@ -23,11 +24,11 @@ internal class CameraBurstCapture(private val scope: CoroutineScope) {
             try {
                 while (held) {
                     ensureActive()
-                    if (!hasSpace()) { message("存储空间不足，连拍已停止"); break }
+                    if (!hasSpace()) { message(resolve("camera.burst_no_space", "存储空间不足，连拍已停止")); break }
                     try { photos += withTimeout(30_000) { capture() }; count = photos.size }
-                    catch (_: TimeoutCancellationException) { message("拍照超时，连拍已停止"); break }
+                    catch (_: TimeoutCancellationException) { message(resolve("camera.burst_timeout", "拍照超时，连拍已停止")); break }
                     catch (cancel: CancellationException) { throw cancel }
-                    catch (_: Exception) { message("连拍已停止，已拍照片会保留"); break }
+                    catch (_: Exception) { message(resolve("camera.burst_stopped", "连拍已停止，已拍照片会保留")); break }
                     // Yield even on unusually fast devices; release/stop must always be serviced.
                     if (held) delay(60)
                 }

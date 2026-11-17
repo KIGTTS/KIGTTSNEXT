@@ -25,12 +25,13 @@ internal fun cameraEvLabel(index: Int, step: Float): String =
 @Composable
 internal fun BoxScope.CameraExposureRail(state: CameraExposureCompensation, bounds: Rect, vertical: Boolean,
     zoomStops: Int, enabled: Boolean, toggle: () -> Unit) {
+    val copy = rememberCameraCopy()
     if (state.range.first >= state.range.last) return
     val padding = 48.dp * zoomStops / 2 + 28.dp
     Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds), contentAlignment = Alignment.Center) {
         val placement = if (vertical) Modifier.offset(y = padding.coerceAtMost((bounds.height / 2 - 22f).coerceAtLeast(0f).dp))
             else Modifier.offset(x = -padding.coerceAtMost((bounds.width / 2 - 22f).coerceAtLeast(0f).dp))
-        ToolButton("曝光补偿 " + cameraEvLabel(state.baseline, state.step), Icons.Default.Exposure, toggle,
+        ToolButton(copy.text("camera.status_ev", "value" to cameraEvLabel(state.baseline, state.step)), Icons.Default.Exposure, toggle,
             placement.testTag("camera-global-exposure").excludeCameraPull(), size = 44.dp,
             shapes = IconButtonDefaults.shapes(CircleShape, MaterialTheme.shapes.small),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
@@ -42,8 +43,9 @@ internal fun BoxScope.CameraExposureRail(state: CameraExposureCompensation, boun
 
 @Composable
 internal fun CameraExposureRuler(exposure: CameraExposureCompensation, enabled: Boolean,
-    change: (Int) -> Unit, close: () -> Unit, modifier: Modifier = Modifier, description: String = "全局曝光补偿",
+    change: (Int) -> Unit, close: () -> Unit, modifier: Modifier = Modifier, description: String? = null,
     outerPadding: Boolean = true, background: Boolean = true) {
+    val copy = rememberCameraCopy()
     val range = exposure.range
     if (range.first >= range.last) return
     val colors = MaterialTheme.colorScheme
@@ -51,11 +53,11 @@ internal fun CameraExposureRuler(exposure: CameraExposureCompensation, enabled: 
         .fillMaxWidth().height(48.dp).excludeCameraPull().testTag("camera-exposure-ruler"),
         shape = CircleShape, color = if (background) colors.surfaceContainer.copy(alpha = .94f) else androidx.compose.ui.graphics.Color.Transparent) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CameraRulerIcon("重置曝光补偿", Icons.Default.RestartAlt, "camera-global-exposure-reset",
+            CameraRulerIcon(copy.text("camera.reset_ev"), Icons.Default.RestartAlt, "camera-global-exposure-reset",
                 enabled && exposure.baseline != 0) { change(0) }
-            CameraTickRuler(range, exposure.baseline, { cameraEvLabel(it, exposure.step) }, description,
+            CameraTickRuler(range, exposure.baseline, { cameraEvLabel(it, exposure.step) }, description ?: copy.text("camera.global_ev"),
                 "camera-global-exposure-slider", enabled, change, Modifier.weight(1f), emphasis = 0, snapToEmphasis = true)
-            ToolButton("收起曝光补偿", Icons.Default.Close, close, Modifier.testTag("camera-global-exposure-close"),
+            ToolButton(copy.text("camera.close_ev"), Icons.Default.Close, close, Modifier.testTag("camera-global-exposure-close"),
                 size = 48.dp, enabled = enabled, shapes = IconButtonDefaults.shapes(CircleShape, MaterialTheme.shapes.small))
         }
     }

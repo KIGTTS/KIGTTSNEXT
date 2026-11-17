@@ -19,10 +19,11 @@ import androidx.compose.ui.unit.dp
 /** The native preview stays measured underneath; no camera opens while the page is being pulled in. */
 @Composable
 internal fun BoxScope.CameraViewfinderPlaceholder(visible: Boolean) {
+    val copy = rememberCameraCopy()
     AnimatedVisibility(visible, Modifier.matchParentSize(), enter = fadeIn(tween(120)), exit = fadeOut(tween(180))) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .testTag("camera-viewfinder-placeholder"), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.PhotoCamera, "相机取景区", Modifier.size(48.dp),
+            Icon(Icons.Default.PhotoCamera, copy.text("camera.viewfinder"), Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .55f))
         }
     }

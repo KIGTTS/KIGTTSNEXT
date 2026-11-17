@@ -35,12 +35,13 @@ import kotlinx.coroutines.withContext
     vertical: Boolean = false, strength: Float = 1f, changeStrength: (Float) -> Unit = {},
     custom: List<CameraLutChoice> = emptyList(), selectedLut: String? = null, selectLut: (String) -> Unit = {}, importLut: () -> Unit = {},
     effects: PhotoEffects = PhotoEffects.NONE, changeEffects: (PhotoEffects) -> Unit = {}, collapse: (() -> Unit)? = null) {
+    val copy = rememberCameraCopy()
     var tab by rememberSaveable { mutableStateOf(CameraFilterTab.FILTERS) }
     var effect by rememberSaveable { mutableStateOf(PhotoEffect.entries.firstOrNull { effects.amount(it) > 0f } ?: PhotoEffect.NONE) }
-    val options = remember(custom) { PhotoFilter.entries.filter { it != PhotoFilter.CUSTOM }.map { CameraFilterTile(it.name, it.label, it) } +
+    val options = remember(custom, copy) { PhotoFilter.entries.filter { it != PhotoFilter.CUSTOM }.map { CameraFilterTile(it.name, copy.label(it), it) } +
         custom.map { CameraFilterTile(it.id, it.label, PhotoFilter.CUSTOM, it) } }
     val assets = LocalContext.current.assets
-    val previews by produceState<Map<String, ImageBitmap>>(emptyMap(), options) {
+    val previews by produceState<Map<String, ImageBitmap>>(emptyMap(), custom) {
         value = withContext(Dispatchers.Default) {
             val source = decodeCameraReferencePhoto(assets, 2)
             if (source == null) emptyMap() else try { options.associate { option ->
@@ -72,7 +73,7 @@ import kotlinx.coroutines.withContext
     }
     val add: @Composable () -> Unit = {
         Surface(onClick = feedbackClick(importLut), enabled = enabled, modifier = Modifier.size(80.dp).testTag("camera-import-lut"), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Icon(Icons.Default.Add, null); Text("导入 LUT", style = MaterialTheme.typography.labelSmall) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Icon(Icons.Default.Add, null); Text(copy.text("camera.import_lut"), style = MaterialTheme.typography.labelSmall) }
         }
     }
     val slider: @Composable (Modifier) -> Unit = { modifier ->
@@ -80,14 +81,14 @@ import kotlinx.coroutines.withContext
         val change: (Float) -> Unit = if (tab == CameraFilterTab.FILTERS) changeStrength else { amount -> changeEffects(effects.with(effect, amount)) }
         val adjustable = enabled && if (tab == CameraFilterTab.FILTERS) filter != PhotoFilter.ORIGINAL else effect != PhotoEffect.NONE
         val semantics = modifier.testTag(if (tab == CameraFilterTab.FILTERS) "camera-filter-strength" else "camera-effect-strength")
-            .semantics { contentDescription = if (tab == CameraFilterTab.FILTERS) "滤镜强度" else effect.label + "强度" }
+            .semantics { contentDescription = if (tab == CameraFilterTab.FILTERS) copy.text("camera.filter_strength") else copy.text("camera.status_effect_strength", "value" to copy.label(effect)) }
         if (vertical) {
             val state = rememberSliderState(value, valueRange = 0f..1f)
             state.value = value; state.onValueChange = change
             VerticalSlider(state, semantics, enabled = adjustable, reverseDirection = true)
         } else Slider(value, change, semantics, enabled = adjustable)
     }
-    val close: @Composable () -> Unit = { if (collapse != null) ToolButton("收起滤镜", if (vertical) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
+    val close: @Composable () -> Unit = { if (collapse != null) ToolButton(copy.text("camera.close_filters"), if (vertical) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
         collapse, Modifier.size(48.dp).testTag("camera-filter-collapse"), size = 40.dp, enabled = enabled,
         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.Transparent)) }
     val chooseEffect: (PhotoEffect) -> Unit = { effect = it; changeEffects(if (it == PhotoEffect.NONE) PhotoEffects.NONE else effects.with(it, effects.amount(it).takeIf { amount -> amount > 0f } ?: .6f)) }

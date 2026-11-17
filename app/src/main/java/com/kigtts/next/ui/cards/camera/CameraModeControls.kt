@@ -34,11 +34,12 @@ import com.kigtts.next.ui.components.feedbackClick
 }
 
 @Composable internal fun VideoShutter(recording: Boolean, finishing: Boolean, enabled: Boolean, click: () -> Unit) {
+    val copy = rememberCameraCopy()
     val overlay = LocalCameraShutterOverlay.current
     val ink = cameraShutterAccent()
     val recordAccent = cameraRecordAccent()
     OutlinedButton(feedbackClick(click), Modifier.size(76.dp).semantics {
-        contentDescription = if (finishing) "正在保存视频" else if (recording) "停止录像" else "开始录像"
+        contentDescription = if (finishing) copy.text("camera.save_video") else if (recording) copy.text("camera.stop_video") else copy.text("camera.start_video")
     }, shape = CircleShape,
         contentPadding = PaddingValues(9.dp), enabled = enabled,
         border = BorderStroke(3.dp, ink.copy(alpha = if (enabled || finishing) 1f else .35f)),
@@ -51,8 +52,9 @@ import com.kigtts.next.ui.components.feedbackClick
 }
 
 @Composable internal fun ScanShutterIndicator() {
+    val copy = rememberCameraCopy()
     val ink = if (LocalCameraShutterOverlay.current) Color.White.copy(alpha = .84f) else MaterialTheme.colorScheme.onSurfaceVariant
     Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
-        Icon(Icons.Default.QrCodeScanner, "自动扫码", Modifier.size(32.dp), tint = ink)
+        Icon(Icons.Default.QrCodeScanner, copy.text("camera.automatic_scan"), Modifier.size(32.dp), tint = ink)
     }
 }

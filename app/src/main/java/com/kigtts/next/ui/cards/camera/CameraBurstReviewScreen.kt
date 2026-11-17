@@ -25,6 +25,7 @@ import com.kigtts.next.ui.components.*
 @Composable
 internal fun CameraBurstReviewScreen(review: CardBurstReview, busy: Boolean, saved: Int,
     cancel: () -> Unit, save: (Set<String>) -> Unit) {
+    val copy = rememberCameraCopy()
     var selected by rememberSaveable(review.requestId) { mutableStateOf(review.photos.indices.toList()) }
     var preview by rememberSaveable(review.requestId) { mutableStateOf<Int?>(null) }
     val grid = rememberLazyGridState()
@@ -35,13 +36,13 @@ internal fun CameraBurstReviewScreen(review: CardBurstReview, busy: Boolean, sav
     }
     Scaffold(Modifier.fillMaxSize().testTag("burst-review"), topBar = {
         TopAppBar(title = { Column {
-            Text("选择照片")
-            Text(if (busy) "正在保存 $saved / ${selected.size}" else "已选择 ${selected.size} 张",
+            Text(copy.text("camera.choose_photos"))
+            Text(if (busy) copy.text("camera.burst_saving", "done" to saved.toString(), "total" to selected.size.toString()) else copy.text("camera.burst_selected", "count" to selected.size.toString()),
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        } }, navigationIcon = { ToolButton("返回相机", Icons.AutoMirrored.Filled.ArrowBack, cancel,
+        } }, navigationIcon = { ToolButton(copy.text("camera.back_to_camera"), Icons.AutoMirrored.Filled.ArrowBack, cancel,
             size = 48.dp, enabled = !busy, colors = compactPlainIconColors()) }, actions = {
             val all = selected.size == review.photos.size
-            ToolButton(if (all) "取消全选" else "全选", if (all) Icons.Default.Deselect else Icons.Default.SelectAll,
+            ToolButton(if (all) copy.text("camera.deselect_all") else copy.text("camera.select_all"), if (all) Icons.Default.Deselect else Icons.Default.SelectAll,
                 { selected = if (all) emptyList() else review.photos.indices.toList() }, size = 48.dp,
                 enabled = !busy, colors = compactPlainIconColors(), modifier = Modifier.testTag("burst-select-all"))
         })
@@ -50,12 +51,12 @@ internal fun CameraBurstReviewScreen(review: CardBurstReview, busy: Boolean, sav
             Row(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 MotionTextButton(feedbackClick { saveIndices(review.photos.indices.toList()) }, enabled = !busy,
-                    modifier = Modifier.testTag("burst-save-all")) { Text("全部保存") }
+                    modifier = Modifier.testTag("burst-save-all")) { Text(copy.text("camera.save_all")) }
                 Button(feedbackClick { saveIndices(selected) }, enabled = !busy && selected.isNotEmpty(),
                     shapes = ButtonDefaults.shapes(), modifier = Modifier.weight(1f).testTag("burst-print-selected")) {
                     if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     else Icon(Icons.Default.SaveAlt, null, Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp)); Text(if (busy) "正在保存" else "保存所选 (${selected.size})")
+                    Spacer(Modifier.width(8.dp)); Text(if (busy) copy.text("camera.saving") else copy.text("camera.burst_save_selected", "count" to selected.size.toString()))
                 }
             }
         }
@@ -82,22 +83,24 @@ internal fun CameraBurstReviewScreen(review: CardBurstReview, busy: Boolean, sav
 
 @Composable
 internal fun BurstPhotoImage(shot: PolaroidCameraCapture, modifier: Modifier, crop: Boolean, maximum: Int) {
+    val copy = rememberCameraCopy()
     val source = rememberCardImage(shot.displayFile, maximum)
     val image = com.kigtts.next.ui.cards.rememberCardPhotoStyle(source, shot.original.path, null, { null }, shot.photoStyle)
     Box(modifier.background(if (crop) MaterialTheme.colorScheme.surfaceContainerHigh else androidx.compose.ui.graphics.Color.Transparent), contentAlignment = Alignment.Center) {
         if (image != null) Image(image, null, Modifier.fillMaxSize(), contentScale = if (crop) ContentScale.Crop else ContentScale.Fit)
-        else Icon(Icons.Default.Photo, "照片加载中", Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        else Icon(Icons.Default.Photo, copy.text("camera.photo_loading"), Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 internal fun BurstPhotoCheck(checked: Boolean, enabled: Boolean, change: () -> Unit, modifier: Modifier = Modifier) {
+    val copy = rememberCameraCopy()
     IconToggleButton(checked, feedbackChange { change() }, modifier.size(48.dp), enabled = enabled) {
         Box(Modifier.size(26.dp).clip(androidx.compose.foundation.shape.CircleShape)
             .background(if (checked) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent),
             contentAlignment = Alignment.Center) {
             Icon(if (checked) Icons.Default.Check else Icons.Default.RadioButtonUnchecked,
-                if (checked) "取消选择" else "选择照片", Modifier.size(if (checked) 18.dp else 26.dp),
+                if (checked) copy.text("camera.deselect") else copy.text("camera.choose_photos"), Modifier.size(if (checked) 18.dp else 26.dp),
                 tint = if (checked) MaterialTheme.colorScheme.onPrimary else androidx.compose.ui.graphics.Color.White)
         }
     }

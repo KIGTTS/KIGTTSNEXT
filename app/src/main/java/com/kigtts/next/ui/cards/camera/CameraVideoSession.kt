@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -17,8 +19,8 @@ internal class CameraVideoSession(private val context: Context, private val mess
     var durationMs by mutableLongStateOf(0); private set
     fun start(recorder: Recorder?, audio: Boolean, timeLapse: Boolean, saved: (File, Boolean) -> Unit) {
         if (active || finishing) return
-        if (recorder == null) { message("当前镜头暂不支持录像"); return }
-        if (context.cacheDir.usableSpace < 128L * 1024 * 1024) { message("存储空间不足"); return }
+        if (recorder == null) { message(context.uiCopy("camera.video_unsupported")); return }
+        if (context.cacheDir.usableSpace < 128L * 1024 * 1024) { message(context.uiCopy("camera.storage_full")); return }
         val directory = File(context.filesDir, "pending-camera-video").apply { mkdirs() }
         val file = File(directory, "${UUID.randomUUID()}.mp4")
         val options = FileOutputOptions.Builder(file).build()
@@ -34,10 +36,10 @@ internal class CameraVideoSession(private val context: Context, private val mess
                     if (event.error in setOf(VideoRecordEvent.Finalize.ERROR_NONE, VideoRecordEvent.Finalize.ERROR_SOURCE_INACTIVE,
                             VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED, VideoRecordEvent.Finalize.ERROR_DURATION_LIMIT_REACHED) && file.length() > 0)
                         saved(file, timeLapse)
-                    else { file.delete(); message("录像未能完成，请重试") }
+                    else { file.delete(); message(context.uiCopy("camera.video_failed")) }
                 }
             }
-        } catch (_: Exception) { active = false; finishing = false; file.delete(); message("录像暂时无法开始") }
+        } catch (_: Exception) { active = false; finishing = false; file.delete(); message(context.uiCopy("camera.video_start_failed")) }
     }
     fun stop() { if (recording != null && !finishing) { finishing = true; recording?.stop() } }
 }

@@ -15,6 +15,7 @@ import java.io.File
 @Composable internal fun rememberCameraCaptureAction(session: PolaroidCameraSession, mode: CameraMode, ready: Boolean,
     format: PolaroidFormat, filter: PhotoFilter, options: CameraOptions, lut: CubeLut?,
     photo: (PolaroidCameraCapture) -> Unit, video: ((File, Boolean) -> Unit)?, message: (String) -> Unit): () -> Unit {
+    val copy = rememberCameraCopy()
     val context = LocalContext.current
     var permissionPending by remember { mutableStateOf(false) }
     val videoSaved = rememberUpdatedState(video)
@@ -22,7 +23,7 @@ import java.io.File
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         permissionPending = false
         if (currentMode.value == CameraMode.VIDEO && session.ready && !session.video.active) {
-            if (!granted) message("未开启麦克风，将录制无声视频")
+            if (!granted) message(copy.text("camera.mic_denied_video"))
             videoSaved.value?.let { session.startVideo(granted, false, it) }
         }
     }

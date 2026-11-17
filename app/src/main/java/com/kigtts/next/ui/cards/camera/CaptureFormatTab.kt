@@ -20,12 +20,13 @@ import com.kigtts.plugin.api.PolaroidFormat
 
 /** The tab's paper and aperture use the same physical proportions as the finished photograph. */
 @Composable internal fun CaptureFormatTab(format: PolaroidFormat, selected: Boolean, enabled: Boolean, choose: () -> Unit) {
+    val copy = rememberCameraCopy()
     val geometry = format.geometry
     val colors = MaterialTheme.colorScheme
     Surface(onClick = feedbackClick(choose), enabled = enabled,
         modifier = Modifier.width(100.dp).testTag("capture-format/" + format.name).semantics {
             this.selected = selected; role = Role.Tab
-            contentDescription = when (format) { PolaroidFormat.MINI -> "Mini 迷你相纸"; PolaroidFormat.WIDE -> "Wide 宽幅相纸"; else -> "Square 方形相纸" }
+            contentDescription = when (format) { PolaroidFormat.MINI -> copy.text("camera.paper_mini"); PolaroidFormat.WIDE -> copy.text("camera.paper_wide"); else -> copy.text("camera.paper_square") }
         }, shape = RoundedCornerShape(16.dp),
         color = if (selected) colors.secondaryContainer else Color.Transparent) {
         Column(Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {

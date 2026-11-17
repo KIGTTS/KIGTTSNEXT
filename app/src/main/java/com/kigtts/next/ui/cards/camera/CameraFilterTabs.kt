@@ -15,9 +15,10 @@ import com.kigtts.next.ui.components.ToolButton
 
 internal enum class CameraFilterTab { FILTERS, EFFECTS }
 @Composable internal fun CameraFilterTabs(current: CameraFilterTab, enabled: Boolean, vertical: Boolean, select: (CameraFilterTab) -> Unit) {
+    val copy = rememberCameraCopy()
     val buttons: @Composable () -> Unit = {
         CameraFilterTab.entries.forEach { tab ->
-            ToolButton(if (tab == CameraFilterTab.FILTERS) "滤镜" else "特效", if (tab == CameraFilterTab.FILTERS) Icons.Default.PhotoFilter else Icons.Default.AutoAwesome,
+            ToolButton(if (tab == CameraFilterTab.FILTERS) copy.text("camera.filters") else copy.text("camera.effects"), if (tab == CameraFilterTab.FILTERS) Icons.Default.PhotoFilter else Icons.Default.AutoAwesome,
                 { select(tab) }, Modifier.size(48.dp).semantics { role = Role.Tab; selected = current == tab }, size = 40.dp, enabled = enabled,
                 colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = if (current == tab) MaterialTheme.colorScheme.secondaryContainer else androidx.compose.ui.graphics.Color.Transparent))
         }

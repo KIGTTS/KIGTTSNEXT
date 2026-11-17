@@ -19,10 +19,11 @@ import com.kigtts.next.ui.settings.*
 @Composable
 internal fun CameraManualPanel(controller: CameraManualController, enabled: Boolean) {
     val capability = controller.capabilities
+    val copy = rememberCameraCopy()
     val manualLabel = uiText("option.manual")
     val autoLabel = uiText("option.auto")
     SettingsGroup(uiText("camera.manual_adjust")) {
-        SettingItem(uiText("camera.focus"), capability.reason ?: if (!capability.focusAvailable) uiText("camera.no_manual_focus") else "",
+        SettingItem(uiText("camera.focus"), capability.reason?.let { if (it.startsWith("camera.")) uiText(it) else it } ?: if (!capability.focusAvailable) uiText("camera.no_manual_focus") else "",
             Icons.Default.CenterFocusStrong, SettingPosition.FIRST) {
             Column {
                 ChoiceButtonGroup(uiText("camera.focus"), listOf(false, true), controller.manualFocus,
@@ -36,7 +37,7 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
                 }
             }
         }
-        SettingItem(uiText("camera.shutter"), capability.reason ?: if (!capability.shutterAvailable) uiText("camera.no_manual_shutter") else "",
+        SettingItem(uiText("camera.shutter"), capability.reason?.let { if (it.startsWith("camera.")) uiText(it) else it } ?: if (!capability.shutterAvailable) uiText("camera.no_manual_shutter") else "",
             Icons.Default.ShutterSpeed, SettingPosition.LAST) {
             Column {
                 ChoiceButtonGroup(uiText("camera.shutter"), listOf(false, true), !controller.automaticExposure,
@@ -44,13 +45,13 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
                 val range = capability.exposure
                 AnimatedVisibility(!controller.automaticExposure && range != null) {
                     if (range != null) Column {
-                        Text(shutterLabel(controller.shutterNanos ?: range.first) + " · ISO " + controller.sensorIso,
+                        Text(copy.shutter(controller.shutterNanos ?: range.first) + " · ISO " + controller.sensorIso,
                             Modifier.testTag("camera-manual-shutter-value"), style = MaterialTheme.typography.labelLarge)
                         Slider(shutterFraction(controller.shutterNanos ?: range.first, range),
                             { controller.exposeFor(shutterAt(it, range)) }, Modifier.testTag("camera-manual-shutter"), enabled = enabled)
                         Row(Modifier.horizontalScroll(rememberScrollState())) {
                             shutterStops(range).forEach { nanos -> MotionTextButton(feedbackClick { controller.exposeFor(nanos) },
-                                enabled = enabled) { Text(shutterLabel(nanos)) } }
+                                enabled = enabled) { Text(copy.shutter(nanos)) } }
                         }
                     }
                 }
@@ -61,9 +62,10 @@ internal fun CameraManualPanel(controller: CameraManualController, enabled: Bool
 
 @Composable
 internal fun CameraManualBadge(controller: CameraManualController, modifier: Modifier = Modifier) {
+    val copy = rememberCameraCopy()
     val labels = buildList {
         if (controller.manualFocus) add("MF")
-        controller.shutterNanos?.let { add(shutterLabel(it)) }
+        controller.shutterNanos?.let { add(copy.shutter(it)) }
     }
     AnimatedVisibility(labels.isNotEmpty(), modifier) {
         Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f)) {

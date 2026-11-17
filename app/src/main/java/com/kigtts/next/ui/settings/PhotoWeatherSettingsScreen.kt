@@ -1,5 +1,8 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
+import java.util.Locale
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -30,26 +33,31 @@ import com.kigtts.next.ui.components.feedbackClick
             preferences.saveKey(source, value); keyRevision++; editingKey = null
         }
     }
+    val autoLabel = uiText("option.auto")
+    val manualLabel = uiText("option.manual")
+    val customPlace = uiText("camera.weather.custom_place")
+    val placeNames = PhotoPlaceSource.entries.associateWith { uiText("camera.weather.place.${it.name.lowercase(Locale.ROOT)}") }
     SettingsLayout {
-        SettingsGroup("位置") {
-            SettingItem("位置来源", "自动时使用照片位置或手机定位", Icons.Default.LocationOn, SettingPosition.FIRST) {
-                SettingChoiceGroup("位置来源", listOf(false, true), manual, { if (it) "手动" else "自动" }, { selected ->
+        SettingsGroup(uiText("camera.weather.place")) {
+            SettingItem(uiText("camera.weather.place_source"), uiText("camera.weather.auto_location"), Icons.Default.LocationOn, SettingPosition.FIRST) {
+                SettingChoiceGroup(uiText("camera.weather.place_source"), listOf(false, true), manual, { if (it) manualLabel else autoLabel }, { selected ->
                     if (selected && location == null) editingLocation = true
                     else { preferences.manual = selected; manual = selected }
                 })
             }
-            SettingItem("手动位置", location?.let { "${it.name.ifBlank { "自定义位置" }} · ${it.latitude}, ${it.longitude}" } ?: "未设置",
+            SettingItem(uiText("camera.weather.manual_place"), location?.let { "${it.name.ifBlank { customPlace }} · ${it.latitude}, ${it.longitude}" } ?: uiText("camera.weather.unset"),
                 Icons.Default.EditLocationAlt, SettingPosition.MIDDLE, onClick = { editingLocation = true })
-            SettingItem("地名数据源", "", Icons.Default.Map, SettingPosition.LAST) {
-                SettingChoiceGroup("地名数据源", PhotoPlaceSource.entries, place, { it.label }, {
+            SettingItem(uiText("camera.weather.place_name_source"), "", Icons.Default.Map, SettingPosition.LAST) {
+                SettingChoiceGroup(uiText("camera.weather.place_name_source"), PhotoPlaceSource.entries, place, { placeNames.getValue(it) }, {
                     preferences.placeSource = it; place = it
                 })
             }
         }
-        SettingsGroup("天气数据源") {
+        SettingsGroup(uiText("camera.weather.source")) {
             PhotoWeatherSource.entries.forEachIndexed { index, source ->
                 val selected = source == weather
-                SettingItem(source.label, source.description, Icons.Default.Cloud,
+                SettingItem(uiText("camera.weather.source.${source.name.lowercase(Locale.ROOT)}"),
+                    uiText("camera.weather.detail.${source.name.lowercase(Locale.ROOT)}"), Icons.Default.Cloud,
                     if (index == 0) SettingPosition.FIRST else if (index == PhotoWeatherSource.entries.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
                     Modifier.selectable(selected, role = Role.RadioButton, onClick = feedbackClick {
                         if (selected && source.requiresKey) editingKey = source
@@ -57,10 +65,10 @@ import com.kigtts.next.ui.components.feedbackClick
                     }), trailing = { RadioButton(selected, null) })
             }
         }
-        SettingsGroup("服务密钥") {
+        SettingsGroup(uiText("camera.weather.keys")) {
             listOf(PhotoWeatherSource.AMAP, PhotoWeatherSource.SENIVERSE).forEachIndexed { index, source ->
                 val configured = remember(source, keyRevision) { preferences.key(source).isNotBlank() }
-                SettingItem(photoWeatherKeyLabel(source), if (configured) "已设置" else "未设置", Icons.Default.Key,
+                SettingItem(photoWeatherKeyLabel(source), if (configured) uiText("camera.weather.set") else uiText("camera.weather.unset"), Icons.Default.Key,
                     if (index == 0) SettingPosition.FIRST else SettingPosition.LAST, onClick = { editingKey = source })
             }
         }

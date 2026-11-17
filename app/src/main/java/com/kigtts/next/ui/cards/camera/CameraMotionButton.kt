@@ -24,9 +24,10 @@ import com.kigtts.next.ui.navigation.excludeCameraPull
 @Composable
 internal fun CameraMotionButton(requested: Boolean, available: Boolean, ready: Boolean, preparing: Boolean,
     enabled: Boolean, change: (Boolean) -> Unit) {
-    val status = when { !requested -> "关闭"; preparing -> "准备中"; ready -> "已开启"; !available -> "此镜头不可用"; else -> "准备中" }
+    val copy = rememberCameraCopy()
+    val status = when { !requested -> copy.text("action.close"); preparing -> copy.text("camera.preparing"); ready -> copy.text("camera.enabled"); !available -> copy.text("camera.lens_unavailable"); else -> copy.text("camera.preparing") }
     Box(Modifier.size(44.dp).excludeCameraPull()) {
-        ToolButton("实况照片：$status", if (requested) Icons.Default.MotionPhotosOn else Icons.Default.MotionPhotosOff,
+        ToolButton(copy.text("camera.status_motion", "value" to status), if (requested) Icons.Default.MotionPhotosOn else Icons.Default.MotionPhotosOff,
             { change(!requested) }, Modifier.size(44.dp).testTag("camera-motion").semantics { selected = requested },
             shapes = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: CircleShape, RoundedCornerShape(10.dp)),
             colors = IconButtonDefaults.filledTonalIconButtonColors(
