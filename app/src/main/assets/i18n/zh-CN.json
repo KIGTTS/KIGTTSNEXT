@@ -14,6 +14,7 @@
   "subtitle.size": "单字宽度占屏幕 {size}%",
   "subtitle.auto_on": "开启自动播放与朗读",
   "subtitle.baking": "正在缓存快捷文本语音",
+  "listening.standby": "待命",
   "subtitle.auto_off": "关闭自动播放与朗读",
   "quick.group_duplicate": "分组名称已存在，请使用其他名称",
   "quick.save_error": "未能保存。请检查内容与分组后重试。",

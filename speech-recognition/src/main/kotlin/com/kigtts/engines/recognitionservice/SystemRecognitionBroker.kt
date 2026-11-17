@@ -1,13 +1,11 @@
 package com.kigtts.engines.recognitionservice
 
-import android.os.Build
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.Flow
 
 internal const val SYSTEM_RECOGNITION_ID = "host.system-asr"
 
-internal fun systemRecognitionUnavailable() = if (Build.VERSION.SDK_INT < 33)
-    "断句识别需要 Android 13 或更新版本" else "未找到可用的系统识别服务"
+internal fun systemRecognitionUnavailable() = "未找到可用的系统识别服务"
 
 /** A built-in choice, owned by the service rather than installed or started as a plugin. */
 internal class SystemRecognitionBroker(private val plugins: RecognitionBroker, private val system: AsrEngine) : RecognitionBroker {

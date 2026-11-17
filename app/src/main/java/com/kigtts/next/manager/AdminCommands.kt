@@ -73,7 +73,7 @@ class AdminCommands(private val context: Context, private val host: HostPluginRu
         }
         "asr-test" -> host.mutate {
             val engine = requireNotNull(manager.registry.plugin(args.getString("id"))?.asr) { "语音识别插件未加载" }
-            probeInstalledAsr(engine, requireNotNull(file))
+            probeInstalledAsr(engine, requireNotNull(file), segmented = args.optBoolean("segmented"))
         }
         "tts-test" -> host.mutate {
             val plugin=requireNotNull(manager.registry.plugin(args.getString("id")));val engine=requireNotNull(plugin.tts)

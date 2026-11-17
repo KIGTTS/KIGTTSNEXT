@@ -26,7 +26,7 @@ internal fun recognitionServicePage(id: String, settings: RecognitionServiceSett
         ) + all.map { provider ->
             val subtitle = when {
                 provider.pluginId == SYSTEM_RECOGNITION_ID -> if (provider.info.availability == EngineAvailability.READY)
-                    "断句后识别 · 由系统处理，可能需要联网" else systemRecognitionUnavailable()
+                    "由系统录音和断句，可能需要联网" else systemRecognitionUnavailable()
                 !provider.enabled -> "已停用"
                 provider.info.availability == EngineAvailability.READY -> recognitionKind(provider.info.streaming)
                 else -> "待配置"

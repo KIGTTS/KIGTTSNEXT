@@ -2,19 +2,25 @@ package com.kigtts.engines.recognitionservice
 
 import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.flow.Flow
 
 class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { null }) : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-recognition", "语音识别服务", "聆听字幕、语音输入与识别包", version = "0.8.4")
     private lateinit var settings: RecognitionServiceSettings
     private lateinit var broker: RecognitionBroker
     private lateinit var facade: ServiceRecognition
+    private var system: AndroidSystemRecognition? = null
     override val asr: AsrEngine get() = facade
+    fun systemMicrophone(): ((Deferred<Unit>, RecognitionConfig) -> Flow<RecognitionEvent>)? {
+        val engine = system ?: return null
+        return engine::listen.takeIf { settings.current(broker.providers())?.pluginId == SYSTEM_RECOGNITION_ID }
+    }
     override suspend fun attach(environment: PluginEnvironment) {
         settings = RecognitionServiceSettings(environment.storage, legacyEnabled)
         val providers = requireNotNull(environment.recognitionBroker) { "宿主未授予语音识别服务能力" }
-        broker = (environment as? AndroidPluginEnvironment)?.let {
-            SystemRecognitionBroker(providers, AndroidSystemRecognition(it.context))
-        } ?: providers
+        system = (environment as? AndroidPluginEnvironment)?.let { AndroidSystemRecognition(it.context) }
+        broker = system?.let { SystemRecognitionBroker(providers, it) } ?: providers
         facade = ServiceRecognition(settings, broker)
     }
     private val entry = SettingsEntry("manager", "语音识别", "manager", PluginIcon.MIC,

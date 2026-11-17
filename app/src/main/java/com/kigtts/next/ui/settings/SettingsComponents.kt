@@ -80,9 +80,10 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     enabled: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
     badge: com.kigtts.plugin.api.PluginBadge? = null,
+    corners: CornerBasedShape = MaterialTheme.shapes.small,
     content: @Composable ColumnScope.() -> Unit = {}) {
     val located = modifier.settingFocus(title)
-    val shape = animatedSettingShape(position, MaterialTheme.shapes.small)
+    val shape = animatedSettingShape(position, corners)
     val body: @Composable () -> Unit = {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -1,5 +1,6 @@
 package com.kigtts.next.audio
 
+import com.kigtts.engines.recognitionservice.RecognitionServicePlugin
 import com.kigtts.next.state.AppState
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
@@ -55,6 +56,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         }
         if (!audio.hasMicrophonePermission()) { pending = session; requests.trySend(Unit); return }
         pending = null
+        val systemMicrophone = (registry.plugin(session.serviceId) as? RecognitionServicePlugin)?.systemMicrophone()
         if (session.disableAutomaticRead) automaticRead(false)
         val previous = job; previous?.cancel()
         val epoch = ++generation
@@ -76,7 +78,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 if (currentSession?.readFinalized == true && state().autoPlayback && text.isNotBlank()) finalizedSpeech(text, false)
             }
             try {
-                if (streaming) engine.recognizeStream(captureUntil(engine.info.inputFormat, stop), session.config).collect { event ->
+                if (streaming) (systemMicrophone?.invoke(stop, session.config)
+                    ?: engine.recognizeStream(captureUntil(engine.info.inputFormat, stop), session.config)).collect { event ->
                     if (epoch != generation) return@collect
                     when (event) {
                         RecognitionEvent.Started -> initialized.complete(Unit)

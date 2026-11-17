@@ -20,6 +20,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import com.kigtts.next.i18n.uiText
 
 /** Wrap at the actual panel width. Short captions sit at the bottom; long captions keep a readable history. */
 @Composable
@@ -47,13 +48,17 @@ internal fun ListeningCaptionContent(text: String, fontSize: Float, singleLine: 
             }
         }
     }
+    val empty = text.isBlank()
+    val caption = if (empty) uiText("listening.standby")
+        else if (singleLine) text.substringAfterLast('\n') else text
+    val foreground = MaterialTheme.colorScheme.onSurfaceVariant
     Box(modifier.clipToBounds(), contentAlignment = if (singleLine) Alignment.CenterStart else Alignment.BottomStart) {
-        Text(if (singleLine) text.substringAfterLast('\n') else text, Modifier.fillMaxWidth().testTag("listening-content").then(
+        Text(caption, Modifier.fillMaxWidth().testTag("listening-content").then(
             if (singleLine) Modifier else Modifier.nestedScroll(gesture).verticalScroll(scroll)),
             fontSize = resolvedSize.sp, lineHeight = (resolvedSize * 1.35f).sp,
             softWrap = !singleLine, maxLines = if (singleLine) 1 else Int.MAX_VALUE,
             overflow = if (singleLine) TextOverflow.Ellipsis else TextOverflow.Clip,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            color = if (empty) foreground.copy(alpha = .46f) else foreground)
     }
 }
 private data class ScrollPosition(val value: Int, val maximum: Int, val dragged: Boolean, val following: Boolean)

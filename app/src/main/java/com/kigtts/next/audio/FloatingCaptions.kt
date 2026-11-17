@@ -8,6 +8,8 @@ import android.view.WindowManager
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -27,17 +29,23 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.overlay.OverlayViewOwner
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.UiLanguage
 import com.kigtts.next.theme.KigttsTheme
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.components.MaterialSymbols
+import com.kigtts.next.ui.components.CornerNeighbors
+import com.kigtts.next.ui.components.LocalCornerRadius
+import com.kigtts.next.ui.components.connectedShape
 import com.kigtts.next.ui.components.ProvideButtonFeedback
 import com.kigtts.next.ui.components.ToolButton
 import com.kigtts.next.ui.home.ListeningCaptionContent
+import com.kigtts.next.ui.home.subtitleZoom
 import kotlin.math.roundToInt
 
 /** The overlay observes the same appearance as the app, but owns its own window lifecycle. */
 internal class FloatingCaptions(context: Context, private val toggle: () -> Unit, private val dismiss: () -> Unit,
-    private val resize: (Float) -> Unit, private val saveSize: () -> Unit) {
+    private val resize: (Float) -> Unit, private val scaleSize: (Float) -> Unit, private val saveSize: () -> Unit) {
     private val context by lazy { if (Build.VERSION.SDK_INT >= 30) runCatching {
         val display = context.getSystemService(android.hardware.display.DisplayManager::class.java)?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
         if (display == null) context else context.createDisplayContext(display)
@@ -52,8 +60,8 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
     private var frameScheduled = false
     private var content by mutableStateOf(Content())
 
-    fun show(text: String, size: Float, theme: ThemeSettings, active: Boolean, haptics: Boolean) {
-        content = Content(text.takeLast(4000), size, theme, active, haptics)
+    fun show(text: String, size: Float, theme: ThemeSettings, active: Boolean, haptics: Boolean, locale: String) {
+        content = Content(text.takeLast(4000), size, theme, active, haptics, locale)
         if (view != null) return
         val width = availableWidth()
         val layout = WindowManager.LayoutParams(width, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -70,9 +78,11 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
             lifecycle.attach(this)
             setContent {
                 val state = content
-                KigttsTheme(state.theme) {
-                    ProvideButtonFeedback(state.haptics) {
-                        FloatingCaptionContent(state, ::dragBy, toggle, dismiss, resize, saveSize)
+                CompositionLocalProvider(LocalUiLocale provides state.locale) {
+                    KigttsTheme(state.theme) {
+                        ProvideButtonFeedback(state.haptics) {
+                            FloatingCaptionContent(state, ::dragBy, toggle, dismiss, resize, scaleSize, saveSize)
+                        }
                     }
                 }
             }
@@ -123,13 +133,13 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
     }
 
     internal data class Content(val text: String = "", val size: Float = 20f, val theme: ThemeSettings = ThemeSettings(),
-        val active: Boolean = false, val haptics: Boolean = true)
+        val active: Boolean = false, val haptics: Boolean = true, val locale: String = UiLanguage.STANDARD.tag)
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float) -> Unit, toggle: () -> Unit, close: () -> Unit,
-    resize: (Float) -> Unit, saveSize: () -> Unit) {
+    resize: (Float) -> Unit, scaleSize: (Float) -> Unit, saveSize: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     var showSize by remember { mutableStateOf(false) }
     Surface(shape = MaterialTheme.shapes.medium, color = colors.surfaceContainerHigh, contentColor = colors.onSurface) {
@@ -142,18 +152,14 @@ private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float
                     Surface(Modifier.padding(start = 4.dp).size(32.dp, 4.dp),
                         shape = MaterialTheme.shapes.extraSmall, color = colors.outlineVariant) {}
                 }
-                if (state.active) CaptionTool("停止聆听", "stop", Icons.Default.Stop, toggle)
-                else CaptionTool("开始聆听", "mic", Icons.Default.Mic, toggle)
-                Spacer(Modifier.width(4.dp))
-                CaptionTool("关闭字幕浮窗", "close", Icons.Default.Close, close)
+                CaptionWindowActions(state.active, toggle, close)
             }
             if (showSize) Slider(state.size, resize, Modifier.fillMaxWidth().padding(horizontal = 4.dp)
                 .semantics { contentDescription = "浮窗字号" }, valueRange = CaptionFontSettings.WINDOW_RANGE, onValueChangeFinished = saveSize)
             val maxHeight = with(LocalDensity.current) { (state.size * 5.4f).sp.toDp() }.coerceAtMost(240.dp)
-            if (state.text.isNotBlank()) ListeningCaptionContent(state.text, state.size, singleLine = false,
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp).heightIn(max = maxHeight))
-            else Text(if (state.active) "正在聆听…" else "待命", Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
+            ListeningCaptionContent(state.text, state.size, singleLine = false,
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp).heightIn(max = maxHeight)
+                    .subtitleZoom(scaleSize, onZoomEnd = saveSize, scale = scaleSize))
         }
     }
 }
@@ -161,5 +167,26 @@ private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CaptionTool(label: String, symbol: String, fallback: ImageVector, action: () -> Unit) {
-    ToolButton(label, MaterialSymbols.vector(symbol) ?: fallback, action)
+    val radius = LocalCornerRadius.current.coerceAtMost(16.dp)
+    val corners = connectedShape(outer = radius)
+    ToolButton(label, MaterialSymbols.vector(symbol) ?: fallback, action,
+        shapes = IconButtonDefaults.shapes(corners, connectedShape(pressed = true, outer = radius)))
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun CaptionWindowActions(active: Boolean, toggle: () -> Unit, close: () -> Unit) {
+    val start = remember { MutableInteractionSource() }; val end = remember { MutableInteractionSource() }
+    val startPressed by start.collectIsPressedAsState(); val endPressed by end.collectIsPressedAsState()
+    val radius = LocalCornerRadius.current.coerceAtMost(16.dp)
+    @Composable fun shape(neighbors: CornerNeighbors, adjacentPressed: Boolean) = IconButtonDefaults.shapes(
+        connectedShape(neighbors, neighborPressed = adjacentPressed, outer = radius),
+        connectedShape(neighbors, pressed = true, outer = radius))
+    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        ToolButton(if (active) "停止聆听" else "开始聆听",
+            if (active) MaterialSymbols.vector("stop") ?: Icons.Default.Stop else MaterialSymbols.vector("mic") ?: Icons.Default.Mic,
+            toggle, interactionSource = start, shapes = shape(CornerNeighbors(end = true), endPressed))
+        ToolButton("关闭字幕浮窗", MaterialSymbols.vector("close") ?: Icons.Default.Close, close,
+            interactionSource = end, shapes = shape(CornerNeighbors(start = true), startPressed))
+    }
 }

@@ -18,7 +18,10 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     private val captionFonts = CaptionFontSettings(context)
     private val windowSize = MutableStateFlow(captionFonts.window())
     private val overlay = FloatingCaptions(context, ::toggleFromWindow, ::dismissWindow,
-        { size -> windowSize.value = size }, { captionFonts.saveWindow(windowSize.value) })
+        { size -> windowSize.value = size }, { factor ->
+            val range = CaptionFontSettings.WINDOW_RANGE
+            windowSize.update { (it * factor).coerceIn(range.start, range.endInclusive) }
+        }, { captionFonts.saveWindow(windowSize.value) })
     private val manual = MutableStateFlow(Manual())
     private var pendingPermission: (() -> Unit)? = null
     private var startOnResume = false
@@ -27,10 +30,10 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     private val observation = scope.launch {
         var foreground = false
         val output = state.map { Output(it.listening && !it.voiceInputActive, it.recognitionOutput,
-            it.transcript, it.theme, it.hapticsEnabled) }.distinctUntilChanged()
+            it.transcript, it.theme, it.hapticsEnabled, it.uiLocale) }.distinctUntilChanged()
         combine(output, manual, windowSize, ::Triple).collect { (value, window, fontSize) ->
                 if ((window.open || value.active && value.kind != CaptionOutput.PANEL && !window.suppressed) && Settings.canDrawOverlays(context)) {
-                    runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme, value.active, value.haptics) }
+                    runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme, value.active, value.haptics, value.locale) }
                         .onFailure { manual.value = Manual(suppressed = true); message("无法显示字幕浮窗，请检查悬浮窗权限") }
                 } else overlay.close()
                 if (foreground != value.active) {
@@ -90,5 +93,5 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close(); context.stopService(Intent(context, RecognitionForegroundService::class.java)) }
     private data class Manual(val open: Boolean = false, val suppressed: Boolean = false)
     private data class Output(val active: Boolean, val kind: CaptionOutput, val text: String,
-        val theme: com.kigtts.next.theme.ThemeSettings, val haptics: Boolean)
+        val theme: com.kigtts.next.theme.ThemeSettings, val haptics: Boolean, val locale: String)
 }

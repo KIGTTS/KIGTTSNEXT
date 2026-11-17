@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Tune
@@ -17,6 +18,7 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
 import com.kigtts.next.theme.AppearanceCardSurface
 import com.kigtts.next.ui.components.MaterialSymbols
+import com.kigtts.next.ui.components.LocalCornerRadius
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
 import com.kigtts.next.ui.settings.SettingItem
@@ -25,10 +27,12 @@ import com.kigtts.next.ui.settings.SettingsGroup
 
 @Composable
 internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
+    val inset = 8.dp
+    val innerRadius = ((LocalCornerRadius.current + 4.dp).coerceAtMost(24.dp) - inset).coerceAtLeast(0.dp)
     AppearanceCardSurface(Modifier.fillMaxWidth()) {
         SettingItem("打开字幕浮窗", "可先打开浮窗，再开始聆听",
             MaterialSymbols.vector("open_in_new") ?: Icons.AutoMirrored.Filled.OpenInNew, SettingPosition.SINGLE,
-            modifier = Modifier.padding(8.dp), onClick = open, enabled = ready)
+            modifier = Modifier.padding(inset), onClick = open, enabled = ready, corners = RoundedCornerShape(innerRadius))
     }
 }
 
