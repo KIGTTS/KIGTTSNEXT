@@ -44,6 +44,8 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     private val uiInvalidations = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 64,
         onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
     val uiChanges: kotlinx.coroutines.flow.SharedFlow<String> = uiInvalidations
+    private val catalogRevision = kotlinx.coroutines.flow.MutableStateFlow(0L)
+    val catalogChanges: kotlinx.coroutines.flow.StateFlow<Long> = catalogRevision
     private val mutation = Mutex()
     private val loaded = linkedMapOf<String, Pair<Int, RemotePlugin>>()
     private val builtinBrokers = mutableListOf<HostSpeechBroker>()
@@ -71,7 +73,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val proxy = loaded[id]?.second ?: return@withLock false
         if (!proxy.alive) return@withLock false
         val changed = proxy.refresh(context)
-        if (changed) registry.replace(builtins + loaded.values.map { it.second })
+        if (changed) {
+            registry.replace(builtins + loaded.values.map { it.second })
+            catalogRevision.value++
+        }
         changed
     }
     private suspend fun reloadLocked() {
@@ -133,6 +138,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         status = statuses
         installedCatalogReady = true
         registry.replace(builtins + loaded.values.map { it.second })
+        catalogRevision.value++
     }
     private suspend fun unload(id: String) {
         onNotificationsUnavailable(id)

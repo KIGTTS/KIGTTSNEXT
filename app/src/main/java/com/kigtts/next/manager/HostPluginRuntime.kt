@@ -4,9 +4,11 @@ import android.app.Application
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.editingCardId
 import com.kigtts.plugin.runtime.PluginManager
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.lang.ref.WeakReference
@@ -15,13 +17,15 @@ import java.lang.ref.WeakReference
 class HostPluginRuntime private constructor(private val application: Application) {
     internal val legacyPiperStartupChecked = java.util.concurrent.atomic.AtomicBoolean(false)
     val quickTexts=com.kigtts.next.state.QuickTextLibrary(com.kigtts.next.state.QuickPhraseStore(application))
-    val reading = com.kigtts.engines.speechservice.SpeechServicePlugin(
+    val reading: com.kigtts.engines.speechservice.SpeechServicePlugin = com.kigtts.engines.speechservice.SpeechServicePlugin(
         shortcutTexts = flow { quickTexts.phrases.collect { phrases ->
             emit(phrases.filter { it.cardType() == com.kigtts.next.state.QuickCardType.TEXT && it.text.isNotBlank() }
                 .associate { it.id to it.text })
-        } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice)
+        } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice,
+        catalogUpdates = flow<Unit> { voiceCatalogUpdates().collect { emit(it) } })
     private val recognition = com.kigtts.engines.recognitionservice.RecognitionServicePlugin(::legacyRecognitionEnabled)
     val manager = PluginManager(application, listOf(reading, recognition), com.kigtts.next.sharing.pausedSharingPlugins)
+    private fun voiceCatalogUpdates(): Flow<Unit> = manager.catalogChanges.map { Unit }
     private fun legacyRecognitionEnabled(): Boolean? = manager.packages.installed()
         .firstOrNull { it.manifest.id == recognition.descriptor.id }?.enabled
     private fun voicePluginRevisions(): Map<String, String>? = if (!manager.installedCatalogReady) null

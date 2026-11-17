@@ -12,12 +12,12 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 
 /** Only the selected voice is prepared; missing, disabled and still-loading engines are not deletions. */
-@OptIn(ExperimentalCoroutinesApi::class)
 internal class ServiceCache(directory: File, private val settings: ServiceSettings, private val broker: SpeechBroker,
     phrases: Flow<Map<String, String>>, private val installed: () -> Map<String, String>?,
     private val systemRevision: () -> String, private val synthesis: ServiceSynthesis, size: MutableStateFlow<Long>,
     private val mayCacheProvider: (String) -> Boolean = { true },
-    private val parallelProvider: (String) -> Boolean = { it == "engine.cloud-tts" }) {
+    private val parallelProvider: (String) -> Boolean = { it == "engine.cloud-tts" },
+    catalogUpdates: Flow<Unit> = emptyFlow()) {
     private val store = SpeechAudioCache(directory, size)
     val bytes get() = store.bytes
     private val _bakeProgress = MutableStateFlow<Float?>(null)
@@ -28,15 +28,14 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private val foregroundOrder = Mutex()
     private val realtimeRequests = AtomicInteger()
     @Volatile private var pendingRealtimeShortcut: AudioCacheKey? = null
-    private val provisionalRevision = MutableStateFlow(0)
     @Volatile private var shortcuts = emptyMap<String, String>()
     @Volatile private var installedRevisions = emptyMap<String, String>()
     @Volatile private var lastPlan: Plan? = null
-    @Volatile private var clearedPlan: Plan? = null
+    private val pending = MutableStateFlow<BakeWork?>(null)
     private val revision = AtomicInteger()
-    private data class Plan(val voice: CacheVoice, val rate: Float, val phrases: Map<String, String>, val revision: Int,
+    private class BakeWork(val phrases: Map<String, String>)
+    private data class Plan(val voice: CacheVoice, val rate: Float, val work: BakeWork?, val revision: Int,
         val prebakeVersion: String?, val parallel: Boolean)
-    private data class BakeRetry(val plan: Plan, val failures: Int, val afterMillis: Long, val provisional: Int)
     private data class CatalogSnapshot(val owners: Map<String, String>?, val providers: Map<String, TtsInfo>)
     private var reconciled: CatalogSnapshot? = null
     private var reconciledVoice: CacheVoice? = null
@@ -44,35 +43,38 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
 
     init {
         scope.launch {
+            var receivedInitial = false
             phrases.collect { items ->
-                if (items != shortcuts) {
-                    shortcuts = items
+                val before = shortcuts
+                if (!receivedInitial || items != before) {
+                    shortcuts = items.toMap()
                     store.updatePhrases(items)
+                    if (receivedInitial) {
+                        val changedItems = if (settings.cacheEnabled) items.filter { (id, text) -> before[id] != text }
+                            else emptyMap()
+                        pending.update { old ->
+                            val retained = old?.phrases.orEmpty().filter { (id, text) -> items[id] == text }
+                            val work = retained + changedItems
+                            if (work == old?.phrases) old else work.takeIf { it.isNotEmpty() }?.let(::BakeWork)
+                        }
+                    }
+                    receivedInitial = true
                     changed()
-                } else store.updatePhrases(items)
+                }
             }
         }
         scope.launch {
-            var retry: BakeRetry? = null
-            merge(signal.receiveAsFlow(), flow { while (true) { emit(Unit); delay(5_000) } })
+            merge(signal.receiveAsFlow(), pending.map { Unit }, catalogUpdates)
                 .map { plan() }.distinctUntilChanged().collectLatest { plan ->
-                    if (plan != null) {
-                        delay(500)
-                        while (validPlan(plan)) {
-                            val pending = retry?.takeIf { it.plan == plan && it.provisional == provisionalRevision.value }
-                            if (pending != null) {
-                                val remaining = pending.afterMillis - monotonicMillis()
-                                if (remaining > 0) withTimeoutOrNull(remaining) { provisionalRevision.first { it != pending.provisional } }
-                                if (!validPlan(plan)) break
-                            }
-                            val before = provisionalRevision.value
-                            val complete = try { prepare(plan) } finally { _bakeProgress.value = null }
-                            if (complete) { retry = null; break }
-                            if (!validPlan(plan)) break
-                            val failures = ((pending?.failures ?: 0) + 1).coerceAtMost(5)
-                            val cooldown = (120_000L shl (failures - 1)).coerceAtMost(900_000L)
-                            retry = BakeRetry(plan, failures, monotonicMillis() + cooldown, before)
-                        }
+                    val work = plan?.work ?: return@collectLatest
+                    delay(500)
+                    if (validPlan(plan)) {
+                        try {
+                            prepare(plan)
+                            // Keep work after interruption by foreground speech. A completed attempt,
+                            // including failed entries, never starts a new background job on a timer.
+                            if (validPlan(plan)) pending.compareAndSet(work, null)
+                        } finally { _bakeProgress.value = null }
                     }
                 }
         }
@@ -81,6 +83,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     fun optionsChanged() {
         store.suspendWrites()
         revision.incrementAndGet()
+        if (!settings.cacheEnabled) pending.value = null
         changed()
     }
     fun forget(owner: String, packs: Set<String>) {
@@ -88,15 +91,14 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         store.forgetPacks(owner, packs)
         optionsChanged()
     }
-    fun clear() { clearedPlan = lastPlan ?: currentPlan(catalog()); store.clear(); changed() }
+    fun clear() { pending.value = null; store.clear(); changed() }
     fun rebuild(): String {
         if (!settings.cacheEnabled) return "请先开启自动缓存"
         if (shortcuts.isEmpty()) return "没有可预合成的快捷文本"
         val plan = currentPlan(catalog()) ?: return "当前声音还不能预合成，请检查引擎和权限"
         revision.incrementAndGet()
-        clearedPlan = null
         store.forgetShortcuts(plan.voice)
-        changed()
+        pending.value = BakeWork(shortcuts)
         return "已安排重新缓存当前声音的快捷文本"
     }
     fun close() { scope.cancel(); store.suspendWrites() }
@@ -125,7 +127,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         val provider = selectedProvider(catalog, owner)
         val voice = if (owner == null) systemVoice() else provider?.takeIf { mayCacheProvider(owner) }
             ?.let { voice(it, settings.voice) } ?: return null
-        return Plan(voice, settings.rate, shortcuts, revision.get(), provider?.info?.profiles?.prebake,
+        return Plan(voice, settings.rate, pending.value, revision.get(), provider?.info?.profiles?.prebake,
             provider?.let { parallelProvider(it.pluginId) } == true)
     }
     private fun selectedProvider(catalog: List<TtsProvider>?, owner: String?) = catalog?.firstOrNull {
@@ -147,8 +149,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
             reconciledVoice = plan?.voice
         }
         lastPlan = plan
-        if (clearedPlan != null && plan != null && clearedPlan != plan) clearedPlan = null
-        return plan?.takeIf { settings.cacheEnabled && it != clearedPlan && it.phrases.isNotEmpty() && canBake(it) }
+        return plan?.takeIf { settings.cacheEnabled && it.work != null && canBake(it) }
     }
     private fun reconcile(inventory: Map<String, String>?, ready: List<TtsProvider>, plan: Plan?) {
         // Even a READY engine can list only loaded/configured packs. Only confirmed deletions
@@ -160,8 +161,8 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         store.reconcile(inventory?.keys?.plus(SYSTEM_PROVIDER), revisions)
     }
     private fun canBake(plan: Plan) = plan.parallel || realtimeRequests.get() == 0
-    private suspend fun prepare(plan: Plan): Boolean {
-        val work = plan.phrases.map { (id, text) ->
+    private suspend fun prepare(plan: Plan) {
+        val work = requireNotNull(plan.work).phrases.map { (id, text) ->
             val request = TtsRequest(text, rate = plan.rate,
                 profile = if (plan.prebakeVersion != null) TtsProfile.PREBAKE else TtsProfile.REALTIME)
             AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null, plan.prebakeVersion) to request
@@ -170,12 +171,12 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         fun publishProgress() {
             _bakeProgress.value = if (validPlan(plan) && ready.size < work.size) ready.size.toFloat() / work.size else null
         }
-        if (ready.size == work.size) return true
+        if (ready.size == work.size) return
         for (replaceProvisional in listOf(false, true)) {
-            // Fill holes before upgrading playable entries. Retry missing entries later if one failed.
-            if (replaceProvisional && work.any { (key, _) -> !store.has(key) && !store.hasProvisional(key) }) return false
+            // Fill holes before upgrading playable entries. Keep provisional audio if a hole failed.
+            if (replaceProvisional && work.any { (key, _) -> !store.has(key) && !store.hasProvisional(key) }) return
             for ((key, request) in work) {
-                if (!validPlan(plan)) return true
+                if (!validPlan(plan)) return
                 if (store.has(key)) { if (ready.add(key)) publishProgress(); continue }
                 if (store.hasProvisional(key) != replaceProvisional) continue
                 try {
@@ -205,10 +206,9 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                 yield()
             }
         }
-        return !validPlan(plan) || work.all { (key, _) -> store.has(key) }
     }
     private fun validPlan(plan: Plan) = canBake(plan) && settings.cacheEnabled &&
-        plan == lastPlan && clearedPlan != plan && plan.revision == revision.get()
+        plan == lastPlan && pending.value === plan.work && plan.revision == revision.get()
 
     private suspend fun playCached(key: AudioCacheKey, emit: suspend (SynthesisEvent) -> Unit): Boolean {
         val reader = store.open(key) ?: return false
@@ -229,10 +229,14 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     }
 
     private suspend fun realtime(parallel: Boolean, task: suspend () -> Unit) {
-        realtimeRequests.incrementAndGet(); changed()
+        realtimeRequests.incrementAndGet()
+        if (pending.value != null) changed()
         try {
             if (parallel) task() else exclusiveGeneration.withLock { task() }
-        } finally { realtimeRequests.decrementAndGet(); changed() }
+        } finally {
+            realtimeRequests.decrementAndGet()
+            if (pending.value != null) changed()
+        }
     }
 
     suspend fun foreground(request: TtsRequest, phraseId: String?, emit: suspend (SynthesisEvent) -> Unit) =
@@ -268,8 +272,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                             if (event is SynthesisEvent.Audio) writer?.append(event.audio)
                         }
                         currentCoroutineContext().ensureActive()
-                        if (valid && settings.cacheEnabled && writer?.finish() == true && provisional != null)
-                            provisionalRevision.update { it + 1 }
+                        if (valid && settings.cacheEnabled) writer?.finish()
                     }
                 }
             } finally { pendingRealtimeShortcut = null }
@@ -278,6 +281,5 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private companion object {
         const val DEFAULT_PACK = "default"
         val defaultBakeLanguage = TtsRequest("").language
-        fun monotonicMillis() = System.nanoTime() / 1_000_000L
     }
 }

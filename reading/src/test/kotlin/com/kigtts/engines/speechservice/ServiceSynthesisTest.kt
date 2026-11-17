@@ -35,6 +35,41 @@ class ServiceSynthesisTest {
         }
     }
     private fun settings() = ServiceSettings(PluginStorage(files.newFolder())).also { it.provider = "test.provider"; it.voice = "chosen" }
+    private class ShortcutUpdates(initial: Map<String, String> = emptyMap()) {
+        private val loaded = CompletableDeferred<Unit>()
+        private val updates = MutableStateFlow(initial)
+        val flow = flow {
+            emit(updates.value)
+            loaded.complete(Unit)
+            emitAll(updates)
+        }
+        suspend fun set(items: Map<String, String>) { loaded.await(); updates.value = items }
+        suspend fun awaitBaseline() = loaded.await()
+    }
+
+    @Test fun onlyNewOrEditedSpeakableTextQueuesWorkOnAnIdleCache() = runBlocking {
+        val broker = profiledBroker()
+        val options = settings()
+        val facade = ServiceSynthesis(options, broker, System())
+        val phrases = ShortcutUpdates(linkedMapOf("a" to "甲", "b" to "乙"))
+        val inventory = MutableStateFlow(Unit)
+        val cache = ServiceCache(files.newFolder(), options, broker, phrases.flow, { mapOf("test.provider" to "1") },
+            { "system" }, facade, MutableStateFlow(0L), catalogUpdates = inventory)
+        facade.cache = cache
+        try {
+            phrases.awaitBaseline()
+            phrases.set(linkedMapOf("b" to "乙", "a" to "甲")) // Reorder only.
+            cache.changed()
+            assertNull(withTimeoutOrNull(700) { cache.bakeProgress.first { it != null } })
+            assertTrue(broker.requests.isEmpty())
+            phrases.set(mapOf("a" to "甲", "b" to "新"))
+            withTimeout(5_000) { while (cache.bytes.value == 0L) delay(10) }
+            assertEquals(listOf("新"), broker.requests.map { it.text })
+            phrases.set(mapOf("a" to "甲")) // Deleting removes audio without synthesizing.
+            withTimeout(5_000) { while (cache.bytes.value != 0L) delay(10) }
+            assertEquals(listOf("新"), broker.requests.map { it.text })
+        } finally { facade.close() }
+    }
     @Test fun backgroundProgressCountsCompletedEntriesAndClearsWhenFinished() = runBlocking {
         val broker = profiledBroker()
         val preparing = CompletableDeferred<Unit>()
@@ -46,10 +81,12 @@ class ServiceSynthesisTest {
             emit(SynthesisEvent.Audio(PcmAudio(byteArrayOf(2, 0))))
         }
         val options = settings(); val facade = ServiceSynthesis(options, broker, System())
-        val cache = ServiceCache(files.newFolder(), options, broker, MutableStateFlow(linkedMapOf("a" to "甲", "b" to "乙")),
+        val phrases = ShortcutUpdates()
+        val cache = ServiceCache(files.newFolder(), options, broker, phrases.flow,
             { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
         facade.cache = cache
         try {
+            phrases.set(linkedMapOf("a" to "甲", "b" to "乙"))
             withTimeout(10_000) { preparing.await() }
             assertNull(cache.bakeProgress.value)
             firstAudio.complete(Unit)
@@ -92,7 +129,8 @@ class ServiceSynthesisTest {
         val options = settings()
         val facade = ServiceSynthesis(options, broker, System())
         val cacheDir = files.newFolder()
-        val cache = ServiceCache(cacheDir, options, broker, MutableStateFlow(mapOf("phrase" to "你好")),
+        val phrases = ShortcutUpdates()
+        val cache = ServiceCache(cacheDir, options, broker, phrases.flow,
             { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
         facade.cache = cache
         suspend fun speak(id: String? = null) = facade.synthesize(TtsRequest("你好"), id)
@@ -101,6 +139,7 @@ class ServiceSynthesisTest {
         fun baked() = cacheDir.walkTopDown().firstOrNull { it.isFile && it.name.startsWith("q_") }?.name
         try {
             assertEquals(2, speak())
+            phrases.set(mapOf("phrase" to "你好"))
             waitFor { baked() != null }
             assertEquals(4, speak("phrase"))
             assertEquals(2, speak())
@@ -109,19 +148,17 @@ class ServiceSynthesisTest {
             assertEquals(4, speak("phrase"))
             assertEquals(2, speak())
             assertEquals(listOf(TtsProfile.REALTIME, TtsProfile.PREBAKE, TtsProfile.REALTIME), broker.requests.map { it.profile })
-            val oldBake = baked()
-            updateProfiles("fast-v2", "quality-v2")
+            updateProfiles("fast-v2", "quality-v2"); cache.changed()
             // New baked key is not ready: return live audio without poisoning it.
             assertEquals(2, speak("phrase"))
-            waitFor { baked()?.let { it != oldBake } == true }
-            assertEquals(4, speak("phrase"))
+            assertEquals(1, broker.requests.count { it.profile == TtsProfile.PREBAKE })
             val liveCount = broker.requests.count { it.profile == TtsProfile.REALTIME }
             assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
             assertNull(baked())
             assertEquals(2, speak())
             assertEquals(liveCount, broker.requests.count { it.profile == TtsProfile.REALTIME })
             waitFor { baked() != null }
-            assertEquals(3, broker.requests.count { it.profile == TtsProfile.PREBAKE })
+            assertEquals(2, broker.requests.count { it.profile == TtsProfile.PREBAKE })
             assertEquals(4, speak("phrase"))
             val custom = facade.synthesize(TtsRequest("你好", rate = .8f, profile = TtsProfile.PREBAKE), "phrase")
                 .filterIsInstance<SynthesisEvent.Audio>().single().audio.bytes.first().toInt()
@@ -149,10 +186,12 @@ class ServiceSynthesisTest {
         val options = settings()
         val facade = ServiceSynthesis(options, broker, System())
         val cacheDir = files.newFolder()
-        facade.cache = ServiceCache(cacheDir, options, broker, MutableStateFlow(linkedMapOf("a" to "甲", "b" to "乙")),
+        val phrases = ShortcutUpdates()
+        facade.cache = ServiceCache(cacheDir, options, broker, phrases.flow,
             { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
         suspend fun speak() = facade.synthesize(TtsRequest("甲"), "a").filterIsInstance<SynthesisEvent.Audio>().single().audio.bytes[0].toInt()
         try {
+            phrases.set(linkedMapOf("a" to "甲", "b" to "乙"))
             withTimeout(10_000) {
                 initial.await()
                 assertEquals(2, speak())
@@ -179,9 +218,11 @@ class ServiceSynthesisTest {
         }
         val options = settings()
         val facade = ServiceSynthesis(options, broker, System())
-        facade.cache = ServiceCache(files.newFolder(), options, broker, MutableStateFlow(mapOf("a" to "甲")),
+        val phrases = ShortcutUpdates()
+        facade.cache = ServiceCache(files.newFolder(), options, broker, phrases.flow,
             { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L), parallelProvider = { true })
         try {
+            phrases.set(mapOf("a" to "甲"))
             withTimeout(10_000) {
                 baking.await()
                 val events = facade.synthesize(TtsRequest("实时")).toList()
@@ -263,9 +304,9 @@ class ServiceSynthesisTest {
         val options = settings().also { it.voice = "a" }
         val broker = Broker().also { it.catalog = emptyList() }
         val system = System()
-        val phrases = MutableStateFlow(linkedMapOf("fixed" to "甲", "second" to "乙") as Map<String, String>)
+        val phrases = ShortcutUpdates()
         val facade = ServiceSynthesis(options, broker, system)
-        val cache = ServiceCache(files.newFolder(), options, broker, phrases, { mapOf("test.provider" to "1") },
+        val cache = ServiceCache(files.newFolder(), options, broker, phrases.flow, { mapOf("test.provider" to "1") },
             { "system-v1" }, facade, MutableStateFlow(0L))
         facade.cache = cache
         fun catalog(value: Float = 1f) = listOf(TtsProvider("test.provider", "test", TtsInfo(managesVoices = true,
@@ -278,6 +319,7 @@ class ServiceSynthesisTest {
             facade.synthesize(TtsRequest("甲"), "fixed").toList()
             assertEquals(0L, cache.bytes.value)
             assertEquals(listOf("甲"), system.requests.map { it.text })
+            phrases.set(linkedMapOf("fixed" to "甲", "second" to "乙"))
             broker.catalog = catalog(); cache.changed()
             waitFor { broker.requests.size == 2 && cache.bytes.value > 0 }
             facade.synthesize(TtsRequest("甲"), "fixed").toList()
@@ -287,8 +329,10 @@ class ServiceSynthesisTest {
             facade.synthesize(TtsRequest("甲"), "fixed").toList()
             assertEquals(kept, cache.bytes.value)
             broker.catalog = catalog(); options.voice = "b"; cache.changed()
+            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
             waitFor { broker.requests.size == 4 }
             options.voice = "a"; broker.catalog = catalog(1.5f); cache.changed()
+            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
             waitFor { broker.requests.size == 6 }
             assertEquals(listOf("a", "a", "b", "b", "a", "a"), broker.requests.map { it.voiceId })
             cache.clear()
