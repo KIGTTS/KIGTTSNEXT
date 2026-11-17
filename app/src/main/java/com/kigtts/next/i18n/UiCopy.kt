@@ -12,7 +12,8 @@ internal enum class UiLanguage(val tag: String, val label: String) {
     STANDARD("zh-CN", "简体中文"),
     CASUAL("zh-CN-x-casual", "简体中文（轻松版）"),
     ENGLISH("en", "English"),
-    KOREAN("ko", "한국어");
+    KOREAN("ko", "한국어"),
+    JAPANESE("ja", "日本語");
 
     companion object {
         fun fromTag(tag: String?): UiLanguage {

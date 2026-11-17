@@ -43,7 +43,7 @@ class UiLanguageTest {
         }
         fun arguments(text: String) = Regex("\\{([a-zA-Z0-9_.-]+)\\}").findAll(text).map { it.groupValues[1] }.toSet()
         val standard = catalog("zh-CN")
-        for ((locale, caption) in listOf(UiLanguage.ENGLISH to "Flip captions", UiLanguage.KOREAN to "자막 뒤집기")) {
+        for ((locale, caption) in listOf(UiLanguage.ENGLISH to "Flip captions", UiLanguage.KOREAN to "자막 뒤집기", UiLanguage.JAPANESE to "字幕を反転")) {
             val translated = catalog(locale.tag)
             assertEquals(standard.keys, translated.keys)
             for ((key, text) in translated) {
@@ -57,6 +57,7 @@ class UiLanguageTest {
         }
         assertEquals(UiLanguage.ENGLISH, UiLanguage.fromTag("en-US"))
         assertEquals(UiLanguage.KOREAN, UiLanguage.fromTag("ko-KR"))
+        assertEquals(UiLanguage.JAPANESE, UiLanguage.fromTag("ja-JP"))
         assertEquals(UiLanguage.STANDARD, UiLanguage.fromTag("de-DE"))
         assertEquals("Quick Text", catalog("en").getValue("quick.dock"))
         assertEquals("Quick Text · Hold to talk", catalog("en").getValue("quick.dock_voice"))
