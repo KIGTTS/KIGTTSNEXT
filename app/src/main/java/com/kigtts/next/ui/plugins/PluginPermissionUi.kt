@@ -1,5 +1,8 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.rememberUiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,15 +33,16 @@ import com.kigtts.plugin.runtime.*
     pending.firstOrNull()?.let { prompt -> key(prompt.token) {
         MotionAlertDialog(onDismissRequest = { ledger.decide(prompt.token, null) }, title = { PermissionDialogTitle(prompt) },
             text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { Text(prompt.purpose); if (prompt.detail.isNotBlank()) Text(prompt.detail, style = MaterialTheme.typography.bodySmall) } },
-            confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.ALLOW) }) { Text("授权") } },
+            confirmButton = { MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.ALLOW) }) { Text(uiText("permission.grant")) } },
             dismissButton = { Row {
-                MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.DENY) }) { Text("禁用") }
-                MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.ASK) }) { Text("仅本次允许") }
+                MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.DENY) }) { Text(uiText("permission.deny")) }
+                MotionTextButton(onClick = dialogFeedbackClick { ledger.decide(prompt.token, PermissionAccess.ASK) }) { Text(uiText("permission.once")) }
             } })
     } }
 }
 
 @Composable internal fun PluginPermissionSettings(model: AppViewModel, pluginId: String, projectId: String?, close: () -> Unit) {
+    val copy = rememberUiCopy()
     val manager = model.pluginManager
     val native = manager.status.firstOrNull { it.installed.manifest.id == pluginId }?.installed
     val project = manager.registry.plugin(pluginId)?.contributions?.managedPackages?.firstOrNull { it.id == projectId }
@@ -47,15 +51,15 @@ import com.kigtts.plugin.runtime.*
     val purposes = project?.permissionPurposes ?: native?.manifest?.permissionPurposes.orEmpty()
     val owner = manager.permissionOwner(pluginId, projectId)
     var revision by remember { mutableIntStateOf(0) }
-    MotionAlertDialog(onDismissRequest = close, title = { Text("$name · 权限") },
+    MotionAlertDialog(onDismissRequest = close, title = { Text(uiText("permission.settings", "plugin" to name)) },
         text = { Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (permissions.isEmpty()) Text("此插件没有申请额外权限")
+            if (permissions.isEmpty()) Text(uiText("permission.none"))
             permissions.forEach { permission -> key(permission, revision) {
-                Text(PluginPermissions.label(permission), style = MaterialTheme.typography.titleSmall)
+                Text(pluginPermissionLabel(permission), style = MaterialTheme.typography.titleSmall)
                 purposes[permission]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                ChoiceButtonGroup(PluginPermissions.label(permission), PermissionAccess.entries, manager.permissions.access(owner, permission),
-                    { when (it) { PermissionAccess.ASK -> "询问"; PermissionAccess.ALLOW -> "允许"; PermissionAccess.DENY -> "禁用" } },
+                ChoiceButtonGroup(pluginPermissionLabel(permission), PermissionAccess.entries, manager.permissions.access(owner, permission),
+                    { when (it) { PermissionAccess.ASK -> copy("permission.ask"); PermissionAccess.ALLOW -> copy("permission.allow"); PermissionAccess.DENY -> copy("permission.deny") } },
                     { manager.permissions.set(owner, permission, it); revision++ }, compactLabels = true)
             } }
-        } }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text("完成") } })
+        } }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text(uiText("action.done")) } })
 }

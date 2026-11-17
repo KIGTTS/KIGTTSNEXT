@@ -15,17 +15,26 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.plugin.runtime.PermissionPrompt
-import com.kigtts.plugin.runtime.PluginPermissions
+import com.kigtts.next.i18n.uiText
 
 /** Capability identity stays visible even when an app or purpose has a long name. */
 @Composable
 internal fun PermissionDialogTitle(prompt: PermissionPrompt) {
+    val label = pluginPermissionLabel(prompt.permission)
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("允许${prompt.name}${PluginPermissions.label(prompt.permission)}？", Modifier.weight(1f))
-        Icon(permissionIcon(prompt.permission), PluginPermissions.label(prompt.permission),
+        Text(uiText("permission.dialog", "plugin" to prompt.name, "permission" to label), Modifier.weight(1f))
+        Icon(permissionIcon(prompt.permission), label,
             Modifier.size(28.dp).testTag("permission-icon/${prompt.permission}"), tint = MaterialTheme.colorScheme.primary)
     }
+}
+
+@Composable internal fun pluginPermissionLabel(permission: String): String = when (permission) {
+    "tts", "speech-service" -> uiText("permission.tts")
+    "asr-batch", "asr-segmented", "asr-incremental", "asr-service" -> uiText("permission.asr")
+    "network", "app-control", "quick-text-read", "notifications", "overlay", "quick-text-write", "stickers-read",
+    "stickers-write", "voice-packs", "camera", "microphone", "motion-sensors", "downloads" -> uiText("permission.$permission")
+    else -> permission
 }
 
 internal fun permissionIcon(permission: String): ImageVector = when (permission) {
