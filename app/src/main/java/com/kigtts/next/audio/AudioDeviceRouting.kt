@@ -97,19 +97,19 @@ class AudioDeviceRouting(context: Context, internal var onChanged: () -> Unit = 
             else -> return page
         }
         val controls = mutableListOf<PageBlock>()
-        if (!input) controls += PageBlock.Slider(PluginControl.Slider("音量", SPEECH_GAIN_ACTION, outputGain, 0f, 10f, suffix = "×"))
+        if (!input) controls += PageBlock.Slider(PluginControl.Slider(copy("audio.gain", "语音合成音量"), SPEECH_GAIN_ACTION, outputGain, 0f, 10f, suffix = "×"))
         controls +=
-            PageBlock.Select(if (input) "首选麦克风" else "首选朗读设备", actions(input),
+            PageBlock.Select(if (input) copy("audio.preferred_mic", "首选麦克风") else copy("audio.preferred_speech", "首选朗读设备"), actions(input),
                 action(input, selected(input)), if (input) PluginIcon.MIC else PluginIcon.SPEAKER)
-        if (input) controls += PageBlock.Toggle("系统降噪", noiseSuppression, NOISE_ACTION,
-            if (systemRecognitionNoiseAvailable()) "下次开始录音时生效" else "当前设备不支持系统降噪", PluginIcon.MIC)
-        return page.copy(blocks = page.blocks + PageBlock.Group("音频设备", controls))
+        if (input) controls += PageBlock.Toggle(copy("audio.noise_suppression", "系统降噪"), noiseSuppression, NOISE_ACTION,
+            if (systemRecognitionNoiseAvailable()) copy("audio.noise_next_recording", "下次开始录音时生效") else copy("audio.noise_unsupported", "当前设备不支持系统降噪"), PluginIcon.MIC)
+        return page.copy(blocks = page.blocks + PageBlock.Group(copy("audio.group", "音频设备"), controls))
     }
     private fun action(input: Boolean, key: String?) = "host-audio/${side(input)}/" + (key ?: "default")
     private fun actions(input: Boolean): List<PageAction> {
         val available = endpoints(input)
         val selected = selected(input)
-        return listOf(PageAction(action(input, null), "系统默认")) +
+        return listOf(PageAction(action(input, null), copy("audio.default", "系统默认"))) +
             available.map { PageAction(action(input, it.key), it.label) } +
             if (selected != null && available.none { it.key == selected })
                 listOf(PageAction(action(input, selected), summary(input))) else emptyList()
