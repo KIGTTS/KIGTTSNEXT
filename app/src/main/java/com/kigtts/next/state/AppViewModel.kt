@@ -179,6 +179,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
+    /** Chat composers use a hold gesture, so they need a scoped start/stop pair. */
+    fun startChatVoiceInput() = speech.voiceInput()
+    fun stopChatVoiceInput(): String {
+        val text = state.value.voiceInputText
+        speech.end(false)
+        return text
+    }
     fun continueVoiceInput() = speech.continueInput()
     val microphoneRequests = speech.permissionRequests
     fun microphoneResult(granted: Boolean) {

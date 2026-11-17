@@ -135,7 +135,10 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     extraSettings = {
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
                             com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
-                    }) { action, inputs ->
+                    },
+                    voiceInputAvailable = destination.pluginId == "tools.cloud-agent" && model.captionServiceReady,
+                    startVoiceInput = if (destination.pluginId == "tools.cloud-agent" && model.captionServiceReady) model::startChatVoiceInput else null,
+                    stopVoiceInput = if (destination.pluginId == "tools.cloud-agent" && model.captionServiceReady) model::stopChatVoiceInput else null) { action, inputs ->
                     model.invoke(destination.pluginId, action, inputs)
                     }
                 }

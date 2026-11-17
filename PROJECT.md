@@ -6726,3 +6726,9 @@ GIF实际绘制/启停在API28和35均通过；静态图片解码也通过，损
 - Speech recognition and synthesis service pages now resolve engine-selection labels through plugin-owned catalogs, including Japanese; common streaming, cloud, SenseVoice, Piper, Qwen3-TTS, and voice-cloning names follow the selected locale.
 - Added Japanese catalogs and locale declarations to the cloud ASR and cloud TTS plugins.
 - Validation: app targeted localization/audio/overlay tests, cloud-asr tests, and cloud-tts tests all passed.
+
+## 2026-11-17 AI chat composer and voice input
+
+- AI assistant catalogs now declare the app-supported locales and localize the entry, model/access controls, and composer placeholder.
+- The chat composer keeps model and permission chips at the bottom, sends with the keyboard Send action, and exposes a hold-to-speak microphone button only while a recognition service is available.
+- Voice recognition text is submitted to the active AI conversation after release; the same control stays hidden when recognition is unavailable.

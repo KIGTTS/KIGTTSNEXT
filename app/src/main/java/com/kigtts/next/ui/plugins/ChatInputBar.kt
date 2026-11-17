@@ -1,6 +1,8 @@
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -12,6 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.AnimatedButtonContent
 import com.kigtts.next.ui.components.IconActionHint
@@ -21,7 +26,8 @@ import java.io.File
 
 /** Keystrokes invalidate the composer only, rather than the message tree. */
 @Composable internal fun ChatInputBar(chat: PageBlock.Chat, enabled: Boolean, resolve: (PluginResource) -> File?,
-    invoke: (String, Map<String, String>) -> Unit, owner: String = "", sent: () -> Unit) {
+    invoke: (String, Map<String, String>) -> Unit, owner: String = "", voiceInputAvailable: Boolean = false,
+    startVoiceInput: (() -> Unit)? = null, stopVoiceInput: (() -> String)? = null, sent: () -> Unit) {
     var draft by rememberSaveable(chat.conversationId, chat.sendAction) { mutableStateOf("") }
     // Other conversations may run independently; their activity only affects the header indicator.
     val running = chat.running
@@ -35,11 +41,27 @@ import java.io.File
         }
         if (chat.draftFiles.isNotEmpty()) Box(Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) { ChatFiles(chat.draftFiles, invoke) { file -> chat.removeFileAction?.let { invoke(it, mapOf("value" to file.source.path)) } } }
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val voiceAction = chat.voiceInputAction
+            if (voiceInputAvailable && voiceAction != null && startVoiceInput != null && stopVoiceInput != null) {
+                IconButton(onClick = {}, enabled = enabled, modifier = Modifier
+                    .testTag("plugin-chat-voice")
+                    .pointerInput(chat.conversationId, enabled) {
+                        detectTapGestures(onPress = {
+                            startVoiceInput()
+                            tryAwaitRelease()
+                            val voiceText = stopVoiceInput()
+                            if (voiceText.isNotBlank()) invoke(voiceAction, mapOf("voiceText" to voiceText))
+                        })
+                    }) { Icon(Icons.Default.Mic, "按住说话") }
+            }
             chat.imageAction?.let { action -> IconButton(onClick = feedbackClick { invoke(action, emptyMap()) },
                 modifier = Modifier.testTag("plugin-chat-image").iconLongAction(enabled && chat.draftImages.size < 4) { invoke(action, mapOf("source" to "camera")) },
                 enabled = enabled && chat.draftImages.size < 4) { Icon(Icons.Default.AddPhotoAlternate, "添加图片，长按拍照") } }
             chat.fileAction?.let { action -> IconButton(onClick = feedbackClick { invoke(action, emptyMap()) }, enabled = enabled && chat.draftFiles.size < 8, modifier = Modifier.testTag("plugin-chat-file")) { Icon(Icons.Default.AttachFile, "添加文件") } }
-            OutlinedTextField(draft, { if (it.length <= 16000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"), placeholder = { Text(chat.placeholder) }, maxLines = 5, shape = MaterialTheme.shapes.large, enabled = enabled)
+            OutlinedTextField(draft, { if (it.length <= 16000) draft = it }, Modifier.weight(1f).testTag("plugin-chat-input"), placeholder = { Text(chat.placeholder) }, maxLines = 5,
+                shape = MaterialTheme.shapes.large, enabled = enabled,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { if (canSend && !running) send(chat.sendAction) }))
             val action = when { !running -> ChatPrimaryAction.SEND; canSend -> ChatPrimaryAction.QUEUE; else -> ChatPrimaryAction.STOP }
             val label = when (action) { ChatPrimaryAction.SEND -> "发送"; ChatPrimaryAction.STOP -> "停止生成"; ChatPrimaryAction.QUEUE -> "加入队列" }
             IconActionHint(label) {

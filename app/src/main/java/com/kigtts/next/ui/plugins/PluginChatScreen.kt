@@ -32,7 +32,9 @@ import kotlinx.coroutines.channels.Channel
 @Composable
 internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
     invoke: (String, Map<String, String>) -> Unit, resolve: (PluginResource) -> java.io.File? = { null },
-    historyCache: ChatHistoryCache? = null, historyKey: String = chat.conversationId, header: @Composable ColumnScope.() -> Unit) {
+    historyCache: ChatHistoryCache? = null, historyKey: String = chat.conversationId,
+    voiceInputAvailable: Boolean = false, startVoiceInput: (() -> Unit)? = null, stopVoiceInput: (() -> String)? = null,
+    header: @Composable ColumnScope.() -> Unit) {
     val list = remember(chat.conversationId) { LazyListState() }
     val dispatch: (String, Map<String, String>) -> Unit = { action, inputs -> invoke(action, inputs + ("_chatConversation" to chat.conversationId)) }
     var follow by remember(chat.conversationId) { mutableStateOf(true) }
@@ -139,7 +141,7 @@ internal fun PluginChatScreen(chat: PageBlock.Chat, enabled: Boolean,
 
         }
     }, composer = {
-        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/')) { expansionActive = false; follow = true }
+        ChatInputBar(chat, enabled, resolve, dispatch, historyKey.substringBefore('/'), voiceInputAvailable, startVoiceInput, stopVoiceInput) { expansionActive = false; follow = true }
     })
 }
 private enum class ChatScrollRequest { UPDATE, SNAP, JUMP }

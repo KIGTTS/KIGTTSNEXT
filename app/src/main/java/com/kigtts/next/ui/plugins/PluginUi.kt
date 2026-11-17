@@ -43,10 +43,13 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 }
 
 @Composable
-fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, extraSettings: (@Composable () -> Unit)? = null, invoke: (String, Map<String, String>) -> Unit) {
+fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, extraSettings: (@Composable () -> Unit)? = null,
+    voiceInputAvailable: Boolean = false, startVoiceInput: (() -> Unit)? = null, stopVoiceInput: (() -> String)? = null,
+    invoke: (String, Map<String, String>) -> Unit) {
     page?.search?.let { search ->
         PluginSearchScreen(search, onBack, invoke) {
-            PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, extraSettings, invoke)
+            PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, extraSettings,
+                voiceInputAvailable, startVoiceInput, stopVoiceInput, invoke)
         }
         return
     }
@@ -71,7 +74,7 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         return
     }
     blocks.filterIsInstance<PageBlock.Chat>().firstOrNull()?.let { chat ->
-        PluginChatScreen(chat, !busy, invoke, resolve, historyCache, historyKey + chat.conversationId) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
+        PluginChatScreen(chat, !busy, invoke, resolve, historyCache, historyKey + chat.conversationId, voiceInputAvailable, startVoiceInput, stopVoiceInput) { PluginBlocks(blocks.filterNot { it is PageBlock.Chat }, !busy, invoke) }
         return
     }
     blocks.filterIsInstance<PageBlock.Files>().firstOrNull()?.let { files ->
