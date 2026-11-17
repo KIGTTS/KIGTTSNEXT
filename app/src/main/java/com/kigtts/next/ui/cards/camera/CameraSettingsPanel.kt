@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiText
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -57,23 +58,23 @@ import kotlinx.coroutines.withContext
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Default.Tune, null, Modifier.size(22.dp))
-                Text("相机设置", style = MaterialTheme.typography.titleLarge)
+                Text(uiText("camera.settings"), style = MaterialTheme.typography.titleLarge)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CameraTile("画幅", options.framingAspect.label, Icons.Default.AspectRatio,
+                CameraTile(uiText("camera.aspect"), options.framingAspect.label, Icons.Default.AspectRatio,
                     enabled && options.mode != CameraMode.SCAN, Modifier.weight(1f)) {
                     options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) }
-                CameraTile("倒计时", if (options.timerSeconds == 0) "关闭" else "${options.timerSeconds} 秒", Icons.Default.Timer, enabled, Modifier.weight(1f)) {
+                CameraTile(uiText("camera.timer"), if (options.timerSeconds == 0) uiText("option.off") else uiText("camera.timer_seconds", "seconds" to options.timerSeconds.toString()), Icons.Default.Timer, enabled, Modifier.weight(1f)) {
                     options.setTimer(CameraOptions.TIMERS[(CameraOptions.TIMERS.indexOf(options.timerSeconds) + 1) % CameraOptions.TIMERS.size]) }
-                CameraTile("辅助线", options.grid.label, Icons.Default.Grid3x3, enabled, Modifier.weight(1f)) {
+                CameraTile(uiText("camera.grid"), options.grid.label, Icons.Default.Grid3x3, enabled, Modifier.weight(1f)) {
                     options.setGrid(CameraGrid.entries[(options.grid.ordinal + 1) % CameraGrid.entries.size]) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CameraTile("水平仪", if (options.level) "开启" else "关闭", Icons.Default.Straighten, enabled, Modifier.weight(1f)) { options.setLevel(!options.level) }
-                if (flashAvailable) CameraTile("闪光灯", options.flash.label, Icons.Default.FlashOn, enabled, Modifier.weight(1f)) {
+                CameraTile(uiText("camera.level"), if (options.level) uiText("option.on") else uiText("option.off"), Icons.Default.Straighten, enabled, Modifier.weight(1f)) { options.setLevel(!options.level) }
+                if (flashAvailable) CameraTile(uiText("camera.flash"), options.flash.label, Icons.Default.FlashOn, enabled, Modifier.weight(1f)) {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size]) }
                 val processing = availableProcessing.toList()
-                CameraTile("照片处理", if (options.mode == CameraMode.PRO) CameraProcessing.STANDARD.label else options.processing.label,
+                CameraTile(uiText("camera.process"), if (options.mode == CameraMode.PRO) CameraProcessing.STANDARD.label else options.processing.label,
                     Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO, Modifier.weight(1f)) {
                     options.setProcessing(processing[(processing.indexOf(options.processing).coerceAtLeast(0) + 1) % processing.size]) }
             }
@@ -81,7 +82,7 @@ import kotlinx.coroutines.withContext
                 CameraOutputTiles(options, enabled, openWatermark)
                 if (options.mode == CameraMode.PRO) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CameraTile("曝光警示", if (!exposureWarningAvailable) "当前镜头不可用" else if (options.exposureWarning) "开启" else "关闭",
+                        CameraTile(uiText("camera.exposure_warning"), if (!exposureWarningAvailable) uiText("camera.unavailable_lens") else if (options.exposureWarning) uiText("option.on") else uiText("option.off"),
                             Icons.Default.WarningAmber, enabled && exposureWarningAvailable, Modifier.weight(1f)) {
                             options.setExposureWarning(!options.exposureWarning)
                         }
@@ -98,18 +99,18 @@ import kotlinx.coroutines.withContext
         value = withContext(Dispatchers.IO) { CameraPhotoEncoding.heifAvailable }
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        CameraTile("照片格式", options.encoding.label, Icons.Default.Image,
+        CameraTile(uiText("camera.encoding"), options.encoding.label, Icons.Default.Image,
             enabled && (heifAvailable == true || options.encoding == CameraPhotoEncoding.HEIF), Modifier.weight(1f)) {
             options.chooseEncoding(if (options.encoding == CameraPhotoEncoding.JPEG) CameraPhotoEncoding.HEIF else CameraPhotoEncoding.JPEG)
         }
-        CameraTile("边框水印", options.watermarkLabel, Icons.Default.FilterFrames,
+        CameraTile(uiText("camera.frame_watermark"), options.watermarkLabel, Icons.Default.FilterFrames,
             enabled, Modifier.weight(1f), openWatermark)
         Spacer(Modifier.weight(1f))
     }
     val hint = when {
-        heifAvailable == false -> "此设备不支持保存 HEIF"
-        options.motion -> "选择 HEIF 会关闭实况"
-        options.encoding == CameraPhotoEncoding.HEIF -> "实况照片使用 JPEG"
+        heifAvailable == false -> uiText("camera.no_heif")
+        options.motion -> uiText("camera.heif_motion")
+        options.encoding == CameraPhotoEncoding.HEIF -> uiText("camera.motion_jpeg")
         else -> null
     }
     if (hint != null) Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

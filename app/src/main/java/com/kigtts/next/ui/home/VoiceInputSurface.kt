@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.*
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -39,7 +40,7 @@ internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
               val landscape = maxWidth > maxHeight
               val transcript: @Composable (Modifier) -> Unit = { modifier ->
                 Box(modifier.padding(horizontal = 28.dp, vertical = 20.dp), contentAlignment = Alignment.BottomStart) {
-                    Text(state.voiceInputText.ifBlank { "正在聆听…" }, Modifier.fillMaxWidth().verticalScroll(scroll).testTag("voice-input-text"),
+                    Text(state.voiceInputText.ifBlank { uiText("listening.awaiting") }, Modifier.fillMaxWidth().verticalScroll(scroll).testTag("voice-input-text"),
                         style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color.White)
                     if (state.voiceInputSubmitting) Text(com.kigtts.next.i18n.uiText("listening.submitting"),
                         Modifier.align(Alignment.TopStart).testTag("voice-input-submitting"), style = MaterialTheme.typography.labelLarge,

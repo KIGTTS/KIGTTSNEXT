@@ -48,7 +48,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
         color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().height(48.dp), verticalAlignment = Alignment.CenterVertically) {
-                ToolButton("完成编辑", Icons.Default.Check, {
+                ToolButton(uiText("quick.edit_done"), Icons.Default.Check, {
                     focus.clearFocus(); keyboard?.hide(); model.finishQuickTextEditing()
                 }, Modifier.testTag("quick-edit-done"))
                 Box(Modifier.weight(1f).padding(horizontal = 4.dp)) {
@@ -62,7 +62,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
                         Icon(Icons.Default.Edit, uiText("quick.edit_group"), Modifier.size(16.dp))
                     }
                 }
-                ToolButton("新增快捷文本", Icons.Default.Add, addPhrase, Modifier.testTag("quick-edit-add"))
+                ToolButton(uiText("quick.add_phrase"), Icons.Default.Add, addPhrase, Modifier.testTag("quick-edit-add"))
             }
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("quick-editor-pane")
                 .reorderGestures(drag, onStationaryHold = { menu = it.menuTarget() })) {
@@ -84,7 +84,7 @@ fun QuickTextEditor(state: AppState, phrases: List<QuickPhrase>, categories: Lis
     QuickTextContextMenu(menu, model, { menu = null }, { editGroup = it })
     editGroup?.let { EditCategoryDialog(it, categories, model) { editGroup = null } }
     deleting?.let { phrase ->
-        MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除这条快捷文本？") },
+        MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text(uiText("quick.delete_entry")) },
             text = { Text(phrase.text) },
             confirmButton = { TextButton(onClick = dialogFeedbackClick { model.quickTexts.remove(phrase.id); deleting = null },
                 modifier = Modifier.testTag("confirm-delete-phrase")) { Text(uiText("action.delete")) } },

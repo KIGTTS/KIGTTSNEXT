@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -18,26 +19,28 @@ import com.kigtts.next.ui.settings.*
 @Composable
 internal fun CameraManualPanel(controller: CameraManualController, enabled: Boolean) {
     val capability = controller.capabilities
-    SettingsGroup("手动调整") {
-        SettingItem("对焦", capability.reason ?: if (!capability.focusAvailable) "当前镜头不支持手动对焦" else "",
+    val manualLabel = uiText("option.manual")
+    val autoLabel = uiText("option.auto")
+    SettingsGroup(uiText("camera.manual_adjust")) {
+        SettingItem(uiText("camera.focus"), capability.reason ?: if (!capability.focusAvailable) uiText("camera.no_manual_focus") else "",
             Icons.Default.CenterFocusStrong, SettingPosition.FIRST) {
             Column {
-                ChoiceButtonGroup("对焦", listOf(false, true), controller.manualFocus,
-                    { if (it) "手动" else "自动" }, { controller.focusMode(it) }, enabled = enabled && capability.focusAvailable)
+                ChoiceButtonGroup(uiText("camera.focus"), listOf(false, true), controller.manualFocus,
+                    { if (it) manualLabel else autoLabel }, { controller.focusMode(it) }, enabled = enabled && capability.focusAvailable)
                 AnimatedVisibility(controller.manualFocus) {
                     Column {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text("远"); Text("近") }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(uiText("camera.far")); Text(uiText("camera.near")) }
                         Slider(controller.focusDiopters, controller::focusAt, Modifier.testTag("camera-manual-focus"),
                             enabled = enabled, valueRange = 0f..capability.maximumFocus.coerceAtLeast(.001f))
                     }
                 }
             }
         }
-        SettingItem("快门", capability.reason ?: if (!capability.shutterAvailable) "当前镜头不支持手动快门" else "",
+        SettingItem(uiText("camera.shutter"), capability.reason ?: if (!capability.shutterAvailable) uiText("camera.no_manual_shutter") else "",
             Icons.Default.ShutterSpeed, SettingPosition.LAST) {
             Column {
-                ChoiceButtonGroup("快门", listOf(false, true), !controller.automaticExposure,
-                    { if (it) "手动" else "自动" }, { controller.setManualShutter(it) }, enabled = enabled && capability.shutterAvailable)
+                ChoiceButtonGroup(uiText("camera.shutter"), listOf(false, true), !controller.automaticExposure,
+                    { if (it) manualLabel else autoLabel }, { controller.setManualShutter(it) }, enabled = enabled && capability.shutterAvailable)
                 val range = capability.exposure
                 AnimatedVisibility(!controller.automaticExposure && range != null) {
                     if (range != null) Column {

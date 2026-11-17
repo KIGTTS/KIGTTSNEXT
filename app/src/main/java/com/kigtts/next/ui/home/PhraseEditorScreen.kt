@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.i18n.uiCopy
 
 import androidx.activity.compose.PredictiveBackHandler
@@ -58,8 +59,8 @@ private fun PhraseEditorContent(model: AppViewModel, token: String) {
     PredictiveBackHandler(active && (dirty || saving) && !discard) { events ->
         try { events.collect { }; if (!saving) discard = true } catch (_: CancellationException) { }
     }
-    RegisterPageActions(listOf(ToolbarAction("share-phrase-details", "分享", Icons.Default.Share,
-        active && !saving && valid) { model.sharing.shareDraft(draft) }, ToolbarAction("save-phrase-details", "保存", Icons.Default.Check,
+    RegisterPageActions(listOf(ToolbarAction("share-phrase-details", uiText("action.share"), Icons.Default.Share,
+        active && !saving && valid) { model.sharing.shareDraft(draft) }, ToolbarAction("save-phrase-details", uiText("action.save"), Icons.Default.Check,
         active && !saving && valid) { saveDraft() }))
     PhraseDetailsForm(draft, categories, model, active && !saving && current?.key == token)
     if (active && discard) SaveChangesDialog(

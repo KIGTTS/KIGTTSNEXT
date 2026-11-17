@@ -22,16 +22,16 @@ import kotlinx.coroutines.launch
     val facts = remember(context) { PhotoServiceSettings(context) }
     val scope = rememberCoroutineScope()
     var record by remember { mutableStateOf(facts.recordCapture) }
-    SettingsLayout { SettingsGroup("相机") {
-        ToggleSetting("默认使用系统相机", "编辑图片时优先使用系统相机。长按首页相机入口也可直接打开系统相机。", Icons.Default.PhotoCamera, system, {
+    SettingsLayout { SettingsGroup(uiText("quick.camera")) {
+        ToggleSetting(uiText("camera.system_default"), uiText("camera.system_default_hint"), Icons.Default.PhotoCamera, system, {
             system = it; preferences.edit().putBoolean("use-system-camera", it).apply()
         }, position = SettingPosition.FIRST)
         ToggleSetting(uiText("camera.full_system.title"), uiText("camera.full_system.body"), Icons.Default.PhotoCamera, full, {
             full = it; preferences.edit().putBoolean("full-system-camera", it).apply()
         }, position = SettingPosition.LAST)
     }
-        SettingsGroup("拍摄信息") {
-            ToggleSetting("拍照时记录位置与天气信息", "", Icons.Default.LocationOn, record, {
+        SettingsGroup(uiText("camera.capture_details")) {
+            ToggleSetting(uiText("camera.record_facts"), "", Icons.Default.LocationOn, record, {
                 record = it; facts.recordCapture = it
                 if (it) scope.launch {
                     val access = AndroidPhotoFactsAccess(context)
@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
                     if (hasLocation && facts.recordCapture) access.consent("weather")
                 }
             }, position = SettingPosition.FIRST)
-            SettingItem("天气设置", "位置与天气数据源", Icons.Default.Cloud, SettingPosition.LAST, onClick = onWeather,
+            SettingItem(uiText("camera.weather_settings"), uiText("camera.weather_source_hint"), Icons.Default.Cloud, SettingPosition.LAST, onClick = onWeather,
                 trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
         }
     }

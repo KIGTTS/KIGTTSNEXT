@@ -58,6 +58,8 @@ class UiLanguageTest {
         assertEquals(UiLanguage.ENGLISH, UiLanguage.fromTag("en-US"))
         assertEquals(UiLanguage.KOREAN, UiLanguage.fromTag("ko-KR"))
         assertEquals(UiLanguage.STANDARD, UiLanguage.fromTag("de-DE"))
+        assertEquals("Quick Text", catalog("en").getValue("quick.dock"))
+        assertEquals("Quick Text · Hold to talk", catalog("en").getValue("quick.dock_voice"))
     }
 
     @Test fun switchingLanguageUpdatesTheHostAndPluginContextWhilePreservingUserText() {

@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
@@ -18,6 +19,6 @@ internal fun CameraSettingsButton(open: () -> Unit, modifier: Modifier, shapes: 
     colors: IconButtonColors, enabled: Boolean) {
     FilledTonalIconButton(onClick = feedbackClick(open), modifier = modifier.size(44.dp),
         shapes = shapes, colors = colors, enabled = enabled) {
-        Icon(Icons.Default.Tune, "相机设置", Modifier.size(22.dp))
+        Icon(Icons.Default.Tune, uiText("camera.settings"), Modifier.size(22.dp))
     }
 }

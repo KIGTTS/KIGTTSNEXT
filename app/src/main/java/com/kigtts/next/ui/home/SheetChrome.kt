@@ -2,6 +2,7 @@
 
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -59,13 +60,13 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
             (0..4).forEach { index -> key(index) {
                 val width = widths[index].dp
                 when (index) {
-                    0 -> ToolButton(if (open) "编辑快捷文本" else "画板", if (open) Icons.Default.Edit else Icons.Default.Draw,
+                    0 -> ToolButton(if (open) uiText("quick.edit") else uiText("quick.sketch"), if (open) Icons.Default.Edit else Icons.Default.Draw,
                         { if (open) editPhrases() else model.openSidePage(SidePage.SKETCH) },
                         Modifier.width(width).testTag("dock-start").homePreviewRegion("dock-start"), sources[0], shapes, size = sideSize)
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
-                    4 -> ToolButton(if (open) "收起快捷文本" else "相机", if (open) Icons.Default.ExpandMore else Icons.Default.PhotoCamera,
+                    4 -> ToolButton(if (open) uiText("quick.collapse") else uiText("quick.camera"), if (open) Icons.Default.ExpandMore else Icons.Default.PhotoCamera,
                         { if (open) model.closePanel() else model.cardCapture.open(systemCamera = false) },
                         Modifier.width(width).testTag("dock-end").homePreviewRegion("dock-end"), sources[4], shapes, size = sideSize,
                         onLongClick = openSystemCamera.takeUnless { open },
@@ -88,7 +89,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
     val action = { if (open) model.closePanel() else model.openPanel(HomePanel.QUICK_TEXT) }
     val click = feedbackClick(action)
     val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let(model::startVoiceInputFromDock); Unit }
-    val label = if (state.continuousRecognition) "长按停止识别" else if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
+    val label = if (state.continuousRecognition) uiText("quick.dock_stop") else if (longPress == null) uiText("quick.dock") else uiText("quick.dock_voice")
     val pressed by source.collectIsPressedAsState()
     val height by animateDpAsState(if (pressed && !open) 44.dp else (48f - 43f * progress + if (motion.active) 2f * progress else 0f).dp,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-handle-height")

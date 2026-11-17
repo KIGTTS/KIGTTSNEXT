@@ -11,37 +11,38 @@ internal fun packAction(verb: String, entry: PackEntry) = "$verb/${encodeId(entr
 internal class VoiceLibraryPages(private val settings: ServiceSettings, private val library: VoiceLibrary, private val providers: () -> List<TtsProvider>) {
     fun entries() = library.ordered(voicePacks(providers()))
     fun visible() = entries().filter { library.filter == "all" || it.provider.pluginId == library.filter }
-    fun page(id: String): PluginPage? {
+    fun page(id: String, locale: String = "zh-CN"): PluginPage? {
+        fun t(key: String) = ReadingCopy.text(key, locale)
         if (id == "packs") {
             val sources = providers()
-            val filters = listOf(ManagementFilter("all", "全部", "pack-filter/${encodeId("all")}", library.filter == "all")) + sources.map {
+            val filters = listOf(ManagementFilter("all", t("all"), "pack-filter/${encodeId("all")}", library.filter == "all")) + sources.map {
                 ManagementFilter(it.pluginId, it.name, "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
             }
-            return PluginPage(id, "语音包管理", listOf(PageBlock.Actions(listOf(
-                PageAction("import-voice-package", "导入语音包", PluginIcon.ADD)))),
+            return PluginPage(id, t("manage_packs"), listOf(PageBlock.Actions(listOf(
+                PageAction("import-voice-package", t("import_pack"), PluginIcon.ADD)))),
                 ManagementList("voice-packs", visible().map { entry ->
                     val pack = entry.pack; val pinned = library.pinned(entry.key, pack.metadata.pinned)
-                    val actions = mutableListOf(PageAction(packAction("pack-pin", entry), if (pinned) "取消置顶" else "置顶", PluginIcon.PIN),
-                        PageAction(packAction("pack", entry), "详细信息", PluginIcon.INFO))
+                    val actions = mutableListOf(PageAction(packAction("pack-pin", entry), if (pinned) t("unpin") else t("pin"), PluginIcon.PIN),
+                        PageAction(packAction("pack", entry), t("details"), PluginIcon.INFO))
                     if (pack.parameters.isNotEmpty() && entry.provider.enabled)
-                        actions += PageAction(packAction("pack-settings", entry), "音频设置", PluginIcon.SETTINGS)
-                    if (pack.exportable && entry.provider.enabled) actions += PageAction(packAction("pack-export", entry), "导出语音包", PluginIcon.EXPORT)
-                    if (pack.deletable && entry.provider.enabled) actions += PageAction(packAction("pack-delete", entry), "删除语音包", PluginIcon.CLOSE, symbol = "delete")
+                        actions += PageAction(packAction("pack-settings", entry), t("audio_settings"), PluginIcon.SETTINGS)
+                    if (pack.exportable && entry.provider.enabled) actions += PageAction(packAction("pack-export", entry), t("export_pack"), PluginIcon.EXPORT)
+                    if (pack.deletable && entry.provider.enabled) actions += PageAction(packAction("pack-delete", entry), t("delete_pack"), PluginIcon.CLOSE, symbol = "delete")
                     ManagementItem(entry.key, pack.metadata.name,
-                        if (entry.provider.pluginId == SYSTEM_PROVIDER) "系统语音合成" else listOfNotNull(
-                            pack.metadata.remark.takeIf { it.isNotBlank() }, "引擎已停用".takeUnless { entry.provider.enabled }).joinToString(" · "), PluginIcon.SPEAKER,
+                        if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system_synthesis") else listOfNotNull(
+                            pack.metadata.remark.takeIf { it.isNotBlank() }, t("engine_disabled").takeUnless { entry.provider.enabled }).joinToString(" · "), PluginIcon.SPEAKER,
                         pack.avatarPath?.let { PluginResource(it, entry.provider.pluginId) },
                         selected = if (entry.provider.pluginId == SYSTEM_PROVIDER) settings.provider == null
                             else settings.provider == entry.provider.pluginId && settings.voice in pack.voiceIds,
                         pinned = pinned, group = if (pinned) "pinned" else "normal", primaryAction = if (entry.provider.enabled) packAction("pack-use", entry) else packAction("pack", entry), actions = actions,
-                        badges = listOf(if (entry.provider.pluginId == SYSTEM_PROVIDER) "系统" else pack.providerLabel.ifBlank { entry.provider.name.take(32) }),
+                        badges = listOf(if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system") else pack.providerLabel.ifBlank { entry.provider.name.take(32) }),
                         selection = ManagementSelection(packAction("pack-use", entry), entry.provider.enabled))
-                }, "pack-order", "此引擎还没有语音包", filters))
+                }, "pack-order", t("no_packs"), filters))
         }
         if (!id.startsWith("pack/")) return null
         val parts = id.split('/'); val owner = decodeId(parts[1]); val key = decodeId(parts[2])
         val entry = entries().firstOrNull { it.provider.pluginId == owner && it.pack.id == key }
-            ?: return PluginPage(id, "语音包不可用", listOf(PageBlock.Notice("该语音包或引擎已移除。")))
+            ?: return PluginPage(id, t("pack_unavailable"), listOf(PageBlock.Notice(t("pack_unavailable_help"))))
         return voicePackDetails(id, entry, settings, library)
     }
 }

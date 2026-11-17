@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +31,7 @@ internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
     val inset = 8.dp
     val innerRadius = ((LocalCornerRadius.current + 4.dp).coerceAtMost(24.dp) - inset).coerceAtLeast(0.dp)
     AppearanceCardSurface(Modifier.fillMaxWidth()) {
-        SettingItem("打开字幕浮窗", "可先打开浮窗，再开始聆听",
+        SettingItem(uiText("listening.open_window"), uiText("listening.window_hint"),
             MaterialSymbols.vector("open_in_new") ?: Icons.AutoMirrored.Filled.OpenInNew, SettingPosition.SINGLE,
             modifier = Modifier.padding(inset), onClick = open, enabled = ready, corners = RoundedCornerShape(innerRadius))
     }
@@ -38,14 +39,14 @@ internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
 
 @Composable
 internal fun ListeningQuickSettings(model: AppViewModel, size: Float, dismiss: () -> Unit) {
-    MotionAlertDialog(onDismissRequest = dismiss, title = { Text("聆听字幕") }, text = {
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("listening.panel")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsGroup("字幕字号") {
+            SettingsGroup(uiText("listening.text_size")) {
                 Slider(size, model::setCaptionTextSize, Modifier.fillMaxWidth(), valueRange = 10f..64f)
             }
             CaptionWindowSetting { dismiss(); model.openCaptionWindow() }
-            SettingItem("语音识别设置", "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
+            SettingItem(uiText("listening.settings"), "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
                 SettingPosition.SINGLE, onClick = { dismiss(); model.navigate(Destination.PluginPage("service.speech-recognition", "manager")) })
         }
-    }, confirmButton = { TextButton(dialogFeedbackClick(dismiss)) { Text("完成") } })
+    }, confirmButton = { TextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.done")) } })
 }

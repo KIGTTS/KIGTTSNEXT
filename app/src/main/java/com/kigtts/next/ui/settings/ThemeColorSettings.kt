@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
 import android.os.Build
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -33,13 +34,13 @@ import kotlinx.coroutines.*
     val current by rememberUpdatedState(settings)
     var selectionRequest by remember { mutableIntStateOf(0) }
     val custom = settings.colorSource == ThemeColorSource.CUSTOM
-    SettingsGroup("主题与配色") {
-        SettingItem("主题模式", "", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
-            SettingChoiceGroup("主题模式", ThemeMode.entries, settings.mode, { it.label }, { onChange(settings.copy(mode = it)) })
+    SettingsGroup(uiText("appearance.theme_palette")) {
+        SettingItem(uiText("appearance.theme_mode"), "", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
+            SettingChoiceGroup(uiText("appearance.theme_mode"), ThemeMode.entries, settings.mode, { it.label }, { onChange(settings.copy(mode = it)) })
         }
-        SettingItem("取色", "", Icons.Default.Palette, if (custom) SettingPosition.MIDDLE else SettingPosition.LAST,
+        SettingItem(uiText("appearance.color_source"), "", Icons.Default.Palette, if (custom) SettingPosition.MIDDLE else SettingPosition.LAST,
             modifier = Modifier.testTag("theme-color-source")) {
-            ChoiceButtonGroup("取色", ThemeColorSource.entries, settings.colorSource, { it.label }, { source ->
+            ChoiceButtonGroup(uiText("appearance.color_source"), ThemeColorSource.entries, settings.colorSource, { it.label }, { source ->
                 val request = ++selectionRequest
                 val message = when {
                     source == ThemeColorSource.WALLPAPER && Build.VERSION.SDK_INT < 31 -> "壁纸取色需要 Android 12 及以上"
@@ -61,7 +62,7 @@ import kotlinx.coroutines.*
         }
         AnimatedVisibility(custom, enter = fadeIn(tween(180)) + expandVertically(tween(180)),
             exit = fadeOut(tween(180)) + shrinkVertically(tween(180))) {
-            SettingItem("主题色", settings.hex, null, SettingPosition.LAST, modifier = Modifier.testTag("custom-theme-color"),
+            SettingItem(uiText("appearance.custom_seed"), settings.hex, null, SettingPosition.LAST, modifier = Modifier.testTag("custom-theme-color"),
             onClick = { picker = true }, trailing = {
                 IconButton(feedbackClick { picker = true }) { Box(Modifier.size(28.dp).background(Color(settings.seed), CircleShape)) }
             })
@@ -70,5 +71,5 @@ import kotlinx.coroutines.*
     if (picker) ColorPickerDialog(settings.seed, onConfirm = { color ->
         selectionRequest++
         onChange(settings.copy(seed = color).withColorSource(ThemeColorSource.CUSTOM)); picker = false
-    }, onDismiss = { picker = false }, title = "选择主题色")
+    }, onDismiss = { picker = false }, title = uiText("appearance.choose_color"))
 }

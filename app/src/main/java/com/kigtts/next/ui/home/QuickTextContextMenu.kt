@@ -82,8 +82,8 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
         }
     }
     deleting?.let { item ->
-        MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text(if (item.group) "删除这个分组？" else "删除这条快捷文本？") },
-            text = { Text(if (item.group) "分组中的快捷文本也会删除。" else "删除后无法撤销。") },
+        MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text(if (item.group) uiText("quick.delete_group") else uiText("quick.delete_entry")) },
+            text = { Text(if (item.group) uiText("quick.delete_group_body") else uiText("quick.delete_entry_body")) },
             confirmButton = { TextButton(onClick = feedbackClick {
                 if (item.group) {
                     if (!model.quickTexts.removeCategory(item.key)) model.message("请至少保留一个分组")

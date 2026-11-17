@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -49,10 +50,13 @@ internal fun VoiceInputReleaseZones(gesture: VoiceInputGestureState, automaticRe
             previous = selection
         } else previous = null
     }
+    val readLabel = uiText("listening.send_and_read")
+    val cancelLabel = uiText("action.cancel")
+    val continuousLabel = uiText("listening.continuous")
     val items = buildList {
-        if (!automaticRead) add(ReleaseItem("read", "发送并朗读", Icons.AutoMirrored.Filled.VolumeUp, VoiceReleaseTarget.READ, read))
-        add(ReleaseItem("cancel", "取消", Icons.Default.Close, VoiceReleaseTarget.CANCEL, cancel))
-        add(ReleaseItem("continuous", "持续识别", Icons.Default.Hearing, VoiceReleaseTarget.CONTINUOUS, continuous))
+        if (!automaticRead) add(ReleaseItem("read", readLabel, Icons.AutoMirrored.Filled.VolumeUp, VoiceReleaseTarget.READ, read))
+        add(ReleaseItem("cancel", cancelLabel, Icons.Default.Close, VoiceReleaseTarget.CANCEL, cancel))
+        add(ReleaseItem("continuous", continuousLabel, Icons.Default.Hearing, VoiceReleaseTarget.CONTINUOUS, continuous))
         extensions.take(5).forEach { registered -> add(ReleaseItem(registered.plugin.descriptor.id + "/" + registered.action.id,
             registered.action.label, registered.action.icon.vector(), null, { extension(registered) }, registered.action.buttonStyle == UiButtonStyle.ICON)) }
     }
@@ -106,7 +110,7 @@ internal fun VoiceInputReleaseZones(gesture: VoiceInputGestureState, automaticRe
             contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.AutoMirrored.Filled.Send, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text(if (gesture.armed) "松开 发送" else "发送", color = MaterialTheme.colorScheme.onPrimaryContainer,
+                Text(if (gesture.armed) uiText("listening.release_send") else uiText("action.send"), color = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.titleSmall)
             }
         }

@@ -44,6 +44,18 @@ class RecognitionServiceTest {
             override suspend fun download(url: String, relativePath: String, sha256: String?): File = error("Service never downloads models")
         })
     }
+    @Test fun localizationUsesTheHostLanguageForTheActualCaptionsAction() = runBlocking {
+        val broker = Broker()
+        val plugin = plugin(broker)
+        try {
+            val english = PluginContext("", "", locale = "en-US")
+            plugin.execute("select/test.segmented", english)
+            assertEquals("Captions", plugin.contributions(english).actions.first { it.id == "listen" }.label)
+            assertEquals("음성 인식", plugin.page("manager", PluginContext("", "", locale = "ko-KR"))?.title)
+        } finally {
+            plugin.close()
+        }
+    }
     @Test fun enginePickerIsSelectionOnlyAndConfigurationLivesInService() = runBlocking {
         val broker = Broker(); val plugin = plugin(broker)
         val picker = plugin.page("engines", PluginContext("", ""))!!

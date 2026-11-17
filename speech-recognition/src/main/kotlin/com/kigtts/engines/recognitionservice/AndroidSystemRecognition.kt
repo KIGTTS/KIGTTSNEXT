@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-internal class AndroidSystemRecognition(private val context: Context) : AsrEngine {
+internal class AndroidSystemRecognition(private val context: Context, private val locale: () -> String) : AsrEngine {
     private val requests = Mutex()
     @Volatile private var availabilityProbe: Pair<Long, Boolean>? = null
     override val info get() = AsrInfo(streaming = StreamingKind.NONE, maxBatchSeconds = 15,
@@ -61,7 +61,11 @@ internal class AndroidSystemRecognition(private val context: Context) : AsrEngin
         requests.withLock {
             if (stop.isCompleted) return@withLock ""
             if (!isAvailable()) throw EngineException(EngineError.NOT_CONFIGURED, systemRecognitionUnavailable())
-            withContext(Dispatchers.Main.immediate) { utterance(intent(config), stop = stop).text }
+            withContext(Dispatchers.Main.immediate) {
+                retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }) {
+                    utterance(intent(config), stop = stop).text
+                }
+            }
         }
     }
 
@@ -84,6 +88,7 @@ internal class AndroidSystemRecognition(private val context: Context) : AsrEngin
     private suspend fun utterance(request: Intent, source: ParcelFileDescriptor? = null, stop: Deferred<Unit>? = null): RecognitionResult = coroutineScope {
         val result = CompletableDeferred<RecognitionResult>()
         val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        var ready = false
         val listener = object : RecognitionListener {
             fun finish(text: String) {
                 // Some system vendors ignore EXTRA_AUDIO_SOURCE and open their own microphone.
@@ -96,13 +101,15 @@ internal class AndroidSystemRecognition(private val context: Context) : AsrEngin
             override fun onResults(results: Bundle?) = finish(results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty())
             override fun onError(error: Int) {
                 if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
-                    (error == SpeechRecognizer.ERROR_CLIENT && stop?.isCompleted == true)) finish("")
+                    (stop?.isCompleted == true && (!ready || error == SpeechRecognizer.ERROR_CLIENT))) finish("")
                 else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && stop != null)
                     result.completeExceptionally(systemRecognitionPermissionIssue(context))
+                else if (stop != null && shouldRetrySystemRecognition(error, ready))
+                    result.completeExceptionally(SystemRecognitionStarting())
                 else result.completeExceptionally(systemRecognitionError(error))
             }
-            override fun onReadyForSpeech(params: Bundle?) = Unit
-            override fun onBeginningOfSpeech() = Unit
+            override fun onReadyForSpeech(params: Bundle?) { ready = true }
+            override fun onBeginningOfSpeech() { ready = true }
             override fun onRmsChanged(rmsdB: Float) = Unit
             override fun onBufferReceived(buffer: ByteArray?) = Unit
             override fun onEndOfSpeech() = Unit
@@ -115,7 +122,13 @@ internal class AndroidSystemRecognition(private val context: Context) : AsrEngin
             recognizer.startListening(request)
             if (stop != null) finish = launch {
                 stop.await()
-                if (!result.isCompleted) recognizer.stopListening()
+                if (!result.isCompleted) {
+                    if (ready) recognizer.stopListening()
+                    else {
+                        recognizer.cancel()
+                        result.complete(RecognitionResult(""))
+                    }
+                }
             }
             withTimeoutOrNull(20_000) { result.await() }
                 ?: throw EngineException(EngineError.TIMEOUT, "系统识别超时，请重试或切换识别引擎")

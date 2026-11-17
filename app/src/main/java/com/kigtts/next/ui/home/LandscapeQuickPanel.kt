@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -30,8 +31,10 @@ fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories:
     motion: LandscapePanelMotion, modifier: Modifier = Modifier) {
     val background by animateFloatAsState(if (state.panel != null) 1f else 0f, MaterialTheme.motionScheme.fastEffectsSpec(), label = "side-sheet-background")
     val showContent by remember(motion) { derivedStateOf { motion.visible && motion.width >= 136f } }
+    val expandedDescription = uiText("quick.columns", "count" to motion.columns.toString())
+    val collapsedDescription = uiText("quick.dock_closed")
     Box(modifier.fillMaxHeight().widthFrom { motion.width }.testTag("landscape-quick-panel").homePreviewRegion("phrases").semantics {
-        stateDescription = if (motion.visible) "${motion.columns}列快捷文本" else "快捷文本已收起"
+        stateDescription = if (motion.visible) expandedDescription else collapsedDescription
     }) {
         Box(Modifier.matchParentSize().graphicsLayer { alpha = background }
             .clip(homeCardShape(CornerNeighbors(start = true)))) {
@@ -61,11 +64,12 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val action = { if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT) else model.closePanel() }
     val click = feedbackClick(action)
     val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let(model::startVoiceInputFromDock); Unit }
+    val dockLabel = if (state.continuousRecognition) uiText("quick.dock_stop") else if (longPress == null) uiText("quick.dock") else uiText("quick.dock_voice")
     val sideSize=(48f-16f*progress).dp
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
-        ToolButton(if (open) "编辑快捷文本" else "相机", if (open) Icons.Default.Edit else Icons.Default.PhotoCamera,
+        ToolButton(if (open) uiText("quick.edit") else uiText("quick.camera"), if (open) Icons.Default.Edit else Icons.Default.PhotoCamera,
             { if (open) model.editQuickTexts() else model.cardCapture.open(systemCamera = false) },
             Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start"), shapes = shape, size = sideSize,
             onLongClick = openSystemCamera.takeUnless { open },
@@ -84,7 +88,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
             Box(Modifier.width(thickness.coerceAtLeast(2f).dp).heightFrom { 160f * (1f - progress) + length * progress }
                 .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
                 .clearAndSetSemantics {
-                    contentDescription = if (state.continuousRecognition) "长按停止识别" else if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
+                    contentDescription = dockLabel
                     role = Role.Button
                     onClick { click(); true }
                     if (longPress != null) onLongClick(longPress.action.label) { hold(); true }
@@ -93,7 +97,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
                 contentAlignment = Alignment.Center) {
                 Column(Modifier.graphicsLayer { alpha = 1f - progress }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.AutoMirrored.Filled.TextSnippet, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onPrimary)
-                    Text(if (state.continuousRecognition) "长按\n停止\n识别" else "快\n捷\n文\n本", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(if (state.continuousRecognition) uiText("quick.dock_vertical_stop") else uiText("quick.dock_vertical"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -101,7 +105,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
             SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(32.dp), context = context,
                 revision = state.pluginRevision, visible = open && progress > .001f)
         }
-        ToolButton(if (open) "收起快捷文本" else "画板", if (open) Icons.Default.ChevronRight else Icons.Default.Draw,
+        ToolButton(if (open) uiText("quick.collapse") else uiText("quick.sketch"), if (open) Icons.Default.ChevronRight else Icons.Default.Draw,
             { if (open) model.closePanel() else model.openSidePage(SidePage.SKETCH) },
             Modifier.size(sideSize).testTag("dock-end").homePreviewRegion("dock-end"), shapes = shape, size = sideSize)
     }

@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
@@ -29,15 +30,20 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     var exportPath by rememberSaveable { mutableStateOf<String?>(null) }
     var exportGroups by remember { mutableStateOf(false) }
     val importing by backup.pendingImport.collectAsStateWithLifecycle()
+    val filename = uiText("backup.quick_filename")
+    val exported = uiText("backup.quick_exported")
+    val exportFailed = uiText("backup.export_failed")
+    val importFailed = uiText("backup.import_failed")
+    val prepareFailed = uiText("backup.prepare_failed")
     RegisterPageLoading(busy)
     val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(QuickTextBackup.MIME)) { uri ->
         val path = exportPath; exportPath = null
         if (path != null) scope.launch {
             busy = true
             try {
-                if (uri != null) { backup.saveExport(resolver, uri, path); model.message("快捷文本已导出") }
+                if (uri != null) { backup.saveExport(resolver, uri, path); model.message(exported) }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "导出失败") }
+            catch (error: Exception) { model.message(error.message ?: exportFailed) }
             finally { withContext(Dispatchers.IO) { backup.exportFile(path).delete() }; busy = false }
         }
     }
@@ -47,17 +53,17 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
             try {
                 backup.offerImport(resolver, uri)
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "导入失败") }
+            catch (error: Exception) { model.message(error.message ?: importFailed) }
             finally { busy = false }
         }
     }
     val state by model.state.collectAsStateWithLifecycle()
     val formats = remember(model.registry, state.pluginRevision) { backupSettingsCards(model.registry, model.context()) }
     SettingsLayout {
-        SettingsGroup("快捷文本", "所选分组的媒体附件会一并备份和还原；导入前可预览") {
-            SettingItem("导入快捷文本", "选择文件和要还原的分组", Icons.Default.FileDownload, SettingPosition.FIRST,
+        SettingsGroup(uiText("quick.dock"), uiText("backup.quick_resources")) {
+            SettingItem(uiText("backup.quick_import"), uiText("backup.quick_import_hint"), Icons.Default.FileDownload, SettingPosition.FIRST,
                 Modifier.testTag("backup-import"), enabled = !busy, onClick = { load.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) })
-            SettingItem("导出快捷文本", "选择要备份的分组", Icons.Default.FileUpload, SettingPosition.LAST,
+            SettingItem(uiText("backup.quick_export"), uiText("backup.quick_export_hint"), Icons.Default.FileUpload, SettingPosition.LAST,
                 Modifier.testTag("backup-export"), enabled = !busy && exportPath == null, onClick = {
                     exportGroups = true
                 })
@@ -71,18 +77,18 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
             }
         } }
     }
-    if (exportGroups) QuickBackupGroupPicker("选择要导出的分组", model.quickTexts.groups(), "导出", { exportGroups = false }) { selected ->
+    if (exportGroups) QuickBackupGroupPicker(uiText("backup.pick_export"), model.quickTexts.groups(), uiText("backup.export"), { exportGroups = false }) { selected ->
         exportGroups = false; busy = true
         scope.launch {
             try {
                 val file = backup.prepareExport(groupIds = selected.toList())
-                exportPath = "exports/${file.name}"; save.launch("KIGTTS-快捷文本.kigcard")
+                exportPath = "exports/${file.name}"; save.launch(filename)
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "导出失败") }
+            catch (error: Exception) { model.message(error.message ?: exportFailed) }
             finally { busy = false }
         }
     }
-    importing?.let { selection -> QuickBackupGroupPicker("选择要还原的分组", selection.groups, "继续", {
+    importing?.let { selection -> QuickBackupGroupPicker(uiText("backup.pick_restore"), selection.groups, uiText("backup.continue"), {
         backup.discardImport(selection); backup.clearPending()
     }) { selected ->
         backup.clearPending(); busy = true
@@ -91,10 +97,10 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
                 when (val reply = backup.importSelected(selection, selected)) {
                     is QuickTextReply.Prepared -> model.navigate(Destination.QuickTextReview(reply.value.token))
                     is QuickTextReply.Failure -> model.message(reply.message)
-                    else -> model.message("无法准备导入")
+                    else -> model.message(prepareFailed)
                 }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "导入失败") }
+            catch (error: Exception) { model.message(error.message ?: importFailed) }
             finally { busy = false }
         }
     } }
