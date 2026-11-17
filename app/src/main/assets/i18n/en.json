@@ -13,6 +13,7 @@
   "subtitle.flip": "Flip captions",
   "subtitle.size": "Character width: {size}% of the screen",
   "subtitle.auto_on": "Enable autoplay and reading",
+  "subtitle.baking": "Caching quick text speech",
   "subtitle.auto_off": "Disable autoplay and reading",
   "quick.group_duplicate": "This group name already exists. Choose a different name",
   "quick.save_error": "Couldn't save. Check the content and group, then try again.",

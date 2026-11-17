@@ -42,7 +42,7 @@ import kotlinx.coroutines.withContext
     val assets = LocalContext.current.assets
     val previews by produceState<Map<String, ImageBitmap>>(emptyMap(), options) {
         value = withContext(Dispatchers.Default) {
-            val source = decodeCameraReferencePhoto(assets, 8)
+            val source = decodeCameraReferencePhoto(assets, 2)
             if (source == null) emptyMap() else try { options.associate { option ->
                 val target = Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888)
                 val side = minOf(source.width, source.height)

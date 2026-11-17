@@ -14,7 +14,7 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
     private val routing = ServiceRouting(settings, broker, system)
     @Volatile var cache: ServiceCache? = null
     override val info get() = TtsInfo(role = TtsRole.SERVICE, selectedVoiceId = if (settings.provider == null) null else settings.voice, supportsControl = true)
-    fun settingsChanged(automaticRead: Boolean? = null) = routing.changed(automaticRead)
+    fun settingsChanged(automaticRead: Boolean? = null, speechActive: Boolean? = null) = routing.changed(automaticRead, speechActive)
     override suspend fun control(command: TtsControl) { routing.control(command) }
     override suspend fun close() { cache?.close(); routing.close() }
     override fun synthesize(request: TtsRequest) = synthesize(request, null)
@@ -26,8 +26,12 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
 
     /** Returns false when the output is not from the requested voice. Never bake fallbacks. */
     suspend fun generate(request: TtsRequest, expected: CacheVoice?, allowFallback: Boolean = false, profileVersion: String? = null,
-        emit: suspend (SynthesisEvent) -> Unit): Boolean {
-        val provider = routing.begin()
+        emit: suspend (SynthesisEvent) -> Unit): Boolean = routing.use { provider ->
+        generateUsing(provider, request, expected, allowFallback, profileVersion, emit)
+    }
+
+    private suspend fun generateUsing(provider: TtsProvider?, request: TtsRequest, expected: CacheVoice?, allowFallback: Boolean,
+        profileVersion: String?, emit: suspend (SynthesisEvent) -> Unit): Boolean {
         val voice = settings.voice ?: provider?.info?.selectedVoiceId
         val matchesVoice = expected == null || if (provider == null) expected.owner == SYSTEM_PROVIDER && settings.provider == null
             else expected.owner == provider.pluginId && expected.voice == voice

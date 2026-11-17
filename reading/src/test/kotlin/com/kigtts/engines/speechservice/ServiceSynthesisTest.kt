@@ -35,6 +35,24 @@ class ServiceSynthesisTest {
         }
     }
     private fun settings() = ServiceSettings(PluginStorage(files.newFolder())).also { it.provider = "test.provider"; it.voice = "chosen" }
+    @Test fun backgroundProgressCountsCompletedEntriesAndClearsWhenFinished() = runBlocking {
+        val broker = profiledBroker()
+        val second = CompletableDeferred<Unit>()
+        broker.output = { request ->
+            if (request.text == "乙") second.await()
+            emit(SynthesisEvent.Audio(PcmAudio(byteArrayOf(2, 0))))
+        }
+        val options = settings(); val facade = ServiceSynthesis(options, broker, System())
+        val cache = ServiceCache(files.newFolder(), options, broker, MutableStateFlow(linkedMapOf("a" to "甲", "b" to "乙")),
+            { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
+        facade.cache = cache
+        try {
+            withTimeout(10_000) { cache.bakeProgress.first { it == .5f } }
+            second.complete(Unit)
+            withTimeout(10_000) { cache.bakeProgress.first { it == null } }
+            assertEquals(listOf("甲", "乙"), broker.requests.map { it.text })
+        } finally { facade.close() }
+    }
     @Test fun shortcutAndLiveProfilesDoNotShareAudioOrInvalidateEachOther() = runBlocking {
         val broker = Broker().also { it.catalog = listOf(TtsProvider("test.provider", "test",
             TtsInfo(voices = listOf(VoiceInfo("chosen", "Voice", "zh-CN")), profiles = TtsProfileVersions("fast-v1", "quality-v1")))) }

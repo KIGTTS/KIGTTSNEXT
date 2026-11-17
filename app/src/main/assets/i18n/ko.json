@@ -13,6 +13,7 @@
   "subtitle.flip": "자막 뒤집기",
   "subtitle.size": "글자 너비: 화면의 {size}%",
   "subtitle.auto_on": "자동 재생 및 읽어 주기 켜기",
+  "subtitle.baking": "빠른 텍스트 음성 캐시 중",
   "subtitle.auto_off": "자동 재생 및 읽어 주기 끄기",
   "quick.group_duplicate": "이미 사용 중인 그룹 이름입니다. 다른 이름을 사용해 주세요",
   "quick.save_error": "저장하지 못했습니다. 내용과 그룹을 확인한 뒤 다시 시도해 주세요.",

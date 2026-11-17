@@ -5,7 +5,7 @@ import com.kigtts.plugin.api.*
 internal fun recognitionServicePage(id: String, settings: RecognitionServiceSettings, broker: RecognitionBroker,
     context: PluginContext, serviceId: String): PluginPage? {
     val all = settings.ordered(broker.providers()); val selected = settings.current(all)
-    if (id == "manager") return PluginPage(id, "语音识别服务", buildList {
+    if (id == "manager") return PluginPage(id, "语音识别", buildList {
         if (context.recognitionServiceId != serviceId) add(PageBlock.Actions(listOf(PageAction("activate", "用于语音识别", PluginIcon.MIC))))
         add(PageBlock.Group("识别", listOf(PageBlock.Input("识别引擎", selected?.name ?: "未启用语音识别", "engines", icon = PluginIcon.MIC))))
         add(PageBlock.Group("语音输入", listOf(
@@ -24,8 +24,15 @@ internal fun recognitionServicePage(id: String, settings: RecognitionServiceSett
             ManagementItem("recognition-disabled", "不启用语音识别", "", PluginIcon.CLOSE, selected = selected == null,
                 primaryAction = "disable-recognition", selection = ManagementSelection("disable-recognition"))
         ) + all.map { provider ->
+            val subtitle = when {
+                provider.pluginId == SYSTEM_RECOGNITION_ID -> if (provider.info.availability == EngineAvailability.READY)
+                    "断句后识别 · 由系统处理，可能需要联网" else systemRecognitionUnavailable()
+                !provider.enabled -> "已停用"
+                provider.info.availability == EngineAvailability.READY -> recognitionKind(provider.info.streaming)
+                else -> "待配置"
+            }
             ManagementItem(provider.pluginId, provider.name,
-                if (!provider.enabled) "已停用" else if (provider.info.availability == EngineAvailability.READY) recognitionKind(provider.info.streaming) else "待配置",
+                subtitle,
                 PluginIcon.MIC, selected = provider.pluginId == selected?.pluginId,
                 primaryAction = "select/${provider.pluginId}", selection = ManagementSelection("select/${provider.pluginId}"))
         }, emptyText = "添加识别引擎后即可选择"))

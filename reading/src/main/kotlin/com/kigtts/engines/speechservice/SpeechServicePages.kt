@@ -36,7 +36,11 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                     if (settings.cacheEnabled) add(PageBlock.Input("重新缓存", "重新合成当前声音的快捷文本", "cache-rebuild", symbol = "refresh"))
                     add(PageBlock.Input("清理缓存", formatCacheSize(cacheBytes()), "cache-clear", icon = PluginIcon.CLOSE))
                 }))
-                add(PageBlock.Group("加载方式", listOf(PageBlock.Toggle("保持加载", settings.resident, "resident", "减少下次朗读等待"))))
+                add(PageBlock.Group("加载方式", buildList {
+                    add(PageBlock.Toggle("保持加载", settings.resident, "resident", "开启后不自动释放引擎"))
+                    if (!settings.resident) add(PageBlock.Slider(PluginControl.Slider("空闲保留时间", "idle-minutes",
+                        settings.idleMinutes.toFloat(), 1f, 15f, steps = 13, suffix = "分钟")))
+                }))
             })
         }
         if (id != "voices" && !id.startsWith("voices/")) return null

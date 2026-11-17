@@ -37,7 +37,7 @@ class RecognitionServiceTest {
             } finally { cancelled = true }
         }
     }
-    private suspend fun plugin(broker: Broker) = RecognitionServicePlugin().also { plugin ->
+    private suspend fun plugin(broker: RecognitionBroker) = RecognitionServicePlugin().also { plugin ->
         plugin.attach(object : PluginEnvironment {
             override val storage = PluginStorage(root); override val assets = File(root, "assets")
             override val recognitionBroker = broker
@@ -53,6 +53,7 @@ class RecognitionServiceTest {
         assertEquals("disable-recognition", picker.management!!.items.first { it.selected }.primaryAction)
         assertTrue(plugin.contributions.actions.isEmpty())
         val manager = plugin.page("manager", PluginContext("", "", recognitionServiceId = plugin.descriptor.id))!!
+        assertEquals("语音识别", manager.title)
         val groups = manager.blocks.filterIsInstance<PageBlock.Group>()
         assertEquals(listOf("识别", "语音输入", "加载方式", "引擎设置"), groups.map { it.title })
         assertNull(manager.management)
@@ -115,6 +116,31 @@ class RecognitionServiceTest {
         assertEquals(listOf(RecognitionEvent.Started), plugin.asr.recognizeStream(flowOf(PcmAudio(silence))).toList())
         broker.catalog = emptyList(); assertEquals(EngineAvailability.NEEDS_RESOURCES, plugin.asr.info.availability)
         assertEquals(listOf("test.batch", "test.batch"), broker.calls)
+    }
+
+    @Test fun systemChoiceUsesTheExistingFinalOnlyCaptionPathWithoutRoutingAudioToAPlugin() = runBlocking {
+        val external = Broker()
+        val sizes = mutableListOf<Int>()
+        val system = object : AsrEngine {
+            override val info = AsrInfo(streaming = StreamingKind.NONE)
+            override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult {
+                sizes += audio.bytes.size
+                return RecognitionResult("第${sizes.size}句")
+            }
+            override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = error("必须先断句")
+        }
+        val plugin = plugin(SystemRecognitionBroker(external, system))
+        try {
+            val picker = plugin.page("engines", PluginContext("", ""))!!.management!!
+            assertEquals("系统识别引擎", picker.items.single { it.id == SYSTEM_RECOGNITION_ID }.title)
+            plugin.execute("select/$SYSTEM_RECOGNITION_ID", PluginContext("", ""))
+            assertEquals(StreamingKind.SEGMENTED, plugin.asr.info.streaming)
+            val speech = ByteArray(640 * 15) { if (it % 2 == 1) 10 else 0 }
+            val silence = ByteArray(640 * 35)
+            val result = plugin.asr.recognizeStream(flowOf(PcmAudio(speech + silence + speech))).toList()
+            assertEquals(listOf("第1句", "第2句"), result.filterIsInstance<RecognitionEvent.Transcript>().map { it.finalized })
+            assertTrue(external.calls.isEmpty())
+        } finally { plugin.close() }
     }
     @Test fun selectingDisabledProviderRequestsHostEnableWithoutInliningEngine() = runBlocking<Unit> {
         val broker = Broker(); broker.catalog = broker.catalog.map { it.copy(enabled = false) }; val plugin = plugin(broker)

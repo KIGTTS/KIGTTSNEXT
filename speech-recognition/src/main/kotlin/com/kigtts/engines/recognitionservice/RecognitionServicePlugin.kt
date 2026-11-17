@@ -1,5 +1,6 @@
 package com.kigtts.engines.recognitionservice
 
+import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.*
 
 class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { null }) : KigPlugin {
@@ -10,7 +11,10 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
     override val asr: AsrEngine get() = facade
     override suspend fun attach(environment: PluginEnvironment) {
         settings = RecognitionServiceSettings(environment.storage, legacyEnabled)
-        broker = requireNotNull(environment.recognitionBroker) { "宿主未授予语音识别服务能力" }
+        val providers = requireNotNull(environment.recognitionBroker) { "宿主未授予语音识别服务能力" }
+        broker = (environment as? AndroidPluginEnvironment)?.let {
+            SystemRecognitionBroker(providers, AndroidSystemRecognition(it.context))
+        } ?: providers
         facade = ServiceRecognition(settings, broker)
     }
     private val entry = SettingsEntry("manager", "语音识别", "manager", PluginIcon.MIC,
@@ -60,7 +64,10 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
                 facade.settingsChanged(); PluginOutcome.NoAction
             }
             "select" -> {
-                val selected = provider(); settings.provider = selected.pluginId; settings.routingDisabled = false; settings.save(); facade.settingsChanged()
+                val selected = provider()
+                if (selected.pluginId == SYSTEM_RECOGNITION_ID && selected.info.availability != EngineAvailability.READY)
+                    return PluginOutcome.Message(systemRecognitionUnavailable())
+                settings.provider = selected.pluginId; settings.routingDisabled = false; settings.save(); facade.settingsChanged()
                 if (!selected.enabled) PluginOutcome.SetPluginEnabled(selected.pluginId, true) else PluginOutcome.RecognitionRoutingChanged
             }
             "toggle" -> provider().let { PluginOutcome.SetPluginEnabled(it.pluginId, !it.enabled) }

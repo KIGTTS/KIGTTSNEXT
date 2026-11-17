@@ -13,6 +13,7 @@
   "subtitle.flip": "把字幕倒过来",
   "subtitle.size": "一个字占屏幕宽度的 {size}%",
   "subtitle.auto_on": "打开自动播放和朗读",
+  "subtitle.baking": "正在准备快捷文本的声音",
   "subtitle.auto_off": "关掉自动播放和朗读",
   "quick.group_duplicate": "这个分组名已经用过啦，换一个吧",
   "quick.save_error": "没保存成功。检查一下内容和分组，再试一次吧。",

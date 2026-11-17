@@ -24,6 +24,7 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
     private lateinit var settingsPages: SpeechServicePages
     private val cacheSize = MutableStateFlow(0L)
     val cacheBytes = cacheSize.asStateFlow()
+    val bakeProgress get() = if (::facade.isInitialized) facade.cache?.bakeProgress else null
     fun synthesizeText(request: TtsRequest, phraseId: String?) =
         if (::facade.isInitialized) facade.synthesize(request, phraseId) else pending.synthesize(request)
     suspend fun forgetCachedPacks(owner: String, ids: Set<String>) = withContext(Dispatchers.IO) {
@@ -55,7 +56,8 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
         SettingsEntry("manager", "朗读设置", "manager", PluginIcon.SPEAKER, "audio", "音频", "选择朗读声音", 10),
         SettingsEntry("packs", "语音包", "packs", PluginIcon.SPEAKER, "audio", "音频", "管理已添加的声音", 20)))
     override fun contributions(context: PluginContext): PluginContributions {
-        if (::facade.isInitialized) facade.settingsChanged(context.ttsPluginId?.let { it == descriptor.id && context.automaticRead })
+        if (::facade.isInitialized) facade.settingsChanged(context.ttsPluginId?.let { it == descriptor.id && context.automaticRead },
+            context.ttsPluginId?.let { it == descriptor.id && context.speechActive })
         return contributions
     }
     override fun page(pageId: String, context: PluginContext): PluginPage? {
@@ -111,6 +113,12 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                 PluginOutcome.OpenPluginPage(requireNotNull(id), requireNotNull(voice))
             }
             "resident" -> { settings.resident = context.inputs["checked"]?.toBooleanStrictOrNull() ?: !settings.resident; settings.save(); facade.settingsChanged(); PluginOutcome.RefreshUi }
+            "idle-minutes" -> {
+                val minutes = context.inputs["value"]?.toFloatOrNull()
+                require(minutes != null && minutes.isFinite() && minutes in 1f..15f)
+                settings.idleMinutes = kotlin.math.round(minutes).toInt()
+                settings.save(); facade.settingsChanged(); PluginOutcome.RefreshUi
+            }
             "activate" -> PluginOutcome.SelectTtsService(descriptor.id)
             "sounds" -> PluginOutcome.OpenPage("packs")
             "system-default" -> { settings.provider = null; settings.voice = null; settings.systemVoice = null; settings.save(); PluginOutcome.RefreshUi }

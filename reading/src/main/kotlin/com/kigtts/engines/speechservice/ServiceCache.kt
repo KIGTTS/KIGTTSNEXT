@@ -20,6 +20,8 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private val parallelProvider: (String) -> Boolean = { it == "engine.cloud-tts" }) {
     private val store = SpeechAudioCache(directory, size)
     val bytes get() = store.bytes
+    private val _bakeProgress = MutableStateFlow<Float?>(null)
+    val bakeProgress = _bakeProgress.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val signal = Channel<Unit>(Channel.CONFLATED)
     private val exclusiveGeneration = Mutex()
@@ -56,7 +58,8 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                         delay(500)
                         while (true) {
                             val before = provisionalRevision.value
-                            if (prepare(plan)) break
+                            val complete = try { prepare(plan) } finally { _bakeProgress.value = null }
+                            if (complete) break
                             withTimeoutOrNull(60_000) { provisionalRevision.first { it != before } }
                         }
                     }
@@ -149,16 +152,23 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                 profile = if (plan.prebakeVersion != null) TtsProfile.PREBAKE else TtsProfile.REALTIME)
             AudioCacheKey(plan.voice, id, text, request.language, plan.rate, null, plan.prebakeVersion) to request
         }
+        val ready = work.mapNotNullTo(mutableSetOf()) { (key, _) -> key.takeIf(store::has) }
+        fun publishProgress() {
+            _bakeProgress.value = if (validPlan(plan) && ready.size < work.size) ready.size.toFloat() / work.size else null
+        }
+        if (ready.size == work.size) return true
         for (replaceProvisional in listOf(false, true)) {
             // Fill holes before upgrading playable entries. Retry missing entries later if one failed.
             if (replaceProvisional && work.any { (key, _) -> !store.has(key) && !store.hasProvisional(key) }) return false
             for ((key, request) in work) {
                 if (!validPlan(plan)) return true
-                if (store.has(key) || store.hasProvisional(key) != replaceProvisional) continue
+                if (store.has(key)) { if (ready.add(key)) publishProgress(); continue }
+                if (store.hasProvisional(key) != replaceProvisional) continue
                 try {
                     val bake: suspend () -> Unit = {
                         if (validPlan(plan) && !store.has(key)) {
                             store.writer(key)?.use { writer ->
+                                publishProgress()
                                 val valid = withTimeoutOrNull(if (plan.prebakeVersion != null) 120_000 else 30_000) {
                                     synthesis.generate(request, plan.voice, profileVersion = plan.prebakeVersion) { event ->
                                         if (event is SynthesisEvent.Audio) writer.append(event.audio)
@@ -168,7 +178,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                                 val deferReplacement = !replaceProvisional &&
                                     (pendingRealtimeShortcut == key || store.hasProvisional(key)) &&
                                     work.any { (other, _) -> other != key && !store.has(other) && !store.hasProvisional(other) }
-                                if (valid && validPlan(plan) && !deferReplacement) writer.finish()
+                                if (valid && validPlan(plan) && !deferReplacement && writer.finish() && ready.add(key)) publishProgress()
                             }
                         }
                     }

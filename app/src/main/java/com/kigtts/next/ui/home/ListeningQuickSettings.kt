@@ -3,8 +3,9 @@ package com.kigtts.next.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
@@ -14,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
+import com.kigtts.next.theme.AppearanceCardSurface
 import com.kigtts.next.ui.components.MaterialSymbols
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
@@ -23,8 +25,11 @@ import com.kigtts.next.ui.settings.SettingsGroup
 
 @Composable
 internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
-    SettingItem("打开字幕浮窗", "可先打开浮窗，再开始聆听",
-        MaterialSymbols.vector("open_in_new") ?: Icons.Default.OpenInNew, SettingPosition.SINGLE, onClick = open, enabled = ready)
+    AppearanceCardSurface(Modifier.fillMaxWidth()) {
+        SettingItem("打开字幕浮窗", "可先打开浮窗，再开始聆听",
+            MaterialSymbols.vector("open_in_new") ?: Icons.AutoMirrored.Filled.OpenInNew, SettingPosition.SINGLE,
+            modifier = Modifier.padding(8.dp), onClick = open, enabled = ready)
+    }
 }
 
 @Composable

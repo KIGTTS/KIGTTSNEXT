@@ -10,7 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 internal fun decodeCameraReferencePhoto(assets: AssetManager, sample: Int): Bitmap? =
-    assets.open("camera/filter-reference.jpg").use {
+    assets.open("camera/filter-reference.webp").use {
         BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
     }
 
@@ -19,7 +19,7 @@ internal fun rememberCameraReferencePhoto(load: Boolean): Bitmap? {
     val assets = LocalContext.current.assets
     return produceState<Bitmap?>(null, assets, load) {
         if (load && value == null) value = withContext(Dispatchers.IO) {
-            runCatching { decodeCameraReferencePhoto(assets, 4) }.getOrNull()
+            runCatching { decodeCameraReferencePhoto(assets, 1) }.getOrNull()
         }
     }.value
 }

@@ -30,6 +30,11 @@ class SpeechServicePagesTest {
         assertTrue(items.filterIsInstance<PageBlock.Toggle>().single { it.actionId == "cache-toggle" }.checked)
         assertEquals("0 B", items.filterIsInstance<PageBlock.Input>().single { it.actionId == "cache-clear" }.value)
         assertEquals("重新缓存", items.filterIsInstance<PageBlock.Input>().single { it.actionId == "cache-rebuild" }.title)
+        assertFalse(items.filterIsInstance<PageBlock.Slider>().any { it.control.actionId == "idle-minutes" })
+        settings.resident = false
+        val idle = pages.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>().flatMap { it.children }
+            .filterIsInstance<PageBlock.Slider>().single { it.control.actionId == "idle-minutes" }.control
+        assertEquals(2f, idle.value); assertEquals(1f, idle.min); assertEquals(15f, idle.max)
         settings.cacheEnabled = false
         assertFalse(pages.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>().flatMap { it.children }
             .filterIsInstance<PageBlock.Input>().any { it.actionId == "cache-rebuild" })

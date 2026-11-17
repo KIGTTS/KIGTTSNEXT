@@ -35,6 +35,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     init { pluginManager.safeMode = recovery::safeMode }
     val registry = pluginManager.registry
     val readingCacheBytes get() = hostRuntime?.reading?.cacheBytes
+    val readingBakeProgress get() = hostRuntime?.reading?.bakeProgress
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         audioDevices.decorate(plugin, plugin.page(pageId, context()))

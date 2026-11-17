@@ -9,37 +9,59 @@ import kotlinx.coroutines.sync.withLock
 
 /** A service routes standard lifecycle signals; the provider alone owns resident native state. */
 internal class ServiceRouting(private val settings: ServiceSettings, private val broker: SpeechBroker,
-    private val system: TtsEngine) {
+    private val system: TtsEngine, private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)) {
     private data class Route(val id: String?, val voice: String?, val generation: String = "")
     private val mutex = Mutex()
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val changes = Channel<Unit>(Channel.CONFLATED)
     private var route: Route? = null
     private var used = false
-    private var resident: Boolean? = null
+    private var idlePolicy: Pair<Boolean, Int>? = null
+    private var idle: Job? = null
+    private var idleGeneration = 0L
+    private var inFlight = 0
     private var active = false
     @Volatile private var automatic = false
+    @Volatile private var desiredPlayback: Boolean? = null
     init { scope.launch { for (ignored in changes) {
-        try { mutex.withLock { if (route != null) reconcile(false) } }
+        try { mutex.withLock {
+            desiredPlayback?.let { playback(it) }
+            if (route != null) reconcile(false)
+        } }
         catch (cancel: CancellationException) { throw cancel }
         catch (_: Exception) { }
     } } }
-    fun changed(automaticRead: Boolean? = null) {
+    fun changed(automaticRead: Boolean? = null, speechActive: Boolean? = null) {
         if (automaticRead != null) automatic = automaticRead
+        if (speechActive != null) desiredPlayback = speechActive
         changes.trySend(Unit)
     }
-    suspend fun begin(): TtsProvider? = mutex.withLock { reconcile(false).also { used = true } }
+    suspend fun <T> use(block: suspend (TtsProvider?) -> T): T {
+        val provider = mutex.withLock {
+            cancelIdle()
+            inFlight++
+            try { reconcile(false).also { used = true } }
+            catch (failure: Exception) { inFlight--; scheduleIdle(); throw failure }
+        }
+        return try { block(provider) } finally {
+            withContext(NonCancellable) { mutex.withLock { inFlight--; scheduleIdle() } }
+        }
+    }
     suspend fun control(command: TtsControl) = mutex.withLock {
         when (command.operation) {
-            TtsControlOperation.PREPARE -> { reconcile(true); used = true }
-            TtsControlOperation.RELEASE -> { active = false; release(); system.control(TtsControl(TtsControlOperation.RELEASE)) }
+            TtsControlOperation.PREPARE -> { reconcile(true); used = true; scheduleIdle() }
+            TtsControlOperation.RELEASE -> { active = false; release() }
             TtsControlOperation.SET_RESIDENT -> { settings.resident = command.resident; reconcile(false) }
-            TtsControlOperation.ACTIVITY -> {
-                active = command.active
-                system.control(command)
-                route?.takeIf { it.id != null }?.let { send(it, command) }
-            }
+            TtsControlOperation.ACTIVITY -> playback(command.active)
         }
+    }
+    private suspend fun playback(value: Boolean) {
+        if (active == value) return
+        active = value
+        val command = TtsControl(TtsControlOperation.ACTIVITY, active = value)
+        try {
+            system.control(command)
+            route?.takeIf { it.id != null }?.let { send(it, command) }
+        } finally { scheduleIdle() }
     }
     private suspend fun reconcile(warm: Boolean): TtsProvider? {
         val provider = try { broker.providers().firstOrNull {
@@ -50,14 +72,15 @@ internal class ServiceRouting(private val settings: ServiceSettings, private val
         val previous = route
         val switched = previous != next
         val preload = warm || switched && (automatic || previous?.id == next.id && used)
-        val pinActivated = settings.resident && resident != true && used
-        if (switched) { release(); system.control(TtsControl(TtsControlOperation.RELEASE)); route = next }
-        if (switched || resident != settings.resident) {
-            send(next, TtsControl(TtsControlOperation.SET_RESIDENT, resident = settings.resident))
-            resident = settings.resident
+        if (switched) {
+            release()
+            send(next, TtsControl(TtsControlOperation.SET_RESIDENT, resident = true))
+            route = next
         }
         if (switched && active) send(next, TtsControl(TtsControlOperation.ACTIVITY, active = true))
-        if (preload || pinActivated) { send(next, TtsControl(TtsControlOperation.PREPARE, next.voice)); used = true }
+        if (preload) { send(next, TtsControl(TtsControlOperation.PREPARE, next.voice)); used = true }
+        val policy = settings.resident to settings.idleMinutes
+        if (idlePolicy != policy) { idlePolicy = policy; scheduleIdle() }
         return provider
     }
     private suspend fun send(target: Route, command: TtsControl) {
@@ -66,17 +89,39 @@ internal class ServiceRouting(private val settings: ServiceSettings, private val
             broker.control(target.id, command)
     }
     suspend fun fallback() = mutex.withLock {
-        system.control(TtsControl(TtsControlOperation.SET_RESIDENT, resident = settings.resident))
+        system.control(TtsControl(TtsControlOperation.SET_RESIDENT, resident = true))
         system.control(TtsControl(TtsControlOperation.ACTIVITY, active = active))
     }
-    private suspend fun release() {
-        val previous = route
-        route = null; used = false; resident = null
-        if (previous != null) {
-            try { send(previous, TtsControl(TtsControlOperation.RELEASE)) }
-            catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { }
+
+    private fun cancelIdle() { idleGeneration++; idle?.cancel(); idle = null }
+    private fun scheduleIdle() {
+        cancelIdle()
+        if (route == null || settings.resident || active || inFlight != 0) return
+        val generation = idleGeneration
+        idle = scope.launch {
+            delay(settings.idleMinutes * 60_000L)
+            mutex.withLock {
+                if (generation == idleGeneration && inFlight == 0 && !active && !settings.resident) {
+                    idle = null
+                    release()
+                }
+            }
         }
+    }
+    private suspend fun release() {
+        cancelIdle()
+        val previous = route
+        route = null; used = false; idlePolicy = null
+        if (previous?.id != null) {
+            // Restore the provider's own idle behavior when it leaves this service's lease.
+            releaseControl { send(previous, TtsControl(TtsControlOperation.SET_RESIDENT, resident = false)) }
+            releaseControl { send(previous, TtsControl(TtsControlOperation.RELEASE)) }
+        }
+        releaseControl { system.control(TtsControl(TtsControlOperation.SET_RESIDENT, resident = false)) }
+        releaseControl { system.control(TtsControl(TtsControlOperation.RELEASE)) }
+    }
+    private suspend fun releaseControl(action: suspend () -> Unit) {
+        try { action() } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { }
     }
     suspend fun close() { scope.cancel(); mutex.withLock { release(); system.close() } }
 }
