@@ -37,8 +37,11 @@ class ServiceSynthesisTest {
     private fun settings() = ServiceSettings(PluginStorage(files.newFolder())).also { it.provider = "test.provider"; it.voice = "chosen" }
     @Test fun backgroundProgressCountsCompletedEntriesAndClearsWhenFinished() = runBlocking {
         val broker = profiledBroker()
+        val preparing = CompletableDeferred<Unit>()
+        val firstAudio = CompletableDeferred<Unit>()
         val second = CompletableDeferred<Unit>()
         broker.output = { request ->
+            if (request.text == "甲") { preparing.complete(Unit); firstAudio.await() }
             if (request.text == "乙") second.await()
             emit(SynthesisEvent.Audio(PcmAudio(byteArrayOf(2, 0))))
         }
@@ -47,10 +50,34 @@ class ServiceSynthesisTest {
             { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L))
         facade.cache = cache
         try {
+            withTimeout(10_000) { preparing.await() }
+            assertNull(cache.bakeProgress.value)
+            firstAudio.complete(Unit)
             withTimeout(10_000) { cache.bakeProgress.first { it == .5f } }
             second.complete(Unit)
             withTimeout(10_000) { cache.bakeProgress.first { it == null } }
             assertEquals(listOf("甲", "乙"), broker.requests.map { it.text })
+        } finally { facade.close() }
+    }
+
+    @Test fun reopeningBeforeTheProviderInventoryIsReadyKeepsCompletedAudio() = runBlocking {
+        val directory = files.newFolder()
+        val key = AudioCacheKey(CacheVoice("test.provider", "chosen", cacheHash("1", null, null), "chosen"),
+            "phrase", "甲", "zh-CN", 1f, null, "quality-v1")
+        SpeechAudioCache(directory).writer(key)!!.use { writer -> writer.append(pcm.audio); assertTrue(writer.finish()) }
+        val inventory = MutableStateFlow<Map<String, String>?>(null)
+        val broker = profiledBroker()
+        val options = settings(); val facade = ServiceSynthesis(options, broker, System())
+        val cache = ServiceCache(directory, options, broker, MutableStateFlow(mapOf("phrase" to "甲")),
+            { inventory.value }, { "system" }, facade, MutableStateFlow(0L))
+        facade.cache = cache
+        try {
+            assertNull(withTimeoutOrNull(900) { cache.bakeProgress.first { it != null } })
+            inventory.value = mapOf("test.provider" to "1"); cache.changed()
+            assertNull(withTimeoutOrNull(900) { cache.bakeProgress.first { it != null } })
+            assertTrue(broker.requests.isEmpty())
+            assertEquals(1, facade.synthesize(TtsRequest("甲"), "phrase").filterIsInstance<SynthesisEvent.Audio>()
+                .single().audio.bytes[0].toInt())
         } finally { facade.close() }
     }
     @Test fun shortcutAndLiveProfilesDoNotShareAudioOrInvalidateEachOther() = runBlocking {
@@ -96,6 +123,11 @@ class ServiceSynthesisTest {
             waitFor { baked() != null }
             assertEquals(3, broker.requests.count { it.profile == TtsProfile.PREBAKE })
             assertEquals(4, speak("phrase"))
+            val custom = facade.synthesize(TtsRequest("你好", rate = .8f, profile = TtsProfile.PREBAKE), "phrase")
+                .filterIsInstance<SynthesisEvent.Audio>().single().audio.bytes.first().toInt()
+            assertEquals(2, custom)
+            assertEquals(TtsProfile.REALTIME, broker.requests.last().profile)
+            assertEquals(4, speak("phrase")) // A custom request must not evict the baked shortcut.
         } finally { facade.close() }
     }
     @Test fun realtimePreemptsLocalBakeAndProvisionalPlaybackDoesNotInterruptOtherEntries() = runBlocking {

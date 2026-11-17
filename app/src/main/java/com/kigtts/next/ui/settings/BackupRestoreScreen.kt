@@ -30,7 +30,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     var exportGroups by remember { mutableStateOf(false) }
     val importing by backup.pendingImport.collectAsStateWithLifecycle()
     RegisterPageLoading(busy)
-    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+    val save = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(QuickTextBackup.MIME)) { uri ->
         val path = exportPath; exportPath = null
         if (path != null) scope.launch {
             busy = true
@@ -54,7 +54,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     val state by model.state.collectAsStateWithLifecycle()
     val formats = remember(model.registry, state.pluginRevision) { backupSettingsCards(model.registry, model.context()) }
     SettingsLayout {
-        SettingsGroup("快捷文本", "包含分组、文字和媒体附件；导入前会显示修改预览。") {
+        SettingsGroup("快捷文本", "所选分组的媒体附件会一并备份和还原；导入前可预览") {
             SettingItem("导入快捷文本", "选择文件和要还原的分组", Icons.Default.FileDownload, SettingPosition.FIRST,
                 Modifier.testTag("backup-import"), enabled = !busy, onClick = { load.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) })
             SettingItem("导出快捷文本", "选择要备份的分组", Icons.Default.FileUpload, SettingPosition.LAST,

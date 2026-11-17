@@ -61,6 +61,25 @@ class RecognitionServiceTest {
         val slider = groups.first { it.title == "加载方式" }.children.filterIsInstance<PageBlock.Slider>().single().control
         assertEquals(5f, slider.min); assertEquals(120f, slider.max)
     }
+
+    @Test fun defaultUsesOnlyReadySystemRecognitionAndKeepsAnExplicitChoice() = runBlocking {
+        val broker = Broker()
+        val system = AsrProvider(SYSTEM_RECOGNITION_ID, "系统识别引擎", AsrInfo(streaming = StreamingKind.NONE))
+        val external = broker.catalog
+        broker.catalog = external + system.copy(info = system.info.copy(availability = EngineAvailability.NEEDS_RESOURCES))
+        val plugin = plugin(broker)
+        try {
+            val context = PluginContext("", "")
+            fun selected() = plugin.page("engines", context)!!.management!!.items.single { it.selected }.id
+            assertEquals("recognition-disabled", selected())
+            broker.catalog = external + system
+            assertEquals(SYSTEM_RECOGNITION_ID, selected())
+            plugin.execute("select/test.online", context)
+            assertEquals("test.online", selected())
+            plugin.execute("disable-recognition", context)
+            assertEquals("recognition-disabled", selected())
+        } finally { plugin.close() }
+    }
     @Test fun serviceAccumulatesTranscriptAndRoutesBatchToSeparateProvider() = runBlocking {
         val broker = Broker(); val plugin = plugin(broker)
         plugin.execute("select/test.online", PluginContext("", ""))

@@ -181,7 +181,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
     fun shareDraft(draft: com.kigtts.next.state.PhraseDraft) = prepare {
         val file = model.quickTextBackup.exportDraft(draft)
         try { val title = draft.title.ifBlank { draft.text.take(32) }.ifBlank { "快捷文本" }
-            publishOrShare("quick-text", title, listOf(file), "application/zip", "$title.kigcard")
+            publishOrShare("quick-text", title, listOf(file), com.kigtts.next.state.QuickTextBackup.MIME, "$title.kigcard")
         } finally { withContext(Dispatchers.IO) { file.delete() } }
     }
     fun shareQuickText(key: String, group: Boolean) = prepare {
@@ -189,7 +189,7 @@ internal class SharingCoordinator(private val model: AppViewModel, private val s
         requireNotNull(title) { "这条快捷文本已移除" }
         val id = if (group) requireNotNull(model.quickTexts.categoryIds.value[key]) else key
         val file = model.quickTextBackup.prepareExport(if (group) listOf(id) else emptyList(), if (group) emptyList() else listOf(id))
-        try { publishOrShare("quick-text", title, listOf(file), "application/zip", "$title.kigcard") }
+        try { publishOrShare("quick-text", title, listOf(file), com.kigtts.next.state.QuickTextBackup.MIME, "$title.kigcard") }
         finally { withContext(Dispatchers.IO) { file.delete() } }
     }
     private val mutableProfileFormat = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)

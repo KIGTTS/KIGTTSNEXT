@@ -6,6 +6,7 @@ import android.provider.Settings
 import com.kigtts.next.MainActivity
 import com.kigtts.next.state.AppState
 import com.kigtts.next.overlay.OverlayHostWindow
+import com.kigtts.next.ui.home.CaptionVisuals
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -30,10 +31,12 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     private val observation = scope.launch {
         var foreground = false
         val output = state.map { Output(it.listening && !it.voiceInputActive, it.recognitionOutput,
-            it.transcript, it.theme, it.hapticsEnabled, it.uiLocale) }.distinctUntilChanged()
+            it.transcript, it.theme, it.hapticsEnabled, it.uiLocale,
+            CaptionVisuals(it.recognitionFinalOnly, it.subtitleAppearance.reducedMotion, it.subtitleAppearance.displayReflow)) }.distinctUntilChanged()
         combine(output, manual, windowSize, ::Triple).collect { (value, window, fontSize) ->
                 if ((window.open || value.active && value.kind != CaptionOutput.PANEL && !window.suppressed) && Settings.canDrawOverlays(context)) {
-                    runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme, value.active, value.haptics, value.locale) }
+                    runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme,
+                        value.active, value.haptics, value.locale, value.visuals) }
                         .onFailure { manual.value = Manual(suppressed = true); message("无法显示字幕浮窗，请检查悬浮窗权限") }
                 } else overlay.close()
                 if (foreground != value.active) {
@@ -93,5 +96,5 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close(); context.stopService(Intent(context, RecognitionForegroundService::class.java)) }
     private data class Manual(val open: Boolean = false, val suppressed: Boolean = false)
     private data class Output(val active: Boolean, val kind: CaptionOutput, val text: String,
-        val theme: com.kigtts.next.theme.ThemeSettings, val haptics: Boolean, val locale: String)
+        val theme: com.kigtts.next.theme.ThemeSettings, val haptics: Boolean, val locale: String, val visuals: CaptionVisuals)
 }

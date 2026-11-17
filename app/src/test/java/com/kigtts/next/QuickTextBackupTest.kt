@@ -5,6 +5,8 @@ import android.app.Application
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.state.*
+import com.kigtts.next.media.MediaEntry
+import com.kigtts.next.media.MediaKind
 import com.kigtts.plugin.api.QuickTextReply
 import com.kigtts.plugin.runtime.PluginPaths
 import kotlinx.coroutines.*
@@ -70,5 +72,31 @@ class QuickTextBackupTest {
         val exported = QuickArchiveSelection.read(backup.exportDraft(draft))
         assertEquals("尚未保存的文字", exported.entries.single().text)
         assertEquals(before, model.phrases.value)
+    }
+
+    @Test fun sharingAndRestoringASelectedGroupKeepsItsEmbeddedMedia() = runBlocking {
+        val model = AppViewModel(app, emptyList())
+        val owner = PluginPaths.HOST_BACKUP_ID
+        val path = "resources/backup-fixture.png"
+        val bytes = byteArrayOf(3, 2, 1, 0)
+        model.pluginManager.paths.storage(owner).file(path).apply { parentFile!!.mkdirs(); writeBytes(bytes) }
+        val media = model.mediaRepository.registerPluginMedia(MediaEntry("backup-fixture", "配图", MediaKind.IMAGE, path, "image/png", pluginId = owner))
+        val category = model.categories.value.first()
+        val phrase = QuickPhrase("带资源的快捷文本", category, mediaId = media.id, type = QuickCardType.MEDIA)
+        assertTrue(model.quickTexts.savePhrase(phrase))
+        val backup = QuickTextBackup(model)
+        val group = requireNotNull(model.quickTexts.categoryIds.value[category])
+        val shared = backup.prepareExport(entryIds = listOf(phrase.id))
+        val bundle = QuickArchiveSelection.read(shared)
+        java.util.zip.ZipFile(shared).use { zip ->
+            assertArrayEquals(bytes, zip.getInputStream(zip.getEntry(bundle.media.single().primary)).use { it.readBytes() })
+        }
+        val archive = backup.prepareExport(groupIds = listOf(group))
+        val selection = backup.inspectImport(app.contentResolver, Uri.fromFile(archive))
+        val prepared = backup.importSelected(selection, setOf(group)) as QuickTextReply.Prepared
+        assertTrue(model.quickTextPlugins.approve(prepared.value.token) is QuickTextReply.Applied)
+        val restored = model.phrases.value.single { it.text == phrase.text && it.id != phrase.id }
+        val restoredMedia = requireNotNull(model.mediaRepository.get(restored.mediaId))
+        assertArrayEquals(bytes, model.mediaRepository.file(restoredMedia)!!.readBytes())
     }
 }

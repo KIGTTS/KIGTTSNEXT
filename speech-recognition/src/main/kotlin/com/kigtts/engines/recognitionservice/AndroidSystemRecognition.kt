@@ -97,6 +97,8 @@ internal class AndroidSystemRecognition(private val context: Context) : AsrEngin
             override fun onError(error: Int) {
                 if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
                     (error == SpeechRecognizer.ERROR_CLIENT && stop?.isCompleted == true)) finish("")
+                else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && stop != null)
+                    result.completeExceptionally(systemRecognitionPermissionIssue(context))
                 else result.completeExceptionally(systemRecognitionError(error))
             }
             override fun onReadyForSpeech(params: Bundle?) = Unit

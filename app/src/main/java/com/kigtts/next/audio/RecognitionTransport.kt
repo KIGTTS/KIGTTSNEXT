@@ -1,6 +1,7 @@
 package com.kigtts.next.audio
 
 import com.kigtts.engines.recognitionservice.RecognitionServicePlugin
+import com.kigtts.engines.recognitionservice.SystemRecognitionPermissionIssue
 import com.kigtts.next.state.AppState
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
@@ -13,7 +14,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private val audio: AudioPlatform, private val state: () -> AppState,
     private val update: ((AppState) -> AppState) -> Unit, private val message: (String) -> Unit,
     private val replaceText: (String) -> Unit, private val automaticRead: (Boolean) -> Unit,
-    private val finalizedSpeech: (String, Boolean) -> Unit, private val selection: () -> String?) {
+    private val finalizedSpeech: (String, Boolean) -> Unit, private val selection: () -> String?,
+    private val systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) }) {
     private var job: Job? = null
     private var generation = 0L
     private var pending: RecognitionSession? = null
@@ -69,8 +71,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
             if (epoch != generation) return@launch
             val voice = session.purpose == RecognitionPurpose.VOICE_INPUT
             update { it.copy(listening = true, captionsVisible = !voice && session.output != CaptionOutput.FLOATING,
-                transcript = "", voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
-                recognitionOutput = session.output) }
+                transcript = "", recognitionFinalOnly = segmentedSession, voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
+                voiceInputSubmitting = false, recognitionOutput = session.output) }
             var finalizedSequence = 0L
             fun display(text: String) { update { if (voice) it.copy(voiceInputText = text) else it.copy(transcript = text) } }
             fun final(text: String) {
@@ -107,10 +109,11 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                     }
                 }
             } catch (cancel: CancellationException) { throw cancel }
+            catch (issue: SystemRecognitionPermissionIssue) { if (epoch == generation) systemPermissionDenied(issue) }
             catch (error: Exception) { if (epoch == generation) message(error.message ?: "语音识别失败") }
             finally {
                 initialized.complete(Unit)
-                if (epoch == generation) update { it.copy(listening = false, voiceInputActive = false, continuousRecognition = false) }
+                if (epoch == generation) update { it.copy(listening = false, voiceInputActive = false, voiceInputSubmitting = false, continuousRecognition = false) }
             }
         }
     }
@@ -140,6 +143,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     }
     fun end(send: Boolean, read: Boolean = false) {
         if (!state().voiceInputActive || state().continuousRecognition || !send) { cancel(); return }
+        if (submit) return
+        update { it.copy(voiceInputSubmitting = true) }
         submit = true; readOnSubmit = read; stopInput?.complete(Unit)
         val finishing = job; val initialized = ready; val epoch = generation
         val finishBudget = if (segmentedSession) 25_000L else 3_000L
@@ -153,7 +158,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     }
     fun cancel() {
         pending = null; generation++; stopInput = null; currentSession = null; committedText = ""; job?.cancel()
-        update { it.copy(captionsVisible = false, listening = false, voiceInputActive = false, continuousRecognition = false, voiceInputText = "") }
+        update { it.copy(captionsVisible = false, listening = false, voiceInputActive = false,
+            voiceInputSubmitting = false, continuousRecognition = false, voiceInputText = "") }
     }
     suspend fun stop() { val previous = job; cancel(); previous?.join() }
 }

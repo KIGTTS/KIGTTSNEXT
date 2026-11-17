@@ -40,6 +40,7 @@ import com.kigtts.next.ui.components.connectedShape
 import com.kigtts.next.ui.components.ProvideButtonFeedback
 import com.kigtts.next.ui.components.ToolButton
 import com.kigtts.next.ui.home.ListeningCaptionContent
+import com.kigtts.next.ui.home.CaptionVisuals
 import com.kigtts.next.ui.home.subtitleZoom
 import kotlin.math.roundToInt
 
@@ -60,8 +61,8 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
     private var frameScheduled = false
     private var content by mutableStateOf(Content())
 
-    fun show(text: String, size: Float, theme: ThemeSettings, active: Boolean, haptics: Boolean, locale: String) {
-        content = Content(text.takeLast(4000), size, theme, active, haptics, locale)
+    fun show(text: String, size: Float, theme: ThemeSettings, active: Boolean, haptics: Boolean, locale: String, visuals: CaptionVisuals) {
+        content = Content(text.takeLast(4000), size, theme, active, haptics, locale, visuals)
         if (view != null) return
         val width = availableWidth()
         val layout = WindowManager.LayoutParams(width, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -133,7 +134,8 @@ internal class FloatingCaptions(context: Context, private val toggle: () -> Unit
     }
 
     internal data class Content(val text: String = "", val size: Float = 20f, val theme: ThemeSettings = ThemeSettings(),
-        val active: Boolean = false, val haptics: Boolean = true, val locale: String = UiLanguage.STANDARD.tag)
+        val active: Boolean = false, val haptics: Boolean = true, val locale: String = UiLanguage.STANDARD.tag,
+        val visuals: CaptionVisuals = CaptionVisuals())
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -159,7 +161,8 @@ private fun FloatingCaptionContent(state: FloatingCaptions.Content, move: (Float
             val maxHeight = with(LocalDensity.current) { (state.size * 5.4f).sp.toDp() }.coerceAtMost(240.dp)
             ListeningCaptionContent(state.text, state.size, singleLine = false,
                 Modifier.fillMaxWidth().padding(horizontal = 4.dp).heightIn(max = maxHeight)
-                    .subtitleZoom(scaleSize, onZoomEnd = saveSize, scale = scaleSize))
+                    .subtitleZoom(scaleSize, onZoomEnd = saveSize, scale = scaleSize),
+                finalOnly = state.visuals.finalOnly, reducedMotion = state.visuals.reducedMotion, animateReflow = state.visuals.reflow)
         }
     }
 }

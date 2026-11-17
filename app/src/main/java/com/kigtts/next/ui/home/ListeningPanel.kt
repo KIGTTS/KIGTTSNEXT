@@ -32,10 +32,11 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
     LaunchedEffect(controlsOwner) { if (controlsOwner != null) fontBar = false }
     ResizableTopPanel(extent, maximum, resize, Modifier.testTag("captions").panelIdleWake(idle), singleLine, availableHeight,
         horizontal = horizontal,
+        color = subtitleCardColor(state.theme.background != null),
         contentPadding = if (custom != null) PaddingValues(0.dp) else PaddingValues(horizontal = 12.dp, vertical = 8.dp),
         controls = {
             Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }) {
-            if (controlsOwner != null) Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+            if (controlsOwner != null) Row(Modifier.fillMaxWidth()) {
                 ElasticButtonGroup(left, Modifier.weight(1f), stableItems = true)
                 ElasticButtonGroup(right, Modifier.weight(1f), alignEnd = true, stableItems = true)
             } else {
@@ -58,7 +59,9 @@ fun ListeningPanel(state: AppState, model: AppViewModel, maximum: Float, singleL
         }) {
         Box(Modifier.fillMaxWidth().weight(1f)) {
             if (custom?.replaceContent != true) ListeningCaptionContent(state.transcript, state.captionTextSize, singleLine,
-                Modifier.fillMaxSize().subtitleZoom(model) { model.setCaptionTextSize(model.state.value.captionTextSize * it) })
+                Modifier.fillMaxSize().subtitleZoom(model) { model.setCaptionTextSize(model.state.value.captionTextSize * it) },
+                finalOnly = state.recognitionFinalOnly, reducedMotion = state.subtitleAppearance.reducedMotion,
+                animateReflow = state.subtitleAppearance.displayReflow)
             custom?.let { selected -> key(selected.owner, selected.pageId, selected.plugin) {
                 PluginListeningPanel(selected, state, model, Modifier.fillMaxSize())
             } }

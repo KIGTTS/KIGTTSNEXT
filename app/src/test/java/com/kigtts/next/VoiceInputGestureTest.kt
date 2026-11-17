@@ -28,4 +28,13 @@ class VoiceInputGestureTest {
         gesture.down(Offset(100f, 650f)); gesture.arm(); gesture.cancel()
         assertEquals(VoiceReleaseTarget.CANCEL, gesture.consumeRelease())
     }
+    @Test fun earlyReleaseSurvivesAnUnrelatedTapAndStationaryHoldDefaultsToSend() {
+        val gesture = VoiceInputGestureState()
+        gesture.area(VoiceReleaseTarget.CANCEL, Rect(0f, 0f, 200f, 200f))
+        gesture.down(Offset(100f, 100f), 10f); gesture.arm()
+        gesture.move(Offset(104f, 103f)); gesture.release()
+        gesture.down(Offset(200f, 200f)); gesture.release()
+        assertEquals(VoiceReleaseTarget.SEND, gesture.consumeRelease())
+        assertNull(gesture.consumeRelease())
+    }
 }

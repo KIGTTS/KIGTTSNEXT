@@ -19,7 +19,7 @@ internal class RecognitionServiceSettings(storage: PluginStorage, legacyEnabled:
         return ItemOrder.reconcile(order, providers.sortedBy { it.pluginId }.map { it.pluginId }).mapNotNull(data::get)
     }
     fun current(providers: List<AsrProvider>): AsrProvider? = providers.firstOrNull {
-        !routingDisabled && it.pluginId == provider && it.enabled && it.info.availability == EngineAvailability.READY
+        !routingDisabled && it.pluginId == (provider ?: SYSTEM_RECOGNITION_ID) && it.enabled && it.info.availability == EngineAvailability.READY
     }
     fun reorder(proposed: List<String>, providers: List<AsrProvider>) { ItemOrder.validate(proposed, providers.map { it.pluginId }); order = proposed; save() }
     fun save() { file.writeText(JSONObject().put("provider", provider).put("routingDisabled", routingDisabled).put("order", JSONArray(order))

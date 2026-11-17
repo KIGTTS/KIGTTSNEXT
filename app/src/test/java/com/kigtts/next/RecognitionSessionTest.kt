@@ -102,10 +102,13 @@ class RecognitionSessionTest {
         controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT))
         runCurrent()
         controller.end(true)
+        assertTrue(state.recognitionFinalOnly)
+        assertTrue(state.voiceInputSubmitting)
         advanceTimeBy(3_500); runCurrent()
         assertTrue(state.voiceInputActive)
         advanceTimeBy(2_000); runCurrent()
         assertEquals(listOf("最后一句"), submitted)
+        assertFalse(state.voiceInputSubmitting)
         assertTrue(messages.isEmpty())
         controller.stopAll()
     }

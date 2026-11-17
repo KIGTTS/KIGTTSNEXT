@@ -36,6 +36,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private val revision = AtomicInteger()
     private data class Plan(val voice: CacheVoice, val rate: Float, val phrases: Map<String, String>, val revision: Int,
         val prebakeVersion: String?, val parallel: Boolean)
+    private data class BakeRetry(val plan: Plan, val failures: Int, val afterMillis: Long, val provisional: Int)
     private data class CatalogSnapshot(val owners: Map<String, String>?, val providers: Map<String, TtsInfo>)
     private var reconciled: CatalogSnapshot? = null
     private var reconciledVoice: CacheVoice? = null
@@ -52,15 +53,25 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
             }
         }
         scope.launch {
+            var retry: BakeRetry? = null
             merge(signal.receiveAsFlow(), flow { while (true) { emit(Unit); delay(5_000) } })
                 .map { plan() }.distinctUntilChanged().collectLatest { plan ->
                     if (plan != null) {
                         delay(500)
-                        while (true) {
+                        while (validPlan(plan)) {
+                            val pending = retry?.takeIf { it.plan == plan && it.provisional == provisionalRevision.value }
+                            if (pending != null) {
+                                val remaining = pending.afterMillis - monotonicMillis()
+                                if (remaining > 0) withTimeoutOrNull(remaining) { provisionalRevision.first { it != pending.provisional } }
+                                if (!validPlan(plan)) break
+                            }
                             val before = provisionalRevision.value
                             val complete = try { prepare(plan) } finally { _bakeProgress.value = null }
-                            if (complete) break
-                            withTimeoutOrNull(60_000) { provisionalRevision.first { it != before } }
+                            if (complete) { retry = null; break }
+                            if (!validPlan(plan)) break
+                            val failures = ((pending?.failures ?: 0) + 1).coerceAtMost(5)
+                            val cooldown = (120_000L shl (failures - 1)).coerceAtMost(900_000L)
+                            retry = BakeRetry(plan, failures, monotonicMillis() + cooldown, before)
                         }
                     }
                 }
@@ -91,6 +102,9 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     fun close() { scope.cancel(); store.suspendWrites() }
 
     private fun voice(provider: TtsProvider, id: String?): CacheVoice? {
+        // A provider can load before the installed package snapshot. A temporary null version
+        // must not replace the persisted cache identity or invalidate the previous revision.
+        if (provider.pluginId !in installedRevisions) return null
         val info = provider.info
         val selected = id ?: info.selectedVoiceId
         if (info.packs.isEmpty() && info.voices.isEmpty() && (selected != null || info.importsVoicePacks || info.managesVoices))
@@ -139,7 +153,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private fun reconcile(inventory: Map<String, String>?, ready: List<TtsProvider>, plan: Plan?) {
         // Even a READY engine can list only loaded/configured packs. Only confirmed deletions
         // or the host's installed-package inventory are allowed to remove missing packs.
-        val revisions = ready.flatMap { provider ->
+        val revisions = ready.filter { it.pluginId in installedRevisions }.flatMap { provider ->
             provider.info.packs.map { providerVoice(provider.pluginId, it.id, it, null) } +
                 provider.info.voices.mapNotNull { voice(provider, it.id) }
         } + listOfNotNull(plan?.voice)
@@ -168,10 +182,13 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                     val bake: suspend () -> Unit = {
                         if (validPlan(plan) && !store.has(key)) {
                             store.writer(key)?.use { writer ->
-                                publishProgress()
+                                var receivedAudio = false
                                 val valid = withTimeoutOrNull(if (plan.prebakeVersion != null) 120_000 else 30_000) {
                                     synthesis.generate(request, plan.voice, profileVersion = plan.prebakeVersion) { event ->
-                                        if (event is SynthesisEvent.Audio) writer.append(event.audio)
+                                        if (event is SynthesisEvent.Audio && event.audio.bytes.isNotEmpty()) {
+                                            writer.append(event.audio)
+                                            if (!receivedAudio) { receivedAudio = true; publishProgress() }
+                                        }
                                     }
                                 } == true
                                 currentCoroutineContext().ensureActive()
@@ -230,7 +247,11 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                 realtime(parallel) { synthesis.generate(rated, voice, allowFallback = true, emit = emit) }
                 return@withLock
             }
-            val quickId = phraseId?.takeIf { shortcuts[it] == request.text }
+            // Only play a baked entry for the same shortcut and the same default request.
+            // Free text and custom requests always use the independent 30-entry real-time cache.
+            val quickId = phraseId?.takeIf {
+                shortcuts[it] == request.text && request.language == defaultBakeLanguage && request.rate == 1f && request.voiceId == null
+            }
             val profiles = provider?.info?.profiles
             val key = AudioCacheKey(voice, quickId, request.text, request.language, rated.rate, request.voiceId,
                 if (quickId == null) profiles?.realtime else profiles?.prebake)
@@ -254,5 +275,9 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
             } finally { pendingRealtimeShortcut = null }
         }
 
-    private companion object { const val DEFAULT_PACK = "default" }
+    private companion object {
+        const val DEFAULT_PACK = "default"
+        val defaultBakeLanguage = TtsRequest("").language
+        fun monotonicMillis() = System.nanoTime() / 1_000_000L
+    }
 }

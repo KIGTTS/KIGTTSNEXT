@@ -87,7 +87,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
     }
     val action = { if (open) model.closePanel() else model.openPanel(HomePanel.QUICK_TEXT) }
     val click = feedbackClick(action)
-    val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let(model::startVoiceInputFromDock); Unit }
     val label = if (state.continuousRecognition) "长按停止识别" else if (longPress == null) "快捷文本" else "快捷文本 / 长按语音输入"
     val pressed by source.collectIsPressedAsState()
     val height by animateDpAsState(if (pressed && !open) 44.dp else (48f - 43f * progress + if (motion.active) 2f * progress else 0f).dp,

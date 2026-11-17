@@ -149,6 +149,7 @@ fun KigttsApp(model: AppViewModel) {
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
             com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
+            com.kigtts.next.ui.home.SystemRecognitionMicPrompt(model)
             com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
             com.kigtts.next.ui.plugins.ExternalFilePrompt(model)
             com.kigtts.next.links.ExternalLinkHost(model)
@@ -158,7 +159,7 @@ fun KigttsApp(model: AppViewModel) {
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->
-                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (state.destination is Destination.CardEditor) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture)) {
+                    Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (state.destination is Destination.CardEditor) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture, model::dispatchVoiceGestureRelease)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, false) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },

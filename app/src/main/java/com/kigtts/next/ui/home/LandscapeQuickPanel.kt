@@ -41,7 +41,9 @@ fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories:
             LandscapeSheetChrome(state, model, motion)
             AnimatedVisibility(showContent, Modifier.weight(1f).fillMaxHeight()) {
                 QuickTextContent(state, phrases, categories, model, false, motion.columns,
-                    Modifier.fillMaxSize().padding(vertical = 8.dp))
+                    Modifier.fillMaxSize().padding(vertical = 8.dp), categoryOpacity = {
+                        ((motion.width - 136f) / (motion.geometry.widthFor(1) - 136f).coerceAtLeast(1f)).coerceIn(0f, 1f)
+                    })
             }
         }
     }
@@ -58,7 +60,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     val pressed by source.collectIsPressedAsState()
     val action = { if (model.state.value.panel == null) model.openPanel(HomePanel.QUICK_TEXT) else model.closePanel() }
     val click = feedbackClick(action)
-    val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let { model.voiceInputGesture.arm(); model.invoke(it.plugin.descriptor.id, it.action.id) }; Unit }
+    val hold = { if (state.continuousRecognition) model.endVoiceInput(false) else longPress?.let(model::startVoiceInputFromDock); Unit }
     val sideSize=(48f-16f*progress).dp
     val shape = IconButtonDefaults.shapes(RoundedCornerShape(sideSize/2), RoundedCornerShape(8.dp))
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),

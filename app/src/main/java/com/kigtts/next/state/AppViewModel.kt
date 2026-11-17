@@ -124,8 +124,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val outcomes = Channel<Pair<String, PluginOutcome>>(Channel.BUFFERED)
     val events = outcomes.receiveAsFlow()
     init { legacyImports.migrateOriginalInstallation() }
+    internal val systemRecognitionPermission = MutableStateFlow<com.kigtts.engines.recognitionservice.SystemRecognitionPermissionIssue?>(null)
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
-        selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback)
+        selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback,
+        systemPermissionDenied = { systemRecognitionPermission.value = it })
     private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message, ::readyCaptionService)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
@@ -150,10 +152,39 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         invoke(owner, "listen")
     }
     val voiceInputGesture = VoiceInputGestureState()
+    internal fun startVoiceInputFromDock(action: RegisteredGesture) {
+        val request = voiceInputGesture.arm()
+        invokeWithResult(action.plugin.descriptor.id, action.action.id, emptyMap()) { accepted ->
+            if (!accepted) voiceInputGesture.reject(request)
+        }
+    }
+    internal fun dispatchVoiceGestureRelease() {
+        if (!state.value.voiceInputActive) return
+        val target = voiceInputGesture.consumeRelease() ?: return
+        if (state.value.continuousRecognition) return
+        when (target) {
+            VoiceReleaseTarget.SEND -> endVoiceInput(true)
+            VoiceReleaseTarget.READ -> endVoiceInput(true, read = true)
+            VoiceReleaseTarget.CANCEL -> endVoiceInput(false)
+            VoiceReleaseTarget.CONTINUOUS -> continueVoiceInput()
+            VoiceReleaseTarget.PLUGIN -> {
+                val id = voiceInputGesture.consumePluginRelease()
+                val action = registry.actions(UiSlot.VOICE_INPUT_RELEASE, context()).firstOrNull {
+                    it.plugin.descriptor.id + "/" + it.action.id == id
+                }
+                val voiceText = state.value.voiceInputText
+                endVoiceInput(false)
+                action?.let { invoke(it.plugin.descriptor.id, it.action.id, mapOf("voiceText" to voiceText)) }
+            }
+        }
+    }
     fun endVoiceInput(submit: Boolean = false, read: Boolean = false) = speech.end(submit, read)
     fun continueVoiceInput() = speech.continueInput()
     val microphoneRequests = speech.permissionRequests
-    fun microphoneResult(granted: Boolean) = speech.permissionResult(granted)
+    fun microphoneResult(granted: Boolean) {
+        if (!granted) voiceInputGesture.discardRelease()
+        speech.permissionResult(granted)
+    }
     // Every callback dependency must exist before bootstrap can resume from background I/O.
     private val navigationHistory = ArrayDeque<Destination>()
     internal var pluginCatalogReady = engineFixtures.isNotEmpty()
@@ -443,6 +474,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         val session = outcome.session
                         captionOutput.start(if (pluginId == "service.speech-recognition" && session.purpose == RecognitionPurpose.CAPTIONS)
                             session.copy(output = CaptionOutput.PANEL) else session)
+                        accepted = session.purpose == RecognitionPurpose.VOICE_INPUT
                     }
                     is PluginOutcome.EndRecognition -> { check(plugin.asr?.info?.role == AsrRole.SERVICE); speech.end(outcome.submit) }
                     is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
@@ -453,7 +485,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         HostCommand.OPEN_LISTENING_PANEL -> update { it.copy(captionsVisible = true) }
                         HostCommand.USE_STREAMING -> streaming(true)
                         HostCommand.USE_BATCH -> streaming(false)
-                        HostCommand.VOICE_INPUT -> speech.voiceInput()
+                        HostCommand.VOICE_INPUT -> { speech.voiceInput(); accepted = true }
                         HostCommand.TOGGLE_SUBTITLE_FULLSCREEN -> if (state.value.subtitleExpanded || state.value.forcedFullscreen)
                             exitSubtitleFullscreen() else enterSubtitleFullscreen()
                     } }

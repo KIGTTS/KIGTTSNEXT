@@ -178,7 +178,8 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
             @Suppress("DEPRECATION")
             context.packageManager.getPackageInfo(it, 0).lastUpdateTime
         }.getOrNull() }
-        return cacheHash(engine, locales, version, environment.locale)
+        // The baked request language stays fixed when the interface language changes.
+        return cacheHash(engine, locales, version, TtsRequest("").language)
     }
     private fun providers() = listOf(TtsProvider(SYSTEM_PROVIDER, "系统声音", system.info)) + broker.providers().filter { it.pluginId != LEGACY_SYSTEM_PROVIDER && it.pluginId != SYSTEM_PROVIDER }
     private fun encode(value: String) = Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray())

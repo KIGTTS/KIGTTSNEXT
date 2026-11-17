@@ -2,6 +2,8 @@
 package com.kigtts.next.ui.home
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -20,23 +22,12 @@ import com.kigtts.next.state.*
 internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
     val gesture = model.voiceInputGesture
     LaunchedEffect(state.voiceInputActive, state.continuousRecognition, gesture.pendingRelease) {
-        if (state.voiceInputActive) gesture.consumeRelease()?.let { target ->
-            if (!state.continuousRecognition) when (target) {
-                VoiceReleaseTarget.SEND -> model.endVoiceInput(true)
-                VoiceReleaseTarget.READ -> model.endVoiceInput(true, read = true)
-                VoiceReleaseTarget.CANCEL -> model.endVoiceInput(false)
-                VoiceReleaseTarget.CONTINUOUS -> model.continueVoiceInput()
-                VoiceReleaseTarget.PLUGIN -> gesture.consumePluginRelease()?.let { id ->
-                    val action = model.registry.actions(com.kigtts.plugin.api.UiSlot.VOICE_INPUT_RELEASE, model.context()).firstOrNull { it.plugin.descriptor.id + "/" + it.action.id == id }
-                    model.endVoiceInput(false)
-                    action?.let { model.invoke(it.plugin.descriptor.id, it.action.id, mapOf("voiceText" to state.voiceInputText)) }
-                }
-            }
-        }
+        model.dispatchVoiceGestureRelease()
     }
+    val reducedMotion = state.subtitleAppearance.reducedMotion
     AnimatedVisibility(state.voiceInputActive && !state.continuousRecognition,
-        enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 12 },
-        exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec()) { it / 12 }) {
+        enter = if (reducedMotion) EnterTransition.None else fadeIn(tween(160)) + slideInVertically(tween(200, easing = FastOutSlowInEasing)) { it / 12 },
+        exit = if (reducedMotion) ExitTransition.None else fadeOut(tween(120)) + slideOutVertically(tween(170, easing = FastOutSlowInEasing)) { it / 12 }) {
         Box(Modifier.fillMaxSize().testTag("voice-input-live")
             .background(MaterialTheme.colorScheme.scrim.copy(alpha = .68f))) {
             Box(Modifier.matchParentSize().pointerInput(Unit) {
@@ -50,6 +41,9 @@ internal fun VoiceInputSurface(state: AppState, model: AppViewModel) {
                 Box(modifier.padding(horizontal = 28.dp, vertical = 20.dp), contentAlignment = Alignment.BottomStart) {
                     Text(state.voiceInputText.ifBlank { "正在聆听…" }, Modifier.fillMaxWidth().verticalScroll(scroll).testTag("voice-input-text"),
                         style = MaterialTheme.typography.headlineSmall, color = androidx.compose.ui.graphics.Color.White)
+                    if (state.voiceInputSubmitting) Text(com.kigtts.next.i18n.uiText("listening.submitting"),
+                        Modifier.align(Alignment.TopStart).testTag("voice-input-submitting"), style = MaterialTheme.typography.labelLarge,
+                        color = androidx.compose.ui.graphics.Color.White.copy(alpha = .84f))
                 }
               }
               val releases: @Composable () -> Unit = { VoiceInputReleaseZones(gesture, state.autoPlayback,

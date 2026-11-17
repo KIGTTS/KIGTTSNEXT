@@ -11,6 +11,7 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.platform.testTag
@@ -24,13 +25,14 @@ import com.kigtts.next.ui.components.reorder.*
 fun QuickTextPanel(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel, motion: HomeSheetMotion, modifier: Modifier = Modifier) {
     val singleRow by remember(motion) { derivedStateOf { motion.height <= 192f } }
     BoxWithConstraints(modifier) {
-        QuickTextContent(state, phrases, categories, model, singleRow, quickPhraseColumns(maxWidth.value - 16f), Modifier.fillMaxSize())
+        QuickTextContent(state, phrases, categories, model, singleRow, quickPhraseColumns(maxWidth.value - 16f), Modifier.fillMaxSize(),
+            categoryOpacity = { ((motion.height - 96f) / (HomePanelSizes.PEEK - 96f)).coerceIn(0f, 1f) })
     }
 }
 
 @Composable
 fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
-    singleRow: Boolean, columns: Int, modifier: Modifier = Modifier) {
+    singleRow: Boolean, columns: Int, modifier: Modifier = Modifier, categoryOpacity: () -> Float = { 1f }) {
     val feedback = rememberDragFeedback()
     val drag = rememberReorderDrag({ emptyList() }, horizontalOnly = singleRow, animateDrop = true,
         feedback = feedback, move = model.quickTexts::movePhrase)
@@ -53,7 +55,7 @@ fun QuickTextContent(state: AppState, phrases: List<QuickPhrase>, categories: Li
                     }
                 }
             }
-            CategoryTabs(state, categories, model)
+            CategoryTabs(state, categories, model, Modifier.graphicsLayer { alpha = categoryOpacity() })
         }
         PhraseEdgeTransfer(drag, state.selectedCategory, categories, with(density) { maxWidth.toPx() }, model, enabled = !singleRow)
         QuickPhraseDragOverlay(drag, phrases, singleRow, columns, model)

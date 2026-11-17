@@ -1,12 +1,12 @@
 package com.kigtts.next.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -20,6 +20,7 @@ fun ResizableTopPanel(
     singleLine: Boolean = false, availableHeight: () -> Float = { maximum },
     horizontal: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+    color: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     controls: @Composable () -> Unit, content: @Composable ColumnScope.() -> Unit,
 ) {
     val density = LocalDensity.current.density
@@ -50,11 +51,12 @@ fun ResizableTopPanel(
     } }
     val card: @Composable () -> Unit = {
         Surface((if (horizontal) Modifier.fillMaxHeight().widthFrom { current.value } else Modifier.fillMaxWidth().heightFrom { current.value })
-            .testTag("listening-card"), color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            .testTag("listening-card"), color = color,
             shape = homeCardShape(if (horizontal) CornerNeighbors(end = true) else CornerNeighbors(below = true))) {
-            Column(Modifier.padding(contentPadding)) {
-                Column(Modifier.weight(1f).fillMaxWidth().clipToBounds(), content = content)
-                if (!singleLine) controls()
+            Column {
+                Column(Modifier.weight(1f).fillMaxWidth().padding(contentPadding).clipToBounds(), content = content)
+                if (!singleLine) Box(Modifier.fillMaxWidth().padding(horizontal = subtitleControlsInset)
+                    .padding(bottom = subtitleControlsInset)) { controls() }
             }
         }
     }

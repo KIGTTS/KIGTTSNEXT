@@ -34,7 +34,7 @@ fun TextEditor(
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
     val horizontal = with(LocalDensity.current) { (if (renderer != null) 2.dp else 12.dp).roundToPx() }
     Surface(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle), shape = homeCardShape(neighbors),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = if (state.theme.background == null) 1f else .88f)) {
+        color = subtitleCardColor(state.theme.background != null)) {
         Box {
             SubtitleRendererBackdrop(state, model,
                 com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal), Modifier.matchParentSize())
@@ -43,7 +43,7 @@ fun TextEditor(
                 MediaTransition(media,state,model,Modifier.fillMaxSize())
             }
             Column {
-                Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = 8.dp, top = 8.dp, end = 8.dp)) { EditorToolbar(state, model) }
+                Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = subtitleControlsInset, top = subtitleControlsInset, end = subtitleControlsInset)) { EditorToolbar(state, model) }
                 Box(Modifier.weight(1f).fillMaxWidth()) { ProvideIconTextContextMenu {
                     SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true)
                 } }
@@ -61,7 +61,7 @@ private fun EditorFooter(state: AppState, model: AppViewModel, modifier: Modifie
         tween(220, easing = FastOutSlowInEasing), label = "cursor-slot-reveal")
     val progress = reveal.coerceIn(0f, 1f)
     val middle = .2f + .3f * progress
-    Column(modifier.fillMaxWidth().padding(horizontal = 8.dp).padding(bottom = 8.dp).testTag("editor-footer")) {
+    Column(modifier.fillMaxWidth().padding(horizontal = subtitleControlsInset).padding(bottom = subtitleControlsInset).testTag("editor-footer")) {
       Row(Modifier.fillMaxWidth().testTag("editor-footer-actions"), verticalAlignment = Alignment.CenterVertically) {
         val contentOpen = state.mediaId != null || state.audioId != null
         ElasticButtonGroup(listOf(ElasticAction("editor-clear", if(contentOpen)"关闭" else "清空", if(contentOpen)Icons.Default.Close else Icons.Default.DeleteSweep,

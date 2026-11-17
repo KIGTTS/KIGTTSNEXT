@@ -31,8 +31,8 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                 add(PageBlock.Group("语音缓存", buildList {
                     add(PageBlock.Toggle("自动缓存", settings.cacheEnabled, "cache-toggle",
                         if (source?.info?.packs?.isNotEmpty() == true && source.pluginId == "engine.cloud-tts")
-                            "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读。合成时会将文字发送给云端服务。"
-                        else "预先合成当前语音包的快捷文本，并保留最近 30 条其它朗读"))
+                            "只预先合成快捷文本。临时文本仅缓存实际朗读的最近 30 条。合成时会将文字发送给云端服务。"
+                        else "只预先合成快捷文本；临时文本仅缓存实际朗读的最近 30 条"))
                     if (settings.cacheEnabled) add(PageBlock.Input("重新缓存", "重新合成当前声音的快捷文本", "cache-rebuild", symbol = "refresh"))
                     add(PageBlock.Input("清理缓存", formatCacheSize(cacheBytes()), "cache-clear", icon = PluginIcon.CLOSE))
                 }))

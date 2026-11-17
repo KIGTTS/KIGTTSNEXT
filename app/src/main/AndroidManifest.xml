@@ -154,17 +154,15 @@
                 <data android:mimeType="multipart/related" />
                 <data android:mimeType="message/rfc822" />
             </intent-filter>
+            <!-- Typed shares also work when a content provider hides the filename in the URI. -->
             <intent-filter android:label="用 KIGTTS 打开">
                 <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
-                <data android:mimeType="application/*" />
-            </intent-filter>
-            <intent-filter android:label="用 KIGTTS 打开">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="application/*" />
+                <data android:mimeType="application/vnd.kigtts.quick-cards+zip" />
+                <data android:mimeType="application/vnd.kigtts.voice-pack+zip" />
+                <data android:mimeType="application/vnd.kigtts.plugin+zip" />
+                <data android:mimeType="application/vnd.kigtts.backup+zip" />
             </intent-filter>
             <intent-filter android:label="用 KIGTTS 打开">
                 <action android:name="android.intent.action.VIEW" />
@@ -180,6 +178,37 @@
                 <data android:pathPattern=".*\\.kigplugin" />
                 <data android:pathPattern=".*\\.mhtml" />
                 <data android:pathPattern=".*\\.mht" />
+                <data android:pathSuffix=".kigvpk" />
+                <data android:pathSuffix=".kigcards" />
+                <data android:pathSuffix=".kigtpk" />
+                <data android:pathSuffix=".kigspk" />
+                <data android:pathSuffix=".kigcard" />
+                <data android:pathSuffix=".kigconfig" />
+                <data android:pathSuffix=".kigplugin" />
+                <data android:pathSuffix=".mhtml" />
+                <data android:pathSuffix=".mht" />
+            </intent-filter>
+            <!-- File managers often use ZIP or octet-stream for attachments with a recognizable suffix. -->
+            <intent-filter android:label="用 KIGTTS 打开">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="file" android:host="*" />
+                <data android:scheme="content" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.kigvpk" />
+                <data android:pathPattern=".*\\.kigcards" />
+                <data android:pathPattern=".*\\.kigtpk" />
+                <data android:pathPattern=".*\\.kigspk" />
+                <data android:pathPattern=".*\\.kigcard" />
+                <data android:pathPattern=".*\\.kigconfig" />
+                <data android:pathPattern=".*\\.kigplugin" />
+                <data android:pathSuffix=".kigvpk" />
+                <data android:pathSuffix=".kigcards" />
+                <data android:pathSuffix=".kigtpk" />
+                <data android:pathSuffix=".kigspk" />
+                <data android:pathSuffix=".kigcard" />
+                <data android:pathSuffix=".kigconfig" />
+                <data android:pathSuffix=".kigplugin" />
             </intent-filter>
         </activity>
         <activity-alias android:name=".ProfileImageOpen" android:targetActivity=".MainActivity"

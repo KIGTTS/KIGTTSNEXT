@@ -35,16 +35,26 @@ class ListeningCaptionUiTest {
         val range = compose.onNodeWithTag("listening-content").fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
         return range.value() to range.maxValue()
     }
-    @Test fun wrapsAtPanelWidthAndShortCaptionSitsAtBottom() {
+    @Test fun wrapsAtPanelWidthAndCentersShortCaptionsVertically() {
         var text by mutableStateOf("短句")
         compose.setContent { MaterialTheme { Box(Modifier.size(180.dp, 120.dp)) {
             ListeningCaptionContent(text, 18f, false, Modifier.size(180.dp, 120.dp))
         } } }
         val initial = compose.onNodeWithTag("listening-content").getUnclippedBoundsInRoot()
-        assertTrue(initial.top.value > 50f)
+        assertEquals(60f, (initial.top.value + initial.bottom.value) / 2f, 1f)
         compose.runOnIdle { text = "这是一段没有手动换行的连续识别字幕。".repeat(8) }
         assertTrue(layout().lineCount > 2); assertFalse(layout().didOverflowWidth)
         val (position, maximum) = scroll(); assertTrue(maximum > 0f); assertEquals(maximum, position, 1f)
+    }
+    @Test fun aFinalOnlyCaptionDimsHistoryButKeepsTheLatestSentenceOpaque() {
+        val transcript = "上一句\n最新一句"
+        compose.setContent { MaterialTheme {
+            ListeningCaptionContent(transcript, 18f, false, Modifier.size(200.dp, 120.dp), finalOnly = true)
+        } }
+        val input = layout().layoutInput
+        assertEquals(transcript.indexOf('\n'), input.text.spanStyles.single().end)
+        assertTrue(input.text.spanStyles.single().item.color.alpha < 1f)
+        assertEquals(1f, input.style.color.alpha, .01f)
     }
     @Test fun resizingRewrapsAndLargeFontsKeepSeparateLines() {
         var width by mutableStateOf(180.dp)

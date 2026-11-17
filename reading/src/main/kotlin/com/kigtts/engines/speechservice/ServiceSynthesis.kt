@@ -21,7 +21,7 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
     fun synthesize(request: TtsRequest, phraseId: String?) = flow {
         val localCache = cache
         if (localCache != null) localCache.foreground(request, phraseId) { emit(it) }
-        else generate(request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f)), null, true) { emit(it) }
+        else generate(request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f), profile = TtsProfile.REALTIME), null, true) { emit(it) }
     }.flowOn(Dispatchers.IO)
 
     /** Returns false when the output is not from the requested voice. Never bake fallbacks. */

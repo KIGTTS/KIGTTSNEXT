@@ -81,7 +81,7 @@ class QuickLayoutMotionTest {
         val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
-        val item = compose.onNodeWithTag("quick-phrase-" + model.phrases.value.first().id)
+        val item = compose.onNodeWithTag("quick-phrase-" + model.phrases.value.first { it.category == model.state.value.selectedCategory }.id)
         val row = compose.onNodeWithTag("phrases-horizontal").getUnclippedBoundsInRoot()
         val original = item.getUnclippedBoundsInRoot()
         assertEquals("No unused strip below the card", row.bottom.value, original.bottom.value, .5f)
@@ -94,8 +94,12 @@ class QuickLayoutMotionTest {
         val app = ApplicationProvider.getApplicationContext<Application>()
         listOf("appearance", "ui-debug", "home-panel", "voice-input").forEach { app.getSharedPreferences(it, 0).edit().clear().commit() }
         val model = testAppModel(app)
+        val category = model.state.value.selectedCategory
         compose.setContent { KigttsApp(model) }
-        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
+        compose.runOnIdle {
+            repeat(10) { model.addPhrase("横向滚动条目 $it", category) }
+            model.openPanel(HomePanel.QUICK_TEXT)
+        }
         compose.onNodeWithTag("phrases-horizontal").performTouchInput { swipeLeft() }
         val scrolled = compose.onNodeWithTag("phrases-horizontal").fetchSemanticsNode().config[SemanticsProperties.HorizontalScrollAxisRange].value()
         assertTrue(scrolled > 0f)
@@ -126,12 +130,12 @@ class QuickLayoutMotionTest {
         assertEquals(scrolled, restored, .05f)
         compose.onNodeWithTag("category-tabs").captureRoboImage("build/previews/category-tab-rounded-ends.png")
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithTag("category-常用").performTouchInput { down(center) }
+        compose.onNodeWithTag("category-$category").performTouchInput { down(center) }
         compose.mainClock.advanceTimeBy(320); compose.waitForIdle()
         compose.onNodeWithTag("category-tabs").captureRoboImage("build/previews/category-tab-pressed-corners.png")
         assertFalse(java.io.File("build/previews/category-tab-rounded-ends.png").readBytes()
             .contentEquals(java.io.File("build/previews/category-tab-pressed-corners.png").readBytes()))
-        compose.onNodeWithTag("category-常用").performTouchInput { up() }
+        compose.onNodeWithTag("category-$category").performTouchInput { up() }
         compose.mainClock.advanceTimeBy(1000); compose.mainClock.autoAdvance = true
     }
 
@@ -141,7 +145,7 @@ class QuickLayoutMotionTest {
         val model = testAppModel(app)
         compose.setContent { KigttsApp(model) }
         compose.runOnIdle {
-            repeat(24) { model.addPhrase("滚动条目 " + it, "常用") }
+            repeat(24) { model.addPhrase("滚动条目 $it", model.state.value.selectedCategory) }
             model.openPanel(HomePanel.QUICK_TEXT); model.panelHeight(340f)
         }
         compose.onNodeWithTag("phrases-vertical").performTouchInput { swipeUp() }

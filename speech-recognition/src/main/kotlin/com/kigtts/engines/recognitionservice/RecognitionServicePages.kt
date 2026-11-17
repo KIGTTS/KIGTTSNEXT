@@ -23,10 +23,10 @@ internal fun recognitionServicePage(id: String, settings: RecognitionServiceSett
         ManagementList("recognition-engines", listOf(
             ManagementItem("recognition-disabled", "不启用语音识别", "", PluginIcon.CLOSE, selected = selected == null,
                 primaryAction = "disable-recognition", selection = ManagementSelection("disable-recognition"))
-        ) + all.map { provider ->
+        ) + all.sortedBy { it.pluginId != SYSTEM_RECOGNITION_ID }.map { provider ->
             val subtitle = when {
                 provider.pluginId == SYSTEM_RECOGNITION_ID -> if (provider.info.availability == EngineAvailability.READY)
-                    "由系统录音和断句，可能需要联网" else systemRecognitionUnavailable()
+                    "内置 · 由系统录音和断句，可能需要联网" else systemRecognitionUnavailable()
                 !provider.enabled -> "已停用"
                 provider.info.availability == EngineAvailability.READY -> recognitionKind(provider.info.streaming)
                 else -> "待配置"

@@ -14,6 +14,7 @@ import com.kigtts.next.plugins.quicktext.dto
 
 /** Native backup uses the same bounded archive parser and revisioned review as plugins. */
 internal class QuickTextBackup(private val model: AppViewModel) {
+    companion object { const val MIME = "application/vnd.kigtts.quick-cards+zip" }
     internal data class ImportSelection(val path: String, val groups: List<QuickGroup>)
     private val pending = kotlinx.coroutines.flow.MutableStateFlow<ImportSelection?>(null)
     val pendingImport = pending.asStateFlow()
@@ -58,7 +59,8 @@ internal class QuickTextBackup(private val model: AppViewModel) {
     fun discardImport(selection: ImportSelection) { require(selection.path.startsWith("imports/")); storage.file(selection.path).delete() }
     suspend fun prepareExport(groupIds: List<String> = emptyList(), entryIds: List<String> = emptyList()): File {
         val path = "exports/${UUID.randomUUID()}.kigcard"
-        return when (val reply = broker.request(QuickTextCommand.Export(groupIds = groupIds, entryIds = entryIds, destination = path))) {
+        return when (val reply = broker.request(QuickTextCommand.Export(groupIds = groupIds, entryIds = entryIds,
+            includeMedia = true, destination = path))) {
             is QuickTextReply.Resource -> storage.file(reply.source.path)
             is QuickTextReply.Failure -> error(reply.message)
             else -> error("无法导出快捷文本")
@@ -74,7 +76,7 @@ internal class QuickTextBackup(private val model: AppViewModel) {
         val path = "exports/${UUID.randomUUID()}.kigcard"
         return withContext(Dispatchers.IO) {
             QuickCardsArchive(model.quickTextPlugins, PluginPaths.HOST_BACKUP_ID, setOf("quick-text-read", "network"))
-                .export(QuickTextCommand.Export(entryIds = listOf(entry.id), destination = path), snapshot.copy(entries = listOf(entry)))
+                .export(QuickTextCommand.Export(entryIds = listOf(entry.id), includeMedia = true, destination = path), snapshot.copy(entries = listOf(entry)))
             storage.file(path)
         }
     }
