@@ -46,4 +46,33 @@ class HostRecognitionBrokerTest {
             assertTrue(PluginJson.decodeFromString<List<AsrProvider>>(recognition.asrProviders()).none { it.info.role == AsrRole.SERVICE })
         } finally { recognition.close(); synthesis.close() }
     }
+
+    @Test fun builtInServiceCanDeriveItsAvailabilityFromTheProviderDirectory() {
+        val owner = "service.test-recognition"
+        lateinit var directory: RecognitionBroker
+        var readingServiceInfo = false
+        val service = object : KigPlugin by plugin(owner, AsrRole.SERVICE) {
+            override val asr = object : AsrEngine by requireNotNull(plugin(owner, AsrRole.SERVICE).asr) {
+                override val info: AsrInfo
+                    get() {
+                        check(!readingServiceInfo) { "Recognition directory queried the calling service's info" }
+                        readingServiceInfo = true
+                        return try {
+                            AsrInfo(role = AsrRole.SERVICE, availability = if (directory.providers().isEmpty())
+                                EngineAvailability.NEEDS_RESOURCES else EngineAvailability.READY)
+                        } finally { readingServiceInfo = false }
+                    }
+            }
+        }
+        val provider = plugin("test.asr-provider", AsrRole.PROVIDER)
+        val registry = PluginRegistry(listOf(service, provider))
+        val broker = HostSpeechBroker(owner, registry, PluginPaths(ApplicationProvider.getApplicationContext<Context>()))
+        try {
+            directory = broker.builtinRecognition()
+            assertEquals(EngineAvailability.READY, service.asr.info.availability)
+            assertEquals(listOf(provider.descriptor.id), directory.providers().map { it.pluginId })
+            registry.replace(listOf(service))
+            assertEquals(EngineAvailability.NEEDS_RESOURCES, service.asr.info.availability)
+        } finally { broker.close() }
+    }
 }

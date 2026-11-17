@@ -17,10 +17,17 @@ internal class HostRecognitionBroker(private val owner: String, private val regi
             require(it.asr?.info?.role == AsrRole.PROVIDER) { "不能嵌套调用识别服务" }
         }
     }
-    fun providers(): List<AsrProvider> = registry.plugins.mapNotNull { plugin ->
-        plugin.asr?.info?.takeIf { it.role == AsrRole.PROVIDER }?.let { info -> AsrProvider(plugin.descriptor.id, plugin.descriptor.name, info,
-            settingsPages = plugin.engineSettingsPages()) }
-    } + ProviderCatalog(paths).disabledAsr(registry.plugins.map { it.descriptor.id }.toSet())
+    fun providers(): List<AsrProvider> {
+        val registered = registry.plugins
+        return registered.mapNotNull { plugin ->
+            val descriptor = plugin.descriptor
+            // A service can derive its info from this directory. Exclude it before reading info.
+            if (descriptor.id == owner) return@mapNotNull null
+            plugin.asr?.info?.takeIf { it.role == AsrRole.PROVIDER }?.let { info ->
+                AsrProvider(descriptor.id, descriptor.name, info, settingsPages = plugin.engineSettingsPages())
+            }
+        } + ProviderCatalog(paths).disabledAsr(registered.map { it.descriptor.id }.toSet() + owner)
+    }
     suspend fun control(id: String, command: AsrControl): Boolean =
         (provider(id).asr as? ControlledAsrEngine)?.control(command) ?: false
     fun recognize(id: String, input: ParcelFileDescriptor, streaming: Boolean, config: String, token: String): ParcelFileDescriptor {
