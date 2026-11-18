@@ -360,6 +360,7 @@
           "Speech recognition"
         ],
         "releaseNotes": {
+          "0.8.9": "The built-in model name follows the selected language throughout its details page.",
           "0.8.8": "Localized the built-in model name, recognition pack management and errors. The built-in model and vocabulary are still included.",
           "0.8.7": "Added Simplified Chinese, English and Korean text that follows the app language.",
           "0.8.6": "Includes a lightweight Chinese INT8 model and keeps the previously selected recognition pack.",
@@ -378,6 +379,7 @@
           "음성 인식"
         ],
         "releaseNotes": {
+          "0.8.9": "내장 모델 상세 페이지 전체에 선택한 언어로 모델 이름을 표시합니다.",
           "0.8.8": "내장 모델 이름과 인식 팩 관리, 오류 안내를 현지화했습니다. 내장 모델과 어휘 파일도 함께 설치됩니다.",
           "0.8.7": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
           "0.8.6": "경량 중국어 INT8 모델을 내장하며 기존에 선택한 인식 팩은 유지합니다.",
@@ -397,6 +399,7 @@
           "音声認識"
         ],
         "releaseNotes": {
+          "0.8.9": "内蔵モデルの詳細ページ全体で、選択した言語のモデル名を表示します。",
           "0.8.8": "内蔵モデル名、認識パックの管理とエラーを翻訳しました。内蔵モデルと語彙ファイルも引き続き同梱されています。",
           "0.8.7": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
           "0.8.6": "軽量の中国語 INT8 モデルを同梱しました。選択済みの認識パックは維持されます。",

@@ -682,6 +682,21 @@
     "dependencies": {
       "service.speech-recognition": "^0.8.1"
     },
+    "file": "engine.streaming-asr-0.8.9.kigplugin",
+    "category": "音频",
+    "summary": "内置中文轻量模型，安装后即可离线流式识别",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n内置中文轻量 INT8 模型，无需额外下载。更新时保留原先选中的识别包，可按需添加其它模型。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "内置模型详情的名称完整跟随界面语言。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
     "file": "engine.streaming-asr-0.8.8.kigplugin",
     "category": "音频",
     "summary": "内置中文轻量模型，安装后即可离线流式识别",
