@@ -3,6 +3,8 @@ package com.kigtts.next.ui.cards.camera
 
 import android.content.Context
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.params.ColorSpaceTransform
+import android.util.Rational
 import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.util.concurrent.Futures
@@ -97,6 +99,44 @@ class CameraManualControllerTest {
         assertNull(requests.last())
         assertTrue(controller.automaticExposure)
         assertEquals(CameraWhiteBalance.AUTO, controller.whiteBalance)
+    }
+
+    @Test fun calibratedKelvinUsesSensorGainsAndAutoClearsOnlyWhiteBalanceOverrides() {
+        val requests = mutableListOf<CaptureRequestOptions?>()
+        val colorMatrix = DoubleArray(9) { if (it % 4 == 0) 1.0 else 0.0 }
+        val transform = ColorSpaceTransform(Array(9) { Rational(colorMatrix[it].toInt(), 1) })
+        val control = CameraTemperatureControl.Calibrated(SensorColorCalibration(6504, colorMatrix), null)
+        val controller = controller()
+        controller.attach(capabilities().copy(temperatureControl = control)) {
+            requests += it; Futures.immediateFuture<Void?>(null)
+        }
+        assertNull(controller.temperatureRange())
+        controller.temperatureAt(3800)
+        assertTrue(requests.isEmpty())
+        controller.record(CameraMeteringSample(20_000_000L, 800, null, null, colorTransform = transform))
+        assertEquals(2500..10000, controller.temperatureRange())
+        controller.setManualShutter(true)
+        controller.temperatureAt(3800)
+        val cool = requireNotNull(requests.last()).getCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_GAINS)!!
+        controller.record(CameraMeteringSample(20_000_000L, 800, null, null))
+        controller.temperatureAt(7200)
+        val adjusted = requireNotNull(requests.last())
+        val warm = adjusted.getCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_GAINS)!!
+        assertTrue(warm.red / warm.blue > cool.red / cool.blue)
+        assertEquals(7200, controller.whiteBalanceKelvin)
+        assertEquals(CaptureRequest.CONTROL_AWB_MODE_OFF, adjusted.getCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE))
+        assertEquals(CaptureRequest.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX, adjusted.getCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE))
+        assertEquals(transform, adjusted.getCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_TRANSFORM))
+        assertEquals(20_000_000L, adjusted.getCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME))
+        controller.temperatureAt(12_000)
+        assertEquals(10000, controller.whiteBalanceKelvin)
+        controller.selectWhiteBalance(CameraWhiteBalance.AUTO)
+        val automatic = requireNotNull(requests.last())
+        assertTrue(controller.automaticWhiteBalance)
+        assertNull(controller.whiteBalanceKelvin)
+        assertNull(automatic.getCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE))
+        assertNull(automatic.getCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_GAINS))
+        assertEquals(20_000_000L, automatic.getCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME))
     }
 
     @Test fun captureWaitsForTheRealRequestAcknowledgementBeforeItMayProceed() = runTest(dispatcher) {

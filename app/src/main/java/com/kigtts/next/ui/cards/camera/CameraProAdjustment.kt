@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.MaterialSymbols
 import com.kigtts.next.ui.navigation.excludeCameraPull
 import java.util.Locale
+import kotlin.math.roundToInt
 
 @Composable
 internal fun CameraProAdjustment(key: ProControl, controller: CameraManualController, sample: CameraMeteringSample?,
@@ -24,7 +25,7 @@ internal fun CameraProAdjustment(key: ProControl, controller: CameraManualContro
     val capability = controller.capabilities
     val auto = when (key) {
         ProControl.FOCUS -> !controller.manualFocus
-        ProControl.WB -> controller.whiteBalance == CameraWhiteBalance.AUTO
+        ProControl.WB -> controller.automaticWhiteBalance
         else -> controller.automaticExposure
     }
     Surface(modifier.fillMaxWidth().height(48.dp).excludeCameraPull(),
@@ -69,13 +70,22 @@ internal fun CameraProAdjustment(key: ProControl, controller: CameraManualContro
                     }, ruler, if (auto) copy.text("option.auto") else label(distance), emphasis = 0f, snapToEmphasis = true)
                 }
                 ProControl.WB -> {
-                    val presets = remember(capability.whiteBalance) {
-                        CameraWhiteBalance.entries.filter { it == CameraWhiteBalance.AUTO || it in capability.whiteBalance }
-                    }
-                    if (presets.size > 1) {
-                        CameraTickRuler(presets.indices, presets.indexOf(controller.whiteBalance).coerceAtLeast(0),
-                            { copy.label(presets[it]) }, copy.label(key), "camera-manual-white-balance", enabled,
-                            { controller.selectWhiteBalance(presets[it]) }, ruler, emphasis = 0)
+                    val range = controller.temperatureRange(sample)
+                    if (range != null) {
+                        val current = (controller.whiteBalanceKelvin ?: sample?.temperature ?: CAMERA_WB_DAYLIGHT_KELVIN).coerceIn(range)
+                        CameraContinuousRuler(range.first.toFloat()..range.last.toFloat(), current.toFloat(),
+                            { cameraKelvinLabel(it.roundToInt()) }, copy.label(key), "camera-manual-white-balance", enabled,
+                            { controller.temperatureAt(it.roundToInt()) }, ruler,
+                            if (auto) copy.text("option.auto") else cameraKelvinLabel(current))
+                    } else {
+                        val presets = remember(capability.whiteBalance) {
+                            CameraWhiteBalance.entries.filter { it == CameraWhiteBalance.AUTO || it in capability.whiteBalance }
+                        }
+                        if (presets.size > 1) {
+                            CameraTickRuler(presets.indices, presets.indexOf(controller.whiteBalance).coerceAtLeast(0),
+                                { copy.label(presets[it]) }, copy.label(key), "camera-manual-white-balance", enabled,
+                                { controller.selectWhiteBalance(presets[it]) }, ruler, emphasis = 0)
+                        }
                     }
                 }
                 ProControl.EV -> Unit

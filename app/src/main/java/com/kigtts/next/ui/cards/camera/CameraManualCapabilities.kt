@@ -11,7 +11,8 @@ import kotlin.math.roundToLong
 
 internal data class CameraManualCapabilities(val exposure: LongRange? = null, val sensitivity: IntRange? = null,
     val maximumFocus: Float = 0f, val maximumFrameDuration: Long? = null, val frameDurationWritable: Boolean = false,
-    val reason: String? = null, val whiteBalance: List<CameraWhiteBalance> = emptyList()) {
+    val reason: String? = null, val whiteBalance: List<CameraWhiteBalance> = emptyList(),
+    val temperatureControl: CameraTemperatureControl? = null) {
     val shutterAvailable get() = exposure?.let { it.first > 0 && it.last >= it.first } == true &&
         sensitivity?.let { it.first > 0 && it.last >= it.first } == true
     val focusAvailable get() = maximumFocus.isFinite() && maximumFocus > 0f
@@ -51,7 +52,7 @@ internal fun readCameraManualCapabilities(context: Context, camera: Camera, proc
             if (canFocus) focus else 0f, maxFrame, CaptureRequest.SENSOR_FRAME_DURATION in keys,
             whiteBalance = CameraWhiteBalance.entries.filter {
                 CaptureRequest.CONTROL_AWB_MODE in keys && awbModes?.contains(it.mode) == true
-            })
+            }, temperatureControl = readCameraTemperatureControl(characteristics, awbModes, keys))
     }.getOrElse { CameraManualCapabilities(reason = "camera.manual_unavailable") }
 }
 

@@ -1,6 +1,8 @@
 package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.ComponentActivity
+import android.hardware.camera2.params.ColorSpaceTransform
+import android.util.Rational
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -29,6 +31,31 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 class CameraProUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun theWhiteBalanceRulerShowsKelvinAndHdrAutoRestoresAutomaticMode() {
+        val matrix = DoubleArray(9) { if (it % 4 == 0) 1.0 else 0.0 }
+        val measured = CameraMeteringSample(null, null, null, null,
+            colorTransform = ColorSpaceTransform(Array(9) { Rational(matrix[it].toInt(), 1) }))
+        val controller = CameraManualController(compose.activity, {}).apply {
+            attach(CameraManualCapabilities(temperatureControl =
+                CameraTemperatureControl.Calibrated(SensorColorCalibration(6504, matrix), null))) {
+                Futures.immediateFuture<Void?>(null)
+            }
+            record(measured)
+        }
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CameraProAdjustment(ProControl.WB, controller, measured, true, Modifier.size(360.dp, 48.dp))
+        } }
+        compose.onNodeWithText("2500 K").assertExists()
+        compose.onNodeWithText("10000 K").assertExists()
+        compose.onNodeWithTag("camera-pro-auto").assertIsNotEnabled()
+        compose.onNodeWithTag("camera-manual-white-balance").performSemanticsAction(SemanticsActions.SetProgress) { it(6185f) }
+        compose.onNodeWithText("6185 K").assertExists()
+        compose.runOnIdle { assertEquals(6185, controller.whiteBalanceKelvin) }
+        compose.onNodeWithTag("camera-pro-auto").performClick()
+        compose.runOnIdle { assertTrue(controller.automaticWhiteBalance) }
+        compose.onNodeWithTag("camera-pro-auto").assertIsNotEnabled()
+    }
 
     @Test fun landscapeParametersRotateAndShrinkLongValuesToFitTheirSlots() {
         val controller = CameraManualController(compose.activity, {}).apply {

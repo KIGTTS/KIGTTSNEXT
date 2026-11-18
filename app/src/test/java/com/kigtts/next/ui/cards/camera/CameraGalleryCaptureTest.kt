@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
@@ -73,7 +74,8 @@ class CameraGalleryCaptureTest {
         val video = clip(); val still = embedded(jpeg(), video); Metadata.width = "0"
         val result = cameraGalleryCapture(app, Uri.fromFile(source(still + video)), PolaroidFormat.MINI)
         try {
-            assertNull(result.photo.motion); assertTrue(result.warning.orEmpty().contains("保留照片"))
+            assertNull(result.photo.motion)
+            assertEquals(app.uiCopy("camera.gallery_motion_warning"), result.warning)
             assertArrayEquals(still, result.photo.original.readBytes()); assertEquals(1, Metadata.released)
         } finally { result.photo.discard() }
         val directory = File(app.cacheDir, "polaroid-camera/gallery")

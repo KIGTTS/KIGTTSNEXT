@@ -4,6 +4,10 @@ import com.kigtts.next.i18n.uiCopy
 
 import android.content.Context
 import android.hardware.camera2.*
+import android.hardware.camera2.params.ColorSpaceTransform
+import android.hardware.camera2.params.RggbChannelVector
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.camera.camera2.interop.*
 import androidx.camera.core.Camera
 import androidx.compose.runtime.*
@@ -14,7 +18,8 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.withTimeoutOrNull
 
-internal data class CameraMeteringSample(val exposure: Long?, val iso: Int?, val frame: Long?, val focus: Float?)
+internal data class CameraMeteringSample(val exposure: Long?, val iso: Int?, val frame: Long?, val focus: Float?,
+    val colorTransform: ColorSpaceTransform? = null, val temperature: Int? = null)
 
 /** One owner for manual Camera2 overrides. Metadata is atomic and never recomposes the UI on each frame. */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
@@ -26,6 +31,10 @@ internal class CameraManualController(private val context: Context, private val 
     var shutterNanos by mutableStateOf<Long?>(null); private set
     var sensorIso by mutableIntStateOf(0); private set
     var whiteBalance by mutableStateOf(CameraWhiteBalance.AUTO); private set
+    private data class TemperatureOverride(val kelvin: Int, val gains: RggbChannelVector? = null, val transform: ColorSpaceTransform? = null)
+    private var manualTemperature by mutableStateOf<TemperatureOverride?>(null)
+    val whiteBalanceKelvin get() = manualTemperature?.kelvin
+    val automaticWhiteBalance get() = manualTemperature == null && whiteBalance == CameraWhiteBalance.AUTO
     val automaticExposure get() = shutterNanos == null
     private val epoch = AtomicLong()
     private val metadataLock = Any()
@@ -39,7 +48,9 @@ internal class CameraManualController(private val context: Context, private val 
         return object : CameraCaptureSession.CaptureCallback() {
             override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
                 synchronized(metadataLock) { if (epoch.get() == expected) sample.set(CameraMeteringSample(result.get(CaptureResult.SENSOR_EXPOSURE_TIME),
-                    result.get(CaptureResult.SENSOR_SENSITIVITY), result.get(CaptureResult.SENSOR_FRAME_DURATION), result.get(CaptureResult.LENS_FOCUS_DISTANCE))) }
+                    result.get(CaptureResult.SENSOR_SENSITIVITY), result.get(CaptureResult.SENSOR_FRAME_DURATION),
+                    result.get(CaptureResult.LENS_FOCUS_DISTANCE), result.get(CaptureResult.COLOR_CORRECTION_TRANSFORM),
+                    if (Build.VERSION.SDK_INT >= 36) result.get(CaptureResult.COLOR_CORRECTION_COLOR_TEMPERATURE) else null)) }
             }
         }
     }
@@ -89,8 +100,35 @@ internal class CameraManualController(private val context: Context, private val 
     }
     fun selectWhiteBalance(value: CameraWhiteBalance) {
         if (value != CameraWhiteBalance.AUTO && value !in capabilities.whiteBalance) return
-        if (whiteBalance == value) return
+        if (whiteBalance == value && manualTemperature == null) return
+        manualTemperature = null
         whiteBalance = value; apply()
+    }
+    fun temperatureRange(measured: CameraMeteringSample? = sample.get()): IntRange? =
+        when (val control = capabilities.temperatureControl) {
+            is CameraTemperatureControl.Native -> control.range
+            is CameraTemperatureControl.Calibrated -> control.range.takeIf {
+                manualTemperature?.transform != null || measured?.colorTransform != null
+            }
+            null -> null
+        }
+    fun temperatureAt(value: Int) {
+        val control = capabilities.temperatureControl ?: return
+        val kelvin = value.coerceIn(control.range)
+        if (whiteBalanceKelvin == kelvin) return
+        val next = when (control) {
+            is CameraTemperatureControl.Native -> {
+                if (Build.VERSION.SDK_INT < 36) return
+                TemperatureOverride(kelvin)
+            }
+            is CameraTemperatureControl.Calibrated -> {
+                val transform = manualTemperature?.transform ?: sample.get()?.colorTransform ?: return
+                TemperatureOverride(kelvin, control.gainsAt(kelvin) ?: return, transform)
+            }
+        }
+        whiteBalance = CameraWhiteBalance.AUTO
+        manualTemperature = next
+        apply()
     }
     fun reset() {
         beforeChange()
@@ -99,12 +137,21 @@ internal class CameraManualController(private val context: Context, private val 
     }
     private fun resetValues() {
         manualFocus = false; focusDiopters = 0f; shutterNanos = null; sensorIso = 0; whiteBalance = CameraWhiteBalance.AUTO
+        manualTemperature = null
     }
     private fun apply() {
         val send = sender ?: return
         val ticket = ++version; val generation = epoch.get()
-        val options = if (!manualFocus && automaticExposure && whiteBalance == CameraWhiteBalance.AUTO) null else CaptureRequestOptions.Builder().apply {
-            if (whiteBalance != CameraWhiteBalance.AUTO) {
+        val options = if (!manualFocus && automaticExposure && automaticWhiteBalance) null else CaptureRequestOptions.Builder().apply {
+            val temperature = manualTemperature
+            if (temperature != null) {
+                setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
+                if (temperature.gains != null && temperature.transform != null) {
+                    setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX)
+                    setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_GAINS, temperature.gains)
+                    setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_TRANSFORM, temperature.transform)
+                } else if (Build.VERSION.SDK_INT >= 36) setNativeTemperature(temperature.kelvin)
+            } else if (whiteBalance != CameraWhiteBalance.AUTO) {
                 setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, whiteBalance.mode)
             }
             if (manualFocus) {
@@ -143,4 +190,10 @@ internal class CameraManualController(private val context: Context, private val 
         runCatching { sender?.invoke(null) }; sender = null; pending = null
         capabilities = CameraManualCapabilities(); resetValues()
     }
+}
+
+@RequiresApi(36)
+private fun CaptureRequestOptions.Builder.setNativeTemperature(kelvin: Int) {
+    setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_CCT)
+    setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_COLOR_TEMPERATURE, kelvin)
 }

@@ -74,7 +74,7 @@ internal fun CameraProControls(controller: CameraManualController, exposure: Cam
                             shutterDisplayValue(it)
                         } ?: copy.text("option.auto")
                         ProControl.ISO -> controller.sensorIso.takeIf { it > 0 }?.toString() ?: measured?.iso?.toString() ?: copy.text("option.auto")
-                        ProControl.WB -> copy.label(controller.whiteBalance)
+                        ProControl.WB -> controller.whiteBalanceKelvin?.let(::cameraKelvinLabel) ?: copy.label(controller.whiteBalance)
                         ProControl.FOCUS -> if (controller.manualFocus) "MF" else "AF"
                     }
                     val isSelected = activeControl == key
@@ -96,6 +96,6 @@ internal fun CameraProControls(controller: CameraManualController, exposure: Cam
 internal fun proControlAvailable(key: ProControl, controller: CameraManualController, exposure: CameraExposureCompensation): Boolean = when (key) {
     ProControl.EV -> controller.automaticExposure && exposure.step > 0f && exposure.range.first < exposure.range.last
     ProControl.SHUTTER, ProControl.ISO -> controller.capabilities.shutterAvailable
-    ProControl.WB -> controller.capabilities.whiteBalance.any { it != CameraWhiteBalance.AUTO }
+    ProControl.WB -> controller.temperatureRange() != null || controller.capabilities.whiteBalance.any { it != CameraWhiteBalance.AUTO }
     ProControl.FOCUS -> controller.capabilities.focusAvailable
 }
