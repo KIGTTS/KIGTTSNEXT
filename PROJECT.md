@@ -6753,3 +6753,10 @@ GIF实际绘制/启停在API28和35均通过；静态图片解码也通过，损
 - Release APK rebuilt after the chat composer and optional voice-input API changes: 7,751,687 bytes, SHA-256 `f283cc7dbc424c16f5ea9eb6e72b178518b26ab58238c8c213a4bca8d9237aa3`.
 - K70 `cfc8ef16` accepted the incremental reinstall; device hash matches, first install time stayed unchanged, and the update time is 2026-11-17 22:43:52.
 - Device checks: `SYSTEM_ALERT_WINDOW` allow and `RECORD_AUDIO` allow. The phone returned to lock screen/AOD immediately after launch, so direct tap-through of the new AI composer and settings remains pending.
+
+## 2026-11-18 · 内置 AI 助手多语言回归
+- 内置 AI 助手更新至 0.9.30，补齐搜索、供应商和模型管理、会话菜单与任务通知的四语言文案。
+
+- 个人信息页移除底部分享和收藏入口，现有顶栏分享与主设置入口继续可用。聆听字幕弹窗的字号、浮窗和设置改用同组相邻圆角。商店分类和顶栏更多操作的辅助提示跟随语言。
+
+- 个人信息与聆听字幕 7 项定向 UI 测试通过。K70 已加载内置 AI 助手 0.9.30、插件商店 0.16.16、云端合成 0.1.4、云端识别 0.2.2 和语音克隆 0.3.7。克隆在 K70 自检返回 78,208 字节 PCM，正常结束。

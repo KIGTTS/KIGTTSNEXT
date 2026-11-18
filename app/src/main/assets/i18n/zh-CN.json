@@ -782,5 +782,13 @@
   "permission.review.existing": "已有权限 · {count}",
   "permission.review.collapse": "收起已有权限",
   "permission.review.expand": "展开已有权限",
-  "permission.review.ask": "使用时询问"
+  "permission.review.ask": "使用时询问",
+  "profile.create": "设置我的名片",
+  "profile.setup_hint": "设置头像、昵称和联系方式",
+  "profile.save_failed": "未能保存，请重试",
+  "profile.create_failed": "未能创建名片",
+  "profile.tile_limit": "最多添加 24 个磁贴",
+  "profile.add_tile": "添加磁贴",
+  "store.catalog_categories": "插件分类",
+  "action.more_page_actions": "更多页面操作"
 }

@@ -782,5 +782,13 @@
   "permission.review.existing": "Existing permissions: {count}",
   "permission.review.collapse": "Hide existing permissions",
   "permission.review.expand": "Show existing permissions",
-  "permission.review.ask": "Ask when needed"
+  "permission.review.ask": "Ask when needed",
+  "profile.create": "Set up my profile",
+  "profile.setup_hint": "Set your avatar, nickname and contact details",
+  "profile.save_failed": "Could not save your profile. Try again.",
+  "profile.create_failed": "Could not create your profile",
+  "profile.tile_limit": "You can add up to 24 tiles",
+  "profile.add_tile": "Add tile",
+  "store.catalog_categories": "Plugin categories",
+  "action.more_page_actions": "More page actions"
 }

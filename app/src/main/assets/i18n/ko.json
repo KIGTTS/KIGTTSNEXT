@@ -782,5 +782,13 @@
   "permission.review.existing": "기존 권한 {count}개",
   "permission.review.collapse": "기존 권한 접기",
   "permission.review.expand": "기존 권한 펼치기",
-  "permission.review.ask": "필요할 때 확인"
+  "permission.review.ask": "필요할 때 확인",
+  "profile.create": "내 프로필 설정",
+  "profile.setup_hint": "프로필 사진, 닉네임, 연락처를 설정하세요",
+  "profile.save_failed": "프로필을 저장할 수 없습니다. 다시 시도하세요.",
+  "profile.create_failed": "프로필을 만들 수 없습니다",
+  "profile.tile_limit": "타일은 최대 24개까지 추가할 수 있습니다",
+  "profile.add_tile": "타일 추가",
+  "store.catalog_categories": "플러그인 분류",
+  "action.more_page_actions": "페이지 동작 더보기"
 }

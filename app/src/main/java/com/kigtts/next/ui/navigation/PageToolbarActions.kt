@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.ui.components.animateEnabled
 
 import com.kigtts.next.ui.components.MotionIconButton
@@ -100,7 +101,7 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
     AnimatedVisibility(actions.size>primaryCount, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180))) {
     Box(Modifier.excludeCameraPull()) {
-        MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert,"更多页面操作") }
+        MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert, uiText("action.more_page_actions")) }
         DropdownMenu(more&&active,{ more=false }) {
             actions.drop(primaryCount).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon,null) } },
                 colors=MenuDefaults.itemColors().animateEnabled(action.enabled),

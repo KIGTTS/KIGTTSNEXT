@@ -782,5 +782,13 @@
   "permission.review.existing": "既存の権限：{count} 件",
   "permission.review.collapse": "既存の権限を閉じる",
   "permission.review.expand": "既存の権限を表示",
-  "permission.review.ask": "使用時に確認"
+  "permission.review.ask": "使用時に確認",
+  "profile.create": "プロフィールを設定",
+  "profile.setup_hint": "プロフィール画像、ニックネーム、連絡先を設定",
+  "profile.save_failed": "プロフィールを保存できませんでした。再試行してください",
+  "profile.create_failed": "プロフィールを作成できませんでした",
+  "profile.tile_limit": "タイルは24個まで追加できます",
+  "profile.add_tile": "タイルを追加",
+  "store.catalog_categories": "プラグインのカテゴリ",
+  "action.more_page_actions": "ページのその他の操作"
 }

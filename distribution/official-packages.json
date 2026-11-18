@@ -7,6 +7,18 @@
     "tags": [
       "工具"
     ],
+    "file": "tools.package-store-0.16.16.kigplugin",
+    "notes": "补齐四套语言的分类、资源分组、下载及安装状态。",
+    "module": "package-store"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
     "file": "tools.package-store-0.16.12.kigplugin",
     "notes": "暂时隐藏云分享插件。来源与已有插件数据保留。",
     "module": "package-store"
@@ -195,6 +207,21 @@
   },
   {
     "module": "cloud-asr",
+    "file": "engine.cloud-asr-0.2.2.kigplugin",
+    "category": "音频",
+    "summary": "连接熟悉的云端服务，把语音转换成文字。",
+    "symbol": "cloud",
+    "description": "## 云端语音识别\n\n支持 DeepSeek、腾讯云、阿里云、Azure、百度云和讯飞。在语音识别服务中选用后，可以按句显示聆听字幕。",
+    "notes": "补齐四套语言的服务商名称、账户校验和请求失败提示。",
+    "tags": [
+      "语音识别"
+    ],
+    "dependencies": {
+      "service.speech-recognition": "^0.8.3"
+    }
+  },
+  {
+    "module": "cloud-asr",
     "file": "engine.cloud-asr-0.2.1.kigplugin",
     "category": "音频",
     "summary": "连接熟悉的云端服务，把语音转换成文字。",
@@ -266,6 +293,21 @@
     ],
     "dependencies": {
       "service.speech-recognition": "^0.8.0"
+    }
+  },
+  {
+    "module": "cloud-tts",
+    "file": "engine.cloud-tts-0.1.4.kigplugin",
+    "category": "音频",
+    "summary": "选用云端声音，让文字读出喜欢的音色。",
+    "symbol": "record_voice_over",
+    "description": "## 云端语音合成\n\n连接腾讯云、阿里云、Azure、百度云或讯飞，按需添加喜欢的预设声音。也可使用腾讯云已有的克隆声音与 Azure 自定义声音。添加后的声音会出现在语音包列表，方便选择和管理。",
+    "notes": "补齐四套语言的服务商名称、语音包管理、账户校验和请求失败提示。",
+    "tags": [
+      "语音合成"
+    ],
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.3"
     }
   },
   {
@@ -596,6 +638,23 @@
       "语音识别"
     ],
     "notes": "内置中文轻量模型；保留已有的选用设置。"
+  },
+  {
+    "module": "zipvoice-clone",
+    "publisher": "d52d1d3706a8858d33a9d4521e348e160f74bd4bf92209775bb0dda2c8c53e05",
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.1"
+    },
+    "file": "engine.zipvoice-clone-0.3.7.kigplugin",
+    "category": "音频",
+    "summary": "用参考录音制作语音包，在设备上离线合成朗读音频",
+    "symbol": "record_voice_over",
+    "description": "## 语音克隆引擎\n\n内置 ZipVoice Distill INT8 与 Vocos，支持导入本地语音包并分别设置实时与后台合成质量。ZipVoice 模型为 CC BY-NC 4.0，仅限非商业用途。",
+    "tags": [
+      "朗读",
+      "语音克隆"
+    ],
+    "notes": "补齐四套语言的语音包管理和导入校验，沿用内置 CPU 模型。模型仅限非商业使用。"
   },
   {
     "module": "zipvoice-clone",

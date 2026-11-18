@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
 import androidx.activity.compose.BackHandler
@@ -31,7 +32,7 @@ internal fun PersonalInformationEntry(model: AppViewModel) {
     Surface(onClick = feedbackClick { model.navigate(Destination.PersonalCards) }, shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth().testTag("personal-information")) {
         if (current != null) PersonalCardView(current, model.stickers, Modifier.fillMaxWidth())
-        else ListItem(headlineContent = { Text("个人信息") }, supportingContent = { Text("设置头像、昵称和联系方式") },
+        else ListItem(headlineContent = { Text(uiText("nav.profile")) }, supportingContent = { Text(uiText("profile.setup_hint")) },
             leadingContent = { Icon(Icons.Default.AccountCircle, null, Modifier.size(40.dp)) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.primaryContainer))
     }
@@ -41,6 +42,7 @@ internal fun PersonalInformationEntry(model: AppViewModel) {
 internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean = false) {
     val items by model.identities.items.collectAsStateWithLifecycle()
     val card = items.firstOrNull()
+    val copy = rememberUiCopy()
     var editing by rememberSaveable { mutableStateOf(initiallyEditing) }
     val draftSaver = remember(card?.id) { Saver<IdentityCard?, String>(
         save = { it?.let { value -> PersonalProfile.from(value).json().toString() } },
@@ -66,7 +68,7 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
                 }
                 done()
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "未能保存，请重试") }
+            catch (_: Exception) { model.message(copy("profile.save_failed")) }
             finally { working = false }
         }
     }
@@ -78,7 +80,7 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
         scope.launch {
             try { draft = withContext(Dispatchers.IO) { model.identities.create() }; editing = true; information = true }
             catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { model.message(error.message ?: "未能创建名片") }
+            catch (_: Exception) { model.message(copy("profile.create_failed")) }
             finally { working = false }
         }
     }
@@ -86,7 +88,7 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
         card?.takeIf { !editing }?.let { ToolbarAction("share-personal-information", uiText("profile.share"), Icons.Default.Share) {
             model.sharing.shareMedia(listOf(it.designId))
         } },
-        ToolbarAction("edit-personal-information", if (editing) "完成编辑" else "编辑",
+        ToolbarAction("edit-personal-information", if (editing) uiText("action.done") else uiText("action.edit"),
             if (editing) Icons.Default.Check else Icons.Default.Edit) { if (editing) finish() else begin() }))
     RegisterPageLoading(working)
     RegisterPageBackGuard(editing && draft != null, ::finish)
@@ -106,18 +108,12 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
                 })
             AnimatedVisibility(editing, enter = fadeIn(tween(180)) + expandVertically(tween(220)),
                 exit = fadeOut(tween(140)) + shrinkVertically(tween(220))) {
-                OutlinedButton(feedbackClick { if (displayed.tiles.size < 24) addingTile = true else model.message("最多添加 24 个磁贴") },
-                    Modifier.fillMaxWidth().testTag("profile-add-tile")) { Icon(Icons.Default.Add, null); Text("添加磁贴") }
+                OutlinedButton(feedbackClick { if (displayed.tiles.size < 24) addingTile = true else model.message(copy("profile.tile_limit")) },
+                    Modifier.fillMaxWidth().testTag("profile-add-tile")) { Icon(Icons.Default.Add, null); Text(uiText("profile.add_tile")) }
             }
-            SettingsGroup("我的名片") {
-                SettingItem("分享名片", "", Icons.Default.Share, SettingPosition.SINGLE,
-                    onClick = { if (editing) persist { model.sharing.shareMedia(listOf(displayed.designId)) }
-                        else model.sharing.shareMedia(listOf(displayed.designId)) })
-            }
-        } ?: FilledTonalButton(feedbackClick(::begin), Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Text("设置我的名片") }
-        SettingsGroup("我的收藏") {
-            SettingItem(uiText("nav.favorites"), "", Icons.Default.Bookmarks, SettingPosition.SINGLE,
-                onClick = { model.navigate(Destination.ContactFavorites) })
+        } ?: FilledTonalButton(feedbackClick(::begin), Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Add, null)
+            Text(uiText("profile.create"))
         }
     }
     draft?.let { value ->

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.vector
 import com.kigtts.next.ui.components.ChoiceButtonGroup
@@ -51,7 +52,7 @@ import kotlinx.coroutines.flow.first
     Box(Modifier.fillMaxWidth().testTag("catalog-tabs")) {
         val scroll = rememberScrollState()
         Box(Modifier.horizontalScroll(scroll)) {
-            ChoiceButtonGroup("插件分类", filters.map { it.id }, selected,
+            ChoiceButtonGroup(uiText("store.catalog_categories"), filters.map { it.id }, selected,
                 label = { id -> filters.first { it.id == id }.label },
                 onSelect = { id -> invoke(filters.first { it.id == id }.action, emptyMap()) },
                 modifier = Modifier, enabled = enabled,

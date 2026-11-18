@@ -5,6 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -25,32 +29,47 @@ import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
 import com.kigtts.next.ui.settings.SettingItem
 import com.kigtts.next.ui.settings.SettingPosition
-import com.kigtts.next.ui.settings.SettingsGroup
 
 @Composable
 internal fun CaptionWindowSetting(ready: Boolean = true, open: () -> Unit) {
     val inset = 8.dp
     val innerRadius = ((LocalCornerRadius.current + 4.dp).coerceAtMost(24.dp) - inset).coerceAtLeast(0.dp)
     AppearanceCardSurface(Modifier.fillMaxWidth()) {
-        SettingItem(uiText("listening.open_window"), uiText("listening.window_hint"),
-            MaterialSymbols.vector("open_in_new") ?: Icons.AutoMirrored.Filled.OpenInNew, SettingPosition.SINGLE,
-            modifier = Modifier.padding(inset), onClick = open, enabled = ready, corners = RoundedCornerShape(innerRadius))
+        CaptionWindowSettingRow(SettingPosition.SINGLE, ready, Modifier.padding(inset), RoundedCornerShape(innerRadius), open)
     }
+}
+
+@Composable
+private fun CaptionWindowSettingRow(
+    position: SettingPosition,
+    ready: Boolean = true,
+    modifier: Modifier = Modifier,
+    corners: CornerBasedShape = MaterialTheme.shapes.small,
+    open: () -> Unit,
+) {
+    SettingItem(uiText("listening.open_window"), uiText("listening.window_hint"),
+        MaterialSymbols.vector("open_in_new") ?: Icons.AutoMirrored.Filled.OpenInNew, position,
+        modifier = modifier, onClick = open, enabled = ready, corners = corners)
 }
 
 @Composable
 internal fun ListeningQuickSettings(model: AppViewModel, size: Float, dismiss: () -> Unit) {
     MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("listening.panel")) }, text = {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            SettingsGroup(uiText("listening.options")) {
-                Text(uiText("listening.text_size"), style = MaterialTheme.typography.titleMedium)
+        Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            SettingItem(uiText("listening.text_size"), "", MaterialSymbols.vector("format_size"),
+                SettingPosition.FIRST) {
                 Slider(size, model::setCaptionTextSize, Modifier.fillMaxWidth(), valueRange = 10f..64f)
             }
-            SettingsGroup(uiText("listening.window_group")) {
-                CaptionWindowSetting { dismiss(); model.openCaptionWindow() }
-                SettingItem(uiText("listening.settings"), "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
-                    SettingPosition.SINGLE, onClick = { dismiss(); model.navigate(Destination.PluginPage("service.speech-recognition", "manager")) })
+            CaptionWindowSettingRow(SettingPosition.MIDDLE) {
+                dismiss()
+                model.openCaptionWindow()
             }
+            SettingItem(uiText("listening.settings"), "", MaterialSymbols.vector("tune") ?: Icons.Default.Tune,
+                SettingPosition.LAST, onClick = {
+                    dismiss()
+                    model.navigate(Destination.PluginPage("service.speech-recognition", "manager"))
+                })
         }
     }, confirmButton = { TextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.done")) } })
 }

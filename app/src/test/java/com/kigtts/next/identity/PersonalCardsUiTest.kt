@@ -62,10 +62,10 @@ class PersonalCardsUiTest {
         assertEquals(listOf("开发"), model.identities.current?.tags)
         compose.onNodeWithTag("profile-add-tile").assertDoesNotExist()
         compose.onNodeWithTag("profile-tag-remove/开发").assertDoesNotExist()
-        compose.onNodeWithText("分享名片").performScrollTo().performClick()
-        compose.onNodeWithText("使用云端互传？").assertIsDisplayed()
-        compose.onNodeWithTag("face-share").assertDoesNotExist()
-        compose.runOnIdle { model.sharing.setup.dismiss() }
+        compose.onNodeWithText("我的收藏").assertDoesNotExist()
+        compose.onNodeWithText("分享名片").assertDoesNotExist()
+        compose.onNodeWithTag("share-personal-information").assertIsDisplayed().performClick()
+        compose.waitUntil(5000) { model.sharing.profileFormat.value != null }
     }
     @Test fun backgroundEditorPreviewsIdentityWhileItsToolPanelRemainsUsable() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
