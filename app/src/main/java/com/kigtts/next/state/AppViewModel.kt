@@ -129,7 +129,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal val systemRecognitionPermission = MutableStateFlow<com.kigtts.engines.recognitionservice.SystemRecognitionPermissionIssue?>(null)
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback,
-        systemPermissionDenied = { systemRecognitionPermission.value = it })
+        systemPermissionDenied = { systemRecognitionPermission.value = it },
+        copy = { key, _ -> speechCopy(key) })
     private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message, ::readyCaptionService)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
@@ -141,7 +142,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 plugin.asr?.info?.let { it.role == AsrRole.SERVICE && it.availability == EngineAvailability.READY } == true
         }?.descriptor?.id
     }
-    fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message("请先选择可用的语音识别引擎") }
+    private fun speechCopy(key: String) = getApplication<Application>().uiCopy(key, locale = state.value.uiLocale)
+
+    fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message(speechCopy("listening.engine_setup")) }
     fun resumeCaptionWindow() = captionOutput.resume()
     fun dismissCaptionPanel() {
         if (captionOutput.windowOpen()) update { it.copy(captionsVisible = false) } else speech.closeListening()
@@ -555,8 +558,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
 
     fun toggleListening() = speech.toggleListening()
     fun speak() {
-        if (state.value.mediaId != null) message("请切换到文本后朗读")
-        else if (state.value.speaking || synthesisGuidance.request()) speech.speak()
+        if (state.value.mediaId != null) message(speechCopy("reading.text_only"))
+        else if (state.value.speaking || state.value.editorText.isBlank() || synthesisGuidance.request()) speech.speak()
     }
     suspend fun refreshPlugins() {
         safeModeSession.synchronize()
@@ -582,10 +585,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         val plugin = registry.plugin(id) ?: return
         require(if (tts) plugin.tts != null else plugin.asr != null)
         if (!tts && plugin.asr?.info?.role != AsrRole.SERVICE) {
-            message("请在语音识别服务中选用识别引擎"); return
+            message(speechCopy("listening.engine_setup")); return
         }
         if (tts && plugin.tts?.info?.role != TtsRole.SERVICE && registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE }) {
-            message("请在朗读设置中选择引擎和声音"); return
+            message(speechCopy("reading.engine_missing")); return
         }
         viewModelScope.launch {
             speech.stopAll()

@@ -8,7 +8,7 @@ import kotlinx.coroutines.*
 internal class SpeechPlayback(private val scope: CoroutineScope, private val registry: PluginRegistry,
     private val audio: AudioPlatform, private val state: () -> AppState,
     private val update: ((AppState) -> AppState) -> Unit, private val message: (String) -> Unit,
-    private val selection: () -> String?) {
+    private val copy: (String, String) -> String, private val selection: () -> String?) {
     private var current: Job? = null
     private var queued: Job? = null
     private val pending = ArrayDeque<String>()
@@ -19,7 +19,7 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
         queued?.cancel(); pending.clear(); queuedCharacters = 0; warned = false
         if (state().speaking && !replace) { current?.cancel(); return }
         val text = state().editorText
-        if (text.isBlank()) { message("请先输入文本"); return }
+        if (text.isBlank()) { message(copy("reading.input_required", "请先输入文本")); return }
         play(text, state().spokenPhraseId)
     }
     fun readOnce(text: String) {
@@ -30,7 +30,7 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
     fun enqueue(text: String) {
         if (!state().autoPlayback || text.isBlank()) return
         if (pending.size >= 64 || queuedCharacters + text.length > 32_000) {
-            if (!warned) { message("朗读暂时跟不上识别，部分新句已跳过"); warned = true }
+            if (!warned) { message(copy("reading.backlog", "朗读暂时跟不上识别，部分新句已跳过")); warned = true }
             return
         }
         pending.addLast(text); queuedCharacters += text.length
@@ -48,8 +48,8 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
     private fun play(text: String, phraseId: String? = null): Job? {
         val plugin = registry.plugin(selection().orEmpty())?.takeIf { it.tts != null } ?: registry.plugins.firstOrNull { it.tts != null }
         val engine = plugin?.tts
-        if (engine == null) { message("请先安装并选择语音合成插件"); return null }
-        if (engine.info.availability != EngineAvailability.READY) { message("语音合成插件尚未配置资源"); return null }
+        if (engine == null) { message(copy("reading.engine_missing", "请在朗读设置中选择引擎和声音")); return null }
+        if (engine.info.availability != EngineAvailability.READY) { message(copy("reading.resources_missing", "请在朗读设置中配置当前引擎")); return null }
         val previous = current; previous?.cancel(); val epoch = ++generation
         return scope.launch {
             previous?.join()
@@ -69,7 +69,14 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
                 }
                 player.finish()
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { message(error.message ?: "朗读失败") }
+            catch (error: Exception) {
+                val diagnostic = if (error is EngineException) null else error.message
+                message(diagnostic ?: when ((error as? EngineException)?.code) {
+                    EngineError.NOT_CONFIGURED -> copy("reading.resources_missing", "请在朗读设置中配置当前引擎")
+                    EngineError.TIMEOUT -> copy("reading.timeout", "朗读超时，请重试")
+                    else -> copy("reading.failed", "朗读失败，请重试")
+                })
+            }
             finally { player.close(); if (epoch == generation) update { it.copy(speaking = false) } }
         }.also { current = it }
     }

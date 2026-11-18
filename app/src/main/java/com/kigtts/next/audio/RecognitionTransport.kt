@@ -15,6 +15,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private val update: ((AppState) -> AppState) -> Unit, private val message: (String) -> Unit,
     private val replaceText: (String) -> Unit, private val automaticRead: (Boolean) -> Unit,
     private val finalizedSpeech: (String, Boolean) -> Unit, private val selection: () -> String?,
+    private val copy: (String, String) -> String,
     private val systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) }) {
     private var job: Job? = null
     private var generation = 0L
@@ -30,13 +31,13 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     val permissionRequests = requests.receiveAsFlow()
     fun permissionResult(granted: Boolean) {
         val session = pending; pending = null
-        if (granted) session?.let(::start) else message("未获得麦克风权限，无法开始录音")
+        if (granted) session?.let(::start) else message(copy("listening.mic_denied", "未获得麦克风权限，无法开始录音"))
     }
     private fun service(id: String?): AsrEngine? {
         val engine = registry.plugin(id.orEmpty())?.asr?.takeIf { it.info.role == AsrRole.SERVICE }
             ?: if (id == null) registry.plugins.firstNotNullOfOrNull { it.asr?.takeIf { engine -> engine.info.role == AsrRole.SERVICE } } else null
-        if (engine == null) { message("请先安装并启用语音识别服务插件"); return null }
-        if (engine.info.availability != EngineAvailability.READY) { message("识别服务尚未选用就绪引擎，请配置对应模型"); return null }
+        if (engine == null) { message(copy("listening.service_disabled", "请先启用语音识别服务")); return null }
+        if (engine.info.availability != EngineAvailability.READY) { message(copy("listening.engine_model", "识别引擎尚未就绪，请检查引擎和模型设置")); return null }
         return engine
     }
     fun toggleListening() {
@@ -76,7 +77,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         val engine = service(session.serviceId) ?: return
         val streaming = engine.info.streaming != StreamingKind.NONE
         if (!streaming && (session.purpose == RecognitionPurpose.CAPTIONS || session.continuous)) {
-            message("此识别包只能识别完整录音，请选用流式识别包"); return
+            message(copy("listening.stream_required", "此识别引擎只支持完整录音，请选择支持持续识别的引擎")); return
         }
         if (!audio.hasMicrophonePermission()) { pending = session; requests.trySend(Unit); return }
         pending = null
@@ -136,7 +137,16 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (issue: SystemRecognitionPermissionIssue) { if (epoch == generation) systemPermissionDenied(issue) }
-            catch (error: Exception) { if (epoch == generation) message(error.message ?: "语音识别失败") }
+            catch (error: Exception) {
+                if (epoch == generation) {
+                    val diagnostic = if (error is EngineException) null else error.message
+                    message(diagnostic ?: when ((error as? EngineException)?.code) {
+                        EngineError.NOT_CONFIGURED -> copy("listening.engine_setup", "请在语音识别设置中选用可用引擎")
+                        EngineError.TIMEOUT -> copy("listening.finish_timeout", "识别结束超时，请重试")
+                        else -> copy("listening.failed", "语音识别失败，请重试")
+                    })
+                }
+            }
             finally {
                 initialized.complete(Unit)
                 if (epoch == generation) update { it.copy(listening = false, voiceInputActive = false, voiceInputSubmitting = false, continuousRecognition = false) }
@@ -161,7 +171,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     fun continueInput() {
         val session = currentSession ?: return
         if (!state().voiceInputActive || state().continuousRecognition) return
-        if (service(session.serviceId)?.info?.streaming == StreamingKind.NONE) { message("持续识别需要流式识别包"); return }
+        if (service(session.serviceId)?.info?.streaming == StreamingKind.NONE) { message(copy("listening.stream_required", "此识别引擎只支持完整录音，请选择支持持续识别的引擎")); return }
         currentSession = session.copy(continuous = true, disableAutomaticRead = true, readFinalized = true)
         automaticRead(false)
         update { it.copy(continuousRecognition = true) }
@@ -179,7 +189,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 initialized?.await()
                 withTimeoutOrNull(finishBudget) { finishing?.join(); true } == true
             } == true
-            if (!finished && epoch == generation) { cancel(); message("识别结束超时，请重试") }
+            if (!finished && epoch == generation) { cancel(); message(copy("listening.finish_timeout", "识别结束超时，请重试")) }
         }
     }
     fun cancel() {

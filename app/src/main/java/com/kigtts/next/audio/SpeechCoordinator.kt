@@ -10,10 +10,11 @@ class SpeechCoordinator(scope: CoroutineScope, registry: PluginRegistry, audio: 
     state: () -> AppState, update: ((AppState) -> AppState) -> Unit, message: (String) -> Unit,
     replaceText: (String) -> Unit, selection: (Boolean) -> String?,
     automaticRead: (Boolean) -> Unit = { enabled -> update { it.copy(autoPlayback = enabled) } },
-    systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) }) {
-    private val playback = SpeechPlayback(scope, registry, audio, state, update, message) { selection(true) }
+    systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) },
+    copy: (String, String) -> String = { _, fallback -> fallback }) {
+    private val playback = SpeechPlayback(scope, registry, audio, state, update, message, copy) { selection(true) }
     private val recording = RecognitionTransport(scope, registry, audio, state, update, message, replaceText,
-        automaticRead, { text, manual -> if (manual) playback.readOnce(text) else playback.enqueue(text) }, { selection(false) }, systemPermissionDenied)
+        automaticRead, { text, manual -> if (manual) playback.readOnce(text) else playback.enqueue(text) }, { selection(false) }, copy, systemPermissionDenied)
     val permissionRequests = recording.permissionRequests
     fun permissionResult(granted: Boolean) = recording.permissionResult(granted)
     fun start(session: RecognitionSession) = recording.start(session)

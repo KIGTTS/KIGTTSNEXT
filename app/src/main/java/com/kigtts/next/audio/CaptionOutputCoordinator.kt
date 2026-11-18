@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import com.kigtts.next.MainActivity
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.AppState
 import com.kigtts.next.overlay.OverlayHostWindow
 import com.kigtts.next.ui.home.CaptionVisuals
@@ -37,12 +38,12 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
                 if ((window.open || value.active && value.kind != CaptionOutput.PANEL && !window.suppressed) && Settings.canDrawOverlays(context)) {
                     runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme,
                         value.active, value.haptics, value.locale, value.visuals) }
-                        .onFailure { manual.value = Manual(suppressed = true); message("无法显示字幕浮窗，请检查悬浮窗权限") }
+                        .onFailure { manual.value = Manual(suppressed = true); message(copy("listening.window_unavailable")) }
                 } else overlay.close()
                 if (foreground != value.active) {
                     foreground = value.active
                     if (foreground) runCatching { androidx.core.content.ContextCompat.startForegroundService(context, Intent(context, RecognitionForegroundService::class.java)) }
-                        .onFailure { message("无法保持后台聆听，请保持 KIGTTS 在前台") }
+                        .onFailure { message(copy("listening.background_unavailable")) }
                     else context.stopService(Intent(context, RecognitionForegroundService::class.java))
                 }
         }
@@ -64,7 +65,7 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
             startOnResume = true
             runCatching { context.startActivity(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)) }
-                .onFailure { startOnResume = false; message("请先打开 KIGTTS，再开始聆听") }
+                .onFailure { startOnResume = false; message(copy("listening.open_first")) }
         }
     }
     fun resume() {
@@ -73,7 +74,7 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
         if (manual.value.open) startWindowSession()
     }
     private fun startWindowSession() {
-        val id = serviceId() ?: run { message("请先启用语音识别服务"); return }
+        val id = serviceId() ?: run { message(copy("listening.service_disabled")); return }
         start(RecognitionSession(id, RecognitionPurpose.CAPTIONS, output = CaptionOutput.FLOATING))
     }
     private fun dismissWindow() {
@@ -90,10 +91,12 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     fun permissionResult() {
         val next = pendingPermission; pendingPermission = null
         if (next != null) {
-            if (Settings.canDrawOverlays(context)) next() else message("未开启字幕浮窗权限")
+            if (Settings.canDrawOverlays(context)) next() else message(copy("listening.window_permission"))
         }
     }
     fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close(); context.stopService(Intent(context, RecognitionForegroundService::class.java)) }
+    private fun copy(key: String) = context.uiCopy(key, locale = state.value.uiLocale)
+
     private data class Manual(val open: Boolean = false, val suppressed: Boolean = false)
     private data class Output(val active: Boolean, val kind: CaptionOutput, val text: String,
         val theme: com.kigtts.next.theme.ThemeSettings, val haptics: Boolean, val locale: String, val visuals: CaptionVisuals)

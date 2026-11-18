@@ -3,6 +3,7 @@ package com.kigtts.next
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.audio.*
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.*
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
@@ -18,6 +19,25 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpeechCoordinatorTest {
+    @Test fun readingEmptyTextUsesTheCurrentLanguageWithoutOpeningAudio() = runTest {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        var state = AppState(editorValue = androidx.compose.ui.text.input.TextFieldValue("  "))
+        val messages = mutableListOf<String>()
+        val hardware = object : AudioPlatform {
+            override fun hasMicrophonePermission() = false
+            override fun capture(format: AudioFormat): Flow<PcmAudio> = error("No recording expected")
+            override fun player(): PcmPlayer = error("No audio expected")
+        }
+        val speech = SpeechCoordinator(this, PluginRegistry(emptyList()), hardware, { state },
+            { state = it(state) }, messages::add, {}, { null },
+            copy = { key, _ -> app.uiCopy(key, locale = state.uiLocale) })
+        for (locale in listOf("en", "ko", "ja", "zh-CN")) {
+            state = state.copy(uiLocale = locale)
+            speech.speak()
+        }
+        assertEquals(listOf("Enter text first", "텍스트를 먼저 입력하세요", "先にテキストを入力してください", "请先输入文本"), messages)
+    }
+
     @Test fun productionHostOnlyContainsTheBuiltInReadingServiceWithoutInstalledPackages() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(app).create(AppViewModel::class.java)

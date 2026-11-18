@@ -12,7 +12,9 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.ui.home.ListeningCaptionContent
+import com.kigtts.next.ui.home.ListeningQuickSettings
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -35,6 +37,26 @@ class ListeningCaptionUiTest {
         val range = compose.onNodeWithTag("listening-content").fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
         return range.value() to range.maxValue()
     }
+    @Test fun quickSettingsShowsTheThreeDirectRowsWithoutSectionHeaders() {
+        val model = testAppModel(compose.activity.application)
+        compose.activity.viewModelStore.put("listening-settings-test", model)
+        var open by mutableStateOf(true)
+        compose.setContent {
+            MaterialTheme {
+                CompositionLocalProvider(LocalUiLocale provides "en") {
+                    if (open) ListeningQuickSettings(model, 28f) { open = false }
+                }
+            }
+        }
+        val rows = listOf("Caption size", "Open floating captions", "Speech recognition settings")
+        val ordered = rows.map { compose.onNodeWithText(it).assertIsDisplayed().getUnclippedBoundsInRoot().top.value }
+        assertEquals(ordered.sorted(), ordered)
+        compose.onAllNodesWithText("Captions").assertCountEquals(1)
+        compose.onNodeWithText("Floating window").assertDoesNotExist()
+        compose.onNodeWithText("Done").performClick()
+        compose.onNodeWithText("Caption size").assertDoesNotExist()
+    }
+
     @Test fun wrapsAtPanelWidthAndCentersShortCaptionsVertically() {
         var text by mutableStateOf("短句")
         compose.setContent { MaterialTheme { Box(Modifier.size(180.dp, 120.dp)) {
