@@ -60,6 +60,7 @@
   "album.system_failed": "Couldn't open the system gallery",
   "language.screen": "Language",
   "language.scope": "Plugin translations are provided by each plugin",
+  "language.system": "Follow system",
   "subtitle.placeholder": "Tap to enter text",
   "nav.settings": "Settings",
   "nav.open_settings": "Open settings",

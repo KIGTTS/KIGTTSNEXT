@@ -50,7 +50,7 @@ class SettingsNavigationTest {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.navigate(Destination.Settings) }
         val documents = setOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY, SettingsCategory.OPEN_SOURCE_LICENSES)
-        SettingsCategory.entries.filterNot { it in documents || it == SettingsCategory.PHOTO_WEATHER }.forEach { category ->
+        SettingsCategory.entries.filterNot { it in documents || it in setOf(SettingsCategory.PHOTO_WEATHER, SettingsCategory.LANGUAGE) }.forEach { category ->
             compose.onNodeWithText(category.title).performScrollTo().performClick()
             compose.runOnIdle {
                 assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
@@ -92,14 +92,24 @@ class SettingsNavigationTest {
         back()
         compose.onNodeWithText("插件管理").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
-        compose.onNodeWithTag("managed-list/plugins").performScrollToNode(hasTestTag("managed-item/input.voice"))
-        compose.onNodeWithTag("managed-item/input.voice").performClick()
-        compose.onNodeWithContentDescription("开启语音输入").assertIsDisplayed()
-        back()
-        compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
+        compose.onNodeWithTag("managed-list/plugins").assertIsDisplayed()
+        compose.onNodeWithTag("managed-item/input.voice").assertDoesNotExist()
         back()
         back()
         compose.runOnIdle { assertEquals(Destination.Home, model.state.value.destination); assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel) }
+    }
+
+    @Test fun systemLanguageIsSelectedByDefaultAndTheAppearancePageOpensTheLanguageList() {
+        val model = show()
+        compose.runOnIdle { model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
+        compose.onNodeWithTag("appearance-ui-language").performScrollTo().performClick()
+        compose.onNodeWithTag("ui-language/system").assertIsSelected()
+        compose.onNodeWithTag("ui-language/ja").performScrollTo().performClick()
+        compose.onNodeWithTag("ui-language/ja").assertIsSelected()
+        compose.onNodeWithText("システム設定に従う").assertExists()
+        compose.onNodeWithTag("ui-language/system").performScrollTo().performClick()
+        compose.onNodeWithTag("ui-language/system").assertIsSelected()
+        compose.runOnIdle { assertEquals("zh-CN", model.state.value.uiLocale) }
     }
 
     @Test fun appearanceResetResetsAllVisualPreferencesAndKeepsFeedbackPreference() {

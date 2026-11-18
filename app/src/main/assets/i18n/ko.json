@@ -60,6 +60,7 @@
   "album.system_failed": "시스템 갤러리를 열 수 없습니다",
   "language.screen": "언어",
   "language.scope": "플러그인 번역은 각 플러그인에서 제공합니다",
+  "language.system": "시스템 설정 따르기",
   "subtitle.placeholder": "눌러서 텍스트 입력",
   "nav.settings": "설정",
   "nav.open_settings": "설정 열기",

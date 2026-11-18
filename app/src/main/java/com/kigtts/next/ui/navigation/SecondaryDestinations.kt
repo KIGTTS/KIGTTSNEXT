@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.UiLanguage
 import com.kigtts.next.i18n.uiText
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +19,7 @@ import com.kigtts.next.ui.cards.CardPageScaffold
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
     val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
+    val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
     val pluginPage = (destination as? Destination.PluginPage)?.let { model.pluginPage(it.pluginId, it.pageId) }
     val chatHandlesIme = destination.assistantChatHandlesIme()
     val title = when (destination) {
@@ -95,9 +97,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.SettingsDetail -> when (destination.category) {
                     SettingsCategory.APPEARANCE -> AppearanceSettingsScreen(state.theme, model::theme, state.subtitlePlaceholder, model::setSubtitlePlaceholder,
                         state.subtitleAppearance, model::setSubtitleAppearance, onFonts = { model.navigate(Destination.Fonts) },
-                        languageName = com.kigtts.next.i18n.UiLanguage.fromTag(state.uiLocale).label,
+                        languageName = uiLanguageLabel(language),
                         onLanguage = { model.navigate(Destination.SettingsDetail(SettingsCategory.LANGUAGE)) })
-                    SettingsCategory.LANGUAGE -> UiLanguageScreen(state.uiLocale, model::setUiLanguage)
+                    SettingsCategory.LANGUAGE -> UiLanguageScreen(language, model::setUiLanguage)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state, model)

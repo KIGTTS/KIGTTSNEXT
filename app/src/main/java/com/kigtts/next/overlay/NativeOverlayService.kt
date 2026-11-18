@@ -270,7 +270,16 @@ class NativeOverlayService : Service() {
             renderPlacement(rebase = true)
         } else { place(); armIdle() }
     }
-    override fun onConfigurationChanged(newConfig: Configuration) { super.onConfigurationChanged(newConfig); resetPlacement() }
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (!::language.isInitialized) return
+        val resolvedLocale = UiLanguageStore(this).load()
+        if (resolvedLocale != locale) {
+            locale = resolvedLocale
+            foreground()
+        }
+        resetPlacement()
+    }
     private fun foreground() {
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(CHANNEL, uiCopy("overlay.entry.title", locale = locale), NotificationManager.IMPORTANCE_LOW))

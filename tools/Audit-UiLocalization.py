@@ -11,9 +11,16 @@ LOCALES = ('zh-CN', 'en', 'ko', 'ja')
 LITERAL = re.compile(r'"(?:\\.|[^"\\\n])+"')
 HAN = re.compile(r'[\u3400-\u9fff]')
 ARG = re.compile(r'\{([a-zA-Z0-9_.-]+)\}')
+JAPANESE_TEXT = re.compile(r'[\u3040-\u30ff\u3400-\u9fff]')
+SHARED_JAPANESE_LABELS = frozenset({
+    'backup.quick_filename',
+    'camera.weather.source.open_meteo',
+    'camera.weather.source.uapi',
+    'common.confirm',
+})
 
 
-def verify(directory):
+def verify(directory, check_japanese=False):
     data = {tag: json.loads((directory / f'{tag}.json').read_text(encoding='utf-8')) for tag in LOCALES}
     base = data['zh-CN']
     for tag, strings in data.items():
@@ -22,6 +29,12 @@ def verify(directory):
         for key, value in strings.items():
             if not isinstance(value, str) or not value.strip() or set(ARG.findall(value)) != set(ARG.findall(base[key])):
                 raise SystemExit(f'{directory} ({tag}): invalid text or placeholders for {key}')
+    if check_japanese:
+        untranslated = [key for key, value in data['ja'].items() if key not in SHARED_JAPANESE_LABELS and (
+            value.strip() == data['en'][key].strip() or not JAPANESE_TEXT.search(ARG.sub('', value))
+        )]
+        if untranslated:
+            raise SystemExit(f'{directory} (ja): untranslated labels: {", ".join(sorted(untranslated))}')
     print(f'{directory.name}: {len(base)} keys in each of {len(LOCALES)} locales')
 
 
@@ -53,8 +66,8 @@ def main():
     parser.add_argument('--plugin-sources', type=Path, default=ROOT.parent / 'KIGTTS-Plugins')
     parser.add_argument('--inventory', type=Path, help='Optional UTF-8 CSV. Matches also include presets, aliases, prompts and diagnostic strings.')
     args = parser.parse_args()
-    for directory in ('app/src/main/assets/i18n', 'reading/src/main/resources/localization/reading',
-                      'speech-recognition/src/main/resources/localization/recognition'):
+    verify(ROOT / 'app/src/main/assets/i18n', check_japanese=True)
+    for directory in ('reading/src/main/resources/localization/reading', 'speech-recognition/src/main/resources/localization/recognition'):
         verify(ROOT / directory)
     for module in plugin_roots(args.plugin_sources):
         directory = module / 'src/main/assets/i18n'

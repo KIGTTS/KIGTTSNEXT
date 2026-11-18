@@ -1,6 +1,7 @@
 package com.kigtts.next.i18n
 
 import android.content.Context
+import android.os.LocaleList
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
@@ -9,6 +10,7 @@ import com.kigtts.plugin.api.PluginStrings
 import org.json.JSONObject
 
 internal enum class UiLanguage(val tag: String, val label: String) {
+    SYSTEM("system", ""),
     STANDARD("zh-CN", "简体中文"),
     CASUAL("zh-CN-x-casual", "简体中文（轻松版）"),
     ENGLISH("en", "English"),
@@ -16,20 +18,34 @@ internal enum class UiLanguage(val tag: String, val label: String) {
     JAPANESE("ja", "日本語");
 
     companion object {
-        fun fromTag(tag: String?): UiLanguage {
+        fun fromTag(tag: String?): UiLanguage = match(tag) ?: STANDARD
+
+        fun fromSystem(locales: LocaleList): UiLanguage {
+            for (index in 0 until locales.size()) {
+                val language = match(locales[index].toLanguageTag())
+                if (language != null && language != SYSTEM) return language
+            }
+            return STANDARD
+        }
+
+        private fun match(tag: String?): UiLanguage? {
             val base = tag?.substringBefore('-')
             return entries.firstOrNull { it.tag.equals(tag, ignoreCase = true) }
                 ?: entries.firstOrNull { it.tag.equals(base, ignoreCase = true) }
-                ?: STANDARD
+                ?: STANDARD.takeIf { base.equals("zh", ignoreCase = true) }
         }
     }
 }
 
 internal const val UI_LANGUAGE_PREFERENCES = "ui-language"
 
-internal class UiLanguageStore(context: Context) {
+internal class UiLanguageStore(private val context: Context) {
     private val preferences = context.getSharedPreferences(UI_LANGUAGE_PREFERENCES, Context.MODE_PRIVATE)
-    fun load() = UiLanguage.fromTag(preferences.getString("locale", null)).tag
+    fun selection() = preferences.getString("locale", null)?.let(UiLanguage::fromTag) ?: UiLanguage.SYSTEM
+    fun load(selection: UiLanguage = selection()): String = when (selection) {
+        UiLanguage.SYSTEM -> UiLanguage.fromSystem(context.resources.configuration.locales).tag
+        else -> selection.tag
+    }
     fun save(language: UiLanguage) { preferences.edit().putString("locale", language.tag).apply() }
 }
 
@@ -38,7 +54,7 @@ internal val LocalUiLocale = staticCompositionLocalOf { UiLanguage.STANDARD.tag 
 private object AppCopyCatalog {
     @Volatile private var loaded: PluginStrings? = null
     fun get(context: Context): PluginStrings = loaded ?: synchronized(this) {
-        loaded ?: PluginStrings(UiLanguage.entries.associate { language ->
+        loaded ?: PluginStrings(UiLanguage.entries.filterNot { it == UiLanguage.SYSTEM }.associate { language ->
             language.tag to context.assets.open("i18n/${language.tag}.json").bufferedReader(Charsets.UTF_8).use { reader ->
                 val json = JSONObject(reader.readText())
                 json.keys().asSequence().associateWith(json::getString)

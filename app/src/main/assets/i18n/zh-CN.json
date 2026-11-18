@@ -60,6 +60,7 @@
   "album.system_failed": "无法打开系统相册",
   "language.screen": "语言",
   "language.scope": "插件界面由各插件提供翻译",
+  "language.system": "跟随系统",
   "subtitle.placeholder": "点击输入文字",
   "nav.settings": "设置",
   "nav.open_settings": "打开设置",

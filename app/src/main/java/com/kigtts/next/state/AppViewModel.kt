@@ -84,9 +84,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val audioSessionDelegate = lazy { AudioCardSession(application) }
     val cardAudio get() = audioSessionDelegate.value
     private val uiLanguage = com.kigtts.next.i18n.UiLanguageStore(application)
-    private val initialUiLocale = uiLanguage.load()
+    private val initialUiLanguage = uiLanguage.selection()
+    private val initialUiLocale = uiLanguage.load(initialUiLanguage)
     private val captionFonts = CaptionFontSettings(application)
-    private val mutableState = MutableStateFlow(AppState(uiLocale = initialUiLocale, theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(initialUiLocale), hapticsEnabled = feedbackStore.load(),
+    private val mutableState = MutableStateFlow(AppState(uiLocale = initialUiLocale,
+        followsSystemUiLanguage = initialUiLanguage == com.kigtts.next.i18n.UiLanguage.SYSTEM,
+        theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(initialUiLocale), hapticsEnabled = feedbackStore.load(),
         subtitleAppearance = subtitleAppearanceStore.load(),
         captionTextSize = captionFonts.panel(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
@@ -268,9 +271,16 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         voiceInputActive = it.voiceInputActive, continuousRecognition = it.continuousRecognition,
         recognitionServiceId = selectedAsrId, locale = it.uiLocale) }
     internal fun setUiLanguage(language: com.kigtts.next.i18n.UiLanguage) {
-        if (state.value.uiLocale == language.tag) return
-        uiLanguage.save(language)
-        update { it.copy(uiLocale = language.tag, subtitlePlaceholder = subtitlePlaceholder(language.tag)) }
+        if (uiLanguage.selection() != language) uiLanguage.save(language)
+        refreshUiLanguage()
+    }
+    internal fun refreshUiLanguage() {
+        val selection = uiLanguage.selection()
+        val locale = uiLanguage.load(selection)
+        val followsSystem = selection == com.kigtts.next.i18n.UiLanguage.SYSTEM
+        val current = state.value
+        if (current.uiLocale == locale && current.followsSystemUiLanguage == followsSystem) return
+        update { it.copy(uiLocale = locale, followsSystemUiLanguage = followsSystem, subtitlePlaceholder = subtitlePlaceholder(locale)) }
     }
     private fun subtitlePlaceholder(locale: String) =
         placeholderStore.load(getApplication<Application>().uiCopy("subtitle.placeholder", locale = locale))

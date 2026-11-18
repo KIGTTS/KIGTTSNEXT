@@ -1,6 +1,6 @@
 # 界面语言与占位文字
 
-主程序在「设置 → 外观 → 界面语言」提供简体中文、简体中文（轻松版）、English、한국어和日本語。内置目录位于 `app/src/main/assets/i18n/`；非中文目录使用中性 BCP 47 标签 `en`、`ko`、`ja`。选择立即生效并持久化。尚未迁移的界面文案使用简体中文。
+主程序在「设置 → 外观 → 语言」提供跟随系统、简体中文、简体中文（轻松版）、English、한국어和日本語。跟随系统是默认选项，按 Android 的语言偏好顺序选择首个已支持语言，没有匹配项时使用简体中文。手动选择立即生效并持久化。内置目录位于 `app/src/main/assets/i18n/`，非中文目录使用中性 BCP 47 标签 `en`、`ko`、`ja`。
 
 `PluginContext.locale` 与 `PluginEnvironment.locale` 传递 BCP 47 界面语言，例如 `zh-CN`、`en-US`。它们不修改识别包或朗读声音所支持的语言；`RecognitionConfig.language` 仍是另一项音频能力。
 
@@ -12,7 +12,7 @@
 
 主程序使用 `uiText` 和 `Context.uiCopy` 读取宿主目录。新增宿主词条需在简体中文、英语、韩语和日语目录中保留相同键名与参数；轻松版可以只覆盖不同措辞。插件不得把文案键当文件路径或网页脚本；字典导入限制范围、数量和长度。
 
-用 `python tools/Audit-UiLocalization.py --inventory output/kigtts-localization-inventory.csv` 核对四套正式语言包的键与参数，并列出宿主、语音模块、AI 助手、插件编辑器和商店源码中的内嵌汉字。候选清单不是未翻译词条数量：预设文本、语言名、保留的模型提示词和调试日志也会命中。发布前还要抽查实际显示。当前仍可见的漏项包括 AI 的部分搜索供应商配置和错误反馈、照片与名片的部分操作，以及插件包自行提供的部分文字。
+用 `python tools/Audit-UiLocalization.py --inventory output/kigtts-localization-inventory.csv` 核对四套正式语言包的键与参数。主程序的日语词条也会检查是否与英文相同或仍是英文占位，通用按钮、服务名与文件名通过明确的例外保留。工具会列出源码中的内嵌汉字，其中包括预设文本、语言名、模型提示词和日志。发布时也应抽查设备上的实际显示。
 
 ## 启动与空白提示
 
