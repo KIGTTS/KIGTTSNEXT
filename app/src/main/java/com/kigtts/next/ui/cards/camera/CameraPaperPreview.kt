@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -23,7 +22,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.kigtts.next.ui.media.BlurredBackdrop
 import com.kigtts.next.ui.components.LocalCornerRadius
 import com.kigtts.next.ui.navigation.cameraPullViewfinder
 import com.kigtts.plugin.api.PolaroidFormat
@@ -43,7 +41,7 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
     overlay: @Composable BoxScope.() -> Unit = {}) {
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     val enabled = rememberUpdatedState(displayReady && session.ready && !session.busy && !session.countingDown)
-    val motion = rememberCameraPreviewMorph(view, format, filter, displayReady, morphChanged, filterStrength, aspectRatio, fullFrame)
+    val motion = rememberCameraPreviewMorph(view, aspectRatio, fullFrame, morphChanged)
     val colors = rememberCameraPreviewFilter(filter, filterStrength)
     val resolvedLut = remember(filter, lut) { PhotoFilters.lut(filter, lut) }
     val effects = options?.effects ?: com.kigtts.next.media.color.PhotoEffects.NONE
@@ -86,11 +84,11 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         val targetHeaderInset = if (fullFrame) 0f else headerClearance
         val photoWidth = maxWidth.value - minOf(2 * photoSideInset, maxWidth.value * .5f)
         val fitted = cameraPhotoWindow(photoWidth, maxHeight.value - headerInset, motion.ratio.value)
-        val proFit by animateFloatAsState(if (baseline != null && !verticalChrome && professional) 1f else 0f,
-            CameraFramingMotion, label = "camera-pro-preview-clearance")
+        val proProgress by animateFloatAsState(if (baseline != null && professional) 1f else 0f,
+            CameraFramingMotion, label = "camera-pro-placement")
         val layout = if (baseline != null) cameraBaselineChrome(maxWidth.value, maxHeight.value,
-            baseline.preview(maxWidth.value, maxHeight.value, motion.ratio.value, fullFrameProgress, photoSideInset, proFit),
-            baseline, professional)
+            baseline.preview(maxWidth.value, maxHeight.value, motion.ratio.value, fullFrameProgress, photoSideInset, proProgress),
+            baseline, proProgress)
         else rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
             cameraPhotoWindow(photoWidth, maxHeight.value - targetHeaderInset, aspectRatio), verticalChrome,
             headerInset = headerInset, portraitAnchor = LocalCameraPortraitAnchor.current,
@@ -99,14 +97,8 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(LocalCornerRadius.current)).background(Color.Black)
             .testTag("camera-photo-window")) {
             AndroidView(factory = { view }, modifier = Modifier.fillMaxSize().onSizeChanged(sizeChanged).cameraPullViewfinder())
-            motion.snapshot?.let { snapshot ->
-                BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = motion.alpha.value }.testTag("camera-ratio-cover"))
-            }
-            streamTransition?.snapshot?.let { snapshot ->
-                BlurredBackdrop(snapshot, Modifier.matchParentSize().graphicsLayer { alpha = streamTransition.alpha.value }
-                    .testTag("camera-stream-cover"))
-            }
-            CameraViewfinderPlaceholder(!displayReady && motion.snapshot == null && streamTransition?.snapshot == null)
+            CameraViewfinderPlaceholder(!displayReady && streamTransition?.frame == null)
+            streamTransition?.let { CameraTransitionCover(it, rotation, Modifier.matchParentSize()) }
             options?.takeIf { showGuides }?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
             }

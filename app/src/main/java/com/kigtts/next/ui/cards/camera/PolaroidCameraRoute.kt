@@ -48,7 +48,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
         val save: (List<PolaroidCameraCapture>) -> Unit = { shots ->
             model.cameraSaves.enqueue(shots, onSaved = gallery.capture())
         }
-        CardCameraScreen(onCapture = { save(listOf(it)) },
+        CardCameraScreen(destination.requestId, onCapture = { save(listOf(it)) },
             onCancel = model::navigateBack, message = model::message,
             onGallery = { model.navigate(Destination.Cards) },
             onBurst = save,
@@ -121,6 +121,7 @@ fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera
         }
         else if (!destination.systemCamera)
         CardCameraScreen(
+            destination.requestId,
             onCapture = { shot -> check(model.cardCapture.captured(destination, shot.original, shot.displayFile,
                 shot.format, print = destination.cardId == null, motion = shot.motion, photoStyle = shot.photoStyle)) { copy.text("camera.photo_processing") } },
             onCancel = model::navigateBack, message = model::message,

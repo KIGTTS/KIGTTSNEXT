@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.asFlow
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kigtts.next.ui.navigation.*
 import com.kigtts.plugin.api.PolaroidFormat
@@ -32,7 +33,7 @@ private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, v
 
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
-fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
+internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () -> Unit, message: (String) -> Unit,
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
     onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false,
@@ -77,10 +78,10 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         scaleType = PreviewView.ScaleType.FILL_CENTER
     } }
-    val streamTransition = remember(view) { CameraStreamTransition(view) }
-    DisposableEffect(streamTransition) { onDispose { streamTransition.close() } }
     val (granted, request) = cameraPermission(pageActive && entered)
     val rotation = rememberCameraDisplayRotation(view)
+    val streamState by remember(view) { view.previewStreamState.asFlow() }.collectAsState(PreviewView.StreamState.IDLE)
+    val streamTransition = rememberCameraStreamTransition(view, visit, bound?.rotation)
     // Intermediate animated sizes are not read by the rest of the page on every frame.
     val modern = onVideo != null
     val fullFrame = modern && options.framingAspect == CameraAspect.FULL
@@ -122,11 +123,8 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
             onGallery(format)
         }
     }
-    val displayReady by remember(session, desired) { derivedStateOf {
-        session.ready && !session.loading && !morphing && bound?.let {
-            it == desired
-        } == true
-    } }
+    val displayReady = session.ready && !session.loading && !morphing && bound == desired &&
+        viewport.matchesPhotoRatio && streamState == PreviewView.StreamState.STREAMING
     LaunchedEffect(options.flash, session.ready, locked, session.manual.automaticExposure) {
         if (!locked) session.setFlash(if (session.manual.automaticExposure) options.flash else CameraFlash.OFF)
     }
@@ -135,11 +133,13 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
     }
     LaunchedEffect(active, granted, viewport, desired, locked, morphing) {
         if (!active || !granted) { bound = null; session.unbind() }
-        else if (!locked && !morphing && viewport.layoutReady && viewport.matchesPhotoRatio &&
-            (bound != desired || !session.ready)) {
-            // Keep the previous live session while the rectangle is moving; bind once at its final crop.
-            streamTransition.cover()
+        else if (!locked && (bound != desired || !session.ready)) {
+            // Cover the preview while the rectangle is still moving; bind only at the final crop.
+            val oldRotation = bound?.rotation?.takeIf { it == rotation && session.ready && !session.loading &&
+                view.previewStreamState.value == PreviewView.StreamState.STREAMING }
+            streamTransition.cover(oldRotation)
             coroutineContext.ensureActive()
+            if (morphing || !viewport.layoutReady || !viewport.matchesPhotoRatio) return@LaunchedEffect
             bound = null
             session.bind(view, front, rotation, processing, motion, mode)
             coroutineContext.ensureActive()
@@ -147,7 +147,7 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
         }
     }
     LaunchedEffect(active, displayReady, bound) {
-        if (active && displayReady) streamTransition.reveal()
+        if (active && displayReady) streamTransition.reveal(rotation)
     }
     LaunchedEffect(mode, active, displayReady, pickedCodes) {
         val pending = pickedCodes ?: return@LaunchedEffect
@@ -229,14 +229,9 @@ fun CardCameraScreen(onCapture: (PolaroidCameraCapture) -> Unit, onCancel: () ->
                 layout.zoom, vertical, cameraZoomRange(session.minZoomRatio, session.maxZoomRatio)?.let(::cameraZoomStops)?.size ?: 0,
                 displayReady && interactive && !session.busy) { filtersExpanded = false; exposureOpen = true }
             layout.pro?.let { bounds ->
-                androidx.compose.animation.AnimatedVisibility(!zoomDialVisible && !filtersExpanded,
-                    Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds),
-                    enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
-                    CameraProControls(session.manual, session.exposure, displayReady && !locked && !zoomDialVisible && !filtersExpanded,
-                        vertical, session::setGlobalExposure, Modifier.fillMaxSize(), proControl) {
-                        proControl = it
-                    }
-                }
+                CameraProRail(mode == CameraMode.PRO && !zoomDialVisible && !filtersExpanded,
+                    session.manual, session.exposure, displayReady && !locked, vertical, session::setGlobalExposure,
+                    Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds), proControl) { proControl = it }
             }
             }) {
             if (mode == CameraMode.PRO && displayReady) session.histogram?.let {

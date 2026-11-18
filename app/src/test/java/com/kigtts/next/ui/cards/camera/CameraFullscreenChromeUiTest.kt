@@ -99,8 +99,9 @@ class CameraFullscreenChromeUiTest {
                     CameraPaperPreview(view, PolaroidFormat.WIDE, PhotoFilter.ORIGINAL, session, {}, modifier,
                         displayReady = true, verticalChrome = vertical, aspectRatio = aspect,
                         photoSideInset = CAMERA_PREVIEW_SIDE_INSET, professional = pro, chrome = { layout ->
+                            CameraZoomRail(1f, 1f, 5f, true, {}, vertical, Modifier.matchParentSize(), layout.zoom)
                             layout.pro?.let { rect ->
-                                CameraProControls(session.manual, session.exposure, true, vertical, {},
+                                CameraProRail(pro, session.manual, session.exposure, true, vertical, {},
                                     Modifier.align(Alignment.TopStart).cameraChromeBounds(rect))
                             }
                         })
@@ -117,15 +118,29 @@ class CameraFullscreenChromeUiTest {
             compose.waitForIdle()
             val photo = bounds("camera-photo-window")
             val shutter = bounds("camera-shutter")
+            val zoomStart = bounds("camera-zoom-rail")
+            compose.onNodeWithTag("camera-pro-controls").assertDoesNotExist()
             compose.mainClock.autoAdvance = false
             compose.runOnIdle { pro = true }
-            repeat(18) {
+            var zoomDuring = zoomStart
+            repeat(22) { frame ->
                 compose.mainClock.advanceTimeByFrame()
                 assertEquals(photo, bounds("camera-photo-window"))
                 assertEquals(shutter, bounds("camera-shutter"))
+                if (frame == 7) zoomDuring = bounds("camera-zoom-rail")
             }
-            compose.mainClock.autoAdvance = true
+            val zoomEnd = bounds("camera-zoom-rail")
+            assertTrue(zoomEnd.left < zoomDuring.left && zoomDuring.left < zoomStart.left)
             if (ratio == 4f / 3f) assertTrue(bounds("camera-pro/FOCUS").left > photo.right)
+            compose.runOnIdle { pro = false }
+            repeat(5) { compose.mainClock.advanceTimeByFrame() }
+            compose.onNodeWithTag("camera-pro-controls").assertExists()
+            val zoomReturning = bounds("camera-zoom-rail")
+            assertTrue(zoomEnd.left < zoomReturning.left && zoomReturning.left < zoomStart.left)
+            compose.mainClock.autoAdvance = true
+            compose.waitForIdle()
+            compose.onNodeWithTag("camera-pro-controls").assertDoesNotExist()
+            assertEquals(zoomStart, bounds("camera-zoom-rail"))
         }
     }
 

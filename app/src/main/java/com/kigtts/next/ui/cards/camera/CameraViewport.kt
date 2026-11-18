@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.Surface
 import android.view.View
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.abs
 
@@ -21,7 +22,8 @@ internal fun cameraViewportKey(size: IntSize, photoRatio: Double, rotation: Int)
 /** Display callbacks also cover 180-degree turns which leave width/height and configuration unchanged. */
 @Composable
 internal fun rememberCameraDisplayRotation(view: View): Int {
-    var rotation by remember(view) { mutableIntStateOf(view.display?.rotation ?: Surface.ROTATION_0) }
+    val root = LocalView.current
+    var rotation by remember(view, root) { mutableIntStateOf(view.display?.rotation ?: root.display?.rotation ?: Surface.ROTATION_0) }
     DisposableEffect(view) {
         val manager = view.context.getSystemService(DisplayManager::class.java)
         fun update() { view.display?.rotation?.let { rotation = it } }

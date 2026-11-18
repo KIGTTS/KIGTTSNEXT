@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-fun BlurredBackdrop(source: Bitmap, modifier: Modifier = Modifier) {
+fun BlurredBackdrop(source: Bitmap, modifier: Modifier = Modifier, showSourceWhileLoading: Boolean = false) {
     if(Build.VERSION.SDK_INT>=31) {
         val radius=with(LocalDensity.current) { 28.dp.toPx() }
         val effect=remember(radius) { android.graphics.RenderEffect.createBlurEffect(radius,radius,android.graphics.Shader.TileMode.CLAMP).asComposeRenderEffect() }
@@ -29,5 +29,6 @@ fun BlurredBackdrop(source: Bitmap, modifier: Modifier = Modifier) {
     val image by produceState<ImageBitmap?>(null, source) {
         value = withContext(Dispatchers.Default) { runCatching { GaussianBackdrop.blur(source).asImageBitmap() }.getOrNull() }
     }
-    image?.let { Image(it, null, modifier.clipToBounds(), contentScale = ContentScale.Crop) }
+    val drawable = image ?: source.takeIf { showSourceWhileLoading }?.asImageBitmap()
+    drawable?.let { Image(it, null, modifier.clipToBounds(), contentScale = ContentScale.Crop) }
 }

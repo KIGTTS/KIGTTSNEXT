@@ -11,9 +11,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -53,15 +54,19 @@ import com.kigtts.next.ui.components.feedbackClick
         Canvas(Modifier.size(edge).testTag("camera-scan-frame")) {
             val inset = 2.dp.toPx()
             val corner = size.minDimension * .14f
-            for (x in listOf(inset, size.width - inset)) for (y in listOf(inset, size.height - inset)) {
-                val start = Offset(x, y)
-                val ends = listOf(Offset(x + if (x == inset) corner else -corner, y),
-                    Offset(x, y + if (y == inset) corner else -corner))
-                for (end in ends) {
-                    drawLine(Color.Black.copy(alpha = .42f), start, end, 4.dp.toPx(), StrokeCap.Round)
-                    drawLine(Color.White, start, end, 2.dp.toPx(), StrokeCap.Round)
+            val radius = minOf(10.dp.toPx(), corner * .65f)
+            val outline = Path().apply {
+                for (dx in listOf(1f, -1f)) for (dy in listOf(1f, -1f)) {
+                    val x = if (dx > 0f) inset else size.width - inset
+                    val y = if (dy > 0f) inset else size.height - inset
+                    moveTo(x + dx * corner, y)
+                    lineTo(x + dx * radius, y)
+                    quadraticTo(x, y, x, y + dy * radius)
+                    lineTo(x, y + dy * corner)
                 }
             }
+            drawPath(outline, Color.Black.copy(alpha = .42f), style = Stroke(4.dp.toPx(), cap = StrokeCap.Round))
+            drawPath(outline, Color.White, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
         }
         Text(copy.text("camera.scan_guide"), color = Color.White, modifier = Modifier.offset(y = edge / 2 + 20.dp),
             style = MaterialTheme.typography.labelLarge)

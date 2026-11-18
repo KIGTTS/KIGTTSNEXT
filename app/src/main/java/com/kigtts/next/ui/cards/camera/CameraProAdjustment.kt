@@ -4,7 +4,7 @@ package com.kigtts.next.ui.cards.camera
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.HdrAuto
 import androidx.compose.material3.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.ui.components.MaterialSymbols
 import com.kigtts.next.ui.navigation.excludeCameraPull
 import java.util.Locale
 
@@ -29,7 +30,8 @@ internal fun CameraProAdjustment(key: ProControl, controller: CameraManualContro
     Surface(modifier.fillMaxWidth().height(48.dp).excludeCameraPull(),
         shape = CircleShape, color = if (background) MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f) else Color.Transparent) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CameraRulerIcon(copy.text("camera.status_reset_auto", "value" to copy.label(key)), Icons.Default.AutoAwesome, "camera-pro-auto", enabled && !auto) {
+            val icon = MaterialSymbols.vector("hdr_auto") ?: Icons.Default.HdrAuto
+            CameraRulerIcon(copy.text("camera.status_reset_auto", "value" to copy.label(key)), icon, "camera-pro-auto", enabled && !auto) {
                 when (key) {
                     ProControl.FOCUS -> controller.focusMode(false)
                     ProControl.WB -> controller.selectWhiteBalance(CameraWhiteBalance.AUTO)

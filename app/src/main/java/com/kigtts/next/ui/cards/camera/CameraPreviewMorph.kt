@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.*
 import androidx.compose.runtime.*
-import com.kigtts.plugin.api.PolaroidFormat
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -15,28 +14,23 @@ internal val CameraFramingMotion = tween<Float>(320, easing = FastOutSlowInEasin
 internal class CameraPreviewMorph(ratio: Float, fullFrame: Boolean) {
     val ratio = Animatable(ratio)
     val fullFrameProgress = Animatable(if (fullFrame) 1f else 0f)
-    val alpha = Animatable(0f)
-    var snapshot by mutableStateOf<Bitmap?>(null)
 }
 
-/** One small cached frame per format change. The final live STREAMING frame releases the cover. */
+/** Move the measured preview before the camera session binds to its new crop. */
 @Composable
-internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidFormat, filter: PhotoFilter,
-    displayReady: Boolean, morphChanged: (Boolean) -> Unit, strength: Float = 1f,
-    aspectRatio: Float = format.geometry.photoAspectRatio.toFloat(), fullFrame: Boolean = false): CameraPreviewMorph {
+internal fun rememberCameraPreviewMorph(view: PreviewView, aspectRatio: Float, fullFrame: Boolean,
+    morphChanged: (Boolean) -> Unit): CameraPreviewMorph {
     val motion = remember(view) { CameraPreviewMorph(aspectRatio, fullFrame) }
-    val ready = rememberUpdatedState(displayReady); val changed = rememberUpdatedState(morphChanged)
+    val changed = rememberUpdatedState(morphChanged)
     val stageSettled = rememberUpdatedState(LocalCameraStageSettled.current)
     val framing = aspectRatio to fullFrame
     var last by remember(view) { mutableStateOf(framing) }
     LaunchedEffect(framing, view) {
         if (last == framing) return@LaunchedEffect
         last = framing
-        motion.snapshot = cameraPreviewSnapshot(view) ?: motion.snapshot
         changed.value(true)
         try {
             coroutineScope {
-                launch { motion.alpha.animateTo(if (motion.snapshot != null) 1f else 0f, tween(75)) }
                 launch { motion.ratio.animateTo(aspectRatio, CameraFramingMotion) }
                 launch { motion.fullFrameProgress.animateTo(if (fullFrame) 1f else 0f, CameraFramingMotion) }
             }
@@ -44,9 +38,6 @@ internal fun rememberCameraPreviewMorph(view: PreviewView, format: PolaroidForma
             // Let both Compose measurement and AndroidView layout reach the final rectangle.
             withFrameNanos { }; withFrameNanos { }
         } finally { changed.value(false) }
-        snapshotFlow { ready.value }.first { it }
-        motion.alpha.animateTo(0f, tween(180))
-        motion.snapshot = null
     }
     return motion
 }
