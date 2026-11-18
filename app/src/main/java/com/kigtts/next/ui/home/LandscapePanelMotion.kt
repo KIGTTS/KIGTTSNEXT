@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -82,9 +84,10 @@ fun rememberLandscapePanel(state: AppState, model: AppViewModel, availableWidth:
         }
     } }
     val press = rememberDragHandlePress(feedback, { width.value }, { dragging.value })
+    val description = uiText("accessibility.quick_text_columns")
     val drag = press.modifier.draggable(rememberDraggableState(move), Orientation.Horizontal,
         onDragStarted = { start() }, onDragStopped = { settle(it) }).semantics {
-        contentDescription = "调整快捷文本列数"
+        contentDescription = description
         progressBarRangeInfo = ProgressBarRangeInfo(if (visible.value) columns.value.toFloat() else 0f, 0f..geometry.maximumColumns.toFloat())
         setProgress {
             val count = it.toInt().coerceIn(0, latestGeometry.maximumColumns)

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.*
@@ -108,7 +110,7 @@ internal fun PolaroidBrowser(cards: List<PolaroidCard>, mode: PolaroidBrowseMode
                         { if (current) { focus(it); preview(it) } }, { if (current) managePhoto(it) }, targetLayout.columns, active, scene.focusedId)
                 }
                 EmptyContent(if (target == PolaroidBrowseMode.GRID) scene.gridCards.isEmpty() else scene.cards.isEmpty(),
-                    Icons.Default.Collections, "从一张照片开始", description = "下滑拍照，也可在相机中选图")
+                    Icons.Default.Collections, uiText("photo.start_one"), description = uiText("photo.start_hint"))
                 }
                 }
             }

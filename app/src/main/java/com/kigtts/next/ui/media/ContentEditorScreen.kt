@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.MotionIconButton
 import com.kigtts.next.ui.components.MotionTextButton
 
@@ -87,7 +89,7 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
         OutlinedTextField(editor.value, { next -> try { editor.change(next);error=null } catch(e:IllegalArgumentException) { error=e.message } },
             Modifier.fillMaxWidth().weight(1f).testTag("content-editor-text").then(menu).pageInputFocus()
                 .textMenuAnchor { editor.change(editor.value.copy(selection=TextRange(editor.value.selection.end))) },
-            enabled=active&&!saving, label = { Text("文本内容") }, textStyle = MaterialTheme.typography.bodyLarge, visualTransformation=transform)
+            enabled=active&&!saving, label = { Text(uiText("editor.content")) }, textStyle = MaterialTheme.typography.bodyLarge, visualTransformation=transform)
     }
     if (active && pending) SaveChangesDialog(
         save = { _ -> saveDraft() },
@@ -95,10 +97,10 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
         busy = saving, error = error, completed = if (saveCompleted) ({ model.content.cleanupEditorSave(token) }) else null)
     if (active && search) {
         var find by remember { mutableStateOf("") }; var replacement by remember { mutableStateOf("") }
-        MotionAlertDialog(onDismissRequest = { search = false }, title = { Text("查找替换") }, text = { Column {
-            OutlinedTextField(find, { find = it }, label = { Text("查找") }); OutlinedTextField(replacement, { replacement = it }, label = { Text("替换为") })
-            if (find.isNotEmpty()) Text("找到 " + Regex(Regex.escape(find)).findAll(value).count() + " 处")
-        } }, confirmButton = { MotionTextButton(dialogFeedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text("全部替换") } },
-            dismissButton = { MotionTextButton(dialogFeedbackClick { search = false }) { Text("取消") } })
+        MotionAlertDialog(onDismissRequest = { search = false }, title = { Text(uiText("editor.find_replace")) }, text = { Column {
+            OutlinedTextField(find, { find = it }, label = { Text(uiText("editor.find")) }); OutlinedTextField(replacement, { replacement = it }, label = { Text(uiText("editor.replacement")) })
+            if (find.isNotEmpty()) Text(uiText("editor.find_count", "count" to Regex(Regex.escape(find)).findAll(value).count().toString()))
+        } }, confirmButton = { MotionTextButton(dialogFeedbackClick { change(value.replace(find, replacement)); search = false }, enabled = find.isNotEmpty()) { Text(uiText("editor.replace_all")) } },
+            dismissButton = { MotionTextButton(dialogFeedbackClick { search = false }) { Text(uiText("action.cancel")) } })
     }
 }

@@ -75,7 +75,7 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
         }, dismissButton = { MotionTextButton(dialogFeedbackClick { rename = null }) { Text(uiText("action.cancel")) } })
     }
     if (foreground && deleting.isNotEmpty()) MotionAlertDialog(onDismissRequest = { deleting = emptyList() }, title = { Text(uiText("plugin.delete_selected_files")) },
-        text = { Text("将删除 ${deleting.size} 项。") }, confirmButton = {
+        text = { Text(uiText("plugin.delete_items", "count" to deleting.size.toString())) }, confirmButton = {
             val finish = rememberDialogClose()
             MotionTextButton(feedbackClick { val paths = deleting; finish { deleting = emptyList(); selected = emptyList() }; operation("delete", paths) }, enabled = active) { Text(uiText("action.delete")) }
         }, dismissButton = { MotionTextButton(dialogFeedbackClick { deleting = emptyList() }) { Text(uiText("action.cancel")) } })

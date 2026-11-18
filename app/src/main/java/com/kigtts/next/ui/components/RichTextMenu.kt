@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.components
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.contextmenu.builder.item
 import androidx.compose.foundation.text.contextmenu.modifier.appendTextContextMenuComponents
@@ -24,12 +26,12 @@ internal fun Modifier.richTextMenu(enabled: Boolean, selection: () -> TextRange,
         ColorPickerDialog(initial, { if (enabled) apply.value(range, TextFormat.COLOR, it); colorRange = null }, { colorRange = null }, title = "文字颜色")
     }
     sizeRange?.let { range ->
-        MotionAlertDialog(onDismissRequest = { sizeRange = null }, title = { Text("字号") }, text = {
+        MotionAlertDialog(onDismissRequest = { sizeRange = null }, title = { Text(uiText("fonts.size")) }, text = {
             ChoiceButtonGroup("字号", listOf(75L,100L,125L),
                 formats.lastOrNull { it.kind == TextFormat.SIZE && it.start <= range.min && it.end >= range.max }?.value ?: 100L,
                 { when(it) { 75L -> "小";125L -> "大";else -> "正常" } },
                 { if (enabled) apply.value(range, TextFormat.SIZE, it); sizeRange = null }, enabled = enabled)
-        }, confirmButton = { MotionTextButton(dialogFeedbackClick { sizeRange = null }) { Text("取消") } })
+        }, confirmButton = { MotionTextButton(dialogFeedbackClick { sizeRange = null }) { Text(uiText("action.cancel")) } })
     }
     return appendTextContextMenuComponents {
         if (interactive.value && !selected.value().collapsed) {

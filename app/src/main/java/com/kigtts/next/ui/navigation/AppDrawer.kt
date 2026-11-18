@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -48,7 +50,7 @@ fun AppDrawer(state: AppState, model: AppViewModel, navigation: DrawerNavigation
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 12.dp))
-                NavigationDrawerItem(label = { Text("设置") }, modifier = Modifier.testTag("drawer-settings"),
+                NavigationDrawerItem(label = { Text(uiText("overlay.category.settings")) }, modifier = Modifier.testTag("drawer-settings"),
                     selected = state.destination == Destination.Settings || state.destination is Destination.SettingsDetail || state.destination == Destination.Plugins,
                     icon = { Icon(Icons.Default.Settings, null) },
                     onClick = feedbackClick { model.navigate(Destination.Settings); close() })

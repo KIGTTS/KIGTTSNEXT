@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.artwork
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -38,9 +40,9 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
     val grid = rememberLazyGridState()
     fun toggle(id: String) { selected = if (id in selected) selected - id else if (multiple) (selected + id).take(64) else listOf(id) }
     Scaffold(Modifier.fillMaxSize().testTag("artwork-selector"), topBar = {
-        TopAppBar(title = { Text(title) }, navigationIcon = { ToolButton("返回", Icons.AutoMirrored.Filled.ArrowBack, close,
+        TopAppBar(title = { Text(title) }, navigationIcon = { ToolButton(uiText("action.back"), Icons.AutoMirrored.Filled.ArrowBack, close,
             colors = compactPlainIconColors()) }, actions = {
-            if (multiple) ToolButton("全选或取消全选", Icons.Default.SelectAll, {
+            if (multiple) ToolButton(uiText("artwork.toggle_select_all"), Icons.Default.SelectAll, {
                 selected = if (visible.all { it.id in selected }) selected - visible.map { it.id }.toSet()
                     else (selected + visible.map { it.id }).distinct().take(64)
             }, colors = compactPlainIconColors())
@@ -48,11 +50,11 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
     }, bottomBar = {
         Surface { Button(feedbackClick { confirm(entries.filter { it.id in selected }.map { it.id }) },
             Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp), enabled = validSelected.isNotEmpty()) {
-            Text(if (multiple) "选择 (${validSelected.size})" else "选择")
+            Text(if (multiple) uiText("artwork.select_count", "count" to validSelected.size.toString()) else uiText("action.select"))
         } }
     }) { padding -> Column(Modifier.fillMaxSize().padding(padding)) {
         if (groups.size > 1) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            (listOf("") + groups).forEach { value -> FilterChip(group == value, feedbackClick { group = value }, label = { Text(value.ifBlank { "全部" }) }) }
+            (listOf("") + groups).forEach { value -> FilterChip(group == value, feedbackClick { group = value }, label = { Text(if (value.isBlank()) uiText("artwork.all") else value) }) }
         }
         Box(Modifier.weight(1f).fillMaxWidth()) {
         LazyVerticalGrid(GridCells.Adaptive(112.dp), Modifier.fillMaxSize()
@@ -68,7 +70,7 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
                 }
             } }
         }
-        EmptyContent(visible.isEmpty(), Icons.Default.Collections, "还没有作品")
+        EmptyContent(visible.isEmpty(), Icons.Default.Collections, uiText("artwork.empty"))
         }
     } }
     preview?.let { id ->
@@ -78,10 +80,10 @@ data class ArtworkChoice(val id: String, val title: String, val group: String = 
             Surface(Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Black.copy(alpha = .96f)) {
                 Box {
                     HorizontalPager(pager, Modifier.fillMaxSize()) { index -> image(visible[index], Modifier.fillMaxSize().padding(vertical = 64.dp), true) }
-                    IconButton(feedbackClick { preview = null }, Modifier.align(Alignment.TopStart).statusBarsPadding()) { Icon(Icons.Default.Close, "关闭预览", tint = androidx.compose.ui.graphics.Color.White) }
+                    IconButton(feedbackClick { preview = null }, Modifier.align(Alignment.TopStart).statusBarsPadding()) { Icon(Icons.Default.Close, uiText("accessibility.close_preview"), tint = androidx.compose.ui.graphics.Color.White) }
                     visible.getOrNull(pager.currentPage)?.let { current -> BurstPhotoCheck(current.id in selected, true, { toggle(current.id) }, Modifier.align(Alignment.TopEnd).statusBarsPadding()) }
-                    if (pager.currentPage > 0) IconButton(feedbackClick { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, Modifier.align(Alignment.CenterStart)) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "上一张", tint = androidx.compose.ui.graphics.Color.White) }
-                    if (pager.currentPage < visible.lastIndex) IconButton(feedbackClick { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, Modifier.align(Alignment.CenterEnd)) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, "下一张", tint = androidx.compose.ui.graphics.Color.White) }
+                    if (pager.currentPage > 0) IconButton(feedbackClick { scope.launch { pager.animateScrollToPage(pager.currentPage - 1) } }, Modifier.align(Alignment.CenterStart)) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, uiText("accessibility.previous_image"), tint = androidx.compose.ui.graphics.Color.White) }
+                    if (pager.currentPage < visible.lastIndex) IconButton(feedbackClick { scope.launch { pager.animateScrollToPage(pager.currentPage + 1) } }, Modifier.align(Alignment.CenterEnd)) { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, uiText("accessibility.next_image"), tint = androidx.compose.ui.graphics.Color.White) }
                 }
             }
         }

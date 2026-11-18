@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -61,7 +63,7 @@ import java.io.File
             Icon(Icons.Default.PhotoAlbum, null, Modifier.size(24.dp))
             Column(Modifier.weight(1f)) {
                 Text(album.name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                Text("${album.cardIds.size} 张照片", style = MaterialTheme.typography.bodySmall)
+                Text(uiText("album.photo_count", "count" to album.cardIds.size.toString()), style = MaterialTheme.typography.bodySmall)
             }
             CardSelectionMark(selected)
         }

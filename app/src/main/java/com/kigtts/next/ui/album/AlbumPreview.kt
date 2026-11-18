@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
+
 import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.net.Uri
@@ -103,10 +105,10 @@ import kotlinx.coroutines.withContext
                 IconButton(feedbackClick { confirm = true }, enabled = !deleting) { Icon(Icons.Default.DeleteOutline, "删除", tint = Color.White) }
             }
         } }
-        if (confirm) AlertDialog({ confirm = false }, title = { Text("删除这张${if (photo.video) "视频" else "照片"}？") },
-            text = { Text("图片会从设备相册中移除") },
-            confirmButton = { TextButton(feedbackClick { confirm = false; delete(photo) }) { Text("删除") } },
-            dismissButton = { TextButton(feedbackClick { confirm = false }) { Text("取消") } })
+        if (confirm) AlertDialog({ confirm = false }, title = { Text(uiText(if (photo.video) "album.delete_video" else "album.delete_photo")) },
+            text = { Text(uiText("album.remove_from_device")) },
+            confirmButton = { TextButton(feedbackClick { confirm = false; delete(photo) }) { Text(uiText("action.delete")) } },
+            dismissButton = { TextButton(feedbackClick { confirm = false }) { Text(uiText("action.cancel")) } })
     }
 }
 

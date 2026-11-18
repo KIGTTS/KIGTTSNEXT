@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -43,7 +45,7 @@ internal fun AlbumDropdownList(albums: List<AlbumCollection>, selectedId: String
                         Column(Modifier.weight(1f)) {
                             Text(album.name, Modifier.testTag("album-dropdown-name/${album.id}"), style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${album.media.size} 项", style = MaterialTheme.typography.bodySmall,
+                            Text(uiText("album.item_count", "count" to album.media.size.toString()), style = MaterialTheme.typography.bodySmall,
                                 color = scheme.onSurfaceVariant)
                         }
                         if (active) Icon(Icons.Default.Check, "当前相册")

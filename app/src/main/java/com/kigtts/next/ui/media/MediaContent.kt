@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -49,7 +51,7 @@ fun MediaContent(entry: MediaEntry, state: AppState, model: AppViewModel, modifi
             MediaKind.VIDEO -> MediaVideo(source.first, "视频", false, {}, modifier, entry.scale,playback=playback.playback,autoPlay=state.contentAutoPlay,
                 playAudio=(state.contentAudioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(state.autoPlayback),onLongPress=model::enterSubtitleFullscreen)
             MediaKind.HTML, MediaKind.WEB -> MediaWeb(entry, state, model, modifier)
-            MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text("音频") }
+            MediaKind.AUDIO -> Box(modifier, contentAlignment = Alignment.Center) { Text(uiText("settings.section.audio")) }
         }
     }
 }

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.MotionTextButton
 
 import androidx.compose.foundation.Canvas
@@ -33,7 +35,7 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
     var saving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val preview = entry.copy(thumbnailMode = mode, focusX = x, focusY = y)
-    MotionAlertDialog(onDismissRequest = close, dismissEnabled = !saving, title = { Text("缩略图取景") }, text = {
+    MotionAlertDialog(onDismissRequest = close, dismissEnabled = !saving, title = { Text(uiText("media.thumbnail_framing")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingChoiceGroup("缩略图取景", ThumbnailMode.entries, mode, { it.label }, { mode = it })
             Text(when (mode) { ThumbnailMode.FOCUS -> "点击图片选择重点位置"; ThumbnailMode.FIT -> "完整保留画面内容"; ThumbnailMode.AUTO -> "自动选取画面重点" }, style = MaterialTheme.typography.bodySmall)
@@ -77,6 +79,6 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
         try { withContext(Dispatchers.IO) { repository.thumbnail(entry.id, mode, x, y) }; closeDialog(close) }
         catch (cancel: CancellationException) { throw cancel }
         catch (e: Exception) { error = e.message ?: "保存失败"; saving = false }
-    } }, modifier = Modifier.testTag("save-thumbnail-framing")) { Text("保存") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick(close), enabled = !saving) { Text("取消") } })
+    } }, modifier = Modifier.testTag("save-thumbnail-framing")) { Text(uiText("action.save")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick(close), enabled = !saving) { Text(uiText("action.cancel")) } })
 }

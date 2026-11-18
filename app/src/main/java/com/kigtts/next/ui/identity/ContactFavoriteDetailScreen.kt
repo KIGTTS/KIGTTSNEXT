@@ -63,7 +63,7 @@ import kotlinx.coroutines.*
     var contact by remember { mutableStateOf<ContactLink?>(null) }
     val links = entry.person.contacts
     BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(16f / 9).clip(MaterialTheme.shapes.extraLarge)) {
-        ProfileTileImage(file, Modifier.matchParentSize(), "${entry.person.name}的名片")
+        ProfileTileImage(file, Modifier.matchParentSize(), uiText("accessibility.card_cover", "name" to entry.person.name))
         if (!entry.profile.optBoolean("coverButtonsBaked", true)) {
             PersonalContactButtons(links, true, { contact = it }, Modifier.padding(8.dp))
         } else if (links.isNotEmpty()) {
@@ -72,9 +72,11 @@ import kotlinx.coroutines.*
             val edge = height * (.085f * 32f / 22f)
             Row(Modifier.padding(start = height * .04f, top = height * .04f), horizontalArrangement = Arrangement.spacedBy(edge * .125f)) {
                 val buttons = links.take(5) + links.drop(5).take(1)
+                val linkLabel = uiText("accessibility.link")
                 buttons.forEach { link ->
+                    val description = uiText("accessibility.contact_label", "name" to link.label.ifBlank { linkLabel })
                     Box(Modifier.size(edge).clickable(role = Role.Button, onClick = feedbackClick { contact = link })
-                        .semantics { contentDescription = "联系方式：${link.label.ifBlank { "链接" }}" })
+                        .semantics { contentDescription = description })
                 }
             }
         }

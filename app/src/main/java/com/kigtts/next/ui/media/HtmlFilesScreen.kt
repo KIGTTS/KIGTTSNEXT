@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -79,8 +81,8 @@ fun HtmlFilesScreen(model: AppViewModel, id: String, target: String) {
             Box {
                 MotionIconButton(feedbackClick { createMenu = true }, enabled = active && !busy) { Icon(Icons.Default.Add, "新建文件或文件夹") }
                 DropdownMenu(createMenu && active, { createMenu = false }) {
-                    DropdownMenuItem({ Text("新建文件") }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(false) })
-                    DropdownMenuItem({ Text("新建文件夹") }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(true) })
+                    DropdownMenuItem({ Text(uiText("editor.new_file")) }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(false) })
+                    DropdownMenuItem({ Text(uiText("editor.new_folder")) }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(true) })
                 }
             }
         }

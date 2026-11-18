@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.management
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.combinedClickable
@@ -34,6 +36,10 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     val secondary = item.actions.filterNot { it.id == primary }
     val pin = secondary.filter { it.icon == PluginIcon.PIN || it.symbol == "push_pin" }
     val other = secondary.filterNot { it in pin }.sortedBy { it.isDestructive() }
+    val more = uiText("overlay.row.more")
+    val reorder = uiText("accessibility.reorder")
+    val moveUp = uiText("overlay.row.up")
+    val moveDown = uiText("overlay.row.down")
     fun PageAction.reveal() = RevealAction(id, label, if (isDestructive()) Icons.Default.Delete else icon.vector(symbol), isDestructive())
     val color by animateColorAsState(if (item.selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer,
         tween(180), label = "managed-selection-color")
@@ -45,7 +51,7 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                 Modifier.combinedClickable(enabled = enabled, onLongClick = if (!reorderable && secondary.isNotEmpty()) menu else null, onClick = feedbackClick {
                     if (revealed) closeActions() else clickAction?.let { invoke(it, emptyMap()) }
                 }).then(if (reorderable && enabled && secondary.isNotEmpty()) Modifier.semantics {
-                    onLongClick("更多操作") { menu(); true }
+                    onLongClick(more) { menu(); true }
                 } else Modifier) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
@@ -60,11 +66,11 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                     }
                 } }
                 if (secondary.isNotEmpty()) MotionIconButton(onClick = feedbackClick(toggleActions), enabled = enabled,
-                    modifier = Modifier.size(40.dp).testTag("managed-more/${item.id}")) { Icon(Icons.Default.MoreHoriz, "更多操作") }
+                    modifier = Modifier.size(40.dp).testTag("managed-more/${item.id}")) { Icon(Icons.Default.MoreHoriz, more) }
                 if (reorderable) Box(dragGrip.size(40.dp).testTag("managed-grip/" + item.id).semantics {
-                    contentDescription = "拖动排序"
-                    customActions = listOf(CustomAccessibilityAction("上移") { moveAccessible(-1); true },
-                        CustomAccessibilityAction("下移") { moveAccessible(1); true })
+                    contentDescription = reorder
+                    customActions = listOf(CustomAccessibilityAction(moveUp) { moveAccessible(-1); true },
+                        CustomAccessibilityAction(moveDown) { moveAccessible(1); true })
                 }, contentAlignment = Alignment.Center) { Icon(Icons.Default.DragIndicator, null, Modifier.size(24.dp)) }
             }
     }

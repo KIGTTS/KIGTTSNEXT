@@ -69,6 +69,7 @@
           "Developer tools"
         ],
         "releaseNotes": {
+          "0.1.1": "Localized the debugging settings, extension controls and web example in four languages.",
           "0.1.0": "Added tools to debug buttons, groups and layouts."
         },
         "name": "UI debugger"
@@ -80,6 +81,7 @@
           "개발 도구"
         ],
         "releaseNotes": {
+          "0.1.1": "디버깅 설정, 확장 버튼 및 웹 예제를 네 가지 언어로 지원합니다.",
           "0.1.0": "버튼, 그룹, 레이아웃을 디버깅하는 도구를 추가했습니다."
         },
         "name": "UI 디버거"
@@ -92,6 +94,7 @@
           "開発ツール"
         ],
         "releaseNotes": {
+          "0.1.1": "デバッグ設定、拡張操作、ウェブの例を4言語に対応しました。",
           "0.1.0": "ボタン、グループ、レイアウトのデバッグ機能を追加しました。"
         }
       }
@@ -105,6 +108,7 @@
           "Display styles"
         ],
         "releaseNotes": {
+          "0.1.11": "LED style, options, units and errors are available in all four interface languages.",
           "0.1.10": "Added Simplified Chinese, English and Korean text that follows the app language.",
           "0.1.8": "Made maximum text size respect button insets, darkened the full-screen surround, faded idle buttons and smoothed zoom at small sizes.",
           "0.1.4": "Large text fills more of the display, with smooth changes when resizing text or the window.",
@@ -123,6 +127,7 @@
           "표시 스타일"
         ],
         "releaseNotes": {
+          "0.1.11": "LED 스타일, 옵션, 단위 및 오류 안내를 네 가지 인터페이스 언어로 표시합니다.",
           "0.1.10": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
           "0.1.8": "최대 글자 크기에 버튼 영역 여백을 적용하고, 전체 화면 주변을 어둡게 했으며, 유휴 버튼 투명도와 작은 글자 확대를 개선했습니다.",
           "0.1.4": "큰 글자가 화면 높이를 더 많이 활용하고 글자나 창 크기를 바꿀 때 부드럽게 이어집니다.",
@@ -142,6 +147,7 @@
           "表示スタイル"
         ],
         "releaseNotes": {
+          "0.1.11": "LED のスタイル、選択肢、単位、エラー表示が 4 つの表示言語に対応しました。",
           "0.1.10": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
           "0.1.8": "最大文字サイズでボタンの余白を確保し、全画面の周囲を黒くしました。未操作のボタンを薄くし、小さい文字の拡大を滑らかにしました。",
           "0.1.4": "大きな文字が表示領域の高さを活用し、文字やウィンドウのサイズ変更時も滑らかに表示されます。",
@@ -254,6 +260,7 @@
           "Speech synthesis"
         ],
         "releaseNotes": {
+          "0.8.5": "Localized Piper voice settings, default names, import and synthesis feedback in all four interface languages.",
           "0.8.4": "Added Simplified Chinese, English and Korean text that follows the app language.",
           "0.8.3": "Added detailed permission explanations.",
           "0.8.2": "Updated the guide for managing voices and checking device compatibility.",
@@ -269,6 +276,7 @@
           "음성 합성"
         ],
         "releaseNotes": {
+          "0.8.5": "Piper 음성 설정, 기본 이름, 가져오기 및 합성 안내를 네 가지 언어로 표시합니다.",
           "0.8.4": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
           "0.8.3": "권한 사용 목적 안내를 보완했습니다.",
           "0.8.2": "음성 관리와 기기 호환성 안내를 업데이트했습니다.",
@@ -285,6 +293,7 @@
           "音声合成"
         ],
         "releaseNotes": {
+          "0.8.5": "Piper の音声設定、既定の名前、インポートと合成のメッセージが 4 つの表示言語に対応しました。",
           "0.8.4": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
           "0.8.3": "権限の利用目的を補足しました。",
           "0.8.2": "音声管理と端末の互換性を確認する手順を更新しました。",
@@ -301,6 +310,7 @@
           "Speech recognition"
         ],
         "releaseNotes": {
+          "0.8.5": "Localized recognition language, model management, diagnostics and errors in four languages.",
           "0.8.4": "Grouped recognition settings, added a single-choice language list and clarified permissions.",
           "0.8.3": "Grouped options for language, importing resources and checking resources, with a single-choice language list.",
           "0.8.2": "Keep the model loaded to reduce waiting between uses.",
@@ -316,6 +326,7 @@
           "음성 인식"
         ],
         "releaseNotes": {
+          "0.8.5": "인식 언어, 모델 관리, 진단 및 오류 안내를 네 가지 언어로 지원합니다.",
           "0.8.4": "음성 인식 설정을 그룹화하고 언어 선택 목록과 권한 안내를 개선했습니다.",
           "0.8.3": "언어, 리소스 가져오기 및 검사를 한곳에 모으고 언어를 하나만 선택하도록 변경했습니다.",
           "0.8.2": "모델을 계속 불러온 상태로 유지해 다시 사용할 때 대기 시간을 줄일 수 있습니다.",
@@ -332,6 +343,7 @@
           "音声認識"
         ],
         "releaseNotes": {
+          "0.8.5": "認識言語、モデル管理、診断、エラー案内を4言語に対応しました。",
           "0.8.4": "音声認識の設定をグループ化し、言語を単一選択にしました。権限の説明も補足しました。",
           "0.8.3": "言語、リソースのインポートと確認を設定にまとめ、言語を単一選択にしました。",
           "0.8.2": "モデルを読み込んだままにして、続けて使うときの待ち時間を短縮できます。",
@@ -348,6 +360,7 @@
           "Speech recognition"
         ],
         "releaseNotes": {
+          "0.8.8": "Localized the built-in model name, recognition pack management and errors. The built-in model and vocabulary are still included.",
           "0.8.7": "Added Simplified Chinese, English and Korean text that follows the app language.",
           "0.8.6": "Includes a lightweight Chinese INT8 model and keeps the previously selected recognition pack.",
           "0.8.5": "Moved recognition pack imports, downloads, inference settings and management to groups on the page.",
@@ -365,6 +378,7 @@
           "음성 인식"
         ],
         "releaseNotes": {
+          "0.8.8": "내장 모델 이름과 인식 팩 관리, 오류 안내를 현지화했습니다. 내장 모델과 어휘 파일도 함께 설치됩니다.",
           "0.8.7": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
           "0.8.6": "경량 중국어 INT8 모델을 내장하며 기존에 선택한 인식 팩은 유지합니다.",
           "0.8.5": "인식 팩 가져오기와 다운로드, 추론 설정 및 관리를 페이지 내 그룹으로 옮겼습니다.",
@@ -383,6 +397,7 @@
           "音声認識"
         ],
         "releaseNotes": {
+          "0.8.8": "内蔵モデル名、認識パックの管理とエラーを翻訳しました。内蔵モデルと語彙ファイルも引き続き同梱されています。",
           "0.8.7": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
           "0.8.6": "軽量の中国語 INT8 モデルを同梱しました。選択済みの認識パックは維持されます。",
           "0.8.5": "認識パックのインポートとダウンロード、推論設定、管理をページ内のグループに移動しました。",
@@ -707,6 +722,7 @@
           "Developer tools"
         ],
         "releaseNotes": {
+          "0.8.2": "Localized project and file management, build tools, progress messages and new templates in four languages.",
           "0.8.1": "Added detailed permission explanations.",
           "0.8.0": "No release notes are available."
         },
@@ -719,6 +735,7 @@
           "개발 도구"
         ],
         "releaseNotes": {
+          "0.8.2": "프로젝트 및 파일 관리, 빌드 도구, 진행 안내와 새 템플릿을 네 가지 언어로 지원합니다.",
           "0.8.1": "권한 사용 목적 안내를 보완했습니다.",
           "0.8.0": "업데이트 안내가 없습니다."
         },
@@ -732,6 +749,7 @@
           "開発ツール"
         ],
         "releaseNotes": {
+          "0.8.2": "プロジェクトとファイル管理、ビルドツール、進捗の案内、新規テンプレートを4言語に対応しました。",
           "0.8.1": "権限の利用目的を補足しました。",
           "0.8.0": "更新情報はありません。"
         }

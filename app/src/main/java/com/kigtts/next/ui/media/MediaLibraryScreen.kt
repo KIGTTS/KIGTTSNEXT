@@ -94,17 +94,17 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
         }
     }
     if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(mediaDisplayTitle(entry,phrases)) }, text = { Column {
-        TextButton(dialogFeedbackClick { menu = null; framing = entry }, Modifier.testTag("edit-thumbnail-framing")) { Text("缩略图取景") }
+        TextButton(dialogFeedbackClick { menu = null; framing = entry }, Modifier.testTag("edit-thumbnail-framing")) { Text(uiText("media.thumbnail_framing")) }
         if (state.appleLivePhotos && entry.pluginId == null && entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) TextButton(dialogFeedbackClick {
             menu = null; pairing = entry.id; pair.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
-        }, Modifier.testTag("pair-live-photo")) { Text("配对苹果实况视频") }
-        if (entry.kind == MediaKind.HTML && entry.pluginId == null) TextButton(dialogFeedbackClick { menu = null; scope.launch { runCatching { model.content.htmlFiles(target,entry.id) }.onFailure { error=it.message } } }) { Text("管理页面文件") }
-        TextButton(dialogFeedbackClick { menu = null; deleting = entry }) { Text("删除", color = MaterialTheme.colorScheme.error) }
-    } }, confirmButton = { TextButton(dialogFeedbackClick { menu = null }) { Text("关闭") } }) }
-    if (active) deleting?.let { entry -> MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text("删除媒体？") },
+        }, Modifier.testTag("pair-live-photo")) { Text(uiText("media.pair_apple_live")) }
+        if (entry.kind == MediaKind.HTML && entry.pluginId == null) TextButton(dialogFeedbackClick { menu = null; scope.launch { runCatching { model.content.htmlFiles(target,entry.id) }.onFailure { error=it.message } } }) { Text(uiText("editor.manage_files")) }
+        TextButton(dialogFeedbackClick { menu = null; deleting = entry }) { Text(uiText("action.delete"), color = MaterialTheme.colorScheme.error) }
+    } }, confirmButton = { TextButton(dialogFeedbackClick { menu = null }) { Text(uiText("action.close")) } }) }
+    if (active) deleting?.let { entry -> MotionAlertDialog(onDismissRequest = { deleting = null }, title = { Text(uiText("media.delete_prompt")) },
         text = { Text(uiText("media.delete_body")) }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(feedbackClick {
             scope.launch { try { model.content.removeAsync(entry.id); closeDialog { deleting = null } } catch (e: Exception) { error = e.message } }
-        }) { Text("删除") } }, dismissButton = { TextButton(dialogFeedbackClick { deleting = null }) { Text("取消") } }) }
+        }) { Text(uiText("action.delete")) } }, dismissButton = { TextButton(dialogFeedbackClick { deleting = null }) { Text(uiText("action.cancel")) } }) }
     if (active && website) WebsiteDialog(model, close = { website = false })
     if (active) framing?.let { ThumbnailFramingDialog(it, model.mediaRepository) { framing = null } }
 }
@@ -113,9 +113,9 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
 private fun WebsiteDialog(model: AppViewModel, close: () -> Unit) {
     var url by remember { mutableStateOf("https://") }; var title by remember { mutableStateOf("") }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    MotionAlertDialog(onDismissRequest = close, title = { Text("添加网页") }, text = { Column {
-        OutlinedTextField(url, { url = it }, label = { Text("HTTPS 地址") }); OutlinedTextField(title, { title = it }, label = { Text("名称（可选）") })
+    MotionAlertDialog(onDismissRequest = close, title = { Text(uiText("media.add_web")) }, text = { Column {
+        OutlinedTextField(url, { url = it }, label = { Text(uiText("media.https_address")) }); OutlinedTextField(title, { title = it }, label = { Text(uiText("media.optional_name")) })
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-    } }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(feedbackClick { scope.launch { try { withContext(Dispatchers.IO) { model.mediaRepository.web(title, url) }; closeDialog(close) } catch (e: Exception) { error = e.message } } }) { Text("添加") } },
-        dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+    } }, confirmButton = { val closeDialog = rememberDialogClose(); TextButton(feedbackClick { scope.launch { try { withContext(Dispatchers.IO) { model.mediaRepository.web(title, url) }; closeDialog(close) } catch (e: Exception) { error = e.message } } }) { Text(uiText("common.add")) } },
+        dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

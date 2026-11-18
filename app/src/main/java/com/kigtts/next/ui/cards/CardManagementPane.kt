@@ -52,7 +52,7 @@ import com.kigtts.plugin.api.*
     })
     val topInset = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)
     Column(Modifier.fillMaxSize().padding(top = topInset).testTag("card-management")) {
-        Text("已选择 ${selected.size} " + if (albumsMode) "个相册" else "张照片", Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        Text(uiText(if (albumsMode) "album.selected_albums" else "album.selected_photos", "count" to selected.size.toString()), Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             .testTag("card-management-count"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.weight(1f).fillMaxWidth()) {
             CardManagementSortPane(keys, state.displayMode, columns, interactive, actions.busy, state.originId,
@@ -77,7 +77,7 @@ import com.kigtts.plugin.api.*
             move = null; catalog.albums.firstOrNull { it.id == target }?.let { moveTarget = ids to it }
         } }
         moveTarget?.let { (ids, target) -> MotionAlertDialog(onDismissRequest = { moveTarget = null },
-            title = { Text("移动 ${ids.size} 张照片？") }, text = { Text("移到「${target.name}」") },
+            title = { Text(uiText("album.move_photos", "count" to ids.size.toString())) }, text = { Text(uiText("album.move_to", "name" to target.name)) },
             confirmButton = { MotionTextButton(dialogFeedbackClick {
                 moveTarget = null; actions.work({ cards.moveCards(ids, target.id) }) { state.finish(); moved(ids, target.id) }
             }, Modifier.testTag("confirm-move-cards")) { Text(uiText("common.move")) } },

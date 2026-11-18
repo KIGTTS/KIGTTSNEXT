@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media.code
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -59,10 +61,10 @@ fun HtmlCodeEditorScreen(model:AppViewModel,entry:ContentDraft,pending:Boolean) 
         completed=if(saveCompleted)({model.content.cleanupEditorSave(entry.token)})else null)
     if(active&&search) {
         var find by remember { mutableStateOf("") };var replacement by remember { mutableStateOf("") }
-        MotionAlertDialog(onDismissRequest={search=false},title={Text("查找替换")},text={Column {
-            OutlinedTextField(find,{find=it},label={Text("查找")});OutlinedTextField(replacement,{replacement=it},label={Text("替换为")})
+        MotionAlertDialog(onDismissRequest={search=false},title={Text(uiText("editor.find_replace"))},text={Column {
+            OutlinedTextField(find,{find=it},label={Text(uiText("editor.find"))});OutlinedTextField(replacement,{replacement=it},label={Text(uiText("editor.replacement"))})
         }},confirmButton={MotionTextButton(dialogFeedbackClick {
             try { editor.change(TextFieldValue(editor.value.text.replace(find,replacement),TextRange.Zero));search=false } catch(e:Exception) { error=e.message }
-        },enabled=find.isNotEmpty()) {Text("全部替换")} },dismissButton={MotionTextButton(dialogFeedbackClick {search=false}) {Text("取消")} })
+        },enabled=find.isNotEmpty()) {Text(uiText("editor.replace_all"))} },dismissButton={MotionTextButton(dialogFeedbackClick {search=false}) {Text(uiText("action.cancel"))} })
     }
 }

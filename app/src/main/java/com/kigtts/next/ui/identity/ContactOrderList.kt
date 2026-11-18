@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
@@ -58,10 +60,13 @@ import com.kigtts.next.ui.components.reorder.*
                     Text(link.label, style = MaterialTheme.typography.labelLarge)
                     Text(link.value, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(feedbackClick { remove(index) }, Modifier.size(40.dp)) { Icon(Icons.Default.Close, "移除${link.label}", Modifier.size(22.dp)) }
+                IconButton(feedbackClick { remove(index) }, Modifier.size(40.dp)) { Icon(Icons.Default.Close, uiText("accessibility.remove_item", "title" to link.label), Modifier.size(22.dp)) }
+                val reorder = uiText("overlay.row.drag", "title" to link.label)
+                val moveUp = uiText("overlay.row.up")
+                val moveDown = uiText("overlay.row.down")
                 Box(Modifier.size(40.dp).then(grip).semantics {
-                    contentDescription = "拖动排序${link.label}"
-                    customActions = listOf(-1 to "上移", 1 to "下移").map { (step, label) -> CustomAccessibilityAction(label) {
+                    contentDescription = reorder
+                    customActions = listOf(-1 to moveUp, 1 to moveDown).map { (step, label) -> CustomAccessibilityAction(label) {
                         val items = links.toMutableList(); val target = index + step
                         if (target in items.indices) { items.add(target, items.removeAt(index)); latestChange(items) }; true
                     } }

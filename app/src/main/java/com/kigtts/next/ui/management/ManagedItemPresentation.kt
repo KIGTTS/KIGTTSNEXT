@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.management
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -72,7 +74,7 @@ internal fun managedItemClickAction(item: ManagementItem): String? {
                 Text(badge, Modifier.padding(horizontal = 6.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onTertiaryContainer)
             } }
-            if (item.pinned) Icon(Icons.Default.PushPin, "已置顶", Modifier.size(16.dp))
+            if (item.pinned) Icon(Icons.Default.PushPin, uiText("accessibility.pinned"), Modifier.size(16.dp))
         }
         if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -86,8 +88,9 @@ internal fun managedItemClickAction(item: ManagementItem): String? {
         colors = SwitchDefaults.colors().keepColorsWhenLocked(), modifier = Modifier.testTag("managed-toggle/" + item.id))
     else if (item.selection != null || item.selected) {
         val action = managedItemClickAction(item)
+        val selectLabel = uiText("accessibility.select_item", "title" to item.title)
         RadioButton(item.selected, onClick = action?.let { feedbackClick { invoke(it, emptyMap()) } },
             enabled = enabled && item.selection?.enabled != false && action != null,
-            modifier = Modifier.testTag("managed-select/" + item.id).semantics { contentDescription = "选用${item.title}" })
+            modifier = Modifier.testTag("managed-select/" + item.id).semantics { contentDescription = selectLabel })
     }
 }

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -51,6 +53,6 @@ internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) ->
             }
         }
     }
-    EmptyContent(cards.isEmpty(), Icons.Default.Collections, "从一张照片开始", description = "下滑拍照，也可在相机中选图")
+    EmptyContent(cards.isEmpty(), Icons.Default.Collections, uiText("photo.start_one"), description = uiText("photo.start_hint"))
     }
 }

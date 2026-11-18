@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
@@ -13,14 +15,14 @@ import com.kigtts.next.ui.components.*
 
 @Composable internal fun BackgroundThemePrompt(onResult: (switch: Boolean, remind: Boolean) -> Unit) {
     var never by rememberSaveable { mutableStateOf(false) }
-    MotionAlertDialog(onDismissRequest = { onResult(false, !never) }, title = { Text("使用背景主题色？") }, text = {
+    MotionAlertDialog(onDismissRequest = { onResult(false, !never) }, title = { Text(uiText("theme.use_background")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("让按钮和面板配色与这张背景相配")
+            Text(uiText("theme.match_background"))
             Row(Modifier.fillMaxWidth().toggleable(never, role = Role.Checkbox, onValueChange = feedbackChange { never = it }),
                 verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(never, null); Spacer(Modifier.width(8.dp)); Text("下次不再提醒")
+                Checkbox(never, null); Spacer(Modifier.width(8.dp)); Text(uiText("theme.skip_prompt"))
             }
         }
-    }, confirmButton = { TextButton(dialogFeedbackClick { onResult(true, !never) }) { Text("切换") } },
-        dismissButton = { TextButton(dialogFeedbackClick { onResult(false, !never) }) { Text("保留当前配色") } })
+    }, confirmButton = { TextButton(dialogFeedbackClick { onResult(true, !never) }) { Text(uiText("theme.switch")) } },
+        dismissButton = { TextButton(dialogFeedbackClick { onResult(false, !never) }) { Text(uiText("theme.keep_colors")) } })
 }

@@ -404,6 +404,19 @@
       "字幕",
       "显示样式"
     ],
+    "file": "display.led-0.1.11.kigplugin",
+    "notes": "LED 样式、选项、单位和错误提示支持简中、英、韩、日语。",
+    "module": "led-caption"
+  },
+  {
+    "category": "外观",
+    "summary": "把字幕变成发光灯板，随手调整灯光与灯珠质感。",
+    "symbol": "lightbulb",
+    "description": "## LED 灯珠字幕\n\n点亮灯泡按钮，将输入文字、快捷短语和聆听字幕显示成 LED 灯板。长句平滑滚动，也能一键全屏。\n\n开启后，在缩放按钮左侧调整灯光颜色、灯珠、辉光与滚速。",
+    "tags": [
+      "字幕",
+      "显示样式"
+    ],
     "file": "display.led-0.1.10.kigplugin",
     "notes": "补充简中、英文和韩文界面文案，随主程序语言切换。",
     "module": "led-caption"
@@ -534,6 +547,21 @@
     "dependencies": {
       "service.speech-synthesis": "^0.8.1"
     },
+    "file": "engine.piper-0.8.5.kigplugin",
+    "category": "音频",
+    "summary": "为日常朗读添加更多声音。",
+    "symbol": "voice_chat",
+    "description": "## Piper 语音引擎\n\n导入喜欢的 Piper 语音包，在语音合成设置中选择声音，调整音量、音色和朗读节奏。需要搭配语音合成服务使用。",
+    "tags": [
+      "语音合成"
+    ],
+    "notes": "Piper 语音参数、默认名称、导入和合成提示支持简中、英、韩、日语。"
+  },
+  {
+    "module": "piper-tts",
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.1"
+    },
     "file": "engine.piper-0.8.4.kigplugin",
     "category": "音频",
     "summary": "为日常朗读添加更多声音。",
@@ -573,6 +601,21 @@
       "语音合成"
     ],
     "notes": "更新使用说明，方便查找声音管理与设备兼容信息。"
+  },
+  {
+    "module": "sensevoice-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
+    "file": "engine.sensevoice-0.8.5.kigplugin",
+    "category": "音频",
+    "summary": "识别语音并转换成文字，适合日常交流与听读。",
+    "symbol": "mic",
+    "description": "## SenseVoice 语音识别\n\n为语音识别服务提供另一种识别方式，将语音转换为文字，方便交流与阅读。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "识别语言、模型管理、检查和错误提示支持中英日韩。"
   },
   {
     "module": "sensevoice-asr",
@@ -633,6 +676,21 @@
       "语音识别"
     ],
     "notes": "简化识别设置与资源提示，更清楚地说明录音和连续聆听的使用方式。"
+  },
+  {
+    "module": "streaming-asr",
+    "dependencies": {
+      "service.speech-recognition": "^0.8.1"
+    },
+    "file": "engine.streaming-asr-0.8.8.kigplugin",
+    "category": "音频",
+    "summary": "内置中文轻量模型，安装后即可离线流式识别",
+    "symbol": "graphic_eq",
+    "description": "## 流式语音识别\n\n内置中文轻量 INT8 模型，无需额外下载。更新时保留原先选中的识别包，可按需添加其它模型。",
+    "tags": [
+      "语音识别"
+    ],
+    "notes": "补译内置模型、识别包管理及错误提示。内置模型和词表照常随包安装。"
   },
   {
     "module": "streaming-asr",
@@ -984,6 +1042,18 @@
   },
   {
     "module": "ui-debug",
+    "file": "debug.ui-0.1.1.kigplugin",
+    "category": "开发",
+    "summary": "检查按钮、分组和页面布局，帮助完善插件界面。",
+    "symbol": "bug_report",
+    "description": "## 界面调试\n\n为插件开发者提供可调整的界面样例，方便检查按钮、分组与布局在不同页面中的表现。",
+    "notes": "调试设置、扩展区域和网页示例支持中英日韩。",
+    "tags": [
+      "开发工具"
+    ]
+  },
+  {
+    "module": "ui-debug",
     "file": "debug.ui-0.1.0.kigplugin",
     "category": "开发",
     "summary": "检查按钮、分组和页面布局，帮助完善插件界面。",
@@ -1103,6 +1173,18 @@
     "tags": [
       "工具"
     ]
+  },
+  {
+    "module": "native-builder",
+    "file": "tools.native-builder-0.8.2.kigplugin",
+    "category": "开发",
+    "summary": "为插件编辑器扩展构建能力，制作功能更丰富的插件。",
+    "symbol": "build",
+    "description": "## 原生构建扩展\n\n为需要更多原生功能的插件项目提供构建工具，可与插件编辑器配合使用。",
+    "tags": [
+      "开发工具"
+    ],
+    "notes": "项目和文件管理、工具链、构建提示和新建模板支持中英日韩。"
   },
   {
     "module": "native-builder",

@@ -64,8 +64,8 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
             })
             state.candidate?.preview?.let { candidate ->
                 Text("${candidate.manifest.name} · ${candidate.manifest.version} · ${candidate.manifest.license}")
-                Text("能力：${candidate.manifest.capabilities.joinToString("、")}", style = MaterialTheme.typography.bodySmall)
-                Text("发布者 SHA-256：${candidate.publisherSha256}", style = MaterialTheme.typography.bodySmall)
+                Text(uiText("plugin.capabilities_display", "capabilities" to candidate.manifest.capabilities.joinToString(", ")), style = MaterialTheme.typography.bodySmall)
+                Text(uiText("plugin.publisher_digest", "digest" to candidate.publisherSha256), style = MaterialTheme.typography.bodySmall)
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
             Text(if (synthesis) "商店准备好后，请选择语音合成服务并确认安装。" else uiText("store.source"), style = MaterialTheme.typography.bodySmall)

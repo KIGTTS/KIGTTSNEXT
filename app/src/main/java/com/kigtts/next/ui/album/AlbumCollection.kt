@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -85,7 +87,7 @@ internal fun AlbumCollectionGrid(albums: List<AlbumCollection>, selectedId: Stri
                     }
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
                         Text(album.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text("${album.media.size} 项", style = MaterialTheme.typography.labelMedium,
+                        Text(uiText("album.item_count", "count" to album.media.size.toString()), style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }

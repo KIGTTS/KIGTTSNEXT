@@ -1,5 +1,7 @@
 package com.kigtts.next.resources
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,9 +24,9 @@ import com.kigtts.next.ui.components.*
             Text(archive.manifest.name, style = MaterialTheme.typography.titleMedium)
             Text(if (missingVoice) "需要语音合成服务和 Piper 语音引擎。安装后，回到下载管理继续添加语音包。"
                 else "${archive.count} 项${archive.manifest.resourceType.label}")
-            if (archive.manifest.resourceType == com.kigtts.plugin.api.ResourceType.QUICK_TEXT) Text("添加为新的快捷文本分组。", style = MaterialTheme.typography.bodyMedium)
+            if (archive.manifest.resourceType == com.kigtts.plugin.api.ResourceType.QUICK_TEXT) Text(uiText("resource.quick_text_group"), style = MaterialTheme.typography.bodyMedium)
             prompt.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (prompt.busy) { Text("正在添加…"); LinearProgressIndicator(Modifier.fillMaxWidth()) }
+            if (prompt.busy) { Text(uiText("resource.adding")); LinearProgressIndicator(Modifier.fillMaxWidth()) }
         } }, confirmButton = { Button(dialogFeedbackClick(model.resourceInstalls::confirm), enabled = !prompt.busy) {
             Text(if (missingVoice) "前往商店" else if (prompt.error != null) "重试" else "添加")
         } }, dismissButton = { TextButton(dialogFeedbackClick(model.resourceInstalls::dismiss)) { Text(if (prompt.busy) "后台添加" else "取消") } })

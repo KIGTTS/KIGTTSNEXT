@@ -1,6 +1,8 @@
 @file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import android.view.TextureView
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -35,7 +37,7 @@ internal val LocalVideoPlayerFactory = staticCompositionLocalOf<(android.content
 fun MediaVideo(file:File?,description:String,once:Boolean,ended:()->Unit,modifier:Modifier=Modifier,
     scale:MediaScale=MediaScale.FIT,playback:PlaybackState=remember { PlaybackState() },showControls:Boolean=true,autoPlay:Boolean=once,
     playAudio:Boolean=!once,onLongPress:(()->Unit)?=null) {
-    if(file==null) { Box(modifier) { Text("视频资源不可用") };return }
+    if(file==null) { Box(modifier) { Text(uiText("media.video_unavailable")) };return }
     val context=LocalContext.current;val active=LocalPageActive.current;val lifecycle=LocalLifecycleOwner.current.lifecycle
     val onEnded by rememberUpdatedState(ended)
     val hold by rememberUpdatedState(onLongPress)

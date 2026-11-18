@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.files
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,7 +35,7 @@ internal fun FileDestinationDialog(title: String, directory: String, folders: Li
             (title.startsWith("复制") || paths.any { it.substringBeforeLast('/', "") != directory })) {
             Text(if (title.startsWith("复制")) "复制到这里" else "移动到这里")
         }
-    }, dismissButton = { MotionTextButton(dialogFeedbackClick(close)) { Text("取消") } })
+    }, dismissButton = { MotionTextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }
 
 @Composable

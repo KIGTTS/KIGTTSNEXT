@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -27,8 +29,10 @@ import kotlin.math.roundToInt
     val currentChange by rememberUpdatedState(change)
     val feedback by rememberUpdatedState(rememberDragFeedback())
     DisposableEffect(tile.id) { onDispose { feedback.finish(cancelled = true) } }
+    val description = uiText("accessibility.resize_tile")
+    val dimensions = uiText("accessibility.tile_size", "columns" to tile.columns.toString(), "rows" to tile.rows.toString())
     Box(modifier.size(44.dp).testTag("tile-resize/${tile.id}")
-        .semantics { contentDescription = "调整磁贴大小"; stateDescription = "${tile.columns} 列，${tile.rows} 行" }
+        .semantics { contentDescription = description; stateDescription = dimensions }
         .pointerInput(tile.id, geometry.unit) {
             var start = Rect.Zero; var delta = Offset.Zero; var last = 0 to 0
             detectDragGestures(onDragStart = {

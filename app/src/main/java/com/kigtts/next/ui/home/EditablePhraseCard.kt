@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -31,7 +33,7 @@ fun EditablePhraseCard(phrase: QuickPhrase, edit: () -> Unit, delete: () -> Unit
                 Modifier.size(20.dp).testTag("phrase-grip-" + phrase.id).then(grip), tint = LocalContentColor.current.copy(alpha = .76f))
             QuickPhraseText(phrase, Modifier.weight(if (phrase.mediaId == null) 1f else .65f))
             if (phrase.mediaId != null) Spacer(Modifier.weight(.35f))
-            ToolButton("删除 " + phrase.text, Icons.Default.Close, delete,
+            ToolButton(uiText("accessibility.remove_phrase", "phrase" to phrase.text), Icons.Default.Close, delete,
                 Modifier.align(Alignment.Top).size(32.dp).testTag("delete-phrase-" + phrase.id),
                 shapes = IconButtonDefaults.shapes(CircleShape, CircleShape))
         }

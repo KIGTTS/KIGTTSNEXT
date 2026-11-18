@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -16,7 +18,7 @@ import com.kigtts.next.R
         Icon(painterResource(R.drawable.logo_kigtts_wordmark), "KIGTTS 横版 Logo",
             Modifier.width(if (active) 104.dp else 128.dp).height(if (active) 26.dp else 32.dp),
             tint = MaterialTheme.colorScheme.onSurface)
-        if (active) Text("安全模式", Modifier.testTag("safe-mode-label"), color = MaterialTheme.colorScheme.onSurfaceVariant,
+        if (active) Text(uiText("navigation.safe_mode"), Modifier.testTag("safe-mode-label"), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, lineHeight = 13.sp))
     }
 }

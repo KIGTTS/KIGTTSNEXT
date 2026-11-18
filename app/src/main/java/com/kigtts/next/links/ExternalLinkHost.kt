@@ -1,5 +1,7 @@
 package com.kigtts.next.links
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
@@ -47,7 +49,7 @@ import com.kigtts.next.ui.components.*
         } }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (link.title.isNotBlank()) Text(link.title, style = MaterialTheme.typography.titleMedium)
             Text(link.url ?: link.text.take(500))
-            if (link.url != null && !link.trusted) Text("此网站由第三方提供，请留意个人信息与支付请求。", style = MaterialTheme.typography.bodyMedium)
+            if (link.url != null && !link.trusted) Text(uiText("link.third_party"), style = MaterialTheme.typography.bodyMedium)
         } }, confirmButton = { Button(dialogFeedbackClick(::open)) { Text(if (link.add) "添加并打开" else "继续打开") } },
-        dismissButton = { TextButton(dialogFeedbackClick(model.externalLinks::dismiss)) { Text("取消") } })
+        dismissButton = { TextButton(dialogFeedbackClick(model.externalLinks::dismiss)) { Text(uiText("action.cancel")) } })
 }

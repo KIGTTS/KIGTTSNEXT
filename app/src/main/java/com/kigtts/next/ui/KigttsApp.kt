@@ -1,5 +1,7 @@
 package com.kigtts.next.ui
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -176,7 +178,7 @@ fun KigttsApp(model: AppViewModel) {
             pluginControls?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginControlsDialog(request,
                 { action, value -> model.invokeControl(plugin, action, value) }, { pluginControls = null }, controlsRevision) }
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
-                confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text("知道了") } }) }
+                confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text(uiText("plugin.stroke_done")) } }) }
             pluginMenu?.let { (plugin, content) ->
                 MotionAlertDialog(
                     onDismissRequest = { pluginMenu = null }, title = { Text(content.title) },
@@ -187,7 +189,7 @@ fun KigttsApp(model: AppViewModel) {
                             }
                         }
                     },
-                    confirmButton = { TextButton(onClick = dialogFeedbackClick { pluginMenu = null }) { Text("关闭") } },
+                    confirmButton = { TextButton(onClick = dialogFeedbackClick { pluginMenu = null }) { Text(uiText("action.close")) } },
                 )
             }
             quickTextSelector?.let { (plugin, request) ->

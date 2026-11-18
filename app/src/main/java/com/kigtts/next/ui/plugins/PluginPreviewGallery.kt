@@ -107,5 +107,5 @@ import java.io.File
     }
 }
 
-private fun PageImage.withPreviewLabel(index: Int) =
-    if (description.isBlank()) copy(description = "预览图 ${index + 1}") else this
+@Composable private fun PageImage.withPreviewLabel(index: Int) =
+    if (description.isBlank()) copy(description = uiText("plugin.preview.image_number", "number" to (index + 1).toString())) else this

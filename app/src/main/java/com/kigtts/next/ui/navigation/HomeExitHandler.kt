@@ -1,5 +1,8 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.rememberUiCopy
+
 import android.app.Activity
 import android.content.ContextWrapper
 import android.os.SystemClock
@@ -27,6 +30,7 @@ import com.kigtts.next.ui.components.*
     val gate = remember { HomeExitGate() }
     var asking by remember { mutableStateOf(false) }
     var selection by remember { mutableStateOf(true) }
+    val copy = rememberUiCopy()
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
@@ -38,7 +42,7 @@ import com.kigtts.next.ui.components.*
     BackHandler(enabled && !asking) {
         when (gate.back(choice, now())) {
             HomeExitAction.ASK -> { selection = true; asking = true }
-            HomeExitAction.HINT -> hint("再按一次返回键退出")
+            HomeExitAction.HINT -> hint(copy("feedback.exit_again"))
             HomeExitAction.LEAVE -> {
                 if (leave != null) leave()
                 else generateSequence(context) { (it as? ContextWrapper)?.baseContext }
@@ -46,15 +50,15 @@ import com.kigtts.next.ui.components.*
             }
         }
     }
-    if (asking) MotionAlertDialog(onDismissRequest = { asking = false }, title = { Text("选择返回习惯") },
+    if (asking) MotionAlertDialog(onDismissRequest = { asking = false }, title = { Text(uiText("feedback.exit_prompt")) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("在主界面按返回键时，你更习惯哪种方式？可在设置的“操作反馈”中更改。")
-            listOf(true to "按两次返回键退出", false to "按一次返回键退出").forEach { (value, label) ->
+            Text(uiText("feedback.exit_question"))
+            listOf(true to uiText("feedback.exit_twice"), false to uiText("feedback.exit_once")).forEach { (value, label) ->
                 Row(Modifier.fillMaxWidth().selectable(selection == value, role = Role.RadioButton,
                     onClick = feedbackClick { selection = value }).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(selection == value, null); Spacer(Modifier.width(8.dp)); Text(label)
                 }
             }
-        } }, confirmButton = { MotionTextButton(dialogFeedbackClick { preference.choose(selection); asking = false }) { Text("确定") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { asking = false }) { Text("稍后再说") } })
+        } }, confirmButton = { MotionTextButton(dialogFeedbackClick { preference.choose(selection); asking = false }) { Text(uiText("common.confirm")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { asking = false }) { Text(uiText("overlay.later")) } })
 }

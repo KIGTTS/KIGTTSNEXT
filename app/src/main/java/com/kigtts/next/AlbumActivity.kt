@@ -1,5 +1,11 @@
 package com.kigtts.next
 
+import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.UiLanguageStore
+import com.kigtts.next.i18n.rememberUiCopy
+import com.kigtts.next.i18n.uiCopy
+
 import android.app.Activity
 import android.content.ClipData
 import android.content.Intent
@@ -32,9 +38,11 @@ class AlbumActivity : ComponentActivity() {
         if (editing && incoming == null) { setResult(Activity.RESULT_CANCELED); finish(); return }
         val host = HostPluginRuntime.get(application)
         val theme = ThemeSettingsStore(this).load()
+        val locale = UiLanguageStore(this).load()
         setContent {
-            KigttsTheme(theme) {
+            CompositionLocalProvider(LocalUiLocale provides locale) { KigttsTheme(theme) {
                 WebAndroidPermissionHost()
+                val copy = rememberUiCopy()
                 val scope = rememberCoroutineScope()
                 var editor by rememberSaveable { mutableStateOf<String?>(null) }
                 var failure by remember { mutableStateOf<String?>(null) }
@@ -43,20 +51,20 @@ class AlbumActivity : ComponentActivity() {
                     opening = true
                     try { editor = host.cards.documents.open(uri) }
                     catch (cancel: CancellationException) { throw cancel }
-                    catch (error: Exception) { failure = error.message ?: "无法读取图片" }
+                    catch (_: Exception) { failure = copy("album.cannot_read") }
                     finally { opening = false }
                 } }
                 LaunchedEffect(incoming, editing) { if (editing && incoming != null && editor == null) open(incoming) }
                 val id = editor
-                if (id != null) CardPageScaffold("编辑图片", { if (editing) finish() else editor = null }, subtitle = null, avoidKeyboard = false, compactBar = true) {
+                if (id != null) CardPageScaffold(uiText("nav.edit_image"), { if (editing) finish() else editor = null }, subtitle = null, avoidKeyboard = false, compactBar = true) {
                     CardEditorScreen(host.cards, host.stickers, id, { failure = it }, onSaved = { card ->
                         val uri = withContext(Dispatchers.IO) {
                             val output = @Suppress("DEPRECATION") (intent.getParcelableExtra<Uri>(MediaStore.EXTRA_OUTPUT))
                             if (output != null && host.cards.documents.isEmbedded(card.id)) {
-                                require(output.scheme == "content") { "无法写入此保存位置" }
+                                require(output.scheme == "content") { copy("album.cannot_write") }
                                 host.cards.documents.writeEmbeddedCopy(card, output)
                             } else if (output != null) {
-                                require(output.scheme == "content") { "无法写入此保存位置" }
+                                require(output.scheme == "content") { copy("album.cannot_write") }
                                 val file = exportPolaroidMedia(host.stickers, card, maximumHeight = com.kigtts.next.cards.galleryPolaroidHeight(host.stickers, card))
                                 requireNotNull(contentResolver.openOutputStream(output, "w")).use { target -> file.inputStream().use { it.copyTo(target) } }
                                 output
@@ -70,15 +78,15 @@ class AlbumActivity : ComponentActivity() {
                     multiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false), initialUri = if (!editing) incoming else null,
                     imagesOnly = picking && intent.type.orEmpty().startsWith("image/"),
                     videosOnly = picking && intent.type.orEmpty().startsWith("video/"))
-                if (opening) AlertDialog({}, title = { Text("正在打开图片") }, text = { CircularProgressIndicator() }, confirmButton = {})
-                failure?.let { text -> AlertDialog({ failure = null }, text = { Text(text) }, confirmButton = { TextButton({ failure = null }) { Text("知道了") } }) }
-            }
+                if (opening) AlertDialog({}, title = { Text(uiText("album.opening_image")) }, text = { CircularProgressIndicator() }, confirmButton = {})
+                failure?.let { text -> AlertDialog({ failure = null }, text = { Text(text) }, confirmButton = { TextButton({ failure = null }) { Text(uiText("plugin.stroke_done")) } }) }
+            } }
         }
     }
     private fun returnImages(uris: List<Uri>) {
         if (uris.isEmpty()) return
         val data = Intent().setData(uris.first()).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).apply {
-            clipData = ClipData.newUri(contentResolver, "照片", uris.first()).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
+            clipData = ClipData.newUri(contentResolver, uiCopy("album.photos"), uris.first()).apply { uris.drop(1).forEach { addItem(ClipData.Item(it)) } }
         }
         setResult(Activity.RESULT_OK, data)
     }

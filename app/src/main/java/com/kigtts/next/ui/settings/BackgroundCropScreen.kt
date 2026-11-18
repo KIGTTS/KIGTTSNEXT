@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -99,7 +101,7 @@ import kotlinx.coroutines.withContext
                     }
                 }
             }
-            TopAppBar(title = { Text("裁剪背景") }, navigationIcon = {
+            TopAppBar(title = { Text(uiText("theme.background_crop")) }, navigationIcon = {
                 IconButton(feedbackClick { if (!saving) onDismiss() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)

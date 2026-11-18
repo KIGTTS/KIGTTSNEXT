@@ -23,6 +23,8 @@ internal fun CardDesignTools(cards: CardRepository, draft: PolaroidCard, enabled
     change: (PolaroidCard) -> Unit, message: (String) -> Unit) {
     val state by cards.designs.state.collectAsState()
     val scope = rememberCoroutineScope()
+    val saveFailed = uiText("photo.save_preset_failed")
+    val applyFailed = uiText("photo.apply_preset_failed")
     var naming by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     fun work(action: () -> Unit) {
@@ -31,29 +33,29 @@ internal fun CardDesignTools(cards: CardRepository, draft: PolaroidCard, enabled
         scope.launch {
             try { withContext(Dispatchers.IO) { action() } }
             catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { message(error.message ?: "未能保存预设") }
+            catch (error: Exception) { message(saveFailed) }
             finally { busy = false }
         }
     }
-    CardEditorSection("相框预设", Icons.Default.Bookmarks, "card-frame-presets") {
-        PillButton("保存当前设计为默认预设", Icons.Default.BookmarkAdd, { naming = true }, enabled = enabled && !busy)
+    CardEditorSection(uiText("photo.frame_presets"), Icons.Default.Bookmarks, "card-frame-presets") {
+        PillButton(uiText("photo.save_preset"), Icons.Default.BookmarkAdd, { naming = true }, enabled = enabled && !busy)
         Text(uiText("photo.preset_hint"), style = MaterialTheme.typography.bodySmall)
         state.presets.forEach { preset ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(state.defaultId == preset.id, { work { cards.designs.defaultPreset(preset.id) } }, enabled = enabled && !busy)
                 Text(preset.name, Modifier.weight(1f))
-                ToolButton("应用预设", Icons.Default.Check, {
+                ToolButton(uiText("photo.apply_preset"), Icons.Default.Check, {
                     scope.launch {
                         try { val card = withContext(Dispatchers.IO) { cards.designs.apply(draft, preset.id) }; change(card) }
-                        catch (error: Exception) { message(error.message ?: "无法应用预设") }
+                        catch (error: Exception) { message(applyFailed) }
                     }
                 }, enabled = enabled && !busy)
-                ToolButton("删除预设", Icons.Default.DeleteOutline, { work { cards.designs.removePreset(preset.id) } }, enabled = enabled && !busy)
+                ToolButton(uiText("photo.remove_preset"), Icons.Default.DeleteOutline, { work { cards.designs.removePreset(preset.id) } }, enabled = enabled && !busy)
             }
         }
         if (state.defaultId != null) TextButton({ work { cards.designs.defaultPreset(null) } }, enabled = enabled && !busy) { Text(uiText("photo.preset_none")) }
     }
-    if (naming) CardNameDialog("保存默认相框预设", "", { naming = false }, { name ->
+    if (naming) CardNameDialog(uiText("photo.save_frame_preset"), "", { naming = false }, { name ->
         naming = false; work { cards.designs.savePreset(name, draft, makeDefault = true) }
-    }, maximum = 64, inputLabel = "预设名称")
+    }, maximum = 64, inputLabel = uiText("photo.preset_name"))
 }

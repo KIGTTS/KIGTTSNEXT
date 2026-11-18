@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.rememberScrollState
@@ -29,16 +31,17 @@ internal fun LegacyBackupImport(controller: LegacyImportController) {
     }
     preview?.let { value ->
         MotionAlertDialog(onDismissRequest = controller::cancel, dismissEnabled = !busy,
-            title = { Text("导入${value.format}？") },
+            title = { Text(uiText("backup.legacy_confirm", "format" to value.format)) },
             text = {
                 Column(Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("${value.groups.size} 个分组 · ${value.groups.sumOf { it.items.size }} 条快捷文本 · ${value.cards.size} 张拍立得")
-                    Text("音效转为音频卡片；名片加入“旧版 KIGTTS 名片”相册。现有内容保留，已导入的内容会跳过。")
-                    value.groups.forEach { Text("${it.title} · ${it.items.size} 条") }
+                    Text(uiText("backup.legacy_counts", "groups" to value.groups.size.toString(),
+                        "entries" to value.groups.sumOf { it.items.size }.toString(), "cards" to value.cards.size.toString()))
+                    Text(uiText("backup.legacy_description"))
+                    value.groups.forEach { Text(uiText("backup.legacy_group", "title" to it.title, "count" to it.items.size.toString())) }
                     value.warnings.forEach { Text(it) }
                 }
             },
-            confirmButton = { TextButton(enabled = !busy, onClick = feedbackClick(controller::confirm)) { Text("导入") } },
-            dismissButton = { TextButton(enabled = !busy, onClick = dialogFeedbackClick(controller::cancel)) { Text("取消") } })
+            confirmButton = { TextButton(enabled = !busy, onClick = feedbackClick(controller::confirm)) { Text(uiText("common.import")) } },
+            dismissButton = { TextButton(enabled = !busy, onClick = dialogFeedbackClick(controller::cancel)) { Text(uiText("action.cancel")) } })
     }
 }

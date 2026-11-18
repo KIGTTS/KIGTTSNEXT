@@ -72,7 +72,8 @@ class PolaroidAlbumChromeUiTest {
             }
         } }
         compose.expandAlbumGroups()
-        val tags = listOf("cards-browse-mode", "face-discovery", "toggle-card-albums", "create-card-album", "card-album-menu")
+        compose.onNodeWithTag("face-discovery").assertDoesNotExist()
+        val tags = listOf("cards-browse-mode", "toggle-card-albums", "create-card-album", "card-album-menu")
         fun pixels(tag: String): IntArray {
             val output = File("build/previews/album-action-$tag.png").apply { parentFile.mkdirs() }
             compose.onNodeWithTag(tag).captureRoboImage(output.absolutePath)

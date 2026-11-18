@@ -33,7 +33,7 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
     val colors = compactTonalIconColors().let { if (!LocalPageActive.current) it.keepColorsWhenLocked() else it }
     val drag = rememberCardPanelDrag(state, if (landscape) Orientation.Horizontal else Orientation.Vertical, true, enabled)
     val toggleButton: @Composable () -> Unit = {
-        ToolButton(if (expanded) "收起相册" else "展开相册",
+        ToolButton(uiText(if (expanded) "accessibility.collapse_album" else "accessibility.expand_album"),
             if (landscape) { if (expanded) Icons.Default.ChevronRight else Icons.Default.ChevronLeft }
             else { if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp }, toggle,
             Modifier.width(32.dp).testTag("toggle-card-albums"), size = 32.dp,
@@ -44,13 +44,13 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
     }
     val actionsEnabled = enabled && (!landscape || expanded)
     val createButton: @Composable () -> Unit = {
-        ToolButton("新建相册", Icons.Default.CreateNewFolder, create, actionModifier.testTag("create-card-album"),
+        ToolButton(uiText("accessibility.new_album"), Icons.Default.CreateNewFolder, create, actionModifier.testTag("create-card-album"),
             size = 32.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)),
             colors = colors, enabled = actionsEnabled)
     }
     val moreButton: @Composable () -> Unit = {
         Box {
-            ToolButton("相册操作", Icons.Default.MoreVert, { menu = true }, actionModifier.testTag("card-album-menu"),
+            ToolButton(uiText("accessibility.album_actions"), Icons.Default.MoreVert, { menu = true }, actionModifier.testTag("card-album-menu"),
                 size = 32.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)),
                 colors = colors, enabled = actionsEnabled && canRename)
             DropdownMenu(menu && enabled, { menu = false }) {
@@ -61,8 +61,9 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
         }
     }
     val grip: @Composable (Modifier) -> Unit = { modifier ->
+        val description = uiText("accessibility.album_panel")
         Box(modifier.then(drag.modifier).testTag("card-album-handle")
-            .semantics { contentDescription = "调整相册面板" }
+            .semantics { contentDescription = description }
             .clickable(interactionSource = null, indication = null, enabled = enabled, onClick = toggle), contentAlignment = Alignment.Center) {
             PanelDragIndicator(drag.active(), "card-album-grip", vertical = landscape)
         }

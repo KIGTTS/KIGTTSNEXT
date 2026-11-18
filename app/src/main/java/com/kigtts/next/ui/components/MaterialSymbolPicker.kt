@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.components
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
@@ -21,7 +23,7 @@ import kotlinx.coroutines.*
     }
     MotionAlertDialog(onDismissRequest = close, title = { Text("Material Symbols") }, text = {
         Column {
-            OutlinedTextField(query, { query = it.take(80); offset = 0 }, singleLine = true, label = { Text("搜索图标英文名") }, modifier = Modifier.testTag("symbol-search"))
+            OutlinedTextField(query, { query = it.take(80); offset = 0 }, singleLine = true, label = { Text(uiText("symbol.search_english")) }, modifier = Modifier.testTag("symbol-search"))
             LazyVerticalGrid(GridCells.Adaptive(72.dp), Modifier.height(320.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
                 items(items, key = { it.first }) { (name, vector) ->
                     val leave = rememberDialogClose()
@@ -29,8 +31,8 @@ import kotlinx.coroutines.*
                     Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) { vector?.let { Icon(it, null) }; Text(name, style = MaterialTheme.typography.labelSmall, maxLines = 2) }
                 } }
             }
-            Row { if (offset > 0) MotionTextButton(onClick = feedbackClick { offset = (offset - 80).coerceAtLeast(0) }) { Text("上一页") }
-                if (more) MotionTextButton(onClick = feedbackClick { offset += 80 }) { Text("下一页") } }
+            Row { if (offset > 0) MotionTextButton(onClick = feedbackClick { offset = (offset - 80).coerceAtLeast(0) }) { Text(uiText("pagination.previous")) }
+                if (more) MotionTextButton(onClick = feedbackClick { offset += 80 }) { Text(uiText("pagination.next")) } }
         }
-    }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text("取消") } })
+    }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

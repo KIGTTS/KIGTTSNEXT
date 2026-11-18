@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -35,6 +37,6 @@ fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<F
             thumb = { SliderDefaults.Thumb(source, colors = colors, enabled = active, modifier = Modifier.testTag("font-thumb-" + label), thumbSize = DpSize(4.dp, 24.dp)) },
             track = { SliderDefaults.Track(it, colors = colors, enabled = active, trackCornerSize = 4.dp, modifier = Modifier.height(8.dp)) })
         Spacer(Modifier.width(4.dp))
-        ToolButton("完成" + label + "调整", Icons.Default.Check, { if (active) dismiss() })
+        ToolButton(uiText("accessibility.finish_adjusting", "label" to label), Icons.Default.Check, { if (active) dismiss() })
     }
 }

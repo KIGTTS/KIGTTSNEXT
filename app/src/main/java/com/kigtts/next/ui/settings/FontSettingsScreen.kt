@@ -65,16 +65,16 @@ import kotlinx.coroutines.*
     ReadablePage(840.dp) {
         LazyColumn(Modifier.fillMaxSize().testTag("font-settings-list"), state = lazy, contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             item { FilledTonalButton(feedbackClick { if (busy == null) picker.launch(arrayOf("*/*")) }, Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Icon(Icons.Default.FileOpen, null); Spacer(Modifier.width(8.dp)); Text("导入字体")
+                Icon(Icons.Default.FileOpen, null); Spacer(Modifier.width(8.dp)); Text(uiText("fonts.import"))
             } }
             fromStore?.let { open -> item {
                 OutlinedButton(feedbackClick(open), Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                    Icon(Icons.Default.Storefront, null); Spacer(Modifier.width(8.dp)); Text("从商店获取")
+                    Icon(Icons.Default.Storefront, null); Spacer(Modifier.width(8.dp)); Text(uiText("fonts.get_store"))
                 }
             } }
             if (busy != null) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             error?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
-            item { Text("我的字体", Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium) }
+            item { Text(uiText("fonts.my_fonts"), Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.titleMedium) }
             item { FontChoiceRow("system", "系统默认", settings.font == null,
                 if (locals.isEmpty()) SettingPosition.SINGLE else SettingPosition.FIRST,
                 { onChange(current.copy(font = null, fontName = "系统默认")) }) }
@@ -113,7 +113,7 @@ import kotlinx.coroutines.*
                 catch (failure: Exception) { error = failure.message ?: "字体未能删除，请重试" }
                 finally { busy = null }
             }
-        }) { Text("删除") } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text("取消") } }) }
+        }) { Text(uiText("action.delete")) } }, dismissButton = { MotionTextButton(onClick = dialogFeedbackClick { remove = null }) { Text(uiText("action.cancel")) } }) }
 }
 
 @Composable private fun FontChoiceRow(id: String, name: String, selected: Boolean, position: SettingPosition, select: () -> Unit,
@@ -134,7 +134,7 @@ import kotlinx.coroutines.*
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(name, style = titleStyle ?: MaterialTheme.typography.titleMedium)
                     if (variable) Surface(shape = MaterialTheme.shapes.extraSmall, color = MaterialTheme.colorScheme.tertiaryContainer) {
-                        Text("可变字重", Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall,
+                        Text(uiText("fonts.variable_weight"), Modifier.padding(horizontal = 6.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onTertiaryContainer)
                     }
                 }

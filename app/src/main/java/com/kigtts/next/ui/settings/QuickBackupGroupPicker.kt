@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.settings
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,5 +36,5 @@ internal fun QuickBackupGroupPicker(title: String, groups: List<QuickGroup>, con
             }
         }
     }, confirmButton = { TextButton(onClick = feedbackClick { confirm(selected) }, enabled = selected.isNotEmpty()) { Text(confirmLabel) } },
-        dismissButton = { TextButton(onClick = dismiss) { Text("取消") } })
+        dismissButton = { TextButton(onClick = dismiss) { Text(uiText("action.cancel")) } })
 }

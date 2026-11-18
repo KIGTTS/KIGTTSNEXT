@@ -21,16 +21,17 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
 
 @Composable internal fun ProfileQrPreview(tile: ProfileTile, close: () -> Unit) {
     val context = LocalContext.current
+    val qrLabel = uiText("profile.qr")
     val palette = nativeProfileQrPalette(tile.qrStyle, tile.qrKeepLight)
     MotionAlertDialog(close, title = { Text(tile.title.ifBlank { uiText("profile.qr_preview") }) }, text = {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = Color(palette.paper)) {
-                ProfileQrTile(tile.text, tile.qrStyle, "二维码预览", Modifier.size(216.dp).padding(10.dp), tile.qrKeepLight)
+                ProfileQrTile(tile.text, tile.qrStyle, uiText("accessibility.qr_preview"), Modifier.size(216.dp).padding(10.dp), tile.qrKeepLight)
             }
             SelectionContainer { Text(tile.text, style = MaterialTheme.typography.bodySmall) }
         }
     }, confirmButton = { TextButton(dialogFeedbackClick {
-        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("二维码", tile.text)); close()
+        context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(qrLabel, tile.text)); close()
     }) { Text(uiText("profile.copy_contents")) } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.close")) } })
 }

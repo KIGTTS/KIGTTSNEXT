@@ -2,6 +2,8 @@
 
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
@@ -28,11 +30,14 @@ fun CursorTrack(model: AppViewModel, modifier: Modifier = Modifier, enabled: Boo
     val press = rememberDragHandlePress(feedback, { 0f }, { dragging })
     val offset by animateFloatAsState(dragOffset, MaterialTheme.motionScheme.fastSpatialSpec(), label = "cursor-strip")
     LaunchedEffect(enabled) { if (!enabled) { dragOffset = 0f; dragging = false } }
+    val description = uiText("accessibility.cursor")
+    val moveLeft = uiText("accessibility.cursor_left")
+    val moveRight = uiText("accessibility.cursor_right")
     val input = if (enabled) Modifier.semantics {
-            contentDescription = "移动光标"
+            contentDescription = description
             customActions = listOf(
-                CustomAccessibilityAction("光标左移") { model.moveCursor(-1); true },
-                CustomAccessibilityAction("光标右移") { model.moveCursor(1); true })
+                CustomAccessibilityAction(moveLeft) { model.moveCursor(-1); true },
+                CustomAccessibilityAction(moveRight) { model.moveCursor(1); true })
         }.then(press.modifier).pointerInput(model, enabled) {
             var remainder = 0f
             val stepWidth = 12.dp.toPx()

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -14,11 +16,12 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun PageLoadingIndicator(loading: Boolean, modifier: Modifier = Modifier) {
+    val description = uiText("accessibility.loading")
     AnimatedVisibility(loading, modifier, enter = fadeIn(tween(140)) + expandHorizontally(tween(180), expandFrom = Alignment.Start),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180), shrinkTowards = Alignment.Start)) {
         Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
             CircularProgressIndicator(Modifier.size(20.dp).testTag("page-loading")
-                .semantics { contentDescription = "正在加载" }, strokeWidth = 2.dp)
+                .semantics { contentDescription = description }, strokeWidth = 2.dp)
         }
     }
 }

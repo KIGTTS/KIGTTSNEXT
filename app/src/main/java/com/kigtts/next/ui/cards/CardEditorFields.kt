@@ -37,34 +37,34 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
         }
         else if (mode == CardEditorMode.STICKERS) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                PillButton("添加文字", Icons.Default.TextFields, addText,
+                PillButton(uiText("photo.add_text"), Icons.Default.TextFields, addText,
                     Modifier.cardElementDragSource("new-text", CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)), enabled = enabled)
-                PillButton("贴纸", Icons.Default.Collections, addSticker, enabled = enabled)
-                PillButton("表情图片", Icons.Default.AddPhotoAlternate, addImage, enabled = enabled)
-                PillButton("二维码", Icons.Default.QrCode2, addQrCode, Modifier.testTag("card-add-qr"), enabled = enabled)
-                PillButton("管理贴纸库", Icons.Default.FolderOpen, openLibrary, enabled = enabled)
+                PillButton(uiText("photo.sticker"), Icons.Default.Collections, addSticker, enabled = enabled)
+                PillButton(uiText("photo.image_sticker"), Icons.Default.AddPhotoAlternate, addImage, enabled = enabled)
+                PillButton(uiText("profile.qr"), Icons.Default.QrCode2, addQrCode, Modifier.testTag("card-add-qr"), enabled = enabled)
+                PillButton(uiText("photo.sticker_manage"), Icons.Default.FolderOpen, openLibrary, enabled = enabled)
             }
             if (selected == null) stickerLibrary()
             AnimatedVisibility(selected != null) {
                 Surface(shape = homeCardShape(), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                     Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, androidx.compose.ui.Alignment.CenterHorizontally)) {
                         if (selected?.kind == CardLayerKind.TEXT) {
-                            ToolButton("编辑图层文字", Icons.Default.Edit, editText, Modifier.width(32.dp), enabled = enabled)
-                            ToolButton("文字颜色", Icons.Default.Palette, layerColor, Modifier.width(32.dp), enabled = enabled)
+                            ToolButton(uiText("photo.edit_layer_text"), Icons.Default.Edit, editText, Modifier.width(32.dp), enabled = enabled)
+                            ToolButton(uiText("photo.text_color"), Icons.Default.Palette, layerColor, Modifier.width(32.dp), enabled = enabled)
                         }
-                        ToolButton("移到最上层", Icons.Default.FlipToFront, forwardLayer, Modifier.width(32.dp), enabled = enabled)
-                        ToolButton("移除选中图层", Icons.Default.DeleteOutline, deleteLayer, Modifier.width(32.dp), enabled = enabled)
+                        ToolButton(uiText("photo.layer_to_front"), Icons.Default.FlipToFront, forwardLayer, Modifier.width(32.dp), enabled = enabled)
+                        ToolButton(uiText("photo.remove_layer"), Icons.Default.DeleteOutline, deleteLayer, Modifier.width(32.dp), enabled = enabled)
                     }
                 }
             }
-            if (selected?.kind == CardLayerKind.TEXT) CardEditorSection("贴纸文字", Icons.Default.TextFields,
+            if (selected?.kind == CardLayerKind.TEXT) CardEditorSection(uiText("photo.sticker_text"), Icons.Default.TextFields,
                 "card-sticker-text-section", forceExpanded = textEditing) {
                 CardTextLayerEditor(selected, enabled, updateTextLayer, finishText)
             }
             Text(uiText("photo.sticker_gestures"), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (mode == CardEditorMode.TEXT) CardEditorSection("照片文字", Icons.Default.TextFields, "card-photo-text-section", forceExpanded = true) {
+        if (mode == CardEditorMode.TEXT) CardEditorSection(uiText("photo.photo_text"), Icons.Default.TextFields, "card-photo-text-section", forceExpanded = true) {
             OutlinedTextField(card.title, { if (it.length <= 128) change(card.copy(title = it)) },
                 Modifier.fillMaxWidth().testTag("card-title"), label = { Text(uiText("photo.optional_title")) }, enabled = enabled, singleLine = true)
             OutlinedTextField(card.description, { if (it.length <= 8192) change(card.copy(description = it)) },

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -94,9 +96,10 @@ fun rememberHomeSheet(state: AppState, model: AppViewModel, availableHeight: Flo
         }
     } }
     val press = rememberDragHandlePress(feedback, { height.value }, { dragging.value }, feedbackOnPress = state.panel != null)
+    val description = uiText("accessibility.panel_height")
     val drag = press.modifier.draggable(state = rememberDraggableState { move(it) }, orientation = Orientation.Vertical,
         onDragStarted = { start() }, onDragStopped = { settle(it) }).semantics {
-        contentDescription = "调整底部面板高度"
+        contentDescription = description
         progressBarRangeInfo = ProgressBarRangeInfo(height.value, COLLAPSED..maximum)
         setProgress { value ->
             if (value <= COLLAPSED) model.closePanel()

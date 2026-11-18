@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -88,14 +90,14 @@ internal fun AlbumPhotoGrid(photos: List<AlbumMedia>, grid: LazyGridState, loadi
                             if (media.video) Text("▶ ${media.duration / 60000}:${(media.duration / 1000 % 60).toString().padStart(2, '0')}",
                                 Modifier.align(Alignment.BottomEnd).padding(6.dp), color = Color.White)
                             if (selecting) Icon(if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                if (checked) "已选择" else "选择", Modifier.align(Alignment.TopEnd).padding(7.dp).size(24.dp),
+                                uiText(if (checked) "accessibility.selected" else "action.select"), Modifier.align(Alignment.TopEnd).padding(7.dp).size(24.dp),
                                 tint = if (checked) MaterialTheme.colorScheme.primary else Color.White)
                         }
                     }
                 }
             }
             AlbumTimeline(grid, dates, dateLabel, Modifier.align(Alignment.CenterEnd))
-            EmptyContent(!loading && photos.isEmpty(), Icons.Default.PhotoLibrary, "还没有照片", description = "拍一张，留住这一刻")
+            EmptyContent(!loading && photos.isEmpty(), Icons.Default.PhotoLibrary, uiText("photo.empty"), description = uiText("photo.empty_hint"))
             if (loading) CircularProgressIndicator(Modifier.align(Alignment.Center))
         }
     }
