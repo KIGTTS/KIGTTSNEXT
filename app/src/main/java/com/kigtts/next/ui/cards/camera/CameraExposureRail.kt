@@ -1,6 +1,10 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -24,20 +28,22 @@ internal fun cameraEvLabel(index: Int, step: Float): String =
 
 @Composable
 internal fun BoxScope.CameraExposureRail(state: CameraExposureCompensation, bounds: Rect, vertical: Boolean,
-    zoomStops: Int, enabled: Boolean, toggle: () -> Unit) {
+    zoomStops: Int, visible: Boolean, enabled: Boolean, toggle: () -> Unit) {
     val copy = rememberCameraCopy()
-    if (state.range.first >= state.range.last) return
+    val showButton = visible && state.range.first < state.range.last
     val padding = 48.dp * zoomStops / 2 + 28.dp
     Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds), contentAlignment = Alignment.Center) {
         val placement = if (vertical) Modifier.offset(y = padding.coerceAtMost((bounds.height / 2 - 22f).coerceAtLeast(0f).dp))
             else Modifier.offset(x = -padding.coerceAtMost((bounds.width / 2 - 22f).coerceAtLeast(0f).dp))
-        ToolButton(copy.text("camera.status_ev", "value" to cameraEvLabel(state.baseline, state.step)), Icons.Default.Exposure, toggle,
-            placement.testTag("camera-global-exposure").excludeCameraPull(), size = 44.dp,
-            shapes = IconButtonDefaults.shapes(CircleShape, MaterialTheme.shapes.small),
-            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
-                contentColor = if (state.baseline != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                .keepColorsWhenLocked(), enabled = enabled)
+        AnimatedVisibility(showButton, placement, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+            ToolButton(copy.text("camera.status_ev", "value" to cameraEvLabel(state.baseline, state.step)), Icons.Default.Exposure, toggle,
+                Modifier.testTag("camera-global-exposure").excludeCameraPull(), size = 44.dp,
+                shapes = IconButtonDefaults.shapes(CircleShape, MaterialTheme.shapes.small),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
+                    contentColor = if (state.baseline != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                    .keepColorsWhenLocked(), enabled = enabled && showButton)
+        }
     }
 }
 

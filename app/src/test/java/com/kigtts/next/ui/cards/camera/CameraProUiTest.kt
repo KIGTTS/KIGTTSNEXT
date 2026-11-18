@@ -98,14 +98,20 @@ class CameraProUiTest {
                     adjustment = ProControl.EV.takeIf { expanded }) {
                     CameraExposureRuler(exposure, expanded, exposure::chooseBaseline, { expanded = false })
                 }
-                if (!expanded) CameraExposureRail(exposure, rail, false, 4, true) { expanded = true }
+                CameraExposureRail(exposure, rail, false, 4, visible = !expanded, enabled = true) { expanded = true }
             }
         } }
         val button = compose.onNodeWithTag("camera-global-exposure")
         assertTrue(button.getUnclippedBoundsInRoot().right <=
             compose.onNodeWithTag("camera-zoom-stop/0.6").getUnclippedBoundsInRoot().left)
         val zoomBounds = compose.onNodeWithTag("camera-zoom-rail").getUnclippedBoundsInRoot()
-        button.performClick()
+        compose.mainClock.autoAdvance = false
+        try {
+            button.performClick()
+            repeat(3) { compose.mainClock.advanceTimeByFrame() }
+            button.assertExists().assertIsNotEnabled()
+        } finally { compose.mainClock.autoAdvance = true }
+        button.assertDoesNotExist()
         val rulerBounds = compose.onNodeWithTag("camera-exposure-ruler").getUnclippedBoundsInRoot()
         assertEquals((zoomBounds.left.value + zoomBounds.right.value) / 2, (rulerBounds.left.value + rulerBounds.right.value) / 2, .5f)
         assertEquals((zoomBounds.top.value + zoomBounds.bottom.value) / 2, (rulerBounds.top.value + rulerBounds.bottom.value) / 2, .5f)
@@ -116,7 +122,12 @@ class CameraProUiTest {
         compose.onNodeWithTag("camera-exposure-ruler").captureRoboImage("build/previews/camera-exposure-ruler.png")
         compose.onNodeWithTag("camera-global-exposure-reset").performClick()
         compose.runOnIdle { assertEquals(2, exposure.index) }
-        compose.onNodeWithTag("camera-global-exposure-close").performClick()
+        compose.mainClock.autoAdvance = false
+        try {
+            compose.onNodeWithTag("camera-global-exposure-close").performClick()
+            repeat(3) { compose.mainClock.advanceTimeByFrame() }
+            button.assertExists()
+        } finally { compose.mainClock.autoAdvance = true }
         button.assertIsDisplayed()
     }
 
