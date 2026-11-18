@@ -193,6 +193,7 @@ internal class CameraManualController(private val context: Context, private val 
 }
 
 @RequiresApi(36)
+@androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 private fun CaptureRequestOptions.Builder.setNativeTemperature(kelvin: Int) {
     setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_CCT)
     setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_COLOR_TEMPERATURE, kelvin)
