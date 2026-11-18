@@ -18,6 +18,23 @@ import kotlin.math.roundToInt
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class PhotoEffectsBitmapTest {
+    @Test fun bloomSpreadsAColoredHighlightAcrossDarkPixelsAndLeavesDistantShadowsAlone() = runBlocking {
+        val bitmap = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888)
+        val dark = Color.rgb(20, 20, 20)
+        try {
+            bitmap.eraseColor(dark)
+            for (y in 112..144) for (x in 112..144) if ((x - 128) * (x - 128) + (y - 128) * (y - 128) < 169)
+                bitmap.setPixel(x, y, Color.rgb(255, 229, 151))
+            applyPhotoEffects(bitmap, PhotoEffects(bloom = 1f))
+            val halo = bitmap.getPixel(147, 128)
+            assertTrue(Color.red(halo) > 38)
+            assertTrue(Color.red(halo) > Color.blue(halo))
+            assertTrue(Color.red(bitmap.getPixel(142, 142)) > 35)
+            assertTrue(Color.red(bitmap.getPixel(154, 128)) < Color.red(halo))
+            assertEquals(dark, bitmap.getPixel(40, 128))
+        } finally { bitmap.recycle() }
+    }
+
     @Test fun stackedEffectsWithTheReportedBloomAmountStayInsideTheirSourceBands() = runBlocking {
         val bitmap = Bitmap.createBitmap(96, 1537, Bitmap.Config.ARGB_8888)
         try {

@@ -4,13 +4,16 @@ import android.graphics.SurfaceTexture
 import android.opengl.*
 import android.util.Size
 import android.view.Surface
+import com.kigtts.next.media.color.GlPhotoBloom
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 
 internal class CameraGlInput(val textureId: Int, val texture: SurfaceTexture, val surface: Surface)
-internal class CameraGlOutput(val eglSurface: EGLSurface, val size: Size)
+internal class CameraGlOutput(val eglSurface: EGLSurface, val size: Size) {
+    var bloom: GlPhotoBloom? = null
+}
 
 internal interface CameraPreviewRenderer : Closeable {
     fun initialize()
@@ -23,7 +26,7 @@ internal interface CameraPreviewRenderer : Closeable {
 }
 
 /** One GL-thread EGL context copies camera OES frames directly into PreviewView's output surface. */
-internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
+internal class CameraPreviewGlRenderer(private val recordable: Boolean = false) : CameraPreviewRenderer {
     private val display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
     private var context: EGLContext = EGL14.EGL_NO_CONTEXT
     private var config: EGLConfig? = null
@@ -36,6 +39,8 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     private var matrixLocation = -1; private var textureLocation = -1
     private var biasLocation = -1; private val rowLocations = IntArray(4)
     private var effectsLocation = -1
+    private var bloomNearLocation = -1
+    private var bloomFarLocation = -1
     private var exposureWarningLocation = -1
     private var initialized = false
     private var displayInitialized = false
@@ -46,9 +51,11 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
         displayInitialized = true
         try {
             val configs = arrayOfNulls<EGLConfig>(1); val count = IntArray(1)
-            check(EGL14.eglChooseConfig(display, intArrayOf(EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8,
+            val attributes = intArrayOf(EGL14.EGL_RED_SIZE, 8, EGL14.EGL_GREEN_SIZE, 8,
                 EGL14.EGL_BLUE_SIZE, 8, EGL14.EGL_ALPHA_SIZE, 8, EGL14.EGL_RENDERABLE_TYPE, EGL14.EGL_OPENGL_ES2_BIT,
-                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT, EGL14.EGL_NONE), 0,
+                EGL14.EGL_SURFACE_TYPE, EGL14.EGL_WINDOW_BIT or EGL14.EGL_PBUFFER_BIT) +
+                if (recordable) intArrayOf(EGLExt.EGL_RECORDABLE_ANDROID, EGL14.EGL_TRUE, EGL14.EGL_NONE) else intArrayOf(EGL14.EGL_NONE)
+            check(EGL14.eglChooseConfig(display, attributes, 0,
                 configs, 0, 1, count, 0) && count[0] > 0) { "EGL config unavailable" }
             config = requireNotNull(configs[0])
             context = EGL14.eglCreateContext(display, config, EGL14.EGL_NO_CONTEXT,
@@ -66,6 +73,8 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
             textureLocation = GLES20.glGetUniformLocation(program, "uTexture")
             biasLocation = GLES20.glGetUniformLocation(program, "uBias")
             effectsLocation = GLES20.glGetUniformLocation(program, "uEffects")
+            bloomNearLocation = GLES20.glGetUniformLocation(program, "uBloomNear")
+            bloomFarLocation = GLES20.glGetUniformLocation(program, "uBloomFar")
             exposureWarningLocation = GLES20.glGetUniformLocation(program, "uExposureWarning")
             for (row in 0..3) rowLocations[row] = GLES20.glGetUniformLocation(program, "uRow$row")
             checkGl(); initialized = true
@@ -101,8 +110,14 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     }
     override fun draw(input: CameraGlInput, output: CameraGlOutput, transform: FloatArray, colors: CameraPreviewUniforms, exposureWarning: Boolean) {
         makeCurrent(output.eglSurface)
-        GLES20.glViewport(0, 0, output.size.width, output.size.height)
         GLES20.glDisable(GLES20.GL_BLEND); GLES20.glDisable(GLES20.GL_SCISSOR_TEST)
+        val bloom = if (colors.effects.bloom > 0f) {
+            val passes = output.bloom ?: GlPhotoBloom(true, output.size.width, output.size.height).also { output.bloom = it }
+            passes.render(input.textureId, transform)
+            passes
+        } else null
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, output.size.width, output.size.height)
         GLES20.glUseProgram(program)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0); GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, input.textureId)
         GLES20.glUniform1i(textureLocation, 0); GLES20.glUniformMatrix4fv(matrixLocation, 1, false, transform, 0)
@@ -113,10 +128,17 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
             if (exposureWarning) CameraExposureWarning.SHADOW_LUMA else CameraExposureWarning.DISABLED_SHADOW_LUMA,
             if (exposureWarning) CameraExposureWarning.HIGHLIGHT_LUMA else CameraExposureWarning.DISABLED_HIGHLIGHT_LUMA)
         lutTexture?.bind(colors.lut, colors.lutStrength)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE2); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, bloom?.nearTexture ?: 0)
+        GLES20.glUniform1i(bloomNearLocation, 2)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE3); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, bloom?.farTexture ?: 0)
+        GLES20.glUniform1i(bloomFarLocation, 3)
         positions.position(0); coordinates.position(0)
         GLES20.glEnableVertexAttribArray(positionLocation); GLES20.glVertexAttribPointer(positionLocation, 2, GLES20.GL_FLOAT, false, 0, positions)
         GLES20.glEnableVertexAttribArray(coordinateLocation); GLES20.glVertexAttribPointer(coordinateLocation, 2, GLES20.GL_FLOAT, false, 0, coordinates)
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4); checkGl()
+        if (recordable) check(EGLExt.eglPresentationTimeANDROID(display, output.eglSurface, input.texture.timestamp)) {
+            "EGL presentation timestamp failed: ${EGL14.eglGetError()}"
+        }
         check(EGL14.eglSwapBuffers(display, output.eglSurface)) { "EGL swap failed: ${EGL14.eglGetError()}" }
     }
     override fun releaseInput(input: CameraGlInput) {
@@ -126,7 +148,7 @@ internal class CameraPreviewGlRenderer : CameraPreviewRenderer {
     }
     override fun releaseOutput(output: CameraGlOutput) {
         var first: Throwable? = null
-        try { makeCurrent(placeholder) } catch (failure: Throwable) { first = failure }
+        try { makeCurrent(placeholder); output.bloom?.close(); output.bloom = null } catch (failure: Throwable) { first = failure }
         try {
             check(EGL14.eglDestroySurface(display, output.eglSurface)) { "EGL output release failed: ${EGL14.eglGetError()}" }
         } catch (failure: Throwable) {

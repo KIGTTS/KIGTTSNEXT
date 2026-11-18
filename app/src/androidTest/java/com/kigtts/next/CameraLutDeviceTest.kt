@@ -1,9 +1,17 @@
 package com.kigtts.next
 
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.media.ImageReader
 import android.opengl.*
+import android.os.SystemClock
+import android.util.Size
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kigtts.next.media.color.*
 import com.kigtts.next.ui.cards.camera.CameraPreviewShader
+import com.kigtts.next.ui.cards.camera.CameraPreviewColors
+import com.kigtts.next.ui.cards.camera.CameraPreviewGlRenderer
 import com.kigtts.next.cards.MotionPaperShaders
 import org.junit.*
 import org.junit.Assert.*
@@ -15,6 +23,47 @@ import java.io.StringReader
 /** Hardware shader/link/pixel check, independent of the user's camera and photo library. */
 @RunWith(AndroidJUnit4::class)
 class CameraLutDeviceTest {
+    @Test fun theRecordableRendererSpreadsBloomFromAnOesFrame() {
+        val size = Size(128, 128)
+        CameraPreviewGlRenderer(recordable = true).use { renderer ->
+            renderer.initialize()
+            val input = renderer.createInput(size)
+            try {
+                ImageReader.newInstance(size.width, size.height, PixelFormat.RGBA_8888, 2).use { reader ->
+                    val output = renderer.createOutput(reader.surface, size)
+                    try {
+                        val canvas = input.surface.lockCanvas(null)
+                        canvas.drawColor(Color.rgb(20, 20, 20))
+                        canvas.drawCircle(64f, 64f, 12f, Paint().apply { color = Color.rgb(255, 229, 151) })
+                        input.surface.unlockCanvasAndPost(canvas)
+                        val transform = FloatArray(16)
+                        renderer.latch(input, transform)
+                        val colors = CameraPreviewColors().snapshot()
+                        renderer.draw(input, output, transform, colors.copy(effects = PhotoEffects(bloom = 1f)), false)
+                        val deadline = SystemClock.elapsedRealtime() + 2000L
+                        var frame = reader.acquireLatestImage()
+                        while (frame == null && SystemClock.elapsedRealtime() < deadline) {
+                            SystemClock.sleep(10)
+                            frame = reader.acquireLatestImage()
+                        }
+                        requireNotNull(frame).use { image ->
+                            val plane = image.planes.single()
+                            fun channel(x: Int, y: Int, index: Int) =
+                                plane.buffer.get(y * plane.rowStride + x * plane.pixelStride + index).toInt() and 255
+                            val halo = channel(80, 64, 0)
+                            val profile = (64..92 step 2).joinToString { x -> "$x=${channel(x, 64, 0)}" }
+                            assertTrue("Bloom highlight profile: $profile", channel(78, 64, 0) > 45 && halo > 28)
+                            assertTrue(halo > channel(80, 64, 2))
+                            assertTrue(halo > channel(90, 64, 0))
+                            assertEquals(20.0, channel(32, 64, 0).toDouble(), 2.0)
+                            assertEquals(input.texture.timestamp, image.timestamp)
+                        }
+                    } finally { renderer.releaseOutput(output) }
+                }
+            } finally { renderer.releaseInput(input) }
+        }
+    }
+
     @Test fun actualGlesLutMatchesCpuAndBothProductionShadersLink() {
         val display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
         assertTrue(EGL14.eglInitialize(display, IntArray(2), 0, IntArray(2), 0))
@@ -78,6 +127,7 @@ class CameraLutDeviceTest {
 object CameraLutDeviceMain {
     @JvmStatic fun main(args: Array<String>) {
         CameraLutDeviceTest().actualGlesLutMatchesCpuAndBothProductionShadersLink()
+        CameraLutDeviceTest().theRecordableRendererSpreadsBloomFromAnOesFrame()
         println("KIGTTS_GPU_LUT_OK: production shaders linked; GPU/CPU pixels agree")
     }
 }

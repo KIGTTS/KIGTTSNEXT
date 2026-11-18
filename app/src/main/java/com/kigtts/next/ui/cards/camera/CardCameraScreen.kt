@@ -224,11 +224,9 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             CameraParameterRail(session, layout.zoom, vertical,
                 active && displayReady && (!session.busy || modern), displayReady && interactive && !session.busy && !filtersExpanded,
                 if (exposureOpen) ProControl.EV else proControl, exposureOpen,
-                close = { exposureOpen = false; proControl = null }, dialVisibilityChanged = { zoomDialVisible = it })
-            CameraExposureRail(session.exposure, layout.zoom, vertical,
-                cameraZoomRange(session.minZoomRatio, session.maxZoomRatio)?.let(::cameraZoomStops)?.size ?: 0,
-                visible = mode != CameraMode.PRO && evAvailable && !zoomDialVisible && !exposureOpen,
-                enabled = displayReady && interactive && !session.busy) { filtersExpanded = false; exposureOpen = true }
+                close = { exposureOpen = false; proControl = null }, dialVisibilityChanged = { zoomDialVisible = it },
+                exposureEnabled = displayReady && interactive && !session.busy,
+                expose = if (mode != CameraMode.PRO && evAvailable) ({ filtersExpanded = false; exposureOpen = true }) else null)
             layout.pro?.let { bounds ->
                 CameraProRail(mode == CameraMode.PRO && !zoomDialVisible && !filtersExpanded,
                     session.manual, session.exposure, displayReady && !locked, vertical, session::setGlobalExposure,

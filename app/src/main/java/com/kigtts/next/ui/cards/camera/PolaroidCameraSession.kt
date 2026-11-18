@@ -73,7 +73,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO) {
         if (delivering || countingDown) return
         val previous = binding
-        unbind(keepFlashAvailability = true, keepZoomState = true); val epoch = generation; loading = true; error = null
+        unbind(keepLensControls = true); val epoch = generation; loading = true; error = null
         val started = SystemClock.elapsedRealtime()
         try {
             if (previous != null) {
@@ -105,7 +105,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             histogram = attached.histogram
             scan.bind(view.takeIf { mode == CameraMode.SCAN }, epoch)
             currentCoroutineContext().ensureActive()
-            if (mode.takesPhotos && attached.previewEffect == null) message(context.uiCopy("camera.filter"))
+            if ((mode.takesPhotos || mode.recordsVideo) && attached.previewEffect == null) message(context.uiCopy("camera.live_filter_retry"))
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
                     CameraMotionRecorder(context, video.output), scope, message,
@@ -159,7 +159,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (failure: Exception) { Log.d(CAMERA_LOG_TAG, "Optional processing discovery unavailable", failure) }
             }
-        } catch (cancel: CancellationException) { if (epoch == generation) unbind(keepFlashAvailability = true, keepZoomState = true); throw cancel }
+        } catch (cancel: CancellationException) { if (epoch == generation) unbind(keepLensControls = true); throw cancel }
         catch (failure: Exception) { if (epoch == generation) {
             unbind(); error = context.uiCopy("camera.open_failed")
             Log.w(CAMERA_LOG_TAG, "Camera leaf startup failed", failure)
@@ -346,7 +346,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         deferredZoom = null
         zoomTo(zoom)
     }
-    fun unbind(keepFlashAvailability: Boolean = false, keepZoomState: Boolean = false) {
+    fun unbind(keepLensControls: Boolean = false) {
         nextExposure = null; exposingPhoto = false; deferredZoom = null
         video.stop(); scan.bind(null, ++generation); burst.cancel(); captureJob?.cancel(); captureJob = null
         capabilitiesJob?.cancel(); capabilitiesJob = null
@@ -358,10 +358,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             zoomObserver?.let { attached.camera.cameraInfo.zoomState.removeObserver(it) }
             attached.release() }
         observer = null; zoomObserver = null; binding = null; histogram = null; exposureVersion++
-        exposure.detach(keepBaseline = true)
-        if (!keepFlashAvailability) flashAvailable = false
+        if (!keepLensControls) {
+            exposure.detach(keepBaseline = true)
+            flashAvailable = false
+            zoomState.clear()
+        }
         flashMode = CameraFlash.OFF
-        if (!keepZoomState) zoomState.clear()
         availableProcessing = setOf(CameraProcessing.STANDARD)
         ready = false; loading = false; busy = delivering
     }

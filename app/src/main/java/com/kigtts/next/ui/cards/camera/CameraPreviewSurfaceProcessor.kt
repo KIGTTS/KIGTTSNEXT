@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference
 /** CameraX owns the input lease; closing a session waits for its final surface-result callbacks. */
 internal class CameraPreviewSurfaceProcessor(val colors: CameraPreviewColors, private val onFailure: (Throwable) -> Unit,
     private val worker: CameraPreviewWorker = CameraPreviewGlWorker(),
-    private val createRenderer: () -> CameraPreviewRenderer = ::CameraPreviewGlRenderer) : SurfaceProcessor, Closeable {
+    private val createRenderer: () -> CameraPreviewRenderer = { CameraPreviewGlRenderer() }) : SurfaceProcessor, Closeable {
     private class Input(val request: SurfaceRequest, val gl: CameraGlInput)
     val executor get() = worker.executor
     private val closing = AtomicBoolean(false)
@@ -78,7 +78,7 @@ internal class CameraPreviewSurfaceProcessor(val colors: CameraPreviewColors, pr
             val exposureWarning = colors.exposureWarning
             outputs.forEach { (output, target) ->
                 output.updateTransformMatrix(outputTransform, originalTransform)
-                gl.draw(input.gl, target, outputTransform, values, exposureWarning)
+                gl.draw(input.gl, target, outputTransform, values, exposureWarning && output.targets and CameraEffect.PREVIEW != 0)
             }
             if (!renderedFirstFrame && outputs.isNotEmpty()) {
                 renderedFirstFrame = true; Log.d(CAMERA_LOG_TAG, "GPU preview first filtered frame")

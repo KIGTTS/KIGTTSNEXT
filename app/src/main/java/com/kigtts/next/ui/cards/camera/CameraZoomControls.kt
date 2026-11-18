@@ -30,17 +30,18 @@ import kotlin.math.ln
 internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enabled: Boolean,
     zoom: (Float) -> Unit, vertical: Boolean, modifier: Modifier = Modifier, bounds: Rect? = null,
     dialVisibilityChanged: (Boolean) -> Unit = {}, adjustment: ProControl? = null,
+    presetAccessory: @Composable BoxScope.(visible: Boolean, stops: Int) -> Unit = { _, _ -> },
     adjustmentContent: @Composable (ProControl) -> Unit = {}) {
     val copy = rememberCameraCopy()
     val availableRange = cameraZoomRange(minimum, maximum)
-    if (availableRange == null && adjustment == null) return
     val range = availableRange ?: (1f..2f)
     val zoomEnabled = enabled && availableRange != null && adjustment == null
     val reported = ratio.takeIf(Float::isFinite)?.coerceIn(range) ?: range.start
     var dragging by remember { mutableStateOf(false) }
     var dial by remember { mutableStateOf(false) }
+    val dialVisible = dial && zoomEnabled
     val latestVisibility by rememberUpdatedState(dialVisibilityChanged)
-    LaunchedEffect(dial, zoomEnabled) { latestVisibility(dial && zoomEnabled) }
+    LaunchedEffect(dialVisible) { latestVisibility(dialVisible) }
     DisposableEffect(Unit) { onDispose { latestVisibility(false) } }
     var optimistic by remember { mutableFloatStateOf(reported) }
     // CameraX reports zoom asynchronously; keep the dial at the requested value through release.
@@ -74,11 +75,11 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
         }
     }
     Box(modifier) {
-        val alpha by androidx.compose.animation.core.animateFloatAsState(if (dial && adjustment == null) 0f else 1f,
+        val alpha by androidx.compose.animation.core.animateFloatAsState(if (dialVisible) 0f else 1f,
             tween(120), label = "zoom-presets-opacity")
         val rail = if (bounds != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds)
             else Modifier.matchParentSize()
-        Box(rail.testTag("camera-zoom-rail"), contentAlignment = Alignment.Center) {
+        if (availableRange != null || adjustment != null) Box(rail.testTag("camera-zoom-rail"), contentAlignment = Alignment.Center) {
             val available = bounds?.let { if (vertical) it.height.dp else it.width.dp }
             val target = if (adjustment == null) (48 * stops.size).dp else (available ?: 400.dp).coerceAtMost(440.dp)
             val length by animateDpAsState(target, tween(220), label = "camera-zoom-morph")
@@ -109,7 +110,8 @@ internal fun CameraZoomRail(ratio: Float, minimum: Float, maximum: Float, enable
                 }
             }
         }
-        AnimatedVisibility(dial && zoomEnabled, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
+        presetAccessory(adjustment == null && !dialVisible, stops.size)
+        AnimatedVisibility(dialVisible, Modifier.matchParentSize(), enter = fadeIn(tween(140)), exit = fadeOut(tween(180))) {
             Box(Modifier.fillMaxSize()) {
             val dialModifier = if (bounds == null) Modifier.fillMaxSize()
                 else if (vertical) Modifier.fillMaxHeight().width((bounds.right + 8f).dp)

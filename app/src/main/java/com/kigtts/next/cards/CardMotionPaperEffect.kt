@@ -7,6 +7,7 @@ import android.opengl.GLES20
 import android.opengl.GLUtils
 import androidx.media3.common.util.*
 import androidx.media3.effect.*
+import com.kigtts.next.media.color.GlPhotoBloom
 import com.kigtts.plugin.api.PhotoBackdropMode
 import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.api.PolaroidFrameStyle
@@ -30,6 +31,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
         private var overlayTexture = 0; private var xTexture = 0; private var yTexture = 0
         private var xFbo = 0; private var yFbo = 0; private var blurWidth = 1; private var blurHeight = 1
         private var lutTexture: com.kigtts.next.media.color.GlLutTexture? = null
+        private var bloom: GlPhotoBloom? = null
         init {
             listOf(paper, blur).forEach { it.setBufferAttribute("aPosition", GlUtil.getNormalizedCoordinateBounds(), 4) }
             val names = IntArray(1); GLES20.glGenTextures(1, names, 0); overlayTexture = names[0]
@@ -59,6 +61,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             blurWidth = (inputWidth * factor).toInt().coerceAtLeast(1); blurHeight = (inputHeight * factor).toInt().coerceAtLeast(1)
             xTexture = GlUtil.createTexture(blurWidth, blurHeight, false); yTexture = GlUtil.createTexture(blurWidth, blurHeight, false)
             xFbo = GlUtil.createFboForTexture(xTexture); yFbo = GlUtil.createFboForTexture(yTexture)
+            if (effects.bloom > 0f) bloom = GlPhotoBloom(false, inputWidth, inputHeight)
             return Size(output.width, output.height)
         }
         private fun drawBlur(texture: Int, framebuffer: Int, step: FloatArray) {
@@ -72,10 +75,13 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
                 drawBlur(inputTexId, xFbo, floatArrayOf(1f / blurWidth, 0f))
                 drawBlur(xTexture, yFbo, floatArrayOf(0f, 1f / blurHeight))
             }
+            bloom?.render(inputTexId)
             GlUtil.focusFramebufferUsingCurrentContext(framebuffer[0], output.width, output.height); paper.use()
             paper.setSamplerTexIdUniform("uVideo", inputTexId, 0)
             paper.setSamplerTexIdUniform("uBlur", if (blurred) yTexture else inputTexId, 1)
             paper.setSamplerTexIdUniform("uOverlay", overlayTexture, 2)
+            paper.setSamplerTexIdUniform("uBloomNear", bloom?.nearTexture ?: inputTexId, 4)
+            paper.setSamplerTexIdUniform("uBloomFar", bloom?.farTexture ?: inputTexId, 5)
             val lutSampler = lutTexture ?: run {
                 val program = IntArray(1); GLES20.glGetIntegerv(GLES20.GL_CURRENT_PROGRAM, program, 0)
                 com.kigtts.next.media.color.GlLutTexture(program[0], 3).also { lutTexture = it }
@@ -90,6 +96,7 @@ internal class CardMotionPaperEffect(private val card: PolaroidCard, private val
             paper.bindAttributesAndUniforms(); GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4); GlUtil.checkGlError()
         }
         private fun releaseBuffers() {
+            bloom?.close(); bloom = null
             if (xFbo != 0) GlUtil.deleteFbo(xFbo); if (yFbo != 0) GlUtil.deleteFbo(yFbo)
             if (xTexture != 0) GlUtil.deleteTexture(xTexture); if (yTexture != 0) GlUtil.deleteTexture(yTexture)
             xFbo = 0; yFbo = 0; xTexture = 0; yTexture = 0

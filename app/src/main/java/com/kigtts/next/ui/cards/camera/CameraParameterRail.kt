@@ -16,7 +16,7 @@ import com.kigtts.next.ui.components.ToolButton
 @Composable
 internal fun BoxScope.CameraParameterRail(session: PolaroidCameraSession, bounds: Rect, vertical: Boolean,
     zoomEnabled: Boolean, rulerEnabled: Boolean, selection: ProControl?, globalExposure: Boolean, close: () -> Unit,
-    dialVisibilityChanged: (Boolean) -> Unit) {
+    dialVisibilityChanged: (Boolean) -> Unit, exposureEnabled: Boolean, expose: (() -> Unit)? = null) {
     val copy = rememberCameraCopy()
     val active = selection?.takeIf { proControlAvailable(it, session.manual, session.exposure) }
     var measured by remember { mutableStateOf<CameraMeteringSample?>(null) }
@@ -29,7 +29,10 @@ internal fun BoxScope.CameraParameterRail(session: PolaroidCameraSession, bounds
         } else measured = null
     }
     CameraZoomRail(session.zoomRatio, session.minZoomRatio, session.maxZoomRatio, zoomEnabled,
-        session::zoomTo, vertical, Modifier.matchParentSize(), bounds, dialVisibilityChanged, adjustment = active) { key ->
+        session::zoomTo, vertical, Modifier.matchParentSize(), bounds, dialVisibilityChanged, adjustment = active,
+        presetAccessory = { visible, stops ->
+            CameraExposureRail(session.exposure, bounds, vertical, stops, visible && expose != null, exposureEnabled) { expose?.invoke() }
+        }) { key ->
         if (key == ProControl.EV) {
             CameraExposureRuler(session.exposure, rulerEnabled && key == active, session::setGlobalExposure,
                 close, Modifier.fillMaxSize(), if (globalExposure) copy.text("camera.global_ev") else copy.text("camera.pro_ev"), outerPadding = false, background = false)

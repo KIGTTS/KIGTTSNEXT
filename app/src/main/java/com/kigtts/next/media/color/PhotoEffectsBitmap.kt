@@ -10,9 +10,9 @@ internal suspend fun applyPhotoEffects(image: Bitmap, effects: PhotoEffects) {
     if (!effects.active) return
     require(image.isMutable)
     val width = image.width; val height = image.height
-    // Bloom strength changes the blend, not its sampling distance. Keep its full halo even at 1%.
-    val radius = if (effects.aberration > 0f || effects.bloom > 0f)
-        (ceil(height * maxOf(.01f * effects.aberration, if (effects.bloom > 0f) .008f else 0f)).toInt() + 1).coerceAtMost(height) else 0
+    val bloom = if (effects.bloom > 0f) PhotoBloomField.create(image) else null
+    val radius = if (effects.aberration > 0f)
+        (ceil(height * .01f * effects.aberration).toInt() + 1).coerceAtMost(height) else 0
     val band = minOf(32, height)
     val source = IntArray(width * (band + 2 * radius))
     val carry = IntArray(width * radius)
@@ -48,11 +48,9 @@ internal suspend fun applyPhotoEffects(image: Bitmap, effects: PhotoEffects) {
                     value = sample(x + dx * .018f * edge * effects.aberration * width * sign,
                         yy + dy * .018f * edge * effects.aberration * height * sign, shift)
                 }
-                if (effects.bloom > 0f) {
-                    val rx = width * .008f; val ry = height * .008f
-                    val light = maxOf(0f, sample(x + rx, yy.toFloat(), shift) - .65f) + maxOf(0f, sample(x - rx, yy.toFloat(), shift) - .65f) +
-                        maxOf(0f, sample(x.toFloat(), yy + ry, shift) - .65f) + maxOf(0f, sample(x.toFloat(), yy - ry, shift) - .65f)
-                    value = 1f - (1f - value) * (1f - light / 1.4f * .4f * effects.bloom)
+                if (bloom != null) {
+                    val glow = bloom.sample(uvX * bloom.width - .5f, uvY * bloom.height - .5f, channel)
+                    value += (1f - value) * glow * effects.bloom
                 }
                 value = value * (1 - .72f * effects.vignette * smooth) + n * .12f * effects.grain
                 color = color or ((value.coerceIn(0f, 1f) * 255).roundToInt() shl shift)

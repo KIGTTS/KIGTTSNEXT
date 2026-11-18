@@ -91,14 +91,17 @@ class CameraProUiTest {
     @Test fun globalExposureSitsLeftOfZoomAndTheRulerDoesNotEraseFocusOffset() {
         val exposure = CameraExposureCompensation().apply { attach(-9..12, 1f / 3f); chooseFocusOffset(2) }
         var expanded by mutableStateOf(false)
+        var maximumZoom by mutableFloatStateOf(8f)
         compose.setContent { KigttsTheme(ThemeSettings()) {
             Box(Modifier.size(360.dp, 240.dp)) {
                 val rail = Rect(0f, 192f, 360f, 240f)
-                CameraZoomRail(1f, .6f, 8f, true, {}, false, Modifier.matchParentSize(), rail,
-                    adjustment = ProControl.EV.takeIf { expanded }) {
+                CameraZoomRail(1f, if (maximumZoom == 1f) 1f else .6f, maximumZoom, true, {}, false, Modifier.matchParentSize(), rail,
+                    adjustment = ProControl.EV.takeIf { expanded },
+                    presetAccessory = { visible, stops ->
+                        CameraExposureRail(exposure, rail, false, stops, visible, enabled = true) { expanded = true }
+                    }) {
                     CameraExposureRuler(exposure, expanded, exposure::chooseBaseline, { expanded = false })
                 }
-                CameraExposureRail(exposure, rail, false, 4, visible = !expanded, enabled = true) { expanded = true }
             }
         } }
         val button = compose.onNodeWithTag("camera-global-exposure")
@@ -129,6 +132,9 @@ class CameraProUiTest {
             button.assertExists()
         } finally { compose.mainClock.autoAdvance = true }
         button.assertIsDisplayed()
+        compose.runOnIdle { maximumZoom = 1f }
+        compose.onNodeWithTag("camera-zoom-rail").assertDoesNotExist()
+        button.assertIsEnabled()
     }
 
     @Test fun proControlsToggleAutoExposeIsoAndDoNotOfferUnsupportedFocus() {

@@ -89,7 +89,7 @@ internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: Camera
     val centeredLogo = style.showLogo && style.center && lines.isNotEmpty()
     var logoWidth = 0f
     if (style.showLogo) {
-        val logo = context.getDrawable(R.drawable.logo_horizontal)?.mutate()
+        val logo = context.getDrawable(R.drawable.logo_kigtts_wordmark)?.mutate()
         val ratio = logo?.let { it.intrinsicWidth.toFloat() / it.intrinsicHeight.coerceAtLeast(1) }?.coerceIn(1f, 16f) ?: 4f
         val logoHeight = watermarkLogoHeight(style.layout, centeredLogo, width, bandHeight, ratio)
         val fittedWidth = logoHeight * ratio

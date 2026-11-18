@@ -144,4 +144,14 @@ class CameraPreviewSurfaceProcessorTest {
         colors.exposureWarning = false
         assertFalse(colors.exposureWarning)
     }
+
+    @Test fun regularVideoUsesTheSameEffectForPreviewAndEncoderWithoutChangingStillCapture() {
+        val worker = Worker()
+        val processor = CameraPreviewSurfaceProcessor(CameraPreviewColors(), { fail(it.toString()) }, worker)
+        val effect = CameraPreviewEffect(processor, video = true)
+        try {
+            assertEquals(CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE, effect.targets)
+            assertEquals(0, effect.targets and CameraEffect.IMAGE_CAPTURE)
+        } finally { effect.close(); worker.drain() }
+    }
 }

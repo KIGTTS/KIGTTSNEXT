@@ -53,11 +53,14 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
     }
     val photoMode = !videoMode && barcode == null
     val histogramChoices = if (histogram != null) listOf(histogram, null) else listOf(null)
-    for (quality in videoQualities) for (mode in modes) for (highResolution in if (photoMode) listOf(true, false) else listOf(false))
+    val videoFilterAttempts = if (videoMode) listOf(true, false) else listOf(false)
+    for (videoFilter in videoFilterAttempts) for (quality in videoQualities) for (mode in modes)
+        for (highResolution in if (photoMode) listOf(true, false) else listOf(false))
         for (histogramChoice in histogramChoices) {
         currentCoroutineContext().ensureActive()
         if (mode != null && skipExtensions) continue
         if (quality != null && skipVideo) continue
+        if (videoFilter && skipPreviewEffect) continue
         // A previous OPEN/STREAMING value must never make a new session look ready before its first frame.
         awaitCameraPreviewIdle(view.previewStreamState)
         // Encoded SDR RGB matches the byte-domain ColorMatrix used for the independently saved JPEG.
@@ -85,7 +88,7 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
         var effect: CameraPreviewEffect? = null
         var lease: CameraSessionLease? = null
         try {
-            effect = if (skipPreviewEffect || !photoMode) null else CameraPreviewEffect(previewColors, previewFailure)
+            effect = if (!skipPreviewEffect && (photoMode || videoFilter)) CameraPreviewEffect(previewColors, videoFilter, previewFailure) else null
             val session = if (mode != null) ExtensionSessionConfig.Builder(mode, requireNotNull(manager))
                 .addUseCase(preview).addUseCase(requireNotNull(capture)).setViewPort(viewport).apply { effect?.let(::addEffect) }.build()
             else SessionConfig(listOfNotNull(preview, capture, video, analysis), viewport, listOfNotNull(effect))
