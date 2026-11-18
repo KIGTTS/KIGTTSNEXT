@@ -25,6 +25,7 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
     private var motionEnabled by mutableStateOf(preferences.getBoolean("motion", false))
+    private var stabilizeVideo by mutableStateOf(preferences.getBoolean("video-stabilization", true))
     var encoding by mutableStateOf(CameraPhotoEncoding.read(preferences.getString(ENCODING_KEY, null))); private set
     private var selectedStrength by mutableFloatStateOf(preferences.getFloat("filter-strength", 1f).takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: 1f)
     var aspect by mutableStateOf(enumPreference("aspect", CameraAspect.STANDARD)); private set
@@ -62,6 +63,7 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     val flash get() = selectedFlash
     val processing get() = if (motionEnabled) CameraProcessing.STANDARD else selectedProcessing
     val motion get() = motionEnabled
+    val videoStabilization get() = stabilizeVideo
     val filterStrength get() = selectedStrength
     private var selectedEffects by mutableStateOf(PhotoEffects.from(listOf("vignette", "grain", "aberration", "bloom").map { preferences.getFloat("effect-$it", 0f) }))
     val effects get() = selectedEffects
@@ -91,6 +93,10 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
         motionEnabled = value
         if (value) encoding = CameraPhotoEncoding.JPEG
         preferences.edit().putBoolean("motion", value).putString(ENCODING_KEY, encoding.name).apply()
+    }
+    fun setVideoStabilization(value: Boolean) {
+        stabilizeVideo = value
+        preferences.edit().putBoolean("video-stabilization", value).apply()
     }
     fun setFilterStrength(value: Float) {
         if (!value.isFinite()) return

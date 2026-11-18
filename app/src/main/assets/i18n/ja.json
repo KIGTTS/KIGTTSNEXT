@@ -244,6 +244,7 @@
   "camera.level": "水平器",
   "camera.flash": "フラッシュ",
   "camera.process": "写真処理",
+  "camera.video_stabilization": "動画の手ブレ補正",
   "camera.exposure_warning": "露出警告",
   "camera.unavailable_lens": "このレンズでは利用できません",
   "camera.encoding": "写真の形式",

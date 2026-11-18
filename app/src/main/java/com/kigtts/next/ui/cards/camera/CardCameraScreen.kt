@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, val front: Boolean, val rotation: Int, val retry: Int,
-    val processing: CameraProcessing, val motion: Boolean)
+    val processing: CameraProcessing, val motion: Boolean, val videoStabilization: Boolean)
 
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
@@ -110,7 +110,8 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val processing = if (mode == CameraMode.PHOTO) options.processing else CameraProcessing.STANDARD
     val motion = options.motion && mode == CameraMode.PHOTO
     val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
-    val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion)
+    val stabilizeVideo = mode.recordsVideo && options.videoStabilization
+    val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion, stabilizeVideo)
     val locked = session.busy || session.countingDown || session.video.active || session.video.finishing
     val configurationLocked = session.countingDown || session.video.active || session.video.finishing || !modern && session.busy
     var openGalleryWhenReady by remember { mutableStateOf(false) }
@@ -141,7 +142,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             coroutineContext.ensureActive()
             if (morphing || !viewport.layoutReady || !viewport.matchesPhotoRatio) return@LaunchedEffect
             bound = null
-            session.bind(view, front, rotation, processing, motion, mode)
+            session.bind(view, front, rotation, processing, motion, mode, videoStabilization = stabilizeVideo)
             coroutineContext.ensureActive()
             bound = desired
         }
@@ -284,5 +285,6 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
         manual = session.manual.takeUnless { modern }, watermarkStore = watermarkStore,
-        exposureWarningAvailable = session.previewFilterAvailable || !displayReady)
+        exposureWarningAvailable = session.previewFilterAvailable || !displayReady,
+        videoStabilizationAvailable = session.videoStabilizationAvailable)
 }

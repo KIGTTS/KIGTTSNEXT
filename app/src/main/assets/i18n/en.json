@@ -244,6 +244,7 @@
   "camera.level": "Level",
   "camera.flash": "Flash",
   "camera.process": "Photo processing",
+  "camera.video_stabilization": "Video stabilization",
   "camera.exposure_warning": "Exposure warning",
   "camera.unavailable_lens": "Unavailable on this lens",
   "camera.encoding": "Photo format",

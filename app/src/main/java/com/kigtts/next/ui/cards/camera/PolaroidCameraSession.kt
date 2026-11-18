@@ -29,6 +29,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     var error by mutableStateOf<String?>(null); private set
     var canFlip by mutableStateOf(false); private set
     var flashAvailable by mutableStateOf(false); private set
+    var videoStabilizationAvailable by mutableStateOf(false); private set
     var flashMode by mutableStateOf(CameraFlash.OFF); private set
     var focusTarget by mutableStateOf<CameraFocusTarget?>(null); private set
     val exposure = CameraExposureCompensation()
@@ -70,7 +71,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
     suspend fun bind(view: PreviewView, front: Boolean, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
-        motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO) {
+        motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO, videoStabilization: Boolean = false) {
         if (delivering || countingDown) return
         val previous = binding
         unbind(keepLensControls = true); val epoch = generation; loading = true; error = null
@@ -91,7 +92,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             require(cameras.hasCamera(selector)) { context.uiCopy("camera.no_camera") }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
                 manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo,
-                barcode = scan.analyzer.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null) { failure ->
+                barcode = scan.analyzer.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null,
+                videoStabilization = videoStabilization) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
                         error = context.uiCopy("camera.live_filter_retry")
@@ -113,6 +115,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             }
             if (motion && attached.motionCapture == null) message(context.uiCopy("camera.motion_unsupported"))
             flashAvailable = attached.camera.cameraInfo.hasFlashUnit()
+            videoStabilizationAvailable = attached.videoStabilizationAvailable
             applyFlash()
             manual.bind(attached.camera, attached.processing)
             val exposureState = attached.camera.cameraInfo.exposureState
@@ -361,6 +364,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         if (!keepLensControls) {
             exposure.detach(keepBaseline = true)
             flashAvailable = false
+            videoStabilizationAvailable = false
             zoomState.clear()
         }
         flashMode = CameraFlash.OFF

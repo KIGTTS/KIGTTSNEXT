@@ -244,6 +244,7 @@
   "camera.level": "水平仪",
   "camera.flash": "闪光灯",
   "camera.process": "照片处理",
+  "camera.video_stabilization": "录像防抖",
   "camera.exposure_warning": "曝光警示",
   "camera.unavailable_lens": "当前镜头不可用",
   "camera.encoding": "照片格式",

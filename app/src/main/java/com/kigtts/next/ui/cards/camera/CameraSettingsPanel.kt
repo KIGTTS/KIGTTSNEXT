@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 @Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
     watermarkStore: (() -> Unit)? = null,
-    exposureWarningAvailable: Boolean = true) {
+    exposureWarningAvailable: Boolean = true, videoStabilizationAvailable: Boolean = false) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
@@ -46,7 +46,8 @@ import kotlinx.coroutines.withContext
             else if (shown == 1) CameraWatermarkPage(options, snapshot, enabled,
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
-            else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable) {
+            else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable,
+                videoStabilizationAvailable) {
                 watermarkPage = true
             }
         }
@@ -55,7 +56,7 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
     availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, exposureWarningAvailable: Boolean,
-    openWatermark: () -> Unit) {
+    videoStabilizationAvailable: Boolean = false, openWatermark: () -> Unit) {
     val copy = rememberCameraCopy()
     val heifAvailable by produceState<Boolean?>(null) {
         value = withContext(Dispatchers.IO) { CameraPhotoEncoding.heifAvailable }
@@ -75,6 +76,11 @@ import kotlinx.coroutines.withContext
         add(CameraSettingTile(copy.text("camera.level"), copy.toggle(options.level), Icons.Default.Straighten, enabled) { options.setLevel(!options.level) })
         if (flashAvailable) add(CameraSettingTile(copy.text("camera.flash"), copy.label(options.flash), Icons.Default.FlashOn, enabled) {
             options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
+        })
+        if (options.mode.recordsVideo) add(CameraSettingTile(copy.text("camera.video_stabilization"),
+            if (videoStabilizationAvailable) copy.toggle(options.videoStabilization) else copy.text("camera.unavailable_lens"),
+            Icons.Default.VideoStable, enabled && videoStabilizationAvailable) {
+            options.setVideoStabilization(!options.videoStabilization)
         })
         val processing = availableProcessing.toList().ifEmpty { listOf(CameraProcessing.STANDARD) }
         add(CameraSettingTile(copy.text("camera.process"), copy.label(if (options.mode == CameraMode.PRO) CameraProcessing.STANDARD else options.processing),

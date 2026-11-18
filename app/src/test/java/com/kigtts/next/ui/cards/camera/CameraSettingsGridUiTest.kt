@@ -7,9 +7,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.style.TextAlign
@@ -18,6 +21,7 @@ import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.theme.KigttsTheme
 import com.kigtts.next.theme.ThemeSettings
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -31,6 +35,30 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w393dp-h852dp-xxhdpi")
 class CameraSettingsGridUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun videoStabilizationDefaultsOnPersistsAndFollowsLensSupport() {
+        val preferences = compose.activity.getSharedPreferences("camera-stabilization-test", 0)
+        val options = CameraOptions(preferences)
+        val supported = mutableStateOf(true)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CompositionLocalProvider(LocalUiLocale provides "en") {
+                CameraSettingsGrid(options, flashAvailable = false, enabled = true,
+                    availableProcessing = setOf(CameraProcessing.STANDARD), manual = null,
+                    exposureWarningAvailable = true, videoStabilizationAvailable = supported.value, openWatermark = {})
+            }
+        } }
+        val button = compose.onNodeWithText("Video stabilization")
+        button.assertDoesNotExist()
+        compose.runOnIdle { assertTrue(options.videoStabilization); options.chooseMode(CameraMode.VIDEO) }
+        button.assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertFalse(CameraOptions(preferences).videoStabilization)
+            options.chooseMode(CameraMode.TIME_LAPSE)
+            supported.value = false
+        }
+        button.assertIsNotEnabled()
+        compose.onNodeWithText("Unavailable on this lens", useUnmergedTree = true).assertIsDisplayed()
+    }
 
     @Test fun narrowGridCentersMultilineEnglishCopyAndUpdatesExistingTilesWhenLanguageChanges() {
         val locale = mutableStateOf("en")

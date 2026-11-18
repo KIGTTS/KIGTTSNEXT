@@ -32,6 +32,7 @@
   "camera.full_system.body": "想用系统相机的镜头和模式？拍完回来会自动导入。",
   "camera.filter": "滤镜预览暂时用不了，先拍照也没问题",
   "camera.motion": "动态照片还没准备好，这次先存为普通照片",
+  "camera.video_stabilization": "录像防抖",
   "sketch.clear": "要把画板清空吗？",
   "sketch.clear_body": "清空后，现在画的内容会被擦掉。",
   "sketch.open": "要打开这幅画吗？",

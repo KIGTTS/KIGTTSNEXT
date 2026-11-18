@@ -244,6 +244,7 @@
   "camera.level": "수평계",
   "camera.flash": "플래시",
   "camera.process": "사진 처리",
+  "camera.video_stabilization": "동영상 손떨림 보정",
   "camera.exposure_warning": "노출 경고",
   "camera.unavailable_lens": "이 렌즈에서 사용할 수 없음",
   "camera.encoding": "사진 형식",
