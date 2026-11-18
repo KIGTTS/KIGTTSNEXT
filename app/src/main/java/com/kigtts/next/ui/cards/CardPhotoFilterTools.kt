@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Text
@@ -46,7 +48,7 @@ import kotlinx.coroutines.*
             catch (failure: Exception) { message(failure.message ?: "LUT 未能导入") }
         }
     }
-    if (card.imageId == null) { Text("先添加一张照片"); return }
+    if (card.imageId == null) { Text(uiText("photo.add_first")); return }
     CameraFilters(style.photoFilter(), enabled, { selected ->
         change(card.withPhotoStyle(style.copy(filter = selected.name, lutImageId = null, lutSize = 0)))
     }, strength = style.strength, changeStrength = { change(card.withPhotoStyle(style.copy(strength = it))) },

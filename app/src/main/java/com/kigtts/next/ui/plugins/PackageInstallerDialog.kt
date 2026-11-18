@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
@@ -46,9 +48,9 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                     }
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("installer-details"),
                         verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        if (packages == null && error == null) Text("正在检查安装包…")
+                        if (packages == null && error == null) Text(uiText("plugin.inspecting"))
                         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                        if (installedNames.isNotEmpty()) Text("已安装：${installedNames.joinToString("、")}")
+                        if (installedNames.isNotEmpty()) Text(uiText("plugin.installed_list", "names" to installedNames.joinToString()))
                         packages.orEmpty().forEach { info ->
                             if (packages.orEmpty().size > 1) Text(info.manifest.name, style = MaterialTheme.typography.titleMedium)
                             when (tab) {
@@ -57,7 +59,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                                 else -> PackageInstallerLicense(info)
                             }
                         }
-                        if (allowDowngrade) Text("此次切换会替换当前版本，保留资源和设置。旧版可能无法读取新版数据。", color = MaterialTheme.colorScheme.error)
+                        if (allowDowngrade) Text(uiText("plugin.downgrade_hint"), color = MaterialTheme.colorScheme.error)
                     }
                     if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
@@ -69,7 +71,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                 Text(if (busy) labels.working else labels.action)
             }
         },
-        dismissButton = { if (!completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = !busy) { Text("取消") } })
+        dismissButton = { if (!completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = !busy) { Text(uiText("action.cancel")) } })
 }
 
 @Composable private fun PackageInstallerIdentity(info: PackageInstallerInfo) {
@@ -84,20 +86,20 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(info.manifest.name, style = MaterialTheme.typography.titleLarge)
             Text(listOf(info.author, info.previous?.let { "v${it.version} → v${info.manifest.version}" } ?: "v${info.manifest.version}").filter(String::isNotBlank).joinToString(" · "), style = MaterialTheme.typography.bodySmall)
-            Text("插件包 · ${android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current, info.candidate.file.length())}", style = MaterialTheme.typography.bodySmall)
+            Text(uiText("plugin.package_size", "size" to android.text.format.Formatter.formatShortFileSize(androidx.compose.ui.platform.LocalContext.current, info.candidate.file.length())), style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable private fun PackageInstallerIntroduction(info: PackageInstallerInfo, permissions: () -> Unit) {
-    Text("关于此插件", style = MaterialTheme.typography.titleSmall)
+    Text(uiText("plugin.about_this"), style = MaterialTheme.typography.titleSmall)
     if (info.description.isNotBlank()) ChatRichText(info.description)
-    else Text("安装后可在插件管理中查看和使用${info.manifest.name}。")
+    else Text(uiText("plugin.install_use", "name" to info.manifest.name))
     HorizontalDivider()
     InstallerInfoRow("软件许可", info.manifest.license)
     InstallerInfoRow("兼容版本", "支持当前应用与设备")
-    TextButton(onClick = feedbackClick(permissions), contentPadding = PaddingValues(0.dp)) { Text("权限 · ${info.permissions.size} 项  ›") }
-    Text("发布者 SHA-256", style = MaterialTheme.typography.labelMedium)
+    TextButton(onClick = feedbackClick(permissions), contentPadding = PaddingValues(0.dp)) { Text(uiText("plugin.permission_count", "count" to info.permissions.size.toString())) }
+    Text(uiText("plugin.publisher_hash"), style = MaterialTheme.typography.labelMedium)
     SelectionContainer { Text(info.candidate.preview.publisherSha256, style = MaterialTheme.typography.bodySmall) }
 }
 
@@ -108,7 +110,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
 }
 
 @Composable private fun PackageInstallerLicense(info: PackageInstallerInfo) {
-    Text("软件许可协议", style = MaterialTheme.typography.titleSmall)
+    Text(uiText("plugin.license_title"), style = MaterialTheme.typography.titleSmall)
     Text(info.manifest.license, style = MaterialTheme.typography.titleMedium)
     SelectionContainer {
         Text(info.licenseText.ifBlank { "此插件使用 ${info.manifest.license} 许可。安装包未附许可全文，请向发布者获取全文和所用组件的许可。" })

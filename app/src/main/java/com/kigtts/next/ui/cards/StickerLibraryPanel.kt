@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -41,8 +43,8 @@ internal fun StickerLibraryPanel(libraries: List<StickerLibrary>, items: List<St
         if (contents.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Default.Collections, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("把喜欢的表情和图片放在这里", style = MaterialTheme.typography.bodyLarge)
-                Text("使用上方的拍照或选图按钮添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(uiText("photo.sticker_hint"), style = MaterialTheme.typography.bodyLarge)
+                Text(uiText("photo.add_with_toolbar"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else LazyVerticalGrid(GridCells.Adaptive(132.dp), Modifier.weight(1f).fillMaxWidth().testTag("sticker-grid"),
             contentPadding = PaddingValues(16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),

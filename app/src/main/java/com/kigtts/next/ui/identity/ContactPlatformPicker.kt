@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -21,9 +23,9 @@ import com.kigtts.next.ui.components.*
     MotionAlertDialog(close, title = { Text(title) }, text = {
         Column(Modifier.heightIn(max = 440.dp)) {
             OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), singleLine = true,
-                label = { Text("搜索平台") }, leadingIcon = { Icon(Icons.Default.Search, null) })
+                label = { Text(uiText("profile.platform_search")) }, leadingIcon = { Icon(Icons.Default.Search, null) })
             LazyColumn(state = listState, modifier = Modifier.weight(1f, fill = false)) {
-                if (groups.isEmpty()) item { Text("没有找到平台", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                if (groups.isEmpty()) item { Text(uiText("profile.platform_empty"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 groups.forEach { (group, platforms) ->
                     item(key = group) { Text(group.title, Modifier.padding(start = 12.dp, top = 20.dp, bottom = 4.dp),
                         style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary) }
@@ -36,5 +38,5 @@ import com.kigtts.next.ui.components.*
                 }
             }
         }
-    }, confirmButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+    }, confirmButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

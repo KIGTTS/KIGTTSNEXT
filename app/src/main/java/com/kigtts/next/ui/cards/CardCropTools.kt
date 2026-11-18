@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,7 +24,7 @@ import kotlinx.coroutines.withContext
 internal fun CardCropTools(enabled: Boolean, openCrop: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         PillButton("裁剪照片", Icons.Default.Crop, openCrop, enabled = enabled)
-        Text("双指缩放和平移预览", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(uiText("photo.crop_zoom"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -31,7 +33,7 @@ internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (Polar
     frameColor: () -> Unit, frames: List<PolaroidFrameStyle>) {
     val spec = PhotoFrameSpec.from(card.frameStyleId)
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("边框水印", style = MaterialTheme.typography.titleSmall)
+        Text(uiText("camera.frame_watermark"), style = MaterialTheme.typography.titleSmall)
         if (spec != null) {
             val context = LocalContext.current
             val choices by produceState(emptyList<CameraWatermarkAsset>(), context) {
@@ -44,7 +46,7 @@ internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (Polar
             fun set(value: CameraWatermarkStyle?) = change(card.copy(
                 frameStyleId = spec.copy(style = value?.encode() ?: "none").id))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(spec.style == "none", feedbackClick { selectedId = null; set(null) }, label = { Text("无水印") }, enabled = enabled)
+                FilterChip(spec.style == "none", feedbackClick { selectedId = null; set(null) }, label = { Text(uiText("photo.no_watermark")) }, enabled = enabled)
                 choices.forEach { asset -> FilterChip(asset.id == active, feedbackClick {
                     if (asset.id != active) { selectedId = asset.id; set(asset.defaults) }
                 }, label = { Text(asset.name) }, enabled = enabled) }

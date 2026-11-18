@@ -51,20 +51,20 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
     MotionAlertDialog(onDismissRequest = dismiss, title = { Text(if (original == null) "添加分组" else "编辑分组") },
         text = {
             Column(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(state = name, lineLimits = TextFieldLineLimits.SingleLine, label = { Text("分组名称") },
+                OutlinedTextField(state = name, lineLimits = TextFieldLineLimits.SingleLine, label = { Text(uiText("quick.group_name")) },
                     isError = duplicate, supportingText = { if (duplicate) Text(uiText("quick.group_duplicate")) },
                     modifier = Modifier.fillMaxWidth().testTag(if (original == null) "new-category-name" else "edit-category-name"))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(icon.vector(), "当前图标：" + icon.label, Modifier.size(24.dp))
-                        Text("分组图标", style = MaterialTheme.typography.titleSmall)
+                        Text(uiText("quick.group_icon"), style = MaterialTheme.typography.titleSmall)
                     }
-                    MotionTextButton({ more = true }, Modifier.testTag("category-more-icons")) { Text("更多与搜索") }
+                    MotionTextButton({ more = true }, Modifier.testTag("category-more-icons")) { Text(uiText("quick.more_search")) }
                 }
                 if (original != null) MotionTextButton(onClick = feedbackClick { model.sharing.shareQuickText(original, true) },
                     modifier = Modifier.fillMaxWidth().testTag("share-category")) {
                     Icon(androidx.compose.material.icons.Icons.Default.Share, null, Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp)); Text("分享分组")
+                    Spacer(Modifier.width(8.dp)); Text(uiText("quick.group_share"))
                 }
                 LazyVerticalGrid(GridCells.Adaptive(48.dp), Modifier.fillMaxWidth().height(224.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -85,5 +85,5 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
             val saved = if (original == null) model.quickTexts.addCategory(value, icon) else model.quickTexts.editCategory(original, value, icon)
             if (saved) closeDialog { model.category(value); dismiss() }
         }, enabled = value.isNotBlank() && !duplicate, modifier = Modifier.testTag("save-category")) { Text(if (original == null) "添加" else "保存") } },
-        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text("取消") } })
+        dismissButton = { MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -81,8 +83,8 @@ fun PluginRequests(model: AppViewModel, input: Pair<String, PluginOutcome.TextIn
                 modifier = Modifier.fillMaxWidth().testTag("plugin-input-value"),
                 outputTransformation = if (request.secret) OutputTransformation { replace(0,length,"•".repeat(length)) } else null,
                 lineLimits = if (request.multiline) TextFieldLineLimits.MultiLine(maxHeightInLines = 8) else TextFieldLineLimits.SingleLine) } },
-            confirmButton = { TextButton(onClick = dialogFeedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text("确定") } },
-            dismissButton = { TextButton(onClick = dialogFeedbackClick(dismissInput)) { Text("取消") } })
+            confirmButton = { TextButton(onClick = dialogFeedbackClick { dismissInput(); model.invoke(id, request.actionId, mapOf("value" to text.text.toString())) }) { Text(uiText("common.confirm")) } },
+            dismissButton = { TextButton(onClick = dialogFeedbackClick(dismissInput)) { Text(uiText("action.cancel")) } })
         }
     }
 }

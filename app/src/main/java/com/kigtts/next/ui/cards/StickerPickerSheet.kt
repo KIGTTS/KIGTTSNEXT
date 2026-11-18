@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -21,14 +23,14 @@ internal fun StickerPickerSheet(libraries: List<StickerLibrary>, items: List<Sti
     ModalBottomSheet(onDismissRequest = dismiss) {
         Column(Modifier.fillMaxWidth().heightIn(max = 550.dp)) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("添加贴纸", style = MaterialTheme.typography.titleLarge)
-                MotionTextButton(feedbackClick(import)) { Icon(Icons.Default.PhotoLibrary, null); Spacer(Modifier.width(6.dp)); Text("选图") }
+                Text(uiText("photo.add_sticker"), style = MaterialTheme.typography.titleLarge)
+                MotionTextButton(feedbackClick(import)) { Icon(Icons.Default.PhotoLibrary, null); Spacer(Modifier.width(6.dp)); Text(uiText("common.pick_image")) }
             }
             StickerLibraryPanel(libraries, items, libraryId, { libraryId = it }, imageFile, true,
                 addLibrary = dismiss, editLibrary = { }, selectItem = select, itemMenu = select,
                 modifier = Modifier.height(430.dp), showLibraryActions = false)
             MotionTextButton(feedbackClick(manage), Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text("管理贴纸库")
+                Icon(Icons.Default.FolderOpen, null); Spacer(Modifier.width(8.dp)); Text(uiText("photo.sticker_manage"))
             }
         }
     }

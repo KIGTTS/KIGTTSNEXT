@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -59,14 +61,14 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
                 "card-sticker-text-section", forceExpanded = textEditing) {
                 CardTextLayerEditor(selected, enabled, updateTextLayer, finishText)
             }
-            Text("点选后拖动圆形手柄，或用双指移动、缩放和旋转", style = MaterialTheme.typography.bodySmall,
+            Text(uiText("photo.sticker_gestures"), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (mode == CardEditorMode.TEXT) CardEditorSection("照片文字", Icons.Default.TextFields, "card-photo-text-section", forceExpanded = true) {
             OutlinedTextField(card.title, { if (it.length <= 128) change(card.copy(title = it)) },
-                Modifier.fillMaxWidth().testTag("card-title"), label = { Text("照片名称（可选）") }, enabled = enabled, singleLine = true)
+                Modifier.fillMaxWidth().testTag("card-title"), label = { Text(uiText("photo.optional_title")) }, enabled = enabled, singleLine = true)
             OutlinedTextField(card.description, { if (it.length <= 8192) change(card.copy(description = it)) },
-                Modifier.fillMaxWidth().testTag("card-description"), label = { Text("照片说明（可选）") }, enabled = enabled, minLines = 2, maxLines = 4)
+                Modifier.fillMaxWidth().testTag("card-description"), label = { Text(uiText("photo.optional_description")) }, enabled = enabled, minLines = 2, maxLines = 4)
         }
         if (mode == CardEditorMode.TEXT) captureFields()
         Spacer(Modifier.height(20.dp))

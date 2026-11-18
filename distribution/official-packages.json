@@ -7,6 +7,18 @@
     "tags": [
       "工具"
     ],
+    "file": "tools.package-store-0.16.17.kigplugin",
+    "notes": "补齐商店来源、标签、版本说明以及下载、来源验证和安装提示。",
+    "module": "package-store"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
     "file": "tools.package-store-0.16.16.kigplugin",
     "notes": "补齐四套语言的分类、资源分组、下载及安装状态。",
     "module": "package-store"
@@ -178,6 +190,19 @@
     "symbol": "robot_2",
     "module": "cloud-agent",
     "notes": "重新整理供应商与模型选择，新增多种接口格式，改善模型配置与提示。"
+  },
+  {
+    "module": "quick-text-gestures",
+    "file": "input.quick-gestures-0.1.5.kigplugin",
+    "category": "输入",
+    "summary": "画出熟悉的手势，一笔发送常用快捷文本。",
+    "symbol": "gesture",
+    "description": "## 手势触发\n\n为常用手势选择已有的快捷文本，在字幕板上画出手势即可发送。每种手势可以单独开启和调整。",
+    "notes": "补齐中英日韩的手势指引、快捷文本选择和授权提示。",
+    "tags": [
+      "快捷文本",
+      "手势"
+    ]
   },
   {
     "module": "quick-text-gestures",
@@ -882,6 +907,19 @@
     "file": "display.led-0.1.2.kigplugin",
     "notes": "字幕铺满整张卡片，新增灯珠、滚动、颜色和亮度等样式设置。",
     "module": "led-caption"
+  },
+  {
+    "category": "内容",
+    "summary": "在娃语与 KIGTTS 之间转移常用短语、分组和媒体。",
+    "symbol": "import_export",
+    "description": "## 娃语预设兼容\n\n把娃语预设带到 KIGTTS，也可以将快捷文本导出后继续在娃语使用。\n\n在备份与还原中选择导入或导出，页面会说明两款软件的操作步骤，并在保存前预览转换结果。",
+    "tags": [
+      "备份",
+      "格式兼容"
+    ],
+    "file": "backup.kigusay-0.1.3.kigplugin",
+    "notes": "补齐中英日韩的备份预览、导入确认、附件校验和错误提示。",
+    "module": "kigusay-backup"
   },
   {
     "category": "内容",

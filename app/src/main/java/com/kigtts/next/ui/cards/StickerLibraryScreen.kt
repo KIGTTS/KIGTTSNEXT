@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -50,11 +52,11 @@ fun StickerLibraryScreen(cards: CardRepository, stickers: StickerRepository, mes
     }) }
     if (active) itemMenu?.let { item -> MotionAlertDialog(onDismissRequest = { itemMenu = null }, title = { Text(item.name) }, text = {
         Column {
-            MotionTextButton(dialogFeedbackClick { itemMenu = null; actions.quickSticker(item) }, Modifier.fillMaxWidth()) { Text("添加到快捷文本") }
-            MotionTextButton(dialogFeedbackClick { itemMenu = null; renaming = item }, Modifier.fillMaxWidth()) { Text("重命名") }
-            MotionTextButton(dialogFeedbackClick { itemMenu = null; removing = item }, Modifier.fillMaxWidth()) { Text("删除贴纸") }
+            MotionTextButton(dialogFeedbackClick { itemMenu = null; actions.quickSticker(item) }, Modifier.fillMaxWidth()) { Text(uiText("quick.add_from_text")) }
+            MotionTextButton(dialogFeedbackClick { itemMenu = null; renaming = item }, Modifier.fillMaxWidth()) { Text(uiText("common.rename")) }
+            MotionTextButton(dialogFeedbackClick { itemMenu = null; removing = item }, Modifier.fillMaxWidth()) { Text(uiText("photo.delete_sticker")) }
         }
-    }, confirmButton = { MotionTextButton(dialogFeedbackClick { itemMenu = null }) { Text("完成") } }) }
+    }, confirmButton = { MotionTextButton(dialogFeedbackClick { itemMenu = null }) { Text(uiText("action.done")) } }) }
     if (active) renaming?.let { item -> CardNameDialog("贴纸名称", item.name, { renaming = null }, { name ->
         renaming = null; actions.edit(listOf(StickerEdit.PutItem(item.copy(name = name))))
     }) }

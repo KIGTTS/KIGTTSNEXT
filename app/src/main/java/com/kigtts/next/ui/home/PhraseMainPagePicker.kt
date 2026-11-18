@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,10 +28,10 @@ import kotlinx.coroutines.*
         catch (cancel: CancellationException) { throw cancel }
         catch (failure: Exception) { error = failure.message }
     }
-    MotionAlertDialog(onDismissRequest = close, title = { Text("选择主页面") }, text = {
+    MotionAlertDialog(onDismissRequest = close, title = { Text(uiText("quick.main_page")) }, text = {
         Column(Modifier.heightIn(max = 420.dp)) {
             Text(if (directory.isBlank()) "当前词条的文件" else directory, style = MaterialTheme.typography.labelMedium)
-            if (directory.isNotBlank()) MotionTextButton(onClick = feedbackClick { directory = directory.substringBeforeLast('/', "") }, enabled = !busy) { Text("上一级") }
+            if (directory.isNotBlank()) MotionTextButton(onClick = feedbackClick { directory = directory.substringBeforeLast('/', "") }, enabled = !busy) { Text(uiText("quick.parent_folder")) }
             LazyColumn { items(items, key = { it.path }) { item ->
                 TextButton(enabled = !busy, onClick = feedbackClick {
                     if (item.directory) directory = item.path else scope.launch {
@@ -41,8 +43,8 @@ import kotlinx.coroutines.*
                     }
                 }) { Icon(if (item.directory) Icons.Default.Folder else if (item.main) Icons.Default.Check else Icons.Default.Html, null); Spacer(Modifier.width(12.dp)); Text(item.name) }
             } }
-            if (items.isEmpty()) Text("这个文件夹中没有网页文件")
+            if (items.isEmpty()) Text(uiText("quick.folder_empty"))
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
-    }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text("取消") } })
+    }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

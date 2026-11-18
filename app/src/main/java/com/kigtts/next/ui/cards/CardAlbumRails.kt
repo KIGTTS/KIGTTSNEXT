@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -83,7 +85,7 @@ internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, pho
     val orientation = if (landscape) "竖向滚动" else "横向滚动"
     if (landscape) Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         if (photos.isEmpty()) Box(Modifier.width(84.dp).fillMaxHeight(), contentAlignment = Alignment.Center) {
-            Text("还没有照片", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(uiText("photo.empty"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         } else LazyColumn(Modifier.width(84.dp).fillMaxHeight().testTag("card-album-photos").semantics { stateDescription = orientation },
             state = photoScroll, verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally,
@@ -98,7 +100,7 @@ internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, pho
             }
         }
     } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (photos.isEmpty()) Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { Text("这个相册还没有照片",
+        if (photos.isEmpty()) Box(Modifier.fillMaxWidth().height(92.dp), contentAlignment = Alignment.Center) { Text(uiText("photo.album_empty"),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         else LazyRow(Modifier.fillMaxWidth().height(92.dp).testTag("card-album-photos").semantics { stateDescription = orientation },

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -145,7 +147,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 }
             }
             if (editable && current.value.layers.any { it.id == selectedId.value && (it.x !in 0.0..1.0 || it.y !in 0.0..1.0) })
-                Text("松手删除贴纸", Modifier.align(Alignment.TopCenter).padding(12.dp), color = MaterialTheme.colorScheme.error)
+                Text(uiText("photo.drop_sticker"), Modifier.align(Alignment.TopCenter).padding(12.dp), color = MaterialTheme.colorScheme.error)
             if (frame?.borderColor != null && frame.borderWidth > 0.0) Box(Modifier
                 .offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight))

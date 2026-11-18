@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -21,7 +23,7 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val saved = catalog.cards.firstOrNull { it.id == cardId }
-    if (saved == null) { androidx.compose.material3.Text("这张照片已移除", Modifier.padding(24.dp)); return }
+    if (saved == null) { androidx.compose.material3.Text(uiText("photo.removed"), Modifier.padding(24.dp)); return }
     var view by remember(cardId) { mutableStateOf(saved) }
     var busy by remember { mutableStateOf(false) }
     LaunchedEffect(saved) { view = saved }

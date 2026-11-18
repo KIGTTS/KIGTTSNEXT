@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -64,7 +66,7 @@ import java.io.File
         ProfileTileKind.IMAGE to ("图片 / GIF" to Icons.Default.Image), ProfileTileKind.QR to ("二维码" to Icons.Default.QrCode))
     val keyboard = LocalSoftwareKeyboardController.current
     val changeKind = { keyboard?.hide(); kind = null; error = null }
-    MotionAlertDialog(close, title = { Text(if (tile == null) "添加磁贴" else "编辑磁贴") },
+    MotionAlertDialog(close, title = { Text(if (tile == null) uiText("profile.add_tile") else uiText("profile.tile_edit")) },
         onNavigateUp = if (tile == null && kind != null && !working) changeKind else null, text = {
       ModalPageTransition(kind, { if (it == null) 0 else 1 }, Modifier.fillMaxWidth()) { displayedKind ->
         Column(Modifier.heightIn(max = 540.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -83,7 +85,7 @@ import java.io.File
                 when (displayedKind) {
                     ProfileTileKind.CONTACT -> ProfileTileContactField(social, contact, contacts,
                         { social = it; contact = ""; error = null }, { social = null; contact = it.value; error = null })
-                    ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text("网址") }, singleLine = true)
+                    ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.url")) }, singleLine = true)
                     ProfileTileKind.IMAGE -> {
                         if (image.isNotBlank()) ProfileTileImage(profileImageFile(stickers, image), Modifier.fillMaxWidth().height(160.dp))
                         FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) "正在打开…" else "选择图片或 GIF") }
@@ -101,7 +103,7 @@ import java.io.File
                     }
                     ProfileTileKind.QR -> {
                         OutlinedTextField(text, { text = it.take(PROFILE_QR_MAX_BYTES); error = null },
-                            Modifier.fillMaxWidth(), label = { Text("文字或链接") }, minLines = 2, maxLines = 4)
+                            Modifier.fillMaxWidth(), label = { Text(uiText("profile.text_or_link")) }, minLines = 2, maxLines = 4)
                         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                             ProfileQrStyle.entries.forEachIndexed { index, style ->
                                 SegmentedButton(qrStyle == style, feedbackClick { qrStyle = style },
@@ -111,16 +113,16 @@ import java.io.File
                             }
                         }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Text("保持亮色")
+                            Text(uiText("profile.qr_light"))
                             Switch(qrKeepLight, { qrKeepLight = it })
                         }
                         Surface(shape = MaterialTheme.shapes.medium, color = Color(nativeProfileQrPalette(qrStyle, qrKeepLight).paper)) {
                             ProfileQrTile(text, qrStyle, title, Modifier.fillMaxWidth().height(148.dp).padding(8.dp), qrKeepLight)
                         }
                     }
-                    else -> OutlinedTextField(text, { text = it.take(400) }, Modifier.fillMaxWidth(), label = { Text("内容") }, minLines = 2)
+                    else -> OutlinedTextField(text, { text = it.take(400) }, Modifier.fillMaxWidth(), label = { Text(uiText("settings.section.content")) }, minLines = 2)
                 }
-                if (tile == null) TextButton(feedbackClick(changeKind), enabled = !working) { Text("更换类型") }
+                if (tile == null) TextButton(feedbackClick(changeKind), enabled = !working) { Text(uiText("profile.tile_kind_change")) }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
@@ -140,7 +142,7 @@ import java.io.File
             social = social.takeIf { selected == ProfileTileKind.CONTACT }, qrStyle = qrStyle, qrKeepLight = qrKeepLight, dividerStyle = dividerStyle,
             columns = if (selected.isSectionRow || selected == ProfileTileKind.QR && tile == null) 4 else tile?.columns ?: 2,
             rows = if (selected.isSectionRow) 1 else if (selected == ProfileTileKind.QR && tile == null) 4 else tile?.rows ?: 2))
-    }) { Text("完成") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+    }) { Text(uiText("action.done")) } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }
 
 internal fun safeProfileLink(text: String): String? = runCatching { java.net.URI(text.trim()).let { uri ->

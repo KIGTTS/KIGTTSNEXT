@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,14 +36,14 @@ internal fun PhotoCropDialog(image: ImageBitmap?, initial: PhotoCrop, close: () 
     Dialog(close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Scaffold(containerColor = Color.Black, modifier = Modifier.fillMaxSize(),
             topBar = {
-                TopAppBar(title = { Text("裁剪照片") },
+                TopAppBar(title = { Text(uiText("photo.crop")) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black, titleContentColor = Color.White,
                         actionIconContentColor = Color.White, navigationIconContentColor = Color.White),
                     navigationIcon = { IconButton(feedbackClick(close)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") } },
                     actions = {
-                        TextButton(feedbackClick { crop = PhotoCrop.Full }, enabled = crop != PhotoCrop.Full) { Text("重置", color = Color.White.copy(alpha = if (crop == PhotoCrop.Full) .4f else 1f)) }
+                        TextButton(feedbackClick { crop = PhotoCrop.Full }, enabled = crop != PhotoCrop.Full) { Text(uiText("common.reset"), color = Color.White.copy(alpha = if (crop == PhotoCrop.Full) .4f else 1f)) }
                         Button(feedbackClick { image?.let { apply(crop, it.width, it.height) } },
-                            Modifier.padding(end = 12.dp), enabled = image != null) { Text("应用") }
+                            Modifier.padding(end = 12.dp), enabled = image != null) { Text(uiText("overlay.category.apps")) }
                     })
             }) { insets ->
             Box(Modifier.fillMaxSize().padding(insets).background(Color.Black).padding(18.dp), contentAlignment = Alignment.Center) {

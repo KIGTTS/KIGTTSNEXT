@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -24,7 +26,7 @@ internal fun CardLandscapeHeader(title: String, back: () -> Unit, backLabel: Str
             TopAppBar(title = {
                 Column {
                     PageBarTitle(title, compact = true, loading = host.loading)
-                    Text("下滑进行拍照", Modifier.testTag("page-subtitle").cameraPullEntryRegion(),
+                    Text(uiText("photo.pull_to_capture"), Modifier.testTag("page-subtitle").cameraPullEntryRegion(),
                         style = MaterialTheme.typography.labelMedium, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

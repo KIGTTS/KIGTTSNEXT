@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -45,5 +47,5 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
             MotionIconButton(feedbackClick { focus.clearFocus(); keyboard?.hide(); model.content.editor(target = "phrase:" + draft.key) },
                 enabled = enabled, modifier = Modifier.testTag("phrase-open-text-editor")) { Icon(Icons.Default.EditNote, "打开文本编辑器") }
         })
-    if (oversized) Text("内容太长，请缩短后再保存", color = MaterialTheme.colorScheme.error)
+    if (oversized) Text(uiText("quick.too_long"), color = MaterialTheme.colorScheme.error)
 }

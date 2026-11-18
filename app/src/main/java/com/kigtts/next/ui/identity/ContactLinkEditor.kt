@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -33,20 +35,20 @@ import kotlinx.coroutines.*
             finally { loading = false }
         }
     }
-    MotionAlertDialog(close, title = { Text(if (value == null) "添加${platform.displayName}" else "修改${value.label}") },
+    MotionAlertDialog(close, title = { Text(if (value == null) uiText("profile.contact_add_named", "name" to platform.displayName) else uiText("profile.contact_edit_named", "name" to value.label)) },
         icon = { SocialContactIcon(ContactLink(label, account)) }, text = {
             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (platform == SocialPlatform.LINK) OutlinedTextField(label, { label = it.take(24) }, Modifier.fillMaxWidth(), label = { Text("名称") }, singleLine = true)
-                OutlinedTextField(account, { account = it.take(512) }, Modifier.fillMaxWidth(), label = { Text("账号或链接") }, maxLines = 3)
-                OutlinedTextField(qr, { qr = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text("二维码内容（可选）") }, maxLines = 3)
+                if (platform == SocialPlatform.LINK) OutlinedTextField(label, { label = it.take(24) }, Modifier.fillMaxWidth(), label = { Text(uiText("common.name")) }, singleLine = true)
+                OutlinedTextField(account, { account = it.take(512) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.account_link")) }, maxLines = 3)
+                OutlinedTextField(qr, { qr = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.qr_optional")) }, maxLines = 3)
                 OutlinedButton(feedbackClick { picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !loading) {
                     Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(if (loading) "正在识别…" else "从二维码图片读取")
                 }
-                Text("微信等平台可选择个人二维码图片；仅填写账号时，二维码展示账号文本", style = MaterialTheme.typography.bodySmall)
+                Text(uiText("profile.contact_qr_hint"), style = MaterialTheme.typography.bodySmall)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }, confirmButton = {
             TextButton(dialogFeedbackClick { save(ContactLink(label.trim(), account.trim().ifBlank { qr.trim() }, qr.trim().takeIf(String::isNotBlank))) },
-                enabled = label.isNotBlank() && (account.isNotBlank() || qr.isNotBlank()) && !loading) { Text("保存") }
-        }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+                enabled = label.isNotBlank() && (account.isNotBlank() || qr.isNotBlank()) && !loading) { Text(uiText("action.save")) }
+        }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

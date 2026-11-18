@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.rememberScrollState
@@ -37,7 +39,7 @@ fun StickerReviewScreen(model: AppViewModel, token: String) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (preview == null) "预览已失效，请重新准备修改" else "确认以下修改后才会保存。")
         removed.forEach { name -> Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.errorContainer) {
-            Column(Modifier.fillMaxWidth().padding(16.dp)) { Text(name); Text("将移除", style = MaterialTheme.typography.bodySmall) }
+            Column(Modifier.fillMaxWidth().padding(16.dp)) { Text(name); Text(uiText("photo.remove_list"), style = MaterialTheme.typography.bodySmall) }
         } }
         preview?.titles?.forEach { Text(it, style = MaterialTheme.typography.titleMedium) }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -55,8 +57,8 @@ fun StickerReviewScreen(model: AppViewModel, token: String) {
                     catch (_: Exception) { error = "保存失败，请重试" }
                     finally { busy = false }
                 }
-            }, enabled = preview != null && planned != null && !busy) { Text("确认修改") }
-            MotionTextButton(feedbackClick(model::navigateBack), enabled = !busy) { Text("取消") }
+            }, enabled = preview != null && planned != null && !busy) { Text(uiText("photo.confirm_changes")) }
+            MotionTextButton(feedbackClick(model::navigateBack), enabled = !busy) { Text(uiText("action.cancel")) }
         }
     }
 }

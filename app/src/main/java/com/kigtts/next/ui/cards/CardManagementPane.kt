@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -78,8 +80,8 @@ import com.kigtts.plugin.api.*
             title = { Text("移动 ${ids.size} 张照片？") }, text = { Text("移到「${target.name}」") },
             confirmButton = { MotionTextButton(dialogFeedbackClick {
                 moveTarget = null; actions.work({ cards.moveCards(ids, target.id) }) { state.finish(); moved(ids, target.id) }
-            }, Modifier.testTag("confirm-move-cards")) { Text("移动") } },
-            dismissButton = { MotionTextButton(dialogFeedbackClick { moveTarget = null }) { Text("取消") } }) }
+            }, Modifier.testTag("confirm-move-cards")) { Text(uiText("common.move")) } },
+            dismissButton = { MotionTextButton(dialogFeedbackClick { moveTarget = null }) { Text(uiText("action.cancel")) } }) }
         rename?.let { target -> CardNameDialog("重命名相册", target.name, { rename = null }, confirm = { name ->
             rename = null; actions.work({ cards.renameAlbum(target.id, name) })
         }) }

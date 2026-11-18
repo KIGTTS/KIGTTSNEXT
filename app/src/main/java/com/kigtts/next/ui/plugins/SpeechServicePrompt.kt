@@ -33,7 +33,7 @@ internal fun SpeechServicePrompt(status: SpeechServiceStatus?, proceed: () -> Un
             else uiText("reading.enable")) },
         confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(proceed)) { Text(if (missing) "前往安装" else "管理服务") } },
         dismissButton = { Column {
-            MotionTextButton(onClick = dialogFeedbackClick(later)) { Text("稍后再说") }
+            MotionTextButton(onClick = dialogFeedbackClick(later)) { Text(uiText("overlay.later")) }
             if (missing) MotionTextButton(onClick = dialogFeedbackClick(hide)) { Text(uiText("reading.hide")) }
         } })
 }

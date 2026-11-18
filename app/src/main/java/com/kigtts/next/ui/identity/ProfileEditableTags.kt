@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.animation.ExperimentalSharedTransitionApi::class)
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -87,7 +89,7 @@ import com.kigtts.next.ui.components.reorder.*
                 }.graphicsLayer { alpha = editFraction }) {
                 OutlinedButton(feedbackClick(add), Modifier.height(36.dp).testTag("profile-add-tag"), enabled = editing,
                     contentPadding = PaddingValues(horizontal = 12.dp)) {
-                    Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text("标签")
+                    Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text(uiText("profile.tags"))
                 }
             }
         }

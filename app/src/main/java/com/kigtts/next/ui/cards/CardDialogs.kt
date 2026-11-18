@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -19,15 +21,15 @@ internal fun CardNameDialog(title: String, initial: String, dismiss: () -> Unit,
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(value, { if (it.length <= maximum) value = it }, Modifier.fillMaxWidth().testTag("card-name-input"),
                 singleLine = !multiline, minLines = if (multiline) 2 else 1, label = { Text(inputLabel) })
-            remove?.let { MotionTextButton(feedbackClick(it)) { Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(8.dp)); Text("删除贴纸库") } }
+            remove?.let { MotionTextButton(feedbackClick(it)) { Icon(Icons.Default.DeleteOutline, null); Spacer(Modifier.width(8.dp)); Text(uiText("photo.delete_library")) } }
         }
-    }, confirmButton = { MotionTextButton(dialogFeedbackClick { confirm(if (trimInput) value.trim() else value) }, enabled = value.isNotBlank()) { Text("确定") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
+    }, confirmButton = { MotionTextButton(dialogFeedbackClick { confirm(if (trimInput) value.trim() else value) }, enabled = value.isNotBlank()) { Text(uiText("common.confirm")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }
 
 @Composable
 internal fun CardDeleteDialog(title: String, detail: String, dismiss: () -> Unit, confirm: () -> Unit) {
     MotionAlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = { Text(detail) },
-        confirmButton = { MotionTextButton(dialogFeedbackClick(confirm)) { Text("删除") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
+        confirmButton = { MotionTextButton(dialogFeedbackClick(confirm)) { Text(uiText("action.delete")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }

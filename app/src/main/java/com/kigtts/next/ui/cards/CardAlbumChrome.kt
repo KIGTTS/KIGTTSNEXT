@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.gestures.Orientation
 import com.kigtts.next.ui.home.PanelDragIndicator
 import androidx.compose.foundation.clickable
@@ -52,9 +54,9 @@ internal fun CardAlbumChrome(state: AnchoredDraggableState<Int>, landscape: Bool
                 size = 32.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(16.dp), RoundedCornerShape(8.dp)),
                 colors = colors, enabled = actionsEnabled && canRename)
             DropdownMenu(menu && enabled, { menu = false }) {
-                DropdownMenuItem({ Text("整理相册") }, feedbackClick { menu = false; manage() }, leadingIcon = { Icon(Icons.Default.Sort, null) })
-                DropdownMenuItem({ Text("重命名") }, feedbackClick { menu = false; rename() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
-                if (canDelete) DropdownMenuItem({ Text("删除相册") }, feedbackClick { menu = false; remove() }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null) })
+                DropdownMenuItem({ Text(uiText("photo.organize_album")) }, feedbackClick { menu = false; manage() }, leadingIcon = { Icon(Icons.Default.Sort, null) })
+                DropdownMenuItem({ Text(uiText("common.rename")) }, feedbackClick { menu = false; rename() }, leadingIcon = { Icon(Icons.Default.Edit, null) })
+                if (canDelete) DropdownMenuItem({ Text(uiText("photo.delete_album")) }, feedbackClick { menu = false; remove() }, leadingIcon = { Icon(Icons.Default.DeleteOutline, null) })
             }
         }
     }

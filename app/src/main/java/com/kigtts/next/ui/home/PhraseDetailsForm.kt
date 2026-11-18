@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.MotionOutlinedButton
 
 import androidx.compose.foundation.layout.*
@@ -45,7 +47,7 @@ internal fun PhraseDetailsForm(draft: PhraseDraft, categories: List<String>, mod
             OutlinedTextField(title, { value -> title = value.copy(text=value.text.replace('\n',' ')); model.content.editPhrase { it.copy(title = title.text) } },
                 visualTransformation = com.kigtts.next.ui.components.rememberInputTextMotion(title, MaterialTheme.colorScheme.onSurface),
                 interactionSource = titleSource, colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, titleFocused),
-                enabled = enabled, label = { Text("缩略标题（可选）") }, singleLine = true,
+                enabled = enabled, label = { Text(uiText("quick.short_title")) }, singleLine = true,
                 modifier = Modifier.fillMaxWidth().testTag("phrase-detail-title").textMenuAnchor { title=title.copy(selection=TextRange(title.selection.end)) })
             }
             Box {

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.SnapPosition
@@ -86,7 +88,7 @@ import java.io.File
                     color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Below),
                     tooltip = { PlainTooltip(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                        contentColor = MaterialTheme.colorScheme.onSurface) { Text("关闭") } }, state = rememberTooltipState()) {
+                        contentColor = MaterialTheme.colorScheme.onSurface) { Text(uiText("action.close")) } }, state = rememberTooltipState()) {
                     MotionIconButton(onClick = { dismiss(pager.currentPage) },
                         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)) {
                         Icon(Icons.Default.Close, "关闭")

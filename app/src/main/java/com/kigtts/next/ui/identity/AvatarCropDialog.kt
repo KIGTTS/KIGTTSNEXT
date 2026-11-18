@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -74,7 +76,7 @@ import java.io.File
                     drawPath(outside, Color.Black.copy(alpha = .65f))
                 }
             }
-            TopAppBar(title = { Text("裁剪头像") }, navigationIcon = {
+            TopAppBar(title = { Text(uiText("profile.avatar_crop")) }, navigationIcon = {
                 IconButton(feedbackClick { if (!saving) close() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)

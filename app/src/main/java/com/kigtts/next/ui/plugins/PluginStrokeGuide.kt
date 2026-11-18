@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
@@ -52,9 +54,9 @@ internal fun PluginStrokeGuide(guide: PageBlock.StrokeGuide, enabled: Boolean,
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 StrokeReplay(guide.points, Modifier.fillMaxWidth().height(200.dp).testTag("stroke-replay"))
                 Text(guide.instruction, style = MaterialTheme.typography.bodyLarge)
-                Text("从圆点起笔，一笔画完", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(uiText("plugin.stroke_start"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        }, confirmButton = { TextButton(onClick = dialogFeedbackClick { preview = false }) { Text("知道了") } })
+        }, confirmButton = { TextButton(onClick = dialogFeedbackClick { preview = false }) { Text(uiText("plugin.stroke_done")) } })
 }
 
 /** Keep paths as vectors, including the starting dot, rather than decoding raster thumbnails. */

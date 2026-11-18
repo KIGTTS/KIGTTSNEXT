@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -42,7 +44,7 @@ import kotlinx.serialization.encodeToString
     }
     Surface(Modifier.fillMaxWidth().padding(horizontal = 12.dp), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
         Column(Modifier.padding(8.dp)) {
-            Text("待发送 · ${keys.size} 条", style = MaterialTheme.typography.labelMedium)
+            Text(uiText("chat.pending_count", "count" to keys.size.toString()), style = MaterialTheme.typography.labelMedium)
             Box(Modifier.fillMaxWidth().height((minOf(keys.size, 3) * 48).dp)
                 .then(if (enabled && action != null) Modifier.reorderGestures(drag) else Modifier)) {
                 LazyColumn(Modifier.fillMaxSize().testTag("chat-queue"), state = list) {
@@ -53,7 +55,7 @@ import kotlinx.serialization.encodeToString
                             if (action != null) Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(36.dp).reorderGrip(item.id, drag).testTag("chat-queue-grip/" + item.id))
                             Text(item.text, Modifier.weight(1f), maxLines = 2, style = MaterialTheme.typography.bodySmall)
                             item.steerAction?.let { steer -> TextButton(onClick = feedbackClick { invoke(steer, emptyMap()) }, enabled = enabled,
-                                modifier = Modifier.testTag("chat-queue-steer/" + item.id)) { Icon(Icons.Default.SubdirectoryArrowRight, null, Modifier.size(16.dp)); Text("插队") } }
+                                modifier = Modifier.testTag("chat-queue-steer/" + item.id)) { Icon(Icons.Default.SubdirectoryArrowRight, null, Modifier.size(16.dp)); Text(uiText("chat.steer")) } }
                             IconButton(onClick = feedbackClick { invoke(item.removeAction, emptyMap()) }, enabled = enabled, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Close, "移除待发送消息") }
                         }
                     }

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -18,7 +20,7 @@ internal fun CardQuickExportDialog(actions: CardWorkspaceActions) {
     var frame by rememberSaveable(card.id) { mutableStateOf(true) }
     var stickers by rememberSaveable(card.id) { mutableStateOf(true) }
     MotionAlertDialog(onDismissRequest = actions::cancelQuick, dismissEnabled = !actions.busy,
-        title = { Text("添加到快捷文本") }, text = {
+        title = { Text(uiText("quick.add_from_text")) }, text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 CardExportOption("保留相框", frame, !actions.busy, "quick-card-frame") { frame = it }
                 CardExportOption("保留贴纸", stickers, !actions.busy, "quick-card-stickers") { stickers = it }
@@ -26,9 +28,9 @@ internal fun CardQuickExportDialog(actions: CardWorkspaceActions) {
         }, confirmButton = {
             val finish = rememberDialogClose()
             MotionTextButton(feedbackClick { actions.publishQuick(frame, stickers, finish) },
-                Modifier.testTag("quick-card-create"), enabled = !actions.busy) { Text("添加") }
+                Modifier.testTag("quick-card-create"), enabled = !actions.busy) { Text(uiText("common.add")) }
         }, dismissButton = {
-            MotionTextButton(dialogFeedbackClick(actions::cancelQuick), enabled = !actions.busy) { Text("取消") }
+            MotionTextButton(dialogFeedbackClick(actions::cancelQuick), enabled = !actions.busy) { Text(uiText("action.cancel")) }
         })
 }
 

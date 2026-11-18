@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.animation.core.tween
@@ -75,7 +77,7 @@ import java.io.File
     Box {
         TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
             tooltip = { PlainTooltip(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface) { Text("更多操作") } }, state = rememberTooltipState()) {
+                contentColor = MaterialTheme.colorScheme.onSurface) { Text(uiText("overlay.row.more")) } }, state = rememberTooltipState()) {
             IconButton(onClick = feedbackClick { open = true }, enabled = enabled, modifier = Modifier.size(40.dp)) {
                 Icon(Icons.Default.MoreVert, "更多操作")
             }

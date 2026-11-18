@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -35,7 +37,7 @@ internal fun CardDesignTools(cards: CardRepository, draft: PolaroidCard, enabled
     }
     CardEditorSection("相框预设", Icons.Default.Bookmarks, "card-frame-presets") {
         PillButton("保存当前设计为默认预设", Icons.Default.BookmarkAdd, { naming = true }, enabled = enabled && !busy)
-        Text("新照片沿用这套边框、贴纸和文字样式", style = MaterialTheme.typography.bodySmall)
+        Text(uiText("photo.preset_hint"), style = MaterialTheme.typography.bodySmall)
         state.presets.forEach { preset ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 RadioButton(state.defaultId == preset.id, { work { cards.designs.defaultPreset(preset.id) } }, enabled = enabled && !busy)
@@ -49,7 +51,7 @@ internal fun CardDesignTools(cards: CardRepository, draft: PolaroidCard, enabled
                 ToolButton("删除预设", Icons.Default.DeleteOutline, { work { cards.designs.removePreset(preset.id) } }, enabled = enabled && !busy)
             }
         }
-        if (state.defaultId != null) TextButton({ work { cards.designs.defaultPreset(null) } }, enabled = enabled && !busy) { Text("不自动应用预设") }
+        if (state.defaultId != null) TextButton({ work { cards.designs.defaultPreset(null) } }, enabled = enabled && !busy) { Text(uiText("photo.preset_none")) }
     }
     if (naming) CardNameDialog("保存默认相框预设", "", { naming = false }, { name ->
         naming = false; work { cards.designs.savePreset(name, draft, makeDefault = true) }

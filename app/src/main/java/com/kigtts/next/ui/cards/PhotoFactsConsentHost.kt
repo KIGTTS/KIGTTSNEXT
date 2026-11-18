@@ -26,7 +26,7 @@ internal fun PhotoFactsConsentHost() {
             } else {
                 uiText(if (request.service == "高德地图") "camera.location_provider" else "camera.location")
             }) },
-            confirmButton = { TextButton({ request.result.complete(true) }) { Text("允许") } },
-            dismissButton = { TextButton({ request.result.complete(false) }) { Text("暂不允许") } })
+            confirmButton = { TextButton({ request.result.complete(true) }) { Text(uiText("permission.allow")) } },
+            dismissButton = { TextButton({ request.result.complete(false) }) { Text(uiText("photo.location_decline")) } })
     }
 }

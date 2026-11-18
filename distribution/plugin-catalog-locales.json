@@ -1,0 +1,842 @@
+{
+  "source": {
+    "en": {
+      "name": "KIGTTS official plugin source",
+      "description": "Add speech, captions and creative tools to KIGTTS.",
+      "readme": "## Official KPM source\n\nBrowse speech, AI and creative tools for KIGTTS. Install plugins through the KIGTTS plugin store."
+    },
+    "ko": {
+      "name": "KIGTTS 공식 플러그인 소스",
+      "description": "KIGTTS에 읽어 주기, 자막 및 창작 도구를 추가하세요.",
+      "readme": "## KPM 공식 소스\n\nKIGTTS에서 사용할 음성, AI 및 창작 도구를 찾아보세요. KIGTTS 플러그인 스토어에서 설치할 수 있습니다."
+    },
+    "ja": {
+      "name": "KIGTTS 公式プラグインソース",
+      "description": "KIGTTS に読み上げ、字幕、制作ツールを追加できます。",
+      "readme": "## KPM 公式ソース\n\nKIGTTS 向けの音声、AI、制作ツールを探せます。プラグインは KIGTTS のプラグインストアからインストールできます。"
+    }
+  },
+  "packages": {
+    "backup.kigusay": {
+      "en": {
+        "summary": "Move phrases, groups and media between Kigusay and KIGTTS",
+        "description": "Import Kigusay presets into KIGTTS or export your Quick Text for use in Kigusay. Open Backup & restore to see instructions for both apps and preview the conversion before saving.",
+        "tags": [
+          "Backup",
+          "Format compatibility"
+        ],
+        "releaseNotes": {
+          "0.1.3": "Localized backup previews, import confirmations, attachment checks and errors in four languages.",
+          "0.1.1": "See instructions before importing and transfer images, audio and video together.",
+          "0.1.0": "No release notes are available."
+        },
+        "name": "Kigusay preset compatibility"
+      },
+      "ko": {
+        "summary": "Kigusay와 KIGTTS 간에 자주 쓰는 문구, 그룹 및 미디어를 옮기세요",
+        "description": "Kigusay 프리셋을 KIGTTS로 가져오거나 빠른 문구를 Kigusay용으로 내보낼 수 있습니다. 백업 및 복원에서 두 앱의 사용 방법을 확인하고 저장 전에 변환 결과를 미리 보세요.",
+        "tags": [
+          "백업",
+          "형식 호환"
+        ],
+        "releaseNotes": {
+          "0.1.3": "백업 미리보기, 가져오기 확인, 첨부 파일 검사 및 오류 안내를 네 가지 언어로 지원합니다.",
+          "0.1.1": "가져오기 전에 안내를 확인하고 이미지, 오디오, 동영상을 함께 옮길 수 있습니다.",
+          "0.1.0": "업데이트 안내가 없습니다."
+        },
+        "name": "Kigusay 프리셋 호환"
+      },
+      "ja": {
+        "name": "Kigusay プリセット互換",
+        "summary": "Kigusay と KIGTTS の間で定型文、グループ、メディアを移行",
+        "description": "Kigusay のプリセットを KIGTTS に取り込んだり、定型文を Kigusay 用に書き出したりできます。バックアップと復元から両アプリの手順を確認し、保存前に変換結果をプレビューできます。",
+        "tags": [
+          "バックアップ",
+          "形式互換"
+        ],
+        "releaseNotes": {
+          "0.1.3": "バックアップのプレビュー、インポート確認、添付ファイルの検証、エラー案内を4言語に対応しました。",
+          "0.1.1": "インポート前に手順を確認し、画像、音声、動画をまとめて移行できます。",
+          "0.1.0": "更新情報はありません。"
+        }
+      }
+    },
+    "debug.ui": {
+      "en": {
+        "summary": "Inspect buttons, sections and page layouts",
+        "description": "Use adjustable UI samples to see how buttons, groups and layouts look on different plugin pages.",
+        "tags": [
+          "Developer tools"
+        ],
+        "releaseNotes": {
+          "0.1.0": "Added tools to debug buttons, groups and layouts."
+        },
+        "name": "UI debugger"
+      },
+      "ko": {
+        "summary": "버튼, 그룹, 페이지 레이아웃을 확인하세요",
+        "description": "조정 가능한 UI 예제로 여러 플러그인 페이지에서 버튼, 그룹, 레이아웃이 어떻게 표시되는지 확인할 수 있습니다.",
+        "tags": [
+          "개발 도구"
+        ],
+        "releaseNotes": {
+          "0.1.0": "버튼, 그룹, 레이아웃을 디버깅하는 도구를 추가했습니다."
+        },
+        "name": "UI 디버거"
+      },
+      "ja": {
+        "name": "UI デバッグ",
+        "summary": "ボタンやグループ、ページレイアウトを確認",
+        "description": "調整できる UI サンプルを使い、プラグインの各ページでボタンやグループ、レイアウトの表示を確認できます。",
+        "tags": [
+          "開発ツール"
+        ],
+        "releaseNotes": {
+          "0.1.0": "ボタン、グループ、レイアウトのデバッグ機能を追加しました。"
+        }
+      }
+    },
+    "display.led": {
+      "en": {
+        "summary": "Turn captions into an LED display",
+        "description": "Tap the light bulb to display typed text, Quick Text or live captions on an LED board. Long lines scroll smoothly. Adjust LED color, dot style, glow and scroll speed beside the zoom button, or switch to full screen.",
+        "tags": [
+          "Captions",
+          "Display styles"
+        ],
+        "releaseNotes": {
+          "0.1.10": "Added Simplified Chinese, English and Korean text that follows the app language.",
+          "0.1.8": "Made maximum text size respect button insets, darkened the full-screen surround, faded idle buttons and smoothed zoom at small sizes.",
+          "0.1.4": "Large text fills more of the display, with smooth changes when resizing text or the window.",
+          "0.1.3": "Increased the maximum caption size and improved large LED dots.",
+          "0.1.2": "Captions fill the card. Added dot style, scrolling, color and brightness settings.",
+          "0.1.1": "Fixed Quick Text syncing and added style and full-screen controls. Captions and the toolbar stay visible when switching.",
+          "0.1.0": "No release notes are available."
+        },
+        "name": "LED captions"
+      },
+      "ko": {
+        "summary": "자막을 LED 전광판으로 표시하세요",
+        "description": "전구 버튼을 누르면 입력한 텍스트, 빠른 문구 또는 실시간 자막이 LED 전광판에 표시됩니다. 긴 문장은 부드럽게 스크롤됩니다. 확대 버튼 옆에서 색상, 픽셀, 빛 번짐, 스크롤 속도를 조정하거나 전체 화면으로 전환하세요.",
+        "tags": [
+          "자막",
+          "표시 스타일"
+        ],
+        "releaseNotes": {
+          "0.1.10": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
+          "0.1.8": "최대 글자 크기에 버튼 영역 여백을 적용하고, 전체 화면 주변을 어둡게 했으며, 유휴 버튼 투명도와 작은 글자 확대를 개선했습니다.",
+          "0.1.4": "큰 글자가 화면 높이를 더 많이 활용하고 글자나 창 크기를 바꿀 때 부드럽게 이어집니다.",
+          "0.1.3": "자막의 최대 글자 크기를 늘리고 큰 글자의 LED 표시를 개선했습니다.",
+          "0.1.2": "자막이 카드를 채우며, 픽셀 스타일, 스크롤, 색상, 밝기 설정을 추가했습니다.",
+          "0.1.1": "빠른 문구 동기화를 수정하고 스타일과 전체 화면 버튼을 추가했습니다. 전환 시 자막과 도구 모음이 유지됩니다.",
+          "0.1.0": "업데이트 안내가 없습니다."
+        },
+        "name": "LED 자막"
+      },
+      "ja": {
+        "name": "LED 字幕",
+        "summary": "字幕を LED 電光掲示板で表示",
+        "description": "電球ボタンから、入力した文字、定型文、リアルタイム字幕を LED 風に表示できます。長い文は滑らかにスクロールします。拡大ボタンの横で色、ドット、光のにじみ、速度を調整でき、全画面表示にも切り替えられます。",
+        "tags": [
+          "字幕",
+          "表示スタイル"
+        ],
+        "releaseNotes": {
+          "0.1.10": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
+          "0.1.8": "最大文字サイズでボタンの余白を確保し、全画面の周囲を黒くしました。未操作のボタンを薄くし、小さい文字の拡大を滑らかにしました。",
+          "0.1.4": "大きな文字が表示領域の高さを活用し、文字やウィンドウのサイズ変更時も滑らかに表示されます。",
+          "0.1.3": "字幕の最大文字サイズを広げ、大きな文字の LED ドット表示を改善しました。",
+          "0.1.2": "字幕がカード全体に広がり、ドット、スクロール、色、明るさの設定を追加しました。",
+          "0.1.1": "定型文の同期を修正し、スタイル設定と全画面ボタンを追加しました。切り替え後も字幕とツールバーが維持されます。",
+          "0.1.0": "更新情報はありません。"
+        }
+      }
+    },
+    "engine.cloud-asr": {
+      "en": {
+        "summary": "Convert speech to text with your cloud provider",
+        "description": "Connect Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek, then select the engine in Live captions. Each provider can have its own settings.",
+        "tags": [
+          "Speech recognition"
+        ],
+        "releaseNotes": {
+          "0.2.2": "Localized provider names, account validation and request errors in four languages.",
+          "0.2.1": "Added Simplified Chinese, English and Korean text that follows the app language.",
+          "0.1.2": "Added detailed permission explanations.",
+          "0.1.1": "Reworked account settings, fixed configuration actions and integrated five cloud speech providers.",
+          "0.1.0": "Configure and manage recognition for five cloud providers separately."
+        },
+        "name": "Cloud speech recognition"
+      },
+      "ko": {
+        "summary": "클라우드 서비스로 음성을 텍스트로 변환하세요",
+        "description": "텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek을 연결한 뒤 실시간 자막에서 엔진을 선택하세요. 서비스별로 설정을 저장할 수 있습니다.",
+        "tags": [
+          "음성 인식"
+        ],
+        "releaseNotes": {
+          "0.2.2": "서비스 이름, 계정 확인, 요청 오류 안내를 네 가지 언어로 지원합니다.",
+          "0.2.1": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
+          "0.1.2": "권한 사용 목적 안내를 보완했습니다.",
+          "0.1.1": "계정 설정을 정리하고 설정 동작을 수정했으며, 클라우드 음성 서비스 다섯 곳을 연결했습니다.",
+          "0.1.0": "클라우드 서비스 다섯 곳의 음성 인식을 각각 추가하고 관리할 수 있습니다."
+        },
+        "name": "클라우드 음성 인식"
+      },
+      "ja": {
+        "name": "クラウド音声認識",
+        "summary": "クラウドサービスで音声をテキストに変換",
+        "description": "Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek の API に接続し、リアルタイム字幕でエンジンを選択できます。設定はサービスごとに保存できます。",
+        "tags": [
+          "音声認識"
+        ],
+        "releaseNotes": {
+          "0.2.2": "プロバイダー名、アカウントの検証、リクエストエラーを4言語に対応しました。",
+          "0.2.1": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
+          "0.1.2": "権限の利用目的を補足しました。",
+          "0.1.1": "アカウント設定を整理し、設定操作を修正しました。5つのクラウド音声サービスに対応しました。",
+          "0.1.0": "5つのクラウドサービスの音声認識を個別に設定、管理できます。"
+        }
+      }
+    },
+    "engine.cloud-tts": {
+      "en": {
+        "summary": "Read text aloud with cloud voices",
+        "description": "Connect Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek to add preset voices. Existing Tencent Cloud cloned voices and Azure custom voices are also supported. Manage added voices in the voice pack list.",
+        "tags": [
+          "Speech synthesis"
+        ],
+        "releaseNotes": {
+          "0.1.4": "Localized voice pack management, account validation and request errors in four languages.",
+          "0.1.3": "Added Simplified Chinese, English and Korean text that follows the app language.",
+          "0.1.2": "Added detailed permission explanations.",
+          "0.1.1": "Manage voice packs by account and add preset and cloned voices separately. Fixed voice setup and playback.",
+          "0.1.0": "Supports five cloud providers and separate management of preset and cloned voice packs."
+        },
+        "name": "Cloud speech synthesis"
+      },
+      "ko": {
+        "summary": "클라우드 음성으로 텍스트를 읽어 주세요",
+        "description": "텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek에 연결하여 기본 음성을 추가하세요. 텐센트 클라우드의 복제 음성과 Azure 사용자 지정 음성도 지원합니다. 추가한 음성은 음성 팩 목록에서 관리할 수 있습니다.",
+        "tags": [
+          "음성 합성"
+        ],
+        "releaseNotes": {
+          "0.1.4": "음성 팩 관리, 계정 확인, 요청 오류 안내를 네 가지 언어로 지원합니다.",
+          "0.1.3": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
+          "0.1.2": "권한 사용 목적 안내를 보완했습니다.",
+          "0.1.1": "계정별로 음성 팩을 관리하고 기본 음성과 복제 음성을 따로 추가할 수 있습니다. 음성 설정과 읽어 주기를 수정했습니다.",
+          "0.1.0": "클라우드 서비스 다섯 곳을 지원하며 기본 음성 팩과 복제 음성 팩을 따로 관리할 수 있습니다."
+        },
+        "name": "클라우드 음성 합성"
+      },
+      "ja": {
+        "name": "クラウド音声合成",
+        "summary": "クラウドの音声でテキストを読み上げ",
+        "description": "Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek に接続し、プリセット音声を追加できます。Tencent Cloud の既存クローン音声と Azure のカスタム音声にも対応します。追加した音声は音声パック一覧で管理できます。",
+        "tags": [
+          "音声合成"
+        ],
+        "releaseNotes": {
+          "0.1.4": "音声パック管理、アカウントの検証、リクエストエラーを4言語に対応しました。",
+          "0.1.3": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
+          "0.1.2": "権限の利用目的を補足しました。",
+          "0.1.1": "アカウントごとに音声パックを管理し、プリセット音声とクローン音声を個別に追加できます。音声設定と読み上げを修正しました。",
+          "0.1.0": "5つのクラウドサービスに対応し、プリセット音声とクローン音声のパックを個別に管理できます。"
+        }
+      }
+    },
+    "engine.piper": {
+      "en": {
+        "summary": "Add more voices for reading aloud",
+        "description": "Import Piper voice packs and select the voice you want in speech synthesis settings. Adjust volume, pitch and reading pace for each pack.",
+        "tags": [
+          "Speech synthesis"
+        ],
+        "releaseNotes": {
+          "0.8.4": "Added Simplified Chinese, English and Korean text that follows the app language.",
+          "0.8.3": "Added detailed permission explanations.",
+          "0.8.2": "Updated the guide for managing voices and checking device compatibility.",
+          "0.8.1": "Automatically detects voice pack languages and keeps volume, pitch and pace settings per voice.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "Piper voice engine"
+      },
+      "ko": {
+        "summary": "읽어 주기에 다양한 음성을 추가하세요",
+        "description": "Piper 음성 팩을 가져온 뒤 음성 합성 설정에서 음성을 선택하세요. 팩별로 음량, 음높이, 읽는 속도를 조정할 수 있습니다.",
+        "tags": [
+          "음성 합성"
+        ],
+        "releaseNotes": {
+          "0.8.4": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
+          "0.8.3": "권한 사용 목적 안내를 보완했습니다.",
+          "0.8.2": "음성 관리와 기기 호환성 안내를 업데이트했습니다.",
+          "0.8.1": "음성 팩 언어를 자동으로 감지하고 음량, 음높이, 속도 설정을 개별적으로 저장합니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "Piper 음성 엔진"
+      },
+      "ja": {
+        "name": "Piper 音声エンジン",
+        "summary": "読み上げに使える音声を追加",
+        "description": "Piper の音声パックを取り込み、音声合成の設定から使う音声を選べます。パックごとに音量、音の高さ、読み上げ速度を調整できます。",
+        "tags": [
+          "音声合成"
+        ],
+        "releaseNotes": {
+          "0.8.4": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
+          "0.8.3": "権限の利用目的を補足しました。",
+          "0.8.2": "音声管理と端末の互換性を確認する手順を更新しました。",
+          "0.8.1": "音声パックの言語を自動で検出し、音量、音の高さ、速度を個別に保存します。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "engine.sensevoice": {
+      "en": {
+        "summary": "Turn speech into text for everyday conversations",
+        "description": "Use the SenseVoice engine to transcribe speech for captions and text entry.",
+        "tags": [
+          "Speech recognition"
+        ],
+        "releaseNotes": {
+          "0.8.4": "Grouped recognition settings, added a single-choice language list and clarified permissions.",
+          "0.8.3": "Grouped options for language, importing resources and checking resources, with a single-choice language list.",
+          "0.8.2": "Keep the model loaded to reduce waiting between uses.",
+          "0.8.1": "Simplified recognition and resource settings and clarified how recording and continuous listening work.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "SenseVoice speech recognition"
+      },
+      "ko": {
+        "summary": "일상 대화의 음성을 텍스트로 변환하세요",
+        "description": "SenseVoice 엔진으로 음성을 인식하여 자막으로 표시하거나 텍스트를 입력할 수 있습니다.",
+        "tags": [
+          "음성 인식"
+        ],
+        "releaseNotes": {
+          "0.8.4": "음성 인식 설정을 그룹화하고 언어 선택 목록과 권한 안내를 개선했습니다.",
+          "0.8.3": "언어, 리소스 가져오기 및 검사를 한곳에 모으고 언어를 하나만 선택하도록 변경했습니다.",
+          "0.8.2": "모델을 계속 불러온 상태로 유지해 다시 사용할 때 대기 시간을 줄일 수 있습니다.",
+          "0.8.1": "인식 및 리소스 설정을 단순화하고 녹음과 연속 듣기 안내를 개선했습니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "SenseVoice 음성 인식"
+      },
+      "ja": {
+        "name": "SenseVoice 音声認識",
+        "summary": "日常会話の音声をテキストに変換",
+        "description": "SenseVoice エンジンで音声を認識し、字幕表示やテキスト入力に使えます。",
+        "tags": [
+          "音声認識"
+        ],
+        "releaseNotes": {
+          "0.8.4": "音声認識の設定をグループ化し、言語を単一選択にしました。権限の説明も補足しました。",
+          "0.8.3": "言語、リソースのインポートと確認を設定にまとめ、言語を単一選択にしました。",
+          "0.8.2": "モデルを読み込んだままにして、続けて使うときの待ち時間を短縮できます。",
+          "0.8.1": "認識設定とリソースの案内を簡潔にし、録音と連続認識の使い方を明確にしました。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "engine.streaming-asr": {
+      "en": {
+        "summary": "Get offline streaming recognition with a bundled lightweight Chinese model",
+        "description": "See captions while you speak. The lightweight Chinese model is included and runs offline. Updates keep your selected model, and you can add English or bilingual Chinese–English models.",
+        "tags": [
+          "Speech recognition"
+        ],
+        "releaseNotes": {
+          "0.8.7": "Added Simplified Chinese, English and Korean text that follows the app language.",
+          "0.8.6": "Includes a lightweight Chinese INT8 model and keeps the previously selected recognition pack.",
+          "0.8.5": "Moved recognition pack imports, downloads, inference settings and management to groups on the page.",
+          "0.8.3": "Added detailed permission explanations.",
+          "0.8.2": "Keep the model loaded and unload it after recognition according to your idle settings.",
+          "0.8.1": "Clarified the recognition pack and language settings.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "Streaming speech recognition"
+      },
+      "ko": {
+        "summary": "내장 경량 중국어 모델로 오프라인에서 음성을 실시간 인식하세요",
+        "description": "말하는 동안 자막을 볼 수 있습니다. 경량 중국어 모델이 기본으로 포함되어 오프라인에서 작동합니다. 업데이트 후에도 선택한 모델이 유지되며 영어 또는 중국어·영어 이중 언어 모델을 추가할 수 있습니다.",
+        "tags": [
+          "음성 인식"
+        ],
+        "releaseNotes": {
+          "0.8.7": "앱 언어를 따르는 중국어 간체, 영어, 한국어 문구를 추가했습니다.",
+          "0.8.6": "경량 중국어 INT8 모델을 내장하며 기존에 선택한 인식 팩은 유지합니다.",
+          "0.8.5": "인식 팩 가져오기와 다운로드, 추론 설정 및 관리를 페이지 내 그룹으로 옮겼습니다.",
+          "0.8.3": "권한 사용 목적 안내를 보완했습니다.",
+          "0.8.2": "모델을 불러온 상태로 유지하고 인식 종료 후 설정한 대기 시간에 따라 해제할 수 있습니다.",
+          "0.8.1": "인식 팩과 언어 설정 안내를 개선했습니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "실시간 음성 인식"
+      },
+      "ja": {
+        "name": "ストリーミング音声認識",
+        "summary": "軽量中国語モデルを内蔵し、オフラインで逐次認識",
+        "description": "話している最中から字幕を表示できます。軽量の中国語モデルを同梱しているので、オフラインで使用できます。更新しても選択済みのモデルは維持され、英語や中英バイリンガルモデルも追加できます。",
+        "tags": [
+          "音声認識"
+        ],
+        "releaseNotes": {
+          "0.8.7": "アプリの表示言語に合わせた簡体字中国語、英語、韓国語の文言を追加しました。",
+          "0.8.6": "軽量の中国語 INT8 モデルを同梱しました。選択済みの認識パックは維持されます。",
+          "0.8.5": "認識パックのインポートとダウンロード、推論設定、管理をページ内のグループに移動しました。",
+          "0.8.3": "権限の利用目的を補足しました。",
+          "0.8.2": "モデルを読み込んだままにし、認識終了後は設定した待機時間に従って解放できます。",
+          "0.8.1": "認識パックと言語設定の説明を改善しました。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "engine.zipvoice-clone": {
+      "en": {
+        "summary": "Create a voice pack from reference recordings and synthesize offline",
+        "description": "Includes ZipVoice Distill INT8 and Vocos. Import local voice packs and set separate quality levels for real-time and background synthesis.\n\n**Model for noncommercial use only.** The ZipVoice model is licensed under CC BY-NC 4.0.",
+        "tags": [
+          "Read aloud",
+          "Voice cloning"
+        ],
+        "releaseNotes": {
+          "0.3.7": "Localized voice pack management, import validation and synthesis feedback in four languages. The bundled model and native libraries are unchanged. The model is for noncommercial use only.",
+          "0.3.6": "Includes the ZipVoice CPU model, separate live and background synthesis settings, and silence trimming. The model is for noncommercial use only."
+        },
+        "name": "Voice cloning engine"
+      },
+      "ko": {
+        "summary": "참고 녹음으로 음성 팩을 만들고 오프라인에서 합성하세요",
+        "description": "ZipVoice Distill INT8과 Vocos를 포함합니다. 로컬 음성 팩을 가져오고 실시간 합성과 백그라운드 합성의 품질을 따로 설정할 수 있습니다.\n\n**모델은 비상업적 용도로만 사용할 수 있습니다.** ZipVoice 모델에는 CC BY-NC 4.0 라이선스가 적용됩니다.",
+        "tags": [
+          "읽어 주기",
+          "음성 복제"
+        ],
+        "releaseNotes": {
+          "0.3.7": "음성 팩 관리, 가져오기 검사 및 합성 안내를 네 가지 언어로 지원합니다. 내장 모델과 네이티브 라이브러리는 이전 버전과 동일합니다. 모델은 비상업적 용도로만 사용할 수 있습니다.",
+          "0.3.6": "ZipVoice CPU 모델을 내장하고, 실시간과 백그라운드 합성 설정 분리 및 음성 앞뒤 무음 제거를 지원합니다. 모델은 비상업적 용도로만 사용할 수 있습니다."
+        },
+        "name": "음성 복제 엔진"
+      },
+      "ja": {
+        "name": "音声クローンエンジン",
+        "summary": "参考音声から音声パックを作成し、オフラインで合成",
+        "description": "ZipVoice Distill INT8 と Vocos を同梱しています。ローカル音声パックを取り込み、リアルタイム合成とバックグラウンド合成の品質を個別に設定できます。\n\n**モデルは非商用利用に限ります。** ZipVoice モデルには CC BY-NC 4.0 が適用されます。",
+        "tags": [
+          "読み上げ",
+          "音声クローン"
+        ],
+        "releaseNotes": {
+          "0.3.7": "音声パック管理、インポート検証、合成案内を4言語に対応しました。同梱モデルとネイティブライブラリは前の版と同じです。モデルは非商用利用に限ります。",
+          "0.3.6": "ZipVoice CPU モデルを同梱し、リアルタイムとバックグラウンドの合成設定を個別に調整できます。音声前後の無音を除去できます。モデルは非商用利用に限ります。"
+        }
+      }
+    },
+    "input.quick-gestures": {
+      "en": {
+        "summary": "Send Quick Text with a simple gesture",
+        "description": "Bind your existing Quick Text to gestures and draw one on the caption panel to send it. Turn each gesture on or off and adjust it separately.",
+        "tags": [
+          "Quick Text",
+          "Gestures"
+        ],
+        "releaseNotes": {
+          "0.1.5": "Localized gesture guides, Quick Text selection and permission help in four languages.",
+          "0.1.3": "Gesture icons mark the starting point. Tap for drawing instructions and an animation. Improved Quick Text selection.",
+          "0.1.2": "Improved caption panel gestures and Quick Text selection.",
+          "0.1.0": "Added six gestures for existing text, audio, media and web cards."
+        },
+        "name": "Quick gestures"
+      },
+      "ko": {
+        "summary": "제스처로 빠른 문구를 보내세요",
+        "description": "기존 빠른 문구를 제스처에 연결한 뒤 자막 패널에 그려서 보내세요. 제스처를 개별적으로 켜고 끄거나 설정할 수 있습니다.",
+        "tags": [
+          "빠른 문구",
+          "제스처"
+        ],
+        "releaseNotes": {
+          "0.1.5": "제스처 안내, 빠른 문구 선택, 권한 도움말을 네 가지 언어로 지원합니다.",
+          "0.1.3": "제스처 아이콘에 시작점을 표시합니다. 누르면 그리기 안내와 애니메이션을 볼 수 있습니다. 빠른 문구 선택을 개선했습니다.",
+          "0.1.2": "자막 패널 제스처와 빠른 문구 선택을 개선했습니다.",
+          "0.1.0": "기존 텍스트, 오디오, 미디어, 웹 카드에 연결할 수 있는 제스처 여섯 개를 추가했습니다."
+        },
+        "name": "빠른 제스처"
+      },
+      "ja": {
+        "name": "ジェスチャー送信",
+        "summary": "ジェスチャーで定型文を送信",
+        "description": "既存の定型文をジェスチャーに割り当て、字幕パネルで描くと送信できます。ジェスチャーは個別に有効化、調整できます。",
+        "tags": [
+          "定型文",
+          "ジェスチャー"
+        ],
+        "releaseNotes": {
+          "0.1.5": "ジェスチャーのガイド、定型文の選択、権限の案内を4言語に対応しました。",
+          "0.1.3": "ジェスチャーアイコンに始点を表示し、タップで描き方とアニメーションを確認できます。定型文の選択を改善しました。",
+          "0.1.2": "字幕パネルのジェスチャーと定型文の選択を改善しました。",
+          "0.1.0": "テキスト、音声、メディア、ウェブの既存カードを割り当てられる6種類のジェスチャーを追加しました。"
+        }
+      }
+    },
+    "runtime.lua": {
+      "en": {
+        "summary": "Manage, test and package your plugin projects",
+        "description": "Manage multiple projects and files, edit Lua, test changes and package plugins for sharing. You can also use the AI assistant to help create your plugins.",
+        "tags": [
+          "Developer tools"
+        ],
+        "releaseNotes": {
+          "0.9.2": "Added detailed permission explanations.",
+          "0.9.1": "No release notes are available."
+        },
+        "name": "Plugin editor"
+      },
+      "ko": {
+        "summary": "플러그인 프로젝트를 관리하고 테스트하고 패키징하세요",
+        "description": "여러 프로젝트와 파일을 관리하고 Lua 코드를 편집하며 변경 사항을 테스트할 수 있습니다. 공유용 패키지를 만들거나 AI 도우미의 도움을 받을 수도 있습니다.",
+        "tags": [
+          "개발 도구"
+        ],
+        "releaseNotes": {
+          "0.9.2": "권한 사용 목적 안내를 보완했습니다.",
+          "0.9.1": "업데이트 안내가 없습니다."
+        },
+        "name": "플러그인 편집기"
+      },
+      "ja": {
+        "name": "プラグインエディター",
+        "summary": "プラグインプロジェクトの管理、テスト、パッケージ化",
+        "description": "複数のプロジェクトやファイルを管理し、Lua の編集、実行、デバッグ、配布用パッケージの作成ができます。AI アシスタントも制作に利用できます。",
+        "tags": [
+          "開発ツール"
+        ],
+        "releaseNotes": {
+          "0.9.2": "権限の利用目的を補足しました。",
+          "0.9.1": "更新情報はありません。"
+        }
+      }
+    },
+    "service.speech-recognition": {
+      "en": {
+        "summary": "Turn speech into captions or text input",
+        "description": "Read live captions during conversations or dictate text. Supports continuous recognition, automatic sentence breaks and combining longer passages.",
+        "tags": [
+          "Speech recognition"
+        ],
+        "releaseNotes": {
+          "0.8.2": "Added detailed permission explanations.",
+          "0.8.1": "Choose one engine, find configuration in one place and adjust how long the engine stays loaded.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "Speech recognition service"
+      },
+      "ko": {
+        "summary": "음성을 자막으로 표시하거나 텍스트로 입력하세요",
+        "description": "대화 중에 실시간 자막을 확인하거나 음성으로 텍스트를 입력하세요. 연속 인식, 자동 문장 구분, 긴 발화 이어 붙이기를 지원합니다.",
+        "tags": [
+          "음성 인식"
+        ],
+        "releaseNotes": {
+          "0.8.2": "권한 사용 목적 안내를 보완했습니다.",
+          "0.8.1": "엔진을 하나만 선택하며, 설정은 한곳에서 찾을 수 있습니다. 엔진을 불러온 상태로 유지하는 시간을 조정할 수 있습니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "음성 인식 서비스"
+      },
+      "ja": {
+        "name": "音声認識サービス",
+        "summary": "音声を字幕やテキスト入力に利用",
+        "description": "会話をリアルタイム字幕で確認したり、音声でテキストを入力したりできます。連続認識、自動での文の区切り、長い発話の結合に対応します。",
+        "tags": [
+          "音声認識"
+        ],
+        "releaseNotes": {
+          "0.8.2": "権限の利用目的を補足しました。",
+          "0.8.1": "エンジンを単一選択にして設定をまとめました。読み込みを保持する時間を調整できます。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "service.speech-synthesis": {
+      "en": {
+        "summary": "Choose voices and adjust how text is read aloud",
+        "description": "Manage voices and engines in one place and adjust reading speed to your preference. Use system voices or compatible engines you have installed.",
+        "tags": [
+          "Speech synthesis"
+        ],
+        "releaseNotes": {
+          "0.8.5": "Added detailed permission explanations.",
+          "0.8.3": "Manage engine settings in one place and see the actual provider for cloud voice packs.",
+          "0.8.2": "Added voice pack type labels and single-choice controls. Moved common actions below each item and collapse extra actions on narrow screens.",
+          "0.8.1": "Use the system default voice or adjust volume, pitch and speed for each voice pack.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "Speech synthesis service"
+      },
+      "ko": {
+        "summary": "읽어 주기 음성을 선택하고 읽는 방식을 조정하세요",
+        "description": "음성과 엔진을 한곳에서 관리하고 읽는 속도를 조정할 수 있습니다. 시스템 음성이나 설치한 호환 엔진을 사용할 수 있습니다.",
+        "tags": [
+          "음성 합성"
+        ],
+        "releaseNotes": {
+          "0.8.5": "권한 사용 목적 안내를 보완했습니다.",
+          "0.8.3": "엔진 설정을 한곳에서 관리하고 클라우드 음성 팩의 실제 제공업체를 확인할 수 있습니다.",
+          "0.8.2": "음성 팩 유형과 단일 선택 버튼을 추가했습니다. 자주 쓰는 작업은 항목 아래로 옮기고 좁은 화면에서는 추가 작업을 접습니다.",
+          "0.8.1": "시스템 기본 음성을 사용하거나 음성 팩별로 음량, 음높이, 속도를 조정할 수 있습니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "음성 합성 서비스"
+      },
+      "ja": {
+        "name": "音声合成サービス",
+        "summary": "読み上げ用の音声を選び、読み方を調整",
+        "description": "音声とエンジンをまとめて管理し、好みの速度で読み上げられます。システム音声とインストール済みの対応エンジンが使えます。",
+        "tags": [
+          "音声合成"
+        ],
+        "releaseNotes": {
+          "0.8.5": "権限の利用目的を補足しました。",
+          "0.8.3": "エンジン設定をまとめ、クラウド音声パックのプロバイダーを表示します。",
+          "0.8.2": "音声パックの種類と単一選択ボタンを追加しました。よく使う操作を項目の下へ移し、狭い画面ではその他の操作を折りたたみます。",
+          "0.8.1": "システム既定の音声を使うか、音声パックごとに音量、音の高さ、速度を調整できます。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "tools.cloud-agent": {
+      "en": {
+        "summary": "Chat, work with images, look up information and make Quick Text or plugins",
+        "description": "Send images, switch models and work on more than one conversation at a time. Create Quick Text with images or interactive pages, organize everyday content, and ask for help with your own plugins.",
+        "tags": [
+          "AI"
+        ],
+        "releaseNotes": {
+          "0.9.27": "Configure search APIs, the default search source and page fetching separately. After the first successful DeepSeek connection test, choose whether to make it the default.",
+          "0.9.26": "Upload, read and save files. Add them unchanged to projects or deliver them as resources. Long-running tasks retain attachment references.",
+          "0.9.25": "Attach and save files, read source and data files in sections, and copy originals into projects or deliver them as Quick Text or plugin resources.",
+          "0.9.24": "Chooses search sources based on language, region and access. Looks up screenshots for UI tasks and checks versions against official sources before acting.",
+          "0.9.23": "Researches and checks versions before acting. For UI tasks, finds screenshots and examples, then checks the actual page after completion.",
+          "0.9.22": "Prefers configured official DeepSeek services for search and fetching. The browser supports Search and Fetch and reports unavailable services before falling back.",
+          "0.9.21": "Fixed API key status and model selection. Added audio, video and web asset analysis, media downloads and persistent web debugging.",
+          "0.9.20": "Reorganized provider and model selection, added API formats and improved model setup feedback.",
+          "0.9.19": "Added tappable choice messages and fixed compatibility with newer chats.",
+          "0.9.17": "Colored dots show whether a task is complete, failed or awaiting review.",
+          "0.9.16": "Improved assistant settings and action messages, with clearer permission explanations.",
+          "0.9.15": "Generated web pages can follow the app’s theme colors and light or dark mode.",
+          "0.9.14": "Task notifications let you return to the conversation or stop a task while it runs or when it finishes.",
+          "0.9.13": "Fixed loading older messages and improved reading in long conversations.",
+          "0.9.6": "No release notes are available.",
+          "0.9.5": "No release notes are available.",
+          "0.9.4": "No release notes are available.",
+          "0.9.3": "No release notes are available.",
+          "0.9.2": "No release notes are available.",
+          "0.9.1": "No release notes are available."
+        },
+        "name": "AI assistant"
+      },
+      "ko": {
+        "summary": "AI와 대화하고 이미지를 확인하거나 자료를 찾아 빠른 문구와 플러그인을 만드세요",
+        "description": "이미지를 보내고 모델을 전환하며 여러 대화를 동시에 진행하세요. 이미지나 대화형 웹페이지가 포함된 빠른 문구를 만들거나 일상 자료를 정리하고, 플러그인 제작에 도움을 받을 수 있습니다.",
+        "tags": [
+          "AI"
+        ],
+        "releaseNotes": {
+          "0.9.27": "검색 API, 기본 검색 소스 및 웹페이지 읽기를 개별 설정할 수 있습니다. DeepSeek 연결을 처음 확인한 뒤 기본값으로 사용할지 선택합니다.",
+          "0.9.26": "파일을 업로드하고 읽고 저장할 수 있습니다. 원본 파일을 프로젝트에 넣거나 리소스로 전달할 수 있으며 오래 걸리는 작업에서도 첨부 파일 참조가 유지됩니다.",
+          "0.9.25": "파일을 첨부하고 저장하며 소스와 데이터를 구간별로 읽을 수 있습니다. 원본을 프로젝트에 복사하거나 빠른 문구 및 플러그인 리소스로 전달할 수 있습니다.",
+          "0.9.24": "언어, 지역 및 접근 조건에 따라 검색 소스를 선택합니다. UI 작업은 관련 스크린샷을 먼저 찾고 공식 자료에서 버전을 확인한 뒤 수행합니다.",
+          "0.9.23": "작업 전에 자료와 버전을 확인합니다. UI 작업은 스크린샷과 예시를 먼저 찾고 완료 후 실제 페이지를 확인합니다.",
+          "0.9.22": "검색 및 페이지 읽기는 설정된 공식 DeepSeek 서비스를 우선 사용합니다. 브라우저는 Search와 Fetch를 지원하며 서비스가 중단되면 안내 후 대체 소스로 전환합니다.",
+          "0.9.21": "API 키 상태와 모델 선택을 수정했습니다. 오디오·동영상·웹 자료 분석, 미디어 다운로드 및 지속적인 웹 디버깅을 추가했습니다.",
+          "0.9.20": "서비스와 모델 선택을 정리하고 API 형식을 추가했으며, 모델 설정 안내를 개선했습니다.",
+          "0.9.19": "누를 수 있는 선택지 메시지를 지원하고 새 대화 형식 호환성을 수정했습니다.",
+          "0.9.17": "작업 완료, 오류, 검토 대기를 서로 다른 색의 점으로 표시합니다.",
+          "0.9.16": "도우미 설정과 작업 안내를 개선하고 권한 설명을 명확히 했습니다.",
+          "0.9.15": "생성한 웹페이지에서 앱의 테마 색상과 밝은 모드 또는 어두운 모드를 따를 수 있습니다.",
+          "0.9.14": "작업 진행 및 완료 알림에서 해당 대화로 돌아가거나 작업을 중지할 수 있습니다.",
+          "0.9.13": "이전 메시지 불러오기를 수정하고 긴 대화를 읽기 쉽게 개선했습니다.",
+          "0.9.6": "업데이트 안내가 없습니다.",
+          "0.9.5": "업데이트 안내가 없습니다.",
+          "0.9.4": "업데이트 안내가 없습니다.",
+          "0.9.3": "업데이트 안내가 없습니다.",
+          "0.9.2": "업데이트 안내가 없습니다.",
+          "0.9.1": "업데이트 안내가 없습니다."
+        },
+        "name": "AI 도우미"
+      },
+      "ja": {
+        "name": "AI アシスタント",
+        "summary": "AI と会話し、画像や資料を扱い、定型文やプラグインを制作",
+        "description": "画像を添付したり、モデルを切り替えたり、複数の会話を並行して使ったりできます。画像やインタラクティブなページ付きの定型文の作成、日常の情報整理、プラグイン制作にも使えます。",
+        "tags": [
+          "AI"
+        ],
+        "releaseNotes": {
+          "0.9.27": "検索 API、既定の検索元、ウェブ取得を個別に設定できます。DeepSeek の接続確認に初めて成功したとき、既定にするか選べます。",
+          "0.9.26": "各種ファイルのアップロード、読み取り、保存に対応しました。ファイルをそのままプロジェクトに追加したり、素材として提供したりできます。長時間のタスクでも添付ファイルの参照を保持します。",
+          "0.9.25": "ファイルの追加と保存、ソースやデータの分割読み取りに対応しました。原本をプロジェクトにコピーしたり、定型文やプラグインの素材として提供したりできます。",
+          "0.9.24": "言語、地域、アクセス条件に応じて検索元を選びます。UI の作業では先に関連画像を探し、公式資料でバージョンを確認してから実行します。",
+          "0.9.23": "実行前に資料とバージョンを確認します。UI の作業では先にスクリーンショットや作例を調べ、完了後に実際のページを確認します。",
+          "0.9.22": "検索とページ取得では設定済みの DeepSeek 公式サービスを優先します。ブラウザーは Search と Fetch に対応し、利用できない場合は通知して代替の検索元に切り替えます。",
+          "0.9.21": "API キーの状態とモデル選択を修正しました。音声、動画、ウェブ素材の分析、メディアのダウンロード、継続的なウェブデバッグに対応しました。",
+          "0.9.20": "プロバイダーとモデルの選択を整理し、API 形式を追加して、モデル設定の案内を改善しました。",
+          "0.9.19": "タップして選べるメッセージに対応し、新しい会話形式との互換性を修正しました。",
+          "0.9.17": "完了、エラー、確認待ちを色の異なるドットで表示します。",
+          "0.9.16": "アシスタントの設定と操作案内を改善し、権限の説明を明確にしました。",
+          "0.9.15": "生成したウェブページがアプリのテーマ色とライト・ダーク設定に対応しました。",
+          "0.9.14": "タスクの実行中や完了時に通知を表示します。通知から該当する会話に戻ったり、タスクを停止したりできます。",
+          "0.9.13": "過去のメッセージの読み込みを修正し、長い会話を読みやすくしました。",
+          "0.9.6": "更新情報はありません。",
+          "0.9.5": "更新情報はありません。",
+          "0.9.4": "更新情報はありません。",
+          "0.9.3": "更新情報はありません。",
+          "0.9.2": "更新情報はありません。",
+          "0.9.1": "更新情報はありません。"
+        }
+      }
+    },
+    "tools.native-builder": {
+      "en": {
+        "summary": "Build plugins that use native features",
+        "description": "Adds native build tools for plugin projects that need them. Works with the plugin editor.",
+        "tags": [
+          "Developer tools"
+        ],
+        "releaseNotes": {
+          "0.8.1": "Added detailed permission explanations.",
+          "0.8.0": "No release notes are available."
+        },
+        "name": "Native build extension"
+      },
+      "ko": {
+        "summary": "네이티브 기능을 사용하는 플러그인을 빌드하세요",
+        "description": "네이티브 기능이 필요한 프로젝트에 빌드 도구를 제공합니다. 플러그인 편집기와 함께 사용할 수 있습니다.",
+        "tags": [
+          "개발 도구"
+        ],
+        "releaseNotes": {
+          "0.8.1": "권한 사용 목적 안내를 보완했습니다.",
+          "0.8.0": "업데이트 안내가 없습니다."
+        },
+        "name": "네이티브 빌드 확장"
+      },
+      "ja": {
+        "name": "ネイティブビルド拡張",
+        "summary": "ネイティブ機能を使うプラグインをビルド",
+        "description": "ネイティブ機能が必要なプロジェクトにビルドツールを追加します。プラグインエディターと併用できます。",
+        "tags": [
+          "開発ツール"
+        ],
+        "releaseNotes": {
+          "0.8.1": "権限の利用目的を補足しました。",
+          "0.8.0": "更新情報はありません。"
+        }
+      }
+    },
+    "tools.package-store": {
+      "en": {
+        "summary": "Browse, install and update plugins",
+        "description": "Browse plugins by purpose and see descriptions and previews before installing. Add plugin sources, choose earlier versions or install required dependencies together.",
+        "tags": [
+          "Tools"
+        ],
+        "releaseNotes": {
+          "0.16.17": "Localized source details, tags, release notes and status messages for downloads, verification and installation.",
+          "0.16.16": "Store sections, resource categories and download and installation states follow Simplified Chinese, English, Korean and Japanese.",
+          "0.16.15": "Localized store sections, filters, categories and resource names in Simplified Chinese, English, Korean and Japanese.",
+          "0.16.12": "Temporarily hid the cloud sharing plugin. Existing sources and plugin data are kept.",
+          "0.16.10": "Supports built-in reading settings and avoids installing the speech synthesis service again with an engine.",
+          "0.16.9": "Fixed compatibility checks for new resources such as photo information stickers. Update KIGTTS as well.",
+          "0.16.8": "Confirm installation after downloading or retry after cancelling. Successful installs clear the download cache. Added fonts, connected rounded list items and theme-colored monochrome icons.",
+          "0.16.0": "Added profile card borders and photo settings stickers. Open resource links to view or add items and optionally subscribe after installing.",
+          "0.15.0": "Added resources for Quick Text, photos, filters, voice packs, photo frames and stickers. Previews support any aspect ratio and zooming.",
+          "0.14.2": "Added category icons and status icons for updates and downloads in My plugins.",
+          "0.14.0": "All plugins opens the full list. My plugins shows an update count.",
+          "0.13.0": "The home page shows categories and plugins, loads more as you scroll and uses two columns on tablets.",
+          "0.12.0": "Browse by source or category, with paged lists, source images and vector icons.",
+          "0.11.2": "Open plugins directly from web pages. Confirm a new source before viewing its plugin.",
+          "0.11.1": "Get and install plugins and see download progress on the details page. Search opens a focused view and Back closes it.",
+          "0.11.0": "Shows progress on plugin rows and adds a download manager. Fixed stale install plans and improved duplicate-source feedback.",
+          "0.10.3": "Review the install plan before downloading required plugins. Improved installation details and plugin icons.",
+          "0.10.2": "Pull to refresh sources. Progress appears in the header, and your scroll position is preserved.",
+          "0.10.1": "Refreshes the catalog when opened. Details include plugin icons and collapsible permission explanations.",
+          "0.10.0": "Larger icons and short introductions, with improved details and previews.",
+          "0.9.3": "No release notes are available.",
+          "0.9.2": "No release notes are available.",
+          "0.9.1": "No release notes are available."
+        },
+        "name": "Plugin store"
+      },
+      "ko": {
+        "summary": "플러그인을 찾아 설치하고 업데이트하세요",
+        "description": "용도별로 플러그인을 둘러보고 설명과 미리보기를 확인한 뒤 설치할 수 있습니다. 소스를 추가하거나 이전 버전을 선택하고 필요한 플러그인을 함께 설치할 수 있습니다.",
+        "tags": [
+          "도구"
+        ],
+        "releaseNotes": {
+          "0.16.17": "소스 정보, 태그, 버전 안내와 다운로드·확인·설치 알림을 현지화했습니다.",
+          "0.16.16": "스토어 그룹, 리소스 분류, 다운로드 및 설치 상태를 중국어 간체, 영어, 한국어, 일본어로 표시합니다.",
+          "0.16.15": "스토어 홈 그룹, 필터, 분류 및 리소스 이름을 중국어 간체, 영어, 한국어, 일본어로 지원합니다.",
+          "0.16.12": "클라우드 공유 플러그인을 일시적으로 숨겼습니다. 기존 소스와 플러그인 데이터는 유지됩니다.",
+          "0.16.10": "내장 읽어 주기 설정을 지원하며 음성 엔진 설치 시 읽어 주기 서비스를 다시 설치하지 않습니다.",
+          "0.16.9": "사진 정보 스티커 등 새 리소스의 호환성 검사를 수정했습니다. KIGTTS 앱도 업데이트하세요.",
+          "0.16.8": "다운로드 후 설치를 확인하고 취소한 경우 다시 시도할 수 있습니다. 설치가 완료되면 다운로드 캐시를 지웁니다. 글꼴 리소스, 이어지는 둥근 모서리, 테마 색상의 단색 아이콘을 추가했습니다.",
+          "0.16.0": "명함 테두리와 촬영 설정 스티커를 추가했습니다. 리소스 링크에서 바로 확인하고 추가할 수 있으며 설치 후 소스를 구독할 수 있습니다.",
+          "0.15.0": "빠른 문구, 사진, 필터, 음성 팩, 액자, 스티커 리소스 탭을 추가했습니다. 미리보기에서 모든 화면 비율과 확대를 지원합니다.",
+          "0.14.2": "분류 아이콘을 추가하고 내 플러그인에서 업데이트와 다운로드 상태에 맞는 아이콘을 표시합니다.",
+          "0.14.0": "모든 플러그인에서 전체 목록을 열 수 있으며 내 플러그인에 업데이트 개수를 표시합니다.",
+          "0.13.0": "홈에 분류와 플러그인을 표시하며, 스크롤하면 더 불러옵니다. 태블릿에서는 두 열로 표시합니다.",
+          "0.12.0": "소스나 분류별로 살펴볼 수 있습니다. 목록 페이지 로딩, 소스 이미지, 벡터 아이콘을 지원합니다.",
+          "0.11.2": "웹페이지에서 해당 플러그인을 바로 엽니다. 새 소스는 추가 확인 후 플러그인을 볼 수 있습니다.",
+          "0.11.1": "세부 정보에서 플러그인을 다운로드하고 설치하며 진행 상황을 볼 수 있습니다. 검색은 전용 화면에서 열리고 뒤로 가기로 닫습니다.",
+          "0.11.0": "플러그인 항목에 진행 상황을 표시하고 다운로드 관리를 추가했습니다. 이전 설치 계획이 남는 문제와 중복 소스 안내를 개선했습니다.",
+          "0.10.3": "필요한 플러그인을 다운로드하기 전에 설치 계획을 확인합니다. 설치 정보와 플러그인 아이콘을 개선했습니다.",
+          "0.10.2": "아래로 당겨 소스를 새로고침하세요. 제목 표시줄에 진행률을 표시하며 스크롤 위치가 유지됩니다.",
+          "0.10.1": "열 때마다 카탈로그를 새로고침하며 세부 정보에 아이콘과 접을 수 있는 권한 설명을 표시합니다.",
+          "0.10.0": "아이콘을 확대하고 짧은 소개를 표시하며 세부 정보와 미리보기를 개선했습니다.",
+          "0.9.3": "업데이트 안내가 없습니다.",
+          "0.9.2": "업데이트 안내가 없습니다.",
+          "0.9.1": "업데이트 안내가 없습니다."
+        },
+        "name": "플러그인 스토어"
+      },
+      "ja": {
+        "name": "プラグインストア",
+        "summary": "プラグインの検索、インストール、更新",
+        "description": "用途ごとにプラグインを探し、説明やプレビューを確認してインストールできます。配布元の追加、旧バージョンの選択、依存プラグインの同時インストールにも対応します。",
+        "tags": [
+          "ツール"
+        ],
+        "releaseNotes": {
+          "0.16.17": "配布元の情報、タグ、更新情報、ダウンロード・検証・インストールの案内を多言語化しました。",
+          "0.16.16": "ストアのグループ、素材カテゴリ、ダウンロードとインストールの状態が簡体字中国語、英語、韓国語、日本語に対応しました。",
+          "0.16.15": "ストアのホーム、フィルター、カテゴリ、素材名を簡体字中国語、英語、韓国語、日本語に対応しました。",
+          "0.16.12": "クラウド共有プラグインを一時的に非表示にしました。既存の配布元とプラグインのデータは維持されます。",
+          "0.16.10": "内蔵の読み上げ設定に対応し、音声エンジンのインストール時に読み上げサービスを重複インストールしません。",
+          "0.16.9": "写真情報ステッカーなどの新しい素材の互換性判定を修正しました。KIGTTS 本体も更新してください。",
+          "0.16.8": "ダウンロード後にインストールを確認でき、取り消した後もやり直せます。インストール成功後はキャッシュを消去します。フォント素材、隣接する角丸リスト、テーマ色の単色アイコンを追加しました。",
+          "0.16.0": "名刺の枠と撮影設定ステッカーを追加しました。素材リンクから直接確認、追加でき、インストール後に配布元を登録できます。",
+          "0.15.0": "定型文、写真、フィルター、音声パック、フレーム、ステッカーの素材欄を追加しました。プレビューは自由な縦横比と拡大に対応します。",
+          "0.14.2": "カテゴリにアイコンを追加し、マイプラグインでは更新とダウンロードの状態に応じてアイコンを切り替えます。",
+          "0.14.0": "すべてのプラグインから一覧を開けます。マイプラグインに更新件数を表示します。",
+          "0.13.0": "ホームにカテゴリとプラグインを表示し、スクロール時に続きを読み込みます。タブレットでは2列で表示します。",
+          "0.12.0": "配布元やカテゴリ別に閲覧でき、一覧のページ読み込み、配布元画像、ベクターアイコンに対応します。",
+          "0.11.2": "ウェブページからプラグインを直接開けます。未登録の配布元は追加を確認してからプラグインを表示します。",
+          "0.11.1": "詳細ページで取得、インストール、ダウンロードの確認ができます。検索専用画面は戻る操作で閉じられます。",
+          "0.11.0": "プラグイン行に進捗を表示し、ダウンロード管理を追加しました。古いインストール計画が残る問題を修正し、重複する配布元の案内を改善しました。",
+          "0.10.3": "必要なプラグインをダウンロードする前にインストール計画を確認できます。インストール情報とアイコンを改善しました。",
+          "0.10.2": "引っ張って配布元を更新できます。進捗はタイトルバーに表示し、一覧の位置を維持します。",
+          "0.10.1": "開くたびにカタログを更新します。詳細にプラグインのアイコンと折りたためる権限の説明を表示します。",
+          "0.10.0": "アイコンを大きくし、短い紹介を表示します。詳細とプレビューを改善しました。",
+          "0.9.3": "更新情報はありません。",
+          "0.9.2": "更新情報はありません。",
+          "0.9.1": "更新情報はありません。"
+        }
+      }
+    }
+  }
+}

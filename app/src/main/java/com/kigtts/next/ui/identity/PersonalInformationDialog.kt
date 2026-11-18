@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -51,20 +53,20 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
     fun clearSource() { avatarSource?.let { java.io.File(it).delete() }; avatarSource = null }
     val dismiss = { clearSource(); close() }
     avatarSource?.let { source -> AvatarCropDialog(java.io.File(source), stickers, { clearSource() }, { id -> avatar = id; clearSource() }) }
-    MotionAlertDialog(dismiss, title = { Text("个人信息") }, icon = { Icon(Icons.Default.AccountCircle, null) },
+    MotionAlertDialog(dismiss, title = { Text(uiText("nav.profile")) }, icon = { Icon(Icons.Default.AccountCircle, null) },
         text = { Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PersonalCardView(value.copy(nickname = name, bio = bio, avatar = avatar, contacts = contacts, avatarFrame = avatarFrame), stickers,
                 Modifier.fillMaxWidth(), interactive = false)
             TextButton(feedbackClick { picker.launch("image/*") }, enabled = !working) {
-                PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp), avatarFrame); Spacer(Modifier.width(12.dp)); Text("更换头像")
+                PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp), avatarFrame); Spacer(Modifier.width(12.dp)); Text(uiText("profile.avatar_replace"))
             }
-            Text("头像形状", style = MaterialTheme.typography.titleSmall)
+            Text(uiText("profile.avatar_shape"), style = MaterialTheme.typography.titleSmall)
             AvatarShapePicker(avatarFrame) { avatarFrame = it }
-            OutlinedTextField(name, { name = it.take(40) }, Modifier.fillMaxWidth(), label = { Text("昵称") }, singleLine = true)
-            OutlinedTextField(bio, { bio = it.take(240) }, Modifier.fillMaxWidth(), label = { Text("简介") }, minLines = 2)
+            OutlinedTextField(name, { name = it.take(40) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.nickname")) }, singleLine = true)
+            OutlinedTextField(bio, { bio = it.take(240) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.bio")) }, minLines = 2)
             ContactLinksEditor(contacts) { contacts = it }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         } }, confirmButton = { TextButton(feedbackClick {
             save(value.copy(nickname = name.trim(), bio = bio.trim(), avatar = avatar, contacts = contacts, avatarFrame = avatarFrame))
-        }, enabled = !working) { Text("保存") } }, dismissButton = { TextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
+        }, enabled = !working) { Text(uiText("action.save")) } }, dismissButton = { TextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }

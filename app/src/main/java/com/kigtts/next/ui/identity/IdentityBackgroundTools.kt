@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +32,7 @@ import com.kigtts.plugin.api.*
             }, Modifier.weight(1f), enabled = enabled)
             PillButton("背景颜色", Icons.Default.Palette, backgroundColor, Modifier.weight(1f), enabled = enabled)
         }
-        Text("花纹", style = MaterialTheme.typography.titleSmall)
+        Text(uiText("profile.pattern"), style = MaterialTheme.typography.titleSmall)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val extent = maxOf(maxWidth, 84.dp * IdentityPatterns.names.size)
             Row(Modifier.horizontalScroll(rememberScrollState())) {
@@ -38,7 +40,7 @@ import com.kigtts.plugin.api.*
                     { IdentityPatterns.names.getValue(it) }, { changeIdentity(identity.copy(pattern = it)) }, Modifier.width(extent), enabled = enabled)
             }
         }
-        Text("名片边框", style = MaterialTheme.typography.titleSmall)
+        Text(uiText("profile.frame"), style = MaterialTheme.typography.titleSmall)
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val extent = maxOf(maxWidth, 96.dp * frames.size)
             Row(Modifier.horizontalScroll(rememberScrollState())) {
@@ -48,7 +50,7 @@ import com.kigtts.plugin.api.*
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Text("渐变遮罩", Modifier.weight(1f))
+            Text(uiText("profile.scrim"), Modifier.weight(1f))
             Switch(identity.gradient, feedbackChange { changeIdentity(identity.copy(gradient = it)) }, enabled = enabled)
         }
         if (identity.gradient) PillButton("渐变颜色", Icons.Default.Gradient, maskColor, enabled = enabled)

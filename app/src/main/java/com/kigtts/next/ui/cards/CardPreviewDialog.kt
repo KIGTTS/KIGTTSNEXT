@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -125,11 +127,11 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                     Icon(Icons.Default.MoreVert, "照片操作")
                 }
                 DropdownMenu(menu && controlsEnabled, { menu = false }) {
-                    if (receipt != null) DropdownMenuItem({ Text("发送者名片") }, onClick = feedbackClick { menu = false; senderInfo = true },
+                    if (receipt != null) DropdownMenuItem({ Text(uiText("photo.sender_card")) }, onClick = feedbackClick { menu = false; senderInfo = true },
                         leadingIcon = { Icon(Icons.Default.AccountCircle, null) })
-                    DropdownMenuItem({ Text("添加到快捷文本") }, onClick = feedbackClick { menu = false; close(onQuick) },
+                    DropdownMenuItem({ Text(uiText("quick.add_from_text")) }, onClick = feedbackClick { menu = false; close(onQuick) },
                         leadingIcon = { Icon(Icons.Default.TextFields, null) })
-                    DropdownMenuItem({ Text("移到相册") }, onClick = feedbackClick { menu = false; close(onMove) },
+                    DropdownMenuItem({ Text(uiText("photo.move_album")) }, onClick = feedbackClick { menu = false; close(onMove) },
                         leadingIcon = { Icon(Icons.Default.DriveFileMove, null) })
                     CardMenuAction.entries.filter { it != CardMenuAction.QUICK }.forEach { operation ->
                         DropdownMenuItem({ Text(operation.label) }, onClick = if (operation == CardMenuAction.DELETE)

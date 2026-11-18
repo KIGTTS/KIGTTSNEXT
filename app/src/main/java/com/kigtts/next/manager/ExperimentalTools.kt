@@ -5,8 +5,8 @@ import androidx.core.content.edit
 import com.kigtts.plugin.runtime.BundledPlugin
 
 internal enum class ExperimentalTool(val id: String, val key: String, val versionCode: Int) {
-    ASSISTANT("tools.cloud-agent", "assistant", 34),
-    EDITOR("runtime.lua", "editor", 8);
+    ASSISTANT("tools.cloud-agent", "assistant", 35),
+    EDITOR("runtime.lua", "editor", 9);
 
     companion object {
         fun preferences(context: Context) = context.getSharedPreferences("experiments", Context.MODE_PRIVATE)

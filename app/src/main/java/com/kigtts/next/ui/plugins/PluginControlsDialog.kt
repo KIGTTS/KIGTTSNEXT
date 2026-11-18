@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -53,9 +55,9 @@ internal fun PluginControlsDialog(request: PluginOutcome.Controls, onChange: (St
                 }
             } }
         }
-    }, confirmButton = { MotionTextButton(dialogFeedbackClick(onDismiss)) { Text("完成") } },
+    }, confirmButton = { MotionTextButton(dialogFeedbackClick(onDismiss)) { Text(uiText("action.done")) } },
         dismissButton = { request.resetActionId?.let { reset ->
-            MotionTextButton(feedbackClick { onChange(reset, null) }) { Text("恢复默认") }
+            MotionTextButton(feedbackClick { onChange(reset, null) }) { Text(uiText("camera.reset_default")) }
         } })
     colorPicker?.let { control -> key(control.actionId) {
         ColorPickerDialog(control.value, { value ->

@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -113,7 +115,7 @@ internal fun CardAlbumDock(albums: List<PolaroidAlbum>, selectedId: String, phot
 
 @Composable
 internal fun CardAlbumTargetDialog(albums: List<PolaroidAlbum>, currentId: String?, dismiss: () -> Unit, choose: (String) -> Unit) {
-    MotionAlertDialog(onDismissRequest = dismiss, title = { Text("移到相册") },
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(uiText("photo.move_album")) },
         text = {
             Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                 albums.forEach { album ->
@@ -123,5 +125,5 @@ internal fun CardAlbumTargetDialog(albums: List<PolaroidAlbum>, currentId: Strin
                             .testTag("move-card-album/" + album.id))
                 }
             }
-        }, confirmButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text("取消") } })
+        }, confirmButton = { MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }

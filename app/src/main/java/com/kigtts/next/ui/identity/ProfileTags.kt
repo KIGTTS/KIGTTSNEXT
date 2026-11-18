@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,14 +22,14 @@ import com.kigtts.next.ui.components.*
 @Composable internal fun ProfileTagsEditor(tags: List<String>, close: () -> Unit, save: (List<String>) -> Unit) {
     var draft by remember { mutableStateOf(tags) }
     var text by remember { mutableStateOf("") }
-    MotionAlertDialog(close, title = { Text("我的标签") }, text = {
+    MotionAlertDialog(close, title = { Text(uiText("profile.tags_own")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { draft.forEach { tag ->
                 InputChip(true, feedbackClick { draft = draft - tag }, label = { Text(tag) }, trailingIcon = { Text("×") })
             } }
-            OutlinedTextField(text, { text = it.take(20) }, Modifier.fillMaxWidth().testTag("profile-tag-input"), label = { Text("新标签") }, singleLine = true)
-            TextButton(feedbackClick { val tag = text.trim(); if (tag.isNotBlank() && tag !in draft && draft.size < 12) { draft += tag; text = "" } }) { Text("添加标签") }
+            OutlinedTextField(text, { text = it.take(20) }, Modifier.fillMaxWidth().testTag("profile-tag-input"), label = { Text(uiText("profile.tag_new")) }, singleLine = true)
+            TextButton(feedbackClick { val tag = text.trim(); if (tag.isNotBlank() && tag !in draft && draft.size < 12) { draft += tag; text = "" } }) { Text(uiText("profile.tag_add")) }
         }
-    }, confirmButton = { TextButton(feedbackClick { val tag = text.trim(); save(if (tag.isNotBlank() && tag !in draft && draft.size < 12) draft + tag else draft) }) { Text("保存标签") } },
-        dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("取消") } })
+    }, confirmButton = { TextButton(feedbackClick { val tag = text.trim(); save(if (tag.isNotBlank() && tag !in draft && draft.size < 12) draft + tag else draft) }) { Text(uiText("profile.tags_save")) } },
+        dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.cancel")) } })
 }

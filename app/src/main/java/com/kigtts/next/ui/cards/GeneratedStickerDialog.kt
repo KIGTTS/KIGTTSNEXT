@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -51,7 +53,7 @@ import kotlinx.coroutines.*
             catch (failure: Exception) { error = failure.message ?: "贴纸未能生成，请重试" }
             finally { working = false }
         }
-    }, enabled = !working) { Text("完成") } }, dismissButton = { TextButton(feedbackClick(close), enabled = !working) { Text("取消") } })
+    }, enabled = !working) { Text(uiText("action.done")) } }, dismissButton = { TextButton(feedbackClick(close), enabled = !working) { Text(uiText("action.cancel")) } })
     color?.let { p -> ColorPickerDialog(android.graphics.Color.parseColor(values[p.id] ?: p.default).toLong() and 0xFFFFFFFFL,
         { selected -> update(p.id, "#%06X".format(selected and 0xFFFFFF)); color = null }, { color = null }, title = p.label) }
 }

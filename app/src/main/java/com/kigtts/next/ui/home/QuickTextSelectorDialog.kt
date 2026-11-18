@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,7 +30,7 @@ fun QuickTextSelectorDialog(
     LaunchedEffect(existing) { selected = selected.intersect(existing) }
     MotionAlertDialog(
         onDismissRequest = onDismiss,
-        dismissButton = { TextButton(onClick = dialogFeedbackClick(onDismiss)) { Text("取消") } },
+        dismissButton = { TextButton(onClick = dialogFeedbackClick(onDismiss)) { Text(uiText("action.cancel")) } },
         confirmButton = {
             Button(enabled = selected.any { it in existing }, onClick = dialogFeedbackClick {
                 onConfirm(phrases.filter { it.id in selected }.map { it.id })

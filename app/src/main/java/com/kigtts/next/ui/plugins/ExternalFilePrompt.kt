@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,7 +61,7 @@ internal fun ExternalFilePrompt(model: AppViewModel) {
                     TextButton(onClick = dialogFeedbackClick {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PIPER_DOWNLOAD))) }
                             .onFailure { model.message("无法打开下载链接") }
-                    }) { Text("下载 Piper 引擎") }
+                    }) { Text(uiText("plugin.piper_download")) }
                 }
             }
             current.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

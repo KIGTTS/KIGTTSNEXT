@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -42,9 +44,9 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     val frames by stickers.frameStyles.collectAsStateWithLifecycle()
     val readOnly by stickers.readOnlyCards.collectAsStateWithLifecycle()
     val persisted = if (identity != null) personalDesign ?: privateDesigns.firstOrNull { it.id == cardId } else catalog.cards.firstOrNull { it.id == cardId }
-    if (persisted == null) { Text("这张照片已移除", Modifier.padding(24.dp)); return }
+    if (persisted == null) { Text(uiText("photo.removed"), Modifier.padding(24.dp)); return }
     if (cardId in readOnly) {
-        Text("接收的照片只能查看和分享", Modifier.padding(24.dp))
+        Text(uiText("photo.received_read_only"), Modifier.padding(24.dp))
         return
     }
     var draft by rememberSaveable(cardId, stateSaver = CardDraftSaver) { mutableStateOf(persisted) }
@@ -182,7 +184,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                 backgroundColor = draft.frameColor, hasImage = draft.imageId != null, backgroundInk = backgroundPainter?.ink) }
             }
         }, tools = {
-        if (conflict) Text("此照片已在其它位置更新，请返回后重新打开", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
+        if (conflict) Text(uiText("photo.stale_edit"), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
         CardEditorFields(draft, enabled, { draft = it },
             openCrop = { cropOpen = true },
             addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { cancelAdjustment() },

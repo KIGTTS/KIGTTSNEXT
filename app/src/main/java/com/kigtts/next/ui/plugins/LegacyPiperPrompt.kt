@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
@@ -29,18 +31,18 @@ internal fun LegacyPiperPrompt(missing: Set<MissingPiperComponent>?, install: (B
     var neverRemind by remember { mutableStateOf(false) }
     MotionAlertDialog(onDismissRequest = { dismiss(neverRemind) }, title = {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("继续使用 Piper 音色", Modifier.weight(1f)); Icon(Icons.Default.RecordVoiceOver, null)
+            Text(uiText("plugin.use_piper"), Modifier.weight(1f)); Icon(Icons.Default.RecordVoiceOver, null)
         }
     }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("检测到已保存的 Piper 语音包。安装以下插件后即可继续使用朗读：")
+            Text(uiText("plugin.piper_saved"))
             missing.sortedBy { it.ordinal }.forEach { Text("• ${it.label}") }
             Row(Modifier.fillMaxWidth().testTag("piper-never-remind").toggleable(neverRemind, role = Role.Checkbox,
                 onValueChange = { neverRemind = it }), verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(neverRemind, onCheckedChange = null)
-                Text("下次不再提示", Modifier.padding(start = 8.dp))
+                Text(uiText("plugin.no_reminder"), Modifier.padding(start = 8.dp))
             }
         }
-    }, confirmButton = { MotionTextButton(dialogFeedbackClick { install(neverRemind) }) { Text("前往安装") } },
-        dismissButton = { MotionTextButton(dialogFeedbackClick { dismiss(neverRemind) }) { Text("稍后再说") } })
+    }, confirmButton = { MotionTextButton(dialogFeedbackClick { install(neverRemind) }) { Text(uiText("plugin.go_install")) } },
+        dismissButton = { MotionTextButton(dialogFeedbackClick { dismiss(neverRemind) }) { Text(uiText("overlay.later")) } })
 }

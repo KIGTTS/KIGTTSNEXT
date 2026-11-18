@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import androidx.compose.foundation.layout.*
@@ -20,7 +22,7 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
 @Composable internal fun ProfileQrPreview(tile: ProfileTile, close: () -> Unit) {
     val context = LocalContext.current
     val palette = nativeProfileQrPalette(tile.qrStyle, tile.qrKeepLight)
-    MotionAlertDialog(close, title = { Text(tile.title.ifBlank { "二维码预览" }) }, text = {
+    MotionAlertDialog(close, title = { Text(tile.title.ifBlank { uiText("profile.qr_preview") }) }, text = {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Surface(shape = MaterialTheme.shapes.medium, color = Color(palette.paper)) {
@@ -30,5 +32,5 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
         }
     }, confirmButton = { TextButton(dialogFeedbackClick {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("二维码", tile.text)); close()
-    }) { Text("复制内容") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("关闭") } })
+    }) { Text(uiText("profile.copy_contents")) } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.close")) } })
 }

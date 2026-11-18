@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -37,15 +39,15 @@ import kotlinx.coroutines.withContext
                         Text(listOf("v${detail.version}", detail.author).filter(String::isNotBlank).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (detail.description.isNotBlank()) ChatRichText(detail.description)
                         if (detail.homepage.isNotBlank()) SelectionContainer { Text(detail.homepage) }
-                        if (detail.license.isNotBlank()) Text("许可证：${detail.license}")
-                        if (detail.licenseText.isNotBlank()) TextButton(feedbackClick { license = true }) { Text("查看开源许可") }
+                        if (detail.license.isNotBlank()) Text(uiText("plugin.license_label", "license" to detail.license))
+                        if (detail.licenseText.isNotBlank()) TextButton(feedbackClick { license = true }) { Text(uiText("plugin.license_view")) }
                     }
-                } ?: if (failed) Text("暂时无法读取插件信息") else CircularProgressIndicator()
+                } ?: if (failed) Text(uiText("plugin.unavailable_details")) else CircularProgressIndicator()
                 }
               }
             }
         }, confirmButton = {
-            if (license) MotionTextButton(feedbackClick { license = false }) { Text("返回") }
-            else MotionTextButton(dialogFeedbackClick(dismiss)) { Text("关闭") }
+            if (license) MotionTextButton(feedbackClick { license = false }) { Text(uiText("action.back")) }
+            else MotionTextButton(dialogFeedbackClick(dismiss)) { Text(uiText("action.close")) }
         })
 }

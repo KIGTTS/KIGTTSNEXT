@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import android.content.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,11 +19,11 @@ import com.kigtts.next.sharing.FaceQrCode
     val context = LocalContext.current; val payload = contactPayload(link)
     MotionAlertDialog(close, title = { Text(link.label) }, icon = { SocialContactIcon(link) }, text = {
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            FaceQrCode(payload, "${link.label}二维码")
+            FaceQrCode(payload, uiText("profile.contact_qr", "name" to link.label))
             Text(link.value, style = MaterialTheme.typography.bodyMedium)
             if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) ContactNfcControl(payload)
         }
     }, confirmButton = { TextButton(dialogFeedbackClick {
         context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(link.label, link.value)); close()
-    }) { Text("复制") } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text("关闭") } })
+    }) { Text(uiText("action.copy")) } }, dismissButton = { TextButton(dialogFeedbackClick(close)) { Text(uiText("action.close")) } })
 }

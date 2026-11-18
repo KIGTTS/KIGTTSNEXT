@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -32,7 +34,7 @@ import com.kigtts.next.ui.components.feedbackClick
         Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(if (selected == null) "选择社媒平台" else "更换社媒平台")
     }
     if (contacts.isNotEmpty()) {
-        Text("已有联系方式", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(uiText("profile.saved_contacts"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         contacts.forEach { link -> Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             RadioButton(social == null && reference == link.value, feedbackClick { selectContact(link) })
             TextButton(feedbackClick { selectContact(link) }, Modifier.weight(1f)) {
@@ -41,7 +43,7 @@ import com.kigtts.next.ui.components.feedbackClick
             }
         } }
     }
-    if (choosing) ContactPlatformPicker({ choosing = false }, title = "选择社媒平台") {
+    if (choosing) ContactPlatformPicker({ choosing = false }, title = uiText("profile.platform_choose")) {
         platform = it; draft = null; choosing = false; editing = true
     }
     if (editing) ContactLinkEditor(draft, platform, { editing = false }) { updated ->

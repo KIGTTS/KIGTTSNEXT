@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -26,14 +28,14 @@ import kotlinx.coroutines.*
         catch (failure: Exception) { error = failure.message }
         finally { importing = false }
     } }
-    Text("条目图标", style = MaterialTheme.typography.titleSmall)
+    Text(uiText("quick.entry_icon"), style = MaterialTheme.typography.titleSmall)
     Row {
-        MotionTextButton(onClick = feedbackClick { symbols = true }, enabled = enabled && !importing) { Text("选择图标") }
-        MotionTextButton(onClick = feedbackClick { picker.launch(arrayOf("image/*", "image/svg+xml")) }, enabled = enabled && !importing) { Text("导入图片或SVG") }
-        if (draft.metadata.keys.any { it.startsWith("icon.") }) MotionTextButton(onClick = feedbackClick { change(emptyMap()) }, enabled = enabled) { Text("恢复默认") }
+        MotionTextButton(onClick = feedbackClick { symbols = true }, enabled = enabled && !importing) { Text(uiText("quick.choose_icon")) }
+        MotionTextButton(onClick = feedbackClick { picker.launch(arrayOf("image/*", "image/svg+xml")) }, enabled = enabled && !importing) { Text(uiText("quick.icon_import")) }
+        if (draft.metadata.keys.any { it.startsWith("icon.") }) MotionTextButton(onClick = feedbackClick { change(emptyMap()) }, enabled = enabled) { Text(uiText("camera.reset_default")) }
     }
     if (draft.metadata["icon.asset"] != null) Row {
-        Text("用作背景缩略图", Modifier.weight(1f))
+        Text(uiText("quick.icon_background"), Modifier.weight(1f))
         Switch(draft.metadata["icon.mode"] == "thumbnail", { value -> model.content.editPhrase { it.copy(metadata = it.metadata + ("icon.mode" to if(value) "thumbnail" else "icon")) } }, enabled = enabled)
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

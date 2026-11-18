@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -22,8 +24,8 @@ internal fun PhraseResourceInfo(entry:MediaEntry,enabled:Boolean,canFrame:Boolea
         Box {
             MotionIconButton(feedbackClick { menu=true },enabled=enabled,modifier=Modifier.testTag("phrase-resource-more")) { Icon(Icons.Default.MoreVert,"资源选项") }
             DropdownMenu(menu&&enabled,{ menu=false }) {
-                if(canFrame)DropdownMenuItem({ Text("调整缩略图") },feedbackClick { menu=false;frame() })
-                DropdownMenuItem({ Text("移除资源") },feedbackClick { menu=false;detach() },modifier=Modifier.testTag("detach-phrase-media"))
+                if(canFrame)DropdownMenuItem({ Text(uiText("quick.thumbnail_adjust")) },feedbackClick { menu=false;frame() })
+                DropdownMenuItem({ Text(uiText("quick.remove_resource")) },feedbackClick { menu=false;detach() },modifier=Modifier.testTag("detach-phrase-media"))
             }
         }
     }

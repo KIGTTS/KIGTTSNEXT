@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -71,7 +73,7 @@ internal fun ProfileQrTile(value: String, style: ProfileQrStyle, label: String, 
                     }
                 else -> qrCanvas(Modifier.fillMaxSize())
             }
-        } else if (value.isBlank()) Text("二维码", style = MaterialTheme.typography.labelMedium, color = foreground)
+        } else if (value.isBlank()) Text(uiText("profile.qr"), style = MaterialTheme.typography.labelMedium, color = foreground)
     }
 }
 

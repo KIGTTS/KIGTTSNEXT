@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -64,19 +66,19 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
         confirmedClose = { transfer = null; selected = emptyList() }) }
     if (foreground) rename?.let { item ->
         var name by remember(item.path) { mutableStateOf(item.name) }
-        MotionAlertDialog(onDismissRequest = { rename = null }, title = { Text("重命名") }, text = {
-            OutlinedTextField(name, { name = it }, singleLine = true, label = { Text("名称") }, enabled = active)
+        MotionAlertDialog(onDismissRequest = { rename = null }, title = { Text(uiText("common.rename")) }, text = {
+            OutlinedTextField(name, { name = it }, singleLine = true, label = { Text(uiText("common.name")) }, enabled = active)
         }, confirmButton = {
             val finish = rememberDialogClose()
             MotionTextButton(feedbackClick { finish { rename = null }; operation("rename", listOf(item.path), name) },
-                enabled = active && validBrowserName(name)) { Text("确定") }
-        }, dismissButton = { MotionTextButton(dialogFeedbackClick { rename = null }) { Text("取消") } })
+                enabled = active && validBrowserName(name)) { Text(uiText("common.confirm")) }
+        }, dismissButton = { MotionTextButton(dialogFeedbackClick { rename = null }) { Text(uiText("action.cancel")) } })
     }
-    if (foreground && deleting.isNotEmpty()) MotionAlertDialog(onDismissRequest = { deleting = emptyList() }, title = { Text("删除所选文件？") },
+    if (foreground && deleting.isNotEmpty()) MotionAlertDialog(onDismissRequest = { deleting = emptyList() }, title = { Text(uiText("plugin.delete_selected_files")) },
         text = { Text("将删除 ${deleting.size} 项。") }, confirmButton = {
             val finish = rememberDialogClose()
-            MotionTextButton(feedbackClick { val paths = deleting; finish { deleting = emptyList(); selected = emptyList() }; operation("delete", paths) }, enabled = active) { Text("删除") }
-        }, dismissButton = { MotionTextButton(dialogFeedbackClick { deleting = emptyList() }) { Text("取消") } })
+            MotionTextButton(feedbackClick { val paths = deleting; finish { deleting = emptyList(); selected = emptyList() }; operation("delete", paths) }, enabled = active) { Text(uiText("action.delete")) }
+        }, dismissButton = { MotionTextButton(dialogFeedbackClick { deleting = emptyList() }) { Text(uiText("action.cancel")) } })
 }
 
 internal fun validBrowserName(name: String) = name.isNotBlank() && name.length <= 180 && name !in setOf(".", "..") &&

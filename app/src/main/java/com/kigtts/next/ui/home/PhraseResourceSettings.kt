@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.animateEnabled
 
 import com.kigtts.next.ui.components.MotionTextButton
@@ -54,7 +56,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
             MotionTextButton(feedbackClick { leave(); scope.launch { runCatching { model.content.htmlFiles("phrase:" + draft.key) }.onFailure { error=it.message } } }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "创建页面文件" else "管理页面文件") }
             MotionTextButton(feedbackClick { selectMain = true }, enabled = enabled && entry?.kind == MediaKind.HTML && entry.pluginId == null,
-                modifier = Modifier.testTag("phrase-choose-page")) { Text("选择主页面") }
+                modifier = Modifier.testTag("phrase-choose-page")) { Text(uiText("quick.main_page")) }
         }
     }
     }
@@ -75,7 +77,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         }
       }
         if(resource.kind in setOf(MediaKind.VIDEO,MediaKind.MOTION_PHOTO)) {
-            Text("音频播放",style=MaterialTheme.typography.labelLarge)
+            Text(uiText("quick.play_audio"),style=MaterialTheme.typography.labelLarge)
             ChoiceButtonGroup("音频播放",MediaAudioMode.entries,draft.audioMode ?: MediaAudioMode.defaultFor(resource.kind),{ it.label },
                 { mode->model.content.editPhrase { it.copy(audioMode=mode) } },Modifier.testTag("phrase-audio-mode"),enabled=interactive,compactLabels=true)
         }

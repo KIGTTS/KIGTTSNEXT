@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,11 +57,11 @@ internal fun searchFavorites(index: List<IndexedFavorite>, query: String): List<
             Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(query, { query = it.take(128) }, Modifier.weight(1f).focusRequester(focus).testTag("favorite-search-input"),
-                        placeholder = { Text("搜索昵称或标签") }, singleLine = true, shape = CircleShape,
+                        placeholder = { Text(uiText("profile.favorite_search")) }, singleLine = true, shape = CircleShape,
                         leadingIcon = { Icon(Icons.Default.Search, null) }, trailingIcon = {
                             if (query.isNotEmpty()) IconButton(feedbackClick { query = "" }) { Icon(Icons.Default.Close, "清空") }
                         })
-                    TextButton(feedbackClick(close)) { Text("取消") }
+                    TextButton(feedbackClick(close)) { Text(uiText("action.cancel")) }
                 }
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     LazyColumn(Modifier.fillMaxSize().testTag("favorite-search-results"), contentPadding = PaddingValues(16.dp),
