@@ -82,7 +82,8 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
             val navigation = mutableListOf<PageAction>()
             if (page > 0) navigation += PageAction("engine/${encode(id)}/${page - 1}", t("previous"))
             if ((page + 1) * 20 < provider.info.voices.size) navigation += PageAction("engine/${encode(id)}/${page + 1}", t("next"))
-            return PluginPage(pageId, provider.name, listOf(PageBlock.Text(provider.name, true), PageBlock.Actions(controls)) +
+            val providerName = if (id == SYSTEM_PROVIDER) t("system") else provider.displayName
+            return PluginPage(pageId, providerName, listOf(PageBlock.Text(providerName, true), PageBlock.Actions(controls)) +
                 voices.map { voice ->
                     val current = if (id == SYSTEM_PROVIDER) settings.provider == null && settings.systemVoice == voice.id
                         else settings.provider == id && settings.voice == voice.id

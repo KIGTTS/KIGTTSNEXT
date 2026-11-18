@@ -55,7 +55,7 @@ internal class HostSpeechBroker(private val owner: String, private val registry:
         val operation = PluginJson.decodeFromString<VoiceCommand>(command)
         val target = provider(pluginId)
         if (operation.operation == VoiceOperation.REFRESH && target.voiceManager == null) {
-            (target as? RemotePlugin)?.refresh(PluginContext("", ""))
+            (target as? RemotePlugin)?.refresh()
             return@runBlocking PluginJson.encodeToString<PluginOutcome>(PluginOutcome.RefreshUi)
         }
         val manager = requireNotNull(target.voiceManager) { "该引擎不支持语音包管理" }

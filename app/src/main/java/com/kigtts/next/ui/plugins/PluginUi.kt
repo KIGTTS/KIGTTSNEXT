@@ -158,7 +158,7 @@ private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map
         is PageBlock.Toggle -> ToggleSetting(block.title, block.summary, (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), block.checked,
             { invoke(block.actionId, mapOf("checked" to it.toString())) }, enabled = enabled, position = position, preserveColorWhenLocked = true)
         is PageBlock.Input -> SettingItem(block.title, if (block.secret) {
-            if (block.value.isBlank()) "未设置" else "已设置"
+            uiText(if (block.value.isBlank()) "appearance.not_selected" else "appearance.selected")
         } else block.value.lineSequence().firstOrNull().orEmpty().take(120), (if(block.icon == PluginIcon.NONE && block.symbol == null) null else block.icon.vector(block.symbol)), position, enabled = enabled,
             onClick = { invoke(block.actionId, emptyMap()) }, trailing = {
                 block.trailingAction?.let { action ->

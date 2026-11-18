@@ -11,10 +11,10 @@ internal fun packSettingsControls(entry: PackEntry): PluginOutcome.Controls = Pl
             parameter.value, parameter.min, parameter.max, parameter.steps, parameter.suffix)
     }, packAction("pack-settings-reset", entry))
 
-internal suspend fun updatePackSetting(entry: PackEntry, parameterId: String, value: String?, broker: SpeechBroker) {
-    val parameter = requireNotNull(entry.pack.parameters.firstOrNull { it.id == parameterId }) { "语音参数已改变" }
-    val number = requireNotNull(value?.toFloatOrNull()) { "请输入有效的参数值" }
-    require(number.isFinite() && number in parameter.min..parameter.max) { "语音参数超出范围" }
+internal suspend fun updatePackSetting(entry: PackEntry, parameterId: String, value: String?, broker: SpeechBroker, locale: String) {
+    val parameter = requireNotNull(entry.pack.parameters.firstOrNull { it.id == parameterId }) { ReadingCopy.text("pack_parameter_changed", locale) }
+    val number = requireNotNull(value?.toFloatOrNull()) { ReadingCopy.text("pack_parameter_invalid", locale) }
+    require(number.isFinite() && number in parameter.min..parameter.max) { ReadingCopy.text("pack_parameter_range", locale) }
     broker.command(entry.provider.pluginId, VoiceCommand(VoiceOperation.UPDATE_PARAMETERS, packId = entry.pack.id,
         value = JSONObject().put(parameterId, number).toString()))
 }

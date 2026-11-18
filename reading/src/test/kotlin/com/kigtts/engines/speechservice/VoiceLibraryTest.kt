@@ -62,7 +62,11 @@ class VoiceLibraryTest {
         val groups = page.blocks.filterIsInstance<PageBlock.Group>().associateBy { it.title }
         assertTrue(groups.keys.containsAll(listOf("详细信息", "语音包设置", "音频设置", "管理")))
         assertEquals(1, groups.getValue("音频设置").children.filterIsInstance<PageBlock.Slider>().size)
-        assertEquals(listOf("名称", "备注"), groups.getValue("语音包设置").children.filterIsInstance<PageBlock.Input>().map { it.title })
+        assertEquals(listOf("使用语音包", "名称", "备注", "更换头像"),
+            groups.getValue("语音包设置").children.filterIsInstance<PageBlock.Input>().map { it.title })
+        val japanese = pages.page(page.id, "ja")!!.blocks.filterIsInstance<PageBlock.Group>()
+        assertTrue(japanese.any { it.title == "音声パックの設定" })
+        assertTrue(japanese.flatMap { it.children }.filterIsInstance<PageBlock.Input>().any { it.title == "この音声パックを使用" })
         assertTrue(page.management!!.items.all { it.group == "声音" && it.actions.isEmpty() && it.selection!!.enabled })
     }
     @Test fun disabledEngineStillShowsPackIdentityAndInformationWithoutEditableControls() {

@@ -5,7 +5,8 @@ import com.kigtts.plugin.api.*
 internal fun recognitionServicePage(id: String, settings: RecognitionServiceSettings, broker: RecognitionBroker,
     context: PluginContext, serviceId: String): PluginPage? {
     fun t(key: String) = RecognitionCopy.text(key, context.locale)
-    fun name(provider: AsrProvider) = if (provider.pluginId == SYSTEM_RECOGNITION_ID) t("system") else provider.name
+    fun name(provider: AsrProvider) = if (provider.pluginId == SYSTEM_RECOGNITION_ID) t("system")
+        else provider.settingsPages.singleOrNull()?.title?.takeIf(String::isNotBlank) ?: provider.name
     val all = settings.ordered(broker.providers()); val selected = settings.current(all)
     if (id == "manager") return PluginPage(id, t("settings"), buildList {
         if (context.recognitionServiceId != serviceId) add(PageBlock.Actions(listOf(PageAction("activate", t("activate"), PluginIcon.MIC))))
@@ -17,9 +18,9 @@ internal fun recognitionServicePage(id: String, settings: RecognitionServiceSett
             PageBlock.Toggle(t("keep_loaded"), settings.resident, "resident", t("keep_loaded_hint")),
             PageBlock.Slider(PluginControl.Slider(t("idle_time"), "idle-seconds", settings.idleSeconds.toFloat(), 5f, 120f, steps = 22, suffix = t("seconds"))))))
         val entries = all.filter { it.enabled }.flatMap { provider -> provider.settingsPages.map { page ->
-            PageAction("settings/${provider.pluginId}/${page.id}", if (provider.settingsPages.size == 1) provider.name else "${provider.name} · ${page.title}", page.icon)
+            PageBlock.Input(page.title, "", "settings/${provider.pluginId}/${page.id}", icon = page.icon)
         } }
-        if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), listOf(PageBlock.Actions(entries))))
+        if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), entries))
     })
     if (id == "engines") return PluginPage(id, t("choose_engine"), emptyList(),
         ManagementList("recognition-engines", listOf(

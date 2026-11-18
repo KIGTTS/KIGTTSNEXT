@@ -46,12 +46,21 @@ class RecognitionServiceTest {
     }
     @Test fun localizationUsesTheHostLanguageForTheActualCaptionsAction() = runBlocking {
         val broker = Broker()
+        val online = broker.catalog.last()
+        broker.catalog = broker.catalog.dropLast(1) + online.copy(settingsPages = listOf(AsrSettingsPage("packs", "ストリーミング認識パック")))
         val plugin = plugin(broker)
         try {
             val english = PluginContext("", "", locale = "en-US")
             plugin.execute("select/test.segmented", english)
             assertEquals("Captions", plugin.contributions(english).actions.first { it.id == "listen" }.label)
             assertEquals("음성 인식", plugin.page("manager", PluginContext("", "", locale = "ko-KR"))?.title)
+            val japanese = PluginContext("", "", locale = "ja", recognitionServiceId = plugin.descriptor.id)
+            val group = plugin.page("manager", japanese)!!.blocks.filterIsInstance<PageBlock.Group>().last()
+            val entry = group.children.filterIsInstance<PageBlock.Input>().single()
+            assertEquals("settings/test.online/packs", entry.actionId)
+            assertEquals("ストリーミング認識パック", entry.title)
+            val provider = plugin.page("engines", japanese)!!.management!!.items.first { it.id == "test.online" }
+            assertEquals(entry.title, provider.title)
         } finally {
             plugin.close()
         }

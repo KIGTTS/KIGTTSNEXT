@@ -17,5 +17,5 @@ internal object ReadingCopy {
             }
         })
     }
-    fun text(key: String, locale: String) = catalog.text(key, locale)
+    fun text(key: String, locale: String, arguments: Map<String, String> = emptyMap()) = catalog.text(key, locale, arguments)
 }

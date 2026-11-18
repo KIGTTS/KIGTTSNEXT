@@ -16,7 +16,8 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
         if (id == "packs") {
             val sources = providers()
             val filters = listOf(ManagementFilter("all", t("all"), "pack-filter/${encodeId("all")}", library.filter == "all")) + sources.map {
-                ManagementFilter(it.pluginId, it.name, "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
+                ManagementFilter(it.pluginId, if (it.pluginId == SYSTEM_PROVIDER) t("system") else it.displayName,
+                    "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
             }
             return PluginPage(id, t("manage_packs"), listOf(PageBlock.Actions(listOf(
                 PageAction("import-voice-package", t("import_pack"), PluginIcon.ADD)))),
@@ -35,7 +36,7 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
                         selected = if (entry.provider.pluginId == SYSTEM_PROVIDER) settings.provider == null
                             else settings.provider == entry.provider.pluginId && settings.voice in pack.voiceIds,
                         pinned = pinned, group = if (pinned) "pinned" else "normal", primaryAction = if (entry.provider.enabled) packAction("pack-use", entry) else packAction("pack", entry), actions = actions,
-                        badges = listOf(if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system") else pack.providerLabel.ifBlank { entry.provider.name.take(32) }),
+                        badges = listOf(if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system") else pack.providerLabel.ifBlank { entry.provider.displayName.take(32) }),
                         selection = ManagementSelection(packAction("pack-use", entry), entry.provider.enabled))
                 }, "pack-order", t("no_packs"), filters))
         }
@@ -43,6 +44,6 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
         val parts = id.split('/'); val owner = decodeId(parts[1]); val key = decodeId(parts[2])
         val entry = entries().firstOrNull { it.provider.pluginId == owner && it.pack.id == key }
             ?: return PluginPage(id, t("pack_unavailable"), listOf(PageBlock.Notice(t("pack_unavailable_help"))))
-        return voicePackDetails(id, entry, settings, library)
+        return voicePackDetails(id, entry, settings, library, locale)
     }
 }

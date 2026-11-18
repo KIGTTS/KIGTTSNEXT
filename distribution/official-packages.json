@@ -547,6 +547,21 @@
     "dependencies": {
       "service.speech-synthesis": "^0.8.1"
     },
+    "file": "engine.piper-0.8.6.kigplugin",
+    "category": "音频",
+    "summary": "为日常朗读添加更多声音。",
+    "symbol": "voice_chat",
+    "description": "## Piper 语音引擎\n\n导入喜欢的 Piper 语音包，在语音合成设置中选择声音，调整音量、音色和朗读节奏。需要搭配语音合成服务使用。",
+    "tags": [
+      "语音合成"
+    ],
+    "notes": "Piper 设置改用本地化分组卡片，可直接打开朗读语音包管理。"
+  },
+  {
+    "module": "piper-tts",
+    "dependencies": {
+      "service.speech-synthesis": "^0.8.1"
+    },
     "file": "engine.piper-0.8.5.kigplugin",
     "category": "音频",
     "summary": "为日常朗读添加更多声音。",

@@ -9,6 +9,7 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
     private val library: VoiceLibrary, private val pages: VoiceLibraryPages, private val broker: SpeechBroker,
     private val forgetAudio: (String, String) -> Unit = { _, _ -> }) {
     suspend fun execute(action: String, context: PluginContext): PluginOutcome {
+        fun t(key: String) = ReadingCopy.text(key, context.locale)
         if (action == "library") return PluginOutcome.OpenPage("packs")
         if (action.startsWith("pack-filter/")) { library.filter = decodeId(action.substringAfter('/')); library.save(); return PluginOutcome.RefreshUi }
         if (action == "pack-order") {
@@ -26,7 +27,7 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
         return when (parts[0]) {
             "pack-settings" -> packSettingsControls(entry)
             "pack-setting", "pack-setting-inline" -> {
-                updatePackSetting(entry, decodeId(parts[3]), context.inputs["value"], broker)
+                updatePackSetting(entry, decodeId(parts[3]), context.inputs["value"], broker, context.locale)
                 if (parts[0] == "pack-setting-inline") PluginOutcome.RefreshUi else PluginOutcome.NoAction
             }
             "pack-settings-reset", "pack-settings-inline-reset" -> {
@@ -48,18 +49,18 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
                 if (entry.pack.editable && entry.provider.enabled) command(VoiceOperation.UPDATE_METADATA, current.copy(pinned = pin))
                 library.pin(entry.key, pin); PluginOutcome.RefreshUi
             }
-            "pack-name", "pack-remark" -> PluginOutcome.TextInput(if (parts[0] == "pack-name") "语音包名称" else "语音包备注",
+            "pack-name", "pack-remark" -> PluginOutcome.TextInput(t(if (parts[0] == "pack-name") "pack_edit_name" else "pack_edit_remark"),
                 action.replace(parts[0], parts[0] + "-save"), if (parts[0] == "pack-name") current.name else current.remark, multiline = parts[0] == "pack-remark")
             "pack-name-save", "pack-remark-save" -> { command(VoiceOperation.UPDATE_METADATA,
                 if (parts[0] == "pack-name-save") current.copy(name = context.inputs["value"].orEmpty()) else current.copy(remark = context.inputs["value"].orEmpty())); PluginOutcome.RefreshUi }
-            "pack-avatar" -> PluginOutcome.ImportResource("更换语音包头像", "resources/inbox", action.replace("pack-avatar", "pack-avatar-save"), mimeTypes = listOf("image/*"))
+            "pack-avatar" -> PluginOutcome.ImportResource(t("pack_import_avatar"), "resources/inbox", action.replace("pack-avatar", "pack-avatar-save"), mimeTypes = listOf("image/*"))
             "pack-avatar-save" -> {
                 val path = requireNotNull(context.inputs["resourcePath"])
                 try { broker.command(owner, VoiceCommand(VoiceOperation.SET_AVATAR, packId = id, resourcePath = path)) }
                 finally { environment.storage.file(path).delete() }
                 PluginOutcome.RefreshUi
             }
-            "pack-update" -> PluginOutcome.ImportResource("更新语音包（保留名称、备注、头像和顺序）", "resources/inbox", action.replace("pack-update", "pack-update-save"))
+            "pack-update" -> PluginOutcome.ImportResource(t("pack_update_preserve"), "resources/inbox", action.replace("pack-update", "pack-update-save"))
             "pack-update-save" -> {
                 val path = requireNotNull(context.inputs["resourcePath"])
                 val result = try { broker.command(owner, VoiceCommand(VoiceOperation.IMPORT, packId = id, resourcePath = path)) }
@@ -77,7 +78,8 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
                     pinned = library.pinned(entry.key, current.pinned), order = pages.entries().indexOfFirst { it.key == entry.key }.toLong()))
                 command(VoiceOperation.EXPORT)
             }
-            "pack-delete" -> PluginOutcome.Menu("确认删除“${current.name}”及包中的全部声音？", listOf(PageAction(action.replace("pack-delete", "pack-delete-confirm"), "确认删除", PluginIcon.CLOSE)))
+            "pack-delete" -> PluginOutcome.Menu(ReadingCopy.text("pack_delete_prompt", context.locale, mapOf("name" to current.name)),
+                listOf(PageAction(action.replace("pack-delete", "pack-delete-confirm"), t("pack_delete_confirm"), PluginIcon.CLOSE)))
             "pack-delete-confirm" -> {
                 val result = command(VoiceOperation.DELETE)
                 if (result is PluginOutcome.Message) return result
@@ -85,7 +87,7 @@ internal class VoiceLibraryActions(private val environment: PluginEnvironment, p
                 if (settings.provider == owner && settings.voice in entry.pack.voiceIds) { settings.voice = null; settings.provider = null; settings.save() }
                 PluginOutcome.RefreshUi
             }
-            else -> PluginOutcome.Message("未知语音包操作")
+            else -> PluginOutcome.Message(t("pack_unknown_action"))
         }
     }
 }

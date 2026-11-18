@@ -4,6 +4,8 @@ import android.os.ParcelFileDescriptor
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.util.UUID
@@ -14,6 +16,8 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
     val generation: String = UUID.randomUUID().toString()
     val alive get() = connection.alive
     @Volatile private var snapshot = initial
+    private val refreshLock = Mutex()
+    private var lastContext = PluginContext("", "")
     override val descriptor get() = snapshot.descriptor
     override val localization get() = snapshot.localization
     override val contributions get() = snapshot.contributions
@@ -21,7 +25,7 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
         override suspend fun command(command: VoiceCommand): PluginOutcome = withContext(Dispatchers.IO) {
             check(permit("voice-packs")) { "语音包管理权限未授权" }
             val result = PluginJson.decodeFromString<PluginOutcome>(connection.worker.voiceCommand(PluginJson.encodeToString(command)))
-            refresh(PluginContext("", "")); result
+            refresh(); result
         }
     } }
     override fun page(pageId: String, context: PluginContext) = snapshot.pages.firstOrNull { it.id == pageId }
@@ -55,11 +59,15 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
         refresh(context)
         outcome
     }
-    suspend fun refresh(context: PluginContext) = withContext(Dispatchers.IO) {
-        val next = PluginJson.decodeFromString<PluginSnapshot>(connection.worker.snapshot(PluginJson.encodeToString(context)))
-        val changed = next != snapshot
-        snapshot = next
-        changed
+    suspend fun refresh(context: PluginContext? = null) = withContext(Dispatchers.IO) {
+        refreshLock.withLock {
+            val activeContext = context ?: lastContext
+            val next = PluginJson.decodeFromString<PluginSnapshot>(connection.worker.snapshot(PluginJson.encodeToString(activeContext)))
+            val changed = next != snapshot
+            lastContext = activeContext
+            snapshot = next
+            changed
+        }
     }
     override suspend fun close() { connection.stop() }
 }

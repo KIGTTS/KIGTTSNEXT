@@ -25,10 +25,9 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                     add(PageBlock.Group(pack.metadata.name, controls.map { PageBlock.Slider(it) }))
                 }
                 val entries = catalog.filter { it.enabled }.flatMap { provider -> provider.settingsPages.map { page ->
-                    PageAction("settings/${encodeId(provider.pluginId)}/${encodeId(page.id)}",
-                        if (provider.settingsPages.size == 1) provider.name else "${provider.name} · ${page.title}", page.icon)
+                    PageBlock.Input(page.title, "", "settings/${encodeId(provider.pluginId)}/${encodeId(page.id)}", icon = page.icon)
                 } }
-                if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), listOf(PageBlock.Actions(entries))))
+                if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), entries))
                 add(PageBlock.Group(t("audio_cache"), buildList {
                     add(PageBlock.Toggle(t("auto_cache"), settings.cacheEnabled, "cache-toggle",
                         if (source?.info?.packs?.isNotEmpty() == true && source.pluginId == "engine.cloud-tts")
@@ -53,7 +52,7 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
             if (source.pluginId == SYSTEM_PROVIDER) listOf(default) else source.info.voices.distinctBy { it.id }.map { voice ->
                 ManagementItem("${source.pluginId}/${voice.id}", voice.name, languageName(voice.language, locale), PluginIcon.SPEAKER,
                     selected = settings.provider == source.pluginId && settings.voice == voice.id,
-                    group = source.name,
+                    group = source.displayName,
                     primaryAction = "voice/${encodeId(source.pluginId)}/${encodeId(voice.id)}",
                     selection = ManagementSelection("voice/${encodeId(source.pluginId)}/${encodeId(voice.id)}"))
             }
@@ -67,6 +66,9 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
             ManagementList("voice-picker/$page", items.drop(page * 24).take(24)))
     }
 }
+
+internal val TtsProvider.displayName: String
+    get() = settingsPages.singleOrNull()?.title?.takeIf(String::isNotBlank) ?: name
 
 private fun formatCacheSize(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
