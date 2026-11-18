@@ -57,15 +57,15 @@ class CameraProUiTest {
         compose.onNodeWithTag("camera-pro-auto").assertIsNotEnabled()
     }
 
-    @Test fun landscapeParametersRotateAndShrinkLongValuesToFitTheirSlots() {
+    @Test fun landscapeParametersStayUprightAndShrinkLongValuesToFitTheRail() {
         val controller = CameraManualController(compose.activity, {}).apply {
             attach(CameraManualCapabilities(1_000_000L..500_000_000L, 100..2_000_000)) { Futures.immediateFuture<Void?>(null) }
             setManualShutter(true, sensitivity = 2_000_000)
         }
         val exposure = CameraExposureCompensation()
-        var longEdge by mutableStateOf(540.dp)
+        var railWidth by mutableStateOf(80.dp)
         compose.setContent { KigttsTheme(ThemeSettings()) {
-            CameraProControls(controller, exposure, true, true, {}, Modifier.size(54.dp, longEdge))
+            CameraProControls(controller, exposure, true, true, {}, Modifier.size(railWidth, 350.dp))
         } }
         val iso = compose.onNodeWithText("2000000", useUnmergedTree = true)
         fun textLayout(): TextLayoutResult {
@@ -74,13 +74,18 @@ class CameraProUiTest {
             return results.single()
         }
         val wide = textLayout()
-        compose.runOnIdle { longEdge = 270.dp }
+        compose.runOnIdle { railWidth = CAMERA_PRO_BAND.dp }
         val narrow = textLayout()
         assertTrue(narrow.getBoundingBox(1).width < wide.getBoundingBox(1).width)
         assertFalse(narrow.hasVisualOverflow)
         assertFalse(narrow.isLineEllipsized(0))
         val bounds = iso.fetchSemanticsNode().boundsInRoot
-        assertTrue(bounds.height > bounds.width)
+        assertTrue(bounds.width > bounds.height)
+        val caption = compose.onNodeWithText("ISO", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(caption.top >= bounds.bottom)
+        val focus = compose.onNodeWithTag("camera-pro/FOCUS").fetchSemanticsNode().boundsInRoot
+        val reset = compose.onNodeWithTag("camera-pro-reset").fetchSemanticsNode().boundsInRoot
+        assertTrue(focus.bottom < reset.top)
     }
 
     @Test fun globalExposureSitsLeftOfZoomAndTheRulerDoesNotEraseFocusOffset() {

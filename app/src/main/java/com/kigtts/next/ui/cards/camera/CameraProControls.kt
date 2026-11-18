@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.navigation.excludeCameraPull
@@ -50,44 +51,53 @@ internal fun CameraProControls(controller: CameraManualController, exposure: Cam
         } else measured = null
     }
     val activeControl = selected?.takeIf { proControlAvailable(it, controller, exposure) }
-    val valueStyle = MaterialTheme.typography.labelLarge
-    val captionStyle = MaterialTheme.typography.labelSmall
+    val typography = MaterialTheme.typography
+    val valueStyle = if (vertical) typography.labelLarge.copy(lineHeight = 1.25.em) else typography.labelLarge
+    val captionStyle = if (vertical) typography.labelSmall.copy(lineHeight = 1.25.em) else typography.labelSmall
     val valueAutoSize = remember(vertical, valueStyle.fontSize) {
         if (vertical) TextAutoSize.StepBased(8.sp, valueStyle.fontSize, .5.sp) else null
     }
     val captionAutoSize = remember(vertical, captionStyle.fontSize) {
         if (vertical) TextAutoSize.StepBased(8.sp, captionStyle.fontSize, .5.sp) else null
     }
-    Box(modifier, contentAlignment = Alignment.Center) {
-        // Measure with the rotated viewport so each label fits its actual slot.
-        val orientation = if (vertical) Modifier.fillMaxSize().verticalModeLabel() else Modifier.fillMaxSize()
-        Surface(orientation.excludeCameraPull().testTag("camera-pro-controls"),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .90f), shape = MaterialTheme.shapes.large) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CameraRulerIcon(copy.text("camera.pro_reset"), Icons.Default.RestartAlt, "camera-pro-reset", enabled) {
-                    select(null); controller.reset(); changeEv(0)
+    Surface(modifier.excludeCameraPull().testTag("camera-pro-controls"),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .90f), shape = MaterialTheme.shapes.large) {
+        val reset: @Composable () -> Unit = {
+            CameraRulerIcon(copy.text("camera.pro_reset"), Icons.Default.RestartAlt, "camera-pro-reset", enabled) {
+                select(null); controller.reset(); changeEv(0)
+            }
+        }
+        val parameter: @Composable (ProControl, Modifier) -> Unit = { key, slot ->
+            val value = when (key) {
+                ProControl.EV -> cameraEvLabel(exposure.baseline, exposure.step)
+                ProControl.SHUTTER -> (controller.shutterNanos ?: measured?.exposure)?.takeIf { it > 0 }?.let {
+                    shutterDisplayValue(it)
+                } ?: copy.text("option.auto")
+                ProControl.ISO -> controller.sensorIso.takeIf { it > 0 }?.toString() ?: measured?.iso?.toString() ?: copy.text("option.auto")
+                ProControl.WB -> controller.whiteBalanceKelvin?.let(::cameraKelvinLabel) ?: copy.label(controller.whiteBalance)
+                ProControl.FOCUS -> if (controller.manualFocus) "MF" else "AF"
+            }
+            val isSelected = activeControl == key
+            TextButton(feedbackClick { select(if (isSelected) null else key) },
+                slot.testTag("camera-pro/${key.name}").semantics { this.selected = isSelected },
+                enabled = enabled && proControlAvailable(key, controller, exposure), contentPadding = PaddingValues(horizontal = 2.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(value, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                        style = valueStyle, autoSize = valueAutoSize)
+                    Text(key.short, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                        style = captionStyle, autoSize = captionAutoSize)
                 }
-                ProControl.entries.forEach { key ->
-                    val value = when (key) {
-                        ProControl.EV -> cameraEvLabel(exposure.baseline, exposure.step)
-                        ProControl.SHUTTER -> (controller.shutterNanos ?: measured?.exposure)?.takeIf { it > 0 }?.let {
-                            shutterDisplayValue(it)
-                        } ?: copy.text("option.auto")
-                        ProControl.ISO -> controller.sensorIso.takeIf { it > 0 }?.toString() ?: measured?.iso?.toString() ?: copy.text("option.auto")
-                        ProControl.WB -> controller.whiteBalanceKelvin?.let(::cameraKelvinLabel) ?: copy.label(controller.whiteBalance)
-                        ProControl.FOCUS -> if (controller.manualFocus) "MF" else "AF"
-                    }
-                    val isSelected = activeControl == key
-                    TextButton(feedbackClick { select(if (isSelected) null else key) }, Modifier.weight(1f).fillMaxHeight().testTag("camera-pro/${key.name}").semantics { this.selected = isSelected },
-                        enabled = enabled && proControlAvailable(key, controller, exposure), contentPadding = PaddingValues(horizontal = 2.dp)) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(value, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                                style = valueStyle, autoSize = valueAutoSize)
-                            Text(key.short, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                                style = captionStyle, autoSize = captionAutoSize)
-                        }
-                    }
-                }
+            }
+        }
+        if (vertical) {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                ProControl.entries.asReversed().forEach { parameter(it, Modifier.weight(1f).fillMaxWidth()) }
+                reset()
+            }
+        } else {
+            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                reset()
+                ProControl.entries.forEach { parameter(it, Modifier.weight(1f).fillMaxHeight()) }
             }
         }
     }
