@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.ComponentActivity
+import androidx.camera.view.PreviewView
 import android.graphics.BitmapFactory
 import android.view.ViewGroup
 import androidx.core.graphics.Insets
@@ -10,14 +11,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kigtts.next.theme.*
+import com.kigtts.plugin.api.PolaroidFormat
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.File
 import org.junit.Assert.*
@@ -80,7 +85,49 @@ class CameraFullscreenChromeUiTest {
     @Test fun photoAndProKeepTheSameShutterAnchorInPortrait() = verifySharedShutterAnchor(360, 760)
 
     @Test @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
-    fun photoAndProKeepTheSameShutterAnchorInLandscape() = verifySharedShutterAnchor(760, 360)
+    fun landscapeModeChangesKeepTheViewfinderStillAndTheFocusControlOutsideFourByThree() {
+        var pro by mutableStateOf(false)
+        var aspect by mutableFloatStateOf(4f / 3f)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            val context = LocalContext.current
+            val owner = LocalLifecycleOwner.current
+            val scope = rememberCoroutineScope()
+            val view = remember { PreviewView(context) }
+            val session = remember { PolaroidCameraSession(context, owner, scope, {}) }
+            Box(Modifier.size(852.dp, 393.dp)) {
+                CameraPageLayout(preview = { modifier, vertical ->
+                    CameraPaperPreview(view, PolaroidFormat.WIDE, PhotoFilter.ORIGINAL, session, {}, modifier,
+                        displayReady = true, verticalChrome = vertical, aspectRatio = aspect,
+                        photoSideInset = CAMERA_PREVIEW_SIDE_INSET, professional = pro, chrome = { layout ->
+                            layout.pro?.let { rect ->
+                                CameraProControls(session.manual, session.exposure, true, vertical, {},
+                                    Modifier.align(Alignment.TopStart).cameraChromeBounds(rect))
+                            }
+                        })
+                }, controls = { vertical ->
+                    CameraModeControls(if (pro) CameraMode.PRO else CameraMode.PHOTO, {}, true, vertical, false, 0) {
+                        CameraActionBar(false, true, true, true, {}, {}, {}, vertical, showCancel = false, gallery = {})
+                    }
+                }, photoAspect = aspect, captureBaseline = true, professional = pro)
+            }
+        } }
+        fun bounds(tag: String) = compose.onNodeWithTag(tag).getUnclippedBoundsInRoot()
+        for (ratio in listOf(4f / 3f, 1f, 16f / 9f)) {
+            compose.runOnIdle { pro = false; aspect = ratio }
+            compose.waitForIdle()
+            val photo = bounds("camera-photo-window")
+            val shutter = bounds("camera-shutter")
+            compose.mainClock.autoAdvance = false
+            compose.runOnIdle { pro = true }
+            repeat(18) {
+                compose.mainClock.advanceTimeByFrame()
+                assertEquals(photo, bounds("camera-photo-window"))
+                assertEquals(shutter, bounds("camera-shutter"))
+            }
+            compose.mainClock.autoAdvance = true
+            if (ratio == 4f / 3f) assertTrue(bounds("camera-pro/FOCUS").left > photo.right)
+        }
+    }
 
     private fun verifySharedShutterAnchor(width: Int, height: Int) {
         var pro by mutableStateOf(false)

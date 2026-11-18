@@ -45,9 +45,8 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
         val baseline = if (captureBaseline) cameraCaptureBaseline(maxWidth.value, maxHeight.value, vertical, inset.value) else null
         val overlay = if (baseline != null && photoAspect != null) {
             val stageHeight = (maxHeight.value - 8f).coerceAtLeast(0f)
-            val photo = cameraCenteredCaptureWindow(maxWidth.value, stageHeight, photoAspect, vertical, if (fullFrame) 1f else 0f,
-                endLimit = baseline.proPreviewLimit.takeIf { professional && !fullFrame },
-                portraitShift = if (vertical) 0f else cameraLongScreenPreviewShift(maxWidth.value, stageHeight, baseline.dockStart))
+            val photo = baseline.preview(maxWidth.value, stageHeight, photoAspect, if (fullFrame) 1f else 0f,
+                professionalProgress = if (professional) 1f else 0f)
             (if (vertical) photo.right else photo.bottom) > baseline.dockStart + .5f
         } else fullFrame || cameraOverlaysShutter(maxWidth.value, maxHeight.value, photoAspect)
         val targetOverlap = if (overlay) 1f else 0f

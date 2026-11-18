@@ -15,7 +15,7 @@ class CameraCaptureBaselineTest {
 
     @Test fun professionalStripReplacesNormalZoomSlotBelowPreviewWithoutShiftingShutter() {
         val tall = cameraCaptureBaseline(393f, 900f, false, 140f)
-        val photo = cameraCenteredCaptureWindow(393f, 892f, 3f / 4f, false, 0f, endLimit = tall.proPreviewLimit)
+        val photo = tall.preview(393f, 892f, 3f / 4f, 0f, professionalProgress = 1f)
         assertEquals(tall.frame, photo)
         assertEquals(CAMERA_PREVIEW_SIDE_INSET, tall.pro().top - photo.bottom, .001f)
         assertTrue(tall.pro().bottom < tall.dockStart)
@@ -30,8 +30,7 @@ class CameraCaptureBaselineTest {
         assertEquals(4f / 3f, frame.width / frame.height, .001f)
         assertEquals(CAMERA_RAIL_GAP, landscape.pro().left - landscape.zoom(true).right, .001f)
         assertEquals(frame.height, landscape.pro().height, .001f)
-        val proPhoto = cameraCenteredCaptureWindow(760f, 442f, 4f / 3f, true, 0f, endLimit = landscape.proPreviewLimit)
-        assertEquals(CAMERA_PREVIEW_SIDE_INSET, landscape.pro().left - proPhoto.right, .001f)
+        assertEquals(frame, landscape.preview(760f, 442f, 4f / 3f, 0f, professionalProgress = 1f))
         assertEquals(landscape.zoom(false).center.x, landscape.pro().center.x, .001f)
         val full = cameraCenteredCaptureWindow(760f, 442f, 760f / 442f, true, 1f)
         assertTrue(full.left < frame.left)
@@ -40,7 +39,7 @@ class CameraCaptureBaselineTest {
 
     @Test fun verySmallWindowDoesNotProduceNegativeOrOverlappingControlBands() {
         val short = cameraCaptureBaseline(393f, 655f, false, 140f)
-        val photo = cameraCenteredCaptureWindow(393f, 647f, 3f / 4f, false, 0f, endLimit = short.proPreviewLimit)
+        val photo = short.preview(393f, 647f, 3f / 4f, 0f, professionalProgress = 1f)
         assertTrue(photo.bottom < short.pro().top)
         assertEquals(3f / 4f, photo.width / photo.height, .001f)
         assertTrue(short.pro().top >= 0)
@@ -60,7 +59,7 @@ class CameraCaptureBaselineTest {
         assertEquals(0f, full.top, .001f)
     }
 
-    @Test fun onA21By9DeviceShutterTrailingGapMatchesAfterRotation() {
+    @Test fun onA21By9DeviceTheShutterRetainsItsReachWithASlightLandscapeInsetChange() {
         val short = 393f
         val long = short * 21f / 9f
         val portraitDepth = 140f
@@ -69,11 +68,26 @@ class CameraCaptureBaselineTest {
         val landscape = cameraCaptureBaseline(long, short, true, landscapeDepth)
         val portraitTail = long - portrait.dockPositionInStage() - portraitDepth
         val landscapeTail = long - landscape.dockPositionInStage() - landscapeDepth
-        assertEquals(portraitTail, landscapeTail, .001f)
+        assertEquals(8f, portraitTail - landscapeTail, .001f)
         // 21:9 keeps the existing portrait edge relationship on the reference screen.
         assertEquals(portrait.frame.bottom + CAMERA_PRO_BAND + CAMERA_PREVIEW_SIDE_INSET + 4f, portrait.dockStart, .001f)
         assertEquals(CAMERA_LEFT_CLEARANCE + CAMERA_PREVIEW_SIDE_INSET, landscape.frame.left, .001f)
         assertEquals(4f / 3f, landscape.frame.width / landscape.frame.height, .001f)
+    }
+
+    @Test fun landscapeProKeepsEveryPhotoWindowAndClearsTheFourByThreeEdgeWhenThereIsRoom() {
+        for (width in listOf(698f, 852f, 917f)) {
+            val baseline = cameraCaptureBaseline(width, 393f, true, 164f)
+            for ((ratio, fullscreen) in listOf(4f / 3f to 0f, 1f to 0f, 16f / 9f to 0f, (width / 385f) to 1f)) {
+                val standard = baseline.preview(width, 385f, ratio, fullscreen)
+                assertEquals(standard, baseline.preview(width, 385f, ratio, fullscreen, professionalProgress = .5f))
+                assertEquals(standard, baseline.preview(width, 385f, ratio, fullscreen, professionalProgress = 1f))
+            }
+            if (width >= 852f) {
+                assertTrue(baseline.pro().left > baseline.frame.right)
+                assertTrue(baseline.zoom(false).left > baseline.frame.right)
+            }
+        }
     }
 
     @Test fun shorterScreensMoveTheDockOutwardWithoutChangingLandscapeAlignment() {
@@ -109,7 +123,7 @@ class CameraCaptureBaselineTest {
             longHeight - long.dockPositionInStage() - dockExtent, .001f)
         assertTrue(long.frame.top > compact.frame.top)
         assertEquals(3f / 4f, long.frame.width / long.frame.height, .001f)
-        assertTrue(long.frame.bottom <= long.proPreviewLimit)
+        assertTrue(long.frame.bottom <= long.portraitProPreviewLimit)
     }
 
     @Test fun continuousRulerProducesTactileTicksWithoutQuantizingTheParameter() {

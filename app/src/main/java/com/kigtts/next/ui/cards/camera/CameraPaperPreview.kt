@@ -86,17 +86,10 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
         val targetHeaderInset = if (fullFrame) 0f else headerClearance
         val photoWidth = maxWidth.value - minOf(2 * photoSideInset, maxWidth.value * .5f)
         val fitted = cameraPhotoWindow(photoWidth, maxHeight.value - headerInset, motion.ratio.value)
-        val axisEnd = if (verticalChrome) maxWidth.value else maxHeight.value
-        val proFit by animateFloatAsState(if (professional) 1f else 0f,
+        val proFit by animateFloatAsState(if (baseline != null && !verticalChrome && professional) 1f else 0f,
             CameraFramingMotion, label = "camera-pro-preview-clearance")
-        val proPreviewLimit = baseline?.let {
-            val inset = (axisEnd - it.proPreviewLimit).coerceAtLeast(0f)
-            (axisEnd - inset * proFit * (1f - fullFrameProgress)).takeIf { proFit > 0f && fullFrameProgress < 1f }
-        }
         val layout = if (baseline != null) cameraBaselineChrome(maxWidth.value, maxHeight.value,
-            cameraCenteredCaptureWindow(maxWidth.value, maxHeight.value, motion.ratio.value, verticalChrome,
-                fullFrameProgress, photoSideInset, proPreviewLimit,
-                portraitShift = if (verticalChrome) 0f else cameraLongScreenPreviewShift(maxWidth.value, maxHeight.value, baseline.dockStart)),
+            baseline.preview(maxWidth.value, maxHeight.value, motion.ratio.value, fullFrameProgress, photoSideInset, proFit),
             baseline, professional)
         else rememberCameraChromeLayout(maxWidth.value, maxHeight.value, fitted,
             cameraPhotoWindow(photoWidth, maxHeight.value - targetHeaderInset, aspectRatio), verticalChrome,

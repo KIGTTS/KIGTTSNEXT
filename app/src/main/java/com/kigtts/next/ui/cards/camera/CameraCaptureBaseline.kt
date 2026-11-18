@@ -14,6 +14,7 @@ private const val LONG_DEVICE_RATIO = 24f / 9f
 private const val COMPACT_DEVICE_RATIO = 16f / 9f
 private const val MAX_LONG_SCREEN_PREVIEW_SHIFT = 48f
 private const val REFERENCE_PORTRAIT_DOCK = 140f
+private const val LANDSCAPE_DOCK_NUDGE = 8f
 private const val MIN_DOCK_TRAILING_GAP = 12f
 private const val MAX_DOCK_TRAILING_GAP = 164f
 private const val MIN_DOCK_START = 72f
@@ -28,8 +29,18 @@ internal data class CameraCaptureBaseline(val frame: Rect, val dockStart: Float,
     } else {
         band((railEnd - (CAMERA_PRO_BAND - CAMERA_ZOOM_BAND) / 2).coerceAtLeast(0f), CAMERA_ZOOM_BAND)
     }
-    // Leave the non-full preview a gap before the professional strip; never move the dock.
-    val proPreviewLimit get() = (railEnd - CAMERA_PRO_BAND - CAMERA_PREVIEW_SIDE_INSET).coerceAtLeast(0f)
+    val portraitProPreviewLimit get() = (railEnd - CAMERA_PRO_BAND - CAMERA_PREVIEW_SIDE_INSET).coerceAtLeast(0f)
+
+    fun preview(width: Float, height: Float, ratio: Float, fullscreenProgress: Float,
+        sideInset: Float = CAMERA_PREVIEW_SIDE_INSET, professionalProgress: Float = 0f): Rect {
+        // Only portrait allocates preview space to the pro band. On a tight landscape window
+        // the controls can overlay the same crop used by the other shooting modes.
+        val limit = if (!vertical && professionalProgress > 0f && fullscreenProgress < 1f) {
+            height - (height - portraitProPreviewLimit).coerceAtLeast(0f) * professionalProgress * (1f - fullscreenProgress)
+        } else null
+        return cameraCenteredCaptureWindow(width, height, ratio, vertical, fullscreenProgress, sideInset, limit,
+            portraitShift = if (vertical) 0f else cameraLongScreenPreviewShift(width, height, dockStart))
+    }
     private fun depthEnd(x: Float, y: Float) = if (vertical) x else y
     private fun band(end: Float, depth: Float): Rect = if (vertical) {
         Rect((end - depth).coerceAtLeast(0f), frame.top, end, frame.bottom)
@@ -45,9 +56,8 @@ internal fun cameraCaptureBaseline(width: Float, stageHeight: Float, vertical: B
     val available = if (vertical) width else height
     val lastDockStart = (available - dockExtent).coerceAtLeast(0f)
     val trailing = cameraDockTrailingGap(long, short)
-    // The action bar is 92dp deep in either orientation, but the mode strip is wider in
-    // landscape. Reserve its measured extent without changing the shutter's trailing gap.
-    val dockStart = (lastDockStart - trailing + if (vertical) 0f else STAGE_VERTICAL_PADDING)
+    // Move the whole landscape dock slightly toward the trailing edge, including the rails it anchors.
+    val dockStart = (lastDockStart - trailing + if (vertical) LANDSCAPE_DOCK_NUDGE else STAGE_VERTICAL_PADDING)
         .coerceIn(minOf(MIN_DOCK_START, lastDockStart), lastDockStart)
     val photo = cameraCenteredCaptureWindow(width, height, if (vertical) CameraAspect.STANDARD.ratio(4, 3) else CameraAspect.STANDARD.ratio(3, 4),
         vertical, 0f, portraitShift = cameraLongScreenPreviewShift(width, height, dockStart).takeUnless { vertical } ?: 0f)
