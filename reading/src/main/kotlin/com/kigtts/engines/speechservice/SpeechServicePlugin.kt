@@ -5,6 +5,7 @@ import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.*
 import com.kigtts.engines.system.SystemSpeechEngine
 import java.util.Base64
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
@@ -12,7 +13,8 @@ import kotlinx.coroutines.withContext
 class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> = emptyFlow(),
     private val installedProviders: () -> Map<String, String>? = { null },
     private val mayCacheProvider: (String) -> Boolean = { true },
-    private val catalogUpdates: Flow<Unit> = emptyFlow()) : KigPlugin {
+    private val catalogUpdates: Flow<Unit> = emptyFlow(),
+    private val playbackProvider: (String) -> Pair<TtsProvider, String>? = { null }) : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "朗读设置",
         "选择朗读声音，管理语音包", version = "0.8.5", license = "GPL-3.0-only")
     override val localization get() = ReadingCopy.localization
@@ -27,15 +29,20 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
     private val cacheSize = MutableStateFlow(0L)
     val cacheBytes = cacheSize.asStateFlow()
     val bakeProgress get() = if (::facade.isInitialized) facade.cache?.bakeProgress else null
-    fun synthesizeText(request: TtsRequest, phraseId: String?) =
-        if (::facade.isInitialized) facade.synthesize(request, phraseId) else pending.synthesize(request)
+    private val backgroundBake = MutableStateFlow(false)
+    val backgroundBakeActive = backgroundBake.asStateFlow()
+    @Volatile private var attached = CompletableDeferred<ServiceSynthesis>()
+    fun cancelBackgroundBake() { if (::facade.isInitialized) facade.cache?.cancelBake() }
+    fun synthesizeText(request: TtsRequest, phraseId: String?) = flow {
+        emitAll(attached.await().synthesize(request, phraseId))
+    }
     suspend fun forgetCachedPacks(owner: String, ids: Set<String>) = withContext(Dispatchers.IO) {
         if (::facade.isInitialized) facade.cache?.forget(owner, ids)
         Unit
     }
     private val pending = object : TtsEngine {
         override val info = TtsInfo(role = TtsRole.SERVICE)
-        override fun synthesize(request: TtsRequest) = kotlinx.coroutines.flow.flow<SynthesisEvent> { error("朗读设置正在加载，请稍后重试") }
+        override fun synthesize(request: TtsRequest) = synthesizeText(request, null)
     }
     override val tts: TtsEngine get() = if (::facade.isInitialized) facade else pending
     override suspend fun attach(environment: PluginEnvironment) {
@@ -43,16 +50,19 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
         broker = requireNotNull(environment.speechBroker) { "宿主未授予语音合成服务能力" }
         settings = ServiceSettings(environment.storage)
         system = SystemSpeechEngine(this.environment)
-        facade = ServiceSynthesis(settings, broker, system)
+        val synthesis = ServiceSynthesis(settings, broker, system)
         val cache = ServiceCache(environment.storage.file("audio-cache"), settings, broker, shortcutTexts, installedProviders,
-            ::systemVoiceRevision, facade, cacheSize, mayCacheProvider, catalogUpdates = catalogUpdates)
-        facade.cache = cache
+            ::systemVoiceRevision, synthesis, cacheSize, mayCacheProvider, catalogUpdates = catalogUpdates,
+            backgroundBake = backgroundBake, playbackProvider = playbackProvider)
+        synthesis.cache = cache
         val library = VoiceLibrary(environment.storage)
         libraryPages = VoiceLibraryPages(settings, library, ::providers)
         libraryActions = VoiceLibraryActions(environment, settings, library, libraryPages, broker) { owner, pack ->
             cache.forget(owner, setOf(pack))
         }
         settingsPages = SpeechServicePages(settings, { cache.bytes.value }, ::providers)
+        facade = synthesis
+        attached.complete(synthesis)
     }
     override val contributions get() = settingsContributions("zh-CN")
     private fun settingsContributions(locale: String): PluginContributions {
@@ -92,7 +102,8 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                         actions += PageAction("rename/${encode(id)}/${encode(voice.id)}", t("rename"), PluginIcon.TEXT)
                         actions += PageAction("delete/${encode(id)}/${encode(voice.id)}", t("delete_pack"), PluginIcon.CLOSE)
                     }
-                    PageBlock.Group(voice.name, listOf(PageBlock.Text(voice.language + if (voice.description.isBlank()) "" else " · ${voice.description}"), PageBlock.Actions(actions)))
+                    val description = if (id == SYSTEM_PROVIDER && voice.description.isNotBlank()) t(voice.description) else voice.description
+                    PageBlock.Group(voice.name, listOf(PageBlock.Text(voice.language + if (description.isBlank()) "" else " · $description"), PageBlock.Actions(actions)))
                 } + if (navigation.isEmpty()) emptyList() else listOf(PageBlock.Actions(navigation)))
         }
         return null
@@ -114,7 +125,7 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                 PageAction("cache-clear-confirm", t("clear"), PluginIcon.CLOSE))
             "cache-clear-confirm" -> withContext(Dispatchers.IO) { facade.cache?.clear(); PluginOutcome.RefreshUi }
             "cache-rebuild" -> withContext(Dispatchers.IO) {
-                PluginOutcome.Message(facade.cache?.rebuild() ?: t("loading_manager"))
+                PluginOutcome.Message(t(facade.cache?.rebuild() ?: "loading_manager"))
             }
             "settings" -> {
                 val provider = providers().first { it.pluginId == id && it.enabled }
@@ -149,17 +160,18 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                 settings.provider = id; settings.voice = voice; settings.save(); PluginOutcome.RefreshUi
             }
             "refresh" -> { if (id == SYSTEM_PROVIDER) system.refreshVoices() else broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.REFRESH)); PluginOutcome.RefreshUi }
-            "import" -> PluginOutcome.ImportResource("导入语音包", "resources/inbox", "imported/${pieces[1]}")
+            "import" -> PluginOutcome.ImportResource(t("import_pack"), "resources/inbox", "imported/${pieces[1]}")
             "imported" -> {
                 val path = requireNotNull(context.inputs["resourcePath"])
                 try { broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.IMPORT, resourcePath = path)) }
                 finally { environment.storage.file(path).delete() }
                 PluginOutcome.RefreshUi
             }
-            "rename" -> PluginOutcome.TextInput("语音包名称", "renamed/${pieces[1]}/${pieces[2]}",
+            "rename" -> PluginOutcome.TextInput(t("pack_edit_name"), "renamed/${pieces[1]}/${pieces[2]}",
                 providers().first { it.pluginId == id }.info.voices.first { it.id == voice }.let { it.packName ?: it.name })
             "renamed" -> { broker.command(requireNotNull(id), VoiceCommand(VoiceOperation.RENAME, voiceId = voice, value = context.inputs["value"])); PluginOutcome.RefreshUi }
-            "delete" -> PluginOutcome.Menu("确认删除这个语音包及其所有声音？", listOf(PageAction("deleted/${pieces[1]}/${pieces[2]}", "确认删除", PluginIcon.CLOSE)))
+            "delete" -> PluginOutcome.Menu(t("delete_voice_pack_prompt"),
+                listOf(PageAction("deleted/${pieces[1]}/${pieces[2]}", t("pack_delete_confirm"), PluginIcon.CLOSE)))
             "deleted" -> {
                 val source = providers().firstOrNull { it.pluginId == id }?.info
                 val pack = source?.packs?.firstOrNull { voice in it.voiceIds }?.id
@@ -170,13 +182,18 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                 if (settings.provider == id) { settings.voice = providers().firstOrNull { it.pluginId == id }?.info?.selectedVoiceId; settings.save() }
                 PluginOutcome.RefreshUi
             }
-            "rate" -> PluginOutcome.Controls("语速", listOf(PluginControl.Slider("语速", "save-rate", settings.rate, .25f, 4f, suffix = "×")))
+            "rate" -> PluginOutcome.Controls(t("speed"), listOf(PluginControl.Slider(t("speed"), "save-rate", settings.rate, .25f, 4f, suffix = "×")))
             "save-rate" -> {
                 val value = context.inputs["value"]?.toFloatOrNull(); require(value != null && value.isFinite() && value in .25f..4f)
                 settings.rate = value; settings.save(); PluginOutcome.NoAction
             }
-            else -> PluginOutcome.Message("操作不可用，请重新打开朗读设置")
+            else -> PluginOutcome.Message(t("action_unavailable"))
         }.also { facade.cache?.changed() }
+    }
+    override suspend fun close() {
+        attached.cancel()
+        attached = CompletableDeferred()
+        if (::facade.isInitialized) facade.close()
     }
     private fun systemVoiceRevision(): String {
         val context = environment.context

@@ -80,17 +80,23 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
         if (!started) emit(SynthesisEvent.Started)
         var offset = 0
         var notice: String? = null
+        var audioSent = false
         while (offset < request.text.length) {
             val end = segmentEnd(request.text, offset, limit)
-            system.synthesize(request.copy(text = request.text.substring(offset, end), voiceId = null)).collect {
-                when (it) {
-                    is SynthesisEvent.Audio -> emit(it)
-                    is SynthesisEvent.Finished -> notice = it.notice ?: notice
-                    else -> Unit
+            flow { emitAll(system.synthesize(request.copy(text = request.text.substring(offset, end), voiceId = null))) }
+                .catch { error ->
+                    if (error is CancellationException || audioSent) throw error
+                    throw SystemReadingUnavailable(error)
+                }.collect {
+                    when (it) {
+                        is SynthesisEvent.Audio -> { audioSent = audioSent || it.audio.bytes.isNotEmpty(); emit(it) }
+                        is SynthesisEvent.Finished -> notice = it.notice ?: notice
+                        else -> Unit
+                    }
                 }
-            }
             offset = end
         }
+        if (!audioSent && request.text.isNotBlank()) throw SystemReadingUnavailable()
         emit(SynthesisEvent.Finished(notice))
     }
 
@@ -99,3 +105,5 @@ internal class ServiceSynthesis(private val settings: ServiceSettings, private v
         return if (end < text.length && text[end - 1].isHighSurrogate()) end - 1 else end
     }
 }
+
+class SystemReadingUnavailable(cause: Throwable? = null) : Exception("System speech synthesis is unavailable", cause)

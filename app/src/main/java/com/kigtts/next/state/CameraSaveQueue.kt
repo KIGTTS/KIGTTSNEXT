@@ -1,5 +1,7 @@
 package com.kigtts.next.state
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.net.Uri
 import android.util.Log
 import com.kigtts.next.cards.*
@@ -31,11 +33,11 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
                 catch (cancel: CancellationException) { throw cancel }
                 catch (failure: Exception) {
                     Log.w("KigCameraSave", "Could not publish photo", failure)
-                    message("照片未能保存，原图已保留")
+                    message(stickers.context.uiCopy("camera.photo_save_failed_original"))
                 }
                 catch (failure: OutOfMemoryError) {
                     Log.w("KigCameraSave", "Insufficient memory for photo processing", failure)
-                    message("照片未能保存，原图已保留")
+                    message(stickers.context.uiCopy("camera.photo_save_failed_original"))
                 }
                 finally { queued.update { (it - 1).coerceAtLeast(0) } }
             } } finally { work.close() }
@@ -45,13 +47,13 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
         encoding: CameraPhotoEncoding = CameraPhotoEncoding.JPEG, onSaved: (Uri) -> Unit = {}) {
         var reported = false
         val reportFallback: () -> Unit = {
-            if (!reported) { reported = true; message("HEIF 未能保存，已改用 JPEG") }
+            if (!reported) { reported = true; message(stickers.context.uiCopy("camera.heif_fallback")) }
         }
         shots.forEach { shot ->
             queued.update { it + 1 }
             val format = if (shot.motion != null) CameraPhotoEncoding.JPEG else shot.output?.encoding ?: encoding
             if (!work.trySend(Pending(shot, shot.output?.watermark ?: watermark, format, reportFallback, onSaved)).isSuccess) {
-                queued.update { (it - 1).coerceAtLeast(0) }; message("照片未能加入保存队列，原图已保留")
+                queued.update { (it - 1).coerceAtLeast(0) }; message(stickers.context.uiCopy("camera.enqueue_failed_original"))
             }
         }
     }

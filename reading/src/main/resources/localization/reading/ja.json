@@ -76,5 +76,13 @@
   "pack_unknown_action": "不明な音声パック操作",
   "pack_parameter_changed": "音声設定が変更されました",
   "pack_parameter_invalid": "有効な値を入力してください",
-  "pack_parameter_range": "音声設定が範囲外です"
+  "pack_parameter_range": "音声設定が範囲外です",
+  "cache_requires_enabled": "先に自動キャッシュを有効にしてください。",
+  "cache_no_shortcuts": "キャッシュできる定型文がありません。",
+  "cache_voice_unavailable": "選択した音声をキャッシュできません。エンジンと権限を確認してください。",
+  "cache_rebuild_queued": "この音声で定型文のキャッシュを作り直します。",
+  "delete_voice_pack_prompt": "この音声パックと収録されているすべての音声を削除しますか？",
+  "action_unavailable": "この操作は利用できません。読み上げ設定を開き直してください。",
+  "voice_requires_network": "ネット接続が必要",
+  "voice_local": "端末内の音声"
 }

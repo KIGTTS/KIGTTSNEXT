@@ -1,5 +1,7 @@
 package com.kigtts.next
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.test.core.app.ApplicationProvider
@@ -63,7 +65,7 @@ class CardMotionCaptureDeliveryTest {
             withTimeout(5000) { entered.await() }
             assertTrue(coordinator.processing.value)
             coordinator.open(); assertEquals(camera, state.value.destination)
-            assertTrue(messages.any { it.contains("正在保存") })
+            assertTrue(stickers.context.uiCopy("camera.photo_saving_wait") in messages)
             assertFalse(coordinator.captured(camera, original, display, PolaroidFormat.SQUARE, motion = clip))
             assertTrue(original.isFile && display.isFile && clip.video.isFile)
             val rejected = photo(android.graphics.Color.BLACK)
@@ -92,7 +94,7 @@ class CardMotionCaptureDeliveryTest {
             withTimeout(5000) { coordinator.processing.first { !it } }
             val card = cards.cards.value.single { it.id !in prior }
             assertTrue(requireNotNull(stickers.imageFile(card.imageId!!)).isFile)
-            assertTrue(messages.any { it.contains("保留照片") })
+            assertTrue(stickers.context.uiCopy("camera.motion_clip_save_failed") in messages)
             assertFalse(original.exists()); assertFalse(clip.video.exists()); assertEquals(Destination.Cards, state.value.destination)
             coordinator.open(); assertTrue(state.value.destination is Destination.CardCamera)
         } finally { scope.cancel() }

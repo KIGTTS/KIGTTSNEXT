@@ -1,5 +1,7 @@
 package com.kigtts.next.state
 
+import com.kigtts.next.i18n.uiCopy
+
 import com.kigtts.next.cards.*
 import com.kigtts.plugin.api.*
 import com.kigtts.next.ui.cards.camera.CameraMotionClip
@@ -38,8 +40,8 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     val burst = CardBurstCoordinator(cards, stickers, scope, state, { !pending && printing.value == null },
         { albumRequest?.second ?: selectedAlbum() }, { pending = it }, { printing.value = it }, message)
     fun open(cardId: String? = null, systemCamera: Boolean = useSystemCamera()) {
-        if (pending) { message("照片正在保存，请稍候"); return }
-        if (printing.value != null) { message("照片正在保存，请稍候"); return }
+        if (pending) { message(stickers.context.uiCopy("camera.photo_saving_wait")); return }
+        if (printing.value != null) { message(stickers.context.uiCopy("camera.photo_saving_wait")); return }
         printing.value = null
         val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId, systemCamera)
         albumRequest = destination to selectedAlbum()
@@ -160,7 +162,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
                     }
                     source to shown
                 }
-                if (motionFailed) message("实况短片未能保存，本次保留照片")
+                if (motionFailed) message(stickers.context.uiCopy("camera.motion_clip_save_failed"))
                 val frameStyleId = "instax.${format.name.lowercase()}.classic"
                 if (state().destination != destination) return@launch
                 if (destination.cardId == null) {
@@ -184,7 +186,7 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
             } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) {
                 if (printing.value?.requestId == destination.requestId) printing.value = null
-                message("照片未能保存，请重试"); if (state().destination == destination) back()
+                message(stickers.context.uiCopy("camera.photo_save_failed")); if (state().destination == destination) back()
             }
             finally {
                 if (framing.value?.requestId == destination.requestId) framing.value = null

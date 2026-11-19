@@ -7,6 +7,8 @@ import com.kigtts.plugin.api.*
 internal fun voicePackDetails(id: String, entry: PackEntry, settings: ServiceSettings, library: VoiceLibrary, locale: String): PluginPage {
     fun t(key: String) = ReadingCopy.text(key, locale)
     val pack = entry.pack; val owner = entry.provider.pluginId; val available = entry.provider.enabled
+    val name = if (owner == SYSTEM_PROVIDER) t("system_default") else pack.metadata.name
+    val remark = if (owner == SYSTEM_PROVIDER) t("system_synthesis") else pack.metadata.remark
     val providerName = if (owner == SYSTEM_PROVIDER) t("system") else entry.provider.displayName
     val voices = entry.provider.info.voices.filter { it.id in pack.voiceIds }.distinctBy { it.id }
     val languages = voices.map { it.language }.filter(String::isNotBlank).distinct()
@@ -17,7 +19,7 @@ internal fun voicePackDetails(id: String, entry: PackEntry, settings: ServiceSet
             if (pack.providerLabel.isNotBlank()) add(PageBlock.Text(t("pack_provider") + "\n" + pack.providerLabel))
             add(PageBlock.Text(t("pack_voice_count") + "\n" + pack.voiceIds.distinct().size))
             if (languages.isNotEmpty()) add(PageBlock.Text(t("pack_language") + "\n" + languages.joinToString(" / ") { languageName(it, locale).ifBlank { it } }))
-            if (pack.metadata.remark.isNotBlank() && !pack.editable) add(PageBlock.Text(t("pack_remark") + "\n" + pack.metadata.remark))
+            if (remark.isNotBlank() && !pack.editable) add(PageBlock.Text(t("pack_remark") + "\n" + remark))
         }))
         if (available) {
             add(PageBlock.Group(t("pack_settings"), buildList {
@@ -48,8 +50,8 @@ internal fun voicePackDetails(id: String, entry: PackEntry, settings: ServiceSet
             selected = settings.provider == owner && settings.voice == voice.id,
             primaryAction = action.takeIf { available }, selection = ManagementSelection(action, available))
     })
-    return PluginPage(id, pack.metadata.name, blocks, choices,
-        header = ManagementItem("voice-pack-header", pack.metadata.name,
-            pack.metadata.remark.ifBlank { pack.providerLabel.ifBlank { providerName } }, PluginIcon.SPEAKER,
+    return PluginPage(id, name, blocks, choices,
+        header = ManagementItem("voice-pack-header", name,
+            remark.ifBlank { pack.providerLabel.ifBlank { providerName } }, PluginIcon.SPEAKER,
             image = pack.avatarPath?.let { PluginResource(it, owner) }))
 }

@@ -67,10 +67,10 @@ class ResourceInstalls(private val model: AppViewModel, private val scope: Corou
                 receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "COMPLETED") }
                 withContext(Dispatchers.IO) { runCatching { prompt.archive.directory.deleteRecursively() } }
                 if (mutable.value?.token == prompt.token) mutable.value = null
-                model.message("${prompt.archive.manifest.name}已添加")
+                model.message(model.hostCopy("resource.added", "name" to prompt.archive.manifest.name))
             } catch (cancel: CancellationException) { throw cancel }
             catch (e: Exception) {
-                val message = e.message ?: "导入失败，请重试"
+                val message = model.hostCopy("resource.import_failed")
                 receipts[prompt.token]?.let { receipts[prompt.token] = it.copy(state = "FAILED", message = message) }
                 if (mutable.value?.token == prompt.token) mutable.value = prompt.copy(error = message)
                 else { discard(prompt); model.message(message) }

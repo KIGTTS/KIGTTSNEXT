@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiCopy
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -93,12 +95,12 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
     }
     LaunchedEffect(cards) {
         try { cards.migrateLegacy() } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-        catch (_: Exception) { message("无法读取旧拍立得，请重试") }
+        catch (_: Exception) { message(context.uiCopy("photo.legacy_open_failed")) }
     }
     LaunchedEffect(requestVersion, requestedCardId, active) {
         if (active && requestedCardId != null && requestVersion != handledRequest) {
             val card = catalog.cards.firstOrNull { it.id == requestedCardId }
-            if (card != null) { choosePhoto(card); previewId = card.id.takeIf { openRequestedPreview } } else message("这张拍立得已移除")
+            if (card != null) { choosePhoto(card); previewId = card.id.takeIf { openRequestedPreview } } else message(context.uiCopy("photo.removed"))
             handledRequest = requestVersion; onPreviewRequestHandled(requestVersion)
         }
     }

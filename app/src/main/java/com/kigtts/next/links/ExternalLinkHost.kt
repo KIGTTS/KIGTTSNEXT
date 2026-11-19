@@ -37,7 +37,7 @@ import com.kigtts.next.ui.components.*
                     ?: throw ActivityNotFoundException())
                 tab.launchUrl(context, Uri.parse(requireNotNull(link.url)))
             }
-        } catch (_: ActivityNotFoundException) { model.message("请先安装浏览器") }
+        } catch (_: ActivityNotFoundException) { model.message(model.hostCopy("link.browser_required")) }
         catch (e: Exception) { model.message(e.message ?: "无法打开这个链接") }
         finally { model.externalLinks.dismiss() }
     }

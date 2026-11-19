@@ -17,7 +17,7 @@ interface SystemTtsConnection {
 internal class AndroidSystemTtsConnection(private val environment: AndroidPluginEnvironment,
     private val engine: TextToSpeech) : SystemTtsConnection {
     override fun voices() = engine.voices.orEmpty().sortedBy { it.name }.take(500).map {
-        VoiceInfo(it.name, it.name, it.locale.toLanguageTag(), if (it.isNetworkConnectionRequired) "需要网络" else "本地声音")
+        VoiceInfo(it.name, it.name, it.locale.toLanguageTag(), if (it.isNetworkConnectionRequired) "voice_requires_network" else "voice_local")
     }
     override fun synthesize(request: TtsRequest): Flow<PcmAudio> {
         // The chosen Android service owns its default voice/language; do not override either.

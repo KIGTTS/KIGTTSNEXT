@@ -106,7 +106,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun saveCameraVideo(file: java.io.File, timeLapse: Boolean, onSaved: (android.net.Uri) -> Unit = {}) { viewModelScope.launch {
         try { onSaved(com.kigtts.next.media.saveCameraVideo(getApplication(), file, timeLapse)) }
         catch (cancel: CancellationException) { throw cancel }
-        catch (_: Exception) { message("视频未能保存，原文件已保留") }
+        catch (_: Exception) { message(hostCopy("camera.video_save_failed_original")) }
     } }
     val cardCapture = CardCaptureCoordinator(cards, stickers, viewModelScope, { state.value }, ::navigate, ::navigateBack, ::message,
         { cardUi.selectedAlbum.value }, { id -> cardUi.open(StickerUiTarget.CARDS, id) },
@@ -135,7 +135,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback,
         systemPermissionDenied = { systemRecognitionPermission.value = it },
-        copy = { key, _ -> speechCopy(key) },
+        copy = { key, _ -> hostCopy(key) },
         captionMicrophone = captionMicrophone)
     private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeCaptions,
         ::message, ::readyCaptionService, captionMicrophone)
@@ -149,9 +149,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 plugin.asr?.info?.let { it.role == AsrRole.SERVICE && it.availability == EngineAvailability.READY } == true
         }?.descriptor?.id
     }
-    private fun speechCopy(key: String) = getApplication<Application>().uiCopy(key, locale = state.value.uiLocale)
+    internal fun hostCopy(key: String, vararg values: Pair<String, String>) = getApplication<Application>().uiCopy(key, *values, locale = state.value.uiLocale)
 
-    fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message(speechCopy("listening.engine_setup")) }
+    fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message(hostCopy("listening.engine_setup")) }
     fun resumeCaptionWindow() {
         speech.onForeground()
         captionOutput.resume()
@@ -297,7 +297,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         if (destination is Destination.PluginPage && pluginManager.isPackagePaused(destination.pluginId)) return
         if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
         if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {
-            message("接收的照片只能查看和分享")
+            message(hostCopy("photo.received_read_only"))
             return
         }
         if (destination is Destination.CardPreview) {
@@ -398,7 +398,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             spokenPhraseId = null) }
     }
     fun playAudioCard(entry: com.kigtts.next.media.MediaEntry, autoPlay: Boolean = state.value.autoPlayback) {
-        val file = mediaRepository.file(entry) ?: return message("音频文件已不可用")
+        val file = mediaRepository.file(entry) ?: return message(hostCopy("audio.file_removed"))
         val legacy = quickTexts.phrases.value.firstOrNull { it.mediaId == entry.id }?.metadata.orEmpty()
         update { it.copy(audioId = entry.id) }; cardAudio.start(entry.id, android.net.Uri.fromFile(file), autoPlay,
             legacy["legacy.trimStartMs"]?.toLongOrNull() ?: 0L, legacy["legacy.trimEndMs"]?.toLongOrNull() ?: 0L)
@@ -482,7 +482,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     private fun invokeWithResult(pluginId: String, actionId: String, inputs: Map<String, String>, complete: ((Boolean) -> Unit)?) {
         try { agentAccess.userAction(pluginId, inputs) }
-        catch (error: IllegalArgumentException) { message(error.message ?: "权限模式未确认"); complete?.invoke(false); return }
+        catch (error: IllegalArgumentException) { message(hostCopy("plugin.permission_unconfirmed")); complete?.invoke(false); return }
         val plugin = registry.plugin(pluginId)
         if (plugin == null) { complete?.invoke(false); return }
         if (pluginId == "service.speech-synthesis" && actionId == "import-voice-package") {
@@ -490,10 +490,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             complete?.invoke(true)
             return
         }
-        if (runCatching { sharing.handle(pluginId, actionId, inputs) }.getOrElse { message(it.message ?: "分享暂不可用"); true }) {
+        if (runCatching { sharing.handle(pluginId, actionId, inputs) }.getOrElse { message(hostCopy("plugin.share_failed")); true }) {
             complete?.invoke(true); return
         }
-        if (runCatching { audioDevices.handle(plugin, actionId, inputs) }.getOrElse { message(it.message ?: "音频设置失败"); true }) {
+        if (runCatching { audioDevices.handle(plugin, actionId, inputs) }.getOrElse { message(hostCopy("plugin.audio_settings_failed")); true }) {
             update { it.copy(pluginRevision = it.pluginRevision + 1) }; complete?.invoke(true); return
         }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }
@@ -507,16 +507,20 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         ::refreshPlugins, { selectEngine(it, false) }, ::navigate)) return@launch
                 when (outcome) {
                     is PluginOutcome.StartRecognition -> {
-                        check(plugin.asr?.info?.role == AsrRole.SERVICE && outcome.session.serviceId == pluginId) { "只有识别服务可以创建识别会话" }
+                        checkPluginAction(plugin.asr?.info?.role == AsrRole.SERVICE && outcome.session.serviceId == pluginId,
+                            "plugin.recognition_session_not_allowed")
                         val session = outcome.session
                         captionOutput.start(if (pluginId == "service.speech-recognition" && session.purpose == RecognitionPurpose.CAPTIONS)
                             session.copy(output = CaptionOutput.PANEL) else session)
                         accepted = session.purpose == RecognitionPurpose.VOICE_INPUT
                     }
-                    is PluginOutcome.EndRecognition -> { check(plugin.asr?.info?.role == AsrRole.SERVICE); speech.end(outcome.submit) }
+                    is PluginOutcome.EndRecognition -> {
+                        checkPluginAction(plugin.asr?.info?.role == AsrRole.SERVICE, "plugin.recognition_session_not_allowed")
+                        speech.end(outcome.submit)
+                    }
                     is PluginOutcome.SelectTtsService -> selectEngine(outcome.pluginId, true)
                     PluginOutcome.RefreshUi -> update { it.copy(pluginRevision = it.pluginRevision + 1) }
-                    is PluginOutcome.HostAction -> { check(registry.available(plugin)) { "此插件需要先启用语音识别服务" }; when (outcome.command) {
+                    is PluginOutcome.HostAction -> { checkPluginAction(registry.available(plugin), "plugin.subtitle_requires_recognition"); when (outcome.command) {
                         HostCommand.TOGGLE_LISTENING -> toggleListening()
                         HostCommand.CLOSE_LISTENING_PANEL -> closeListeningPanel()
                         HostCommand.OPEN_LISTENING_PANEL -> update { it.copy(captionsVisible = true) }
@@ -528,19 +532,19 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                     } }
                     PluginOutcome.NoAction -> Unit
                     is PluginOutcome.SendQuickText -> {
-                        check(pluginManager.requestPermission(pluginId, "quick-text-read")) { "需要允许读取快捷文本" }
+                        checkPluginAction(pluginManager.requestPermission(pluginId, "quick-text-read"), "plugin.quick_text_permission_required")
                         quickTexts.phrases.value.firstOrNull { it.id == outcome.entryId }?.let(content::send)
                     }
                     is PluginOutcome.OpenPage -> {
                         if (plugin.page(outcome.pageId, context()) != null) { navigate(Destination.PluginPage(pluginId, outcome.pageId)); accepted = true }
-                        else message("插件页面不存在")
+                        else message(hostCopy("plugin.page_missing"))
                     }
                     is PluginOutcome.ReplaceEditorText -> { text(outcome.text); navigate(Destination.Home) }
                     is PluginOutcome.SetSubtitleRenderer -> {
                         val resource = outcome.root
                         if (resource == null) subtitleRenderer.clear(pluginId)
                         else {
-                            require(resource.pluginId == null || resource.pluginId == pluginId) { "字幕资源不属于此插件" }
+                            checkPluginAction(resource.pluginId == null || resource.pluginId == pluginId, "plugin.subtitle_resource_mismatch")
                             subtitleRenderer.select(pluginId, plugin, pluginManager.paths.storage(pluginId).file(resource.path), outcome.mainPage, outcome.presentation)
                         }
                         pluginManager.refreshUi(pluginId, context())
@@ -553,13 +557,15 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                     }
                     is PluginOutcome.PresentContent -> {
                         val network = when (val media = outcome.content) { is SubtitleContent.Web -> true; is SubtitleContent.Html -> media.allowNetwork; else -> false }
-                        check(!network || plugin.descriptor.id in pluginManager.status.filter { "network" in it.installed.manifest.capabilities }.map { it.installed.manifest.id }) { "插件需要声明 network 能力才能加载网络网页" }
+                        checkPluginAction(!network || pluginManager.status.any {
+                            it.installed.manifest.id == pluginId && "network" in it.installed.manifest.capabilities
+                        }, "plugin.web_network_required")
                         content.present(pluginId, outcome.content); navigate(Destination.Home)
                     }
                     else -> outcomes.send(pluginId to outcome)
                 }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { message(error.message ?: "插件操作失败，请重试") }
+            catch (error: Exception) { showPluginFailure(pluginId = pluginId, error = error) }
             finally {
                 update { it.copy(busyPlugins = it.busyPlugins - pluginId) }
                 complete?.invoke(accepted)
@@ -568,6 +574,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             }
         }
     }
+    private fun showPluginFailure(error: Exception, pluginId: String? = null) {
+        android.util.Log.w("PluginAction", "Plugin action failed for ${pluginId.orEmpty()}", error)
+        message(hostCopy((error as? PluginActionDenied)?.copyKey ?: "plugin.action_failed"))
+    }
+    private fun checkPluginAction(allowed: Boolean, key: String) {
+        if (!allowed) throw PluginActionDenied(key)
+    }
+    private class PluginActionDenied(val copyKey: String) : IllegalStateException(copyKey)
     fun message(text: String) { viewModelScope.launch { outcomes.send("host" to PluginOutcome.Message(text)) } }
     init { com.kigtts.next.cards.observePolaroidSystemAlbum(viewModelScope, cards, ::message) }
     internal fun rendererUnavailable(owner: String) {
@@ -577,7 +591,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
 
     fun toggleListening() = speech.toggleListening()
     fun speak() {
-        if (state.value.mediaId != null) message(speechCopy("reading.text_only"))
+        if (state.value.mediaId != null) message(hostCopy("reading.text_only"))
         else if (state.value.speaking || state.value.editorText.isBlank() || synthesisGuidance.request()) speech.speak()
     }
     suspend fun refreshPlugins() {
@@ -604,10 +618,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         val plugin = registry.plugin(id) ?: return
         require(if (tts) plugin.tts != null else plugin.asr != null)
         if (!tts && plugin.asr?.info?.role != AsrRole.SERVICE) {
-            message(speechCopy("listening.engine_setup")); return
+            message(hostCopy("listening.engine_setup")); return
         }
         if (tts && plugin.tts?.info?.role != TtsRole.SERVICE && registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE }) {
-            message(speechCopy("reading.engine_missing")); return
+            message(hostCopy("reading.engine_missing")); return
         }
         viewModelScope.launch {
             speech.stopAll()
@@ -623,7 +637,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 speech.stopAll()
                 if (enabled == null) pluginManager.uninstall(id) else pluginManager.enable(id, enabled)
                 refreshPlugins()
-            } catch (error: Exception) { message(error.message ?: "插件操作失败") }
+            } catch (error: Exception) { showPluginFailure(error = error) }
             finally { update { it.copy(busyPlugins = it.busyPlugins - id) } }
         }
     }

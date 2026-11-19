@@ -117,6 +117,77 @@ class ServiceSynthesisTest {
                 .single().audio.bytes[0].toInt())
         } finally { facade.close() }
     }
+    @Test fun coldShortcutPlaybackUsesTheInstalledVoiceSnapshotEvenWhenItsEngineIsUnavailable() = runBlocking {
+        val directory = files.newFolder()
+        val broker = profiledBroker().apply { catalogError = true }
+        val snapshot = broker.catalog.single()
+        val key = AudioCacheKey(CacheVoice(snapshot.pluginId, "chosen", cacheHash("1", null, null), "chosen"),
+            "phrase", "甲", "zh-CN", 1f, null, "quality-v1")
+        SpeechAudioCache(directory).writer(key)!!.use { writer ->
+            writer.append(PcmAudio(byteArrayOf(7, 0)))
+            assertTrue(writer.finish())
+        }
+        val options = settings()
+        val system = System()
+        val facade = ServiceSynthesis(options, broker, system)
+        val cache = ServiceCache(directory, options, broker, emptyFlow(), { null },
+            { "system" }, facade, MutableStateFlow(0L), playbackProvider = { snapshot to "1" })
+        facade.cache = cache
+        suspend fun speak() = facade.synthesize(TtsRequest("甲"), "phrase").filterIsInstance<SynthesisEvent.Audio>()
+            .single().audio.bytes.first().toInt()
+        try {
+            assertEquals(7, speak())
+            assertTrue(system.requests.isEmpty())
+            options.voice = "removed"
+            assertEquals(1, speak())
+            assertEquals(listOf("甲"), system.requests.map { it.text })
+            assertTrue(broker.requests.isEmpty())
+        } finally { facade.close() }
+    }
+
+    @Test fun aSelectedShortcutMissQueuesBakingWhenTheProviderBecomesAvailable() = runBlocking {
+        val broker = profiledBroker()
+        val snapshot = broker.catalog
+        broker.catalog = emptyList()
+        val options = settings()
+        val system = System()
+        val facade = ServiceSynthesis(options, broker, system)
+        val updates = MutableStateFlow(0)
+        val active = MutableStateFlow(false)
+        val release = CompletableDeferred<Unit>()
+        broker.output = { release.await(); emit(pcm) }
+        val cache = ServiceCache(files.newFolder(), options, broker, MutableStateFlow(mapOf("phrase" to "甲")),
+            { mapOf("test.provider" to "1") }, { "system" }, facade, MutableStateFlow(0L),
+            catalogUpdates = updates.map { Unit }, backgroundBake = active)
+        facade.cache = cache
+        try {
+            facade.synthesize(TtsRequest("甲"), "phrase").toList()
+            assertEquals(listOf("甲"), system.requests.map { it.text })
+            assertFalse(active.value)
+            broker.catalog = snapshot
+            updates.value++
+            withTimeout(5_000) { active.first { it } }
+            assertNull(cache.bakeProgress.value)
+            release.complete(Unit)
+            withTimeout(5_000) { active.first { !it } }
+            assertEquals(listOf(TtsProfile.PREBAKE), broker.requests.map { it.profile })
+            assertTrue(cache.bytes.value > 0)
+        } finally { facade.close() }
+    }
+
+    @Test fun unavailableSystemFallbackSurfacesAnExplicitError() = runBlocking {
+        val broker = Broker().apply { catalog = emptyList() }
+        val system = object : TtsEngine {
+            override fun synthesize(request: TtsRequest) = flow<SynthesisEvent> {
+                throw EngineException(EngineError.INITIALIZATION, "no platform engine")
+            }
+        }
+        val facade = ServiceSynthesis(settings(), broker, system)
+        try {
+            val failure = runCatching { facade.synthesize(TtsRequest("甲")).toList() }.exceptionOrNull()
+            assertTrue(failure is SystemReadingUnavailable)
+        } finally { facade.close() }
+    }
     @Test fun shortcutAndLiveProfilesDoNotShareAudioOrInvalidateEachOther() = runBlocking {
         val broker = Broker().also { it.catalog = listOf(TtsProvider("test.provider", "test",
             TtsInfo(voices = listOf(VoiceInfo("chosen", "Voice", "zh-CN")), profiles = TtsProfileVersions("fast-v1", "quality-v1")))) }
@@ -153,7 +224,7 @@ class ServiceSynthesisTest {
             assertEquals(2, speak("phrase"))
             assertEquals(1, broker.requests.count { it.profile == TtsProfile.PREBAKE })
             val liveCount = broker.requests.count { it.profile == TtsProfile.REALTIME }
-            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
+            assertEquals("cache_rebuild_queued", cache.rebuild())
             assertNull(baked())
             assertEquals(2, speak())
             assertEquals(liveCount, broker.requests.count { it.profile == TtsProfile.REALTIME })
@@ -329,10 +400,10 @@ class ServiceSynthesisTest {
             facade.synthesize(TtsRequest("甲"), "fixed").toList()
             assertEquals(kept, cache.bytes.value)
             broker.catalog = catalog(); options.voice = "b"; cache.changed()
-            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
+            assertEquals("cache_rebuild_queued", cache.rebuild())
             waitFor { broker.requests.size == 4 }
             options.voice = "a"; broker.catalog = catalog(1.5f); cache.changed()
-            assertEquals("已安排重新缓存当前声音的快捷文本", cache.rebuild())
+            assertEquals("cache_rebuild_queued", cache.rebuild())
             waitFor { broker.requests.size == 6 }
             assertEquals(listOf("a", "a", "b", "b", "a", "a"), broker.requests.map { it.voiceId })
             cache.clear()

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.net.Uri
 import androidx.compose.runtime.*
@@ -33,7 +35,7 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
     }
     fun importPhoto(selection: CardPhotoSelection, library: String? = null, asSticker: Boolean = false,
         albumId: String = CardRepository.DEFAULT_ALBUM) {
-        if (busy) { selection.release(); message("正在处理图片，请稍后重试"); return }
+        if (busy) { selection.release(); message(context.uiCopy("photo.processing_wait")); return }
         startWork({
             val image = if (asSticker) stickers.importImage(selection.uri) else stickers.importPhoto(selection.uri)
             if (!asSticker) {
@@ -46,19 +48,19 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
                     name = "贴纸 " + (stickers.items.value.count { it.libraryId == target.id } + 1), imageId = image.id))))
                 null
             }
-        }, { id -> if (id != null) openEditor(id) else message("已添加到贴纸库") }, selection.release)
+        }, { id -> if (id != null) openEditor(id) else message(context.uiCopy("photo.added_to_stickers")) }, selection.release)
     }
     fun cardAction(card: PolaroidCard, action: CardMenuAction) = when (action) {
-        CardMenuAction.SAVE -> startWork({ cards.systemAlbum.save(card.id) }, { message("已保存到系统相册") }, {})
-        CardMenuAction.COPY -> work({ cards.copy(card) }) { message("已复制拍立得") }
+        CardMenuAction.SAVE -> startWork({ cards.systemAlbum.save(card.id) }, { message(context.uiCopy("photo.saved_to_album")) }, {})
+        CardMenuAction.COPY -> work({ cards.copy(card) }) { message(context.uiCopy("photo.copied")) }
         CardMenuAction.QUICK -> requestQuick(card)
-        CardMenuAction.DELETE -> work({ cards.remove(card.id) }) { message("已删除拍立得") }
+        CardMenuAction.DELETE -> work({ cards.remove(card.id) }) { message(context.uiCopy("photo.deleted")) }
     }
     fun share(card: PolaroidCard) = startWork({
         val source = exportPolaroidMedia(stickers, card)
         try { preparePolaroidShare(context, source) } finally { releaseMotionExport(source) }
     }, { file ->
-        try { sharePolaroid(context, file) } catch (_: Exception) { message("没有可用的分享应用") }
+        try { sharePolaroid(context, file) } catch (_: Exception) { message(context.uiCopy("share.no_app")) }
     }, {})
     private fun requestQuick(card: PolaroidCard) { if (!busy) quickCard = card }
     fun cancelQuick() { if (!busy) quickCard = null }
@@ -85,5 +87,5 @@ internal class CardWorkspaceActions(private val context: Context, private val ca
     }
     fun quickSticker(item: StickerItem) = work({ stickers.publishQuickMedia(item.imageId) }) { onQuickImage(it.id, item.name) }
     fun stickerCard(item: StickerItem) = work({ cards.createPhoto(PolaroidCard(title = "", imageId = item.imageId), PolaroidPhotoFacts.read(stickers.imageFile(item.imageId), false)) }) { openEditor(it.id) }
-    fun edit(edits: List<StickerEdit>) = work({ stickers.apply(edits) }) { message("已保存") }
+    fun edit(edits: List<StickerEdit>) = work({ stickers.apply(edits) }) { message(context.uiCopy("ui.saved")) }
 }

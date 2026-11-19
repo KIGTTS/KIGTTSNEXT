@@ -86,7 +86,7 @@ internal fun QuickTextContextMenu(target: QuickTextMenuTarget?, model: AppViewMo
             text = { Text(if (item.group) uiText("quick.delete_group_body") else uiText("quick.delete_entry_body")) },
             confirmButton = { TextButton(onClick = feedbackClick {
                 if (item.group) {
-                    if (!model.quickTexts.removeCategory(item.key)) model.message("请至少保留一个分组")
+                    if (!model.quickTexts.removeCategory(item.key)) model.message(model.hostCopy("quick.keep_one_group"))
                     if (model.state.value.selectedCategory !in model.categories.value) model.category(model.categories.value.first())
                 } else model.quickTexts.remove(item.key)
                 deleting = null

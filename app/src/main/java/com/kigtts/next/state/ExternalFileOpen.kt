@@ -43,7 +43,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
     }
 
     fun chooseVoice() {
-        if (job?.isActive == true || pending != null) model.message("请先完成当前文件的导入")
+        if (job?.isActive == true || pending != null) model.message(model.hostCopy("resource.import_busy"))
         else chooseVoiceEvent.trySend(Unit)
     }
 
@@ -51,7 +51,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
     fun profilePicked(uri: Uri) = acceptUri(uri, voiceOnly = false, profileOnly = true)
 
     private fun acceptUri(uri: Uri, voiceOnly: Boolean, profileOnly: Boolean = false, mime: String? = null) {
-        if (job?.isActive == true || pending != null) { model.message("请先完成当前文件的导入"); return }
+        if (job?.isActive == true || pending != null) { model.message(model.hostCopy("resource.import_busy")); return }
         mutable.value = ExternalFilePrompt("正在读取文件", busy = true)
         job = scope.launch {
             try {
@@ -107,7 +107,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     if (navigation.destination is Destination.ContactFavoriteDetail &&
                         navigation.navigationStack.lastOrNull() == Destination.ContactFavorites) model.navigateBack()
                     else if (navigation.destination != Destination.ContactFavorites) model.navigate(Destination.ContactFavorites)
-                    model.message("已添加到扩列收藏夹")
+                    model.message(model.hostCopy("profile.added_to_collection"))
                     return@launch
                 }
                 pending = prepared
@@ -239,7 +239,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
             // RemoteVoiceManager requests the permission once, including one-time grants.
             val result = requireNotNull(engine.voiceManager).command(VoiceCommand(VoiceOperation.IMPORT, resourcePath = relative))
             when (result) {
-                PluginOutcome.RefreshUi -> { model.refreshPlugins(); model.message("语音包已导入") }
+                PluginOutcome.RefreshUi -> { model.refreshPlugins(); model.message(model.hostCopy("resource.voice_imported")) }
                 is PluginOutcome.Message -> error(result.text)
                 else -> error("语音引擎未完成导入，请重试")
             }

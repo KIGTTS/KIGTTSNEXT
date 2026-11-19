@@ -1,22 +1,24 @@
 package com.kigtts.next.plugins.control
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.net.Uri
 import com.kigtts.plugin.api.PluginRegistry
 import java.net.URI
 
 /** A link only proposes a source. Fetching/trust/confirmation remain in a source-manager plugin. */
-internal class SourceLinkCoordinator(context: Context, private val registry: PluginRegistry,
+internal class SourceLinkCoordinator(private val context: Context, private val registry: PluginRegistry,
     private val invoke: (String, String, Map<String, String>, (Boolean) -> Unit) -> Unit,
     private val message: (String) -> Unit, private val available: (String) -> Boolean = { true },
     private val ready: () -> Boolean = { true },
-    private val missingStore: () -> Unit = { message("请先安装插件商店，再打开这个链接") }) {
+    private val missingStore: () -> Unit = { message(context.uiCopy("link.install_store")) }) {
     private val preferences = context.getSharedPreferences("pending-package-source", Context.MODE_PRIVATE)
     private var notified = false
     private var attempted = false
     fun accept(uri: Uri?) {
         if (uri == null || uri.scheme != "kigtts" || uri.host != "source") return
-        val request = parseRequest(uri) ?: return message("包源链接不合法")
+        val request = parseRequest(uri) ?: return message(context.uiCopy("link.invalid_source"))
         preferences.edit().putString("url", request.url).putString("package", request.packageId)
             .putBoolean("requireSource", request.requireSource).putString("request", java.util.UUID.randomUUID().toString()).apply()
         notified = false; attempted = false
@@ -35,7 +37,7 @@ internal class SourceLinkCoordinator(context: Context, private val registry: Plu
         invoke(plugin.descriptor.id, requireNotNull(plugin.contributions.sourceAction), inputs) { accepted ->
             if (accepted && preferences.getString("url", null) == url && preferences.getString("request", null) == request)
                 preferences.edit().remove("url").remove("package").remove("request").remove("requireSource").apply()
-            else if (!accepted) message("未能打开内容，请检查插件商店后重试")
+            else if (!accepted) message(context.uiCopy("link.store_open_failed"))
         }
     }
     companion object {

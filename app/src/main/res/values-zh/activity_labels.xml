@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_activity_label">相册</string>
+    <string name="open_with_kigtts">用 KIGTTS 打开</string>
+    <string name="save_card_in_kigtts">用 KIGTTS 收藏名片</string>
+</resources>

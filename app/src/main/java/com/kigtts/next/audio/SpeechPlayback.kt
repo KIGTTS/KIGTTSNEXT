@@ -70,8 +70,9 @@ internal class SpeechPlayback(private val scope: CoroutineScope, private val reg
                 player.finish()
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) {
-                val diagnostic = if (error is EngineException) null else error.message
-                message(diagnostic ?: when ((error as? EngineException)?.code) {
+                message(if (error is com.kigtts.engines.speechservice.SystemReadingUnavailable)
+                    copy("reading.system_unavailable", "系统朗读不可用，请检查系统语音设置")
+                else when ((error as? EngineException)?.code) {
                     EngineError.NOT_CONFIGURED -> copy("reading.resources_missing", "请在朗读设置中配置当前引擎")
                     EngineError.TIMEOUT -> copy("reading.timeout", "朗读超时，请重试")
                     else -> copy("reading.failed", "朗读失败，请重试")

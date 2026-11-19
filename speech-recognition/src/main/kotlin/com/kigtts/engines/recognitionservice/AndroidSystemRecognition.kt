@@ -16,6 +16,7 @@ import com.kigtts.plugin.api.*
 import java.io.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,16 +59,21 @@ internal class AndroidSystemRecognition(private val context: Context, private va
     }
 
     /** Let Android own the microphone and endpoints for live use. Vendors need not accept external PCM. */
-    fun listen(stop: Deferred<Unit>, config: RecognitionConfig, continuousCaptions: Boolean): Flow<RecognitionEvent> = systemCaptionSessions(stop, config) {
-        requests.withLock {
-            if (stop.isCompleted) return@withLock ""
-            if (!isAvailable()) throw EngineException(EngineError.NOT_CONFIGURED, systemRecognitionUnavailable())
-            withContext(Dispatchers.Main.immediate) {
-                retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }, continuousCaptions) {
-                    utterance(intent(config), stop = stop, continuousCaptions = continuousCaptions).text
+    fun listen(stop: Deferred<Unit>, config: RecognitionConfig, continuousCaptions: Boolean): Flow<RecognitionEvent> = channelFlow {
+        val preview: ((String) -> Unit)? = if (continuousCaptions) null else { text ->
+            trySend(RecognitionEvent.Partial(text))
+        }
+        systemCaptionSessions(stop, config) {
+            requests.withLock {
+                if (stop.isCompleted) return@withLock ""
+                if (!isAvailable()) throw EngineException(EngineError.NOT_CONFIGURED, systemRecognitionUnavailable())
+                withContext(Dispatchers.Main.immediate) {
+                    retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }, continuousCaptions) {
+                        utterance(intent(config), stop = stop, continuousCaptions = continuousCaptions, preview = preview).text
+                    }
                 }
             }
-        }
+        }.collect { send(it) }
     }
 
     private fun intent(config: RecognitionConfig) = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -87,7 +93,7 @@ internal class AndroidSystemRecognition(private val context: Context, private va
         }, source = source)
 
     private suspend fun utterance(request: Intent, source: ParcelFileDescriptor? = null, stop: Deferred<Unit>? = null,
-        continuousCaptions: Boolean = false): RecognitionResult = coroutineScope {
+        continuousCaptions: Boolean = false, preview: ((String) -> Unit)? = null): RecognitionResult = coroutineScope {
         val result = CompletableDeferred<RecognitionResult>()
         val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
         var ready = false
@@ -118,12 +124,17 @@ internal class AndroidSystemRecognition(private val context: Context, private va
             override fun onRmsChanged(rmsdB: Float) = Unit
             override fun onBufferReceived(buffer: ByteArray?) = Unit
             override fun onEndOfSpeech() = Unit
-            override fun onPartialResults(partialResults: Bundle?) = Unit
+            override fun onPartialResults(partialResults: Bundle?) {
+                if (!result.isCompleted)
+                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
+                        ?.takeIf(String::isNotBlank)?.let { preview?.invoke(it) }
+            }
             override fun onEvent(eventType: Int, params: Bundle?) = Unit
         }
         var finish: Job? = null
         try {
             recognizer.setRecognitionListener(listener)
+            if (preview != null) request.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             recognizer.startListening(request)
             if (stop != null) finish = launch {
                 stop.await()

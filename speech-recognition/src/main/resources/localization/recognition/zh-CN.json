@@ -35,5 +35,6 @@
   "unknown_action": "未知识别服务操作",
   "choose_ready": "请先选用并配置一个识别包",
   "stream_required": "当前识别包仅支持完整录音，请选用支持边说边识别的识别包",
-  "system_starting": "系统识别尚未就绪，请稍后再试"
+  "system_starting": "系统识别尚未就绪，请稍后再试",
+  "enable_engine_first": "请先启用此引擎"
 }

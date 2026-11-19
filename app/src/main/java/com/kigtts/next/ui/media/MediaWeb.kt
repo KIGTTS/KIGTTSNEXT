@@ -68,7 +68,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                 override fun onPageFinished(view: WebView, url: String) { view.applyKigttsTheme();ready=true;applySafeArea(view, true);if(ownsPage())model.webHistory(view.canGoBack()) }
                 override fun onScaleChanged(view: WebView, oldScale: Float, newScale: Float) { if (ready) applySafeArea(view, force = true) }
                 override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
-                    if (request.isForMainFrame) { ready=true;if(ownsPage())model.message("网页加载失败：" + error.description) }
+                    if (request.isForMainFrame) { ready=true;if(ownsPage())model.message(model.hostCopy("web.load_error")) }
                 }
             }
             if (entry.kind == MediaKind.HTML && entry.pluginId != null && entry.actions.isNotEmpty()) {
@@ -76,7 +76,7 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                     WebViewCompat.addWebMessageListener(this, "Kigtts", setOf(WebContentPolicy.ORIGIN)) { _, message, origin, mainFrame, _ ->
                         if(ownsPage())WebContentPolicy.action(entry, message.data.orEmpty(), origin.toString(), mainFrame)?.let { (action, inputs) -> model.invoke(entry.pluginId, action, inputs) }
                     }
-                } else model.message("网页按钮暂不可用，请更新系统的 Android System WebView")
+                } else model.message(model.hostCopy("web.update_webview"))
             }
             if (entry.kind == MediaKind.HTML) installKigttsHaptics { currentActive }
             if (entry.kind == MediaKind.HTML) installNetworkConsent(scope, networkGate::authorize)

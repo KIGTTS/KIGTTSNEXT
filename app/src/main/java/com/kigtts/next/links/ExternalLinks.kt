@@ -18,7 +18,7 @@ class ExternalLinks(private val model: AppViewModel) {
         link.url?.let(TrustedWebsite::validate)
         require(link.text.length <= 20000 && (link.url != null || link.text.isNotBlank()))
         if (link in queue) return true
-        if (queue.size >= 16) { model.message("待打开的链接较多，请先处理当前链接"); return false }
+        if (queue.size >= 16) { model.message(model.hostCopy("link.queue_full")); return false }
         queue.addLast(link)
         if (mutable.value == null) mutable.value = queue.first()
         return true

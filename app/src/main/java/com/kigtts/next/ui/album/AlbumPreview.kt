@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.album
 
+import com.kigtts.next.i18n.uiCopy
+
 import com.kigtts.next.i18n.uiText
 
 import android.app.RecoverableSecurityException
@@ -60,7 +62,7 @@ import kotlinx.coroutines.withContext
             if (retry != null) scope.launch {
                 try { withContext(Dispatchers.IO) { context.contentResolver.delete(retry, null, null) }; removed() }
                 catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { message("未能删除照片") }
+                catch (_: Exception) { message(context.uiCopy("album.delete_failed")) }
             }
             else removed()
         }

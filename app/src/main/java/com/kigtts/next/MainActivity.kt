@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
     override fun onStart() {
         super.onStart()
         model.refreshUiLanguage()
+        com.kigtts.next.manager.HostPluginRuntime.get(application).resumeReadingCache()
         com.kigtts.next.overlay.NativeOverlayService.sync(this)
     }
     override fun onResume() { super.onResume(); com.kigtts.next.overlay.OverlayHostWindow.resume(this); model.resumeCaptionWindow() }

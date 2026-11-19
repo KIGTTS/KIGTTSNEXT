@@ -168,7 +168,7 @@ class RecognitionSessionTest {
         assertTrue(messages.isEmpty()); assertFalse(state.voiceInputActive)
         fail = true
         controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT)); runCurrent(); controller.end(true); advanceUntilIdle()
-        assertEquals(listOf("麦克风处理失败"), messages); controller.stopAll()
+        assertEquals(listOf("语音识别失败，请重试"), messages); controller.stopAll()
     }
     @Test fun quickSubmitAllowsColdInitializationBeforeTheFinalFlushBudget() = runTest {
         var state = AppState(autoPlayback = false)
@@ -237,6 +237,32 @@ class RecognitionSessionTest {
         assertEquals(listOf("最后一句"), submitted)
         assertFalse(state.voiceInputSubmitting)
         assertTrue(messages.isEmpty())
+        controller.stopAll()
+    }
+    @Test fun releasingStreamingInputSendsTheVisibleTextWhenFinalizationStalls() = runTest {
+        var state = AppState(autoPlayback = false)
+        val hardware = Hardware()
+        val submitted = mutableListOf<String>()
+        val engine = object : AsrEngine {
+            override val info = AsrInfo(role = AsrRole.SERVICE, streaming = StreamingKind.INCREMENTAL)
+            override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("not batch")
+            override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
+                audio.collect { emit(RecognitionEvent.Partial("松手发送")) }
+                delay(3_000)
+                emit(RecognitionEvent.Final(RecognitionResult("延迟到达的结果")))
+            }
+        }
+        val controller = SpeechCoordinator(this, PluginRegistry(listOf(plugin(engine))), hardware, { state }, { state = it(state) },
+            {}, submitted::add, { "test.service" })
+        controller.start(RecognitionSession("test.service", RecognitionPurpose.VOICE_INPUT))
+        runCurrent()
+        controller.end(true)
+        advanceTimeBy(250); runCurrent()
+        assertEquals(listOf("松手发送"), submitted)
+        assertEquals(1, hardware.released)
+        assertFalse(state.voiceInputActive)
+        advanceUntilIdle()
+        assertEquals(1, submitted.size)
         controller.stopAll()
     }
     @Test fun continuousOnlyQueuesFinalizedSequencesAfterUserReenablesReading() = runTest {

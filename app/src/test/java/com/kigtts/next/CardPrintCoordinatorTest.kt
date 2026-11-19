@@ -1,5 +1,7 @@
 package com.kigtts.next
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -110,7 +112,7 @@ class CardPrintCoordinatorTest {
             assertEquals(0,f.backs);assertTrue(f.printed.isEmpty());f.assertSaved(request.card)
             f.coordinator.open()
             assertEquals(Destination.Settings,f.state.value.destination);assertEquals(request,f.coordinator.printRequest.value)
-            assertEquals(listOf("照片正在保存，请稍候"),f.messages)
+            assertEquals(listOf(f.app.uiCopy("camera.photo_saving_wait")), f.messages)
             f.state.value=f.state.value.copy(destination=scene,navigationStack=listOf(Destination.Cards))
             f.coordinator.onDestinationChanged(scene)
             assertTrue(f.coordinator.finishPrint(request.requestId));assertFalse(f.coordinator.finishPrint(request.requestId))

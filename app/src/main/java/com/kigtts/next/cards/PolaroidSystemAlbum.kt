@@ -1,5 +1,7 @@
 package com.kigtts.next.cards
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -115,7 +117,7 @@ internal fun observePolaroidSystemAlbum(scope: CoroutineScope, cards: CardReposi
     scope.launch {
         // Resource-library or album-order edits cannot change a rendered photograph.
         combine(cards.stickers.cards, cards.stickers.frameStyles) { _, _ -> Unit }.collect {
-            if (cards.systemAlbum.synchronize() > 0) message("部分照片未能保存到系统相册")
+            if (cards.systemAlbum.synchronize() > 0) message(cards.stickers.context.uiCopy("album.sync_failed"))
         }
     }
 }

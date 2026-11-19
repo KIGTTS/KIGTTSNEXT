@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.RectF
 import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.media.WebTheme
 import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.theme.ThemeSettings
@@ -22,7 +23,7 @@ internal object ProfileLongImage {
     private val inlineLink = Regex("""https?://[^\s<>，。；！？“”‘’]+""", RegexOption.IGNORE_CASE)
 
     internal data class Link(val value: String, val labels: List<String>, val detail: String)
-    internal fun links(identity: IdentityCard): List<Link> {
+    internal fun links(identity: IdentityCard, linkLabel: String = "链接", qrLabel: String = "二维码"): List<Link> {
         val links = linkedMapOf<String, Link>()
         fun add(label: String, payload: String, detail: String = payload) {
             val value = payload.trim()
@@ -37,7 +38,7 @@ internal object ProfileLongImage {
                     }
             }.getOrDefault(value)
             val previous = links[key]
-            links[key] = if (previous == null) Link(value, listOf(label.ifBlank { "链接" }), detail)
+            links[key] = if (previous == null) Link(value, listOf(label.ifBlank { linkLabel }), detail)
                 else previous.copy(labels = (previous.labels + label).filter(String::isNotBlank).distinct())
         }
         identity.contacts.forEach { add(it.label, contactPayload(it), it.value) }
@@ -47,7 +48,7 @@ internal object ProfileLongImage {
                 ProfileTileKind.LINK -> profileExportLink(body)?.let { add(tile.title, it) }
                 ProfileTileKind.CONTACT -> tile.resolveContact(identity.contacts)?.let { add(tile.title.ifBlank { it.label }, contactPayload(it), it.value) }
                     ?: profileExportLink(body)?.let { add(tile.title, it) }
-                ProfileTileKind.QR -> add(tile.title.ifBlank { "二维码" }, tile.text)
+                ProfileTileKind.QR -> add(tile.title.ifBlank { qrLabel }, tile.text)
                 ProfileTileKind.TEXT, ProfileTileKind.STATUS -> inlineLink.findAll(body).forEach { match ->
                     profileExportLink(match.value.trimEnd('.', ',', ';', '!', ')', ']', '}'))?.let { add(tile.title, it) }
                 }
@@ -96,8 +97,8 @@ internal object ProfileLongImage {
             .put("cover", JSONArray(listOf(PAD, PAD, WIDTH - PAD, PAD + headerHeight)))
             .put("tileCrops", tileCrops).toString())
         val fadeEdge = sections.sumOf { it.first } + PAD
-        val links = links(identity)
-        if (links.isNotEmpty()) label("链接与二维码", 34f, style.ink, true)
+        val links = links(identity, stickers.context.uiCopy("profile.link_label"), stickers.context.uiCopy("profile.qr_label"))
+        if (links.isNotEmpty()) label(stickers.context.uiCopy("profile.links_and_qr"), 34f, style.ink, true)
         links.forEach { entry ->
             val qr = profileQrMatrix(entry.value, maxBytes = 2500)
             val edge = maxOf(176, (qr?.width ?: 0) * 2)

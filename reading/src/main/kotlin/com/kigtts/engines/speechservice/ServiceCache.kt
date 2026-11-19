@@ -17,7 +17,9 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private val systemRevision: () -> String, private val synthesis: ServiceSynthesis, size: MutableStateFlow<Long>,
     private val mayCacheProvider: (String) -> Boolean = { true },
     private val parallelProvider: (String) -> Boolean = { it == "engine.cloud-tts" },
-    catalogUpdates: Flow<Unit> = emptyFlow()) {
+    catalogUpdates: Flow<Unit> = emptyFlow(),
+    private val backgroundBake: MutableStateFlow<Boolean> = MutableStateFlow(false),
+    private val playbackProvider: (String) -> Pair<TtsProvider, String>? = { null }) {
     private val store = SpeechAudioCache(directory, size)
     val bytes get() = store.bytes
     private val _bakeProgress = MutableStateFlow<Float?>(null)
@@ -28,7 +30,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
     private val foregroundOrder = Mutex()
     private val realtimeRequests = AtomicInteger()
     @Volatile private var pendingRealtimeShortcut: AudioCacheKey? = null
-    @Volatile private var shortcuts = emptyMap<String, String>()
+    @Volatile private var shortcuts: Map<String, String>? = null
     @Volatile private var installedRevisions = emptyMap<String, String>()
     @Volatile private var lastPlan: Plan? = null
     private val pending = MutableStateFlow<BakeWork?>(null)
@@ -45,7 +47,7 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         scope.launch {
             var receivedInitial = false
             phrases.collect { items ->
-                val before = shortcuts
+                val before = shortcuts.orEmpty()
                 if (!receivedInitial || items != before) {
                     shortcuts = items.toMap()
                     store.updatePhrases(items)
@@ -66,15 +68,18 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         scope.launch {
             merge(signal.receiveAsFlow(), pending.map { Unit }, catalogUpdates)
                 .map { plan() }.distinctUntilChanged().collectLatest { plan ->
-                    val work = plan?.work ?: return@collectLatest
-                    delay(500)
-                    if (validPlan(plan)) {
-                        try {
-                            prepare(plan)
-                            // Keep work after interruption by foreground speech. A completed attempt,
-                            // including failed entries, never starts a new background job on a timer.
-                            if (validPlan(plan)) pending.compareAndSet(work, null)
-                        } finally { _bakeProgress.value = null }
+                    val work = plan?.work
+                    if (work == null) {
+                        if (pending.value == null || realtimeRequests.get() == 0) backgroundBake.value = false
+                        return@collectLatest
+                    }
+                    try {
+                        prepare(plan)
+                        // Keep queued work if real-time speech takes priority.
+                        if (validPlan(plan)) pending.compareAndSet(work, null)
+                    } finally {
+                        _bakeProgress.value = null
+                        if (pending.value == null) backgroundBake.value = false
                     }
                 }
         }
@@ -91,22 +96,25 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         store.forgetPacks(owner, packs)
         optionsChanged()
     }
-    fun clear() { pending.value = null; store.clear(); changed() }
+    fun clear() { cancelBake(); store.clear(); changed() }
+    fun cancelBake() { revision.incrementAndGet(); pending.value = null; backgroundBake.value = false }
     fun rebuild(): String {
-        if (!settings.cacheEnabled) return "请先开启自动缓存"
-        if (shortcuts.isEmpty()) return "没有可预合成的快捷文本"
-        val plan = currentPlan(catalog()) ?: return "当前声音还不能预合成，请检查引擎和权限"
+        if (!settings.cacheEnabled) return "cache_requires_enabled"
+        val items = shortcuts.orEmpty()
+        if (items.isEmpty()) return "cache_no_shortcuts"
+        installed()?.let { installedRevisions = it }
+        val plan = currentPlan(catalog()) ?: return "cache_voice_unavailable"
         revision.incrementAndGet()
         store.forgetShortcuts(plan.voice)
-        pending.value = BakeWork(shortcuts)
-        return "已安排重新缓存当前声音的快捷文本"
+        pending.value = BakeWork(items)
+        return "cache_rebuild_queued"
     }
-    fun close() { scope.cancel(); store.suspendWrites() }
+    fun close() { cancelBake(); scope.cancel(); store.suspendWrites() }
 
-    private fun voice(provider: TtsProvider, id: String?): CacheVoice? {
+    private fun voice(provider: TtsProvider, id: String?, revision: String? = installedRevisions[provider.pluginId]): CacheVoice? {
         // A provider can load before the installed package snapshot. A temporary null version
         // must not replace the persisted cache identity or invalidate the previous revision.
-        if (provider.pluginId !in installedRevisions) return null
+        if (revision == null) return null
         val info = provider.info
         val selected = id ?: info.selectedVoiceId
         if (info.packs.isEmpty() && info.voices.isEmpty() && (selected != null || info.importsVoicePacks || info.managesVoices))
@@ -116,10 +124,11 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
             infoVoice == null && info.packs.none { selected in it.voiceIds }) return null
         val pack = info.packs.firstOrNull { selected in it.voiceIds }
         val packId = pack?.id ?: infoVoice?.packId ?: selected ?: DEFAULT_PACK
-        return providerVoice(provider.pluginId, packId, pack, selected)
+        return providerVoice(provider.pluginId, packId, pack, selected, revision)
     }
-    private fun providerVoice(owner: String, packId: String, pack: VoicePackInfo?, selected: String?): CacheVoice =
-        CacheVoice(owner, packId, cacheHash(installedRevisions[owner], pack?.voiceIds?.sorted(),
+    private fun providerVoice(owner: String, packId: String, pack: VoicePackInfo?, selected: String?,
+        revision: String? = installedRevisions[owner]): CacheVoice =
+        CacheVoice(owner, packId, cacheHash(revision, pack?.voiceIds?.sorted(),
             pack?.parameters?.sortedBy { it.id }?.map { it.id to it.value }), selected)
     private fun systemVoice() = CacheVoice(SYSTEM_PROVIDER, DEFAULT_PACK, cacheHash(systemRevision()), null)
     private fun currentPlan(catalog: List<TtsProvider>?): Plan? {
@@ -172,6 +181,9 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
             _bakeProgress.value = if (validPlan(plan) && ready.size < work.size) ready.size.toFloat() / work.size else null
         }
         if (ready.size == work.size) return
+        if (!validPlan(plan)) return
+        backgroundBake.value = true
+        delay(500)
         for (replaceProvisional in listOf(false, true)) {
             // Fill holes before upgrading playable entries. Keep provisional audio if a hole failed.
             if (replaceProvisional && work.any { (key, _) -> !store.has(key) && !store.hasProvisional(key) }) return
@@ -243,26 +255,42 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
         foregroundOrder.withLock {
             val rated = request.copy(rate = (request.rate * settings.rate).coerceIn(.25f, 4f), profile = TtsProfile.REALTIME)
             val owner = settings.provider
+            val generation = revision.get()
+            val quickId = phraseId?.takeIf {
+                val current = shortcuts
+                (current == null || current[it] == request.text) && request.language == defaultBakeLanguage &&
+                    request.rate == 1f && request.voiceId == null
+            }
+            // Metadata from the installed package is available before its worker or models.
+            // Disk playback never starts the engine or promotes a background bake.
+            val cached = if (owner != null && settings.cacheEnabled && !request.text.isBlank())
+                playbackProvider(owner) else null
+            if (cached != null) {
+                val (snapshot, revision) = cached
+                val selected = voice(snapshot, settings.voice, revision)
+                if (selected != null && playExisting(selected, rated, quickId, snapshot.info.profiles, generation, emit)) return@withLock
+            }
             val provider = if (owner != null) selectedProvider(catalog(), owner) else null
             val parallel = provider?.let { parallelProvider(it.pluginId) } == true
-            val voice = if (owner == null) systemVoice() else provider?.let { voice(it, settings.voice) }
-            if (voice == null || !settings.cacheEnabled || request.text.isBlank() ||
-                (voice.owner != SYSTEM_PROVIDER && !mayCacheProvider(voice.owner))) {
+            val voice = if (owner == null) systemVoice() else provider?.let {
+                voice(it, settings.voice, cached?.second ?: runCatching { installed()?.get(owner) }.getOrNull())
+            }
+            if (voice == null || !settings.cacheEnabled || request.text.isBlank()) {
+                if (voice == null && quickId != null) enqueueAfterMiss(quickId, request.text, owner, generation)
                 realtime(parallel) { synthesis.generate(rated, voice, allowFallback = true, emit = emit) }
                 return@withLock
             }
             // Only play a baked entry for the same shortcut and the same default request.
             // Free text and custom requests always use the independent 30-entry real-time cache.
-            val quickId = phraseId?.takeIf {
-                shortcuts[it] == request.text && request.language == defaultBakeLanguage && request.rate == 1f && request.voiceId == null
-            }
             val profiles = provider?.info?.profiles
-            val key = AudioCacheKey(voice, quickId, request.text, request.language, rated.rate, request.voiceId,
-                if (quickId == null) profiles?.realtime else profiles?.prebake)
-            if (playCached(key, emit)) return@withLock
-            val provisional = if (quickId != null && profiles != null)
-                key.copy(profileVersion = profiles.realtime, provisional = true) else null
-            if (provisional != null && playCached(provisional, emit)) return@withLock
+            if (playExisting(voice, rated, quickId, profiles, generation, emit)) return@withLock
+            if (owner != null && !mayCacheProvider(owner)) {
+                realtime(parallel) { synthesis.generate(rated, voice, allowFallback = true, emit = emit) }
+                if (quickId != null && mayCacheProvider(owner)) enqueueAfterMiss(quickId, request.text, owner, generation)
+                return@withLock
+            }
+            val key = playbackKey(voice, rated, quickId, profiles)
+            val provisional = provisionalKey(key, profiles)
             pendingRealtimeShortcut = key.takeIf { provisional != null }
             try {
                 realtime(parallel) {
@@ -275,8 +303,36 @@ internal class ServiceCache(directory: File, private val settings: ServiceSettin
                         if (valid && settings.cacheEnabled) writer?.finish()
                     }
                 }
-            } finally { pendingRealtimeShortcut = null }
+            } finally {
+                pendingRealtimeShortcut = null
+                if (quickId != null && !store.has(key)) enqueueAfterMiss(quickId, request.text, owner, generation)
+            }
         }
+
+    private fun enqueueAfterMiss(id: String, text: String, owner: String?, generation: Int) {
+        if (!settings.cacheEnabled || settings.provider != owner || generation != revision.get() ||
+            shortcuts?.let { it[id] != text } == true) return
+        pending.update { old ->
+            if (old?.phrases?.get(id) == text) old else BakeWork(old?.phrases.orEmpty() + (id to text))
+        }
+    }
+
+    private fun playbackKey(voice: CacheVoice, request: TtsRequest, quickId: String?, profiles: TtsProfileVersions?) =
+        AudioCacheKey(voice, quickId, request.text, request.language, request.rate, request.voiceId,
+            if (quickId == null) profiles?.realtime else profiles?.prebake)
+
+    private fun provisionalKey(key: AudioCacheKey, profiles: TtsProfileVersions?) =
+        if (key.quick != null && profiles != null) key.copy(profileVersion = profiles.realtime, provisional = true) else null
+
+    private suspend fun playExisting(voice: CacheVoice, request: TtsRequest, quickId: String?, profiles: TtsProfileVersions?,
+        generation: Int, emit: suspend (SynthesisEvent) -> Unit): Boolean {
+        val key = playbackKey(voice, request, quickId, profiles)
+        if (playCached(key, emit)) return true
+        val provisional = provisionalKey(key, profiles) ?: return false
+        if (!playCached(provisional, emit)) return false
+        enqueueAfterMiss(requireNotNull(quickId), request.text, voice.owner.takeUnless { it == SYSTEM_PROVIDER }, generation)
+        return true
+    }
 
     private companion object {
         const val DEFAULT_PACK = "default"

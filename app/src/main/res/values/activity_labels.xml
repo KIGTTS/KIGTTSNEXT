@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_activity_label">Album</string>
+    <string name="open_with_kigtts">Open with KIGTTS</string>
+    <string name="save_card_in_kigtts">Save card in KIGTTS</string>
+</resources>

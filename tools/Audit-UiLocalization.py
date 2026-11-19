@@ -11,6 +11,13 @@ LOCALES = ('zh-CN', 'en', 'ko', 'ja')
 LITERAL = re.compile(r'"(?:\\.|[^"\\\n])+"')
 HAN = re.compile(r'[\u3400-\u9fff]')
 ARG = re.compile(r'\{([a-zA-Z0-9_.-]+)\}')
+HOST_KEY = re.compile(r'\b(?:uiText|uiCopy|hostCopy)\(\s*"([a-zA-Z0-9_.-]+)"(?!\s*\+)')
+HOST_SOURCES = (
+    'app/src/main/java', 'plugin-runtime/src/main/java', 'plugin-manager/src/main/java',
+    'reading/src/main/kotlin', 'speech-recognition/src/main/kotlin',
+    'plugins/listening-panel/src/main/kotlin', 'plugins/voice-input/src/main/kotlin',
+    'plugins/placeholder-tts/src/main/kotlin', 'plugins/placeholder-asr/src/main/kotlin',
+)
 JAPANESE_TEXT = re.compile(r'[\u3040-\u30ff\u3400-\u9fff]')
 SHARED_JAPANESE_LABELS = frozenset({
     'backup.quick_filename',
@@ -36,6 +43,19 @@ def verify(directory, check_japanese=False):
         if untranslated:
             raise SystemExit(f'{directory} (ja): untranslated labels: {", ".join(sorted(untranslated))}')
     print(f'{directory.name}: {len(base)} keys in each of {len(LOCALES)} locales')
+    return set(base)
+
+
+def verify_host_keys(keys):
+    missing = []
+    source = ROOT / 'app/src/main/java'
+    for path in sorted(source.rglob('*.kt')):
+        for number, line in enumerate(path.read_text(encoding='utf-8-sig').splitlines(), 1):
+            for key in HOST_KEY.findall(line):
+                if key not in keys:
+                    missing.append(f'{path.relative_to(ROOT)}:{number}: {key}')
+    if missing:
+        raise SystemExit('UI calls without a host translation:\n' + '\n'.join(missing))
 
 
 def plugin_roots(platform):
@@ -43,13 +63,15 @@ def plugin_roots(platform):
 
 
 def scan(platform):
-    for root in ('app/src/main/java', 'plugin-runtime/src/main/java', 'reading/src/main/kotlin', 'speech-recognition/src/main/kotlin'):
-        for path in sorted((ROOT / root).rglob('*.kt')):
+    for root in HOST_SOURCES:
+        for path in sorted((ROOT / root).rglob('*')):
+            if not path.is_file() or path.suffix not in ('.kt', '.java'):
+                continue
             rel = path.relative_to(ROOT).as_posix()
             for number, line in enumerate(path.read_text(encoding='utf-8-sig').splitlines(), 1):
                 for match in LITERAL.finditer(line):
                     if HAN.search(match[0]):
-                        yield root.split('/')[0], rel, number, match[0][1:-1]
+                        yield root.split('/src/')[0], rel, number, match[0][1:-1]
     for module in plugin_roots(platform):
         for path in sorted((module / 'src/main').rglob('*')):
             if not path.is_file() or path.suffix not in ('.kt', '.java', '.lua', '.js'):
@@ -66,7 +88,7 @@ def main():
     parser.add_argument('--plugin-sources', type=Path, default=ROOT.parent / 'KIGTTS-Plugins')
     parser.add_argument('--inventory', type=Path, help='Optional UTF-8 CSV. Matches also include presets, aliases, prompts and diagnostic strings.')
     args = parser.parse_args()
-    verify(ROOT / 'app/src/main/assets/i18n', check_japanese=True)
+    verify_host_keys(verify(ROOT / 'app/src/main/assets/i18n', check_japanese=True))
     for directory in ('reading/src/main/resources/localization/reading', 'speech-recognition/src/main/resources/localization/recognition'):
         verify(ROOT / directory)
     for module in plugin_roots(args.plugin_sources):

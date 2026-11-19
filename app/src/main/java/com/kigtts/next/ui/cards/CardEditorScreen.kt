@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.rememberUiCopy
+
 import com.kigtts.next.i18n.uiText
 
 import androidx.activity.compose.PredictiveBackHandler
@@ -54,7 +56,8 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     var personalDraft by remember(identity?.id) { mutableStateOf(identity) }
     var personalBaseline by remember(identity?.id) { mutableStateOf(identity) }
     var maskColor by remember { mutableStateOf(false) }
-    val noun = if (identity == null) "照片" else "名片"
+    val savedMessage = uiText(if (identity == null) "photo.saved" else "profile.card_saved")
+    val copy = rememberUiCopy()
     var selectedId by rememberSaveable(cardId) { mutableStateOf<String?>(null) }
     var handledCameraVersion by rememberSaveable(cardId) { mutableLongStateOf(0L) }
     var mode by rememberSaveable(cardId) { mutableStateOf(CardEditorMode.CROP) }
@@ -103,16 +106,16 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     }
     fun updateLayer(layer: CardLayer) { draft = draft.copy(layers = draft.layers.map { if (it.id == layer.id) layer else it }) }
     fun addLayer(layer: CardLayer) {
-        if (draft.layers.size >= 64) { message("一张照片最多添加 64 个元素"); return }
+        if (draft.layers.size >= 64) { message(copy("photo.max_layers")); return }
         draft = draft.copy(layers = draft.layers + layer); selectedId = layer.id
     }
     fun putPhotoField(layer: CardLayer) {
         if (draft.layers.any { it.id == layer.id }) updateLayer(layer)
         else if (draft.layers.size < 64) draft = draft.copy(layers = draft.layers + layer)
-        else message("一张照片最多添加 64 个元素")
+        else message(copy("photo.max_layers"))
     }
     val photo = rememberCardPhotoSources({ selection ->
-        if (busy) { selection.release(); message("正在处理图片，请稍后重试") }
+        if (busy) { selection.release(); message(copy("photo.processing_wait")) }
         else work {
             val image = withContext(Dispatchers.IO) { try { stickers.importImage(selection.uri) } finally { selection.release() } }
             if (overlayImport) addLayer(CardLayer(kind = CardLayerKind.IMAGE, imageId = image.id, width = .32))
@@ -142,17 +145,17 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
                     }
                     throw failure
                 }
-                message("已保存$noun")
+                message(savedMessage)
                 if (onSaved == null) leave?.invoke()
                 return@work
             }
-            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = true; message("已保存$noun")
+            baseline = saved; draft = saved; personalBaseline = personalDraft; savedReturn = true; message(savedMessage)
         }
     }
     LaunchedEffect(active, savedReturn, discard) {
         if (active && savedReturn && !discard) { savedReturn = false; leave?.invoke() }
     }
-    RegisterPageActions(listOf(ToolbarAction("save-card", "保存$noun", Icons.Default.Save,
+    RegisterPageActions(listOf(ToolbarAction("save-card", uiText("action.save"), Icons.Default.Save,
         enabled && dirty && !conflict, preserveColorWhenLocked = busy, click = { saveDraft() })))
     fun cancelAdjustment() { selectedId = null; textEditing = false; focus.clearFocus(); keyboard?.hide() }
     fun backFromEditor() { if (selectedId != null || textEditing) cancelAdjustment() else discard = true }
@@ -243,13 +246,13 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         }
     }, multiline = true, maximum = 2048, trimInput = false, inputLabel = "二维码内容")
     if (active && paperColor) ColorPickerDialog(draft.frameColor, { color -> draft = draft.copy(frameColor = color); paperColor = false },
-        { paperColor = false }, title = if (identity == null) "纸框颜色" else "背景颜色")
+        { paperColor = false }, title = uiText(if (identity == null) "photo.frame_color" else "profile.background_color"))
     if (active && maskColor && personalDraft != null) ColorPickerDialog(requireNotNull(personalDraft).gradientColor, { color ->
         personalDraft = personalDraft?.copy(gradientColor = color); maskColor = false
-    }, { maskColor = false }, title = "渐变颜色")
+    }, { maskColor = false }, title = uiText("photo.gradient_color"))
     if (active && textColor && selected?.kind == CardLayerKind.TEXT) ColorPickerDialog(selected.color, { color ->
         updateLayer(selected.copy(color = color)); textColor = false
-    }, { textColor = false }, title = "文字颜色")
+    }, { textColor = false }, title = uiText("photo.text_color"))
     if (active && discard) SaveChangesDialog({ _ -> saveDraft() },
         {
             if (managedDraft) work { cards.documents.discardEmbedded(cardId); leave?.invoke() }

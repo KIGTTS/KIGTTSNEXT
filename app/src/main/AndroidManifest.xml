@@ -51,6 +51,10 @@
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
         <service android:name=".audio.RecognitionForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
+        <service android:name=".audio.ReadingCacheForegroundService" android:exported="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Completes user-enabled shortcut speech pre-synthesis already in progress when leaving the app, with a visible and cancellable progress notification" />
+        </service>
         <service android:name=".overlay.NativeOverlayService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="User-enabled persistent floating shortcuts and plugin message bubbles" />
         </service>
@@ -60,7 +64,7 @@
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
         </provider>
         <activity android:name=".AlbumActivity" android:exported="true" android:resizeableActivity="true"
-            android:label="相册" android:windowSoftInputMode="adjustResize">
+            android:label="@string/album_activity_label" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -138,7 +142,7 @@
             </intent-filter>
             <!-- File managers deliver legacy exports and voice packs as content:// URIs;
                  the host classifies the name/MIME and keeps unknown files read-only. -->
-            <intent-filter android:label="用 KIGTTS 打开">
+            <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" />
@@ -148,14 +152,14 @@
                 <data android:mimeType="application/x-mhtml" />
                 <data android:mimeType="message/rfc822" />
             </intent-filter>
-            <intent-filter android:label="用 KIGTTS 打开">
+            <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="multipart/related" />
                 <data android:mimeType="message/rfc822" />
             </intent-filter>
             <!-- Typed shares also work when a content provider hides the filename in the URI. -->
-            <intent-filter android:label="用 KIGTTS 打开">
+            <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -164,7 +168,7 @@
                 <data android:mimeType="application/vnd.kigtts.plugin+zip" />
                 <data android:mimeType="application/vnd.kigtts.backup+zip" />
             </intent-filter>
-            <intent-filter android:label="用 KIGTTS 打开">
+            <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="file" android:host="*" />
@@ -189,7 +193,7 @@
                 <data android:pathSuffix=".mht" />
             </intent-filter>
             <!-- File managers often use ZIP or octet-stream for attachments with a recognizable suffix. -->
-            <intent-filter android:label="用 KIGTTS 打开">
+            <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="file" android:host="*" />
@@ -212,7 +216,7 @@
             </intent-filter>
         </activity>
         <activity-alias android:name=".ProfileImageOpen" android:targetActivity=".MainActivity"
-            android:label="用 KIGTTS 收藏名片" android:exported="true">
+            android:label="@string/save_card_in_kigtts" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

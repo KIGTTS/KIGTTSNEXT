@@ -12,6 +12,7 @@ import java.util.UUID
 
 /** Only wire DTOs and file descriptors live in the app process. */
 internal class RemotePlugin(private val connection: WorkerConnection, initial: PluginSnapshot,
+    private val onTtsChanged: (RemotePlugin) -> Unit = {},
     private val permit: suspend (String) -> Boolean = { true }) : KigPlugin {
     val generation: String = UUID.randomUUID().toString()
     val alive get() = connection.alive
@@ -64,8 +65,10 @@ internal class RemotePlugin(private val connection: WorkerConnection, initial: P
             val activeContext = context ?: lastContext
             val next = PluginJson.decodeFromString<PluginSnapshot>(connection.worker.snapshot(PluginJson.encodeToString(activeContext)))
             val changed = next != snapshot
+            val ttsChanged = next.tts != snapshot.tts
             lastContext = activeContext
             snapshot = next
+            if (ttsChanged) onTtsChanged(this@RemotePlugin)
             changed
         }
     }

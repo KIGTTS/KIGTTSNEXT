@@ -18,5 +18,5 @@ import com.kigtts.plugin.runtime.PermissionAccess
         { when (it) { PermissionAccess.ASK -> "首次询问"; PermissionAccess.ALLOW -> "允许"; PermissionAccess.DENY -> "禁用" } },
         { access = it; ledger.set(owner, "network", it) }, enabled = enabled, compactLabels = true)
     Text(uiText("quick.web_scope"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    TextButton(onClick = { ledger.clearPrefix("web-device:${draft.phraseId ?: draft.key}:"); model.message("已清除此词条的网页设备授权") }, enabled = enabled) { Text(uiText("quick.device_grants_remove")) }
+    TextButton(onClick = { ledger.clearPrefix("web-device:${draft.phraseId ?: draft.key}:"); model.message(model.hostCopy("quick.device_grants_removed")) }, enabled = enabled) { Text(uiText("quick.device_grants_remove")) }
 }

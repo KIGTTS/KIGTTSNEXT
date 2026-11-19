@@ -76,5 +76,13 @@
   "pack_unknown_action": "未知语音包操作",
   "pack_parameter_changed": "语音参数已改变",
   "pack_parameter_invalid": "请输入有效的参数值",
-  "pack_parameter_range": "语音参数超出范围"
+  "pack_parameter_range": "语音参数超出范围",
+  "cache_requires_enabled": "请先开启自动缓存",
+  "cache_no_shortcuts": "没有可预先合成的快捷文本",
+  "cache_voice_unavailable": "当前声音无法预先合成，请检查引擎与权限",
+  "cache_rebuild_queued": "已安排重新缓存当前声音的快捷文本",
+  "delete_voice_pack_prompt": "删除这个语音包及其中的所有声音？",
+  "action_unavailable": "操作不可用，请重新打开朗读设置",
+  "voice_requires_network": "需要网络",
+  "voice_local": "本地声音"
 }

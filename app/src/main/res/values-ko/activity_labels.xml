@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="album_activity_label">앨범</string>
+    <string name="open_with_kigtts">KIGTTS로 열기</string>
+    <string name="save_card_in_kigtts">KIGTTS에 명함 저장</string>
+</resources>

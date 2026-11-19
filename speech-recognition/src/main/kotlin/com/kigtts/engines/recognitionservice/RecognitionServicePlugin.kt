@@ -90,7 +90,8 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
             }
             "toggle" -> provider().let { PluginOutcome.SetPluginEnabled(it.pluginId, !it.enabled) }
             "settings" -> {
-                val selected = provider(); check(selected.enabled) { "请先启用引擎" }
+                val selected = provider()
+                if (!selected.enabled) return PluginOutcome.Message(t("enable_engine_first"))
                 val page = parts.drop(2).joinToString("/"); require(selected.settingsPages.any { it.id == page })
                 PluginOutcome.OpenPluginPage(selected.pluginId, page)
             }

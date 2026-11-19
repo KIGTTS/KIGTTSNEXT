@@ -30,7 +30,7 @@ fun PluginExportRequest(model: AppViewModel, request: Pair<String, PluginOutcome
                     require(source != null && source.isFile && source.length() <= 2L * 1024 * 1024 * 1024)
                     source.inputStream().use { input -> requireNotNull(context.contentResolver.openOutputStream(uri)).use { input.copyTo(it) } }
                 }
-                if (uri != null) model.message("已导出文件")
+                if (uri != null) model.message(model.hostCopy("resource.file_exported"))
             } catch (error: Exception) { model.message(error.message ?: "文件导出失败") }
             finally { if (export.temporary) source?.delete() }
         }

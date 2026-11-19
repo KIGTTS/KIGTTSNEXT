@@ -1,9 +1,15 @@
 package com.kigtts.next.manager
 
 import android.app.Application
+import com.kigtts.next.audio.ReadingCacheForegroundService
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.editingCardId
 import com.kigtts.plugin.runtime.PluginManager
+import com.kigtts.plugin.runtime.InstalledPlugin
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +28,8 @@ class HostPluginRuntime private constructor(private val application: Application
             emit(phrases.filter { it.cardType() == com.kigtts.next.state.QuickCardType.TEXT && it.text.isNotBlank() }
                 .associate { it.id to it.text })
         } }, installedProviders = ::voicePluginRevisions, mayCacheProvider = ::canBakeVoice,
-        catalogUpdates = flow<Unit> { voiceCatalogUpdates().collect { emit(it) } })
+        catalogUpdates = flow<Unit> { voiceCatalogUpdates().collect { emit(it) } },
+        playbackProvider = { id -> manager.cachedReadingProvider(id)?.let { (provider, pkg) -> provider to cacheRevision(pkg) } })
     private val recognition = com.kigtts.engines.recognitionservice.RecognitionServicePlugin(::legacyRecognitionEnabled)
     val manager = PluginManager(application, listOf(reading, recognition), com.kigtts.next.sharing.pausedSharingPlugins,
         ExperimentalTool.bundles) { ExperimentalTool.enabled(application, it) }
@@ -32,8 +39,10 @@ class HostPluginRuntime private constructor(private val application: Application
     private fun voicePluginRevisions(): Map<String, String>? = if (!manager.installedCatalogReady) null
         else manager.status.associate { status ->
             val pkg = status.installed
-            pkg.manifest.id to "${pkg.publisherSha256}/${pkg.manifest.versionCode}/${pkg.manifest.version}/${pkg.manifest.files.hashCode()}"
+            pkg.manifest.id to cacheRevision(pkg)
         }
+    private fun cacheRevision(pkg: InstalledPlugin) =
+        "${pkg.publisherSha256}/${pkg.manifest.versionCode}/${pkg.manifest.version}/${pkg.manifest.files.hashCode()}"
     private fun canBakeVoice(id: String): Boolean {
         val installed = manager.status.firstOrNull { it.installed.manifest.id == id }?.installed ?: return false
         val owner = "${id}:${installed.publisherSha256}"
@@ -53,6 +62,16 @@ class HostPluginRuntime private constructor(private val application: Application
     val appPlugins = com.kigtts.next.plugins.control.AppControlHost(manager, browserHost, ::ui)
     init {manager.safeMode = recovery::safeMode; manager.quickTextBrokerFactory=quickTextPlugins::forPlugin; manager.appBrokerFactory = appPlugins::forPlugin
         manager.stickerBrokerFactory = stickerPlugins::forPlugin }
+    init {
+        CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
+            reading.backgroundBakeActive.collect { active ->
+                if (active) resumeReadingCache()
+            }
+        }
+    }
+    internal fun resumeReadingCache() {
+        if (reading.backgroundBakeActive.value) ReadingCacheForegroundService.start(application)
+    }
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()
     private val operations = Mutex()
     @Volatile private var owner = WeakReference<AppViewModel>(null)

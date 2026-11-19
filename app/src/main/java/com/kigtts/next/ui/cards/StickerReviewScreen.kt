@@ -49,7 +49,7 @@ fun StickerReviewScreen(model: AppViewModel, token: String) {
                 scope.launch {
                     try {
                         when (val result = model.stickerPlugins.approve(token)) {
-                            is StickerReply.Applied -> { model.message("已保存"); model.navigateBack() }
+                            is StickerReply.Applied -> { model.message(model.hostCopy("ui.saved")); model.navigateBack() }
                             is StickerReply.Failure -> error = result.message
                             else -> error = "修改未完成，请重新读取内容"
                         }

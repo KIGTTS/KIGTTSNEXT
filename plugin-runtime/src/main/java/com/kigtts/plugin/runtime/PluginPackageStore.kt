@@ -11,13 +11,15 @@ class PluginPackageStore(val paths: PluginPaths) {
     private val verifier = PackageVerifier(paths)
     fun inspect(file: File) = verifier.inspect(file)
     @Synchronized fun installed(): List<InstalledPlugin> = paths.packages.listFiles().orEmpty()
-        .filter { it.isDirectory && !it.name.startsWith('.') }.mapNotNull { directory ->
-            runCatching {
-                val current = currentDirectory(directory.name)
-                val manifest = PluginJson.decodeFromString<PackageManifest>(File(current, MANIFEST).readText())
-                InstalledPlugin(manifest, File(directory, "publisher").readText().trim(), !File(directory, "disabled").exists())
-            }.getOrNull()
-        }.sortedBy { it.manifest.name }
+        .filter { it.isDirectory && !it.name.startsWith('.') }.mapNotNull { installed(it.name) }
+        .sortedBy { it.manifest.name }
+
+    fun installed(id: String): InstalledPlugin? = runCatching {
+        val directory = paths.packageDirectory(id)
+        val current = currentDirectory(id)
+        val manifest = PluginJson.decodeFromString<PackageManifest>(File(current, MANIFEST).readText())
+        InstalledPlugin(manifest, File(directory, "publisher").readText().trim(), !File(directory, "disabled").exists())
+    }.getOrNull()
 
     fun currentDirectory(id: String): File {
         val root = paths.packageDirectory(id)

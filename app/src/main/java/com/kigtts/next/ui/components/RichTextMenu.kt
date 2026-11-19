@@ -23,7 +23,7 @@ internal fun Modifier.richTextMenu(enabled: Boolean, selection: () -> TextRange,
     LaunchedEffect(enabled) { if (!enabled) { colorRange = null; sizeRange = null } }
     colorRange?.let { range ->
         val initial = formats.lastOrNull { it.kind == TextFormat.COLOR && it.start <= range.min && it.end >= range.max }?.value ?: 0xFF00696E
-        ColorPickerDialog(initial, { if (enabled) apply.value(range, TextFormat.COLOR, it); colorRange = null }, { colorRange = null }, title = "文字颜色")
+        ColorPickerDialog(initial, { if (enabled) apply.value(range, TextFormat.COLOR, it); colorRange = null }, { colorRange = null }, title = uiText("photo.text_color"))
     }
     sizeRange?.let { range ->
         MotionAlertDialog(onDismissRequest = { sizeRange = null }, title = { Text(uiText("fonts.size")) }, text = {

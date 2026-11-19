@@ -29,6 +29,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private var backgrounded = false
     private var captionForegroundAvailable = true
     private var committedText = ""
+    private var latestVoiceText = ""
     private var segmentedSession = false
     private val requests = Channel<Unit>(Channel.CONFLATED)
     val permissionRequests = requests.receiveAsFlow()
@@ -62,10 +63,18 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         start(RecognitionSession(id, RecognitionPurpose.VOICE_INPUT), result)
         val epoch = generation
         val stop = stopInput
-        return { send ->
+        return release@ { send ->
             try {
                 if (send && epoch == generation) {
                     stop?.complete(Unit)
+                    if (!segmentedSession) {
+                        withTimeoutOrNull(RELEASE_GRACE_MS) { result.join() }
+                        if (epoch == generation && !result.isCompleted && latestVoiceText.isNotBlank()) {
+                            result.complete(latestVoiceText)
+                            cancel()
+                            return@release result.await()
+                        }
+                    }
                     withTimeoutOrNull(30_000) { result.await() }?.takeIf { epoch == generation }
                 } else null
             } finally {
@@ -91,9 +100,9 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         val epoch = ++generation
         val previous = job; previous?.cancel()
         val stop = CompletableDeferred<Unit>(); stopInput = stop; submit = false; readOnSubmit = false
-        currentSession = session; committedText = ""
+        currentSession = session; committedText = ""; latestVoiceText = ""
         captionForegroundAvailable = true
-        segmentedSession = engine.info.streaming != StreamingKind.INCREMENTAL
+        segmentedSession = engine.info.streaming != StreamingKind.INCREMENTAL && !(voice && systemMicrophone != null)
         val initialized = CompletableDeferred<Unit>(); ready = initialized
         update { it.copy(listening = true, captionsVisible = !voice && session.output != CaptionOutput.FLOATING,
             transcript = "", recognitionFinalOnly = segmentedSession, voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
@@ -101,6 +110,7 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             var finalizedSequence = 0L
             fun display(text: String) {
+                if (voice) latestVoiceText = text
                 if (chatResult == null) update { if (voice) it.copy(voiceInputText = text) else it.copy(transcript = text) }
             }
             fun final(text: String) {
@@ -124,7 +134,11 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                     if (epoch != generation) return@collect
                     when (event) {
                         RecognitionEvent.Started -> initialized.complete(Unit)
-                        is RecognitionEvent.Partial -> { initialized.complete(Unit); display(event.text) }
+                        is RecognitionEvent.Partial -> {
+                            initialized.complete(Unit)
+                            display(if (systemMicrophone == null) event.text else
+                                listOf(committedText, event.text).filter(String::isNotBlank).joinToString("\n"))
+                        }
                         is RecognitionEvent.Final -> { initialized.complete(Unit); committedText = event.result.text; display(event.result.text); final(event.result.text) }
                         is RecognitionEvent.Transcript -> {
                             initialized.complete(Unit)
@@ -142,19 +156,16 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                     display(result.text)
                     submit = true // A recorded-only provider completes a bounded recording itself.
                 }
-                if (chatResult != null && epoch == generation) chatResult.complete(committedText.takeIf(String::isNotBlank))
+                if (chatResult != null && epoch == generation)
+                    chatResult.complete(committedText.ifBlank { latestVoiceText }.takeIf(String::isNotBlank))
                 if (chatResult == null && voice && !state().continuousRecognition && submit && epoch == generation) {
-                    state().voiceInputText.takeIf(String::isNotBlank)?.let { text ->
-                        replaceText(text)
-                        if (readOnSubmit || state().autoPlayback) finalizedSpeech(text, readOnSubmit)
-                    }
+                    deliverVoice(latestVoiceText, readOnSubmit)
                 }
             } catch (cancel: CancellationException) { throw cancel }
             catch (issue: SystemRecognitionPermissionIssue) { if (epoch == generation) systemPermissionDenied(issue) }
             catch (error: Exception) {
                 if (epoch == generation) {
-                    val diagnostic = if (error is EngineException) null else error.message
-                    message(diagnostic ?: when ((error as? EngineException)?.code) {
+                    message(when ((error as? EngineException)?.code) {
                         EngineError.NOT_CONFIGURED -> copy("listening.engine_setup", "请在语音识别设置中选用可用引擎")
                         EngineError.TIMEOUT -> copy("listening.finish_timeout", "识别结束超时，请重试")
                         else -> copy("listening.failed", "语音识别失败，请重试")
@@ -203,12 +214,23 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         val finishing = job; val initialized = ready; val epoch = generation
         val finishBudget = if (segmentedSession) 25_000L else 3_000L
         scope.launch {
+            if (!segmentedSession && withTimeoutOrNull(RELEASE_GRACE_MS) { finishing?.join(); true } != true &&
+                epoch == generation && currentSession != null && latestVoiceText.isNotBlank()) {
+                deliverVoice(latestVoiceText, read)
+                stop()
+                return@launch
+            }
             val finished = withTimeoutOrNull(30_000) {
                 initialized?.await()
                 withTimeoutOrNull(finishBudget) { finishing?.join(); true } == true
             } == true
-            if (!finished && epoch == generation) { cancel(); message(copy("listening.finish_timeout", "识别结束超时，请重试")) }
+            if (!finished && epoch == generation) { stop(); message(copy("listening.finish_timeout", "识别结束超时，请重试")) }
         }
+    }
+    private fun deliverVoice(text: String, read: Boolean) {
+        if (text.isBlank()) return
+        replaceText(text)
+        if (read || state().autoPlayback) finalizedSpeech(text, read)
     }
     fun onForeground() { backgrounded = false }
     fun onBackground(hasCaptionWindow: Boolean): Boolean {
@@ -241,5 +263,9 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 captionMicrophone?.release()
             }
         }
+    }
+
+    private companion object {
+        const val RELEASE_GRACE_MS = 220L
     }
 }

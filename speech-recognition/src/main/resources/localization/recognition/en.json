@@ -35,5 +35,6 @@
   "unknown_action": "Unknown recognition action",
   "choose_ready": "Select and configure a recognition engine first.",
   "stream_required": "This engine only recognizes complete recordings. Choose an engine that supports live recognition.",
-  "system_starting": "System recognition isn’t ready yet. Try again in a moment"
+  "system_starting": "System recognition isn’t ready yet. Try again in a moment",
+  "enable_engine_first": "Enable this engine first."
 }

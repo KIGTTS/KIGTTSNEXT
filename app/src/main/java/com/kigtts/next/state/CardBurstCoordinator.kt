@@ -1,5 +1,7 @@
 package com.kigtts.next.state
 
+import com.kigtts.next.i18n.uiCopy
+
 import com.kigtts.next.cards.*
 import com.kigtts.next.ui.cards.camera.PolaroidCameraCapture
 import com.kigtts.plugin.api.PolaroidCard
@@ -74,7 +76,7 @@ class CardBurstCoordinator internal constructor(private val cards: CardRepositor
                 if (state().destination == destination) print(CardPrintRequest(destination.requestId, imported.last(), imported))
                 reviewing.value = null; saved.clear(); review.photos.forEach { it.discard() }
             } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { message("部分照片未能保存，请重试") }
+            catch (_: Exception) { message(stickers.context.uiCopy("camera.partial_save_failed")) }
             finally {
                 saving = false; busy(false)
                 if (state().destination != destination) cancel(destination.requestId)

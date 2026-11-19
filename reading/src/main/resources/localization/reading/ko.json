@@ -76,5 +76,13 @@
   "pack_unknown_action": "알 수 없는 음성 팩 작업",
   "pack_parameter_changed": "음성 설정이 변경되었습니다",
   "pack_parameter_invalid": "올바른 값을 입력하세요",
-  "pack_parameter_range": "음성 설정이 범위를 벗어났습니다"
+  "pack_parameter_range": "음성 설정이 범위를 벗어났습니다",
+  "cache_requires_enabled": "자동 캐시를 먼저 켜세요.",
+  "cache_no_shortcuts": "음성을 저장할 빠른 문구가 없습니다.",
+  "cache_voice_unavailable": "선택한 음성을 저장할 수 없습니다. 엔진과 권한을 확인하세요.",
+  "cache_rebuild_queued": "이 음성의 빠른 문구를 다시 저장하도록 예약했습니다.",
+  "delete_voice_pack_prompt": "이 음성 팩과 팩에 포함된 모든 음성을 삭제할까요?",
+  "action_unavailable": "이 작업을 사용할 수 없습니다. 읽어주기 설정을 다시 여세요.",
+  "voice_requires_network": "네트워크 필요",
+  "voice_local": "기기 내 음성"
 }

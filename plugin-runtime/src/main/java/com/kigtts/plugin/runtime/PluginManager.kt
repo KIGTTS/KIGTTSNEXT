@@ -4,6 +4,7 @@ import android.content.Context
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -27,6 +28,14 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     @Volatile var bundledErrors: Map<String, String> = emptyMap()
         private set
     val registry = PluginRegistry(builtins)
+    fun cachedReadingProvider(id: String): Pair<TtsProvider, InstalledPlugin>? {
+        val installed = packages.installed(id) ?: return null
+        val plugin = registry.plugin(id) as? RemotePlugin
+        val info = plugin?.tts?.info
+        val current = if (plugin != null && info?.role == TtsRole.PROVIDER && info.availability == EngineAvailability.READY)
+            TtsProvider(id, plugin.descriptor.name, info) else null
+        return (current ?: ProviderCatalog(paths).cachedTts(id))?.let { it to installed }
+    }
     val permissions = PluginPermissions(context)
     @Volatile var automaticPermission: (String, String) -> Boolean = { _, _ -> false }
     @Volatile var safeMode: () -> Boolean = { false }
@@ -133,7 +142,10 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
                                 override fun changes(afterRevision: Long) = kotlinx.coroutines.flow.flow { if (requestPermission(info.manifest.id, if ("stickers-read" in info.manifest.capabilities) "stickers-read" else "stickers-write")) backend.changes(afterRevision).collect { emit(it) } }
                             }) } else null,
                             { uiInvalidations.tryEmit(info.manifest.id) })
-                        val proxy = RemotePlugin(connection, connection.connect(info.manifest.id)) { permission -> requestPermission(info.manifest.id, permission) }
+                        val proxy = RemotePlugin(connection, connection.connect(info.manifest.id), onTtsChanged = { provider ->
+                            ProviderCatalog(paths).save(provider)
+                            catalogRevision.update { it + 1 }
+                        }) { permission -> requestPermission(info.manifest.id, permission) }
                         try { PluginRegistry(builtins + loaded.values.map { it.second } + proxy) }
                         catch (failure: Exception) { proxy.close(); throw failure }
                         loaded[info.manifest.id] = slot to proxy

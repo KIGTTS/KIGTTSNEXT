@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.audio.AudioCardSession
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.media.*
 import com.kigtts.next.ui.media.*
 import com.kigtts.next.ui.navigation.LocalPageActive
@@ -29,7 +30,7 @@ internal fun PhraseResourcePreview(entry: MediaEntry, repository: MediaRepositor
                         file?.let { session.start(entry.id,Uri.fromFile(it),autoPlay=false) }
                         onDispose { session.release() }
                     }
-                    AudioCardControls(session,Modifier.fillMaxWidth().testTag("phrase-audio-preview"),label="预览音频",playTag="preview-audio")
+                    AudioCardControls(session,Modifier.fillMaxWidth().testTag("phrase-audio-preview"),label=uiText("quick.preview_audio"),playTag="preview-audio")
                 }
                 MediaKind.IMAGE,MediaKind.MOTION_PHOTO,MediaKind.VIDEO -> {
                     val playback=remember { PlaybackState() };val live=remember { LivePhotoState() }
@@ -37,7 +38,7 @@ internal fun PhraseResourcePreview(entry: MediaEntry, repository: MediaRepositor
                     val audible=(audioMode ?: MediaAudioMode.defaultFor(entry.kind)).audible(automaticReading)
                     Column(Modifier.fillMaxWidth()) {
                     Box(Modifier.fillMaxWidth().height(220.dp).clip(MaterialTheme.shapes.large).testTag("phrase-media-preview")) {
-                        if(entry.kind==MediaKind.VIDEO)MediaVideo(file,"视频预览",false,{},Modifier.fillMaxSize(),entry.scale,
+                        if(entry.kind==MediaKind.VIDEO)MediaVideo(file,entry.name,false,{},Modifier.fillMaxSize(),entry.scale,
                             playback,showControls=false,autoPlay=false,playAudio=audible)
                         else {
                             MediaImage(file,entry.name,Modifier.fillMaxSize(),scale=entry.scale,backdrop=true)

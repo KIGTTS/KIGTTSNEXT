@@ -29,7 +29,7 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
                         actions += PageAction(packAction("pack-settings", entry), t("audio_settings"), PluginIcon.SETTINGS)
                     if (pack.exportable && entry.provider.enabled) actions += PageAction(packAction("pack-export", entry), t("export_pack"), PluginIcon.EXPORT)
                     if (pack.deletable && entry.provider.enabled) actions += PageAction(packAction("pack-delete", entry), t("delete_pack"), PluginIcon.CLOSE, symbol = "delete")
-                    ManagementItem(entry.key, pack.metadata.name,
+                    ManagementItem(entry.key, if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system_default") else pack.metadata.name,
                         if (entry.provider.pluginId == SYSTEM_PROVIDER) t("system_synthesis") else listOfNotNull(
                             pack.metadata.remark.takeIf { it.isNotBlank() }, t("engine_disabled").takeUnless { entry.provider.enabled }).joinToString(" · "), PluginIcon.SPEAKER,
                         pack.avatarPath?.let { PluginResource(it, entry.provider.pluginId) },

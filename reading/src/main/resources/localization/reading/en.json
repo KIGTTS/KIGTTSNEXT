@@ -76,5 +76,13 @@
   "pack_unknown_action": "Unknown voice pack action",
   "pack_parameter_changed": "The voice setting has changed",
   "pack_parameter_invalid": "Enter a valid value",
-  "pack_parameter_range": "The voice setting is out of range"
+  "pack_parameter_range": "The voice setting is out of range",
+  "cache_requires_enabled": "Turn on automatic caching first.",
+  "cache_no_shortcuts": "There are no shortcuts to cache.",
+  "cache_voice_unavailable": "The selected voice can’t be cached. Check its engine and permissions.",
+  "cache_rebuild_queued": "Shortcut audio for this voice is queued to rebuild.",
+  "delete_voice_pack_prompt": "Delete this voice pack and all of its voices?",
+  "action_unavailable": "This action is unavailable. Reopen Read Aloud settings.",
+  "voice_requires_network": "Network required",
+  "voice_local": "On-device voice"
 }

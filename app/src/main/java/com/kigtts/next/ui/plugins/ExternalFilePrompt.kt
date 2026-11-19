@@ -60,7 +60,7 @@ internal fun ExternalFilePrompt(model: AppViewModel) {
                 if (current.engineAction == VoiceImportAction.INSTALL && current.kind == ExternalFileType.PIPER_VOICE) {
                     TextButton(onClick = dialogFeedbackClick {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PIPER_DOWNLOAD))) }
-                            .onFailure { model.message("无法打开下载链接") }
+                            .onFailure { model.message(model.hostCopy("link.download_open_failed")) }
                     }) { Text(uiText("plugin.piper_download")) }
                 }
             }

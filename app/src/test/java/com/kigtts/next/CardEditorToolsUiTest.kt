@@ -1,5 +1,7 @@
 package com.kigtts.next
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.app.Application
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -108,7 +110,7 @@ class CardEditorToolsUiTest {
         compose.waitUntil(8_000) { backs == 1 }
         assertEquals("", cards.cards.value.single().title)
         assertEquals("照片说明仍存在", cards.cards.value.single().description)
-        assertEquals(listOf("已保存拍立得"), messages)
+        assertEquals(listOf(compose.activity.uiCopy("photo.saved")), messages)
     }
 
     @Test fun addingTextEditsInsideTheExistingSheetAndSavingItsEmptyValueDropsOnlyThatLayer() {
@@ -126,7 +128,7 @@ class CardEditorToolsUiTest {
         compose.waitUntil(8_000) { backs == 1 }
         assertTrue(cards.cards.value.single().layers.isEmpty())
         assertEquals("", cards.cards.value.single().title)
-        assertEquals(listOf("已保存拍立得"), messages)
+        assertEquals(listOf(compose.activity.uiCopy("photo.saved")), messages)
         compose.onNode(isDialog()).assertDoesNotExist()
     }
 
@@ -140,7 +142,7 @@ class CardEditorToolsUiTest {
         compose.waitUntil(8_000) { backs == 1 }
         assertEquals("", cards.cards.value.single().title)
         assertEquals("返回时保存的说明", cards.cards.value.single().description)
-        assertEquals(listOf("已保存拍立得"), messages)
+        assertEquals(listOf(compose.activity.uiCopy("photo.saved")), messages)
         compose.onNode(isDialog()).assertDoesNotExist()
     }
 }
