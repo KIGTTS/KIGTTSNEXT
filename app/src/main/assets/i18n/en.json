@@ -810,6 +810,7 @@
   "listening.window_unavailable": "Could not show the caption window. Check the overlay permission.",
   "listening.background_unavailable": "Keep KIGTTS open to continue listening",
   "listening.open_first": "Open KIGTTS before starting captions",
+  "listening.start_from_notification": "Tap the Captions notification to start listening",
   "listening.window_permission": "Allow overlays to open the caption window",
   "profile.qr": "QR code",
   "profile.qr_optional": "QR code contents (optional)",

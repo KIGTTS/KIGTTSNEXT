@@ -810,6 +810,7 @@
   "listening.window_unavailable": "无法显示字幕浮窗，请检查悬浮窗权限",
   "listening.background_unavailable": "无法保持后台聆听，请保持 KIGTTS 在前台",
   "listening.open_first": "请先打开 KIGTTS，再开始聆听",
+  "listening.start_from_notification": "点通知栏里的「开始聆听」",
   "listening.window_permission": "请开启字幕浮窗权限",
   "profile.qr": "二维码",
   "profile.qr_optional": "二维码内容（可选）",

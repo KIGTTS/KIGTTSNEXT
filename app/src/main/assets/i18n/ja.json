@@ -810,6 +810,7 @@
   "listening.window_unavailable": "字幕ウィンドウを表示できませんでした。オーバーレイの権限を確認してください",
   "listening.background_unavailable": "聞き取りを続けるにはKIGTTSを開いたままにしてください",
   "listening.open_first": "字幕を開始する前にKIGTTSを開いてください",
+  "listening.start_from_notification": "通知をタップして字幕を開始",
   "listening.window_permission": "字幕ウィンドウを開くにはオーバーレイを許可してください",
   "profile.qr": "QRコード",
   "profile.qr_optional": "QRコードの内容（任意）",

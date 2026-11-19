@@ -1,9 +1,8 @@
 package com.kigtts.next.audio
 
 import android.content.Context
-import android.content.Intent
 import android.provider.Settings
-import com.kigtts.next.MainActivity
+import android.widget.Toast
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.AppState
 import com.kigtts.next.overlay.OverlayHostWindow
@@ -16,7 +15,7 @@ import kotlinx.coroutines.flow.*
 /** Native permission/output transport only; the service plugin selects the output policy. */
 internal class CaptionOutputCoordinator(private val context: Context, scope: CoroutineScope, private val state: StateFlow<AppState>,
     private val begin: (RecognitionSession) -> Unit, private val stop: () -> Unit, private val message: (String) -> Unit,
-    private val serviceId: () -> String?) {
+    private val serviceId: () -> String?, private val microphone: RecognitionForegroundService.Microphone?) {
     private val captionFonts = CaptionFontSettings(context)
     private val windowSize = MutableStateFlow(captionFonts.window())
     private val overlay = FloatingCaptions(context, ::toggleFromWindow, ::dismissWindow,
@@ -25,8 +24,10 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
             windowSize.update { (it * factor).coerceIn(range.start, range.endInclusive) }
         }, { captionFonts.saveWindow(windowSize.value) })
     private val manual = MutableStateFlow(Manual())
+    private val confirmation = CaptionStartNotification(context, ::copy) {
+        if (manual.value.open && windowOpen()) startWindowSession()
+    }
     private var pendingPermission: (() -> Unit)? = null
-    private var startOnResume = false
     private val requests = Channel<Unit>(Channel.CONFLATED)
     val permissionRequests = requests.receiveAsFlow()
     private val observation = scope.launch {
@@ -46,37 +47,43 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
             withOverlayPermission { manual.update { it.copy(suppressed = false) }; begin(session) }
         else begin(session)
     }
-    fun openWindow() = withOverlayPermission { manual.value = Manual(open = true) }
+    fun openWindow() = withOverlayPermission {
+        microphone?.window(open = true, hostVisible = OverlayHostWindow.inForeground)
+        manual.value = Manual(open = true)
+    }
     fun windowOpen() = (manual.value.open || state.value.let {
         it.listening && !it.voiceInputActive && it.recognitionOutput != CaptionOutput.PANEL && !manual.value.suppressed
     }) && Settings.canDrawOverlays(context)
 
     private fun toggleFromWindow() {
         if (state.value.listening && !state.value.voiceInputActive) { stop(); return }
-        if (OverlayHostWindow.inForeground) startWindowSession()
-        else {
-            startOnResume = true
-            runCatching { context.startActivity(Intent(context, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)) }
-                .onFailure { startOnResume = false; message(copy("listening.open_first")) }
-        }
+        if (OverlayHostWindow.inForeground || microphone?.let { it.prepared && it.permitted } == true) startWindowSession()
+        else Toast.makeText(context, copy(if (microphone?.permitted == true && confirmation.show())
+            "listening.start_from_notification" else "listening.open_first"), Toast.LENGTH_SHORT).show()
     }
     fun resume() {
-        if (!startOnResume) return
-        startOnResume = false
-        if (manual.value.open) startWindowSession()
+        if (!manual.value.open) return
+        confirmation.clear()
+        microphone?.window(open = true, hostVisible = true)
     }
     private fun startWindowSession() {
+        confirmation.clear()
         val id = serviceId() ?: run { message(copy("listening.service_disabled")); return }
         start(RecognitionSession(id, RecognitionPurpose.CAPTIONS, output = CaptionOutput.FLOATING))
     }
     private fun dismissWindow() {
-        startOnResume = false
+        confirmation.clear()
+        microphone?.window(open = false, hostVisible = false)
         manual.value = Manual(suppressed = true)
         val current = state.value
         if (current.listening && !current.voiceInputActive && (!current.captionsVisible || !OverlayHostWindow.inForeground)) stop()
     }
-    fun resetWindow() { startOnResume = false; pendingPermission = null; manual.value = Manual(suppressed = true) }
+    fun resetWindow() {
+        confirmation.clear()
+        microphone?.window(open = false, hostVisible = false)
+        pendingPermission = null
+        manual.value = Manual(suppressed = true)
+    }
     private fun withOverlayPermission(action: () -> Unit) {
         if (Settings.canDrawOverlays(context)) action()
         else { pendingPermission = action; requests.trySend(Unit) }
@@ -87,7 +94,7 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
             if (Settings.canDrawOverlays(context)) next() else message(copy("listening.window_permission"))
         }
     }
-    fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close() }
+    fun close() { observation.cancel(); resetWindow(); overlay.close() }
     private fun copy(key: String) = context.uiCopy(key, locale = state.value.uiLocale)
 
     private data class Manual(val open: Boolean = false, val suppressed: Boolean = false)

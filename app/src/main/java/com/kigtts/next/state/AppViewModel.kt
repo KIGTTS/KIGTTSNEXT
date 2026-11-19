@@ -131,12 +131,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val events = outcomes.receiveAsFlow()
     init { legacyImports.migrateOriginalInstallation() }
     internal val systemRecognitionPermission = MutableStateFlow<com.kigtts.engines.recognitionservice.SystemRecognitionPermissionIssue?>(null)
+    private val captionMicrophone = if (audio is AndroidAudioPlatform) RecognitionForegroundService.Microphone(application) else null
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback,
         systemPermissionDenied = { systemRecognitionPermission.value = it },
         copy = { key, _ -> speechCopy(key) },
-        captionMicrophone = if (audio is AndroidAudioPlatform) RecognitionForegroundService.Microphone(application) else null)
-    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message, ::readyCaptionService)
+        captionMicrophone = captionMicrophone)
+    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening,
+        ::message, ::readyCaptionService, captionMicrophone)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
     val captionServiceReady get() = readyCaptionService() != null

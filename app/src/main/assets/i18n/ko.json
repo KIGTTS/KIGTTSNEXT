@@ -810,6 +810,7 @@
   "listening.window_unavailable": "자막 창을 표시할 수 없습니다. 오버레이 권한을 확인하세요.",
   "listening.background_unavailable": "계속 들으려면 KIGTTS를 열어 두세요",
   "listening.open_first": "자막을 시작하기 전에 KIGTTS를 여세요",
+  "listening.start_from_notification": "알림을 눌러 자막을 시작하세요",
   "listening.window_permission": "자막 창을 열려면 오버레이를 허용하세요",
   "profile.qr": "QR 코드",
   "profile.qr_optional": "QR 코드 내용(선택 사항)",
