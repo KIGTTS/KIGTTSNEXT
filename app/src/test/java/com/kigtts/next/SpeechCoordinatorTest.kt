@@ -14,6 +14,7 @@ import org.junit.Assert.*
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowSettings
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -46,6 +47,22 @@ class SpeechCoordinatorTest {
         assertEquals(AsrRole.SERVICE, recognition.info.role)
         assertEquals(EngineAvailability.NEEDS_RESOURCES, recognition.info.availability)
         assertTrue(model.registry.plugins.none { it.descriptor.placeholder })
+    }
+
+    @Test fun closingThePanelThatStartedRecognitionStopsListeningEvenWithAnotherWindowOpen() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        ShadowSettings.setCanDrawOverlays(true)
+        try {
+            model.toggleListening()
+            assertTrue(model.state.value.listening)
+            model.openCaptionWindow()
+            model.dismissCaptionPanel()
+            assertFalse(model.state.value.listening)
+            assertFalse(model.state.value.captionsVisible)
+        } finally {
+            ShadowSettings.setCanDrawOverlays(false)
+        }
     }
     @Test fun audioFlowsToSelectedPluginAndCancellationReleasesTransport() = runTest {
         var state = AppState()

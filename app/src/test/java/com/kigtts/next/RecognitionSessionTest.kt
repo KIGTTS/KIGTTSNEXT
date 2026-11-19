@@ -12,12 +12,14 @@ import org.junit.Assert.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecognitionSessionTest {
-    private class Hardware : AudioPlatform {
+    private class Hardware(private val finishRelease: suspend () -> Unit = {}) : AudioPlatform {
         var permission = true; var captured = 0; var released = 0
         override fun hasMicrophonePermission() = permission
         override fun capture(format: AudioFormat) = flow {
             captured++
-            try { emit(PcmAudio(ByteArray(640))); awaitCancellation() } finally { released++ }
+            try { emit(PcmAudio(ByteArray(640))); awaitCancellation() } finally {
+                withContext(NonCancellable) { finishRelease(); released++ }
+            }
         }
         override fun player() = object : PcmPlayer { override suspend fun write(audio: PcmAudio) {}; override suspend fun finish() {}; override fun close() {} }
     }
@@ -69,6 +71,44 @@ class RecognitionSessionTest {
         assertFalse(state.listening)
         assertFalse(microphone.held)
         assertEquals(listOf("无法保持后台聆听，请保持 KIGTTS 在前台"), messages)
+    }
+
+    @Test fun stoppingCaptionsKeepsTheForegroundLeaseUntilTheRecorderCloses() = runTest {
+        val finishRelease = CompletableDeferred<Unit>()
+        val hardware = Hardware { finishRelease.await() }
+        val microphone = TestCaptionMicrophone().apply { promotion.complete(true) }
+        var state = AppState()
+        val speech = SpeechCoordinator(this, PluginRegistry(listOf(plugin(captionEngine()))), hardware,
+            { state }, { state = it(state) }, {}, {}, { "test.service" }, captionMicrophone = microphone)
+
+        speech.start(RecognitionSession("test.service", RecognitionPurpose.CAPTIONS))
+        runCurrent()
+        assertEquals(1, hardware.captured)
+        speech.closeCaptions()
+        runCurrent()
+        assertFalse(state.listening)
+        assertEquals(0, hardware.released)
+        assertTrue(microphone.held)
+
+        finishRelease.complete(Unit)
+        runCurrent()
+        assertEquals(1, hardware.released)
+        assertFalse(microphone.held)
+    }
+
+    @Test fun closingFloatingCaptionsCancelsAPendingMicrophonePermissionRequest() = runTest {
+        val hardware = Hardware().apply { permission = false }
+        var state = AppState()
+        val speech = SpeechCoordinator(this, PluginRegistry(listOf(plugin(captionEngine()))), hardware,
+            { state }, { state = it(state) }, {}, {}, { "test.service" })
+
+        speech.start(RecognitionSession("test.service", RecognitionPurpose.CAPTIONS, output = CaptionOutput.FLOATING))
+        speech.closeCaptions()
+        hardware.permission = true
+        speech.permissionResult(true)
+        runCurrent()
+        assertEquals(0, hardware.captured)
+        assertFalse(state.listening)
     }
 
     private class TestCaptionMicrophone : CaptionMicrophone {

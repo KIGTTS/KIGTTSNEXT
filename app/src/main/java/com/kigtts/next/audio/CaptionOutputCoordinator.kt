@@ -76,7 +76,9 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
         microphone?.window(open = false, hostVisible = false)
         manual.value = Manual(suppressed = true)
         val current = state.value
-        if (current.listening && !current.voiceInputActive && (!current.captionsVisible || !OverlayHostWindow.inForeground)) stop()
+        val hasActivePanel = current.listening && current.captionsVisible &&
+            current.recognitionOutput != CaptionOutput.FLOATING && OverlayHostWindow.inForeground
+        if (!hasActivePanel) stop()
     }
     fun resetWindow() {
         confirmation.clear()

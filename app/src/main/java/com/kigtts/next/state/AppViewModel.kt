@@ -137,7 +137,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         systemPermissionDenied = { systemRecognitionPermission.value = it },
         copy = { key, _ -> speechCopy(key) },
         captionMicrophone = captionMicrophone)
-    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening,
+    private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeCaptions,
         ::message, ::readyCaptionService, captionMicrophone)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
@@ -157,12 +157,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         captionOutput.resume()
     }
     fun dismissCaptionPanel() {
-        if (captionOutput.windowOpen()) update { it.copy(captionsVisible = false) } else speech.closeListening()
+        val floatingOwnsSession = state.value.recognitionOutput != CaptionOutput.PANEL && captionOutput.windowOpen()
+        if (floatingOwnsSession) update { it.copy(captionsVisible = false) } else speech.closeCaptions()
     }
     fun toggleCaptionPanel(owner: String) {
-        if (state.value.captionsVisible) { dismissCaptionPanel(); return }
-        if (state.value.listening && !state.value.voiceInputActive) {
-            update { it.copy(captionsVisible = true) }; return
+        val current = state.value
+        if (current.captionsVisible || (current.listening && !current.voiceInputActive)) {
+            speech.closeCaptions()
+            return
         }
         invoke(owner, "listen")
     }

@@ -27,6 +27,7 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
             check(recorder.state == AudioRecord.STATE_INITIALIZED) { "麦克风初始化失败" }
             devices.bind(recorder, true)
             noise = recognitionNoise(recorder.audioSessionId, devices.noiseSuppression)
+            currentCoroutineContext().ensureActive()
             recorder.startRecording()
             val buffer = ByteArray(chunkSize)
             while (currentCoroutineContext().isActive) {
@@ -35,10 +36,9 @@ class AndroidAudioPlatform(private val context: Context) : AudioPlatform {
                 if (count == 0) delay(10) else emit(PcmAudio(buffer.copyOf(count), format.sampleRate, format.channels))
             }
         } finally {
-            devices.unbind(recorder)
             runCatching { recorder.stop() }
             runCatching { noise?.release() }
-            recorder.release()
+            try { devices.unbind(recorder) } finally { recorder.release() }
         }
     }.flowOn(Dispatchers.IO)
     override fun player(): PcmPlayer = AndroidPcmPlayer(devices)

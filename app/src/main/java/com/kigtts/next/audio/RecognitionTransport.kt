@@ -217,11 +217,29 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         cancel()
         return false
     }
-    fun cancel() {
-        pending = null; generation++; stopInput = null; currentSession = null; committedText = ""; job?.cancel()
-        captionMicrophone?.release()
+    fun cancelCaptions() {
+        if (currentSession?.purpose == RecognitionPurpose.CAPTIONS || pending?.purpose == RecognitionPurpose.CAPTIONS) cancel()
+        else if (state().captionsVisible) update { it.copy(captionsVisible = false) }
+    }
+    fun cancel() { scope.launch(start = CoroutineStart.UNDISPATCHED) { stop() } }
+
+    suspend fun stop() {
+        val epoch = ++generation
+        val closing = job
+        pending = null
+        stopInput = null
+        currentSession = null
+        committedText = ""
+        closing?.cancel()
         update { it.copy(captionsVisible = false, listening = false, voiceInputActive = false,
             voiceInputSubmitting = false, continuousRecognition = false, voiceInputText = "") }
+        // Keep the microphone service promoted until the recognizer and recorder have unwound.
+        withContext(NonCancellable) {
+            closing?.join()
+            if (epoch == generation) {
+                job = null
+                captionMicrophone?.release()
+            }
+        }
     }
-    suspend fun stop() { val previous = job; cancel(); previous?.join() }
 }

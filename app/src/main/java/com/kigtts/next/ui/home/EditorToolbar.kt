@@ -91,10 +91,13 @@ fun cornerActions(slot: UiSlot, model: AppViewModel, owner: String? = null, list
     val service = registered.plugin.descriptor.id
     val listen = service == "service.speech-recognition" && registered.action.id == "listen"
     val dismiss = service == "service.speech-recognition" && registered.action.id == "close" && slot == UiSlot.LISTENING_BOTTOM_END
+    val state = model.state.value
     val label = when {
-        dismiss || listen && model.state.value.captionsVisible ->
-            model.getApplication<android.app.Application>().uiCopy("listening.close", locale = model.state.value.uiLocale)
-        listen -> model.getApplication<android.app.Application>().uiCopy("listening.start", locale = model.state.value.uiLocale)
+        listen && state.listening && !state.voiceInputActive ->
+            model.getApplication<android.app.Application>().uiCopy("listening.stop", locale = state.uiLocale)
+        dismiss || listen && state.captionsVisible ->
+            model.getApplication<android.app.Application>().uiCopy("listening.close", locale = state.uiLocale)
+        listen -> model.getApplication<android.app.Application>().uiCopy("listening.start", locale = state.uiLocale)
         else -> registered.action.label
     }
     ElasticAction(registered.key, label, registered.action.icon.vector(registered.action.symbol),

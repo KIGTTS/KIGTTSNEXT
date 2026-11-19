@@ -93,6 +93,7 @@ internal class AndroidSystemRecognition(private val context: Context, private va
         var ready = false
         val listener = object : RecognitionListener {
             fun finish(text: String) {
+                if (result.isCompleted) return
                 // Some system vendors ignore EXTRA_AUDIO_SOURCE and open their own microphone.
                 // Do not show an unrelated live-microphone result in place of this sentence.
                 val consumed = source == null || runCatching { Os.lseek(source.fileDescriptor, 0L, OsConstants.SEEK_CUR) > 0 }.getOrDefault(false)
@@ -102,6 +103,7 @@ internal class AndroidSystemRecognition(private val context: Context, private va
             }
             override fun onResults(results: Bundle?) = finish(results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull().orEmpty())
             override fun onError(error: Int) {
+                if (result.isCompleted) return
                 if (error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT ||
                     (stop?.isCompleted == true && (!ready || error == SpeechRecognizer.ERROR_CLIENT))) finish("")
                 else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && stop != null)
@@ -136,9 +138,13 @@ internal class AndroidSystemRecognition(private val context: Context, private va
             withTimeoutOrNull(20_000) { result.await() }
                 ?: throw EngineException(EngineError.TIMEOUT, "系统识别超时，请重试或切换识别引擎")
         } finally {
-            finish?.cancel()
-            if (!result.isCompleted) recognizer.cancel()
-            recognizer.destroy()
+            withContext(NonCancellable) {
+                finish?.cancelAndJoin()
+                result.cancel()
+                try { recognizer.cancel() } finally { recognizer.destroy() }
+                // Android dispatches the teardown commands through the main looper.
+                yield()
+            }
         }
     }
 

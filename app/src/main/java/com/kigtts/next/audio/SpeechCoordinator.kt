@@ -22,6 +22,7 @@ internal class SpeechCoordinator(private val scope: CoroutineScope, registry: Pl
     fun start(session: RecognitionSession) = recording.start(session)
     fun end(submit: Boolean = false, read: Boolean = false) = recording.end(submit, read)
     fun continueInput() = recording.continueInput()
+    fun closeCaptions() = recording.cancelCaptions()
     fun closeListening() = recording.cancel()
     fun toggleListening() = recording.toggleListening()
     fun voiceInput() = recording.voiceInput()
