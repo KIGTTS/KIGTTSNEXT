@@ -4,18 +4,27 @@ import com.kigtts.plugin.android.AndroidPluginEnvironment
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { null }) : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-recognition", "语音识别服务", "聆听字幕、语音输入与识别包", version = "0.8.4")
     override val localization get() = RecognitionCopy.localization
     private lateinit var settings: RecognitionServiceSettings
     private lateinit var broker: RecognitionBroker
-    private lateinit var facade: ServiceRecognition
+    @Volatile private lateinit var facade: ServiceRecognition
     private var system: AndroidSystemRecognition? = null
-    override val asr: AsrEngine get() = facade
-    fun systemMicrophone(): ((Deferred<Unit>, RecognitionConfig) -> Flow<RecognitionEvent>)? {
+    private val pending = object : AsrEngine {
+        override val info = AsrInfo(availability = EngineAvailability.NEEDS_RESOURCES, role = AsrRole.SERVICE)
+        private fun unavailable(config: RecognitionConfig): Nothing =
+            throw EngineException(EngineError.NOT_CONFIGURED, RecognitionCopy.text("choose_ready", config.language))
+        override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig): RecognitionResult = unavailable(config)
+        override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig): Flow<RecognitionEvent> = flow { unavailable(config) }
+    }
+    override val asr: AsrEngine get() = if (::facade.isInitialized) facade else pending
+    fun systemMicrophone(continuousCaptions: Boolean = false): ((Deferred<Unit>, RecognitionConfig) -> Flow<RecognitionEvent>)? {
         val engine = system ?: return null
-        return engine::listen.takeIf { settings.current(broker.providers())?.pluginId == SYSTEM_RECOGNITION_ID }
+        if (settings.current(broker.providers())?.pluginId != SYSTEM_RECOGNITION_ID) return null
+        return { stop, config -> engine.listen(stop, config, continuousCaptions) }
     }
     override suspend fun attach(environment: PluginEnvironment) {
         settings = RecognitionServiceSettings(environment.storage, legacyEnabled)

@@ -6,15 +6,17 @@ import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
 
 /** Hardware/session coordination only. Engine policy and implementations remain in plugins. */
-class SpeechCoordinator(scope: CoroutineScope, registry: PluginRegistry, audio: AudioPlatform,
+internal class SpeechCoordinator(private val scope: CoroutineScope, registry: PluginRegistry, audio: AudioPlatform,
     state: () -> AppState, update: ((AppState) -> AppState) -> Unit, message: (String) -> Unit,
     replaceText: (String) -> Unit, selection: (Boolean) -> String?,
     automaticRead: (Boolean) -> Unit = { enabled -> update { it.copy(autoPlayback = enabled) } },
     systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) },
-    copy: (String, String) -> String = { _, fallback -> fallback }) {
+    copy: (String, String) -> String = { _, fallback -> fallback },
+    captionMicrophone: CaptionMicrophone? = null) {
     private val playback = SpeechPlayback(scope, registry, audio, state, update, message, copy) { selection(true) }
     private val recording = RecognitionTransport(scope, registry, audio, state, update, message, replaceText,
-        automaticRead, { text, manual -> if (manual) playback.readOnce(text) else playback.enqueue(text) }, { selection(false) }, copy, systemPermissionDenied)
+        automaticRead, { text, manual -> if (manual) playback.readOnce(text) else playback.enqueue(text) }, { selection(false) },
+        copy, systemPermissionDenied, captionMicrophone)
     val permissionRequests = recording.permissionRequests
     fun permissionResult(granted: Boolean) = recording.permissionResult(granted)
     fun start(session: RecognitionSession) = recording.start(session)
@@ -26,5 +28,9 @@ class SpeechCoordinator(scope: CoroutineScope, registry: PluginRegistry, audio: 
     internal fun chatInput() = recording.chatInput()
     fun speak(replace: Boolean = false) = playback.speak(replace)
     suspend fun stopSpeaking() = playback.stop()
+    fun onForeground() = recording.onForeground()
+    fun onBackground(hasCaptionWindow: Boolean) {
+        if (!recording.onBackground(hasCaptionWindow)) scope.launch { playback.stop() }
+    }
     suspend fun stopAll() { recording.stop(); playback.stop() }
 }

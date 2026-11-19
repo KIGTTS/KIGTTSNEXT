@@ -40,6 +40,13 @@ class SystemCaptionSessionsTest {
         assertEquals(1, requests)
     }
 
+    @Test fun liveCaptionsCanRecoverFromATemporaryInterruptionAfterTheRecognizerWasReady() {
+        assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_SERVER_DISCONNECTED, ready = true, continuousCaptions = true))
+        assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_AUDIO, ready = true, continuousCaptions = true))
+        assertFalse(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_AUDIO, ready = true))
+        assertFalse(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS, ready = true, continuousCaptions = true))
+    }
+
     @Test fun usesFinalUtterancesAndFlushesTheActiveOneOnSubmit() = runTest {
         val stop = CompletableDeferred<Unit>()
         var requests = 0

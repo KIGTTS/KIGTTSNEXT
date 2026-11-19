@@ -30,22 +30,15 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
     private val requests = Channel<Unit>(Channel.CONFLATED)
     val permissionRequests = requests.receiveAsFlow()
     private val observation = scope.launch {
-        var foreground = false
         val output = state.map { Output(it.listening && !it.voiceInputActive, it.recognitionOutput,
             it.transcript, it.theme, it.hapticsEnabled, it.uiLocale,
             CaptionVisuals(it.recognitionFinalOnly, it.subtitleAppearance.reducedMotion, it.subtitleAppearance.displayReflow)) }.distinctUntilChanged()
         combine(output, manual, windowSize, ::Triple).collect { (value, window, fontSize) ->
-                if ((window.open || value.active && value.kind != CaptionOutput.PANEL && !window.suppressed) && Settings.canDrawOverlays(context)) {
-                    runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme,
-                        value.active, value.haptics, value.locale, value.visuals) }
-                        .onFailure { manual.value = Manual(suppressed = true); message(copy("listening.window_unavailable")) }
-                } else overlay.close()
-                if (foreground != value.active) {
-                    foreground = value.active
-                    if (foreground) runCatching { androidx.core.content.ContextCompat.startForegroundService(context, Intent(context, RecognitionForegroundService::class.java)) }
-                        .onFailure { message(copy("listening.background_unavailable")) }
-                    else context.stopService(Intent(context, RecognitionForegroundService::class.java))
-                }
+            if ((window.open || value.active && value.kind != CaptionOutput.PANEL && !window.suppressed) && Settings.canDrawOverlays(context)) {
+                runCatching { overlay.show(value.text.takeIf { value.active }.orEmpty(), fontSize, value.theme,
+                    value.active, value.haptics, value.locale, value.visuals) }
+                    .onFailure { dismissWindow(); message(copy("listening.window_unavailable")) }
+            } else overlay.close()
         }
     }
     fun start(session: RecognitionSession) {
@@ -54,9 +47,9 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
         else begin(session)
     }
     fun openWindow() = withOverlayPermission { manual.value = Manual(open = true) }
-    fun windowOpen() = manual.value.open || state.value.let {
+    fun windowOpen() = (manual.value.open || state.value.let {
         it.listening && !it.voiceInputActive && it.recognitionOutput != CaptionOutput.PANEL && !manual.value.suppressed
-    }
+    }) && Settings.canDrawOverlays(context)
 
     private fun toggleFromWindow() {
         if (state.value.listening && !state.value.voiceInputActive) { stop(); return }
@@ -81,7 +74,7 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
         startOnResume = false
         manual.value = Manual(suppressed = true)
         val current = state.value
-        if (current.listening && !current.captionsVisible && !current.voiceInputActive) stop()
+        if (current.listening && !current.voiceInputActive && (!current.captionsVisible || !OverlayHostWindow.inForeground)) stop()
     }
     fun resetWindow() { startOnResume = false; pendingPermission = null; manual.value = Manual(suppressed = true) }
     private fun withOverlayPermission(action: () -> Unit) {
@@ -94,7 +87,7 @@ internal class CaptionOutputCoordinator(private val context: Context, scope: Cor
             if (Settings.canDrawOverlays(context)) next() else message(copy("listening.window_permission"))
         }
     }
-    fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close(); context.stopService(Intent(context, RecognitionForegroundService::class.java)) }
+    fun close() { pendingPermission = null; startOnResume = false; observation.cancel(); overlay.close() }
     private fun copy(key: String) = context.uiCopy(key, locale = state.value.uiLocale)
 
     private data class Manual(val open: Boolean = false, val suppressed: Boolean = false)

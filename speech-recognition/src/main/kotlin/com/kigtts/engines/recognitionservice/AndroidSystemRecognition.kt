@@ -57,13 +57,13 @@ internal class AndroidSystemRecognition(private val context: Context, private va
     }
 
     /** Let Android own the microphone and endpoints for live use. Vendors need not accept external PCM. */
-    fun listen(stop: Deferred<Unit>, config: RecognitionConfig): Flow<RecognitionEvent> = systemCaptionSessions(stop, config) {
+    fun listen(stop: Deferred<Unit>, config: RecognitionConfig, continuousCaptions: Boolean): Flow<RecognitionEvent> = systemCaptionSessions(stop, config) {
         requests.withLock {
             if (stop.isCompleted) return@withLock ""
             if (!isAvailable()) throw EngineException(EngineError.NOT_CONFIGURED, systemRecognitionUnavailable())
             withContext(Dispatchers.Main.immediate) {
                 retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }) {
-                    utterance(intent(config), stop = stop).text
+                    utterance(intent(config), stop = stop, continuousCaptions = continuousCaptions).text
                 }
             }
         }
@@ -85,7 +85,8 @@ internal class AndroidSystemRecognition(private val context: Context, private va
             putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, 16_000)
         }, source = source)
 
-    private suspend fun utterance(request: Intent, source: ParcelFileDescriptor? = null, stop: Deferred<Unit>? = null): RecognitionResult = coroutineScope {
+    private suspend fun utterance(request: Intent, source: ParcelFileDescriptor? = null, stop: Deferred<Unit>? = null,
+        continuousCaptions: Boolean = false): RecognitionResult = coroutineScope {
         val result = CompletableDeferred<RecognitionResult>()
         val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
         var ready = false
@@ -104,7 +105,7 @@ internal class AndroidSystemRecognition(private val context: Context, private va
                     (stop?.isCompleted == true && (!ready || error == SpeechRecognizer.ERROR_CLIENT))) finish("")
                 else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && stop != null)
                     result.completeExceptionally(systemRecognitionPermissionIssue(context))
-                else if (stop != null && shouldRetrySystemRecognition(error, ready))
+                else if (stop != null && shouldRetrySystemRecognition(error, ready, continuousCaptions))
                     result.completeExceptionally(SystemRecognitionStarting())
                 else result.completeExceptionally(systemRecognitionError(error))
             }

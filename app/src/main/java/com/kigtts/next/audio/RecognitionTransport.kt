@@ -16,7 +16,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private val replaceText: (String) -> Unit, private val automaticRead: (Boolean) -> Unit,
     private val finalizedSpeech: (String, Boolean) -> Unit, private val selection: () -> String?,
     private val copy: (String, String) -> String,
-    private val systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) }) {
+    private val systemPermissionDenied: (SystemRecognitionPermissionIssue) -> Unit = { message(it.message.orEmpty()) },
+    private val captionMicrophone: CaptionMicrophone? = null) {
     private var job: Job? = null
     private var generation = 0L
     private var pending: RecognitionSession? = null
@@ -25,6 +26,8 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
     private var submit = false
     private var readOnSubmit = false
     private var currentSession: RecognitionSession? = null
+    private var backgrounded = false
+    private var captionForegroundAvailable = true
     private var committedText = ""
     private var segmentedSession = false
     private val requests = Channel<Unit>(Channel.CONFLATED)
@@ -81,21 +84,21 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
         }
         if (!audio.hasMicrophonePermission()) { pending = session; requests.trySend(Unit); return }
         pending = null
-        val systemMicrophone = (registry.plugin(session.serviceId) as? RecognitionServicePlugin)?.systemMicrophone()
+        val voice = session.purpose == RecognitionPurpose.VOICE_INPUT
+        val systemMicrophone = (registry.plugin(session.serviceId) as? RecognitionServicePlugin)?.systemMicrophone(!voice)
         if (session.disableAutomaticRead) automaticRead(false)
-        val previous = job; previous?.cancel()
+        val foreground = if (voice) null else captionMicrophone?.prepare()
         val epoch = ++generation
+        val previous = job; previous?.cancel()
         val stop = CompletableDeferred<Unit>(); stopInput = stop; submit = false; readOnSubmit = false
         currentSession = session; committedText = ""
+        captionForegroundAvailable = true
         segmentedSession = engine.info.streaming != StreamingKind.INCREMENTAL
         val initialized = CompletableDeferred<Unit>(); ready = initialized
-        job = scope.launch {
-            previous?.join()
-            if (epoch != generation) return@launch
-            val voice = session.purpose == RecognitionPurpose.VOICE_INPUT
-            update { it.copy(listening = true, captionsVisible = !voice && session.output != CaptionOutput.FLOATING,
-                transcript = "", recognitionFinalOnly = segmentedSession, voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
-                voiceInputSubmitting = false, recognitionOutput = session.output) }
+        update { it.copy(listening = true, captionsVisible = !voice && session.output != CaptionOutput.FLOATING,
+            transcript = "", recognitionFinalOnly = segmentedSession, voiceInputActive = voice, voiceInputText = "", continuousRecognition = voice && session.continuous,
+            voiceInputSubmitting = false, recognitionOutput = session.output) }
+        job = scope.launch(start = CoroutineStart.UNDISPATCHED) {
             var finalizedSequence = 0L
             fun display(text: String) {
                 if (chatResult == null) update { if (voice) it.copy(voiceInputText = text) else it.copy(transcript = text) }
@@ -105,6 +108,17 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
                 if (currentSession?.readFinalized == true && state().autoPlayback && text.isNotBlank()) finalizedSpeech(text, false)
             }
             try {
+                // A superseded startup must still hand off after the older recorder closes.
+                if (previous != null) withContext(NonCancellable) { previous.join() }
+                ensureActive()
+                if (epoch != generation) return@launch
+                if (voice) captionMicrophone?.release()
+                if (foreground != null && withTimeoutOrNull(4_500) { foreground.await() } != true) {
+                    captionForegroundAvailable = false
+                    captionMicrophone?.release()
+                    message(copy("listening.background_unavailable", "无法保持后台聆听，请保持 KIGTTS 在前台"))
+                    if (backgrounded) return@launch
+                }
                 if (streaming) (systemMicrophone?.invoke(stop, session.config)
                     ?: engine.recognizeStream(captureUntil(engine.info.inputFormat, stop), session.config)).collect { event ->
                     if (epoch != generation) return@collect
@@ -149,7 +163,11 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
             }
             finally {
                 initialized.complete(Unit)
-                if (epoch == generation) update { it.copy(listening = false, voiceInputActive = false, voiceInputSubmitting = false, continuousRecognition = false) }
+                if (epoch == generation) {
+                    currentSession = null
+                    captionMicrophone?.release()
+                    update { it.copy(listening = false, voiceInputActive = false, voiceInputSubmitting = false, continuousRecognition = false) }
+                }
             }
         }.also { task -> task.invokeOnCompletion { chatResult?.complete(null) } }
     }
@@ -192,8 +210,16 @@ internal class RecognitionTransport(private val scope: CoroutineScope, private v
             if (!finished && epoch == generation) { cancel(); message(copy("listening.finish_timeout", "识别结束超时，请重试")) }
         }
     }
+    fun onForeground() { backgrounded = false }
+    fun onBackground(hasCaptionWindow: Boolean): Boolean {
+        backgrounded = true
+        if (hasCaptionWindow && currentSession?.purpose == RecognitionPurpose.CAPTIONS && captionForegroundAvailable) return true
+        cancel()
+        return false
+    }
     fun cancel() {
         pending = null; generation++; stopInput = null; currentSession = null; committedText = ""; job?.cancel()
+        captionMicrophone?.release()
         update { it.copy(captionsVisible = false, listening = false, voiceInputActive = false,
             voiceInputSubmitting = false, continuousRecognition = false, voiceInputText = "") }
     }

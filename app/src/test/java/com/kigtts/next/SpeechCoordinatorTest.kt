@@ -38,11 +38,13 @@ class SpeechCoordinatorTest {
         assertEquals(listOf("Enter text first", "텍스트를 먼저 입력하세요", "先にテキストを入力してください", "请先输入文本"), messages)
     }
 
-    @Test fun productionHostOnlyContainsTheBuiltInReadingServiceWithoutInstalledPackages() {
+    @Test fun productionHostContainsBuiltInSpeechServicesBeforePluginsAreLoaded() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(app).create(AppViewModel::class.java)
         assertEquals(listOf(TtsRole.SERVICE), model.registry.plugins.mapNotNull { it.tts?.info?.role })
-        assertTrue(model.registry.plugins.none { it.asr != null })
+        val recognition = requireNotNull(model.registry.plugin("service.speech-recognition")?.asr)
+        assertEquals(AsrRole.SERVICE, recognition.info.role)
+        assertEquals(EngineAvailability.NEEDS_RESOURCES, recognition.info.availability)
         assertTrue(model.registry.plugins.none { it.descriptor.placeholder })
     }
     @Test fun audioFlowsToSelectedPluginAndCancellationReleasesTransport() = runTest {

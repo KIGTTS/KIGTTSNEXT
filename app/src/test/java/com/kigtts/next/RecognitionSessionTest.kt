@@ -26,6 +26,71 @@ class RecognitionSessionTest {
         override val asr = engine; override val tts = synthesis
         override suspend fun execute(actionId: String, context: PluginContext) = PluginOutcome.RefreshUi
     }
+    @Test fun floatingCaptionsKeepTheirSessionWhenBackgroundedDuringForegroundServiceStartup() = runTest {
+        val hardware = Hardware()
+        val microphone = TestCaptionMicrophone()
+        var state = AppState()
+        val speech = SpeechCoordinator(this, PluginRegistry(listOf(plugin(captionEngine()))), hardware,
+            { state }, { state = it(state) }, {}, {}, { "test.service" }, captionMicrophone = microphone)
+
+        speech.start(RecognitionSession("test.service", RecognitionPurpose.CAPTIONS, output = CaptionOutput.FLOATING))
+        assertEquals(1, microphone.requests)
+        speech.onBackground(hasCaptionWindow = true)
+        runCurrent()
+        assertTrue(state.listening)
+        assertEquals(0, hardware.captured)
+
+        microphone.promotion.complete(true)
+        runCurrent()
+        assertEquals("已收到语音", state.transcript)
+        assertEquals(1, hardware.captured)
+        assertTrue(microphone.held)
+
+        speech.closeListening()
+        runCurrent()
+        assertEquals(1, hardware.released)
+        assertFalse(microphone.held)
+    }
+
+    @Test fun captionsWithoutAWorkingForegroundServiceCannotStartRecordingAfterBackgrounding() = runTest {
+        val hardware = Hardware()
+        val microphone = TestCaptionMicrophone()
+        var state = AppState()
+        val messages = mutableListOf<String>()
+        val speech = SpeechCoordinator(this, PluginRegistry(listOf(plugin(captionEngine()))), hardware,
+            { state }, { state = it(state) }, messages::add, {}, { "test.service" }, captionMicrophone = microphone)
+
+        speech.start(RecognitionSession("test.service", RecognitionPurpose.CAPTIONS, output = CaptionOutput.FLOATING))
+        speech.onBackground(hasCaptionWindow = true)
+        microphone.promotion.complete(false)
+        runCurrent()
+
+        assertEquals(0, hardware.captured)
+        assertFalse(state.listening)
+        assertFalse(microphone.held)
+        assertEquals(listOf("无法保持后台聆听，请保持 KIGTTS 在前台"), messages)
+    }
+
+    private class TestCaptionMicrophone : CaptionMicrophone {
+        val promotion = CompletableDeferred<Boolean>()
+        var held = false
+        var requests = 0
+        override fun prepare(): Deferred<Boolean> {
+            requests++
+            held = true
+            return promotion
+        }
+        override fun release() { held = false }
+    }
+
+    private fun captionEngine() = object : AsrEngine {
+        override val info = AsrInfo(role = AsrRole.SERVICE)
+        override suspend fun recognize(audio: PcmAudio, config: RecognitionConfig) = error("not batch")
+        override fun recognizeStream(audio: Flow<PcmAudio>, config: RecognitionConfig) = flow {
+            audio.collect { emit(RecognitionEvent.Partial("已收到语音")) }
+        }
+    }
+
     @Test fun chatDictationAwaitsFinalAfterReleaseAndNeverWritesSubtitles() = runTest {
         var state = AppState(); val subtitles = mutableListOf<String>(); val audio = Hardware()
         val engine = object : AsrEngine {

@@ -12,6 +12,7 @@ import com.kigtts.plugin.runtime.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -133,7 +134,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val speech = SpeechCoordinator(viewModelScope, registry, audio, { state.value }, ::update, ::message, ::text,
         selection = { if (it) selectedTtsId else selectedAsrId }, automaticRead = ::setAutoPlayback,
         systemPermissionDenied = { systemRecognitionPermission.value = it },
-        copy = { key, _ -> speechCopy(key) })
+        copy = { key, _ -> speechCopy(key) },
+        captionMicrophone = if (audio is AndroidAudioPlatform) RecognitionForegroundService.Microphone(application) else null)
     private val captionOutput = CaptionOutputCoordinator(application, viewModelScope, state, speech::start, speech::closeListening, ::message, ::readyCaptionService)
     val overlayRequests = captionOutput.permissionRequests
     fun overlayResult() = captionOutput.permissionResult()
@@ -148,7 +150,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private fun speechCopy(key: String) = getApplication<Application>().uiCopy(key, locale = state.value.uiLocale)
 
     fun openCaptionWindow() { if (captionServiceReady) captionOutput.openWindow() else message(speechCopy("listening.engine_setup")) }
-    fun resumeCaptionWindow() = captionOutput.resume()
+    fun resumeCaptionWindow() {
+        speech.onForeground()
+        captionOutput.resume()
+    }
     fun dismissCaptionPanel() {
         if (captionOutput.windowOpen()) update { it.copy(captionsVisible = false) } else speech.closeListening()
     }
@@ -619,7 +624,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         }
     }
     suspend fun stopSpeech() = speech.stopAll()
-    fun onBackground() { if (!state.value.listening || state.value.voiceInputActive || !captionOutput.windowOpen()) viewModelScope.launch { speech.stopAll() } }
+    fun onBackground() = speech.onBackground(captionOutput.windowOpen())
     override fun onCleared() {
         super.onCleared()
         storeBootstrap.close()
@@ -628,6 +633,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         audioDevices.close()
         captionOutput.close()
         hostRuntime?.detach(this)
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { speech.stopAll(); if (hostRuntime == null) pluginManager.close() }
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
+            speech.stopAll()
+            if (hostRuntime == null) withContext(Dispatchers.IO) { pluginManager.close() }
+        }
     }
 }

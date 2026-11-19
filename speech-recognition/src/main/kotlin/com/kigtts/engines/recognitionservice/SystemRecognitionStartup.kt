@@ -8,10 +8,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 internal class SystemRecognitionStarting : Exception()
 
-/** A transient rejection before Android starts listening can be retried without recording twice. */
-internal fun shouldRetrySystemRecognition(error: Int, ready: Boolean): Boolean = !ready && when (error) {
-    SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
-    SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> true
+/** Live captions can reopen the recognizer after an interrupted utterance. */
+internal fun shouldRetrySystemRecognition(error: Int, ready: Boolean, continuousCaptions: Boolean = false): Boolean = when (error) {
+    SpeechRecognizer.ERROR_CLIENT -> !ready
+    SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> !ready || continuousCaptions
+    SpeechRecognizer.ERROR_AUDIO -> continuousCaptions
     else -> false
 }
 
