@@ -11,6 +11,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.system.Os
 import android.system.OsConstants
+import android.util.Log
 import com.kigtts.plugin.api.*
 import java.io.File
 import kotlinx.coroutines.*
@@ -62,7 +63,7 @@ internal class AndroidSystemRecognition(private val context: Context, private va
             if (stop.isCompleted) return@withLock ""
             if (!isAvailable()) throw EngineException(EngineError.NOT_CONFIGURED, systemRecognitionUnavailable())
             withContext(Dispatchers.Main.immediate) {
-                retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }) {
+                retrySystemRecognitionStartup(stop, { RecognitionCopy.text("system_starting", locale()) }, continuousCaptions) {
                     utterance(intent(config), stop = stop, continuousCaptions = continuousCaptions).text
                 }
             }
@@ -105,9 +106,10 @@ internal class AndroidSystemRecognition(private val context: Context, private va
                     (stop?.isCompleted == true && (!ready || error == SpeechRecognizer.ERROR_CLIENT))) finish("")
                 else if (error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS && stop != null)
                     result.completeExceptionally(systemRecognitionPermissionIssue(context))
-                else if (stop != null && shouldRetrySystemRecognition(error, ready, continuousCaptions))
+                else if (stop != null && shouldRetrySystemRecognition(error, ready, continuousCaptions)) {
+                    if (continuousCaptions) Log.d("SystemCaptionRecognition", "Transient recognizer error $error")
                     result.completeExceptionally(SystemRecognitionStarting())
-                else result.completeExceptionally(systemRecognitionError(error))
+                } else result.completeExceptionally(systemRecognitionError(error))
             }
             override fun onReadyForSpeech(params: Bundle?) { ready = true }
             override fun onBeginningOfSpeech() { ready = true }

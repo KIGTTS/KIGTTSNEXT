@@ -10,18 +10,20 @@ internal class SystemRecognitionStarting : Exception()
 
 /** Live captions can reopen the recognizer after an interrupted utterance. */
 internal fun shouldRetrySystemRecognition(error: Int, ready: Boolean, continuousCaptions: Boolean = false): Boolean = when (error) {
-    SpeechRecognizer.ERROR_CLIENT -> !ready
-    SpeechRecognizer.ERROR_RECOGNIZER_BUSY, SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> !ready || continuousCaptions
-    SpeechRecognizer.ERROR_AUDIO -> continuousCaptions
+    SpeechRecognizer.ERROR_CLIENT, SpeechRecognizer.ERROR_RECOGNIZER_BUSY,
+    SpeechRecognizer.ERROR_SERVER_DISCONNECTED -> !ready || continuousCaptions
+    SpeechRecognizer.ERROR_AUDIO, SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
+    SpeechRecognizer.ERROR_SERVER -> continuousCaptions
     else -> false
 }
 
 internal suspend fun retrySystemRecognitionStartup(
     stop: Deferred<Unit>,
     notReadyMessage: () -> String,
+    continuousCaptions: Boolean = false,
     start: suspend () -> String,
 ): String {
-    val retryDelays = longArrayOf(250, 550)
+    val retryDelays = if (continuousCaptions) longArrayOf(250, 1_000, 3_000) else longArrayOf(250, 550)
     for (attempt in 0..retryDelays.size) {
         if (stop.isCompleted) return ""
         try {

@@ -43,8 +43,27 @@ class SystemCaptionSessionsTest {
     @Test fun liveCaptionsCanRecoverFromATemporaryInterruptionAfterTheRecognizerWasReady() {
         assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_SERVER_DISCONNECTED, ready = true, continuousCaptions = true))
         assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_AUDIO, ready = true, continuousCaptions = true))
+        assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_NETWORK_TIMEOUT, ready = true, continuousCaptions = true))
+        assertTrue(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_SERVER, ready = false, continuousCaptions = true))
         assertFalse(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_AUDIO, ready = true))
+        assertFalse(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_NETWORK_TIMEOUT, ready = false))
         assertFalse(shouldRetrySystemRecognition(SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS, ready = true, continuousCaptions = true))
+    }
+
+    @Test fun liveCaptionsKeepPriorLinesAndCanRetryLongerThanVoiceInput() = runTest {
+        val stop = CompletableDeferred<Unit>()
+        var sentence = 0
+        var attempts = 0
+        val received = systemCaptionSessions(stop, RecognitionConfig()) {
+            if (++sentence == 1) "第一句"
+            else retrySystemRecognitionStartup(stop, { error("unexpected error") }, continuousCaptions = true) {
+                if (++attempts <= 3) throw SystemRecognitionStarting()
+                stop.complete(Unit)
+                "恢复后的句子"
+            }
+        }.toList()
+        assertEquals(4, attempts)
+        assertEquals(RecognitionEvent.Transcript("第一句\n恢复后的句子", "", 2, "恢复后的句子"), received.last())
     }
 
     @Test fun usesFinalUtterancesAndFlushesTheActiveOneOnSubmit() = runTest {
