@@ -6,7 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.*
@@ -140,21 +142,32 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> {
-                    PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
+                    val nativeEditorActive = destination.pluginId == PLUGIN_EDITOR_ID && destination.pageId == EDITOR_MANAGER_PAGE
+                    var assistantGrantSettings by remember(destination) { mutableStateOf(false) }
+                    PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins ||
+                        (nativeEditorActive && NATIVE_BUILDER_ID in state.busyPlugins),
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/",
                     extraSettings = {
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
                             com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
-                        if ((destination.pluginId == "tools.cloud-agent" && destination.pageId == "settings") ||
-                            (destination.pluginId == "runtime.lua" && destination.pageId == "manager"))
+                        if (nativeEditorActive)
                             BuiltInToolPermissionEntry(model, destination.pluginId)
                     },
                     startVoiceInput = (model::startChatVoiceInput).takeIf { destination.pluginId == "tools.cloud-agent" && model.captionServiceReady },
                     followIme = chatHandlesIme) { action, inputs ->
-                    model.invoke(destination.pluginId, action, inputs)
+                    val nativeAction = editorNativeAction(destination.pluginId, destination.pageId, action)
+                    when {
+                        nativeAction != null -> model.invoke(NATIVE_BUILDER_ID, nativeAction, inputs)
+                        destination.pluginId == ASSISTANT_SETTINGS_ID && action == ASSISTANT_PERMISSIONS_ACTION ->
+                            model.navigate(Destination.PluginPage(ASSISTANT_SETTINGS_ID, ASSISTANT_PERMISSIONS_PAGE))
+                        destination.pluginId == ASSISTANT_SETTINGS_ID && destination.pageId == ASSISTANT_PERMISSIONS_PAGE &&
+                            action == ASSISTANT_SYSTEM_PERMISSIONS_ACTION -> assistantGrantSettings = true
+                        else -> model.invoke(destination.pluginId, action, inputs)
                     }
+                    }
+                    if (assistantGrantSettings) PluginPermissionSettings(model, ASSISTANT_SETTINGS_ID, null) { assistantGrantSettings = false }
                 }
             }
     }

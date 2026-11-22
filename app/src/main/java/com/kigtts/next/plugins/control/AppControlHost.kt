@@ -114,7 +114,10 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                 val target = authorizedTarget(owner, command.pluginId, command.actionId)
                     ?: return AppReply.Failure("PERMISSION_DENIED", "插件未开放此操作，确认按钮只能由用户操作")
                 if (target.descriptor.id in model.state.value.busyPlugins) return AppReply.Failure("BUSY", "插件正在处理操作")
-                model.invoke(command.pluginId, command.actionId, command.inputs.filterKeys { !it.startsWith('_') } + ("_callerPlugin" to owner))
+                val action = if (owner == "runtime.lua" && command.pluginId == "tools.native-builder" &&
+                    command.actionId == "new" && manager.status.any { it.installed.manifest.id == command.pluginId &&
+                        it.installed.publisherSha256 == STORE_PUBLISHER }) "new-java" else command.actionId
+                model.invoke(command.pluginId, action, command.inputs.filterKeys { !it.startsWith('_') } + ("_callerPlugin" to owner))
                 return data { put("accepted", true); put("completed", false) }
             }
             AppCommand.Describe, is AppCommand.DeliverResource, is AppCommand.PluginCall, is AppCommand.BrowserCapture, is AppCommand.BrowserSession, is AppCommand.Permission, is AppCommand.ManagedCall, is AppCommand.UiAssets, is AppCommand.Notifications, is AppCommand.Overlay -> error("已单独处理")
@@ -145,7 +148,10 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
         }
         if (!canReceive) return AppReply.Failure("BUSY", "请先打开 KIGTTS，并等待目标插件完成当前操作")
         val relative = withContext(Dispatchers.IO) {
-            ScopedResourceDelivery.copy(manager.paths.storage(owner), manager.paths.storage(command.pluginId), command.source.path)
+            val editorImport = owner == "runtime.lua" && command.pluginId == "tools.native-builder" && command.actionId == "import" &&
+                manager.status.any { it.installed.manifest.id == command.pluginId && it.installed.publisherSha256 == STORE_PUBLISHER }
+            ScopedResourceDelivery.copy(manager.paths.storage(owner), manager.paths.storage(command.pluginId), command.source.path,
+                nativeProject = editorImport)
         }
         if (command.actionId == "agent-install") {
             val allowed = withContext(Dispatchers.Main) { ui()?.agentAccess?.consume(owner) == true }

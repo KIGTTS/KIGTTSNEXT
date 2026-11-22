@@ -36,7 +36,9 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         ManagementItem(id, name, "v$version · " + (installed?.error ?: if (installed?.installed?.enabled == false) "已停用" else plugin?.descriptor?.description.orEmpty()) + availability + dependency,
             icon = if (plugin?.asr != null) PluginIcon.HEARING else if (plugin?.tts != null) PluginIcon.SPEAKER else PluginIcon.SETTINGS,
             symbol = installed?.installed?.manifest?.icon?.symbol,
-            primaryAction = page?.let { "page/$id/$it" }, actions = actions,
+            primaryAction = if (id == com.kigtts.next.state.NATIVE_BUILDER_ID) {
+                model.registry.plugin(com.kigtts.next.state.PLUGIN_EDITOR_ID)?.let { "page/${it.descriptor.id}/manager" }
+            } else page?.let { "page/$id/$it" }, actions = actions,
             toggle = installed?.let { ManagementToggle(it.installed.enabled, "enable/$id") },
             badges = if (installed?.installed?.development == true) listOf(model.hostCopy("plugin.dev_tag")) else emptyList())
     }

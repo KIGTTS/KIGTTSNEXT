@@ -1,6 +1,6 @@
 # 原生构建扩展
 
-`tools.native-builder` 是独立签名的 MIT `.kigplugin`。从插件编辑器选择原生项目时，编辑器可下载目前的官方扩展，完成发布者确认后接着打开新建项目。
+`tools.native-builder` 是独立签名的 MIT `.kigplugin`，为插件编辑器提供构建能力。原生项目和 Lua 项目显示在同一项目列表中。选择「原生」后，编辑器按需下载官方扩展，完成发布者确认后继续填写项目名称。新建原生项目使用 Java 模板，也可以从同一入口导入已有的 Kotlin 源码项目。
 主程序不携带任何编译器。扩展提供源码项目、文件管理、二级源码编辑、构建、签名、打包与分享。
 Lua 和原生项目发布时使用同一签名包格式。原生项目由扩展构建，完成后可直接启用调试并在插件列表管理，也可导出供其他用户安装。
 
@@ -81,8 +81,8 @@ D8 使用官方 `D8Command.parse(...)` 和 `D8.run(...)` 将项目 class 与运�
 **普通桌面 Kotlin 编译器并不自动兼容 Android/ART。**
 工具链的 Kotlin 入口可由经过 Android 适配的扩展提供同样签名；未声明 Kotlin、缺少入口或实际运行失败会明确报错，不产生伪造成功结果。
 “已配置”只表示已确认工具链资源，不等于手机兼容性已验证。
-仓库提供 `engine-plugins/native-builder/tools/Build-Toolchain.ps1`，从本地受控依赖生成 Java `.kigtools`。
-脚本已经实际完成 ECJ/D8 的 DEX 转换；默认只声明 Java。`-ExperimentalKotlin` 明确开启未适配桌面 Kotlin 编译器的实验包生成。
+独立构建扩展仓库的 `tools/Build-Toolchain.ps1` 从本地依赖生成 Java `.kigtools`。给 `-AsmJar` 指定 Gradle 的 ASM JAR。运行归档包含 DEX、ECJ 消息和语法解析资源，以及旧版 Android 缺少的标准流读取方法。官方 Java 库已在 Android 10 完成真实的 Java 编译、DEX 转换、签名和调试加载。
+`-ExperimentalKotlin` 用于生成待验证的 Kotlin 工具链。可从 [原生构建扩展发行页](https://github.com/KIGTTS/plugin-native-builder/releases/tag/v0.8.5) 获取官方 Java 工具链。
 生成脚本保留依赖中已有的许可证、生成逐项 SHA 并记录来源，不改变主程序包体。
 本轮桌面测试使用真实 ECJ 3.39.0、Kotlin 2.2.21 和 SDK36 D8，成功生成实际 `KigPlugin` DEX；手机工具链适配和安装仍需在设备连接后验证。
 

@@ -1217,14 +1217,14 @@
   },
   {
     "module": "native-builder",
-    "file": "tools.native-builder-0.8.3.kigplugin",
+    "file": "tools.native-builder-0.8.5.kigplugin",
     "category": "开发",
     "summary": "为插件编辑器扩展构建能力，制作功能更丰富的插件。",
     "symbol": "build",
     "description": "## 原生构建扩展\n\n为需要更多原生功能的插件项目提供构建工具，可与插件编辑器配合使用。",
     "tags": ["开发工具"],
-    "notes": "支持下载官方 Java 编译工具链，以及构建后一键启用调试。",
-    "githubTag": "v0.8.3"
+    "notes": "官方 Java 工具链支持在 Android 10 真机编译、签名及启用调试。",
+    "githubTag": "v0.8.5"
   },
   {
     "module": "native-builder",

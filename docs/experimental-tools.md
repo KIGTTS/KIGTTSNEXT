@@ -7,7 +7,7 @@ APK 随附同一官方发布者签名的工作包，启用时从本地 APK 安�
 | APK 内的资源 | 源码提交 | 包版本 | SHA-256 |
 | --- | --- | --- | --- |
 | `experimental/assistant.kigplugin` | `KIGTTS/plugin-cloud-agent@8e2d361` | 0.9.32 | `a069233867186bcc7c774dd5d0aab74024b72bc6f12774bb78c36bbab8c4fc62` |
-| `experimental/editor.kigplugin` | `KIGTTS/plugin-lua-runtime@7067942` | 0.9.8 | `dcd33616807430213ed860366967bd4122ecd634179500581395d6365ea99a9b` |
+| `experimental/editor.kigplugin` | `KIGTTS/plugin-lua-runtime@ba0aae0` | 0.9.10 | `2c94d3c02b5cfe0e7e2147785f5b84af26ac67f40b5cd1ebf979d7e115a8a958` |
 
 关闭插件编辑器后，单独安装的签名 Lua 插件仍可运行。详见 [Lua 开发和发布](lua-plugins.md)。
 

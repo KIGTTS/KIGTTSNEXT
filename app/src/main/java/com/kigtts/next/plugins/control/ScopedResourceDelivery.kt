@@ -6,12 +6,14 @@ import java.util.UUID
 
 /** Cross-plugin transfer copies bytes, never grants the recipient a handle to the sender's directory. */
 internal object ScopedResourceDelivery {
-    fun copy(sender: PluginStorage, recipient: PluginStorage, path: String): String {
+    fun copy(sender: PluginStorage, recipient: PluginStorage, path: String, nativeProject: Boolean = false): String {
         val source = sender.file(path)
         require(source.exists()) { "草稿不存在" }
         require(source.isDirectory || !source.extension.equals("kiglua", ignoreCase = true)) { "Choose a Lua source ZIP" }
         val files = if (source.isDirectory) source.walkTopDown().toList() else listOf(source)
-        require(files.size <= 256 && files.filter { it.isFile }.sumOf { it.length() } <= 16L * 1024 * 1024) { "资源过大，请减少文件" }
+        val fileLimit = if (nativeProject) 1024 else 256
+        val byteLimit = (if (nativeProject) 64L else 16L) * 1024 * 1024
+        require(files.size <= fileLimit && files.filter { it.isFile }.sumOf { it.length() } <= byteLimit) { "资源过大，请减少文件" }
         val prefix = source.canonicalFile.toPath()
         files.forEach { file ->
             require(!java.nio.file.Files.isSymbolicLink(file.toPath()) && file.canonicalFile.toPath().startsWith(prefix)) { "资源包含外部链接" }

@@ -41,7 +41,20 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         val page = audioDevices.decorate(plugin, plugin.page(pageId, context()))
-        if (pluginId == com.kigtts.next.plugins.control.STORE_ID) page?.hideBundledEntries(pluginManager.bundledIds) else page
+        when {
+            pluginId == com.kigtts.next.plugins.control.STORE_ID -> page?.hideBundledEntries(pluginManager.bundledIds)
+            pluginId == PLUGIN_EDITOR_ID && pageId == EDITOR_MANAGER_PAGE && page != null -> editorWorkspace(
+                page, registry.plugin(NATIVE_BUILDER_ID)?.takeIf {
+                    pluginManager.status.any { status -> status.installed.manifest.id == NATIVE_BUILDER_ID &&
+                        status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
+                }?.page(EDITOR_MANAGER_PAGE, context()))
+            pluginId == ASSISTANT_SETTINGS_ID && pageId == ASSISTANT_PERMISSIONS_PAGE ->
+                plugin.page("settings", context())?.let { assistantPermissionsPage(it, hostCopy("assistant.settings.permissions"),
+                    hostCopy("assistant.settings.app_permissions")) }
+            pluginId == ASSISTANT_SETTINGS_ID && pageId in setOf("settings", "dialogue-settings") && page != null ->
+                assistantSettingsPermissions(page, hostCopy("assistant.settings.permissions"), hostCopy("assistant.settings.manage_permissions"))
+            else -> page
+        }
     }
     private val engineSelection = application.getSharedPreferences("engine-selection", android.content.Context.MODE_PRIVATE)
     val selectedTtsId get() = engineSelection.getString("tts", null)

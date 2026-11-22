@@ -22,10 +22,18 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
     val scope = rememberCoroutineScope()
     val copy = rememberUiCopy()
     val builderAction = if (owner == "runtime.lua") when {
-        outcome.resource.path.startsWith("downloads/native-new/") -> "new"
+        outcome.resource.path.startsWith("downloads/native-new/") -> "new-java"
         outcome.resource.path.startsWith("downloads/native-open/") -> "open"
+        outcome.resource.path.startsWith("downloads/native-import/") -> "resume-native-import"
         else -> null
     } else null
+    fun resumeBuilder(action: String) {
+        when (action) {
+            "resume-native-import" -> model.invoke("runtime.lua", action)
+            "open" -> model.navigate(Destination.PluginPage("runtime.lua", "manager"))
+            else -> model.invoke("tools.native-builder", action)
+        }
+    }
     LaunchedEffect(request) {
         val copied = mutableListOf<PendingPackage>()
         try {
@@ -65,7 +73,7 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
                 model.refreshPlugins()
                 copied.forEach { it.file.delete() }
                 dismiss()
-                model.invoke(currentBuilder.manifest.id, requireNotNull(builderAction))
+                resumeBuilder(requireNotNull(builderAction))
                 return@LaunchedEffect
             }
             withContext(Dispatchers.IO) {
@@ -104,7 +112,7 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
         dismiss()
         if (completed && builderAction != null && installed.any { it.manifest.id == "tools.native-builder" &&
                 it.candidate.preview.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }) {
-            model.invoke("tools.native-builder", builderAction)
+            resumeBuilder(builderAction)
             return@PackageInstallerDialog
         }
         // Installation is a modal overlay, so the underlying page does not receive a new visit.

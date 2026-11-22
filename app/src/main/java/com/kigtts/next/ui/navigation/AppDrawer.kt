@@ -43,7 +43,9 @@ fun AppDrawer(state: AppState, model: AppViewModel, navigation: DrawerNavigation
                         Modifier.width(176.dp).height(44.dp).testTag("drawer-logo"), tint = MaterialTheme.colorScheme.onSurface)
                 }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    model.registry.drawerEntries().filterNot { it.entry.settingsPage }.forEach { registered ->
+                    model.registry.drawerEntries().filterNot {
+                        it.entry.settingsPage || it.plugin.descriptor.id == com.kigtts.next.state.NATIVE_BUILDER_ID
+                    }.forEach { registered ->
                         val destination = Destination.PluginPage(registered.plugin.descriptor.id, registered.entry.pageId)
                         NavigationDrawerItem(label = { Text(registered.entry.label) }, selected = state.destination == destination,
                             icon = { Icon(registered.entry.icon.vector(), null) }, onClick = feedbackClick { model.navigate(destination); close() })

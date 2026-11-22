@@ -50,7 +50,7 @@ internal fun settingsCards(registry: PluginRegistry?, context: PluginContext,
         "about" to listOf(category("about", SettingsCategory.ABOUT, Icons.Default.Info)),
     )
     data class Feature(val pluginId: String, val entry: SettingsEntry)
-    val features = registry?.plugins.orEmpty().flatMap { plugin ->
+    val features = registry?.plugins.orEmpty().filterNot { it.descriptor.id == com.kigtts.next.state.NATIVE_BUILDER_ID }.flatMap { plugin ->
         val contributions = plugin.contributions(context)
         val formal = contributions.settingsEntries
         val formalPages = formal.map { it.pageId }.toSet()
