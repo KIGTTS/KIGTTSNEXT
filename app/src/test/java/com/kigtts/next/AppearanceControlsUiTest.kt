@@ -3,12 +3,16 @@ package com.kigtts.next
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color as ComposeColor
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.settings.*
@@ -23,6 +27,35 @@ import org.robolectric.annotation.*
 @GraphicsMode(GraphicsMode.Mode.NATIVE) @LooperMode(LooperMode.Mode.PAUSED)
 class AppearanceControlsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun outerSettingsCardDrawsIntermediateCornersWhenTheRadiusDecreases() {
+        var settings by mutableStateOf(ThemeSettings(cornerLevel = CornerLevel.LARGE))
+        compose.setContent {
+            KigttsTheme(settings) {
+                Box(Modifier.size(120.dp).background(ComposeColor.Black).testTag("corner-sample")) {
+                    AppearanceCardSurface(Modifier.fillMaxSize(), color = ComposeColor.Red) {}
+                }
+            }
+        }
+        fun filledCorner(stage: String): Int {
+            val path = "build/previews/outer-card-corner-$stage.png"
+            compose.onNodeWithTag("corner-sample").captureRoboImage(path)
+            val bitmap = android.graphics.BitmapFactory.decodeFile(path)
+            val extent = minOf(bitmap.width, bitmap.height) / 4
+            return (0 until extent).sumOf { y -> (0 until extent).count { x -> Color.red(bitmap.getPixel(x, y)) > 127 } }
+        }
+        val large = filledCorner("large")
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { settings = settings.copy(cornerLevel = CornerLevel.SMALL) }
+        val intermediate = List(4) {
+            compose.mainClock.advanceTimeBy(48)
+            filledCorner("intermediate")
+        }
+        compose.mainClock.advanceTimeBy(400)
+        val small = filledCorner("small")
+        assertTrue("Expected animated corner coverage: $large, $intermediate, $small", intermediate.any { it in (large + 1) until small })
+        compose.mainClock.autoAdvance = true
+    }
+
     @Test fun customColorRowFadesAndResizesBeforeLeavingTheGroup() {
         var settings by mutableStateOf(ThemeSettings(background = "a".repeat(64) + ".jpg", backgroundSeed = 0xff00696e))
         compose.setContent { KigttsTheme(settings) { Surface { ThemeColorSettings(settings) { settings = it } } } }

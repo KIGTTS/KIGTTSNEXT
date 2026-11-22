@@ -1,6 +1,7 @@
 package com.kigtts.next.theme
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -32,22 +33,26 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
 }
 
 @Composable fun AppearanceBackdrop(settings: ThemeSettings, modifier: Modifier = Modifier,
-    screenAnchored: Boolean = true, blur: BackgroundBlur = BackgroundBlur.NONE, overlay: Color = Color.Transparent) {
+    screenAnchored: Boolean = true, blur: BackgroundBlur = BackgroundBlur.NONE, overlay: Color = Color.Transparent,
+    overlayColor: ((ColorScheme) -> Color)? = null) {
     val context = LocalContext.current
     val window = LocalWindowInfo.current.containerSize
     val bitmap by produceState(AppearanceBackgrounds.peek(context, settings.background, blur), settings.background, blur) {
         value = withContext(Dispatchers.IO) { AppearanceBackgrounds.load(context, settings.background, blur) }
     }
-    val dim = MaterialTheme.colorScheme.background
+    val colors = MaterialTheme.colorScheme
+    val paint = LocalThemePaint.current
     var origin by remember { mutableStateOf(Offset.Zero) }
     val image = remember(bitmap) { bitmap?.asImageBitmap() }
     Canvas(if (screenAnchored && image != null) modifier.onGloballyPositioned { origin = it.positionInWindow() } else modifier) {
+        val current = paint?.palette?.colors ?: colors
         if (image != null) {
             val viewport = if (screenAnchored && window.width > 0 && window.height > 0) Size(window.width.toFloat(), window.height.toFloat()) else size
             val rect = backgroundImageRect(Size(image.width.toFloat(), image.height.toFloat()), viewport, if (screenAnchored) origin else Offset.Zero)
             withTransform({ translate(rect.left, rect.top); scale(rect.width / image.width, rect.height / image.height, Offset.Zero) }) { drawImage(image) }
         }
-        drawRect(dim.copy(alpha = if (image == null) 1f else appearanceBackgroundDim(settings.backgroundDim, blur)))
-        drawRect(overlay)
+        drawRect(current.background.copy(alpha = if (image == null) 1f else appearanceBackgroundDim(settings.backgroundDim, blur)))
+        val tint = overlayColor?.invoke(current) ?: overlay
+        if (tint.alpha > 0f) drawRect(tint)
     }
 }

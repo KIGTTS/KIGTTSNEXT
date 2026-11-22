@@ -9,6 +9,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.colorspace.ColorSpaces
 import androidx.compose.ui.util.lerp
 
+@Stable
+internal class ThemePaint(initial: ThemePalette) {
+    var palette by mutableStateOf(initial)
+        private set
+
+    suspend fun animateTo(target: ThemePalette) {
+        val from = palette
+        if (from == target) return
+        val blend = PaletteBlend()
+        animate(0f, 1f, animationSpec = tween(450, easing = FastOutSlowInEasing)) { fraction, _ ->
+            palette = ThemePalette(blend.interpolate(from.colors, target.colors, fraction), CompactControlPalette(
+                blend.lerp(from.controls.container, target.controls.container, fraction),
+                blend.lerp(from.controls.content, target.controls.content, fraction),
+                blend.lerp(from.controls.plainContent, target.controls.plainContent, fraction)))
+        }
+    }
+}
+
+/** Content gets the target palette once. Drawing can read the transition without recomposition. */
+internal val LocalThemePaint = compositionLocalOf<ThemePaint?> { null }
+
+@Composable internal fun rememberThemePaint(target: ThemePalette): ThemePaint {
+    val paint = remember { ThemePaint(target) }
+    LaunchedEffect(target) { paint.animateTo(target) }
+    return paint
+}
+
 /** Animate all roles together, including foregrounds and plugin page colors. */
 @Composable
 fun animatedColorScheme(target: ColorScheme): ColorScheme {
@@ -28,7 +55,9 @@ fun animatedColorScheme(target: ColorScheme): ColorScheme {
 private class PaletteBlend {
     private val perceptual = HashMap<Color, Color>()
 
-    private fun lerp(from: Color, to: Color, fraction: Float): Color {
+    fun lerp(from: Color, to: Color, fraction: Float): Color {
+        if (fraction <= 0f) return from
+        if (fraction >= 1f) return to
         if (from == to) return to
         val a = perceptual.getOrPut(from) { from.convert(ColorSpaces.Oklab) }
         val b = perceptual.getOrPut(to) { to.convert(ColorSpaces.Oklab) }

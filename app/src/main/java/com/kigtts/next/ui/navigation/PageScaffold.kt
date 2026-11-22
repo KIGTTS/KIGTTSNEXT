@@ -16,7 +16,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.theme.*
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.background
 import com.kigtts.next.i18n.uiText
 
 /** The page background covers the full window; only its controls consume safe drawing insets. */
@@ -53,12 +52,13 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
         LocalSecondaryBackground provides background,
         LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
         val frame = Modifier.fillMaxSize()
-        Box(if (background == null && backgroundDecoration != null) frame.background(MaterialTheme.colorScheme.background) else frame) {
+        Box(if (background == null) frame.themeFill { it.background } else frame) {
         background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
         backgroundDecoration?.invoke(this)
         // Sheets own their vertical scroll chain; the bar still supports direct dragging.
         Scaffold(modifier.fillMaxSize().then(if(largeBar&&contentScrollsHeader)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
-            containerColor=if(background==null && backgroundDecoration==null)MaterialTheme.colorScheme.background else Color.Transparent,
+            containerColor=Color.Transparent,
+            contentColor=if (background == null && backgroundDecoration == null) contentColorFor(MaterialTheme.colorScheme.background) else LocalContentColor.current,
             contentWindowInsets=safe.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading) },Modifier.testTag("large-page-bar"),
                 colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent,scrolledContainerColor=Color.Transparent),

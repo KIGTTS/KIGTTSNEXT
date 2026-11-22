@@ -5,8 +5,14 @@ import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -37,6 +43,37 @@ class NavigationThemeUiTest {
     }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+
+    @Test fun activityThemeOnlyPublishesTheNewPaletteToCompositionWhileDrawingInterpolates() {
+        var settings by mutableStateOf(ThemeSettings(mode = ThemeMode.DARK))
+        val target = settings.copy(seed = 0xff89613f, contrast = ContrastLevel.HIGH)
+        val first = themeColors(settings, isDark = true).primary
+        val last = ThemePalettes.resolve(ThemePaletteKey(target.effectiveSeed, target.contrast, false, true, null)).colors.primary
+        val composed = linkedSetOf<Color>()
+        val painted = linkedSetOf<Color>()
+        compose.setContent {
+            KigttsTheme(settings, publishWebTheme = true) {
+                val color = MaterialTheme.colorScheme.primary
+                val paint = requireNotNull(LocalThemePaint.current)
+                SideEffect { composed += color }
+                Box(Modifier.fillMaxSize().drawBehind {
+                    val current = paint.palette.colors.primary
+                    painted += current
+                    drawRect(current)
+                })
+            }
+        }
+        compose.waitForIdle()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { settings = target }
+        repeat(7) { compose.mainClock.advanceTimeBy(80); capture("activity-palette-draw") }
+        compose.runOnIdle {
+            assertEquals(setOf(first, last), composed)
+            assertTrue("The live layer drew intermediate colors: $painted", painted.any { it != first && it != last })
+            assertEquals(last, painted.last())
+        }
+        compose.mainClock.autoAdvance = true
+    }
 
     @Test fun webThemeUsesTheSameWallpaperAndContrastPaletteAsTheApp() {
         val model = show()

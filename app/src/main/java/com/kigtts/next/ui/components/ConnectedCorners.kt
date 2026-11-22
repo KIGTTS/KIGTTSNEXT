@@ -42,7 +42,7 @@ fun connectedShape(
             else -> radius
         }
         return animateDpAsState(target.coerceIn(4.dp, radius), MaterialTheme.motionScheme.fastSpatialSpec(), label = label)
-            .value.coerceIn(4.dp, radius)
+            .value.coerceIn(4.dp, 24.dp)
     }
     return RoundedCornerShape(
         topStart = corner(neighbors.start || neighbors.above, "top-start"),

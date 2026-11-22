@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.theme.themeFill
 import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
 import com.kigtts.plugin.api.PluginGesture
@@ -98,7 +99,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
     BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
         val gripWidth by animateDpAsState(if (motion.active) 88.dp else 76.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-grip-width")
         Box(Modifier.width(maxWidth * (1f - progress) + gripWidth * progress).height(height)
-            .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius)).background(MaterialTheme.colorScheme.primary)
+            .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius)).themeFill { it.primary }
             .clearAndSetSemantics {
                 contentDescription = label; role = Role.Button
                 onClick { click(); true }

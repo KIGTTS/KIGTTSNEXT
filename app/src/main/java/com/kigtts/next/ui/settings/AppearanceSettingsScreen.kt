@@ -51,10 +51,10 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
           LaunchedEffect(SettingFocus.target) { if (SettingFocus.target != null) sheet.expand() }
           AppearanceHomePreview(settings, displayedPlaceholder, subtitle,
             Modifier.fillMaxWidth().height(viewport * .43f).padding(12.dp).testTag("appearance-preview"))
+          val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
           Surface(Modifier.fillMaxWidth().height(viewport).offset { IntOffset(0, sheet.offset.roundToInt()) }
-            .nestedScroll(sheet).interruptAppearanceSheet(sheet),
-            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .94f)) {
+            .nestedScroll(sheet).interruptAppearanceSheet(sheet).themeFill(shape) { it.surfaceContainer.copy(alpha = .94f) },
+            shape = shape, color = Color.Transparent) {
             Column(Modifier.fillMaxSize()) {
               Box(Modifier.fillMaxWidth().height(48.dp).testTag("appearance-sheet-handle")
                 .draggable(rememberDraggableState { sheet.drag(it) }, Orientation.Vertical, startDragImmediately = sheet.animating,

@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -23,6 +24,7 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.UiSlot
 import com.kigtts.next.ui.media.MediaTransition
+import com.kigtts.next.theme.themeFill
 
 @Composable
 fun TextEditor(
@@ -35,9 +37,10 @@ fun TextEditor(
     val (idle, controlsAlpha) = rememberPanelIdleChrome(renderer?.presentation?.fadeControlsWhenIdle == true && media == null, state.editing)
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
     val horizontal = with(LocalDensity.current) { (if (renderer != null) 2.dp else 12.dp).roundToPx() }
+    val backgroundAlpha = if (state.theme.background == null) 1f else .88f
     Surface(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle), shape = homeCardShape(neighbors),
-        color = subtitleCardColor(state.theme.background != null)) {
-        Box {
+        color = Color.Transparent, contentColor = contentColorFor(subtitleCardColor(state.theme.background != null))) {
+        Box(Modifier.themeFill { it.surfaceContainerHigh.copy(alpha = backgroundAlpha) }) {
             SubtitleRendererBackdrop(state, model,
                 com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal), Modifier.matchParentSize())
             CompositionLocalProvider(com.kigtts.next.ui.media.LocalMediaSafeArea provides

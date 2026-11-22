@@ -26,7 +26,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.theme.themeFill
 
 internal enum class SettingPosition { SINGLE, FIRST, MIDDLE, LAST }
 
@@ -85,7 +87,7 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     val located = modifier.settingFocus(title)
     val shape = animatedSettingShape(position, corners)
     val body: @Composable () -> Unit = {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.fillMaxWidth().themeFill { it.surfaceContainerLow }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (leading != null || icon != null || badge != null) com.kigtts.next.ui.components.PluginIconBadge(badge) {
                     if (leading != null) leading() else if (icon != null) Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
@@ -100,8 +102,10 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
             content()
         }
     }
-    if (onClick == null) Surface(located, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
-    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = located, shape = shape, color = MaterialTheme.colorScheme.surfaceContainerLow, content = body)
+    val contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow)
+    if (onClick == null) Surface(located, shape = shape, color = Color.Transparent, contentColor = contentColor, content = body)
+    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = located, shape = shape,
+        color = Color.Transparent, contentColor = contentColor, content = body)
 }
 
 @Composable

@@ -18,6 +18,8 @@ import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
+import com.kigtts.next.theme.themeFill
+import androidx.compose.ui.graphics.Color
 
 enum class PageRole { FOREGROUND, BACKGROUND, EXITING }
 
@@ -118,7 +120,8 @@ internal fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean,
                 }
             }
         }
-    Surface(layer, color = MaterialTheme.colorScheme.background) {
+    Surface(layer.themeFill { it.background }, color = Color.Transparent,
+        contentColor = contentColorFor(MaterialTheme.colorScheme.background)) {
         val shade = MaterialTheme.colorScheme.scrim
         CompositionLocalProvider(LocalPageActive provides interactive, LocalPageSettled provides (interactive && settled)) {
             Box {

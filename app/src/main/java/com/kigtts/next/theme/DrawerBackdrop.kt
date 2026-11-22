@@ -27,9 +27,11 @@ val LocalBackdropViewport = compositionLocalOf { Rect.Zero }
             AppearanceBackgrounds.load(context, settings.background, true)?.asImageBitmap()
         }.getOrNull() }
     }
-    val tint = MaterialTheme.colorScheme.surfaceContainer
-    val dim = MaterialTheme.colorScheme.background
+    val colors = MaterialTheme.colorScheme
+    val paint = LocalThemePaint.current
     Canvas(modifier.onGloballyPositioned { origin = it.positionInWindow() }) {
+        val current = paint?.palette?.colors ?: colors
+        val tint = current.surfaceContainer
         val image = bitmap
         if (image != null && viewport.width > 0 && viewport.height > 0) {
             val scale = max(viewport.width / image.width, viewport.height / image.height)
@@ -38,7 +40,7 @@ val LocalBackdropViewport = compositionLocalOf { Rect.Zero }
                     viewport.top - origin.y + (viewport.height - image.height * scale) / 2)
                 scale(scale, scale, pivot = Offset.Zero)
             }) { drawImage(image) }
-            drawRect(dim.copy(alpha = settings.backgroundDim))
+            drawRect(current.background.copy(alpha = settings.backgroundDim))
             drawRect(tint.copy(alpha = .78f))
         } else drawRect(tint)
     }

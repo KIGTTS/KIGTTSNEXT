@@ -46,6 +46,7 @@ import com.kigtts.next.theme.*
     val viewport = Rect(0f, 0f, 400f * density, 832f * density)
     val wide = viewport.width > viewport.height
     val colors = MaterialTheme.colorScheme
+    val paint = LocalThemePaint.current
     // The host deliberately raises compact light controls to medium contrast. Share its animated roles.
     val controls = LocalCompactControlPalette.current ?: compactControlPalette(settings,
         dark = settings.mode.usesDark(isSystemInDarkTheme()), base = colors)
@@ -81,6 +82,8 @@ import com.kigtts.next.theme.*
             AppearanceBackdrop(settings, Modifier.matchParentSize(), screenAnchored = false)
             Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
                 .semantics { contentDescription = previewDescription }) {
+                val colors = paint?.palette?.colors ?: colors
+                val controls = paint?.palette?.controls ?: controls
                 val radius = previewRadius.value * density
                 withTransform({ scale(scale, scale, Offset.Zero); translate(-viewport.left, -viewport.top) }) {
                     fun panel(rect: Rect, color: Color, r: Float = radius) {

@@ -85,8 +85,8 @@ fun KigttsTheme(settings: ThemeSettings, publishWebTheme: Boolean = false, conte
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         } else null
     }
-    val (colors, controls) = rememberThemePalette(ThemePaletteKey(settings.effectiveSeed, settings.contrast, settings.deeperDark, dark, wallpaper))
-    if (publishWebTheme) com.kigtts.next.ui.media.PublishWebTheme(colors, dark, settings.cornerRadius.toInt())
+    val palette = rememberThemePalette(ThemePaletteKey(settings.effectiveSeed, settings.contrast, settings.deeperDark, dark, wallpaper))
+    if (publishWebTheme) com.kigtts.next.ui.media.PublishWebTheme(palette.colors, dark, settings.cornerRadius.toInt())
     // Connected settings controls already animate toward their target corners. Feeding a moving
     // global radius into all of them restarts their springs on every frame.
     val radius = settings.cornerRadius
@@ -103,9 +103,16 @@ fun KigttsTheme(settings: ThemeSettings, publishWebTheme: Boolean = false, conte
     ).withFont(appearanceFont) }
     val motion = remember { MotionScheme.expressive() }
     CompositionLocalProvider(LocalCornerRadius provides radius.dp, LocalAppearanceFont provides appearanceFont) {
-        MaterialExpressiveTheme(colorScheme = animatedColorScheme(colors), shapes = shapes, motionScheme = motion,
-            typography = typography) {
-            CompositionLocalProvider(LocalCompactControlPalette provides animatedCompactControlPalette(controls), content = content)
+        val themedContent: @Composable (ThemePalette) -> Unit = { (colors, controls) ->
+            MaterialExpressiveTheme(colorScheme = colors, shapes = shapes, motionScheme = motion, typography = typography) {
+                CompositionLocalProvider(LocalCompactControlPalette provides controls, content = content)
+            }
+        }
+        if (publishWebTheme) CompositionLocalProvider(LocalThemePaint provides rememberThemePaint(palette)) {
+            themedContent(palette)
+        }
+        else {
+            themedContent(ThemePalette(animatedColorScheme(palette.colors), animatedCompactControlPalette(palette.controls)))
         }
     }
 }
