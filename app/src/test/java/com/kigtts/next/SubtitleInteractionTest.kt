@@ -128,7 +128,8 @@ class SubtitleInteractionTest {
         val model = show()
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
         compose.waitForIdle()
-        val phrase = model.phrases.value.first().text
+        val card = model.phrases.value.first { it.category == model.state.value.selectedCategory }
+        val phrase = card.text
         fun verifyFrame(name: String, change: () -> Unit) {
             compose.mainClock.autoAdvance = false
             change()
@@ -143,7 +144,7 @@ class SubtitleInteractionTest {
             assertFalse("Subtitle must visibly transition", middle.contentEquals(end))
             compose.mainClock.autoAdvance = true
         }
-        verifyFrame("subtitle-quick-send") { compose.onNodeWithText(phrase).performClick() }
+        verifyFrame("subtitle-quick-send") { compose.onNodeWithText(card.title.ifBlank { phrase }).performClick() }
         compose.runOnIdle { assertEquals(phrase, model.state.value.editorText); assertFalse(model.state.value.editing) }
         verifyFrame("subtitle-update") { compose.runOnIdle { model.text("更新后的字幕") } }
         verifyFrame("subtitle-clear") { compose.onNodeWithTag("editor-clear").performClick() }

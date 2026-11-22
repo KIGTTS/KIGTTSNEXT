@@ -62,12 +62,12 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
             contentWindowInsets=safe.only(if(extendToBottom)WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal+WindowInsetsSides.Bottom),
             topBar={ if(largeBar)LargeFlexibleTopAppBar(title={ PageBarTitle(title,compact,host.loading) },Modifier.testTag("large-page-bar"),
                 colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent,scrolledContainerColor=Color.Transparent),
-                subtitle=subtitle?.let { text -> { Text(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines=1, overflow=TextOverflow.Ellipsis) } },
+                subtitle=subtitle?.let { text -> { ThemeText(text, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), maxLines=1, overflow=TextOverflow.Ellipsis) } },
                 windowInsets=WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal),
                 navigationIcon={ PageBackNavigation(guardedBack,backLabel,backTag,host.loading&&!compact) },
                 actions={ PageActionButtons(actions+(host.source?.value ?: emptyList())) },scrollBehavior=behavior)
             else TopAppBar(title={ Column { PageBarTitle(title,true,host.loading)
-                subtitle?.let { Text(it, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), style=MaterialTheme.typography.labelMedium,
+                subtitle?.let { ThemeText(it, Modifier.testTag("page-subtitle").cameraPullEntryRegion(), style=MaterialTheme.typography.labelMedium,
                     color=MaterialTheme.colorScheme.onSurfaceVariant, maxLines=1, overflow=TextOverflow.Ellipsis) }
             } },modifier=Modifier.testTag("small-page-bar"),
                 colors=TopAppBarDefaults.topAppBarColors(containerColor=Color.Transparent,scrolledContainerColor=Color.Transparent),

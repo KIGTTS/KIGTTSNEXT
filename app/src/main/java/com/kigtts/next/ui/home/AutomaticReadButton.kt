@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.theme.ThemeIcon
+
 import com.kigtts.next.i18n.uiText
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -40,7 +42,7 @@ internal fun AutomaticReadButton(state: AppState, model: AppViewModel) {
             onClick = feedbackClick(model::toggleAutoPlayback),
             modifier = Modifier.fillMaxSize().testTag("auto-playback").iconLongAction(true) { picker = true },
             colors = compactPlainIconColors()) {
-            Icon(if (state.autoPlayback) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+            ThemeIcon(if (state.autoPlayback) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                 if (state.autoPlayback) uiText("subtitle.auto_off") else uiText("subtitle.auto_on"))
         }
         if (progress != null) {

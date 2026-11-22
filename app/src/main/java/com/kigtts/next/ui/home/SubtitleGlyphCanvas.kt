@@ -5,6 +5,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorProducer
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -13,31 +15,34 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.drawText
 
 @Composable
-internal fun SubtitleGlyphCanvas(motion: SubtitleGlyphMotion, visible: Boolean, modifier: Modifier) {
+internal fun SubtitleGlyphCanvas(motion: SubtitleGlyphMotion, visible: Boolean, modifier: Modifier, tint: ColorProducer? = null) {
     val first = rememberGraphicsLayer(); val second = rememberGraphicsLayer()
     val recorded = remember { arrayOfNulls<TextLayoutResult>(2) }
+    val recordedColors = remember { Array(2) { Color.Unspecified } }
     val opacityPaint = remember { androidx.compose.ui.graphics.Paint() }
     Canvas(modifier) {
         if (!visible) return@Canvas
         val next = motion.frame ?: return@Canvas
         val before = motion.old
         val progress = motion.progress
+        val color = tint?.invoke() ?: Color.Unspecified
         // Recording the paragraph once preserves shaping, rich spans and GPU text caches.
         fun layer(frame: SubtitleGlyphFrame, index: Int): GraphicsLayer {
             val result = if (index == 0) first else second
-            if (recorded[index] !== frame.layout) {
-                result.record(size = frame.layout.size) { drawText(frame.layout) }
+            if (recorded[index] !== frame.layout || recordedColors[index] != color) {
+                result.record(size = frame.layout.size) { drawText(frame.layout, color = color) }
                 recorded[index] = frame.layout
+                recordedColors[index] = color
             }
             return result
         }
         if (!motion.running) {
-            translate(next.origin.x, next.origin.y) { drawText(next.layout) }
+            translate(next.origin.x, next.origin.y) { drawText(next.layout, color = color) }
             return@Canvas
         }
         if (motion.fadeOnly) {
-            before?.let { drawText(it.layout, topLeft = it.origin, alpha = 1f - progress) }
-            drawText(next.layout, topLeft = next.origin, alpha = progress)
+            before?.let { drawText(it.layout, color = color, topLeft = it.origin, alpha = 1f - progress) }
+            drawText(next.layout, color = color, topLeft = next.origin, alpha = progress)
             return@Canvas
         }
         val active = layer(next, 1)

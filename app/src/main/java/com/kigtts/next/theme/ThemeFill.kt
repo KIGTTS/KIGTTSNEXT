@@ -3,6 +3,8 @@ package com.kigtts.next.theme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Color
@@ -13,9 +15,10 @@ import androidx.compose.ui.graphics.drawOutline
 /** Cache the shape separately, then repaint its current role without restarting its motion. */
 @Composable internal fun Modifier.themeFill(shape: Shape = RectangleShape, color: (ColorScheme) -> Color): Modifier {
     val paint = LocalThemePaint.current
-    val fallback = MaterialTheme.colorScheme
+    val fallback = color(MaterialTheme.colorScheme)
+    val animated = if (paint == null) null else remember(paint, color) { derivedStateOf { color(paint.palette.colors) } }
     return drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
-        onDrawBehind { drawOutline(outline, color(paint?.palette?.colors ?: fallback)) }
+        onDrawBehind { drawOutline(outline, animated?.value ?: fallback) }
     }
 }

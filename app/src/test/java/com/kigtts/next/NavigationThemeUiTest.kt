@@ -1,10 +1,16 @@
 package com.kigtts.next
 
 import android.app.Application
+import android.graphics.BitmapFactory
 import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -13,6 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -71,6 +80,43 @@ class NavigationThemeUiTest {
             assertEquals(setOf(first, last), composed)
             assertTrue("The live layer drew intermediate colors: $painted", painted.any { it != first && it != last })
             assertEquals(last, painted.last())
+        }
+        compose.mainClock.autoAdvance = true
+    }
+
+    @Test fun foregroundTextAndIconBothPaintIntermediateThemeColors() {
+        var settings by mutableStateOf(ThemeSettings(mode = ThemeMode.DARK))
+        val updated = settings.copy(seed = 0xffff6b6b)
+        ThemePalettes.resolve(ThemePaletteKey(updated.effectiveSeed, updated.contrast, false, true, null))
+        compose.setContent {
+            KigttsTheme(settings, publishWebTheme = true) {
+                val primary = MaterialTheme.colorScheme.primary
+                Column(Modifier.background(Color.Black)) {
+                    ThemeText("MMMM", Modifier.testTag("animated-text"), color = primary,
+                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 32.sp))
+                    ThemeIcon(Icons.Default.Favorite, "Favorite", Modifier.size(48.dp).testTag("animated-icon"), tint = primary)
+                }
+            }
+        }
+        fun ink(tag: String): Int {
+            val path = "build/previews/$tag.png"
+            compose.onNodeWithTag(tag).captureRoboImage(path)
+            val bitmap = requireNotNull(BitmapFactory.decodeFile(path))
+            val pixels = IntArray(bitmap.width * bitmap.height)
+            bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+            bitmap.recycle()
+            return pixels.filter { it != Color.Black.toArgb() }.groupingBy { it }.eachCount().maxBy { it.value }.key
+        }
+        fun captureTints() = listOf(ink("animated-text"), ink("animated-icon"))
+        val first = captureTints()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { settings = updated }
+        val samples = List(4) { compose.mainClock.advanceTimeBy(84); captureTints() }
+        compose.mainClock.advanceTimeBy(500)
+        val last = captureTints()
+        first.indices.forEach { index ->
+            assertNotEquals(first[index], last[index])
+            assertTrue(samples.any { it[index] != first[index] && it[index] != last[index] })
         }
         compose.mainClock.autoAdvance = true
     }

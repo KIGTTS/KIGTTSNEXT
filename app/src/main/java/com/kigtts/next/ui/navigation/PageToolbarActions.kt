@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.theme.ThemeIcon
+
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.ui.components.animateEnabled
 
@@ -91,17 +93,17 @@ fun RowScope.PageActionButtons(actions:List<ToolbarAction>) {
             val colors = compactPlainIconColors().let { if(temporaryLock)it.keepColorsWhenLocked() else it }
             if (action.checked != null) MotionIconToggleButton(action.checked, { action.click() },
                 Modifier.requiredSize(48.dp).testTag(action.id), enabled = active && current != null && action.enabled,
-                transientLock = temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon, action.label) } }
+                transientLock = temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { ThemeIcon(action.icon, action.label) } }
             else com.kigtts.next.ui.components.IconActionHint(action.label, action.longClick != null) {
                 MotionIconButton(feedbackClick(action.click),Modifier.requiredSize(48.dp).testTag(action.id)
-                    .iconLongAction(active&&current!=null&&action.enabled, action.longClick),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon,action.label) } }
+                    .iconLongAction(active&&current!=null&&action.enabled, action.longClick),enabled=active&&current!=null&&action.enabled,colors=colors,transientLock=temporaryLock) { com.kigtts.next.ui.components.PluginIconBadge(action.badge) { ThemeIcon(action.icon,action.label) } }
             }
         }
     } }
     AnimatedVisibility(actions.size>primaryCount, enter = fadeIn(tween(160)) + expandHorizontally(tween(180)),
         exit = fadeOut(tween(120)) + shrinkHorizontally(tween(180))) {
     Box(Modifier.excludeCameraPull()) {
-        MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { Icon(Icons.Default.MoreVert, uiText("action.more_page_actions")) }
+        MotionIconButton(feedbackClick { more=true },enabled=active,colors=compactPlainIconColors()) { ThemeIcon(Icons.Default.MoreVert, uiText("action.more_page_actions")) }
         DropdownMenu(more&&active,{ more=false }) {
             actions.drop(primaryCount).forEach { action -> DropdownMenuItem(text={ Text(action.label) },leadingIcon={ com.kigtts.next.ui.components.PluginIconBadge(action.badge) { Icon(action.icon,null) } },
                 colors=MenuDefaults.itemColors().animateEnabled(action.enabled),

@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.navigation
 
+import com.kigtts.next.theme.ThemeIcon
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -21,7 +23,7 @@ import com.kigtts.next.ui.components.compactPlainIconColors
 internal fun PageBackNavigation(back: () -> Unit, label: String, tag: String, loading: Boolean) {
     Row(Modifier.excludeCameraPull(), verticalAlignment = Alignment.CenterVertically) {
         MotionIconButton(feedbackClick(back), Modifier.testTag(tag), colors = compactPlainIconColors()) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, label)
+            ThemeIcon(Icons.AutoMirrored.Filled.ArrowBack, label)
         }
         PageLoadingIndicator(loading, Modifier.padding(end = 8.dp))
     }

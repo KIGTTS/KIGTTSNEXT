@@ -19,7 +19,7 @@ internal class ThemePaint(initial: ThemePalette) {
         if (from == target) return
         val blend = PaletteBlend()
         animate(0f, 1f, animationSpec = tween(450, easing = FastOutSlowInEasing)) { fraction, _ ->
-            palette = ThemePalette(blend.interpolate(from.colors, target.colors, fraction), CompactControlPalette(
+            palette = ThemePalette(blend.interpolate(from.colors, target.colors, fraction, drawOnly = true), CompactControlPalette(
                 blend.lerp(from.controls.container, target.controls.container, fraction),
                 blend.lerp(from.controls.content, target.controls.content, fraction),
                 blend.lerp(from.controls.plainContent, target.controls.plainContent, fraction)))
@@ -65,58 +65,61 @@ private class PaletteBlend {
             lerp(a.blue, b.blue, fraction), lerp(a.alpha, b.alpha, fraction), ColorSpaces.Oklab).convert(to.colorSpace)
     }
 
-    fun interpolate(from: ColorScheme, target: ColorScheme, fraction: Float): ColorScheme {
+    fun interpolate(from: ColorScheme, target: ColorScheme, fraction: Float, drawOnly: Boolean = false): ColorScheme {
         if (fraction <= 0f) return from
         if (fraction >= 1f) return target
+        // The activity already gives Material the target palette once. Only native drawing
+        // reads these intermediate frames, so unused fixed and container roles need no conversion.
+        fun otherRole(start: Color, end: Color) = if (drawOnly) end else lerp(start, end, fraction)
         return target.copy(
             primary = lerp(from.primary, target.primary, fraction),
             onPrimary = lerp(from.onPrimary, target.onPrimary, fraction),
             primaryContainer = lerp(from.primaryContainer, target.primaryContainer, fraction),
             onPrimaryContainer = lerp(from.onPrimaryContainer, target.onPrimaryContainer, fraction),
-            inversePrimary = lerp(from.inversePrimary, target.inversePrimary, fraction),
+            inversePrimary = otherRole(from.inversePrimary, target.inversePrimary),
             secondary = lerp(from.secondary, target.secondary, fraction),
             onSecondary = lerp(from.onSecondary, target.onSecondary, fraction),
-            secondaryContainer = lerp(from.secondaryContainer, target.secondaryContainer, fraction),
+            secondaryContainer = otherRole(from.secondaryContainer, target.secondaryContainer),
             onSecondaryContainer = lerp(from.onSecondaryContainer, target.onSecondaryContainer, fraction),
             tertiary = lerp(from.tertiary, target.tertiary, fraction),
             onTertiary = lerp(from.onTertiary, target.onTertiary, fraction),
-            tertiaryContainer = lerp(from.tertiaryContainer, target.tertiaryContainer, fraction),
+            tertiaryContainer = otherRole(from.tertiaryContainer, target.tertiaryContainer),
             onTertiaryContainer = lerp(from.onTertiaryContainer, target.onTertiaryContainer, fraction),
             background = lerp(from.background, target.background, fraction),
             onBackground = lerp(from.onBackground, target.onBackground, fraction),
-            surface = lerp(from.surface, target.surface, fraction),
+            surface = otherRole(from.surface, target.surface),
             onSurface = lerp(from.onSurface, target.onSurface, fraction),
-            surfaceVariant = lerp(from.surfaceVariant, target.surfaceVariant, fraction),
+            surfaceVariant = otherRole(from.surfaceVariant, target.surfaceVariant),
             onSurfaceVariant = lerp(from.onSurfaceVariant, target.onSurfaceVariant, fraction),
-            surfaceTint = lerp(from.surfaceTint, target.surfaceTint, fraction),
-            inverseSurface = lerp(from.inverseSurface, target.inverseSurface, fraction),
+            surfaceTint = otherRole(from.surfaceTint, target.surfaceTint),
+            inverseSurface = otherRole(from.inverseSurface, target.inverseSurface),
             inverseOnSurface = lerp(from.inverseOnSurface, target.inverseOnSurface, fraction),
             error = lerp(from.error, target.error, fraction),
             onError = lerp(from.onError, target.onError, fraction),
-            errorContainer = lerp(from.errorContainer, target.errorContainer, fraction),
+            errorContainer = otherRole(from.errorContainer, target.errorContainer),
             onErrorContainer = lerp(from.onErrorContainer, target.onErrorContainer, fraction),
             outline = lerp(from.outline, target.outline, fraction),
             outlineVariant = lerp(from.outlineVariant, target.outlineVariant, fraction),
-            scrim = lerp(from.scrim, target.scrim, fraction),
-            surfaceBright = lerp(from.surfaceBright, target.surfaceBright, fraction),
-            surfaceDim = lerp(from.surfaceDim, target.surfaceDim, fraction),
+            scrim = otherRole(from.scrim, target.scrim),
+            surfaceBright = otherRole(from.surfaceBright, target.surfaceBright),
+            surfaceDim = otherRole(from.surfaceDim, target.surfaceDim),
             surfaceContainer = lerp(from.surfaceContainer, target.surfaceContainer, fraction),
             surfaceContainerHigh = lerp(from.surfaceContainerHigh, target.surfaceContainerHigh, fraction),
-            surfaceContainerHighest = lerp(from.surfaceContainerHighest, target.surfaceContainerHighest, fraction),
+            surfaceContainerHighest = otherRole(from.surfaceContainerHighest, target.surfaceContainerHighest),
             surfaceContainerLow = lerp(from.surfaceContainerLow, target.surfaceContainerLow, fraction),
             surfaceContainerLowest = lerp(from.surfaceContainerLowest, target.surfaceContainerLowest, fraction),
-            primaryFixed = lerp(from.primaryFixed, target.primaryFixed, fraction),
-            primaryFixedDim = lerp(from.primaryFixedDim, target.primaryFixedDim, fraction),
-            onPrimaryFixed = lerp(from.onPrimaryFixed, target.onPrimaryFixed, fraction),
-            onPrimaryFixedVariant = lerp(from.onPrimaryFixedVariant, target.onPrimaryFixedVariant, fraction),
-            secondaryFixed = lerp(from.secondaryFixed, target.secondaryFixed, fraction),
-            secondaryFixedDim = lerp(from.secondaryFixedDim, target.secondaryFixedDim, fraction),
-            onSecondaryFixed = lerp(from.onSecondaryFixed, target.onSecondaryFixed, fraction),
-            onSecondaryFixedVariant = lerp(from.onSecondaryFixedVariant, target.onSecondaryFixedVariant, fraction),
-            tertiaryFixed = lerp(from.tertiaryFixed, target.tertiaryFixed, fraction),
-            tertiaryFixedDim = lerp(from.tertiaryFixedDim, target.tertiaryFixedDim, fraction),
-            onTertiaryFixed = lerp(from.onTertiaryFixed, target.onTertiaryFixed, fraction),
-            onTertiaryFixedVariant = lerp(from.onTertiaryFixedVariant, target.onTertiaryFixedVariant, fraction),
+            primaryFixed = otherRole(from.primaryFixed, target.primaryFixed),
+            primaryFixedDim = otherRole(from.primaryFixedDim, target.primaryFixedDim),
+            onPrimaryFixed = otherRole(from.onPrimaryFixed, target.onPrimaryFixed),
+            onPrimaryFixedVariant = otherRole(from.onPrimaryFixedVariant, target.onPrimaryFixedVariant),
+            secondaryFixed = otherRole(from.secondaryFixed, target.secondaryFixed),
+            secondaryFixedDim = otherRole(from.secondaryFixedDim, target.secondaryFixedDim),
+            onSecondaryFixed = otherRole(from.onSecondaryFixed, target.onSecondaryFixed),
+            onSecondaryFixedVariant = otherRole(from.onSecondaryFixedVariant, target.onSecondaryFixedVariant),
+            tertiaryFixed = otherRole(from.tertiaryFixed, target.tertiaryFixed),
+            tertiaryFixedDim = otherRole(from.tertiaryFixedDim, target.tertiaryFixedDim),
+            onTertiaryFixed = otherRole(from.onTertiaryFixed, target.onTertiaryFixed),
+            onTertiaryFixedVariant = otherRole(from.onTertiaryFixedVariant, target.onTertiaryFixedVariant),
         )
     }
 }

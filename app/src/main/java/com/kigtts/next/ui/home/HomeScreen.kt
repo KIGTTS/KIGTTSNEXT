@@ -15,12 +15,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.layout
+import kotlin.math.roundToInt
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.AppHeader
@@ -107,8 +108,12 @@ private fun PortraitHomeScreen(
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
                     slideOutVertically(androidx.compose.animation.core.tween(220)) { it }) {
                 sections.SaveableStateProvider("quick-text") { HomePanels(state, phrases, categories, model, motion,
-                Modifier.graphicsLayer {
-                    translationY = if (state.sidePage == null) motion.height.dp.toPx() * back.value.progress * .7f else 0f
+                Modifier.layout { measurable, constraints ->
+                    val child = measurable.measure(constraints)
+                    layout(child.width, child.height) {
+                        val preview = if (state.sidePage == null) back.value.progress else 0f
+                        child.placeRelative(0, (motion.height.dp.toPx() * preview * .7f).roundToInt())
+                    }
                 }) }
             }
             AnimatedVisibility(state.quickTextEditing, modifier = Modifier.fillMaxSize(),

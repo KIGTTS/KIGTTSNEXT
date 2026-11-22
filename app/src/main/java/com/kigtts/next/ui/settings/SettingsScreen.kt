@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.theme.ThemeIcon
 
 @Composable
 internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
@@ -51,7 +52,7 @@ internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistr
                     if (link.id == "face-receive" && receiving != null) receiving(position)
                     else SettingItem(link.title, link.summary, link.icon, position,
                         Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = enabled, badge = link.badge,
-                        trailing = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
+                        trailing = { ThemeIcon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
                 }
             }
         }

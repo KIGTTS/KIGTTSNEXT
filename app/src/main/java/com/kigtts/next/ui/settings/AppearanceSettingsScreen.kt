@@ -79,7 +79,7 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 }
                 OutlinedButton(shapes = expressivePillShapes(), onClick = feedbackClick { onChange(ThemeSettings()) },
                   modifier = Modifier.fillMaxWidth()) {
-                  Icon(Icons.Default.Restore, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text(uiText("appearance.reset"))
+                  ThemeIcon(Icons.Default.Restore, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); ThemeText(uiText("appearance.reset"))
                 }
               }
             }

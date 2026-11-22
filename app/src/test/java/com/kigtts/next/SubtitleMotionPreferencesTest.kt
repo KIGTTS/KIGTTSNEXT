@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.settings.AppearanceSettingsScreen
@@ -31,8 +32,8 @@ class SubtitleMotionPreferencesTest {
         compose.setContent { MaterialTheme {
             AppearanceSettingsScreen(ThemeSettings(), {}, subtitle = value, onSubtitleChange = { value = it; store.save(it) })
         } }
-        val reflow = compose.onNodeWithContentDescription("展示时换行动效")
-        val reduced = compose.onNodeWithContentDescription("减弱字幕动效")
+        val reflow = compose.onNodeWithContentDescription(app.uiCopy("appearance.reflow", locale = "zh-CN"))
+        val reduced = compose.onNodeWithContentDescription(app.uiCopy("appearance.less_motion", locale = "zh-CN"))
         reflow.performScrollTo().assertIsOn().performClick().assertIsOff()
         reduced.performScrollTo().performClick().assertIsOn()
         reflow.assertIsNotEnabled().assertIsOff()

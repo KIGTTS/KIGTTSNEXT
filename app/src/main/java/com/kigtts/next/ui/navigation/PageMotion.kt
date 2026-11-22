@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import kotlin.math.abs
 import com.kigtts.next.theme.themeFill
+import com.kigtts.next.theme.LocalThemePaint
 import androidx.compose.ui.graphics.Color
 
 enum class PageRole { FOREGROUND, BACKGROUND, EXITING }
@@ -120,15 +121,20 @@ internal fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean,
                 }
             }
         }
-    Surface(layer.themeFill { it.background }, color = Color.Transparent,
-        contentColor = contentColorFor(MaterialTheme.colorScheme.background)) {
-        val shade = MaterialTheme.colorScheme.scrim
-        CompositionLocalProvider(LocalPageActive provides interactive, LocalPageSettled provides (interactive && settled)) {
-            Box {
-                content()
-                Box(Modifier.matchParentSize().graphicsLayer {
-                    alpha = .12f * underlay(position(currentPreview()))
-                }.background(shade))
+    // The foreground page already paints an opaque window. Keep retained pages alive for back
+    // transitions without repainting their text, images and controls on every palette frame.
+    val paint = LocalThemePaint.current.takeIf { role != PageRole.BACKGROUND || controlled }
+    CompositionLocalProvider(LocalThemePaint provides paint) {
+        Surface(layer.themeFill { it.background }, color = Color.Transparent,
+            contentColor = contentColorFor(MaterialTheme.colorScheme.background)) {
+            val shade = MaterialTheme.colorScheme.scrim
+            CompositionLocalProvider(LocalPageActive provides interactive, LocalPageSettled provides (interactive && settled)) {
+                Box {
+                    content()
+                    Box(Modifier.matchParentSize().graphicsLayer {
+                        alpha = .12f * underlay(position(currentPreview()))
+                    }.background(shade))
+                }
             }
         }
     }

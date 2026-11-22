@@ -2,6 +2,7 @@ package com.kigtts.next.theme
 
 import androidx.compose.material3.ColorScheme
 import androidx.compose.runtime.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -9,6 +10,9 @@ internal data class ThemePaletteKey(val seed: Long, val contrast: ContrastLevel,
     val deeper: Boolean, val dark: Boolean, val wallpaper: ColorScheme?)
 
 internal data class ThemePalette(val colors: ColorScheme, val controls: CompactControlPalette)
+
+@OptIn(ExperimentalCoroutinesApi::class)
+private val paletteWorker = Dispatchers.Default.limitedParallelism(1)
 
 /** Only color inputs are keys: layout, background opacity and font changes reuse the palette. */
 internal object ThemePalettes {
@@ -30,7 +34,7 @@ internal fun rememberThemePalette(key: ThemePaletteKey): ThemePalette {
     // Resolve the initial theme before drawing, so launch never flashes a fallback palette.
     var palette by remember { mutableStateOf(ThemePalettes.resolve(key)) }
     LaunchedEffect(key) {
-        palette = ThemePalettes.cached(key) ?: withContext(Dispatchers.Default) { ThemePalettes.resolve(key) }
+        palette = ThemePalettes.cached(key) ?: withContext(paletteWorker) { ThemePalettes.resolve(key) }
     }
     return palette
 }

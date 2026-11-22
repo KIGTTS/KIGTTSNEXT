@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.theme.themeFill
+import com.kigtts.next.theme.ThemeIcon
+import com.kigtts.next.theme.ThemeText
 import com.kigtts.next.ui.plugins.SlotActions
 import com.kigtts.plugin.api.UiSlot
 import com.kigtts.plugin.api.PluginGesture
@@ -111,10 +113,10 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
                 onLongClick = hold),
                 contentAlignment = Alignment.Center) {
             Row(Modifier.alpha(1f - progress), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.AutoMirrored.Filled.TextSnippet, null, Modifier.size((24f - 8f * progress).dp),
+                ThemeIcon(Icons.AutoMirrored.Filled.TextSnippet, null, Modifier.size((24f - 8f * progress).dp),
                     tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(Modifier.width(6.dp))
-                Text(label, color = MaterialTheme.colorScheme.onPrimary,
+                ThemeText(label, color = MaterialTheme.colorScheme.onPrimary,
                     style = MaterialTheme.typography.labelLarge, maxLines = 1)
             }
         }

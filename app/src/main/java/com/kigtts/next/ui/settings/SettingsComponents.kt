@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.theme.themeFill
+import com.kigtts.next.theme.ThemeText
+import com.kigtts.next.theme.ThemeIcon
 
 internal enum class SettingPosition { SINGLE, FIRST, MIDDLE, LAST }
 
@@ -66,10 +68,10 @@ internal fun SettingsGroup(title: String, subtitle: String = "", headerAction: (
         Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(title,Modifier.weight(1f).semantics { heading() },style=MaterialTheme.typography.titleMedium)
+                    ThemeText(title,Modifier.weight(1f).semantics { heading() },style=MaterialTheme.typography.titleMedium)
                     headerAction?.invoke()
                 }
-                if(subtitle.isNotBlank())Text(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                if(subtitle.isNotBlank())ThemeText(subtitle,style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(2.dp),content=content)
         }
@@ -90,12 +92,12 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
         Column(Modifier.fillMaxWidth().themeFill { it.surfaceContainerLow }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (leading != null || icon != null || badge != null) com.kigtts.next.ui.components.PluginIconBadge(badge) {
-                    if (leading != null) leading() else if (icon != null) Icon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (leading != null) leading() else if (icon != null) ThemeIcon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
                     else Spacer(Modifier.size(24.dp))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                    if (summary.isNotBlank()) Text(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    ThemeText(title, style = MaterialTheme.typography.titleMedium)
+                    if (summary.isNotBlank()) ThemeText(summary, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 trailing()
             }

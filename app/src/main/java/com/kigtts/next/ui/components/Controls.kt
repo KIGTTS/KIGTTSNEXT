@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.semantics.*
 import com.kigtts.plugin.api.PluginIcon
+import com.kigtts.next.theme.ThemeIcon
+import com.kigtts.next.theme.ThemeText
 
 fun PluginIcon.vector(): ImageVector = when (this) {
     PluginIcon.INFO -> Icons.Default.Info
@@ -69,7 +71,7 @@ fun ToolButton(
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
             PluginIconBadge(badge, contained = size < 40.dp) {
-            if (iconBlend == null) AnimatedButtonContent(icon) { Icon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
+            if (iconBlend == null) AnimatedButtonContent(icon) { ThemeIcon(it, contentDescription = null, modifier = Modifier.size(animatedIconSize.value)) }
             else BlendedToolIcon(iconBlend, animatedIconSize.value)
             }
             overlay()
@@ -99,9 +101,9 @@ fun PillButton(
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)) {
         AnimatedButtonContent(icon to label) { (image, text) ->
             Row {
-                PluginIconBadge(badge, contained = true) { Icon(image, null, Modifier.size(16.dp)) }
+                PluginIconBadge(badge, contained = true) { ThemeIcon(image, null, Modifier.size(16.dp)) }
                 Spacer(Modifier.width(6.dp))
-                Text(text, maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                ThemeText(text, maxLines = 1, style = MaterialTheme.typography.labelMedium)
             }
         }
     }

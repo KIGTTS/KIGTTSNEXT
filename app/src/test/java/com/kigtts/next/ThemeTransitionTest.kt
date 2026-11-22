@@ -34,7 +34,10 @@ class ThemeTransitionTest {
             compose.waitForIdle()
         }
         val target = themeColors(requests.last(), isDark = true)
-        compose.waitUntil(5000) { observed?.primary == target.primary && observed?.surface == target.surface }
+        compose.waitUntil(5000) { observed?.let {
+            it.primary == target.primary && it.surface == target.surface &&
+                it.onSurface == target.onSurface && it.primaryContainer == target.primaryContainer
+        } == true }
         assertEquals(target.onSurface, observed!!.onSurface)
         assertEquals(target.primaryContainer, observed!!.primaryContainer)
     }

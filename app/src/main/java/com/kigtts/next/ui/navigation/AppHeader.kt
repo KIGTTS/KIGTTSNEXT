@@ -1,6 +1,8 @@
 package com.kigtts.next.ui.navigation
 
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.theme.ThemeIcon
+import com.kigtts.next.theme.ThemeText
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -55,18 +57,18 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
             if (home) com.kigtts.next.ui.home.AutomaticReadButton(state, model)
             else IconButton(onClick = feedbackClick(model::navigateBack),
                 modifier=Modifier.testTag("auto-playback"), colors = compactPlainIconColors()) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("nav.back"))
+                ThemeIcon(Icons.AutoMirrored.Filled.ArrowBack, uiText("nav.back"))
             }
             if (home) SlotActions(UiSlot.HEADER_START, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
         }
         if (home) SafeModeBrand(recovery.active, Modifier.homePreviewRegion("header-logo"))
-        else Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        else ThemeText(title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             if (home) SlotActions(UiSlot.HEADER_END, model.registry, model::invoke, Modifier.weight(1f),
                 context = model.context(), revision = state.pluginRevision)
             if (home) IconButton(onClick = feedbackClick(openSettings), modifier = Modifier.testTag("open-settings").homePreviewRegion("header-end"),
-                colors = compactPlainIconColors()) { Icon(Icons.Default.Settings, uiText("nav.open_settings")) }
+                colors = compactPlainIconColors()) { ThemeIcon(Icons.Default.Settings, uiText("nav.open_settings")) }
         }
     }
 }

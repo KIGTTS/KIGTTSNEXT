@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.navigation
 
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.theme.ThemeText
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -29,7 +30,7 @@ internal fun PageLoadingIndicator(loading: Boolean, modifier: Modifier = Modifie
 @Composable
 internal fun PageBarTitle(title: String, compact: Boolean, loading: Boolean) {
     Row(Modifier.cameraPullEntryRegion(), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f, fill = false).testTag("page-title"),
+        ThemeText(title, Modifier.weight(1f, fill = false).testTag("page-title"),
             maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
         PageLoadingIndicator(compact && loading, Modifier.padding(start = 4.dp))
     }
