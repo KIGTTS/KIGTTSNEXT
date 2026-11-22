@@ -121,7 +121,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val categories = quickTexts.categories
     internal val quickTextBackup by lazy { QuickTextBackup(this) }
     internal val sharing by lazy { com.kigtts.next.sharing.SharingCoordinator(this, viewModelScope) }
-    internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, cards, viewModelScope, ::message)
+    internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, viewModelScope, ::message)
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
     private val appPlugins = hostRuntime?.appPlugins ?: com.kigtts.next.plugins.control.AppControlHost(pluginManager) { this }

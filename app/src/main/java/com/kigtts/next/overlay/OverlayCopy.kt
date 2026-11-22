@@ -8,6 +8,7 @@ internal fun OverlayShortcut.localizedTitle(copy: (String) -> String): String {
         "camera" -> "nav.camera"
         "cards" -> "nav.album"
         "sketch" -> "overlay.shortcut.sketch"
+        "personal-card" -> "nav.profile"
         "listen" -> "overlay.shortcut.listen"
         "caption-window" -> "listening.open_window"
         "speak" -> "overlay.shortcut.read"

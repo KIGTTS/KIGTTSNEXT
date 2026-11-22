@@ -10,6 +10,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.testAppModel
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.identity.PersonalCardsScreen
+import com.kigtts.next.ui.identity.PersonalInformationEntry
 import com.kigtts.next.state.Destination
 import com.kigtts.next.ui.navigation.SecondaryDestination
 import com.kigtts.next.ui.cards.CardEditorScreen
@@ -27,6 +28,19 @@ import org.robolectric.annotation.*
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PersonalCardsUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun settingsCardOpensOnTapAndSharesOnLongPress() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        compose.activity.viewModelStore.put("personal-entry-test", model)
+        model.identities.create()
+        model.navigate(Destination.Settings)
+        compose.setContent { KigttsTheme(ThemeSettings()) { PersonalInformationEntry(model) } }
+        val card = compose.onNodeWithTag("personal-information")
+        card.performClick()
+        compose.runOnIdle { assertEquals(Destination.PersonalCards, model.state.value.destination) }
+        card.performTouchInput { longClick(center) }
+        compose.waitUntil(5000) { model.sharing.profileFormat.value != null }
+    }
+
     @Test fun singleProfileKeepsInformationAndContactEntriesUsableWithoutPresetControls() {
         val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
         compose.activity.viewModelStore.put("personal-test", model)

@@ -20,6 +20,8 @@ import org.robolectric.annotation.*
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.testAppModel
+import com.kigtts.next.i18n.LocalUiLocale
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.Destination
 import org.json.JSONObject
 import com.kigtts.next.CardPrintCoordinatorTest
@@ -88,21 +90,26 @@ class ProfileTilesUiTest {
     }
 
     @Test fun rectangularQrUsesTheRemainingSpaceAndOpensPreview() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
         val wide = ProfileTile(id = "wide", kind = ProfileTileKind.QR, title = "横向标题", text = "https://example.invalid/wide", columns = 3)
         val tall = wide.copy(id = "tall", title = "竖向标题", columns = 1, rows = 2)
+        val wideCode = app.uiCopy("profile.contact_qr", "name" to wide.title, locale = "zh-CN")
+        val tallCode = app.uiCopy("profile.contact_qr", "name" to tall.title, locale = "zh-CN")
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.DARK)) {
-            ProfileTileBoard(listOf(wide, tall), emptyList(), { null }, Modifier.width(360.dp))
+            CompositionLocalProvider(LocalUiLocale provides "zh-CN") {
+                ProfileTileBoard(listOf(wide, tall), emptyList(), { null }, Modifier.width(360.dp))
+            }
         } }
         compose.waitUntil(5000) {
-            compose.onAllNodes(hasContentDescription("横向标题 二维码"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() &&
-                compose.onAllNodes(hasContentDescription("竖向标题 二维码"), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+            compose.onAllNodes(hasContentDescription(wideCode), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() &&
+                compose.onAllNodes(hasContentDescription(tallCode), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
         }
-        val horizontalCode = compose.onNodeWithContentDescription("横向标题 二维码", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val verticalCode = compose.onNodeWithContentDescription("竖向标题 二维码", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val horizontalCode = compose.onNodeWithContentDescription(wideCode, useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val verticalCode = compose.onNodeWithContentDescription(tallCode, useUnmergedTree = true).getUnclippedBoundsInRoot()
         assertTrue(compose.onNodeWithText("横向标题", useUnmergedTree = true).getUnclippedBoundsInRoot().left >= horizontalCode.right)
         assertTrue(compose.onNodeWithText("竖向标题", useUnmergedTree = true).getUnclippedBoundsInRoot().top >= verticalCode.bottom)
         compose.onNodeWithTag("profile-tile/wide").performClick()
-        compose.onNodeWithText("复制内容").assertIsDisplayed()
+        compose.onNodeWithText(app.uiCopy("profile.copy_contents", locale = "zh-CN")).assertIsDisplayed()
     }
 
     @Test fun shareFormatsPutLongImageAboveTheTwoFilesAndPersistTheSourceSwitch() {

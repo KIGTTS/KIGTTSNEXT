@@ -42,7 +42,7 @@ internal object PolaroidRenderer {
         val canvas=Canvas(result);canvas.drawColor(paperColor);val paint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val imageArea=RectF((geometry.photoLeft*unit).toFloat(),(geometry.photoTop*unit).toFloat(),
             (geometry.photoRight*unit).toFloat(),(geometry.photoBottom*unit).toFloat())
-        val radius=(frame.photoCornerRadius*width).toFloat()
+        val radius=if(card.frameStyleId=="identity.banner") 0f else (frame.photoCornerRadius*width).toFloat()
         val photoPath=Path().apply {addRoundRect(imageArea,radius,radius,Path.Direction.CW)}
         val watermark = PhotoFrameSpec.from(card.frameStyleId)?.watermark?.takeIf { options.includeFrame }
         val glassStyle = watermark?.takeIf { it.palette == WatermarkPalette.GLASS && card.imageId != null }

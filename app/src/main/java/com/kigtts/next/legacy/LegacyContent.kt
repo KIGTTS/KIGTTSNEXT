@@ -11,7 +11,7 @@ internal data class LegacyGroup(val id: String, val title: String, val icon: Str
 internal data class LegacyCard(val id: String, val title: String, val note: String, val color: Long,
     val image: File?, val landscape: Boolean, val qr: String)
 internal data class LegacyContent(val format: String, val groups: List<LegacyGroup> = emptyList(),
-    val cards: List<LegacyCard> = emptyList(), val warnings: List<String> = emptyList()) {
+    val cards: List<LegacyCard> = emptyList(), val warnings: List<String> = emptyList(), val cardPackage: Boolean = false) {
     fun validate(): LegacyContent {
         val items = groups.flatMap { it.items }
         require(groups.size <= 128 && items.size <= 10000 && cards.size <= 256) { "内容过多，请分批导入" }
@@ -38,7 +38,7 @@ internal object LegacyContentDecoder {
         return when (type) {
             "quick_subtitle" -> LegacyContent("旧版快捷文本包", groups(root, false, resource))
             "soundboard" -> LegacyContent("旧版音效包", groups(root, true, resource))
-            "kigtts_quick_cards" -> LegacyContent("旧版名片包", cards = cards(root, resource))
+            "kigtts_quick_cards" -> LegacyContent("旧版名片包", cards = cards(root, resource), cardPackage = true)
             "kigtts_config_backup" -> {
                 val values = requireNotNull(preferences) { "备份缺少 preferences.json" }.getJSONArray("entries")
                 require(values.length() <= 4096) { "备份设置数量过多" }

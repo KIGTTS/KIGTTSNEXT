@@ -2,15 +2,22 @@ package com.kigtts.next.identity
 
 import android.graphics.*
 import com.kigtts.next.cards.*
+import com.kigtts.next.i18n.uiCopy
 import java.io.File
+
+internal fun renderIdentityCover(identity: IdentityCard, stickers: StickerRepository, background: Bitmap, height: Int): Bitmap {
+    val card = requireNotNull(stickers.identityDesigns.get(identity.designId))
+    val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+    return PolaroidRenderer.renderBitmap(stickers, card, maximumHeight = height,
+        beforeLayers = { canvas, pixels -> canvas.drawBitmap(background, null, Rect(0, 0, pixels.width, pixels.height), paint) })
+}
 
 /** Identity overlays are also drawn into the shared image, not just the settings preview. */
 internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerRepository, directory: File,
-    includeContactButtons: Boolean = true, typeface: ((Int) -> Typeface)? = null, textScale: Float = 1f): File {
+    includeContactButtons: Boolean = true): File {
     val card = requireNotNull(stickers.identityDesigns.get(identity.designId))
     val background = kotlinx.coroutines.runBlocking { stickers.identityBackgrounds.load(card, identity, 720) }
-    val bitmap = PolaroidRenderer.renderBitmap(stickers, card, maximumHeight = 720,
-        beforeLayers = { canvas, pixels -> canvas.drawBitmap(background, null, Rect(0, 0, pixels.width, pixels.height), Paint(Paint.FILTER_BITMAP_FLAG)) })
+    val bitmap = renderIdentityCover(identity, stickers, background, 720)
     try {
         val canvas = Canvas(bitmap); val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         val width = bitmap.width.toFloat(); val height = bitmap.height.toFloat()
@@ -27,9 +34,9 @@ internal fun exportIdentityCard(identity: IdentityCard, stickers: StickerReposit
         paint.color = identityInk(background)
         if (includeContactButtons) drawIdentityContacts(canvas, identity, stickers, height)
         paint.setShadowLayer(height * .006f, 0f, height * .002f, 0x88000000.toInt())
-        paint.textSize = height * .07f * textScale; paint.typeface = typeface?.invoke(700) ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText(identity.nickname.ifBlank { "KIGTTS 用户" }, x + size + 24, y + size * .4f, paint)
-        paint.typeface = typeface?.invoke(400) ?: Typeface.DEFAULT; paint.textSize = height * .038f * textScale
+        paint.textSize = height * .07f; paint.typeface = Typeface.DEFAULT_BOLD
+        canvas.drawText(identity.nickname.ifBlank { stickers.context.uiCopy("profile.export_user") }, x + size + 24, y + size * .4f, paint)
+        paint.typeface = Typeface.DEFAULT; paint.textSize = height * .038f
         canvas.drawText(identity.bio.take(60), x + size + 24, y + size * .82f, paint)
         return File(directory, "identity-${identity.id}.png").also { file -> file.outputStream().use { check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
     } finally { bitmap.recycle() }

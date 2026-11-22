@@ -13,7 +13,7 @@ import com.kigtts.next.sharing.faceWebTheme
 import java.net.URI
 
 internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images: Set<Int>,
-    exportTheme: WebTheme = WebThemeState.current): String {
+    exportTheme: WebTheme = WebThemeState.current, coverIsBackground: Boolean = false): String {
     fun copy(key: String, vararg arguments: Pair<String, String>) = context.uiCopy(key, *arguments)
     fun htmlCopy(key: String) = copy(key).html()
     val locale = UiLanguageStore(context).load().substringBefore("-x-")
@@ -35,7 +35,9 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
     }
     return buildString {
         append("<!doctype html><html lang=\"$locale\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"no-referrer\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https://kigtts.invalid; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\"><title>$name · ${htmlCopy("profile.export_title")}</title><style>${theme.css()}$css</style>")
-        append("<body><main id=\"home\"><header><div class=\"eyebrow\">KIGTTS · ${htmlCopy("profile.export_title")}</div><h1 class=\"sr\">$name</h1><div class=\"cover-wrap\"><img class=\"cover\" src=\"cover.jpg\" alt=\"$name：${identity.bio.html()}\">")
+        append("<body><main id=\"home\"><header><div class=\"eyebrow\">KIGTTS · ${htmlCopy("profile.export_title")}</div>")
+        if (!coverIsBackground) append("<h1 class=\"sr\">$name</h1>")
+        append("<div class=\"cover-wrap\"><img class=\"cover\" src=\"cover.jpg\" alt=\"$name：${identity.bio.html()}\">")
         if (identity.contacts.isNotEmpty()) {
             append("<div class=\"cover-shortcuts\" aria-label=\"${htmlCopy("profile.export_contact_shortcuts")}\">")
             identity.contacts.take(5).forEach { contact(it, iconOnly = true) }
@@ -49,7 +51,12 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
             }
             append("</div>")
         }
-        append("</div></header>")
+        append("</div>")
+        if (coverIsBackground) {
+            append("<h1>$name</h1>")
+            if (identity.bio.isNotBlank()) append("<p>${identity.bio.html()}</p>")
+        }
+        append("</header>")
         if (identity.tags.isNotEmpty()) append("<ul class=\"tags\">${identity.tags.joinToString("") { "<li>${it.html()}</li>" }}</ul>")
         val placements = packProfileTiles(identity.tiles.take(24))
         val rowCount = placements.maxOfOrNull { it.row + it.tile.rows } ?: 0

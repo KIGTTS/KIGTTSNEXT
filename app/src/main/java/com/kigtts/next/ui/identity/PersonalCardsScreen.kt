@@ -3,6 +3,7 @@ package com.kigtts.next.ui.identity
 import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.i18n.uiText
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalUriHandler
@@ -29,9 +31,12 @@ import org.json.JSONObject
 internal fun PersonalInformationEntry(model: AppViewModel) {
     val items by model.identities.items.collectAsStateWithLifecycle()
     val current = items.firstOrNull()
-    Surface(onClick = feedbackClick { model.navigate(Destination.PersonalCards) }, shape = MaterialTheme.shapes.extraLarge,
-        color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth().testTag("personal-information")) {
-        if (current != null) PersonalCardView(current, model.stickers, Modifier.fillMaxWidth())
+    val open = { model.navigate(Destination.PersonalCards) }
+    val entry = Modifier.fillMaxWidth().testTag("personal-information")
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = if (current == null) entry.clickable(onClick = feedbackClick(open)) else Modifier.fillMaxWidth()) {
+        if (current != null) PersonalCardView(current, model.stickers, entry, shape = RectangleShape, onOpen = open,
+            onLongClick = { model.sharing.shareMedia(listOf(current.designId)) })
         else ListItem(headlineContent = { Text(uiText("nav.profile")) }, supportingContent = { Text(uiText("profile.setup_hint")) },
             leadingContent = { Icon(Icons.Default.AccountCircle, null, Modifier.size(40.dp)) },
             colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.primaryContainer))

@@ -86,6 +86,7 @@ internal fun AppViewModel.overlayLink(intent: Intent?) {
             "camera" -> cardCapture.open(systemCamera = false)
             "cards" -> openSidePage(SidePage.CARDS)
             "sketch" -> openSidePage(SidePage.SKETCH)
+            "personal-card" -> { closeSidePage(); navigate(Destination.PersonalCards) }
             "quick-text" -> { navigate(Destination.Home); openPanel(HomePanel.QUICK_TEXT) }
             "listen" -> toggleListening()
             "caption-window" -> openCaptionWindow()

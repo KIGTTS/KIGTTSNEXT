@@ -7,6 +7,8 @@ import android.os.Environment
 import android.provider.OpenableColumns
 import com.kigtts.next.identity.ProfileArchive
 import com.kigtts.next.identity.ProfileLongCardRestore
+import com.kigtts.next.legacy.LegacyArchive
+import com.kigtts.next.legacy.LegacyContactCards
 import com.kigtts.next.ui.plugins.PendingPackage
 import com.kigtts.next.ui.plugins.inspectPackage
 import com.kigtts.plugin.api.*
@@ -72,10 +74,12 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     val photo = fileMime in setOf("image/png", "image/jpeg") ||
                         name.substringAfterLast('.', "").lowercase() in setOf("png", "jpg", "jpeg")
                     val profileFile = !voiceOnly && (archive || photo || profileOnly)
+                    val legacyCardName = name.endsWith(".kigcard", ignoreCase = true)
                     requireNotNull(context.contentResolver.openInputStream(uri)) { "无法读取文件，请重新打开" }.use { input ->
                         file.outputStream().use { output ->
                             val limit = when {
                                 archive -> ProfileArchive.MAX_BYTES
+                                profileOnly && legacyCardName -> LegacyArchive.MAX_BYTES
                                 profileFile -> ProfileLongCardRestore.MAX_BYTES
                                 else -> 2L * 1024 * 1024 * 1024
                             }
@@ -85,15 +89,26 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     }
                     val image = profileFile && ProfileLongCardRestore.imageFile(file)
                     val kind = if (image) ExternalFileType.UNKNOWN else ExternalFileTypes.inspect(file, name)
+                    val legacyCard = kind == ExternalFileType.LEGACY_BACKUP && (profileOnly || legacyCardName)
                     require(!voiceOnly || kind.isVoice) { "无法识别此语音包，请选择由受支持的语音引擎导出的语音包" }
-                    require(!profileFile || image || kind == ExternalFileType.PROFILE_ARCHIVE) { "没有找到可恢复的 KIGTTS 名片数据" }
+                    require(!profileFile || image || legacyCard || kind == ExternalFileType.PROFILE_ARCHIVE) { "没有找到可恢复的 KIGTTS 名片数据" }
                     require(kind != ExternalFileType.UNKNOWN || image) { "不支持此文件，请选择 KIGTTS 备份、语音包或插件包" }
-                    if (kind == ExternalFileType.PROFILE_ARCHIVE || image) {
+                    if (kind == ExternalFileType.PROFILE_ARCHIVE || image || legacyCard) {
                         val scratch = File(file.parentFile, "${file.nameWithoutExtension}-profile")
                         try {
-                            if (image) requireNotNull(ProfileLongCardRestore.restore(file, scratch, model.contactFavorites)) {
-                                "这张图没有可恢复的 KIGTTS 名片数据"
-                            } else ProfileArchive.restore(file, scratch, model.contactFavorites)
+                            when {
+                                image -> requireNotNull(ProfileLongCardRestore.restore(file, scratch, model.contactFavorites)) {
+                                    "这张图没有可恢复的 KIGTTS 名片数据"
+                                }
+                                legacyCard -> {
+                                    val content = LegacyArchive.read(file, scratch)
+                                    require(content.cardPackage && content.cards.isNotEmpty()) {
+                                        model.hostCopy("backup.legacy_card_invalid")
+                                    }
+                                    LegacyContactCards(context).restore(content.cards)
+                                }
+                                else -> ProfileArchive.restore(file, scratch, model.contactFavorites)
+                            }
                         }
                         finally { scratch.deleteRecursively() }
                         null

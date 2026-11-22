@@ -78,8 +78,10 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
     val captionInk = if (darkPaper) Color(0xFFDDDDDD) else Color(0xFF4A4A4A)
     val haptics = rememberUpdatedState(LocalHapticFeedback.current)
     val elevation by animateDpAsState(if (transforming) 10.dp else 3.dp, label = "polaroid-elevation")
+    val identityBanner = card.frameStyleId == "identity.banner"
+    val photoRadius = if (identityBanner) 0.0 else frame?.photoCornerRadius ?: 0.0
     Surface(modifier.sharedPolaroidPhoto(card.id).aspectRatio(geometry.aspectRatio.toFloat()).onSizeChanged { size = it }.testTag("polaroid/" + card.id),
-        shape = RoundedCornerShape(if (com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId) != null) 0.dp else 6.dp), color = paper, shadowElevation = paperElevation ?: elevation) {
+        shape = RoundedCornerShape(if (identityBanner || com.kigtts.next.cards.PhotoFrameSpec.from(card.frameStyleId) != null) 0.dp else 6.dp), color = paper, shadowElevation = paperElevation ?: elevation) {
         BoxWithConstraints(Modifier.fillMaxSize().then(if (editable && selectedLayer != null) Modifier.pointerInput(card.id) {
             awaitEachGesture {
                 awaitFirstDown(requireUnconsumed = false)
@@ -126,7 +128,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
             }
             val image = rememberCardPhotoStyle(source, card.imageId.orEmpty(), card.photoStyle, imageFile)
             Box(Modifier.offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))
-                .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * (frame?.photoCornerRadius ?: 0.0).toFloat()))
+                .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight)).clip(RoundedCornerShape(width * photoRadius.toFloat()))
                 .then(if (editable) Modifier.clickable(onClick = feedbackClick { select.value(null) }) else Modifier),
                 contentAlignment = Alignment.Center) {
                 if (photoContent != null || image != null || !com.kigtts.next.cards.isFullPhotoPaper(card)) CardPhotoBackground(card, image, photoEditable && selectedLayer == null, onPhotoChange, onPhotoEnd, Modifier.fillMaxSize(), photoContent)
@@ -152,7 +154,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 .offset(x = paperLength(geometry.photoLeft), y = paperLength(geometry.photoTop))
                 .width(paperLength(geometry.photoWidth)).height(paperLength(geometry.photoHeight))
                 .border(width * frame.borderWidth.toFloat(), Color(requireNotNull(frame.borderColor)),
-                    RoundedCornerShape(width * frame.photoCornerRadius.toFloat())))
+                    RoundedCornerShape(width * photoRadius.toFloat())))
             frame?.overlayImageId?.let { imageId ->
                 rememberCardImage(imageFile(imageId), cardImageDecodeSize(maxOf(canvasWidthPx, canvasHeightPx) * viewScale, decodeMaximum))?.let { overlay ->
                     Image(overlay, null, Modifier.fillMaxSize().drawWithContent {

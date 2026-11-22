@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -20,16 +21,23 @@ import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.identity.IdentityCard
 import com.kigtts.next.ui.cards.PolaroidCanvas
 import com.kigtts.next.ui.cards.rememberCardImage
+import com.kigtts.next.ui.components.feedbackClick
 
 @Composable
 internal fun PersonalCardView(identity: IdentityCard, stickers: StickerRepository, modifier: Modifier = Modifier, interactive: Boolean = true,
-    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}, onLongClick: (() -> Unit)? = null) {
+    editing: Boolean = false, editInformation: () -> Unit = {}, editBackground: () -> Unit = {}, onLongClick: (() -> Unit)? = null,
+    shape: Shape = RoundedCornerShape(24.dp), onOpen: (() -> Unit)? = null) {
     val designs by stickers.identityDesigns.items.collectAsState()
     val card = designs.firstOrNull { it.id == identity.designId }
-    Surface(modifier.aspectRatio(16f / 9f).then(if (editing) Modifier.clickable(onClickLabel = "编辑名片背景",
-        onClick = com.kigtts.next.ui.components.feedbackClick(editBackground)) else onLongClick?.let { action -> Modifier.combinedClickable(
-            onClick = {}, onLongClick = com.kigtts.next.ui.components.feedbackClick(action)) } ?: Modifier),
-        shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+    val interaction = when {
+        editing -> Modifier.clickable(onClickLabel = "编辑名片背景", onClick = feedbackClick(editBackground))
+        onLongClick != null -> Modifier.combinedClickable(onClick = onOpen?.let { feedbackClick(it) } ?: {},
+            onLongClick = feedbackClick(onLongClick))
+        onOpen != null -> Modifier.clickable(onClick = feedbackClick(onOpen))
+        else -> Modifier
+    }
+    Surface(modifier.aspectRatio(16f / 9f).then(interaction),
+        shape = shape, color = MaterialTheme.colorScheme.primaryContainer) {
         BoxWithConstraints {
             val height = with(LocalDensity.current) { maxHeight.roundToPx() }
             val pixels = card?.let { rememberIdentityBackground(it, identity, stickers, height) }

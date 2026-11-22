@@ -10,6 +10,16 @@ import java.security.MessageDigest
 
 internal data class SavedContact(val id: String, val profile: String, val savedAt: Long, val cover: File?)
 
+internal fun profileCoverAspect(profile: JSONObject): Float =
+    (profile.opt("coverAspect") as? Number)?.toFloat()?.takeIf { it in .25f..4f } ?: 16f / 9f
+
+internal fun copyProfileCoverMetadata(source: JSONObject, target: JSONObject) {
+    for (key in listOf("coverButtonsBaked", "coverIsBackground")) {
+        (source.opt(key) as? Boolean)?.let { target.put(key, it) }
+    }
+    (source.opt("coverAspect") as? Number)?.toDouble()?.takeIf { it in .25..4.0 }?.let { target.put("coverAspect", it) }
+}
+
 /** Independent snapshots; ending a sharing session never revokes a saved contact. */
 internal class ContactFavorites private constructor(context: Context) {
     private val root = File(context.filesDir, "contact-favorites").apply { mkdirs() }
@@ -33,7 +43,8 @@ internal class ContactFavorites private constructor(context: Context) {
     }
     @Synchronized fun save(profile: JSONObject, cover: File? = null, images: Map<String, File> = emptyMap()): SavedContact {
         val id = key(profile)
-        require(mutable.value.size < 1000 || mutable.value.any { it.id == id }) { "收藏夹已满，请先整理名片" }
+        val existing = mutable.value.firstOrNull { it.id == id }
+        require(mutable.value.size < 1000 || existing != null) { "收藏夹已满，请先整理名片" }
         val snapshot = PublicIdentityProfile.from(profile).json()
         val tiles = profileTiles(snapshot).map { tile -> images[tile.id]?.let { file ->
             require(file.length() in 1..20_000_000)
@@ -45,11 +56,13 @@ internal class ContactFavorites private constructor(context: Context) {
         } ?: tile }
         snapshot.put("tiles", profileTileJson(tiles))
         profile.optString("identityId").take(128).takeIf(String::isNotBlank)?.let { snapshot.put("identityId", it) }
-        (profile.opt("coverButtonsBaked") as? Boolean)?.let { snapshot.put("coverButtonsBaked", it) }
+        val newCover = cover?.takeIf(File::isFile)
+        val coverMetadata = if (newCover == null && existing?.cover?.isFile == true) JSONObject(existing.profile) else profile
+        copyProfileCoverMetadata(coverMetadata, snapshot)
         val now = System.currentTimeMillis()
-        if (cover?.isFile == true) {
-            require(cover.length() in 1..20_000_000) { "名片图片过大" }
-            write(File(root, "$id.jpg"), cover.readBytes())
+        if (newCover != null) {
+            require(newCover.length() in 1..20_000_000) { "名片图片过大" }
+            write(File(root, "$id.jpg"), newCover.readBytes())
         }
         write(File(root, "$id.json"), JSONObject().put("profile", snapshot).put("savedAt", now).toString().toByteArray(Charsets.UTF_8))
         val item = SavedContact(id, snapshot.toString(), now, File(root, "$id.jpg").takeIf(File::isFile))

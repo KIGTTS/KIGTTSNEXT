@@ -45,7 +45,7 @@ internal object OfflineProfileData {
         return PublicIdentityProfile.from(typed).json().apply {
             val identity = typed.optString("identityId").take(128)
             if (identity.isNotBlank()) put("identityId", identity)
-            (source.opt("coverButtonsBaked") as? Boolean)?.let { put("coverButtonsBaked", it) }
+            copyProfileCoverMetadata(source, this)
         }
     }
 

@@ -1,5 +1,6 @@
 package com.kigtts.next.identity
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.media.WebTheme
@@ -27,9 +28,8 @@ internal object ProfileArchive {
     private val ascii = Charsets.US_ASCII
 
     fun write(identity: IdentityCard, stickers: StickerRepository, directory: File,
-        theme: WebTheme = WebThemeState.current): File {
+        theme: WebTheme = WebThemeState.current, coverBackground: Bitmap? = null): File {
         directory.mkdirs()
-        val cover = exportIdentityCard(identity, stickers, directory, includeContactButtons = false)
         val images = identity.tiles.take(24).mapIndexedNotNull { index, tile ->
             if (tile.kind != ProfileTileKind.IMAGE) return@mapIndexedNotNull null
             val source = profileImageFile(stickers, tile.image) ?: return@mapIndexedNotNull null
@@ -37,16 +37,21 @@ internal object ProfileArchive {
             output.takeIf { writeProfileJpeg(source, it) && it.length() <= MAX_IMAGE }?.let { index to it }
         }.toMap()
         val coverJpeg = File(directory, "cover.jpg")
-        check(writeProfileJpeg(cover, coverJpeg) && coverJpeg.length() <= MAX_IMAGE) { "未能生成名片封面" }
+        val coverWritten = if (coverBackground == null) {
+            val cover = exportIdentityCard(identity, stickers, directory, includeContactButtons = false)
+            writeProfileJpeg(cover, coverJpeg)
+        } else coverJpeg.outputStream().use { coverBackground.compress(Bitmap.CompressFormat.JPEG, 88, it) }
+        check(coverWritten && coverJpeg.length() <= MAX_IMAGE) { "未能生成名片封面" }
         val profile = PublicIdentityProfile.from(identity.publicJson()).let {
             it.copy(avatar = identity.avatar?.let(stickers::imageFile)?.let(::faceAvatarData),
                 tiles = it.tiles.map { tile -> tile.copy(image = "") })
         }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
+        if (coverBackground != null) profile.put("coverIsBackground", true)
         val index = JSONObject()
         identity.tiles.take(24).forEachIndexed { i, tile -> images[i]?.let { index.put(it.name, tile.id) } }
         val metadata = JSONObject().put("profile", profile).put("images", index).toString().toByteArray(Charsets.UTF_8)
         require(metadata.size <= MAX_JSON) { "名片内容过多" }
-        val html = profileArchiveHtml(identity, stickers.context, images.keys, theme).toByteArray(Charsets.UTF_8)
+        val html = profileArchiveHtml(identity, stickers.context, images.keys, theme, coverBackground != null).toByteArray(Charsets.UTF_8)
         return File(directory, "profile.mhtml").also { file ->
             file.outputStream().buffered().use { output ->
                 val boundary = "kigtts-${UUID.randomUUID()}"

@@ -4,6 +4,8 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Rect
+import com.kigtts.next.sharing.faceAvatarData
+import org.json.JSONArray
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -43,41 +45,55 @@ internal object ProfileLongCardRestore {
             known.remove("avatar")
             val tiles = profileTiles(known)
             known.put("tiles", profileTileJson(tiles.map { it.copy(image = "") }))
-            val cover = data.optJSONArray("cover")?.takeIf { it.length() == 4 }?.let {
-                val scale = width.toDouble() / ProfileGrayCode.WIDTH
-                val rect = Rect((it.optInt(0) * scale).roundToInt(), (it.optInt(1) * scale).roundToInt(),
-                    (it.optInt(2) * scale).roundToInt(), (it.optInt(3) * scale).roundToInt())
-                if (rect.left !in 0 until rect.right || rect.right > width || rect.top !in 0 until rect.bottom ||
-                    rect.bottom > height || rect.height() > width * 2) return@let null
-                val bitmap = runCatching { decoder.decodeRegion(rect, options(if (rect.width() > 1600) 2 else 1)) }.getOrNull() ?: return@let null
-                try {
-                    File(directory, "crop.jpg").takeIf { target ->
-                        target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 88, it) } && target.length() <= 2 * 1024 * 1024
-                    }
-                } finally { bitmap.recycle() }
+            val coverBounds = decoder.bounds(data.optJSONArray("cover"))
+            val cover = coverBounds?.let { decoder.saveCrop(it, File(directory, "crop.jpg")) }
+            if (known.optBoolean("coverIsBackground") && coverBounds != null) {
+                val avatarBounds = decoder.bounds(data.optJSONArray("avatarCrop"))
+                if (avatarBounds != null && avatarBounds.top >= coverBounds.bottom && avatarBounds.width() <= width / 3 &&
+                    kotlin.math.abs(avatarBounds.width() - avatarBounds.height()) <= 1) {
+                    runCatching {
+                        decoder.decodeRegion(avatarBounds, options())?.let { bitmap ->
+                            try { faceAvatarData(bitmap) } finally { bitmap.recycle() }
+                        }
+                    }.getOrNull()?.let { known.put("avatar", it) }
+                }
             }
             val photos = linkedMapOf<String, File>()
             data.optJSONArray("tileCrops")?.let { crops ->
-                for (index in 0 until crops.length()) {
+                for (index in 0 until minOf(crops.length(), 24)) {
                     val item = crops.optJSONObject(index) ?: continue
-                    val id = item.optString("id").takeIf(String::isNotBlank) ?: continue
+                    val id = item.opt("id") as? String ?: continue
                     val tile = tiles.firstOrNull { it.id == id && it.kind == ProfileTileKind.IMAGE } ?: continue
-                    val scale = width.toDouble() / ProfileGrayCode.WIDTH
-                    val rect = Rect((item.optInt("left") * scale).roundToInt(), (item.optInt("top") * scale).roundToInt(),
-                        (item.optInt("right") * scale).roundToInt(), (item.optInt("bottom") * scale).roundToInt())
-                    if (rect.left !in 0 until rect.right || rect.right > width || rect.top !in 0 until rect.bottom || rect.bottom > height ||
-                        rect.width() > width || rect.height() > width * 2) continue
-                    val bitmap = runCatching { decoder.decodeRegion(rect, options(if (rect.width() > 1600) 2 else 1)) }.getOrNull() ?: continue
-                    try {
-                        val target = File(directory, "tile-$index.jpg")
-                        if (target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 88, it) } && target.length() <= 2 * 1024 * 1024) {
-                            photos[tile.id] = target
-                        } else target.delete()
-                    } finally { bitmap.recycle() }
+                    val rect = decoder.bounds(item.opt("left"), item.opt("top"), item.opt("right"), item.opt("bottom")) ?: continue
+                    decoder.saveCrop(rect, File(directory, "tile-$index.jpg"))?.let { photos[tile.id] = it }
                 }
             }
             return favorites.save(known, cover, photos)
         } finally { decoder.recycle() }
+    }
+
+    private fun BitmapRegionDecoder.bounds(value: JSONArray?): Rect? = value?.takeIf { it.length() == 4 }
+        ?.let { bounds(it.opt(0), it.opt(1), it.opt(2), it.opt(3)) }
+
+    private fun BitmapRegionDecoder.bounds(l: Any?, t: Any?, r: Any?, b: Any?): Rect? {
+        val scale = width.toDouble() / ProfileGrayCode.WIDTH
+        fun coordinate(value: Any?, limit: Int): Int? = (value as? Int)?.times(scale)
+            ?.takeIf { it >= 0 && it <= limit + .5 }?.roundToInt()?.takeIf { it <= limit }
+        val rect = Rect(coordinate(l, width) ?: return null, coordinate(t, height) ?: return null,
+            coordinate(r, width) ?: return null, coordinate(b, height) ?: return null)
+        return rect.takeIf { !it.isEmpty && it.height() <= width * 2 }
+    }
+
+    private fun BitmapRegionDecoder.saveCrop(rect: Rect, target: File): File? {
+        var sample = 1
+        while (maxOf(rect.width(), rect.height()) / sample > 1600) sample *= 2
+        val bitmap = runCatching { decodeRegion(rect, options(sample)) }.getOrNull() ?: return null
+        try {
+            if (target.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 88, it) } &&
+                target.length() in 1..(2L * 1024 * 1024)) return target
+            target.delete()
+            return null
+        } finally { bitmap.recycle() }
     }
 
     private fun options(sample: Int = 1) = BitmapFactory.Options().apply {

@@ -2,7 +2,7 @@ package com.kigtts.next.legacy
 
 import android.content.Context
 import android.net.Uri
-import com.kigtts.next.cards.CardRepository
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.state.QuickTextLibrary
 import kotlinx.coroutines.*
@@ -12,8 +12,8 @@ import java.io.File
 import java.util.UUID
 
 internal class LegacyImportController(private val context: Context, library: QuickTextLibrary, media: MediaRepository,
-    cards: CardRepository, private val scope: CoroutineScope, private val notify: (String) -> Unit) {
-    private val migration = LegacyMigration(library, media, cards)
+    private val scope: CoroutineScope, private val notify: (String) -> Unit) {
+    private val migration = LegacyMigration(library, media, context)
     private val prepared = MutableStateFlow<LegacyContent?>(null)
     private val running = MutableStateFlow(false)
     val preview = prepared.asStateFlow()
@@ -45,8 +45,9 @@ internal class LegacyImportController(private val context: Context, library: Qui
         running.value = true
         scope.launch {
             try {
-                val (phrases, photos) = migration.apply(value)
-                notify(if (phrases + photos == 0) "这些内容已经导入" else "已导入 $phrases 条快捷文本、$photos 张拍立得")
+                val (phrases, cards) = migration.apply(value)
+                notify(if (phrases + cards == 0) context.uiCopy("backup.legacy_already_imported") else
+                    context.uiCopy("backup.legacy_imported", "entries" to phrases.toString(), "cards" to cards.toString()))
                 discard()
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { notify(error.message ?: "导入失败，可重试") }
@@ -68,9 +69,9 @@ internal class LegacyImportController(private val context: Context, library: Qui
         scope.launch {
             try {
                 val content = OriginalPreferences.read(context, source)
-                val (phrases, photos) = migration.apply(content)
+                val (phrases, cards) = migration.apply(content)
                 check(preferences.edit().putBoolean("completed-v1", true).commit())
-                if (phrases + photos > 0) notify("已迁移旧版快捷文本、音效和名片，原文件已保留")
+                if (phrases + cards > 0) notify(context.uiCopy("backup.legacy_imported", "entries" to phrases.toString(), "cards" to cards.toString()))
             } catch (cancel: CancellationException) { throw cancel }
             catch (error: Exception) { notify("旧版数据未迁移完成，可在备份与还原中导入：${error.message}") }
             finally { running.value = false }

@@ -1,15 +1,17 @@
 package com.kigtts.next.identity
 
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Rect
 import android.graphics.RectF
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.i18n.uiCopy
+import com.kigtts.next.media.MediaBitmapDecoder
 import com.kigtts.next.media.WebTheme
 import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeSettingsStore
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -62,9 +64,21 @@ internal object ProfileLongImage {
         appearance: ThemeSettings = ThemeSettingsStore(stickers.context).load(), theme: WebTheme = WebThemeState.current): File {
         directory.mkdirs()
         val style = ProfileLongStyle(stickers.context, appearance, theme)
-        val file = exportIdentityCard(identity, stickers, directory, includeContactButtons = false,
-            typeface = style::face, textScale = style.fontScale)
-        val banner = checkNotNull(BitmapFactory.decodeFile(file.path)) { "无法读取名片封面" }
+        val card = requireNotNull(stickers.identityDesigns.get(identity.designId))
+        val height = WIDTH * 9 / 16
+        val background = runBlocking { stickers.identityBackgrounds.load(card, identity, height) }
+        val banner = renderIdentityCover(identity, stickers, background, height)
+        try {
+            val avatar = identity.avatar?.let(stickers::imageFile)?.let { MediaBitmapDecoder.decode(it, 512) }
+            try { return write(identity, stickers, directory, embedSource, style, theme, banner, avatar) }
+            finally { avatar?.recycle() }
+        } finally { banner.recycle() }
+    }
+
+    private fun write(identity: IdentityCard, stickers: StickerRepository, directory: File, embedSource: Boolean,
+        style: ProfileLongStyle, theme: WebTheme, banner: Bitmap, avatar: Bitmap?): File {
+        val header = ProfileLongHeader(identity, style, banner, avatar, WIDTH, PAD)
+        fun Rect.crop() = JSONArray(listOf(left, top, right, bottom))
         val paint = style.paint
         val radius = style.radius
         val sections = mutableListOf<Pair<Int, (Canvas, Int) -> Unit>>()
@@ -73,16 +87,10 @@ internal object ProfileLongImage {
             val text = style.layout(value, size, color, INNER, 3, if (bold) 600 else 400)
             sections += (text.height + 18) to { c, y -> style.text(c, text, PAD.toFloat(), y.toFloat()) }
         }
-        val headerHeight = (INNER * banner.height.toFloat() / banner.width).toInt().coerceIn(1, INNER)
-        sections += (headerHeight + 20) to { c, y ->
-            val rect = RectF(PAD.toFloat(), y.toFloat(), (WIDTH - PAD).toFloat(), (y + headerHeight).toFloat())
-            val clip = android.graphics.Path().apply { addRoundRect(rect, radius, radius, android.graphics.Path.Direction.CW) }
-            c.save(); c.clipPath(clip); c.drawBitmap(banner, null, rect, paint); c.restore()
-        }
         val tags = ProfileLongTags(identity.tags, style, INNER)
         if (tags.height > 0) sections += (tags.height + 22) to { c, y -> tags.draw(c, PAD, y) }
         val tiles = ProfileLongTiles(identity, INNER, style, stickers)
-        val tilesTop = sections.sumOf { it.first } + PAD
+        val tilesTop = sections.sumOf { it.first } + header.height
         if (tiles.height > 0) sections += (tiles.height + 28) to { c, y -> tiles.draw(c, PAD, y) }
         val tileCrops = JSONArray().also { array ->
             tiles.imageRects(PAD, tilesTop).forEach { (id, rect) ->
@@ -92,11 +100,11 @@ internal object ProfileLongImage {
         }
         val publicProfile = PublicIdentityProfile.from(identity.publicJson()).let {
             it.copy(avatar = null, tiles = it.tiles.map { tile -> tile.copy(image = "") })
-        }.json().put("identityId", identity.id).put("coverButtonsBaked", false)
-        val restoreCode = ProfileGrayCode.encode(JSONObject().put("profile", publicProfile)
-            .put("cover", JSONArray(listOf(PAD, PAD, WIDTH - PAD, PAD + headerHeight)))
-            .put("tileCrops", tileCrops).toString())
-        val fadeEdge = sections.sumOf { it.first } + PAD
+        }.json().put("identityId", identity.id).put("coverButtonsBaked", false).put("coverIsBackground", true)
+        val payload = JSONObject().put("profile", publicProfile).put("cover", header.coverRect.crop()).put("tileCrops", tileCrops)
+        header.avatarRect?.let { payload.put("avatarCrop", it.crop()) }
+        val restoreCode = ProfileGrayCode.encode(payload.toString())
+        val fadeEdge = sections.sumOf { it.first } + header.height
         val links = links(identity, stickers.context.uiCopy("profile.link_label"), stickers.context.uiCopy("profile.qr_label"))
         if (links.isNotEmpty()) label(stickers.context.uiCopy("profile.links_and_qr"), 34f, style.ink, true)
         links.forEach { entry ->
@@ -120,27 +128,24 @@ internal object ProfileLongImage {
                 style.text(c, body, x.toFloat(), (textTop + title.height + 8).toFloat())
             }
         }
-        val wordmarkTop = sections.sumOf { it.first } + PAD + 16
+        val wordmarkTop = sections.sumOf { it.first } + header.height + 16
         val height = wordmarkTop + PROFILE_WORDMARK_HEIGHT + restoreCode.height
+        require(height in 1..21_000) { "名片内容过多，无法生成长图" }
+        val image = Bitmap.createBitmap(WIDTH, height, Bitmap.Config.ARGB_8888)
+        val png = File(directory, "profile-long.png")
         try {
-            require(height in 1..21_000) { "名片内容过多，无法生成长图" }
-            val image = Bitmap.createBitmap(WIDTH, height, Bitmap.Config.ARGB_8888)
-            try {
-                val canvas = Canvas(image)
-                style.backdrop(canvas, WIDTH, (fadeEdge - 160).coerceAtLeast(0), fadeEdge)
-                var y = PAD
-                sections.forEach { (height, draw) -> draw(canvas, y); y += height }
-                val accent = if (identity.gradient) identity.gradientColor.toInt() else style.primary
-                drawProfileWordmark(canvas, wordmarkTop, style)
-                restoreCode.draw(canvas, height, accent)
-                val png = File(directory, "profile-long.png").also { output ->
-                    output.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
-                }
-                if (!embedSource) return png
-                image.recycle()
-                val archive = ProfileArchive.write(identity, stickers, File(directory, "source"), theme)
-                return File(directory, "profile-with-source.png").also { ProfilePngPayload.embed(png, archive, it) }
-            } finally { if (!image.isRecycled) image.recycle() }
-        } finally { banner.recycle() }
+            val canvas = Canvas(image)
+            style.backdrop(canvas, WIDTH, (fadeEdge - 160).coerceAtLeast(0), fadeEdge)
+            header.draw(canvas)
+            var y = header.height
+            sections.forEach { (height, draw) -> draw(canvas, y); y += height }
+            val accent = if (identity.gradient) identity.gradientColor.toInt() else style.primary
+            drawProfileWordmark(canvas, wordmarkTop, style)
+            restoreCode.draw(canvas, height, accent)
+            png.outputStream().use { check(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        } finally { image.recycle() }
+        if (!embedSource) return png
+        val archive = ProfileArchive.write(identity, stickers, File(directory, "source"), theme, coverBackground = banner)
+        return File(directory, "profile-with-source.png").also { ProfilePngPayload.embed(png, archive, it) }
     }
 }

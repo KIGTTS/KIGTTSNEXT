@@ -17,6 +17,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.ContactFavorites
+import com.kigtts.next.identity.profileCoverAspect
 import com.kigtts.next.sharing.FacePeerAvatar
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
@@ -53,17 +54,22 @@ import kotlinx.coroutines.*
                     Surface(onClick = feedbackClick { open(item.id) }, shape = MaterialTheme.shapes.extraLarge,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth().testTag("favorite-card/${item.id}")) {
-                        if (item.cover != null) ProfileTileImage(item.cover, Modifier.fillMaxWidth().aspectRatio(16f / 9), "${person.name}的名片")
-                        else Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            FacePeerAvatar(person.avatar, Modifier.size(56.dp), person.avatarFrame)
-                            Column(Modifier.weight(1f)) {
-                                Text(person.name, style = MaterialTheme.typography.titleMedium)
-                                Text(person.tags.joinToString(" · ").ifBlank { person.bio }, maxLines = 2,
-                                    style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Column {
+                            item.cover?.let { cover -> ProfileTileImage(cover, Modifier.fillMaxWidth().aspectRatio(profileCoverAspect(entry.profile)),
+                                uiText("accessibility.card_cover", "name" to person.name)) }
+                            if (item.cover == null || entry.profile.optBoolean("coverIsBackground")) {
+                                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    FacePeerAvatar(person.avatar, Modifier.size(56.dp), person.avatarFrame)
+                                    Column(Modifier.weight(1f)) {
+                                        Text(person.name, style = MaterialTheme.typography.titleMedium)
+                                        Text(person.tags.joinToString(" · ").ifBlank { person.bio }, maxLines = 2,
+                                            style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, null)
+                                }
                             }
-                            Icon(Icons.Default.ChevronRight, null)
                         }
                     }
                 }

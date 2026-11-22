@@ -63,7 +63,7 @@ class OfflineProfileTest {
             assertEquals(person.contacts, restored.contacts)
             assertEquals("中文二维码", restored.tiles[1].text)
             assertTrue(added.cover?.isFile == true)
-            assertTrue(requireNotNull(favorites.image(restored.tiles.first().image)).isFile)
+            assertTrue(favorites.image(restored.tiles.first().image)?.isFile == true)
             val partial = File(temporary.root, "partial.mhtml").apply {
                 writeText(file.readText().replace("Content-Type: image/jpeg\r\nContent-Location: https://kigtts.invalid/tile-0.jpg",
                     "Content-Type: image/svg+xml\r\nContent-Location: https://kigtts.invalid/tile-0.jpg"))
@@ -72,6 +72,9 @@ class OfflineProfileTest {
             assertEquals(added.id, partialImport.id)
             assertTrue(PublicIdentityProfile.from(JSONObject(partialImport.profile)).tiles.first().image.isEmpty())
             assertEquals(1, favorites.items.value.count { it.id == added.id })
+            val retained = favorites.save(JSONObject(partialImport.profile).put("coverIsBackground", true))
+            assertEquals(added.cover, retained.cover)
+            assertFalse(JSONObject(retained.profile).optBoolean("coverIsBackground"))
             val outside = File(temporary.root, "outside.mhtml").apply { writeText("MIME-Version: 1.0\r\n\r\n<script>throw 1;</script>") }
             assertEquals(ExternalFileType.UNKNOWN, ExternalFileTypes.inspect(outside, "outside.mhtml"))
         } finally { favorites.remove(added.id) }
@@ -101,7 +104,7 @@ class OfflineProfileTest {
         } finally { image.recycle() }
     }
 
-    @Test fun longImageRestoresFromColorStripAfterRecompressionAndKeepsPhotosOnlyWithEmbeddedSource() {
+    @Test fun fullWidthSquareCoverAndSeparateAvatarRestoreAfterRecompressionAndWithEmbeddedSource() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = testAppModel(app)
         val photo = File(temporary.root, "tile.png")
@@ -111,7 +114,8 @@ class OfflineProfileTest {
             bitmap.recycle()
         }
         val design = model.identities.create()
-        val person = design.copy(nickname = "可以还原的长图", gradient = true, gradientColor = 0xff7346ab,
+        val person = design.copy(nickname = "可以还原的长图", bio = "独立的签名", avatar = model.stickers.importResource(photo).id,
+            gradient = true, gradientColor = 0xff7346ab,
             contacts = listOf(ContactLink("首页", "https://example.org")), tiles = listOf(
                 ProfileTile(kind = ProfileTileKind.IMAGE, title = "源图片", image = model.stickers.importResource(photo).id),
                 ProfileTile(kind = ProfileTileKind.TEXT, title = "介绍", text = "离线资料与中文内容")))
@@ -119,8 +123,20 @@ class OfflineProfileTest {
         assertFalse(ProfilePngPayload.extract(naked, File(temporary.root, "no-data.mhtml")))
         val jpeg = File(temporary.root, "compressed.jpg")
         val bitmap = BitmapFactory.decodeFile(naked.path)
-        // The flattened preview retains the photo, even when original image data is not embedded.
-        assertEquals(0xff2284dd.toInt(), bitmap.getPixel(200, 570))
+        val metadata = grayMetadata(bitmap)
+        val cover = metadata.getJSONArray("cover")
+        assertEquals(0, cover.getInt(0))
+        assertEquals(0, cover.getInt(1))
+        assertEquals(bitmap.width, cover.getInt(2))
+        assertEquals(bitmap.getPixel(36, 0), bitmap.getPixel(0, 0))
+        assertEquals(bitmap.getPixel(bitmap.width - 36, 0), bitmap.getPixel(bitmap.width - 1, 0))
+        val avatar = metadata.getJSONArray("avatarCrop")
+        assertTrue(avatar.getInt(1) > cover.getInt(3))
+        assertEquals(156, avatar.getInt(2) - avatar.getInt(0))
+        assertEquals(0xff2284dd.toInt(), bitmap.getPixel(avatar.getInt(0) + 50, avatar.getInt(1) + 50))
+        val tile = metadata.getJSONArray("tileCrops").getJSONObject(0)
+        assertEquals(0xff2284dd.toInt(), bitmap.getPixel(
+            (tile.getInt("left") + tile.getInt("right")) / 2, (tile.getInt("top") + tile.getInt("bottom")) / 2))
         // Both sides and the bottom are occupied by the same four-level pattern.
         fun lastCell(x: Int) = bitmap.getPixel(x, bitmap.height - 1)
         assertEquals(lastCell(36 + (192 - 9) * 4), lastCell(0))
@@ -135,6 +151,9 @@ class OfflineProfileTest {
         try {
             val cropped = PublicIdentityProfile.from(JSONObject(imported.profile))
             assertEquals(person.nickname, cropped.name)
+            assertEquals(person.bio, cropped.bio)
+            assertNotNull(cropped.avatar)
+            assertTrue(JSONObject(imported.profile).getBoolean("coverIsBackground"))
             assertEquals("离线资料与中文内容", cropped.tiles[1].text)
             assertTrue(imported.cover?.isFile == true)
             assertTrue(cropped.tiles.first().image.isNotEmpty())
@@ -143,6 +162,8 @@ class OfflineProfileTest {
             assertTrue(ProfilePngPayload.extract(complete, File(temporary.root, "data.mhtml")))
             val restored = requireNotNull(ProfileLongCardRestore.restore(complete, temporary.newFolder("restored"), favorites))
             assertEquals(imported.id, restored.id)
+            assertTrue(JSONObject(restored.profile).getBoolean("coverIsBackground"))
+            assertNotNull(PublicIdentityProfile.from(JSONObject(restored.profile)).avatar)
             assertTrue(favorites.image(PublicIdentityProfile.from(JSONObject(restored.profile)).tiles.first().image)?.isFile == true)
         } finally { favorites.remove(imported.id) }
     }
@@ -177,7 +198,7 @@ class OfflineProfileTest {
         }
     }
 
-    @Test fun longImageUsesActiveVariableFontForBothCoverAndTiles() {
+    @Test fun longImageUsesActiveVariableFontForBothIdentityRowAndTiles() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         val model = testAppModel(app)
         val font = File(temporary.root, "export-font.ttf")
@@ -196,12 +217,21 @@ class OfflineProfileTest {
             fun pixels(bitmap: Bitmap, top: Int, rows: Int) = IntArray(bitmap.width * rows).also {
                 bitmap.getPixels(it, 0, bitmap.width, 0, top, bitmap.width, rows)
             }
-            // Export geometry: 16:9 cover at y=32, followed by the first tile at y=488.
-            assertFalse("Cover did not use the selected weight", pixels(light, 300, 145).contentEquals(pixels(heavy, 300, 145)))
-            assertFalse("Tile did not use the selected weight", pixels(light, 488, 150).contentEquals(pixels(heavy, 488, 150)))
+            val coverBottom = grayMetadata(light).getJSONArray("cover").getInt(3)
+            assertArrayEquals(pixels(light, 0, coverBottom), pixels(heavy, 0, coverBottom))
+            assertFalse("Identity row did not use the selected weight",
+                pixels(light, coverBottom + 32, 156).contentEquals(pixels(heavy, coverBottom + 32, 156)))
+            val tileTop = coverBottom + 156 + 64
+            assertFalse("Tile did not use the selected weight", pixels(light, tileTop, 150).contentEquals(pixels(heavy, tileTop, 150)))
             heavyFile.copyTo(File(File("build/previews").apply { mkdirs() }, "profile-long-wordmark.png"), overwrite = true)
         } finally { light.recycle(); heavy.recycle() }
     }
+
+    private fun grayMetadata(bitmap: Bitmap): JSONObject = JSONObject(requireNotNull(
+        ProfileGrayCode.decode(bitmap.width, bitmap.height) { band ->
+            Bitmap.createBitmap(bitmap, 0, bitmap.height - band, bitmap.width, band)
+        }
+    ))
 }
 
 /** The standard Robolectric region shadow returns a solid empty bitmap. */

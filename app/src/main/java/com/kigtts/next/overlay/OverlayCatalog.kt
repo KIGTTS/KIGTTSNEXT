@@ -83,6 +83,7 @@ internal fun resolveOverlayShortcuts(saved: List<OverlayShortcut>, candidates: L
     }
 
 internal fun overlayBuiltInChoices() = defaultOverlayShortcuts().map { it.copy(category = "页面") } + listOf(
+    OverlayShortcut("personal-card", "个人名片", "contact_page", "personal-card", category = "页面"),
     OverlayShortcut("listen", "开启或停止聆听", "hearing", "listen", category = "操作"),
     OverlayShortcut("caption-window", "打开字幕浮窗", "open_in_new", "caption-window", category = "操作"),
     OverlayShortcut("speak", "朗读字幕", "volume_up", "speak", category = "操作"),

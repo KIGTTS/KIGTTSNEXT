@@ -1,7 +1,11 @@
 package com.kigtts.next.overlay
 
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.uiCopy
+import com.kigtts.next.state.Destination
+import com.kigtts.next.testAppModel
 import com.kigtts.plugin.api.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -11,6 +15,17 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class OverlayCatalogTest {
+    @Test fun personalCardShortcutUsesTheLocalizedTitleAndOpensTheCardPage() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val model = testAppModel(app)
+        val item = overlayBuiltInChoices().single { it.id == "personal-card" }
+        assertEquals("个人名片", item.localizedTitle { app.uiCopy(it, locale = "zh-CN") })
+        val intent = OverlayLaunch.intent(app, item)
+        model.overlayLink(intent)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertEquals(Destination.PersonalCards, model.state.value.destination)
+        assertNull(OverlayLaunch.consume(intent))
+    }
     @Test fun hidingAToolbarButtonDoesNotDisableItsSavedAutomationShortcut() {
         val entry = OverlayShortcut("plugin:agent:action:open", "助手", "smart_toy", "action", owner = "agent", publisher = "key", action = "open", enabled = false)
         val ui = PluginContributions(automationActions = listOf("open"), settingsEntries = listOf(

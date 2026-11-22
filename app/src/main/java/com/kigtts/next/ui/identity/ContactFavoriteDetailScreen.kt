@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.ContactFavorites
 import com.kigtts.next.identity.ContactLink
+import com.kigtts.next.identity.profileCoverAspect
 import com.kigtts.next.sharing.FaceProfileContent
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
@@ -44,7 +45,8 @@ import kotlinx.coroutines.*
         if (details != null) Column(Modifier.fillMaxWidth().testTag("favorite-details/$id"),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             FavoriteCover(details)
-            FaceProfileContent(details.profile, showHeader = details.item.cover == null, image = store::image)
+            FaceProfileContent(details.profile,
+                showHeader = details.item.cover == null || details.profile.optBoolean("coverIsBackground"), image = store::image)
         } else EmptyContent(item == null, Icons.Default.ContactPage, uiText("profile.removed"))
     }
     if (removing && details != null) MotionAlertDialog({ removing = false }, title = { Text(uiText("profile.remove.ask")) },
@@ -62,13 +64,14 @@ import kotlinx.coroutines.*
     val file = entry.item.cover ?: return
     var contact by remember { mutableStateOf<ContactLink?>(null) }
     val links = entry.person.contacts
-    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(16f / 9).clip(MaterialTheme.shapes.extraLarge)) {
+    val aspect = profileCoverAspect(entry.profile)
+    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(aspect).clip(MaterialTheme.shapes.extraLarge)) {
         ProfileTileImage(file, Modifier.matchParentSize(), uiText("accessibility.card_cover", "name" to entry.person.name))
         if (!entry.profile.optBoolean("coverButtonsBaked", true)) {
             PersonalContactButtons(links, true, { contact = it }, Modifier.padding(8.dp))
         } else if (links.isNotEmpty()) {
             // Older archives painted buttons into the cover. Keep the artwork and layer the hit targets over it.
-            val height = maxWidth * (9f / 16f)
+            val height = maxWidth / aspect
             val edge = height * (.085f * 32f / 22f)
             Row(Modifier.padding(start = height * .04f, top = height * .04f), horizontalArrangement = Arrangement.spacedBy(edge * .125f)) {
                 val buttons = links.take(5) + links.drop(5).take(1)
