@@ -60,7 +60,13 @@ open class PluginWorkerService : Service() {
             val libraries = abi?.let { File(directory, "lib/$it").absolutePath }
             val loader = DexClassLoader(dex.joinToString(File.pathSeparator) { it.absolutePath },
                 File(paths.storage(pluginId).temporary, "dex").apply { mkdirs() }.absolutePath, libraries, classLoader)
-            val instance = loader.loadClass(manifest.entryClass).getDeclaredConstructor().newInstance() as KigPlugin
+            val entry = loader.loadClass(manifest.entryClass)
+            val instance = if (manifest.entryClass == "com.kigtts.engines.lua.LuaPackagedPlugin") {
+                val descriptor = PluginDescriptor(manifest.id, manifest.name, "", manifest.version,
+                    manifest.apiVersion, license = manifest.license)
+                entry.getDeclaredConstructor(String::class.java).newInstance(
+                    PluginJson.encodeToString(PluginDescriptor.serializer(), descriptor)) as KigPlugin
+            } else entry.getDeclaredConstructor().newInstance() as KigPlugin
             installedDescriptor = packageDescriptor(instance.descriptor, manifest)
             plugin = instance
             try {

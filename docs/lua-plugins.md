@@ -1,14 +1,14 @@
-# 独立插件编辑器与 Lua 工具
+# Lua 插件的开发和分发
 
-插件编辑器是独立的 `runtime.lua` 插件。0.9.3 按原生 API 34 构建，并增加界面语言支持。
-LuaJ 3.0.1 与编辑器实现只存在于外置包，主程序提供原生页面、文件列表和能力接口。
-`.kigplugin` 仍是需要发行者签名的 Android DEX 插件；`.kiglua` 是由此编辑器管理的 Lua 源项目，不是 APK。
+插件编辑器由实验性功能启用。新建时选择 Lua 或原生项目。Lua 项目可修改名称、图标和源码，点击「构建并启用调试」后，构建成功的插件直接出现在插件列表并带有「插件开发」标签。
+
+Lua 和 Java/Kotlin 使用相同的签名 `.kigplugin` 包、安装确认、权限管理、启停、更新和卸载。Lua 包自带运行时，编辑器关闭时仍能安装、使用和更新。商店目录统一使用 `format: NATIVE`，沿用相同发布者和插件 ID 更新，并递增 `versionCode`。
 
 ## 源包格式
 
-`.kiglua` 是 ZIP，根目录含 `manifest.json`、`main.lua`，可选 `assets/` 目录。
+开发源码以 ZIP 导入编辑器，根目录含 `manifest.json`、`main.lua`，可选 `assets/`。原有编辑器项目保留，可直接重新构建发布包。
 Agent 可以把相同目录通过 `AppCommand.DeliverResource("runtime.lua", resource, "import")` 交给编辑器。
-目录或 ZIP 会进入编辑器自己的 Appdata，用户检查代码与权限后点击“安装并启用”才执行。
+目录或 ZIP 会进入编辑器自己的 Appdata，检查后保存为项目。发布包不包含编辑器里的项目数据或签名私钥。
 导入、语法检查和检查页面不会执行 Lua。更新保留数据，权限变化同样需要重新确认。
 自动化只能调用明确导出的 `import`，不能调用确认、启用、删除或脚本动作。
 
@@ -22,7 +22,7 @@ Agent 可以把相同目录通过 `AppCommand.DeliverResource("runtime.lua", res
 ```
 
 ID 为小写字母开头，只含小写字母、数字、点或短横线，最长 64 字符；名称 1–64 字符，版本 1–32 字符。
-权限仅支持 `app-control`、`quick-text-read`、`quick-text-write`，默认空。
+申请能力使用 SDK 名称。可声明主程序操作、快捷文本、图库和贴纸、网络、悬浮窗、通知、语音合成和识别、语音包管理。用 `permissionPurposes` 声明请求用途。插件运行数据由主程序按插件 ID 存储，升级时沿用。
 源代码为 UTF-8，最大 256 KiB，不接受字节码。整个项目最多 128 个文件/目录、16 MiB，单项资源最大 8 MiB。
 禁止绝对路径、反斜线、`..`、外部链接和大小写重复文件名。根目录不能夹带其它可执行资源。
 
@@ -36,12 +36,12 @@ appdata/Kigtts/plugin/plugindata/runtime.lua/
   staging/<uuid>/...          # 等待用户检查的版本
   imports/...                # 系统文件选择器导入
   inbox/...                  # Agent 或其它插件交付
-  exports/<id>.kiglua
+  exports/<id>-<versionCode>.kigplugin
 ```
 
 ## 编辑和文件管理
 
-“插件编辑器”提供项目列表、启停、导入、导出和测试。打开项目的“项目文件”可以浏览目录、多选、批量导入资源、移动、重命名、新建文件夹/文本文件及删除。
+“插件编辑器”提供项目列表、导入、调试构建、导出和测试。打开项目的“项目文件”可以浏览目录、多选、批量导入资源、移动、重命名、新建文件夹/文本文件及删除。
 删除工具或文件都有二次确认。`main.lua` 和 `manifest.json` 受保护，不能移动、重命名或删除。
 资产只能放入 `assets/`，移动先检查全部目标，目标冲突时保持原文件。
 文件列表由宿主通用原生组件显示，多选状态保留行高，视觉、按压和转场使用宿主主题。
@@ -54,7 +54,7 @@ appdata/Kigtts/plugin/plugindata/runtime.lua/
 
 ## Lua 合同
 
-入口返回一个表。`contributions(ctx)`、`pages(ctx)`、`execute(action, ctx)` 可以返回 Lua 数据表或 JSON 字符串。
+入口返回一个表。`contributions(ctx)`、`pages(ctx)`、`execute(action, ctx)` 可以返回 Lua 数据表或 JSON 字符串。简单项目可使用下文的简写；需要 SDK 的完整页面块、入口和操作时，返回 `{sdk = ...}`，值遵循原生 `PluginContributions`、`List<PluginPage>` 或 `PluginOutcome` 的 JSON 序列化合同。空数组可通过 JSON 字符串明确表达。资源用 `host.asset.path(relative)` 或 `host.path(relative)` 取得插件内相对路径。
 这三类返回值只能含 JSON 数据，不能包含函数、userdata、循环表或无限 UI 树。
 每次调用使用新的全局环境；跨调用状态使用 `host.data.read/write`。
 页面和按钮先缓存，宿主绘制时不执行 Lua，也不重播整个条目列表的入场动画。
@@ -137,7 +137,7 @@ local saved = host.data.read("settings.json")
 local html = host.asset.read("index.html")
 ```
 
-`host.app` 需 `app-control`。`plugin-action` 和 `deliver-resource` 不对 Lua 开放，避免运行脚本绕过安装审核。
+`host.app` 与原生插件共用同一个权限代理。悬浮窗、通知分别需声明对应能力，主程序操作需 `app-control`。跨插件调用遵循对方声明的入口和宿主审核。
 `host.quick` 读取需 `quick-text-read`，写入/资源发布/导入导出需 `quick-text-write`；事务继续使用 prepare→review→commit，宿主确认不会被跳过。
 
 `host.stickers(command)` 使用 SDK `StickerCommand` / `StickerReply`，提供图库、贴纸与拍立得名片读写、排序、图片副本及快捷文本图片双向转换。manifest 需声明 `stickers-read` / `stickers-write`；涉及快捷文本图片还需对应 `quick-text-read/write`。资源只允许本项目 `data/`、`assets/`，副本使用 `exports/` 或 `tmp/`（运行时转入本项目独立 data）。页面刷新只能查询；删除仍需原生审核。完整字段与限制见 [图库与名片接口](stickers-api.md)。
@@ -145,7 +145,15 @@ local html = host.asset.read("index.html")
 运行时转换到当前工具的实际路径；导出和 get-file 的 destination 自动写入本工具 `data/`。
 `host.data.read/write` 是每工具独立的文本存储，单项 64 KiB、最多 128 文件、总共 4 MiB。
 `host.asset.read` 只读自身资产文本，单次 256 KiB。网页与媒体可通过正式 QuickTextBroker 发布，不提供直接 WebView 或未经审核的宿主回调。
-`contributions/pages/test` 的 host 操作只读；实际写入仅在明确点击的 `execute` 中可用。
+`contributions/pages/test` 的 host 操作只读，运行中的动作和语音回调可写。声明 `network` 并获得授权后，`host.download(url, relative, sha256)` 下载 HTTPS 资源，`host.http({url, method, headers, body, bodyPath, output})` 可发请求并读取状态和正文。响应较大时传 `output` 保存到插件数据目录。
+
+## 语音接口
+
+- `engines(ctx)` 返回 `{tts = TtsInfo, asr = AsrInfo}`。按实际能力声明 `tts`、`asr-batch`、`asr-segmented`、`asr-incremental`。由原生朗读、识别设置读取引擎配置。
+- `synthesize(job, ctx)` 接收 `job.request` 和独立的 `job.output`，写入小端 16 位 PCM 后返回 `{format={sampleRate=16000, channels=1}, notice=...}`。宿主分块读取输出。可选 `tts_control` 和 `voice_command` 使用 SDK 的 `TtsControl`、`VoiceCommand`，语音包管理需 `voice-packs`。
+- `recognize(job, ctx)` 读取 `job.input` 的 PCM 和 `job.format`，返回 `RecognitionResult`。`recognize_stream(job, ctx)` 每帧接收 Base64 `job.pcm` 和上次返回的 `state`，返回 `{state=..., events=...}`。结束时收到 `eof=true`，可提交最后一句。可选 `asr_control` 接收 `AsrControl`，返回是否处理。
+- `host.binary.read(path, offset, count)`、`host.binary.write(path, base64, append)` 使用当前插件数据目录，每块最大 64 KiB。`host.speech` 与 `host.recognition` 支持声明服务能力的插件查询其它引擎、发送控制命令和调用合成或批量识别。
+- 直接调用 Android Context、JVM/NDK 库或需要保持原生模型常驻的项目使用 Java/Kotlin 插件。
 
 ## 运行约束与验证
 

@@ -169,13 +169,14 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         loaded.remove(id)
         registry.replace(builtins + loaded.values.map { it.second })
     }
-    suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false) = mutation.withLock {
+    suspend fun install(file: File, publisher: String, allowVersionChange: Boolean = false,
+        development: Boolean = false) = mutation.withLock {
         val id = withContext(Dispatchers.IO) { packages.inspect(file).manifest.id }
         require(!isPackagePaused(id)) { "此插件暂不可用" }
         require(id !in builtinIds) { "此功能已内置，请在软件设置中使用" }
         require(id !in bundledIds) { "此功能已内置，请在软件设置中使用" }
         unload(id)
-        try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange) } }
+        try { withContext(Dispatchers.IO) { packages.install(file, publisher, allowVersionChange, development) } }
         finally { reloadLocked() }
     }
     suspend fun enable(id: String, enabled: Boolean) = mutation.withLock {
@@ -194,6 +195,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
     }
     suspend fun importResource(id: String, directory: String, name: String, zip: Boolean,
         open: () -> java.io.InputStream): String = mutation.withLock {
+        require(id != "runtime.lua" || !name.endsWith(".kiglua", ignoreCase = true)) { "Choose a Lua source ZIP or a signed .kigplugin" }
         // User-picked attachments are staged atomically in the caller's inbox. Keep live
         // chat workers and queued conversations attached while copying new inputs.
         if (directory == "imports" || directory.startsWith("imports/"))

@@ -66,7 +66,7 @@ signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 
 原生运行时为 android-dex。API8 及更早的包须同发布者升级为 API9；更新保留原模型与配置，不应通过卸载升级模型引擎。插件不能在安装时添加 Activity、Service 或 Android 资源 ID，界面通过公共协议由宿主 MD3e 组件渲染。
 
-Lua `.kiglua` 由独立 [插件编辑器](lua-plugins.md) 导入、审核与执行；商店分发使用额外的清单 hash 与 RSA 签名。手动导入的普通 Lua 源 ZIP 不等于商店签名包。Python 运行时尚未实现。Java/Kotlin 源码项目可由 [原生构建扩展](native-builder.md) 生成 `.kigplugin`，不把编译器装进主 APK。模板、发布源 Schema 与签名辅助脚本见独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
+Lua 源码 ZIP 由 [插件编辑器](lua-plugins.md) 管理，发布时生成自带 Lua 运行时的签名 `.kigplugin`。Java/Kotlin 项目可由 [原生构建扩展](native-builder.md) 生成同格式包。商店和主程序用同一套签名、依赖和升级规则。模板、发布源 Schema 与签名脚本见 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 
 ## 安装与生命周期
 

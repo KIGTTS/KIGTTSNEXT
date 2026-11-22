@@ -1366,5 +1366,6 @@
   "accessibility.current_icon": "当前图标：{name}",
   "accessibility.group_icon": "分组图标：{name}",
   "profile.export_title": "个人主页",
-  "accessibility.undo": "撤销"
+  "accessibility.undo": "撤销",
+  "plugin.dev_tag": "插件开发"
 }

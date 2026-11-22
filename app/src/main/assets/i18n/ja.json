@@ -1366,5 +1366,6 @@
   "accessibility.current_icon": "現在のアイコン：{name}",
   "accessibility.group_icon": "グループアイコン：{name}",
   "profile.export_title": "プロフィール",
-  "accessibility.undo": "元に戻す"
+  "accessibility.undo": "元に戻す",
+  "plugin.dev_tag": "プラグイン開発"
 }

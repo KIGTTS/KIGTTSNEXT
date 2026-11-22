@@ -16,9 +16,10 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
                 PageAction("about/$id", "关于", PluginIcon.INFO),
                 PageAction("permissions/$runtime/${item.id}", "权限", PluginIcon.SETTINGS, symbol = "shield_locked"),
                 item.removeAction?.let { PageAction("managed-remove/$runtime/${item.id}", "卸载", PluginIcon.CLOSE) })
+            val tags = if (runtime == "runtime.lua" && item.removeAction == null) listOf(model.hostCopy("plugin.dev_tag")) else emptyList()
             return@map ManagementItem(id, item.name, "v${item.version} · Lua" + if (item.error.isNotBlank()) " · ${item.error}" else if (!item.enabled) " · 已停用" else "",
                 icon = PluginIcon.TEXT, primaryAction = primary?.id, actions = actions,
-                toggle = item.enableAction?.let { ManagementToggle(item.enabled, "managed/$runtime/$it") })
+                toggle = item.enableAction?.let { ManagementToggle(item.enabled, "managed/$runtime/$it") }, badges = tags)
         }
         val installed = external[id]; val plugin = model.registry.plugin(id)
         val name = installed?.installed?.manifest?.name ?: plugin!!.descriptor.name
@@ -34,7 +35,9 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val dependency = if (plugin != null && !model.registry.available(plugin)) " · 缺少依赖：语音识别服务" else ""
         ManagementItem(id, name, "v$version · " + (installed?.error ?: if (installed?.installed?.enabled == false) "已停用" else plugin?.descriptor?.description.orEmpty()) + availability + dependency,
             icon = if (plugin?.asr != null) PluginIcon.HEARING else if (plugin?.tts != null) PluginIcon.SPEAKER else PluginIcon.SETTINGS,
+            symbol = installed?.installed?.manifest?.icon?.symbol,
             primaryAction = page?.let { "page/$id/$it" }, actions = actions,
-            toggle = installed?.let { ManagementToggle(it.installed.enabled, "enable/$id") })
+            toggle = installed?.let { ManagementToggle(it.installed.enabled, "enable/$id") },
+            badges = if (installed?.installed?.development == true) listOf(model.hostCopy("plugin.dev_tag")) else emptyList())
     }
 }

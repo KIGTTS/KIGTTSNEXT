@@ -1,8 +1,8 @@
 # 原生构建扩展
 
-`tools.native-builder` 是独立的 API9/MIT `.kigplugin`，从插件编辑器的“Java 与 Kotlin”入口进入，也可从设置的“开发工具”进入。
+`tools.native-builder` 是独立签名的 MIT `.kigplugin`。从插件编辑器选择原生项目时，编辑器可下载目前的官方扩展，完成发布者确认后接着打开新建项目。
 主程序不携带任何编译器。扩展提供源码项目、文件管理、二级源码编辑、构建、签名、打包与分享。
-Lua 工具直接由插件编辑器运行；完整 `KigPlugin` 的 Java/Kotlin 源码由这个可选扩展构建成原生 `.kigplugin`，继续经过宿主的发行者/权限确认。
+Lua 和原生项目发布时使用同一签名包格式。原生项目由扩展构建，完成后可直接启用调试并在插件列表管理，也可导出供其他用户安装。
 
 ## 源码项目
 
@@ -46,7 +46,7 @@ SDK 含 Kotlin/JVM 默认方法，Java 实现可以只重写 `getDescriptor()` �
 
 ## Android 构建工具链
 
-第一次使用需要导入独立的 Android 兼容工具链。它是 ZIP/目录，不是主程序或 APK 升级。
+首次构建 Java 项目时，可以从构建扩展下载并确认官方工具链。Kotlin 项目需要提供可在 Android 上运行的 Kotlin 工具链。工具链使用单独的 ZIP 或目录。
 根 `toolchain.json` 例如：
 
 ```json

@@ -105,7 +105,7 @@ PluginPage.management 可返回 ManagementList。ManagementItem 以稳定 ID 描
 
 ## 当前运行方式
 
-外置原生 `.kigplugin` 使用 Android DEX 和可选 JNI；Lua `.kiglua` 由可选 `runtime.lua` 插件审核与运行，不是主程序内置脚本执行器。Python 运行时尚未实现。外置 Agent、Lua、商店、原生构建及其依赖不进入主 APK。
+Java/Kotlin 和 Lua 均使用签名 `.kigplugin`。签名 Lua 包带有自己的执行环境，按插件 ID 管理权限、页面和数据，不依赖插件编辑器。Lua 使用原生 UI、语音和宿主数据协议，直接访问 JVM、Android 或 JNI 时使用 Java/Kotlin。Python 运行时尚未实现。
 
 运行时有 100 个工作进程槽，每个启用的原生外置插件使用独立普通进程。原生进程共享 UID，属于崩溃隔离；Lua 的库/指令/资源限制也不是操作系统级权限沙盒。模板和包源 Schema 位于独立私有仓库 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 

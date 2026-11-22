@@ -21,6 +21,11 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
     val installed = remember(request) { mutableStateListOf<PackageInstallerInfo>() }
     val scope = rememberCoroutineScope()
     val copy = rememberUiCopy()
+    val builderAction = if (owner == "runtime.lua") when {
+        outcome.resource.path.startsWith("downloads/native-new/") -> "new"
+        outcome.resource.path.startsWith("downloads/native-open/") -> "open"
+        else -> null
+    } else null
     LaunchedEffect(request) {
         val copied = mutableListOf<PendingPackage>()
         try {
@@ -35,10 +40,39 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
                     catch (failure: Exception) { frozen.delete(); throw failure }
                 }
                 require(copied.map { it.preview.manifest.id }.distinct().size == copied.size) { copy("plugin.install_duplicates") }
+            }
+            val debug = owner in setOf("runtime.lua", "tools.native-builder") && outcome.dependencies.isEmpty() &&
+                outcome.resource.path.matches(Regex("debug-builds/[a-zA-Z0-9_.+-]+\\.kigplugin")) &&
+                (owner != "runtime.lua" || copied.single().preview.manifest.entryClass == "com.kigtts.engines.lua.LuaPackagedPlugin") &&
+                model.experimentalToolEnabled(com.kigtts.next.manager.ExperimentalTool.EDITOR) &&
+                model.pluginManager.status.any { status -> status.installed.let {
+                    it.manifest.id == owner && it.enabled && it.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER
+                } }
+            if (debug) {
+                val candidate = copied.single()
+                model.pluginManager.install(candidate.file, candidate.preview.publisherSha256, development = true)
+                model.refreshPlugins()
+                copied.forEach { it.file.delete() }
+                dismiss()
+                return@LaunchedEffect
+            }
+            val builder = copied.singleOrNull()?.preview?.takeIf { builderAction != null &&
+                it.manifest.id == "tools.native-builder" && it.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
+            val currentBuilder = builder?.let { withContext(Dispatchers.IO) { model.pluginManager.packages.installed(it.manifest.id) } }
+            if (builder != null && currentBuilder != null && !currentBuilder.enabled && currentBuilder.publisherSha256 == builder.publisherSha256 &&
+                currentBuilder.manifest.versionCode >= builder.manifest.versionCode) {
+                model.pluginManager.enable(currentBuilder.manifest.id, true)
+                model.refreshPlugins()
+                copied.forEach { it.file.delete() }
+                dismiss()
+                model.invoke(currentBuilder.manifest.id, requireNotNull(builderAction))
+                return@LaunchedEffect
+            }
+            withContext(Dispatchers.IO) {
                 val installed = model.pluginManager.packages.installed().associateBy { it.manifest.id }
                 copied.forEach { candidate -> installed[candidate.preview.manifest.id]?.let { old ->
                     require(old.publisherSha256 == candidate.preview.publisherSha256) { copy("plugin.update_publisher_mismatch") }
-                    require(candidate.preview.manifest.versionCode > old.manifest.versionCode || outcome.allowDowngrade && candidate.preview.manifest.versionCode != old.manifest.versionCode) { copy("plugin.installed_or_downgrade") }
+                    require(old.development || candidate.preview.manifest.versionCode > old.manifest.versionCode || outcome.allowDowngrade && candidate.preview.manifest.versionCode != old.manifest.versionCode) { copy("plugin.installed_or_downgrade") }
                 } }
             }
             candidates = withContext(Dispatchers.IO) {
@@ -68,6 +102,11 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
         }
     }, dismiss = {
         dismiss()
+        if (completed && builderAction != null && installed.any { it.manifest.id == "tools.native-builder" &&
+                it.candidate.preview.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }) {
+            model.invoke("tools.native-builder", builderAction)
+            return@PackageInstallerDialog
+        }
         // Installation is a modal overlay, so the underlying page does not receive a new visit.
         // Replay only its declared entry action to reconcile the install/cancel result immediately.
         val page = model.state.value.destination as? Destination.PluginPage

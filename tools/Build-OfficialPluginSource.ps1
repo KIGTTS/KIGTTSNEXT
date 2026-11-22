@@ -50,11 +50,15 @@ foreach ($item in $config) {
             $actual = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData((Read-ZipBytes $archive $property.Name))).ToLowerInvariant()
             if ($actual -ne $property.Value) { throw "Payload hash mismatch: $($spec.id)/$($property.Name)" }
         }
+        $mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
+        if ($item.githubTag) {
+            $mirrors += @{ name = 'GitHub Releases'; url = "https://github.com/KIGTTS/plugin-$($item.module)/releases/download/$($item.githubTag)/$($item.file)" }
+        }
         $release = [ordered]@{
             version = $spec.version; versionCode = $spec.versionCode; format = 'NATIVE'
             sha256 = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()
             bytes = (Get-Item -LiteralPath $file).Length; expectedPublisher = $expected
-            mirrors = @(@{ name = '魔搭官方源'; url = "$homepage/resolve/master/$($item.file)?view=false" })
+            mirrors = $mirrors
             apiVersion = $spec.apiVersion; minSdk = $spec.minSdk; abis = @($spec.abis)
             notes = if ($item.notes) { $item.notes } else { '暂无更新说明。' }
             dependencies = if ($spec.dependencies) { $spec.dependencies } elseif ($item.dependencies) { $item.dependencies } else { @{} }

@@ -25,4 +25,4 @@ data class PackageIcon(val symbol: String? = null, val path: String? = null) {
 }
 
 data class PackagePreview(val manifest: PackageManifest, val publisherSha256: String)
-data class InstalledPlugin(val manifest: PackageManifest, val publisherSha256: String, val enabled: Boolean)
+data class InstalledPlugin(val manifest: PackageManifest, val publisherSha256: String, val enabled: Boolean, val development: Boolean = false)

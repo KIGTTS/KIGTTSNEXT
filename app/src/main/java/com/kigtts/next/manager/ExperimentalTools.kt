@@ -6,7 +6,7 @@ import com.kigtts.plugin.runtime.BundledPlugin
 
 internal enum class ExperimentalTool(val id: String, val key: String, val versionCode: Int) {
     ASSISTANT("tools.cloud-agent", "assistant", 36),
-    EDITOR("runtime.lua", "editor", 10);
+    EDITOR("runtime.lua", "editor", 12);
 
     companion object {
         fun preferences(context: Context) = context.getSharedPreferences("experiments", Context.MODE_PRIVATE)

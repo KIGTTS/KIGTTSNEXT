@@ -1366,5 +1366,6 @@
   "accessibility.current_icon": "현재 아이콘: {name}",
   "accessibility.group_icon": "그룹 아이콘: {name}",
   "profile.export_title": "프로필",
-  "accessibility.undo": "실행 취소"
+  "accessibility.undo": "실행 취소",
+  "plugin.dev_tag": "플러그인 개발"
 }

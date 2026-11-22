@@ -9,13 +9,14 @@ internal object ScopedResourceDelivery {
     fun copy(sender: PluginStorage, recipient: PluginStorage, path: String): String {
         val source = sender.file(path)
         require(source.exists()) { "草稿不存在" }
+        require(source.isDirectory || !source.extension.equals("kiglua", ignoreCase = true)) { "Choose a Lua source ZIP" }
         val files = if (source.isDirectory) source.walkTopDown().toList() else listOf(source)
         require(files.size <= 256 && files.filter { it.isFile }.sumOf { it.length() } <= 16L * 1024 * 1024) { "资源过大，请减少文件" }
         val prefix = source.canonicalFile.toPath()
         files.forEach { file ->
             require(!java.nio.file.Files.isSymbolicLink(file.toPath()) && file.canonicalFile.toPath().startsWith(prefix)) { "资源包含外部链接" }
         }
-        val relative = "inbox/${UUID.randomUUID()}/" + if (source.isDirectory) "draft" else "package.kiglua"
+        val relative = "inbox/${UUID.randomUUID()}/" + if (source.isDirectory) "draft" else "project.zip"
         val target = recipient.file(relative)
         try {
             files.forEach { file ->

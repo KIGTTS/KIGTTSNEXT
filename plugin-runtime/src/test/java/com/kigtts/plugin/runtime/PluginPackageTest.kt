@@ -82,6 +82,24 @@ class PluginPackageTest {
             store.inspect(pack(icon = PackageIcon(path = "assets/icon.png"), artwork = mapOf("assets/icon.png" to ByteArray(1_048_577))))
         }
     }
+    @Test fun developmentPackageCanBeRebuiltButCannotOverwriteARelease() {
+        val first = pack(3)
+        val publisher = store.inspect(first).publisherSha256
+        store.install(first, publisher, development = true)
+        assertTrue(store.installed().single().development)
+        store.enabled("test.engine", false)
+        assertTrue(store.install(pack(3), publisher, development = true).enabled)
+        val foreign = pack(4, otherPublisher = true)
+        assertThrows(IllegalArgumentException::class.java) {
+            store.install(foreign, store.inspect(foreign).publisherSha256, development = true)
+        }
+        paths.storage("test.engine").file("state").writeText("kept")
+        store.install(pack(1), publisher)
+        assertFalse(store.installed().single().development)
+        assertEquals("kept", paths.storage("test.engine").file("state").readText())
+        assertThrows(IllegalArgumentException::class.java) { store.install(pack(4), publisher, development = true) }
+        assertEquals(1, store.verifyInstalled("test.engine").versionCode)
+    }
     @Test fun explicitlyReviewedVersionSwitchRetainsDataAndStillRejectsAnotherPublisher() {
         val first = pack(1); val latest = pack(3); val publisher = store.inspect(first).publisherSha256
         store.install(latest, publisher)

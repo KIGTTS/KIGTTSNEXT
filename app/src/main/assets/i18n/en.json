@@ -1366,5 +1366,6 @@
   "accessibility.current_icon": "Current icon: {name}",
   "accessibility.group_icon": "Group icon: {name}",
   "profile.export_title": "Profile",
-  "accessibility.undo": "Undo"
+  "accessibility.undo": "Undo",
+  "plugin.dev_tag": "Development"
 }

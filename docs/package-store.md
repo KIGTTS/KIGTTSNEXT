@@ -14,7 +14,7 @@
 
 相同包 ID 来自不同发布者、相同版本返回不同内容、范围冲突、缺包、循环或超长依赖链都会停止。若变更会破坏其它已安装包的已知依赖范围，也会要求调整版本或源。未知已安装包的依赖信息不会被编造；主程序实际插件依赖仍做最终检查。
 
-原生 `.kigplugin` 和独立 Lua `.kiglua` 是当前支持的两类包。原生前置链交给主程序一次检查与确认。Lua 先完成所需原生包安装，再把已经验签的源文件送到 Lua 运行时审核；只有其已批准项目出现在主程序 `managedPackages` 元数据中，商店才继续下一项。提交安装或 `accepted/pending` 不等于已安装，取消不会被自动重试。
+Java/Kotlin 和 Lua 的签名 `.kigplugin` 都在目录使用 `NATIVE`。商店下载并校验签名后，由主程序一次检查和确认依赖。旧目录中的 Lua 源码发布记录不会用于下载安装。已安装状态以主程序中实际安装的正式版本为准，取消安装后保留下载。
 
 ## 源格式
 
@@ -24,7 +24,7 @@
 | --- | --- |
 | `schemaVersion/id/name/packages` | 目录版本、稳定源 ID、显示名称与包列表 |
 | 包的 `id/name/summary/releases` | 必须匹配签名包的 ID、名称、说明与全部历史版本 |
-| `version/versionCode/format` | SemVer 名称、签名清单整数版本号，以及 `NATIVE`/`LUA` |
+| `version/versionCode/format` | SemVer 名称、签名清单整数版本号，以及 `NATIVE`/`RESOURCE` |
 | `sha256/bytes` | 最终下载 ZIP 的 SHA-256 与准确字节数；所有镜像必须一致 |
 | `expectedPublisher` | 包内 `signature/public.der` 的 SHA-256，不是发布者名称 |
 | `apiVersion/minSdk/abis` | 精确接口版本、最低 Android 版本与可用架构 |

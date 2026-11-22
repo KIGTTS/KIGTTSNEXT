@@ -66,6 +66,7 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                     manager.status.firstOrNull { it.installed.manifest.id == plugin.descriptor.id }?.installed?.let {
                         put("versionCode", it.manifest.versionCode); put("apiVersion", it.manifest.apiVersion)
                         put("installed", true); put("publisherSha256", it.publisherSha256)
+                        if (it.development) put("development", true)
                     }
                     put("actions", JsonArray(if (plugin.descriptor.id == owner) emptyList() else plugin.contributions.automationActions.map(::JsonPrimitive))) })
                 plugin.contributions.managedPackages.forEach { item -> add(buildJsonObject {
@@ -77,7 +78,8 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                     add(buildJsonObject { put("id", installed.manifest.id); put("name", installed.manifest.name)
                         put("version", installed.manifest.version); put("versionCode", installed.manifest.versionCode)
                         put("apiVersion", installed.manifest.apiVersion); put("kind", "native"); put("enabled", installed.enabled); put("installed", true)
-                        put("publisherSha256", installed.publisherSha256) })
+                        put("publisherSha256", installed.publisherSha256)
+                        if (installed.development) put("development", true) })
                 }
             })
         }

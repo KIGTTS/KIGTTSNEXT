@@ -18,27 +18,30 @@ class PluginPackageStore(val paths: PluginPaths) {
         val directory = paths.packageDirectory(id)
         val current = currentDirectory(id)
         val manifest = PluginJson.decodeFromString<PackageManifest>(File(current, MANIFEST).readText())
-        InstalledPlugin(manifest, File(directory, "publisher").readText().trim(), !File(directory, "disabled").exists())
+        val development = current.name.endsWith("-dev")
+        InstalledPlugin(manifest, File(directory, "publisher").readText().trim(), !File(directory, "disabled").exists(), development)
     }.getOrNull()
 
     fun currentDirectory(id: String): File {
         val root = paths.packageDirectory(id)
         val version = File(root, "current").readText().trim()
-        require(version.matches(Regex("v[0-9]+-[a-f0-9-]+")))
+        require(version.matches(Regex("v[0-9]+-[a-f0-9-]{36}(-dev)?")))
         return File(root, version).also { require(it.isDirectory) }
     }
 
-    @Synchronized fun install(file: File, trustedPublisher: String, allowVersionChange: Boolean = false): InstalledPlugin {
+    @Synchronized fun install(file: File, trustedPublisher: String, allowVersionChange: Boolean = false,
+        development: Boolean = false): InstalledPlugin {
         val preview = inspect(file)
         require(preview.publisherSha256 == trustedPublisher) { "发布者与确认内容不符" }
         val previous = installed().firstOrNull { it.manifest.id == preview.manifest.id }
         if (previous != null) {
             require(previous.publisherSha256 == preview.publisherSha256) { "更新包发布者签名不匹配" }
-            require(preview.manifest.versionCode > previous.manifest.versionCode ||
+            require(!development || previous.development) { "已有正式安装的同名插件" }
+            require(development || previous.development || preview.manifest.versionCode > previous.manifest.versionCode ||
                 allowVersionChange && preview.manifest.versionCode != previous.manifest.versionCode) { "请使用版本号更高的更新包，或明确确认切换版本" }
         }
         val root = paths.packageDirectory(preview.manifest.id).apply { mkdirs() }
-        val version = "v${preview.manifest.versionCode}-${UUID.randomUUID()}"
+        val version = "v${preview.manifest.versionCode}-${UUID.randomUUID()}" + if (development) "-dev" else ""
         val destination = File(root, version).apply { mkdirs() }
         try {
             ZipFile(file).use { zip -> zip.entries().toList().forEach { entry ->
@@ -58,10 +61,10 @@ class PluginPackageStore(val paths: PluginPaths) {
             FileOutputStream(pointer).use { it.write(version.toByteArray()); it.fd.sync() }
             java.nio.file.Files.move(pointer.toPath(), File(root, "current").toPath(),
                 java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
-            if (previous?.enabled != false) File(root, "disabled").delete()
+            if (development || previous?.enabled != false) File(root, "disabled").delete()
             root.listFiles().orEmpty().filter { it.isDirectory && it != destination }.forEach { it.deleteRecursively() }
         } catch (error: Exception) { destination.deleteRecursively(); throw error }
-        return InstalledPlugin(preview.manifest, preview.publisherSha256, previous?.enabled != false)
+        return InstalledPlugin(preview.manifest, preview.publisherSha256, development || previous?.enabled != false, development)
     }
     @Synchronized fun enabled(id: String, enabled: Boolean) {
         val marker = File(paths.packageDirectory(id), "disabled")
