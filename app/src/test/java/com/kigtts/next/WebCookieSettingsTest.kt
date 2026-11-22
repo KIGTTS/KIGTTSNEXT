@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.media.WebCookies
 import com.kigtts.next.ui.settings.WebSettingsScreen
 import org.junit.*
@@ -34,6 +35,6 @@ class WebCookieSettingsTest {
         compose.onNodeWithTag("confirm-clear-web-cookies").performClick()
         compose.waitUntil(5000) { !manager.hasCookies() }
         assertNull(WebCookies.header("https://site.example/"))
-        compose.onNodeWithText("已清除登录信息").assertExists()
+        compose.onNodeWithText(compose.activity.uiCopy("web.cookies_cleared", locale = "zh-CN")).assertExists()
     }
 }

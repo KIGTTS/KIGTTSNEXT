@@ -27,6 +27,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     install: () -> Unit, dismiss: () -> Unit) {
     var tab by remember { mutableIntStateOf(0) }
     val labels = installerLabels(packages.orEmpty())
+    val tabs = listOf(uiText("plugin.install_overview"), uiText("plugin.install_permissions"), uiText("plugin.install_license"))
     MotionAlertDialog(onDismissRequest = dismiss, dismissEnabled = !busy,
         text = {
             Column(Modifier.fillMaxWidth().height(480.dp).testTag("package-installer"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -36,14 +37,14 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
                         verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Spacer(Modifier.height(8.dp))
                         Icon(Icons.Default.CheckCircle, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                        Text(labels.result, style = MaterialTheme.typography.titleLarge)
-                        Text(if (packages.orEmpty().any { it.previous != null }) "新增权限将在使用时申请" else "权限将在使用相关功能时申请", style = MaterialTheme.typography.bodyMedium)
+                        Text(uiText(labels.resultKey), style = MaterialTheme.typography.titleLarge)
+                        Text(if (packages.orEmpty().any { it.previous != null }) uiText("plugin.new_permissions_when_needed") else uiText("plugin.permissions_when_needed"), style = MaterialTheme.typography.bodyMedium)
                         installedNames.forEach { Text(it) }
                     }
                 } else {
                     if (packages != null) {
-                        ChoiceButtonGroup("安装详情", listOf(0, 1, 2), tab,
-                            { listOf("介绍", "权限", "许可")[it] }, { tab = it }, compactLabels = true,
+                        ChoiceButtonGroup(uiText("plugin.install_details"), tabs.indices.toList(), tab,
+                            tabs::get, { tab = it }, compactLabels = true,
                             itemRole = androidx.compose.ui.semantics.Role.Tab)
                     }
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).testTag("installer-details"),
@@ -66,9 +67,9 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
             }
         },
         confirmButton = {
-            if (completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text(labels.done) }
+            if (completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text(uiText(labels.doneKey)) }
             else Button(onClick = feedbackClick(install), enabled = packages != null && !busy) {
-                Text(if (busy) labels.working else labels.action)
+                Text(uiText(if (busy) labels.workingKey else labels.actionKey))
             }
         },
         dismissButton = { if (!completed) MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = !busy) { Text(uiText("action.cancel")) } })
@@ -76,7 +77,7 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
 
 @Composable private fun PackageInstallerIdentity(info: PackageInstallerInfo) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (info.image != null) Image(info.image.asImageBitmap(), "${info.manifest.name}图标",
+        if (info.image != null) Image(info.image.asImageBitmap(), uiText("plugin.icon_description", "name" to info.manifest.name),
             Modifier.size(48.dp).testTag("installer-package-image"), contentScale = ContentScale.Fit)
         else Icon(MaterialSymbols.vector(info.symbol) ?: when {
             "speech-service" in info.manifest.capabilities -> Icons.Default.RecordVoiceOver
@@ -96,8 +97,8 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     if (info.description.isNotBlank()) ChatRichText(info.description)
     else Text(uiText("plugin.install_use", "name" to info.manifest.name))
     HorizontalDivider()
-    InstallerInfoRow("软件许可", info.manifest.license)
-    InstallerInfoRow("兼容版本", "支持当前应用与设备")
+    InstallerInfoRow(uiText("plugin.software_license"), info.manifest.license)
+    InstallerInfoRow(uiText("plugin.compatibility"), uiText("plugin.compatible_here"))
     TextButton(onClick = feedbackClick(permissions), contentPadding = PaddingValues(0.dp)) { Text(uiText("plugin.permission_count", "count" to info.permissions.size.toString())) }
     Text(uiText("plugin.publisher_hash"), style = MaterialTheme.typography.labelMedium)
     SelectionContainer { Text(info.candidate.preview.publisherSha256, style = MaterialTheme.typography.bodySmall) }
@@ -113,6 +114,6 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     Text(uiText("plugin.license_title"), style = MaterialTheme.typography.titleSmall)
     Text(info.manifest.license, style = MaterialTheme.typography.titleMedium)
     SelectionContainer {
-        Text(info.licenseText.ifBlank { "此插件使用 ${info.manifest.license} 许可。安装包未附许可全文，请向发布者获取全文和所用组件的许可。" })
+        Text(info.licenseText.ifBlank { uiText("plugin.license_excerpt_missing", "license" to info.manifest.license) })
     }
 }

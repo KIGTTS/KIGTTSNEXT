@@ -1,6 +1,7 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.components
 
+import com.kigtts.next.i18n.uiText
 import android.app.Activity
 import android.content.*
 import android.content.pm.PackageManager
@@ -37,7 +38,7 @@ import com.kigtts.next.identity.ContactNfcSession
                 require(payload.size in 1..8190)
                 check(adapter.isEnabled && emulation.setPreferredService(activity, ComponentName(context, ContactNfcService::class.java)))
                 token = ContactNfcSession.begin(payload); error = null
-            } catch (_: Exception) { stop(); enabled = false; error = "NFC 分享未能开启，请检查系统 NFC 设置" }
+            } catch (_: Exception) { stop(); enabled = false; error = "plugin.permission.nfc_enabled_failed" }
         }
         val observer = LifecycleEventObserver { _, event -> when (event) {
             Lifecycle.Event.ON_RESUME -> start()
@@ -49,17 +50,17 @@ import com.kigtts.next.identity.ContactNfcSession
     }
     val toggle = {
         if (!adapter.isEnabled) runCatching { context.startActivity(Intent(Settings.ACTION_NFC_SETTINGS)) }
-            .onFailure { error = "请在系统设置中开启 NFC" }
+            .onFailure { error = "share.nfc_settings" }
         else enabled = !enabled
         Unit
     }
-    val label = if (enabled) "关闭 NFC 分享" else "开启 NFC 分享"
+    val label = uiText(if (enabled) "share.nfc_off" else "share.nfc_on")
     if (compact) ToolButton(label, Icons.Default.Nfc, toggle, size = 40.dp, iconSize = 22.dp, enabled = payload != null,
         colors = if (enabled) compactTonalIconColors() else compactPlainIconColors())
     else {
         TextButton(feedbackClick(toggle), enabled = payload != null) { Text(label) }
-        if (enabled) Text("保持此页打开，将两台手机的 NFC 区域靠近。", style = MaterialTheme.typography.bodySmall)
+        if (enabled) Text(uiText("share.nfc_hint"), style = MaterialTheme.typography.bodySmall)
     }
-    if (error != null) MotionAlertDialog({ error = null }, title = { Text("NFC 分享") },
-        text = { Text(error.orEmpty()) }, confirmButton = { TextButton(dialogFeedbackClick { error = null }) { Text("知道了") } })
+    if (error != null) MotionAlertDialog({ error = null }, title = { Text(uiText("share.nfc_title")) },
+        text = { Text(uiText(requireNotNull(error))) }, confirmButton = { TextButton(dialogFeedbackClick { error = null }) { Text(uiText("action.done")) } })
 }

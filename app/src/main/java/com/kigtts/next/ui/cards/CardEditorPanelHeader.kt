@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,7 +21,7 @@ import com.kigtts.next.ui.home.PanelDragIndicator
     drag: CardPanelDrag, toggle: () -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.then(drag.modifier).testTag("card-editor-panel-header"), contentAlignment = Alignment.Center) {
         PanelDragIndicator(drag.active(), "card-editor-panel-handle", vertical = wide)
-        ToolButton(if (open) "收起编辑面板" else "展开编辑面板",
+        ToolButton(if (open) uiText("photo.edit_panel_close") else uiText("photo.edit_panel_open"),
             if (wide) { if (open) Icons.Default.ChevronRight else Icons.Default.ChevronLeft }
             else { if (open) Icons.Default.ExpandMore else Icons.Default.ExpandLess }, toggle,
             Modifier.align(if (wide) Alignment.TopCenter else Alignment.CenterEnd)

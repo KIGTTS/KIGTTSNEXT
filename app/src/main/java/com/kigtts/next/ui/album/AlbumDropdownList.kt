@@ -48,7 +48,7 @@ internal fun AlbumDropdownList(albums: List<AlbumCollection>, selectedId: String
                             Text(uiText("album.item_count", "count" to album.media.size.toString()), style = MaterialTheme.typography.bodySmall,
                                 color = scheme.onSurfaceVariant)
                         }
-                        if (active) Icon(Icons.Default.Check, "当前相册")
+                        if (active) Icon(Icons.Default.Check, uiText("accessibility.album_current"))
                     }
                 }
             }

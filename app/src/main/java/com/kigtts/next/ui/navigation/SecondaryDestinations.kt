@@ -6,6 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.*
@@ -18,9 +19,15 @@ import com.kigtts.next.ui.cards.CardPageScaffold
 /** Page content is independent of its lifetime and transition in the navigation host. */
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
-    val phraseDraft by model.content.phraseDraft.collectAsStateWithLifecycle()
     val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
-    val pluginPage = (destination as? Destination.PluginPage)?.let { model.pluginPage(it.pluginId, it.pageId) }
+    val pluginPage = (destination as? Destination.PluginPage)?.let {
+        val cacheBytes = if (it.pluginId == "service.speech-synthesis" && it.pageId == "manager")
+            model.readingCacheBytes?.collectAsStateWithLifecycle()?.value else null
+        // Built-in pages derive controls from the current context. Do not rebuild their lists
+        // just because a parent animates, the theme changes, or the page moves to the back stack.
+        val context = model.context()
+        remember(model, it, state.pluginRevision, context, cacheBytes) { model.pluginPage(it.pluginId, it.pageId) }
+    }
     val chatHandlesIme = destination.assistantChatHandlesIme()
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
@@ -33,7 +40,10 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
             is Destination.PluginPage -> pluginPage?.title ?: uiText("nav.plugin_page")
-            is Destination.MediaLibrary -> if (destination.target.startsWith("phrase:") && phraseDraft?.type == QuickCardType.PAGE) uiText("nav.pages") else uiText("nav.media")
+            is Destination.MediaLibrary -> {
+                val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
+                uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")
+            }
             is Destination.HtmlFiles -> uiText("nav.page_files")
             is Destination.HtmlPreview -> uiText("nav.page_preview")
             is Destination.QuickTextReview -> uiText("nav.change_preview")
@@ -130,8 +140,6 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> {
-                    if (destination.pluginId == "service.speech-synthesis" && destination.pageId == "manager")
-                        model.readingCacheBytes?.collectAsStateWithLifecycle()?.value
                     PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },

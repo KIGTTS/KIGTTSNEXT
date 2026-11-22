@@ -9,6 +9,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,7 +52,8 @@ import com.kigtts.next.theme.*
     val logo = painterResource(R.drawable.logo_kigtts_wordmark)
     val readIcon = rememberVectorPainter(Icons.AutoMirrored.Filled.VolumeOff)
     val settingsIcon = rememberVectorPainter(Icons.Default.Settings)
-    val radius = settings.cornerRadius * density
+    val previewRadius = animateFloatAsState(settings.cornerRadius, tween(220, easing = FastOutSlowInEasing),
+        label = "preview-corner-radius")
     val fallback = if (wide) Rect(88f * density, 8f * density, viewport.right - 208f * density, viewport.bottom - 12f * density)
         else Rect(12f * density, 64f * density, viewport.right - 12f * density, 452f * density)
     val original = measured["subtitle"] ?: fallback
@@ -60,7 +64,7 @@ import com.kigtts.next.theme.*
     val previewDescription = uiText("appearance.preview.description", "sample" to previewText)
     val measurer = rememberTextMeasurer()
     val sampleStyle = LocalAppearanceFont.current.apply(TextStyle(
-        color = colors.onSurface, fontSize = (minOf(main.width * .26f, main.height * .32f) / density).sp,
+        fontSize = (minOf(main.width * .26f, main.height * .32f) / density).sp,
         fontWeight = if (subtitle.bold) FontWeight.Bold else FontWeight.Normal,
         platformStyle = PlatformTextStyle(includeFontPadding = false)))
     val measuredSample = measurer.measure(previewText, sampleStyle, softWrap = false, maxLines = 1)
@@ -77,6 +81,7 @@ import com.kigtts.next.theme.*
             AppearanceBackdrop(settings, Modifier.matchParentSize(), screenAnchored = false)
             Canvas(Modifier.matchParentSize().testTag("appearance-home-wireframe")
                 .semantics { contentDescription = previewDescription }) {
+                val radius = previewRadius.value * density
                 withTransform({ scale(scale, scale, Offset.Zero); translate(-viewport.left, -viewport.top) }) {
                     fun panel(rect: Rect, color: Color, r: Float = radius) {
                         if (rect.width > 0 && rect.height > 0) drawRoundRect(color, rect.topLeft, rect.size,
@@ -88,7 +93,8 @@ import com.kigtts.next.theme.*
                             minOf(rect.width, rect.height, button) / 2, rect.center)
                     }
                     panel(main, colors.surfaceContainerHigh.copy(alpha = if (settings.background == null) 1f else .88f))
-                    drawText(sample, topLeft = Offset(main.center.x - sample.size.width / 2, main.center.y - sample.size.height / 2))
+                    drawText(sample, color = colors.onSurface,
+                        topLeft = Offset(main.center.x - sample.size.width / 2, main.center.y - sample.size.height / 2))
                     panel(drawer, colors.surfaceContainer.copy(alpha = if (settings.background == null) 1f else .85f))
                     val cards = measured.filterKeys { it.startsWith("phrase/") }.values.filter { it.overlaps(drawer) }
                     cards.forEach { panel(it.intersect(drawer), colors.surfaceContainerLowest, radius * .7f) }

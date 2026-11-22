@@ -18,7 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 
-internal val LocalAppAppearanceSettings = staticCompositionLocalOf { ThemeSettings() }
+internal val LocalAppAppearanceSettings = compositionLocalOf { ThemeSettings() }
 internal val LocalSecondaryBackground = compositionLocalOf<ThemeSettings?> { null }
 
 internal fun appearanceBackgroundDim(base: Float, blur: BackgroundBlur): Float =
@@ -40,8 +40,8 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
     }
     val dim = MaterialTheme.colorScheme.background
     var origin by remember { mutableStateOf(Offset.Zero) }
-    Canvas(modifier.onGloballyPositioned { origin = it.positionInWindow() }) {
-        val image = bitmap?.asImageBitmap()
+    val image = remember(bitmap) { bitmap?.asImageBitmap() }
+    Canvas(if (screenAnchored && image != null) modifier.onGloballyPositioned { origin = it.positionInWindow() } else modifier) {
         if (image != null) {
             val viewport = if (screenAnchored && window.width > 0 && window.height > 0) Size(window.width.toFloat(), window.height.toFloat()) else size
             val rect = backgroundImageRect(Size(image.width.toFloat(), image.height.toFloat()), viewport, if (screenAnchored) origin else Offset.Zero)

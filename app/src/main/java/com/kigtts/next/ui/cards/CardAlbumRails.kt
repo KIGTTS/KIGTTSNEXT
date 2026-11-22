@@ -62,11 +62,12 @@ internal fun CardAlbumRails(albums: List<PolaroidAlbum>, selectedId: String, pho
     }
     val photoItem: @Composable (PolaroidCard) -> Unit = { card ->
         val image = card.imageId?.let { rememberCardImage(imageFile(it), 256) }
+        val description = card.title.ifBlank { com.kigtts.next.i18n.uiText("photo.card_label") }
         val geometry = com.kigtts.next.cards.polaroidPaperGeometry(card, null)
         Surface(Modifier.then(if (landscape) Modifier.width(60.dp).aspectRatio(geometry.aspectRatio.toFloat()) else Modifier.size(64.dp, 82.dp))
             .testTag("card-album-photo/" + card.id)
             .clickable(enabled = enabled, onClick = feedbackClick { choosePhoto(card) })
-            .semantics { contentDescription = card.title.ifBlank { "拍立得" }; selected = card.id == focusedId },
+            .semantics { contentDescription = description; selected = card.id == focusedId },
             color = Color.White, shape = RoundedCornerShape(4.dp),
             border = if (card.id == focusedId) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null) {
             BoxWithConstraints(Modifier.fillMaxSize()) {

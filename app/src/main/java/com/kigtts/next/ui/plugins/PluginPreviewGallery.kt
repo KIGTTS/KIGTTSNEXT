@@ -91,7 +91,7 @@ import java.io.File
                         contentColor = MaterialTheme.colorScheme.onSurface) { Text(uiText("action.close")) } }, state = rememberTooltipState()) {
                     MotionIconButton(onClick = { dismiss(pager.currentPage) },
                         colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)) {
-                        Icon(Icons.Default.Close, "关闭")
+                        Icon(Icons.Default.Close, uiText("action.close"))
                     }
                 }
             }

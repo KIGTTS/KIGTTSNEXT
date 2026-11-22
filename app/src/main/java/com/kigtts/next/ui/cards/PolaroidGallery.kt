@@ -47,6 +47,7 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
     val anchors = LocalPolaroidPinchAnchors.current
     val pending = anchors?.pending?.takeIf { it.columns == columns }
     val density = LocalDensity.current
+    val columnDescription = com.kigtts.next.i18n.uiText("photo.grid_columns", "count" to columns.toString())
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val index = pending?.let { request -> cards.indexOfFirst { it.id == request.id } } ?: -1
         if (index >= 0 && pending != null) {
@@ -65,7 +66,7 @@ internal fun PolaroidGallery(cards: List<PolaroidCard>, imageFile: (String) -> F
         }
         LazyVerticalGrid(GridCells.Fixed(columns.coerceIn(2, 6)),
             Modifier.fillMaxSize().padding(top = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)).testTag("cards-grid")
-                .semantics { stateDescription = "$columns 列" }, state = grid,
+                .semantics { stateDescription = columnDescription }, state = grid,
             contentPadding = PaddingValues(start = 18.dp, top = 18.dp, end = 18.dp, bottom = 100.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             itemsIndexed(cards, key = { _, card -> card.id }) { index, card ->

@@ -31,8 +31,9 @@ import java.io.File
     LaunchedEffect(lifted) { raised = lifted }
     val elevation by animateDpAsState(if (raised) 12.dp else 3.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "card-sort-elevation")
     val controls by animateFloatAsState(if (enabled) 1f else 0f, tween(if (enabled) 160 else 80), label = "card-sort-controls")
+    val description = card.title.ifBlank { uiText("photo.card_label") }
     Box(modifier.testTag("manage-photo/" + card.id).semantics {
-        this.selected = selected; contentDescription = card.title.ifBlank { "拍立得" }
+        this.selected = selected; contentDescription = description
     }.clickable(enabled = enabled, onClick = feedbackClick(select))) {
         Box {
             val file = card.imageId?.let(imageFile)
@@ -45,7 +46,7 @@ import java.io.File
             val source = rememberCardImage(file, sourceMaximum)
             PolaroidCanvas(card, imageFile, Modifier.fillMaxWidth(), frame = frame, decodeMaximum = 512,
                 photoOverride = target ?: source, paperElevation = elevation)
-            Icon(Icons.Default.DragIndicator, "拖动照片", Modifier.align(Alignment.TopStart).padding(4.dp).size(28.dp)
+            Icon(Icons.Default.DragIndicator, uiText("photo.drag"), Modifier.align(Alignment.TopStart).padding(4.dp).size(28.dp)
                 .graphicsLayer { alpha = controls }.testTag("manage-photo-grip/" + card.id).then(grip), tint = MaterialTheme.colorScheme.primary)
             CardSelectionMark(selected, Modifier.align(Alignment.TopEnd).padding(4.dp).graphicsLayer { alpha = controls })
         }
@@ -59,7 +60,7 @@ import java.io.File
         enabled = enabled, shape = homeCardShape(), color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
         contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface, shadowElevation = elevation) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Icon(Icons.Default.DragIndicator, "拖动相册", Modifier.size(32.dp).testTag("manage-album-grip/" + album.id).then(grip))
+            Icon(Icons.Default.DragIndicator, uiText("accessibility.drag_album"), Modifier.size(32.dp).testTag("manage-album-grip/" + album.id).then(grip))
             Icon(Icons.Default.PhotoAlbum, null, Modifier.size(24.dp))
             Column(Modifier.weight(1f)) {
                 Text(album.name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)

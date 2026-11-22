@@ -82,7 +82,7 @@ internal fun AlbumCollectionGrid(albums: List<AlbumCollection>, selectedId: Stri
                         else Icon(Icons.Default.PhotoLibrary, null)
                         if (album.id == selectedId) Surface(Modifier.align(Alignment.TopEnd).padding(8.dp),
                             shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
-                            Icon(Icons.Default.CheckCircle, "当前相册", Modifier.padding(4.dp).size(20.dp))
+                            Icon(Icons.Default.CheckCircle, uiText("accessibility.album_current"), Modifier.padding(4.dp).size(20.dp))
                         }
                     }
                     Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {

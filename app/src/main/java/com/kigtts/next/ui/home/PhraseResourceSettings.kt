@@ -49,12 +49,12 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
       when (draft.type) {
         QuickCardType.TEXT -> Unit
         QuickCardType.AUDIO -> MotionOutlinedButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
-            modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) "选择音频" else "更换音频") }
+            modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) uiText("quick.pick_audio") else uiText("quick.change_audio")) }
         QuickCardType.MEDIA -> MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
-            enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) { Text(if (entry == null) "选择图片或视频" else "更换图片或视频") }
+            enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) { Text(if (entry == null) uiText("quick.pick_media") else uiText("quick.change_media")) }
         QuickCardType.PAGE -> Row {
             MotionTextButton(feedbackClick { leave(); scope.launch { runCatching { model.content.htmlFiles("phrase:" + draft.key) }.onFailure { error=it.message } } }, enabled = enabled,
-                modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) "创建页面文件" else "管理页面文件") }
+                modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) uiText("quick.create_page_files") else uiText("quick.manage_page_files")) }
             MotionTextButton(feedbackClick { selectMain = true }, enabled = enabled && entry?.kind == MediaKind.HTML && entry.pluginId == null,
                 modifier = Modifier.testTag("phrase-choose-page")) { Text(uiText("quick.main_page")) }
         }
@@ -70,7 +70,7 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
             { model.content.editPhrase { it.copy(mediaId=null,resources=it.resources-it.type) } })
         PhraseResourcePreview(resource,model.mediaRepository,interactive,state.appleLivePhotos,draft.audioMode,state.autoPlayback)
         if(resource.kind in setOf(MediaKind.AUDIO,MediaKind.VIDEO,MediaKind.MOTION_PHOTO))Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-            Text(when(resource.kind) { MediaKind.VIDEO->"自动播放视频";MediaKind.MOTION_PHOTO->"自动播放实况";else->"自动播放" },Modifier.weight(1f))
+            Text(when(resource.kind) { MediaKind.VIDEO->uiText("quick.autoplay_video");MediaKind.MOTION_PHOTO->uiText("quick.autoplay_motion");else->uiText("quick.autoplay") },Modifier.weight(1f))
             Switch(draft.autoPlay,feedbackChange { value -> model.content.editPhrase { it.copy(autoPlay=value) } },enabled=interactive,
                 colors=SwitchDefaults.colors().animateEnabled(interactive),
                 modifier=Modifier.testTag("phrase-auto-play"))

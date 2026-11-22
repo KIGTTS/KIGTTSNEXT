@@ -121,8 +121,8 @@ import kotlinx.coroutines.*
     changeWeight: (() -> Unit)? = null, variable: Boolean = false, titleStyle: TextStyle? = null, loaded: Boolean = true) {
     val opacity by animateFloatAsState(if (loaded) 1f else 0f, tween(180), label = "font-row-load")
     SwipeRevealRow("font/$id", active, activate,
-        endActions = listOfNotNull(changeWeight?.let { RevealAction("weight", "调整字重", Icons.Default.Tune) },
-            remove?.let { RevealAction("delete", "删除字体", Icons.Default.Delete, true) }),
+        endActions = listOfNotNull(changeWeight?.let { RevealAction("weight", uiText("appearance.adjust_font_weight"), Icons.Default.Tune) },
+            remove?.let { RevealAction("delete", uiText("appearance.delete_font"), Icons.Default.Delete, true) }),
         modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = opacity }, enabled = loaded,
         invoke = { when (it) { "delete" -> remove?.invoke(); "weight" -> changeWeight?.invoke() } }) { revealed, toggle, close ->
     Surface(shape = managedItemShape(position, revealed), color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainer) {
@@ -140,7 +140,7 @@ import kotlinx.coroutines.*
                 }
                 RadioButton(selected, null)
                 if (remove != null) MotionIconButton(onClick = feedbackClick(toggle), modifier = Modifier.size(40.dp).testTag("font-more/$id")) {
-                    Icon(Icons.Default.MoreHoriz, "更多操作")
+                    Icon(Icons.Default.MoreHoriz, uiText("overlay.row.more"))
                 }
             }
         }

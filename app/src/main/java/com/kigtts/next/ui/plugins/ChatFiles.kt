@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
@@ -33,7 +35,7 @@ import java.util.Locale
                         Text(chatFileSize(file.bytes), style = MaterialTheme.typography.labelSmall)
                     }
                     if (remove != null) IconButton(onClick = feedbackClick { remove(file) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, "移除 ${file.name}", Modifier.size(18.dp))
+                        Icon(Icons.Default.Close, uiText("accessibility.remove_file", "name" to file.name), Modifier.size(18.dp))
                     }
                 }
             }

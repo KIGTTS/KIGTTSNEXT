@@ -16,9 +16,9 @@ class PackageInstallerInfoTest {
             val info = PackageInstallerInfo(PendingPackage(file, PackagePreview(next, "a".repeat(64))), previous = previous)
             assertEquals(listOf("camera"), info.addedPermissions)
             assertEquals(listOf("network"), info.existingPermissions)
-            assertEquals("更新插件", installerLabels(listOf(info)).action)
-            assertEquals("插件已更新", installerLabels(listOf(info)).result)
-            assertEquals("安装并更新", installerLabels(listOf(info, info.copy(previous = null))).action)
+            assertEquals("plugin.update_action", installerLabels(listOf(info)).actionKey)
+            assertEquals("plugin.updated", installerLabels(listOf(info)).resultKey)
+            assertEquals("plugin.install_and_update", installerLabels(listOf(info, info.copy(previous = null))).actionKey)
         } finally { file.delete() }
     }
     @Test fun onlyBoundedManifestListedPresentationAssetsAreReadAndUiIsNotAPermission() {

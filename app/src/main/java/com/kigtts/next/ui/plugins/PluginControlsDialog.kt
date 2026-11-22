@@ -83,7 +83,7 @@ private fun ChoiceSetting(control: PluginControl.Choice, change: (String) -> Uni
             Box {
                 OutlinedButton(onClick = feedbackClick { expanded = true }, modifier = Modifier.fillMaxWidth()
                     .semantics { contentDescription = control.title }) {
-                    Text(options.firstOrNull { it.id == selected }?.label ?: "选择", Modifier.weight(1f))
+                    Text(options.firstOrNull { it.id == selected }?.label ?: uiText("action.select"), Modifier.weight(1f))
                     Icon(Icons.Default.ArrowDropDown, null)
                 }
                 DropdownMenu(expanded, { expanded = false }) {

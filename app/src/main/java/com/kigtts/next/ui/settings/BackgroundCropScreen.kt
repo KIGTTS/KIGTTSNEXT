@@ -102,16 +102,16 @@ import kotlinx.coroutines.withContext
                 }
             }
             TopAppBar(title = { Text(uiText("theme.background_crop")) }, navigationIcon = {
-                IconButton(feedbackClick { if (!saving) onDismiss() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") }
+                IconButton(feedbackClick { if (!saving) onDismiss() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.cancel_crop")) }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)
                 else IconButton(feedbackClick { if (bitmap != null) confirm = true }, Modifier.testTag("background-crop-save")) {
-                    Icon(Icons.Default.Check, "保存背景")
+                    Icon(Icons.Default.Check, uiText("accessibility.save_background"))
                 }
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent,
                 titleContentColor = Color.White, navigationIconContentColor = Color.White, actionIconContentColor = Color.White))
             if (image == null && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
-            Text(error ?: "双指调整位置与缩放", Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
+            Text(error ?: uiText("appearance.pinch_background"), Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
                 color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
         }
     }

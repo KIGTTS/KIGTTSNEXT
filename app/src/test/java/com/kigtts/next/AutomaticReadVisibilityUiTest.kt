@@ -10,6 +10,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.home.LandscapeAppRail
 import com.kigtts.next.ui.home.TextEditor
@@ -49,8 +50,8 @@ class AutomaticReadVisibilityUiTest {
             SpeechServicePrompt(model)
         } }
         compose.onNodeWithTag("auto-playback").assertIsDisplayed().performClick()
-        compose.onNodeWithText("安装语音合成服务？").assertIsDisplayed()
-        compose.onNodeWithText("不安装并隐藏朗读按钮").performClick()
+        compose.onNodeWithText(app.uiCopy("reading.install_prompt", locale = "zh-CN")).assertIsDisplayed()
+        compose.onNodeWithText(app.uiCopy("reading.hide", locale = "zh-CN")).performClick()
         compose.onNodeWithTag("auto-playback").assertDoesNotExist()
         compose.onNodeWithText("朗读").assertDoesNotExist()
         compose.onNodeWithTag("open-settings").assertIsDisplayed()

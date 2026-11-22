@@ -60,11 +60,12 @@ fun ToolButton(
 ) {
     val animatedIconSize = animateDpAsState(if (busy) size / 2 else iconSize,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "tool-icon-size")
+    val working = if (busy) com.kigtts.next.i18n.uiText("ui.working") else null
     val press=rememberImmediateButtonPress(interactionSource)
     LaunchedEffect(enabled) { if (!enabled) press.cancel() }
     IconActionHint(label, onLongClick != null) {
     FilledTonalIconButton(onClick = feedbackClick { press.click();onClick() }, modifier = modifier.iconLongAction(enabled, onLongClick).then(if (enabled) Modifier.immediateButtonPress(press) else Modifier).height(size).widthIn(min = size)
-        .semantics { contentDescription = label; if (busy) stateDescription = "正在执行" },
+        .semantics { contentDescription = label; if (working != null) stateDescription = working },
         shapes = shapes, interactionSource = press.native, colors = colors.animateEnabled(enabled), enabled = enabled) {
         Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
             PluginIconBadge(badge, contained = size < 40.dp) {

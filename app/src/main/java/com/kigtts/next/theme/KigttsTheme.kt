@@ -7,8 +7,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.animation.core.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -89,7 +87,9 @@ fun KigttsTheme(settings: ThemeSettings, publishWebTheme: Boolean = false, conte
     }
     val (colors, controls) = rememberThemePalette(ThemePaletteKey(settings.effectiveSeed, settings.contrast, settings.deeperDark, dark, wallpaper))
     if (publishWebTheme) com.kigtts.next.ui.media.PublishWebTheme(colors, dark, settings.cornerRadius.toInt())
-    val radius by animateFloatAsState(settings.cornerRadius,tween(220,easing=FastOutSlowInEasing),label="theme-corner-radius")
+    // Connected settings controls already animate toward their target corners. Feeding a moving
+    // global radius into all of them restarts their springs on every frame.
+    val radius = settings.cornerRadius
     val shapes = remember(radius) { Shapes(
         extraSmall = RoundedCornerShape((radius * .3f).coerceAtLeast(4f).dp),
         small = RoundedCornerShape((radius * .6f).coerceAtLeast(4f).dp),
@@ -102,10 +102,10 @@ fun KigttsTheme(settings: ThemeSettings, publishWebTheme: Boolean = false, conte
         titleMedium = TextStyle(fontSize = 17.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
     ).withFont(appearanceFont) }
     val motion = remember { MotionScheme.expressive() }
-    MaterialExpressiveTheme(
-        colorScheme = animatedColorScheme(colors), shapes = shapes, motionScheme = motion,
-        typography = typography, content = { CompositionLocalProvider(LocalCornerRadius provides radius.dp,
-            LocalAppearanceFont provides appearanceFont,
-            LocalCompactControlPalette provides animatedCompactControlPalette(controls), content = content) },
-    )
+    CompositionLocalProvider(LocalCornerRadius provides radius.dp, LocalAppearanceFont provides appearanceFont) {
+        MaterialExpressiveTheme(colorScheme = animatedColorScheme(colors), shapes = shapes, motionScheme = motion,
+            typography = typography) {
+            CompositionLocalProvider(LocalCompactControlPalette provides animatedCompactControlPalette(controls), content = content)
+        }
+    }
 }

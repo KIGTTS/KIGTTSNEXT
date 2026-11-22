@@ -77,13 +77,13 @@ fun ContentEditorScreen(model: AppViewModel, token: String) {
     RegisterPageLoading(saving)
     RegisterPageBackGuard(active && saving) { }
     RegisterPageActions(listOf(
-        ToolbarAction("save-content","保存内容",Icons.Default.Save,active&&!saving) { saveDraft() },
-        ToolbarAction("find-content","查找替换",Icons.Default.FindReplace) { search=true }
+        ToolbarAction("save-content",uiText("media.save_content"),Icons.Default.Save,active&&!saving) { saveDraft() },
+        ToolbarAction("find-content",uiText("editor.find_replace"),Icons.Default.FindReplace) { search=true }
     ))
     Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row {
-            MotionIconButton(feedbackClick(editor::undo), enabled = active&&!saving&&editor.canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, "撤销") }
-            MotionIconButton(feedbackClick(editor::redo), enabled = active&&!saving&&editor.canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, "重做") }
+            MotionIconButton(feedbackClick(editor::undo), enabled = active&&!saving&&editor.canUndo) { Icon(Icons.AutoMirrored.Filled.Undo, uiText("accessibility.undo")) }
+            MotionIconButton(feedbackClick(editor::redo), enabled = active&&!saving&&editor.canRedo) { Icon(Icons.AutoMirrored.Filled.Redo, uiText("accessibility.redo")) }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         OutlinedTextField(editor.value, { next -> try { editor.change(next);error=null } catch(e:IllegalArgumentException) { error=e.message } },

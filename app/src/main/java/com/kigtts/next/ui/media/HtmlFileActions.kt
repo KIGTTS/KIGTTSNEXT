@@ -22,12 +22,12 @@ internal data class HtmlFileTransfer(val paths: List<String>, val copy: Boolean)
 @Composable
 internal fun HtmlFileDialog(action:HtmlFileCommand,busy:Boolean,error:String?,close:()->Unit,confirm:(String,()->Unit)->Unit) {
     var name by remember(action) { mutableStateOf(when(action) { is HtmlFileCommand.Rename->action.item.name;is HtmlFileCommand.Create->if(action.folder)"" else "page.html";else->"" }) }
-    MotionAlertDialog(onDismissRequest=close,dismissEnabled=!busy,title={Text(when(action) { is HtmlFileCommand.Create->if(action.folder)"新建文件夹" else "新建文件";is HtmlFileCommand.Rename->"重命名";is HtmlFileCommand.Delete->"删除所选文件？" })},
+    MotionAlertDialog(onDismissRequest=close,dismissEnabled=!busy,title={Text(when(action) { is HtmlFileCommand.Create->if(action.folder)uiText("file.new_folder") else uiText("file.new");is HtmlFileCommand.Rename->uiText("common.rename");is HtmlFileCommand.Delete->uiText("file.delete_selected") })},
         text={ Column { if(action is HtmlFileCommand.Delete)Text(uiText("editor.delete_html_notice"))
             else OutlinedTextField(name,{name=it},label={Text(uiText("common.name"))},singleLine=true,enabled=!busy)
             error?.let {Text(it,color=MaterialTheme.colorScheme.error)} } },
         confirmButton={ val finish=rememberDialogClose();MotionTextButton(feedbackClick { confirm(name) { finish(close) } },
-            enabled=!busy&&(action is HtmlFileCommand.Delete || HtmlProjectFiles.validName(name))) { Text(if(action is HtmlFileCommand.Delete)"删除" else "确定") } },
+            enabled=!busy&&(action is HtmlFileCommand.Delete || HtmlProjectFiles.validName(name))) { Text(if(action is HtmlFileCommand.Delete)uiText("action.delete") else uiText("common.confirm")) } },
         dismissButton={ MotionTextButton(dialogFeedbackClick(close),enabled=!busy) { Text(uiText("action.cancel")) } })
 }
 

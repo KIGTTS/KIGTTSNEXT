@@ -92,7 +92,7 @@ import kotlinx.coroutines.withContext
         val photo = media[pager.currentPage]
         Surface(color = Color.Black) { Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(feedbackClick(dismiss)) { Icon(Icons.Default.ArrowBack, "返回", tint = Color.White) }
+                IconButton(feedbackClick(dismiss)) { Icon(Icons.Default.ArrowBack, uiText("nav.back"), tint = Color.White) }
                 Text("${pager.currentPage + 1} / ${media.size}", color = Color.White, modifier = Modifier.weight(1f))
                 Text(dateLabel(photo.day), Modifier.padding(end = 16.dp), color = Color.LightGray)
             }
@@ -102,9 +102,9 @@ import kotlinx.coroutines.withContext
                 else AlbumZoomImage(item)
             }
             Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
-                IconButton(feedbackClick { shareAlbumMedia(context, listOf(photo)) }) { Icon(Icons.Default.Share, "分享", tint = Color.White) }
-                if (!photo.video) IconButton(feedbackClick { dismiss(); edit(photo.uri) }) { Icon(Icons.Default.Edit, "编辑图片", tint = Color.White) }
-                IconButton(feedbackClick { confirm = true }, enabled = !deleting) { Icon(Icons.Default.DeleteOutline, "删除", tint = Color.White) }
+                IconButton(feedbackClick { shareAlbumMedia(context, listOf(photo)) }) { Icon(Icons.Default.Share, uiText("profile.share_face"), tint = Color.White) }
+                if (!photo.video) IconButton(feedbackClick { dismiss(); edit(photo.uri) }) { Icon(Icons.Default.Edit, uiText("photo.edit_image"), tint = Color.White) }
+                IconButton(feedbackClick { confirm = true }, enabled = !deleting) { Icon(Icons.Default.DeleteOutline, uiText("action.delete"), tint = Color.White) }
             }
         } }
         if (confirm) AlertDialog({ confirm = false }, title = { Text(uiText(if (photo.video) "album.delete_video" else "album.delete_photo")) },

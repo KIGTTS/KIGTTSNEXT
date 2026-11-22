@@ -124,7 +124,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
             Box {
                 MotionIconButton(feedbackClick { menu = true }, enabled = controlsEnabled,
                     colors = IconButtonDefaults.iconButtonColors(contentColor = androidx.compose.ui.graphics.Color.White)) {
-                    Icon(Icons.Default.MoreVert, "照片操作")
+                    Icon(Icons.Default.MoreVert, uiText("accessibility.photo_actions"))
                 }
                 DropdownMenu(menu && controlsEnabled, { menu = false }) {
                     if (receipt != null) DropdownMenuItem({ Text(uiText("photo.sender_card")) }, onClick = feedbackClick { menu = false; senderInfo = true },
@@ -134,7 +134,7 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
                     DropdownMenuItem({ Text(uiText("photo.move_album")) }, onClick = feedbackClick { menu = false; close(onMove) },
                         leadingIcon = { Icon(Icons.Default.DriveFileMove, null) })
                     CardMenuAction.entries.filter { it != CardMenuAction.QUICK }.forEach { operation ->
-                        DropdownMenuItem({ Text(operation.label) }, onClick = if (operation == CardMenuAction.DELETE)
+                        DropdownMenuItem({ Text(uiText(operation.textKey)) }, onClick = if (operation == CardMenuAction.DELETE)
                             feedbackClick { menu = false; close { onAction(operation) } }
                             else feedbackClick { menu = false; onAction(operation) },
                             leadingIcon = { Icon(when (operation) {
@@ -154,11 +154,11 @@ internal fun CardPreviewDialog(card: PolaroidCard, imageFile: (String) -> File?,
             AnimatedVisibility(showReset, enter = fadeIn(), exit = fadeOut()) {
                 MotionIconButton(feedbackClick(viewer::reset), Modifier.testTag("reset-card-preview"), enabled = controlsEnabled,
                     colors = IconButtonDefaults.iconButtonColors(contentColor = androidx.compose.ui.graphics.Color.White)) {
-                    Icon(Icons.Default.CenterFocusStrong, "重置缩放")
+                    Icon(Icons.Default.CenterFocusStrong, uiText("accessibility.reset_zoom"))
                 }
             }
             MotionIconButton(feedbackClick { close(onDismiss) }, Modifier.testTag("close-card-preview"), enabled = controlsEnabled,
-                colors = IconButtonDefaults.iconButtonColors(contentColor = androidx.compose.ui.graphics.Color.White)) { Icon(Icons.Default.Close, "关闭预览") }
+                colors = IconButtonDefaults.iconButtonColors(contentColor = androidx.compose.ui.graphics.Color.White)) { Icon(Icons.Default.Close, uiText("accessibility.close_preview")) }
             }
         }
     }

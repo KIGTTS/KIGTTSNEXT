@@ -18,7 +18,7 @@ internal fun PhotoFactsConsentHost() {
         val weather = request.kind == "weather"
         MotionAlertDialog(onDismissRequest = { request.result.complete(false) },
             title = { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(if (weather) "添加拍摄天气" else "添加拍摄地点")
+                Text(if (weather) uiText("photo.add_weather") else uiText("photo.add_location"))
                 Icon(if (weather) Icons.Default.Cloud else Icons.Default.LocationOn, null)
             } },
             text = { Text(if (weather) {

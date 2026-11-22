@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
@@ -24,7 +26,7 @@ fun SecondarySidePage(page: SidePage, close: () -> Unit, sketch: SketchState, sh
         return
     }
     PageScaffold(page.label,close,backLabel="返回大字幕",largeBar=page!=SidePage.SKETCH,
-        actions=if(page==SidePage.SKETCH)listOf(ToolbarAction("share-sketch","分享画板",Icons.Default.Share,click=shareSketch)) else emptyList()) {
+        actions=if(page==SidePage.SKETCH)listOf(ToolbarAction("share-sketch",uiText("sketch.share"),Icons.Default.Share,click=shareSketch)) else emptyList()) {
             when (page) {
                 SidePage.SKETCH -> SketchScreen(sketch, shareRequest, shareConsumed, message)
                 SidePage.CARDS -> Unit // Handled by the window-adaptive scaffold above.

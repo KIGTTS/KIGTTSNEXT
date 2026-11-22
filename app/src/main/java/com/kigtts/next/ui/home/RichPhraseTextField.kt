@@ -40,12 +40,12 @@ internal fun RichPhraseTextField(draft: PhraseDraft, model: AppViewModel, enable
             formats = TextFormatting.rebase(it.formats, it.text, next.text)) } }
     }, Modifier.fillMaxWidth().testTag("phrase-detail-text").then(menu).textMenuAnchor {
         field=field.copy(selection=androidx.compose.ui.text.TextRange(field.selection.end))
-    }, enabled = enabled, label = { Text(if (draft.type == com.kigtts.next.state.QuickCardType.TEXT) "字幕（必填）" else "字幕（可选）") },
+    }, enabled = enabled, label = { Text(if (draft.type == com.kigtts.next.state.QuickCardType.TEXT) uiText("quick.caption_required") else uiText("quick.caption_optional")) },
         minLines = 3, maxLines = 12, isError = oversized, interactionSource = source,
         colors = OutlinedTextFieldDefaults.colors().animateEnabled(enabled, focused, oversized), visualTransformation = transform,
         trailingIcon = {
             MotionIconButton(feedbackClick { focus.clearFocus(); keyboard?.hide(); model.content.editor(target = "phrase:" + draft.key) },
-                enabled = enabled, modifier = Modifier.testTag("phrase-open-text-editor")) { Icon(Icons.Default.EditNote, "打开文本编辑器") }
+                enabled = enabled, modifier = Modifier.testTag("phrase-open-text-editor")) { Icon(Icons.Default.EditNote, uiText("accessibility.open_text_editor")) }
         })
     if (oversized) Text(uiText("quick.too_long"), color = MaterialTheme.colorScheme.error)
 }

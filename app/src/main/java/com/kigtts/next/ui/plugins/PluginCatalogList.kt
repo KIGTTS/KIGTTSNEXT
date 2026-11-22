@@ -79,7 +79,7 @@ import java.io.File
             tooltip = { PlainTooltip(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                 contentColor = MaterialTheme.colorScheme.onSurface) { Text(uiText("overlay.row.more")) } }, state = rememberTooltipState()) {
             IconButton(onClick = feedbackClick { open = true }, enabled = enabled, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.MoreVert, "更多操作")
+                Icon(Icons.Default.MoreVert, uiText("overlay.row.more"))
             }
         }
         DropdownMenu(open, { open = false }) {

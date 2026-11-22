@@ -30,6 +30,7 @@ fun PluginTabActions(actions: List<RegisteredAction>, invoke: (RegisteredAction)
 private fun PluginTabStrip(actions: List<RegisteredAction>, invoke: (RegisteredAction) -> Unit,
     alignEnd: Boolean, overflowTag: String) {
     if (actions.isEmpty()) return
+    val moreLabel = com.kigtts.next.i18n.uiText("overlay.row.more")
     var more by remember { mutableStateOf(false) }
     BoxWithConstraints(Modifier.widthIn(max = 72.dp).height(48.dp),
         contentAlignment = if (alignEnd) Alignment.CenterEnd else Alignment.CenterStart) {
@@ -47,7 +48,7 @@ private fun PluginTabStrip(actions: List<RegisteredAction>, invoke: (RegisteredA
                     CornerNeighbors(start = index > 0, end = index < sources.lastIndex),
                     pressed.getOrElse(index - 1) { false } || pressed.getOrElse(index + 1) { false },
                     Modifier.width(32.dp).testTag(action?.key ?: overflowTag)
-                        .semantics { contentDescription = action?.action?.label ?: "更多操作" },
+                        .semantics { contentDescription = action?.action?.label ?: moreLabel },
                     icon = { PluginIconBadge(action?.action?.badge, contained = true) { Icon(action?.action?.let { it.icon.vector(it.symbol) } ?: Icons.Default.ExpandMore, null, Modifier.size(16.dp)) } }, label = {})
             } }
         }

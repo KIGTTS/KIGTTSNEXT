@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,7 +33,7 @@ fun MediaImage(file: File?, description: String, modifier: Modifier = Modifier, 
         if (bitmap != null) {
             if (backdrop && scale == MediaScale.FIT) BlurredBackdrop(bitmap!!.asAndroidBitmap(), Modifier.fillMaxSize())
             Image(bitmap!!, description, Modifier.fillMaxSize().then(contentModifier), contentScale = if (scale == MediaScale.FIT) ContentScale.Fit else ContentScale.Crop)
-        } else Text(if (file == null) "图片资源不可用" else if (loaded) "无法解码此图片" else "正在加载图片", style = MaterialTheme.typography.bodySmall)
+        } else Text(if (file == null) uiText("media.image_missing") else if (loaded) uiText("media.image_decoding_failed") else uiText("media.image_loading"), style = MaterialTheme.typography.bodySmall)
     }
 }
 

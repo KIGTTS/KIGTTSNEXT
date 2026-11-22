@@ -1,5 +1,7 @@
 package com.kigtts.next.identity
 
+import com.kigtts.next.i18n.uiCopy
+
 import android.graphics.*
 import android.text.Layout
 import android.text.StaticLayout
@@ -15,6 +17,7 @@ import java.io.File
 internal object ProfilePdfExport {
     fun write(identity: IdentityCard, stickers: StickerRepository, directory: File): File {
         directory.mkdirs()
+        fun copy(key: String) = stickers.context.uiCopy(key)
         val banner = exportIdentityCard(identity, stickers, directory)
         val images = identity.tiles.filter { it.kind == ProfileTileKind.IMAGE }.mapNotNull { tile ->
             profileImageFile(stickers, tile.image)?.let { tile to it }
@@ -42,15 +45,15 @@ internal object ProfilePdfExport {
             if (text.isBlank()) return
             text.chunked(350).forEach { chunk -> space(page.height(chunk, size, bold)); page.paragraph(chunk, size, bold) }
         }
-        paragraph(identity.nickname.ifBlank { "KIGTTS 用户" }, 26f, true)
+        paragraph(identity.nickname.ifBlank { copy("profile.export_user") }, 26f, true)
         paragraph(identity.bio, 13f)
         if (identity.tags.isNotEmpty()) paragraph(identity.tags.joinToString("   ") { "# $it" }, 12f)
         contacts.forEachIndexed { index, contact ->
             space(76f)
             val top = page.y
             page.box(top, 62f)
-            page.paragraph(contact.label.ifBlank { "联系方式" }, 14f, true, 48f)
-            page.paragraph(contact.value.take(100) + "   · 查看二维码", 11f, x = 48f, maxLines = 2)
+            page.paragraph(contact.label.ifBlank { copy("profile.contacts") }, 14f, true, 48f)
+            page.paragraph(contact.value.take(100) + "   · " + copy("profile.export_view_qr"), 11f, x = 48f, maxLines = 2)
             page.links += ProfilePdfLink(RectF(32f, top, 563f, top + 62f), page = "contact-$index")
             page.y = top + 72f
         }
@@ -70,7 +73,7 @@ internal object ProfilePdfExport {
                 }
                 ProfileTileKind.QR -> profileQrMatrix(tile.text)?.let { code ->
                     space(224f)
-                    page.paragraph(tile.title.ifBlank { "二维码" }, 15f, true)
+                    page.paragraph(tile.title.ifBlank { copy("profile.qr") }, 15f, true)
                     val pitch = kotlin.math.floor(172f / code.width)
                     val side = pitch * code.width; val left = (595f - side) / 2f
                     val paint = Paint().apply { color = Color.WHITE }
@@ -99,7 +102,7 @@ internal object ProfilePdfExport {
         }
         pages += page.finish()
         contacts.forEachIndexed { index, contact ->
-            val sheet = Sheet("contact-$index"); sheet.paragraph(contact.label.ifBlank { "联系方式" }, 25f, true)
+            val sheet = Sheet("contact-$index"); sheet.paragraph(contact.label.ifBlank { copy("profile.contacts") }, 25f, true)
             sheet.paragraph(contact.value, 14f)
             val matrix = QRCodeWriter().encode(contactPayload(contact), BarcodeFormat.QR_CODE, 720, 720,
                 mapOf(EncodeHintType.MARGIN to 4, EncodeHintType.CHARACTER_SET to "UTF-8"))
@@ -109,11 +112,11 @@ internal object ProfilePdfExport {
             sheet.canvas.drawBitmap(bitmap, null, RectF(80f, 210f, 515f, 645f), Paint())
             bitmap.recycle()
             sheet.links += ProfilePdfLink(RectF(70f, 190f, 525f, 670f), url = contactPayload(contact))
-            sheet.back(); pages += sheet.finish()
+            sheet.back(copy("profile.export_back")); pages += sheet.finish()
         }
         images.forEach { (tile, file) ->
-            val sheet = Sheet("image-${tile.id}"); sheet.paragraph(tile.title.ifBlank { "图片预览" }, 22f, true)
-            sheet.image(file, RectF(32f, 100f, 563f, 748f)); sheet.back(); pages += sheet.finish()
+            val sheet = Sheet("image-${tile.id}"); sheet.paragraph(tile.title.ifBlank { copy("profile.export_image_preview") }, 22f, true)
+            sheet.image(file, RectF(32f, 100f, 563f, 748f)); sheet.back(copy("profile.export_back")); pages += sheet.finish()
         }
         return File(directory, "profile.pdf").also { ProfilePdfWriter.write(it, pages) }
     }
@@ -159,7 +162,7 @@ internal object ProfilePdfExport {
                     .also { canvas.drawBitmap(source, null, it, Paint(Paint.FILTER_BITMAP_FLAG)) }
             } finally { source.recycle() }
         }
-        fun back() { y = 780f; paragraph("返回个人主页  ↗", 12f); links += ProfilePdfLink(RectF(32f, 774f, 270f, 812f), page = "home") }
+        fun back(label: String) { y = 780f; paragraph("$label  ↗", 12f); links += ProfilePdfLink(RectF(32f, 774f, 270f, 812f), page = "home") }
         fun finish(): ProfilePdfPage {
             val data = ByteArrayOutputStream(); check(bitmap.compress(Bitmap.CompressFormat.JPEG, 94, data)); bitmap.recycle()
             return ProfilePdfPage(id, data.toByteArray(), links.toList())

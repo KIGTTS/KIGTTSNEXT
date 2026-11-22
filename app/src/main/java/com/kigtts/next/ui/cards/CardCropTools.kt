@@ -55,7 +55,7 @@ internal fun CardFrameTools(card: PolaroidCard, enabled: Boolean, change: (Polar
             return@Column
         }
         val frame = frames.firstOrNull { it.id == card.frameStyleId }
-        Text(frame?.name ?: "旧版边框", style = MaterialTheme.typography.bodyMedium)
+        Text(frame?.name ?: uiText("photo.legacy_frame"), style = MaterialTheme.typography.bodyMedium)
         if (frame?.color == null) PillButton("纸框颜色", Icons.Default.Palette, frameColor, enabled = enabled)
     }
 }

@@ -39,7 +39,7 @@ internal fun PhotoCropDialog(image: ImageBitmap?, initial: PhotoCrop, close: () 
                 TopAppBar(title = { Text(uiText("photo.crop")) },
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black, titleContentColor = Color.White,
                         actionIconContentColor = Color.White, navigationIconContentColor = Color.White),
-                    navigationIcon = { IconButton(feedbackClick(close)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") } },
+                    navigationIcon = { IconButton(feedbackClick(close)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.cancel_crop")) } },
                     actions = {
                         TextButton(feedbackClick { crop = PhotoCrop.Full }, enabled = crop != PhotoCrop.Full) { Text(uiText("common.reset"), color = Color.White.copy(alpha = if (crop == PhotoCrop.Full) .4f else 1f)) }
                         Button(feedbackClick { image?.let { apply(crop, it.width, it.height) } },

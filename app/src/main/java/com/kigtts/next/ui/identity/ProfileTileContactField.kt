@@ -31,7 +31,7 @@ import com.kigtts.next.ui.components.feedbackClick
         }
     }
     FilledTonalButton(feedbackClick { choosing = true }, Modifier.fillMaxWidth()) {
-        Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(if (selected == null) "选择社媒平台" else "更换社媒平台")
+        Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text(if (selected == null) uiText("profile.pick_platform") else uiText("profile.change_platform"))
     }
     if (contacts.isNotEmpty()) {
         Text(uiText("profile.saved_contacts"), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)

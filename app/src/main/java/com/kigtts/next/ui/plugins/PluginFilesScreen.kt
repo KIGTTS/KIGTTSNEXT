@@ -45,10 +45,10 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
             { selected = if (selected.size == items.size) emptyList() else items.map { it.path } }, { selected = emptyList() },
             { chooseTransfer(selected, false) }, { chooseTransfer(selected, true) }, { deleting = selected.toList() }) {
             files.importAction?.let { action -> MotionIconButton(feedbackClick { invoke(action, mapOf("directory" to files.directory)) }, enabled = active) {
-                Icon(Icons.Default.FileOpen, "导入文件")
+                Icon(Icons.Default.FileOpen, uiText("file.import"))
             } }
             files.createAction?.let { action -> MotionIconButton(feedbackClick { invoke(action, mapOf("directory" to files.directory)) }, enabled = active) {
-                Icon(Icons.Default.Add, "新建文件或文件夹")
+                Icon(Icons.Default.Add, uiText("accessibility.create_file_or_folder"))
             } }
         }
         FileBrowserRows(items, selected, active, { path -> selected = if (path in selected) selected - path else selected + path },
@@ -59,7 +59,7 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
                 FileAction.DELETE -> deleting = listOf(item.path)
             } }, Modifier.weight(1f), tagPrefix = "plugin-file")
     }
-    if (foreground) transfer?.let { request -> FileDestinationDialog(if (request.copy) "复制文件" else "移动文件", files.directory,
+    if (foreground) transfer?.let { request -> FileDestinationDialog(request.copy, files.directory,
         items, request.paths, active, ::navigate, { destination, finish ->
             finish(); operation(if (request.copy) "copy" else "move", request.paths, destination)
         }, { transfer = null; if (files.directory != request.origin) navigate(request.origin) },

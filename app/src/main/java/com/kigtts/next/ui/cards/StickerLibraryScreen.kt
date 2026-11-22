@@ -36,11 +36,11 @@ fun StickerLibraryScreen(cards: CardRepository, stickers: StickerRepository, mes
     val photo = rememberCardPhotoSources({ actions.importPhoto(it, libraryId, asSticker = true) }, message)
     val enabled = active && !actions.busy && !photo.processing
     RegisterPageLoading(actions.busy || photo.processing)
-    RegisterPageActions(listOf(ToolbarAction("import-sticker", "导入贴纸", Icons.Default.PhotoLibrary, enabled, click = photo.gallery),
-        ToolbarAction("new-sticker-library", "新建贴纸库", Icons.Default.Add, enabled, click = { newLibrary = true })))
+    RegisterPageActions(listOf(ToolbarAction("import-sticker", uiText("photo.import_sticker"), Icons.Default.PhotoLibrary, enabled, click = photo.gallery),
+        ToolbarAction("new-sticker-library", uiText("photo.new_sticker_library"), Icons.Default.Add, enabled, click = { newLibrary = true })))
     StickerLibraryPanel(catalog.libraries, catalog.items, libraryId, { libraryId = it }, stickers::imageFile, enabled,
         { newLibrary = true }, { editing = it }, { itemMenu = it }, { itemMenu = it }, Modifier.fillMaxSize())
-    if (active && newLibrary) CardNameDialog("新建贴纸库", "", { newLibrary = false }, { name ->
+    if (active && newLibrary) CardNameDialog(uiText("photo.new_sticker_library"), "", { newLibrary = false }, { name ->
         val library = StickerLibrary(name = name); newLibrary = false; libraryId = library.id
         actions.edit(listOf(StickerEdit.PutLibrary(library)))
     })

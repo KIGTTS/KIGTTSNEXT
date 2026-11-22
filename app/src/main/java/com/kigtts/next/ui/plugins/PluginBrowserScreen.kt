@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import android.net.Uri
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +41,7 @@ internal fun pluginBrowserDocument(manager: com.kigtts.plugin.runtime.PluginMana
     var ready by remember(owner, pageId, block) { mutableStateOf(false) }
     val checked = remember(owner, pageId, block) { runCatching { pluginBrowserDocument(model, owner, pageId, block) } }
     val document = checked.getOrNull()
-    if (document == null) { androidx.compose.material3.Text(checked.exceptionOrNull()?.message ?: "网页暂不可用"); return }
+    if (document == null) { androidx.compose.material3.Text(uiText("plugin.preview_page_unavailable")); return }
     val gate = remember(document) { WebNetworkGate(model.pluginManager.permissions, model.pluginManager.permissionOwner(owner), model.registry.plugin(owner)?.descriptor?.name ?: owner,
         { currentActive }, model.pluginManager.status.firstOrNull { it.installed.manifest.id == owner }?.installed?.manifest?.permissionPurposes?.get("network") ?: "加载此插件网页所需的外部资源。") }
     val web = remember(document) { createBrowserView(context, document.copy(authorizeNetwork = gate::authorize, networkGranted = gate::granted), ready = { view ->

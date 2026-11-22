@@ -22,8 +22,8 @@ fun WebSettingsScreen() {
     var confirming by remember { mutableStateOf(false) }; var clearing by remember { mutableStateOf(false) }
     var cleared by remember { mutableStateOf(false) }; val scope = rememberCoroutineScope()
     SettingsLayout {
-        SettingsGroup("网页数据") {
-            SettingItem("清除 Cookies", if (cleared) "已清除登录信息" else "部分网页需要重新登录", Icons.Default.DeleteSweep,
+        SettingsGroup(uiText("web.data")) {
+            SettingItem(uiText("web.clear_cookies"), if (cleared) uiText("web.cookies_cleared") else uiText("web.cookies_hint"), Icons.Default.DeleteSweep,
                 SettingPosition.SINGLE, Modifier.testTag("clear-web-cookies"), onClick = if (clearing) null else { { confirming = true } })
         }
     }

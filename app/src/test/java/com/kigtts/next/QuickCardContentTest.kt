@@ -21,6 +21,7 @@ class QuickCardContentTest {
     @Before fun setup() { app = ApplicationProvider.getApplicationContext(); app.getSharedPreferences("quick-phrases", 0).edit().clear().commit() }
     @Test fun everyCardTypeColorAndRichFormatSurvivesSortingEditingAndRestart() {
         val library = QuickTextLibrary(QuickPhraseStore(app))
+        assertTrue(library.addCategory("常用"))
         QuickCardType.entries.forEachIndexed { i, type ->
             assertTrue(library.savePhrase(QuickPhrase("完整正文", "常用", "card-$i", "缩略标题", if (type == QuickCardType.TEXT) null else "asset-$i",
                 type, listOf(CardColorMode.DEFAULT, CardColorMode.CUSTOM)[i % 2], 0xFF835FC1, type == QuickCardType.TEXT, listOf(TextFormatRun(0, 2, TextFormat.BOLD)))))

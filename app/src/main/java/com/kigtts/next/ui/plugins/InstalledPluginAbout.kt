@@ -28,13 +28,13 @@ import kotlinx.coroutines.withContext
         text = {
             ModalPageTransition(license, { if (it) 1 else 0 }, Modifier.fillMaxWidth()) { showingLicense ->
               Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(if (showingLicense) "开源许可" else info?.name ?: "关于插件",
+                Text(if (showingLicense) uiText("plugin.license_title") else info?.name ?: uiText("plugin.about"),
                     Modifier.semantics { heading() }, color = AlertDialogDefaults.titleContentColor,
                     style = MaterialTheme.typography.headlineSmall)
                 Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 info?.let { detail ->
-                    if (showingLicense) SelectionContainer { Text(detail.licenseText.ifBlank { detail.license.ifBlank { "插件包未附许可说明" } }) }
+                    if (showingLicense) SelectionContainer { Text(detail.licenseText.ifBlank { detail.license.ifBlank { uiText("plugin.license_missing") } }) }
                     else {
                         Text(listOf("v${detail.version}", detail.author).filter(String::isNotBlank).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (detail.description.isNotBlank()) ChatRichText(detail.description)

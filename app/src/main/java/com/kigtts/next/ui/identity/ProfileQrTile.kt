@@ -35,11 +35,12 @@ internal fun ProfileQrTile(value: String, style: ProfileQrStyle, label: String, 
     val palette = nativeProfileQrPalette(style, keepLight)
     val foreground = Color(palette.ink)
     val paper = Color(palette.paper)
+    val description = if (label.isBlank()) uiText("profile.qr") else uiText("profile.contact_qr", "name" to label)
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val code = matrix
         if (code != null) {
             val qrCanvas: @Composable (Modifier) -> Unit = { placement ->
-                Canvas(placement.semantics { contentDescription = if (label.isBlank()) "二维码" else "$label 二维码" }) {
+                Canvas(placement.semantics { contentDescription = description }) {
             val step = floor(size.minDimension / code.width)
             if (step < 1f) return@Canvas
             val side = step * code.width

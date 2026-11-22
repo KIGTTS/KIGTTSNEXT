@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.plugins
 
 import androidx.compose.runtime.*
+import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
 import com.kigtts.plugin.api.*
@@ -19,24 +20,25 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
     var completed by remember(request) { mutableStateOf(false) }
     val installed = remember(request) { mutableStateListOf<PackageInstallerInfo>() }
     val scope = rememberCoroutineScope()
+    val copy = rememberUiCopy()
     LaunchedEffect(request) {
         val copied = mutableListOf<PendingPackage>()
         try {
             withContext(Dispatchers.IO) {
-                require(outcome.dependencies.size <= 32) { "依赖包过多" }
+                require(outcome.dependencies.size <= 32) { copy("plugin.too_many_dependencies") }
                 (outcome.dependencies + outcome.resource).forEach { resource ->
-                    require(resource.pluginId == null || resource.pluginId == owner) { "安装资源不属于当前插件" }
+                    require(resource.pluginId == null || resource.pluginId == owner) { copy("plugin.invalid_install_owner") }
                     val source = model.pluginManager.paths.storage(owner).file(resource.path)
-                    require(source.isFile && source.length() in 1..768L * 1024 * 1024) { "插件包不存在或过大" }
+                    require(source.isFile && source.length() in 1..768L * 1024 * 1024) { copy("plugin.invalid_package_size") }
                     val frozen = File(model.pluginManager.paths.packages, ".incoming-${UUID.randomUUID()}.kigplugin")
                     try { source.copyTo(frozen); copied += PendingPackage(frozen, model.pluginManager.packages.inspect(frozen)) }
                     catch (failure: Exception) { frozen.delete(); throw failure }
                 }
-                require(copied.map { it.preview.manifest.id }.distinct().size == copied.size) { "安装计划包含重复插件" }
+                require(copied.map { it.preview.manifest.id }.distinct().size == copied.size) { copy("plugin.install_duplicates") }
                 val installed = model.pluginManager.packages.installed().associateBy { it.manifest.id }
                 copied.forEach { candidate -> installed[candidate.preview.manifest.id]?.let { old ->
-                    require(old.publisherSha256 == candidate.preview.publisherSha256) { "更新包发布者与原安装不一致" }
-                    require(candidate.preview.manifest.versionCode > old.manifest.versionCode || outcome.allowDowngrade && candidate.preview.manifest.versionCode != old.manifest.versionCode) { "版本已安装或需要明确确认切换旧版" }
+                    require(old.publisherSha256 == candidate.preview.publisherSha256) { copy("plugin.update_publisher_mismatch") }
+                    require(candidate.preview.manifest.versionCode > old.manifest.versionCode || outcome.allowDowngrade && candidate.preview.manifest.versionCode != old.manifest.versionCode) { copy("plugin.installed_or_downgrade") }
                 } }
             }
             candidates = withContext(Dispatchers.IO) {
@@ -44,7 +46,7 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
                 copied.map { installerInfo(it, previous[it.preview.manifest.id]?.manifest) }
             }
         } catch (cancel: CancellationException) { copied.forEach { it.file.delete() }; throw cancel }
-        catch (failure: Exception) { copied.forEach { it.file.delete() }; error = failure.message ?: "安装计划无法读取" }
+        catch (failure: Exception) { copied.forEach { it.file.delete() }; error = failure.message ?: copy("plugin.install_plan_failed") }
     }
     DisposableEffect(candidates) { val files = candidates.orEmpty().map { it.candidate.file }; onDispose { files.forEach(File::delete) } }
     PackageInstallerDialog(candidates, busy, completed, error, outcome.allowDowngrade, installed.map { it.manifest.name }, install = {
@@ -61,7 +63,7 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
             } catch (cancel: CancellationException) { throw cancel }
             catch (failure: Exception) {
                 model.refreshPlugins()
-                error = failure.message ?: "安装未完成"
+                error = failure.message ?: copy("plugin.install_incomplete")
             } finally { busy = false }
         }
     }, dismiss = {

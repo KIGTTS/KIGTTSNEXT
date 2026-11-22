@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -24,7 +26,7 @@ import com.kigtts.next.ui.components.feedbackClick
     val count = contacts.size.coerceAtMost(6)
     LazyRow(modifier.testTag("personal-card-contacts"), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         itemsIndexed(contacts.take(5)) { index, link ->
-            ContactButton("联系方式：" + link.label.ifBlank { "链接" }, "personal-contact-$index", interactive,
+            ContactButton("联系方式：" + link.label.ifBlank { uiText("profile.link_label") }, "personal-contact-$index", interactive,
                 { open(link) }, index, count) { SocialContactIcon(link, Modifier.fillMaxSize()) }
         }
         if (contacts.size > 5) item("more") {
@@ -34,7 +36,7 @@ import com.kigtts.next.ui.components.feedbackClick
                 }
                 DropdownMenu(more && interactive, { more = false }) {
                     contacts.drop(5).forEachIndexed { index, link ->
-                        DropdownMenuItem(text = { Text(link.label.ifBlank { "链接" }) },
+                        DropdownMenuItem(text = { Text(link.label.ifBlank { uiText("profile.link_label") }) },
                             leadingIcon = { SocialContactIcon(link, Modifier.size(22.dp)) },
                             modifier = Modifier.testTag("personal-contact-overflow-${index + 5}"),
                             onClick = feedbackClick { more = false; open(link) })

@@ -44,22 +44,22 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
     MotionAlertDialog(onDismissRequest = dismiss, dismissEnabled = state.phase != StoreBootstrapPhase.INSTALLING,
         icon = { Icon(Icons.Default.Storefront, contentDescription = null) },
         title = { Text(when (state.phase) {
-            StoreBootstrapPhase.OFFER -> "先安装插件商店"
-            StoreBootstrapPhase.RESTORE -> "启用插件商店"
-            StoreBootstrapPhase.DOWNLOADING -> "正在下载插件商店"
-            StoreBootstrapPhase.REVIEW -> "安装插件商店？"
-            StoreBootstrapPhase.INSTALLING -> "正在准备插件商店"
-            StoreBootstrapPhase.COMPLETED -> "插件已安装"
-            StoreBootstrapPhase.ERROR -> "插件商店暂不可用"
+            StoreBootstrapPhase.OFFER -> uiText("store.install_first")
+            StoreBootstrapPhase.RESTORE -> uiText("store.enable")
+            StoreBootstrapPhase.DOWNLOADING -> uiText("store.downloading")
+            StoreBootstrapPhase.REVIEW -> uiText("store.install_prompt")
+            StoreBootstrapPhase.INSTALLING -> uiText("store.preparing")
+            StoreBootstrapPhase.COMPLETED -> uiText("store.installed")
+            StoreBootstrapPhase.ERROR -> uiText("store.unavailable")
         }) },
         text = { Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(when (state.phase) {
-                StoreBootstrapPhase.OFFER -> if (synthesis) uiText("store.reading") else "添加插件源需要插件商店。是否从 KIGTTS 官方源下载并安装？"
-                StoreBootstrapPhase.RESTORE -> if (synthesis) "插件商店已安装但当前不可用。启用后前往安装语音合成服务。" else "插件商店已安装但当前不可用。启用后继续添加源。"
+                StoreBootstrapPhase.OFFER -> if (synthesis) uiText("store.reading") else uiText("store.offer_source")
+                StoreBootstrapPhase.RESTORE -> if (synthesis) uiText("store.restore_reading") else uiText("store.restore_source")
                 StoreBootstrapPhase.DOWNLOADING -> uiText("store.fetch")
-                StoreBootstrapPhase.REVIEW -> "下载已完成，请确认插件信息。"
-                StoreBootstrapPhase.INSTALLING -> if (synthesis) "完成后前往语音合成服务的安装页面。" else "完成后继续添加刚才的源。"
-                StoreBootstrapPhase.COMPLETED -> "商店已准备好。"
+                StoreBootstrapPhase.REVIEW -> uiText("store.review_ready")
+                StoreBootstrapPhase.INSTALLING -> if (synthesis) uiText("store.after_install_reading") else uiText("store.after_install_source")
+                StoreBootstrapPhase.COMPLETED -> uiText("store.ready")
                 StoreBootstrapPhase.ERROR -> state.error.orEmpty()
             })
             state.candidate?.preview?.let { candidate ->
@@ -68,16 +68,16 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
                 Text(uiText("plugin.publisher_digest", "digest" to candidate.publisherSha256), style = MaterialTheme.typography.bodySmall)
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (synthesis) "商店准备好后，请选择语音合成服务并确认安装。" else uiText("store.source"), style = MaterialTheme.typography.bodySmall)
+            Text(if (synthesis) uiText("store.choose_voice_engine") else uiText("store.source"), style = MaterialTheme.typography.bodySmall)
         } },
         confirmButton = { MotionTextButton(onClick = feedbackClick(confirm), enabled = !busy) { Text(when (state.phase) {
-            StoreBootstrapPhase.OFFER -> "下载插件商店"
-            StoreBootstrapPhase.RESTORE -> "启用并继续"
-            StoreBootstrapPhase.REVIEW -> "安装并继续"
-            StoreBootstrapPhase.COMPLETED -> "安装完成"
-            else -> "重试"
+            StoreBootstrapPhase.OFFER -> uiText("store.download")
+            StoreBootstrapPhase.RESTORE -> uiText("store.enable_continue")
+            StoreBootstrapPhase.REVIEW -> uiText("store.install_continue")
+            StoreBootstrapPhase.COMPLETED -> uiText("store.install_done")
+            else -> uiText("store.retry")
         }) } },
         dismissButton = { MotionTextButton(onClick = dialogFeedbackClick(dismiss), enabled = state.phase != StoreBootstrapPhase.INSTALLING) {
-            Text(if (state.phase == StoreBootstrapPhase.DOWNLOADING) "取消下载" else "取消")
+            Text(if (state.phase == StoreBootstrapPhase.DOWNLOADING) uiText("store.cancel_download") else uiText("action.cancel"))
         } })
 }

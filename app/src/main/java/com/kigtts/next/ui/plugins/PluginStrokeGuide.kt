@@ -37,7 +37,7 @@ internal fun PluginStrokeGuide(guide: PageBlock.StrokeGuide, enabled: Boolean,
                 Switch(toggle.checked, feedbackChange { value ->
                     if (enabled) invoke(toggle.action, mapOf("value" to "$value", "checked" to "$value"))
                 }, modifier = Modifier.testTag("stroke-toggle/" + guide.title))
-            } ?: Icon(Icons.Default.PlayArrow, "查看绘制说明")
+            } ?: Icon(Icons.Default.PlayArrow, uiText("accessibility.drawing_instructions"))
         }) {
         if (guide.actions.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             guide.actions.forEach { action ->

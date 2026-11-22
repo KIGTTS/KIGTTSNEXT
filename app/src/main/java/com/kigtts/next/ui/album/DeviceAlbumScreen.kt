@@ -109,7 +109,7 @@ import kotlinx.coroutines.delay
                     }
                     if (onCamera != null && !selecting) IconButton(feedbackClick(onCamera)) { Icon(Icons.Default.CameraAlt, uiText("album.camera")) }
                     if (choose == null) IconButton(feedbackClick { selecting = !selecting; selected = emptyList() }) {
-                        Icon(if (selecting) Icons.Default.Close else Icons.Default.Checklist, if (selecting) "取消选择" else "选择照片")
+                        Icon(if (selecting) Icons.Default.Close else Icons.Default.Checklist, if (selecting) uiText("file.cancel_selection") else uiText("accessibility.select_photos"))
                     } else if (multiple) TextButton(feedbackClick { choose(all.filter { it.uri.toString() in checked }) },
                         enabled = selected.isNotEmpty()) { Text(if (selected.isEmpty()) uiText("action.done") else
                             uiText("action.done_count", "count" to selected.size.toString())) }

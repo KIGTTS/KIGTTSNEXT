@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -60,7 +62,7 @@ internal fun CardPhotoContent(card: PolaroidCard, image: ImageBitmap?, width: Fl
 private fun PhotoPixels(card: PolaroidCard, pixels: ImageBitmap?, width: Float, height: Float) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         if (pixels == null) {
-            Icon(Icons.Default.Image, "拍立得照片", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Default.Image, uiText("photo.card_label"), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             val crop = remember(card.frameStyleId) { PhotoFrameSpec.from(card.frameStyleId)?.crop }
             if (crop != null) {

@@ -18,7 +18,12 @@ import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.api.PolaroidFrameStyle
 import java.io.File
 
-internal enum class CardMenuAction(val label: String) { SAVE("保存到系统相册"), COPY("复制拍立得"), QUICK("添加到快捷文本"), DELETE("删除拍立得") }
+internal enum class CardMenuAction(val textKey: String) {
+    SAVE("photo.album_save_action"),
+    COPY("photo.copy_polaroid"),
+    QUICK("quick.add_from_text"),
+    DELETE("photo.delete_polaroid"),
+}
 
 @Composable
 internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) -> File?, enabled: Boolean,
@@ -35,12 +40,12 @@ internal fun PolaroidCardsGrid(cards: List<PolaroidCard>, imageFile: (String) ->
                     onClick = feedbackClick { preview(card) }, onLongClick = feedbackClick { edit(card) }),
                     frame = frames.firstOrNull { it.id == card.frameStyleId })
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                    MotionIconButton(feedbackClick { edit(card) }, enabled = enabled) { Icon(Icons.Default.Edit, "编辑拍立得：" + card.title) }
-                    MotionIconButton(feedbackClick { share(card) }, enabled = enabled) { Icon(Icons.Default.Share, "分享拍立得：" + card.title) }
+                    MotionIconButton(feedbackClick { edit(card) }, enabled = enabled) { Icon(Icons.Default.Edit, uiText("accessibility.edit_photo_named", "name" to card.title)) }
+                    MotionIconButton(feedbackClick { share(card) }, enabled = enabled) { Icon(Icons.Default.Share, uiText("accessibility.share_photo_named", "name" to card.title)) }
                     Box {
-                        MotionIconButton(feedbackClick { menu = true }, enabled = enabled) { Icon(Icons.Default.MoreVert, "拍立得操作：" + card.title) }
+                        MotionIconButton(feedbackClick { menu = true }, enabled = enabled) { Icon(Icons.Default.MoreVert, uiText("accessibility.photo_actions_named", "name" to card.title)) }
                         DropdownMenu(menu && enabled, { menu = false }) {
-                            CardMenuAction.entries.forEach { operation -> DropdownMenuItem(text = { Text(operation.label) },
+                            CardMenuAction.entries.forEach { operation -> DropdownMenuItem(text = { Text(uiText(operation.textKey)) },
                                 leadingIcon = { Icon(when (operation) {
                                     CardMenuAction.SAVE -> Icons.Default.Download
                                     CardMenuAction.COPY -> Icons.Default.ContentCopy

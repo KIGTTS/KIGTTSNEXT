@@ -35,19 +35,19 @@ import com.kigtts.plugin.api.*
     LaunchedEffect(keys) { state.reconcile(keys) }
     val interactive = enabled && state.active && LocalCardManagementActive.current && LocalCardManagementReveal.current.value >= .999f
     if (state.active) RegisterPageActions(buildList {
-        add(ToolbarAction("cards-manage-done", "完成整理", Icons.Default.Check, enabled, click = state::finish))
-        add(ToolbarAction("cards-manage-select-all", if (selected.size == keys.size && keys.isNotEmpty()) "取消全选" else "全选",
+        add(ToolbarAction("cards-manage-done", uiText("photo.finish_organizing"), Icons.Default.Check, enabled, click = state::finish))
+        add(ToolbarAction("cards-manage-select-all", if (selected.size == keys.size && keys.isNotEmpty()) uiText("album.deselect_all") else uiText("album.select_all"),
             Icons.Default.SelectAll, interactive && keys.isNotEmpty(), click = { state.selectAll(keys) }))
         if (!albumsMode) {
-            if (faceShare != null) add(ToolbarAction("cards-manage-face-share", "分享所选照片", Icons.Default.Share,
+            if (faceShare != null) add(ToolbarAction("cards-manage-face-share", uiText("photo.share_selected"), Icons.Default.Share,
                 interactive && selected.isNotEmpty(), click = { faceShare.send(selected) }))
-            add(ToolbarAction("cards-manage-move", "移动所选照片", Icons.Default.DriveFileMove, interactive && selected.isNotEmpty(), click = { move = selected }))
-            if (selected.size == 1 && !cards.isReadOnly(selected.single())) add(ToolbarAction("cards-manage-edit", "编辑照片", Icons.Default.Edit, interactive, click = { state.finish(); edit(selected.single()) }))
+            add(ToolbarAction("cards-manage-move", uiText("photo.move_selected"), Icons.Default.DriveFileMove, interactive && selected.isNotEmpty(), click = { move = selected }))
+            if (selected.size == 1 && !cards.isReadOnly(selected.single())) add(ToolbarAction("cards-manage-edit", uiText("photo.edit_photo"), Icons.Default.Edit, interactive, click = { state.finish(); edit(selected.single()) }))
         } else if (selected.size == 1) {
-            add(ToolbarAction("cards-manage-rename", "重命名相册", Icons.Default.Edit, interactive,
+            add(ToolbarAction("cards-manage-rename", uiText("photo.rename_album"), Icons.Default.Edit, interactive,
                 click = { rename = catalog.albums.firstOrNull { it.id == selected.single() } }))
         }
-        add(ToolbarAction("cards-manage-delete", if (albumsMode) "删除所选相册" else "删除所选照片",
+        add(ToolbarAction("cards-manage-delete", if (albumsMode) uiText("photo.delete_selected_albums") else uiText("photo.delete_selected"),
             Icons.Default.DeleteOutline, interactive && removable.isNotEmpty(), click = { delete = removable }))
     })
     val topInset = LocalCardHeaderClearance.current.coerceAtLeast(0.dp)
@@ -82,7 +82,7 @@ import com.kigtts.plugin.api.*
                 moveTarget = null; actions.work({ cards.moveCards(ids, target.id) }) { state.finish(); moved(ids, target.id) }
             }, Modifier.testTag("confirm-move-cards")) { Text(uiText("common.move")) } },
             dismissButton = { MotionTextButton(dialogFeedbackClick { moveTarget = null }) { Text(uiText("action.cancel")) } }) }
-        rename?.let { target -> CardNameDialog("重命名相册", target.name, { rename = null }, confirm = { name ->
+        rename?.let { target -> CardNameDialog(uiText("photo.rename_album"), target.name, { rename = null }, confirm = { name ->
             rename = null; actions.work({ cards.renameAlbum(target.id, name) })
         }) }
     }

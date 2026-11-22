@@ -22,7 +22,7 @@ internal fun QuickBackupGroupPicker(title: String, groups: List<QuickGroup>, con
     MotionAlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = {
         Column {
             TextButton(onClick = feedbackClick { selected = if (selected.size == groups.size) emptySet() else groups.map { it.id }.toSet() }) {
-                Text(if (selected.size == groups.size) "取消全选" else "全选")
+                Text(if (selected.size == groups.size) uiText("album.deselect_all") else uiText("album.select_all"))
             }
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
                 items(groups, key = { it.id }) { group ->

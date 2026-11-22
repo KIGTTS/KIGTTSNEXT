@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.media.code
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -30,7 +32,7 @@ internal fun CodeShortcutBar(state:CodeEditorState,enabled:Boolean,retainFocus:(
                 } } else Row(Modifier.horizontalScroll(rememberScrollState())) { CodeKey.entries.forEach { CodeShortcut(it,state.available(it)&&enabled,invoke) } }
             }
             MotionIconButton(feedbackClick { expanded=!expanded;retainFocus() },Modifier.testTag("code-expand"),enabled=enabled) {
-                Icon(if(expanded)Icons.Default.ExpandMore else Icons.Default.ExpandLess,if(expanded)"收起快捷栏" else "展开快捷栏")
+                Icon(if(expanded)Icons.Default.ExpandMore else Icons.Default.ExpandLess,if(expanded)uiText("accessibility.code_shortcuts_collapse") else uiText("accessibility.code_shortcuts_expand"))
             }
         }
     }

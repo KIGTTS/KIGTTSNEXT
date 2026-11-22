@@ -78,4 +78,8 @@ internal class UiCopy(private val catalog: PluginStrings, private val locale: St
 }
 
 @Composable internal fun uiText(key: String, vararg values: Pair<String, String>) =
-    LocalContext.current.uiCopy(key, *values, locale = LocalUiLocale.current)
+    rememberUiCopy().let { copy ->
+        // Most controls keep the same caption through palette and navigation animations.
+        if (values.isEmpty()) remember(copy, key) { copy(key) }
+        else remember(copy, key, *values) { copy(key, *values) }
+    }

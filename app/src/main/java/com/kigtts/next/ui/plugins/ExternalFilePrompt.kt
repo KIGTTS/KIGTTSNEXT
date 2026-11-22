@@ -83,7 +83,7 @@ internal fun ExternalFilePrompt(model: AppViewModel) {
             }
         },
         dismissButton = { if (!current.busy) TextButton(onClick = dialogFeedbackClick(coordinator::dismiss)) {
-            Text(if (current.kind == ExternalFileType.UNKNOWN) "关闭" else "取消")
+            Text(if (current.kind == ExternalFileType.UNKNOWN) uiText("action.close") else uiText("action.cancel"))
         } })
 }
 

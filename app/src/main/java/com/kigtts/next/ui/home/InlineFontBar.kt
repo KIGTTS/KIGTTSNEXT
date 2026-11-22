@@ -27,11 +27,12 @@ fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<F
     BackHandler(active) { dismiss() }
     val source = remember { MutableInteractionSource() }
     val colors = SliderDefaults.colors().animateEnabled(active)
+    val sliderDescription = uiText("appearance.slider_named", "name" to label)
     Row(modifier.height(32.dp).testTag("inline-" + label), verticalAlignment = Alignment.CenterVertically) {
         Slider(value, change, valueRange = range, enabled = active,
             colors = colors,
             modifier = Modifier.weight(1f).height(32.dp).semantics {
-                contentDescription = label + "滑条"
+                contentDescription = sliderDescription
                 if (valueDescription != null) stateDescription = valueDescription
             }, interactionSource = source,
             thumb = { SliderDefaults.Thumb(source, colors = colors, enabled = active, modifier = Modifier.testTag("font-thumb-" + label), thumbSize = DpSize(4.dp, 24.dp)) },

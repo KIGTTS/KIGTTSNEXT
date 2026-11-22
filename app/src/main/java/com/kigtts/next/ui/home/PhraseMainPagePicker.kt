@@ -30,7 +30,7 @@ import kotlinx.coroutines.*
     }
     MotionAlertDialog(onDismissRequest = close, title = { Text(uiText("quick.main_page")) }, text = {
         Column(Modifier.heightIn(max = 420.dp)) {
-            Text(if (directory.isBlank()) "当前词条的文件" else directory, style = MaterialTheme.typography.labelMedium)
+            Text(if (directory.isBlank()) uiText("quick.current_files") else directory, style = MaterialTheme.typography.labelMedium)
             if (directory.isNotBlank()) MotionTextButton(onClick = feedbackClick { directory = directory.substringBeforeLast('/', "") }, enabled = !busy) { Text(uiText("quick.parent_folder")) }
             LazyColumn { items(items, key = { it.path }) { item ->
                 TextButton(enabled = !busy, onClick = feedbackClick {

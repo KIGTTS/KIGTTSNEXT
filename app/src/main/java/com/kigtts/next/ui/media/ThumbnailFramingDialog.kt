@@ -38,7 +38,7 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
     MotionAlertDialog(onDismissRequest = close, dismissEnabled = !saving, title = { Text(uiText("media.thumbnail_framing")) }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingChoiceGroup("缩略图取景", ThumbnailMode.entries, mode, { it.label }, { mode = it })
-            Text(when (mode) { ThumbnailMode.FOCUS -> "点击图片选择重点位置"; ThumbnailMode.FIT -> "完整保留画面内容"; ThumbnailMode.AUTO -> "自动选取画面重点" }, style = MaterialTheme.typography.bodySmall)
+            Text(when (mode) { ThumbnailMode.FOCUS -> uiText("media.thumbnail_focus"); ThumbnailMode.FIT -> uiText("media.thumbnail_fit"); ThumbnailMode.AUTO -> uiText("media.thumbnail_auto") }, style = MaterialTheme.typography.bodySmall)
             val image = source
             if (image != null) {
                 var size by remember { mutableStateOf(IntSize.Zero) }
@@ -64,11 +64,11 @@ internal fun ThumbnailFramingDialog(entry: MediaEntry, repository: MediaReposito
                         drawCircle(marker, 12.dp.toPx(), point, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
                     }
                 }
-            } else Text(if (entry.kind in setOf(MediaKind.HTML, MediaKind.WEB)) "显示过网页后可预览缩略图" else "封面暂不可用", style = MaterialTheme.typography.bodySmall)
+            } else Text(if (entry.kind in setOf(MediaKind.HTML, MediaKind.WEB)) uiText("media.web_thumbnail_unavailable") else uiText("media.image_cover_unavailable"), style = MaterialTheme.typography.bodySmall)
             Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainerLowest) {
                 Box(Modifier.fillMaxWidth().height(88.dp)) {
                     MediaCardBackdrop(preview, repository, Modifier.matchParentSize())
-                    Text(if(entry.kind in setOf(MediaKind.VIDEO,MediaKind.AUDIO))"字幕预览"else entry.name,
+                    Text(if(entry.kind in setOf(MediaKind.VIDEO,MediaKind.AUDIO))uiText("media.subtitle_preview")else entry.name,
                         Modifier.fillMaxWidth(.6f).padding(12.dp), maxLines = 2, style = MaterialTheme.typography.bodyLarge)
                 }
             }

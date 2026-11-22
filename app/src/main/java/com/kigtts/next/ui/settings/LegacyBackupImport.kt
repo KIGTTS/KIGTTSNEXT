@@ -25,8 +25,8 @@ internal fun LegacyBackupImport(controller: LegacyImportController) {
     val preview by controller.preview.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(controller::prepare) }
     com.kigtts.next.ui.navigation.RegisterPageLoading(busy)
-    SettingsGroup("旧版 KIGTTS") {
-        SettingItem("导入旧版备份", "快捷文本包、音效包、名片包和数据备份包", Icons.Default.FileDownload,
+    SettingsGroup(uiText("backup.legacy_title")) {
+        SettingItem(uiText("backup.legacy_import"), uiText("backup.legacy_formats"), Icons.Default.FileDownload,
             SettingPosition.SINGLE, enabled = !busy, onClick = { picker.launch(arrayOf("*/*")) })
     }
     preview?.let { value ->

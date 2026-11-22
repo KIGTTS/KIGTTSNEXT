@@ -35,9 +35,9 @@ internal fun StickerLibraryPanel(libraries: List<StickerLibrary>, items: List<St
                     modifier = Modifier.testTag("sticker-library/" + library.id)) }
             }
             if (showLibraryActions) MotionIconButton(feedbackClick { selected?.let(editLibrary) }, enabled = enabled && selected != null) {
-                Icon(Icons.Default.Edit, "编辑贴纸库")
+                Icon(Icons.Default.Edit, uiText("accessibility.edit_sticker_library"))
             }
-            if (showLibraryActions) MotionIconButton(feedbackClick(addLibrary), enabled = enabled) { Icon(Icons.Default.Add, "新建贴纸库") }
+            if (showLibraryActions) MotionIconButton(feedbackClick(addLibrary), enabled = enabled) { Icon(Icons.Default.Add, uiText("photo.new_sticker_library")) }
         }
         val contents = items.filter { it.libraryId == selected?.id }
         if (contents.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -65,7 +65,7 @@ internal fun StickerLibraryPanel(libraries: List<StickerLibrary>, items: List<St
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(item.name, Modifier.weight(1f), maxLines = 1, style = MaterialTheme.typography.labelLarge)
                             MotionIconButton(feedbackClick { itemMenu(item) }, Modifier.size(36.dp), enabled) {
-                                Icon(Icons.Default.MoreVert, "贴纸操作：" + item.name, Modifier.size(20.dp))
+                                Icon(Icons.Default.MoreVert, uiText("accessibility.sticker_actions_named", "name" to item.name), Modifier.size(20.dp))
                             }
                         }
                     }

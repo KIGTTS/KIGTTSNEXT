@@ -76,7 +76,7 @@ import com.kigtts.next.ui.components.reorder.*
                         if (editing || editFraction > 0f) Box(Modifier.align(Alignment.TopEnd).offset(10.dp, (-10).dp)
                             .graphicsLayer { alpha = editFraction; scaleX = .7f + .3f * editFraction; scaleY = scaleX }) {
                             IconButton(feedbackClick { latestChange(latestTags - tag) }, Modifier.size(24.dp).testTag("profile-tag-remove/$tag"), enabled = editing) {
-                                Icon(Icons.Default.Cancel, "删除标签：$tag", Modifier.size(20.dp).background(MaterialTheme.colorScheme.surface, CircleShape))
+                                Icon(Icons.Default.Cancel, uiText("accessibility.delete_tag", "name" to tag), Modifier.size(20.dp).background(MaterialTheme.colorScheme.surface, CircleShape))
                             }
                         }
                     }

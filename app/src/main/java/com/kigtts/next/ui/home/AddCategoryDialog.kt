@@ -48,7 +48,7 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
         MaterialSymbolPicker({ symbol -> icon = CategoryIcon.symbol(symbol); more = false }, { more = false }, icon.symbol)
         return
     }
-    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(if (original == null) "添加分组" else "编辑分组") },
+    MotionAlertDialog(onDismissRequest = dismiss, title = { Text(if (original == null) uiText("quick.add_group") else uiText("quick.edit_group")) },
         text = {
             Column(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(state = name, lineLimits = TextFieldLineLimits.SingleLine, label = { Text(uiText("quick.group_name")) },
@@ -56,7 +56,7 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
                     modifier = Modifier.fillMaxWidth().testTag(if (original == null) "new-category-name" else "edit-category-name"))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(icon.vector(), "当前图标：" + icon.label, Modifier.size(24.dp))
+                        Icon(icon.vector(), uiText("accessibility.current_icon", "name" to icon.label), Modifier.size(24.dp))
                         Text(uiText("quick.group_icon"), style = MaterialTheme.typography.titleSmall)
                     }
                     MotionTextButton({ more = true }, Modifier.testTag("category-more-icons")) { Text(uiText("quick.more_search")) }
@@ -75,7 +75,7 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
                                 contentColor = if (icon == choice) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant),
                             modifier = Modifier.size(48.dp).testTag("choose-category-icon-" + choice.name).semantics {
                                 selected = icon == choice; role = Role.RadioButton
-                            }) { Icon(choice.vector(), "分组图标：" + choice.label) }
+                            }) { Icon(choice.vector(), uiText("accessibility.group_icon", "name" to choice.label)) }
                     }
                 }
 
@@ -84,6 +84,6 @@ private fun CategoryPropertiesDialog(original: String?, categories: List<String>
         confirmButton = { val closeDialog = rememberDialogClose(); MotionTextButton(onClick = feedbackClick {
             val saved = if (original == null) model.quickTexts.addCategory(value, icon) else model.quickTexts.editCategory(original, value, icon)
             if (saved) closeDialog { model.category(value); dismiss() }
-        }, enabled = value.isNotBlank() && !duplicate, modifier = Modifier.testTag("save-category")) { Text(if (original == null) "添加" else "保存") } },
+        }, enabled = value.isNotBlank() && !duplicate, modifier = Modifier.testTag("save-category")) { Text(if (original == null) uiText("common.add") else uiText("action.save")) } },
         dismissButton = { MotionTextButton(onClick = dialogFeedbackClick(dismiss)) { Text(uiText("action.cancel")) } })
 }

@@ -64,13 +64,15 @@ import kotlin.math.roundToInt
                         layout(width, height) { placeable.place(0, 0) }
                     }.zIndex(if (motion.raised) 1f else 0f).testTag("profile-tile/${tile.id}")) {
                     val contact = tile.resolveContact(contacts)
+                    val imageLabel = com.kigtts.next.i18n.uiText("profile.export_image")
+                    val linkLabel = com.kigtts.next.i18n.uiText("profile.link_label")
                     val iconOnly = tile.columns == 1 && tile.rows == 1 && tile.kind in setOf(ProfileTileKind.LINK, ProfileTileKind.CONTACT)
                     val clickable = editing || tile.kind == ProfileTileKind.LINK || tile.kind == ProfileTileKind.IMAGE && tile.image.isNotBlank() ||
                         tile.kind == ProfileTileKind.QR && tile.text.isNotBlank() || (tile.kind == ProfileTileKind.CONTACT && contact != null)
                     Surface(onClick = feedbackClick {
                         when {
                             editing -> edit(tile)
-                            tile.kind == ProfileTileKind.IMAGE -> image(tile.image)?.let { preview = it to tile.title.ifBlank { "图片" } }
+                            tile.kind == ProfileTileKind.IMAGE -> image(tile.image)?.let { preview = it to tile.title.ifBlank { imageLabel } }
                             tile.kind == ProfileTileKind.LINK -> openLink(tile.text)
                             tile.kind == ProfileTileKind.QR -> qrPreview = tile
                             else -> contact?.let(openContact)
@@ -78,7 +80,7 @@ import kotlin.math.roundToInt
                     },
                         enabled = clickable, modifier = Modifier.fillMaxSize()
                             .then(if (iconOnly) Modifier.semantics {
-                            contentDescription = tile.title.ifBlank { contact?.label ?: "链接" }
+                            contentDescription = tile.title.ifBlank { contact?.label ?: linkLabel }
                         } else Modifier),
                         shape = if (section) MaterialTheme.shapes.extraSmall else MaterialTheme.shapes.extraLarge,
                         color = when (tile.kind) {
@@ -91,7 +93,9 @@ import kotlin.math.roundToInt
                         enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),
                         exit = fadeOut(tween(140)) + scaleOut(tween(180), targetScale = .85f)) {
                         IconButton(feedbackClick { remove(tile) }, Modifier.then(if (section) Modifier else Modifier.offset((-6).dp, (-6).dp))
-                            .size(32.dp).testTag("tile-remove/${tile.id}")) { Icon(Icons.Default.RemoveCircle, "移除磁贴", Modifier.size(22.dp)) }
+                            .size(32.dp).testTag("tile-remove/${tile.id}")) {
+                            Icon(Icons.Default.RemoveCircle, com.kigtts.next.i18n.uiText("profile.remove_tile"), Modifier.size(22.dp))
+                        }
                     }
                     AnimatedVisibility(editing && !section, Modifier.align(Alignment.BottomEnd),
                         enter = fadeIn(tween(180)) + scaleIn(tween(220), initialScale = .85f),

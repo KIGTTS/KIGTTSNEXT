@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.files
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -75,7 +77,7 @@ private fun FileRowMenu(item: BrowserFile, enabled: Boolean, tagPrefix: String,
     var expanded by remember(item.path) { mutableStateOf(false) }
     Box(Modifier.size(48.dp)) {
         MotionIconButton(feedbackClick { expanded = true }, Modifier.size(48.dp).testTag("$tagPrefix-menu/${item.path}"), enabled = enabled) {
-            Icon(Icons.Default.MoreVert, "文件操作")
+            Icon(Icons.Default.MoreVert, uiText("accessibility.file_actions"))
         }
         DropdownMenu(expanded && enabled, { expanded = false }) {
             extra.forEach { item -> DropdownMenuItem({ Text(item.label) }, feedbackClick { expanded = false; item.click() },

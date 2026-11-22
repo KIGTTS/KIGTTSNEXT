@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.identity
 
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.rememberUiCopy
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,6 +38,7 @@ import java.io.File
     var dividerStyle by remember(tile?.id) { mutableStateOf(tile?.dividerStyle ?: ProfileDividerStyle.LINE) }
     var error by remember { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }
+    val copy = rememberUiCopy()
     val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) scope.launch {
         working = true
@@ -48,22 +50,22 @@ import java.io.File
             try {
                 stickers.context.contentResolver.openInputStream(uri)!!.use { input -> file.outputStream().use { output ->
                     val buffer = ByteArray(65536); var count = 0L
-                    while (true) { val n = input.read(buffer); if (n < 0) break; count += n; require(count <= 20_000_000) { "请选择 20 MB 以内的图片" }; output.write(buffer, 0, n) }
+                    while (true) { val n = input.read(buffer); if (n < 0) break; count += n; require(count <= 20_000_000) { copy("profile.image_size_limit") }; output.write(buffer, 0, n) }
                 } }
                 val options = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 android.graphics.BitmapFactory.decodeFile(file.path, options)
-                require(options.outWidth in 1..16384 && options.outHeight in 1..16384) { "图片格式无法打开" }
+                require(options.outWidth in 1..16384 && options.outHeight in 1..16384) { copy("album.open_image_failed") }
                 id
             } catch (e: Exception) { file.delete(); throw e }
         } }
         catch (cancel: CancellationException) { throw cancel }
-        catch (e: Exception) { error = e.message ?: "图片未能打开" }
+        catch (e: Exception) { error = e.message ?: copy("album.open_image_failed") }
         finally { working = false }
     } }
-    val kinds = linkedMapOf(ProfileTileKind.LINK to ("链接" to Icons.Default.Link),
-        ProfileTileKind.CONTACT to ("社媒" to Icons.Default.AlternateEmail), ProfileTileKind.TITLE to ("标题" to Icons.Default.Title),
-        ProfileTileKind.DIVIDER to ("分隔线" to Icons.Default.HorizontalRule), ProfileTileKind.TEXT to ("文字" to Icons.Default.Subject),
-        ProfileTileKind.IMAGE to ("图片 / GIF" to Icons.Default.Image), ProfileTileKind.QR to ("二维码" to Icons.Default.QrCode))
+    val kinds = linkedMapOf(ProfileTileKind.LINK to (uiText("profile.tile_link") to Icons.Default.Link),
+        ProfileTileKind.CONTACT to (uiText("profile.tile_contact") to Icons.Default.AlternateEmail), ProfileTileKind.TITLE to (uiText("profile.tile_title") to Icons.Default.Title),
+        ProfileTileKind.DIVIDER to (uiText("profile.tile_divider") to Icons.Default.HorizontalRule), ProfileTileKind.TEXT to (uiText("profile.tile_text") to Icons.Default.Subject),
+        ProfileTileKind.IMAGE to (uiText("profile.tile_image") to Icons.Default.Image), ProfileTileKind.QR to (uiText("profile.qr") to Icons.Default.QrCode))
     val keyboard = LocalSoftwareKeyboardController.current
     val changeKind = { keyboard?.hide(); kind = null; error = null }
     MotionAlertDialog(close, title = { Text(if (tile == null) uiText("profile.add_tile") else uiText("profile.tile_edit")) },
@@ -79,23 +81,25 @@ import java.io.File
                 }
             }
             else {
-                Text(kinds[displayedKind]?.first ?: "状态", style = MaterialTheme.typography.titleSmall)
+                Text(kinds[displayedKind]?.first ?: uiText("profile.state"), style = MaterialTheme.typography.titleSmall)
                 if (displayedKind != ProfileTileKind.IMAGE) OutlinedTextField(title, { title = it.take(40) }, Modifier.fillMaxWidth(),
-                    label = { Text(when (displayedKind) { ProfileTileKind.TITLE -> "标题"; ProfileTileKind.DIVIDER -> "中间文字（可选）"; else -> "名称" }) }, singleLine = true)
+                    label = { Text(when (displayedKind) { ProfileTileKind.TITLE -> uiText("profile.tile_title"); ProfileTileKind.DIVIDER -> uiText("profile.divider_text"); else -> uiText("common.name") }) }, singleLine = true)
                 when (displayedKind) {
                     ProfileTileKind.CONTACT -> ProfileTileContactField(social, contact, contacts,
                         { social = it; contact = ""; error = null }, { social = null; contact = it.value; error = null })
                     ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.url")) }, singleLine = true)
                     ProfileTileKind.IMAGE -> {
                         if (image.isNotBlank()) ProfileTileImage(profileImageFile(stickers, image), Modifier.fillMaxWidth().height(160.dp))
-                        FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) "正在打开…" else "选择图片或 GIF") }
+                        FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) uiText("profile.opening_image") else uiText("profile.pick_image_or_gif")) }
                     }
                     ProfileTileKind.TITLE -> Unit
                     ProfileTileKind.DIVIDER -> {
                         SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                             ProfileDividerStyle.entries.forEachIndexed { index, style ->
                                 SegmentedButton(dividerStyle == style, feedbackClick { dividerStyle = style },
-                                    SegmentedButtonDefaults.itemShape(index, ProfileDividerStyle.entries.size), icon = {}) { Text(style.label) }
+                                    SegmentedButtonDefaults.itemShape(index, ProfileDividerStyle.entries.size), icon = {}) {
+                                    Text(if (style == ProfileDividerStyle.LINE) uiText("profile.divider_line") else uiText("profile.divider_wave"))
+                                }
                             }
                         }
                         ProfileHeadingTile(ProfileTile(kind = ProfileTileKind.DIVIDER, title = title, dividerStyle = dividerStyle),
@@ -108,7 +112,11 @@ import java.io.File
                             ProfileQrStyle.entries.forEachIndexed { index, style ->
                                 SegmentedButton(qrStyle == style, feedbackClick { qrStyle = style },
                                     SegmentedButtonDefaults.itemShape(index, ProfileQrStyle.entries.size), icon = {}) {
-                                    Text(style.label, maxLines = 1)
+                                    Text(when (style) {
+                                        ProfileQrStyle.THEME -> uiText("appearance.custom_seed")
+                                        ProfileQrStyle.INK -> uiText("profile.qr_ink")
+                                        ProfileQrStyle.DOTS -> uiText("profile.qr_dots")
+                                    }, maxLines = 1)
                                 }
                             }
                         }
@@ -130,13 +138,13 @@ import java.io.File
     }, confirmButton = { if (kind != null) TextButton(feedbackClick {
         if (working) return@feedbackClick
         val selected = kind ?: return@feedbackClick
-        if (selected == ProfileTileKind.LINK && safeProfileLink(text) == null) { error = "请输入 http 或 https 网址"; return@feedbackClick }
-        if (selected == ProfileTileKind.CONTACT && social == null && (contact.isBlank() || contacts.none { it.value == contact })) { error = "请选择社媒平台或联系方式"; return@feedbackClick }
-        if (selected == ProfileTileKind.IMAGE && image.isBlank()) { error = "请选择图片"; return@feedbackClick }
-        if (selected == ProfileTileKind.TITLE && title.isBlank()) { error = "请输入标题"; return@feedbackClick }
-        if (selected == ProfileTileKind.QR && text.isBlank()) { error = "请输入二维码内容"; return@feedbackClick }
+        if (selected == ProfileTileKind.LINK && safeProfileLink(text) == null) { error = copy("profile.invalid_web_link"); return@feedbackClick }
+        if (selected == ProfileTileKind.CONTACT && social == null && (contact.isBlank() || contacts.none { it.value == contact })) { error = copy("profile.choose_contact"); return@feedbackClick }
+        if (selected == ProfileTileKind.IMAGE && image.isBlank()) { error = copy("profile.choose_image"); return@feedbackClick }
+        if (selected == ProfileTileKind.TITLE && title.isBlank()) { error = copy("profile.enter_title"); return@feedbackClick }
+        if (selected == ProfileTileKind.QR && text.isBlank()) { error = copy("profile.enter_qr_content"); return@feedbackClick }
         if (selected == ProfileTileKind.QR && text.trim().toByteArray(Charsets.UTF_8).size > PROFILE_QR_MAX_BYTES) {
-            error = "二维码内容太长，请缩短后重试"; return@feedbackClick
+            error = copy("profile.qr_too_long"); return@feedbackClick
         }
         save((tile ?: ProfileTile()).copy(kind = selected, title = title.trim(), text = text.trim(), contact = if (selected == ProfileTileKind.CONTACT) contact else "", image = image,
             social = social.takeIf { selected == ProfileTileKind.CONTACT }, qrStyle = qrStyle, qrKeepLight = qrKeepLight, dividerStyle = dividerStyle,

@@ -22,6 +22,7 @@ fun ElasticTab(selected: Boolean, click: () -> Unit, source: MutableInteractionS
     icon: @Composable () -> Unit, label: @Composable () -> Unit,
     trailingIcon: (@Composable () -> Unit)? = null, dragging: Boolean = false) {
     val pressed by source.collectIsPressedAsState()
+    val dragDescription = if (dragging) com.kigtts.next.i18n.uiText("quick.dragging_group") else null
     val press=rememberImmediateButtonPress(source)
     val shape = connectedShape(if(selected)CornerNeighbors() else neighbors, pressed, neighborPressed && !selected, outer = 16.dp)
     val elevation by animateDpAsState(if (dragging) 8.dp else 0.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "tab-drag-elevation")
@@ -29,7 +30,7 @@ fun ElasticTab(selected: Boolean, click: () -> Unit, source: MutableInteractionS
     val borderColor by animateColorAsState(if (dragging) Color.Transparent else (restingBorder.brush as SolidColor).value,
         MaterialTheme.motionScheme.fastEffectsSpec(), label = "tab-drag-border")
     FilterChip(selected, feedbackClick { press.click();click() }, label, modifier.immediateButtonPress(press).height(32.dp)
-        .semantics { if (dragging) stateDescription = "正在拖动分组" },
+        .semantics { if (dragDescription != null) stateDescription = dragDescription },
         interactionSource = press.native, leadingIcon = icon, trailingIcon = trailingIcon,
         colors = compactTabColors(dragging),
         border = BorderStroke(restingBorder.width, borderColor),

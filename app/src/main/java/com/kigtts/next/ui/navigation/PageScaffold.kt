@@ -36,8 +36,9 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val bottomClearance = if (extendToBottom) with(density) { safe.getBottom(density).toDp() } else androidx.compose.ui.unit.Dp(0f)
     val keyboard by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
     val input = rememberUpdatedState(largeBar && (host.input.focused || keyboard))
-    val behavior=TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState,snapAnimationSpec=tween(220),
-        canScroll={ active.value && !input.value })
+    val snap = remember { tween<Float>(220) }
+    val canScroll = remember(active, input) { { active.value && !input.value } }
+    val behavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(barState, snapAnimationSpec = snap, canScroll = canScroll)
     // Match Material's switch between the expanded and single-line title semantics.
     // Do not recompose the entire editor for each pixel of the app bar or IME animation.
     val compact by remember(largeBar, barState) { derivedStateOf { !largeBar || barState.collapsedFraction >= .5f } }
@@ -51,7 +52,8 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
         LocalSecondaryBackground provides background,
         LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        val frame = Modifier.fillMaxSize()
+        Box(if (background == null && backgroundDecoration != null) frame.background(MaterialTheme.colorScheme.background) else frame) {
         background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
         backgroundDecoration?.invoke(this)
         // Sheets own their vertical scroll chain; the bar still supports direct dragging.

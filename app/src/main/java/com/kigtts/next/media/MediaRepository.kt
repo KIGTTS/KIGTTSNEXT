@@ -3,6 +3,7 @@ package com.kigtts.next.media
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.plugin.api.*
 import com.kigtts.plugin.runtime.PluginPaths
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,10 +74,10 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
         val id=UUID.randomUUID().toString(); val directory=File(root,id).apply { mkdirs() }
         val target=File(directory,"source."+when { mime.startsWith("video/")->"mp4"; mime.startsWith("audio/")-> android.webkit.MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "audio"; mime in setOf("text/html","application/xhtml+xml")->"html"; mime.contains("heic")||mime.contains("heif")->"heic"; mime.contains("png")->"png"; mime.contains("webp")->"webp"; mime.contains("gif")->"gif"; else->"jpg" })
         try {
-            require(mime.startsWith("image/")||mime.startsWith("video/")||mime.startsWith("audio/")||mime in setOf("text/html","application/xhtml+xml")) { "请选择图片、视频、音频或 HTML" }
+            require(mime.startsWith("image/")||mime.startsWith("video/")||mime.startsWith("audio/")||mime in setOf("text/html","application/xhtml+xml")) { context.uiCopy("media.unsupported_type") }
             requireNotNull(context.contentResolver.openInputStream(uri)).use { input -> target.outputStream().use { output ->
                 val buffer=ByteArray(64*1024); var bytes=0L
-                while(true) { val count=input.read(buffer);if(count<0)break;bytes+=count;require(bytes<=if(mime.contains("html"))2L*1024*1024 else 2L*1024*1024*1024) { "媒体文件过大" };output.write(buffer,0,count) };require(bytes>0) }
+                while(true) { val count=input.read(buffer);if(count<0)break;bytes+=count;require(bytes<=if(mime.contains("html"))2L*1024*1024 else 2L*1024*1024*1024) { context.uiCopy("media.file_too_large") };output.write(buffer,0,count) };require(bytes>0) }
             }
             var kind=when { mime.startsWith("video/")->MediaKind.VIDEO;mime.startsWith("audio/")->MediaKind.AUDIO;mime.contains("html")->MediaKind.HTML;else->MediaKind.IMAGE }
             val clip=File(directory,"motion.mp4"); if(kind==MediaKind.IMAGE && MotionPhoto.extract(target,clip))kind=MediaKind.MOTION_PHOTO
@@ -85,7 +86,7 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
         } catch(error:Exception) { directory.deleteRecursively();throw error }
     }
     fun pair(photoId:String, uri:Uri):MediaEntry {
-        require(context.getSharedPreferences("experiments",0).getBoolean("apple-live-photos",false)) { "请先在设置→实验性功能中开启苹果实况照片" }
+        require(context.getSharedPreferences("experiments",0).getBoolean("apple-live-photos",false)) { context.uiCopy("media.enable_apple_live") }
         val photo=requireNotNull(get(photoId));require(photo.kind in setOf(MediaKind.IMAGE,MediaKind.MOTION_PHOTO)&&photo.pluginId==null)
         val clip=import(uri,"video/mp4")
         return save(photo.copy(kind=MediaKind.MOTION_PHOTO,video=clip.primary,appleLive=true))
@@ -99,7 +100,12 @@ class MediaRepository(private val context: Context, private val plugins: PluginP
             created = maxOf(System.currentTimeMillis(), (existing?.created ?: 0) + 1)))
     }
     fun web(name:String,url:String,owner:String?=null):MediaEntry {
-        val uri=java.net.URI(url); require(uri.scheme=="https"&&uri.host!=null&&uri.userInfo==null) { "网页地址需要 HTTPS" }
+        val uri = try {
+            java.net.URI(url)
+        } catch (error: java.net.URISyntaxException) {
+            throw IllegalArgumentException(context.uiCopy("media.invalid_web_address"), error)
+        }
+        require(uri.scheme == "https" && uri.host != null && uri.userInfo == null) { context.uiCopy("media.invalid_web_address") }
         return save(MediaEntry(UUID.randomUUID().toString(),name.ifBlank { uri.host },MediaKind.WEB,url,pluginId=owner,network=true))
     }
     fun plugin(owner:String, content:SubtitleContent):MediaEntry {

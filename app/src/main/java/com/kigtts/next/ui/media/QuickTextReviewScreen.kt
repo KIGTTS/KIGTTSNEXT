@@ -22,7 +22,7 @@ fun QuickTextReviewScreen(model:AppViewModel,token:String) {
     val preview=model.quickTextPlugins.plan(token)
     var busy by remember {mutableStateOf(false)};var error by remember {mutableStateOf<String?>(null)}
     val scope=rememberCoroutineScope();RegisterPageLoading(busy)
-    RegisterPageActions(listOf(ToolbarAction("apply-quick-text-batch","确认应用修改",Icons.Default.Check,preview!=null&&!busy) {
+    RegisterPageActions(listOf(ToolbarAction("apply-quick-text-batch",uiText("quick.confirm_changes"),Icons.Default.Check,preview!=null&&!busy) {
         if(!busy) {busy=true;scope.launch {try {when(val result=model.quickTextPlugins.approve(token)) {
             is QuickTextReply.Applied->model.navigateBack()
             is QuickTextReply.Failure->error=result.message

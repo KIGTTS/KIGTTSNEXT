@@ -31,7 +31,7 @@ fun AppDrawer(state: AppState, model: AppViewModel, navigation: DrawerNavigation
     val close = navigation::close
     val landscape=LocalConfiguration.current.orientation==Configuration.ORIENTATION_LANDSCAPE
     // The stateful alpha overload closes inside its back callback, which can cancel mid-motion.
-    ModalDrawerSheet(modifier = Modifier.widthIn(max = 320.dp).predictiveReturn(back.progress, edge = if(landscape)1 else 0).testTag("app-drawer")
+    ModalDrawerSheet(modifier = Modifier.widthIn(max = 320.dp).predictiveReturn(back, edgeOverride = if (landscape) 1 else 0).testTag("app-drawer")
         .onGloballyPositioned {
             val left = it.positionInRoot().x
             navigation.placed(left, left + it.size.width, it.findRootCoordinates().size.width.toFloat())

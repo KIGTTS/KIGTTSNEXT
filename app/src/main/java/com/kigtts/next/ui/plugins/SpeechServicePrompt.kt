@@ -26,12 +26,12 @@ internal fun SpeechServicePrompt(status: SpeechServiceStatus?, proceed: () -> Un
     val missing = status == SpeechServiceStatus.MISSING
     MotionAlertDialog(onDismissRequest = later,
         title = { Row(horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(if (missing) "安装语音合成服务？" else "语音合成服务未启用", Modifier.weight(1f))
+            Text(if (missing) uiText("reading.install_prompt") else uiText("reading.enable_prompt"), Modifier.weight(1f))
             Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null)
         } },
         text = { Text(if (missing) uiText("reading.offer")
             else uiText("reading.enable")) },
-        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(proceed)) { Text(if (missing) "前往安装" else "管理服务") } },
+        confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(proceed)) { Text(if (missing) uiText("plugin.go_install") else uiText("reading.manage")) } },
         dismissButton = { Column {
             MotionTextButton(onClick = dialogFeedbackClick(later)) { Text(uiText("overlay.later")) }
             if (missing) MotionTextButton(onClick = dialogFeedbackClick(hide)) { Text(uiText("reading.hide")) }

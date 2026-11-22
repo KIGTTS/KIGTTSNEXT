@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
@@ -32,6 +33,13 @@ private class PageMotionMemory(initial: Float, var role: PageRole) {
 @Composable
 fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress: Float, edge: Int,
     parentPreview: Float, finished: () -> Unit, vertical: Boolean = false,
+    cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) =
+    PageMotion(entry, role, interactive, { ReturnProgress(progress, edge) }, { parentPreview },
+        finished, vertical, cameraPose, drawerPose, content)
+
+@Composable
+internal fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean,
+    progress: () -> ReturnProgress, parentPreview: () -> Float, finished: () -> Unit, vertical: Boolean = false,
     cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) {
     var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
     val memory = remember(entry) { PageMotionMemory(if (mounted) {
@@ -51,7 +59,7 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     }
     val latestFinished by rememberUpdatedState(finished)
     val spatial = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-    val entrance = tween<Float>(durationMillis = 320, easing = FastOutSlowInEasing)
+    val entrance = remember { tween<Float>(durationMillis = 320, easing = FastOutSlowInEasing) }
     LaunchedEffect(role, animation, controlled) {
         if (controlled) return@LaunchedEffect
         animation.animateTo(when (role) { PageRole.FOREGROUND -> 0f; PageRole.BACKGROUND -> if(vertical) .08f else -.08f; PageRole.EXITING -> leavingDirection },
@@ -61,8 +69,6 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     SideEffect {
         mounted = true
         memory.role = role
-        memory.gesture = if (role == PageRole.FOREGROUND) progress else 0f
-        memory.parentPreview = parentPreview
         memory.drawerPose = drawerPose
         if (!controlled) memory.overridePosition = null
     }
@@ -71,23 +77,31 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     val currentPreview by rememberUpdatedState(parentPreview)
     val currentPose by rememberUpdatedState(cameraPose)
     val currentDrawerPose by rememberUpdatedState(drawerPose)
+    fun position(preview: Float) = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - preview)
+    fun underlay(position: Float): Float =
+        if (currentRole == PageRole.EXITING) 0f
+        else ((if (currentDrawerPose != null) abs(position) else if (vertical) position else -position) / .08f).coerceIn(0f, 1f)
     val settled by remember(animation) { derivedStateOf {
-        currentRole == PageRole.FOREGROUND && currentProgress == 0f && currentPreview == 0f &&
+        currentRole == PageRole.FOREGROUND && currentProgress().progress == 0f && currentPreview() == 0f &&
             abs(currentPose?.position ?: currentDrawerPose?.position ?: animation.value) <= .00001f
     } }
     val layer = Modifier.fillMaxSize().graphicsLayer {
-        val position = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - currentPreview)
+        val preview = currentPreview()
+        val position = position(preview)
+        memory.parentPreview = preview
         if (controlled) memory.overridePosition = position
         val departed = if (currentRole == PageRole.EXITING) abs(position).coerceIn(0f, 1f) else 0f
-        val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress else if(vertical) 0f else prediction * (1f - departed)
+        val gesture = if (currentRole == PageRole.FOREGROUND) currentProgress().progress
+            else if (vertical) 0f else prediction * (1f - departed)
+        memory.gesture = gesture
         val gestureDirection = entry.direction
-        val underlay = if (currentRole != PageRole.EXITING) ((if (currentDrawerPose != null) abs(position) else if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
+        val underlay = underlay(position)
         translationX = if(vertical) 0f else size.width * position + 28.dp.toPx() * gesture * gestureDirection
         translationY = if(vertical) size.height * (position - if(entry.cameraRequestId != null && !controlled) gesture else 0f) else 0f
         scaleX = if(vertical) 1f else 1f - .015f * underlay - .06f * gesture
         scaleY = scaleX
-        shape = RoundedCornerShape((if(vertical) 0f else 28f * gesture + 12f * underlay).dp)
         clip = !vertical && (gesture > 0f || underlay > 0f)
+        shape = if (clip) RoundedCornerShape((28f * gesture + 12f * underlay).dp) else RectangleShape
     }.then(if (interactive) Modifier.semantics { testTag = "page-layer/" + entry.identity }
         else Modifier.clearAndSetSemantics { testTag = "page-layer/" + entry.identity })
         .pointerInput(interactive) {
@@ -105,13 +119,12 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
             }
         }
     Surface(layer, color = MaterialTheme.colorScheme.background) {
+        val shade = MaterialTheme.colorScheme.scrim
         CompositionLocalProvider(LocalPageActive provides interactive, LocalPageSettled provides (interactive && settled)) {
             Box {
                 content()
-                val shade = MaterialTheme.colorScheme.scrim
                 Box(Modifier.matchParentSize().graphicsLayer {
-                    val position = currentPose?.position ?: currentDrawerPose?.position ?: animation.value * (1f - currentPreview)
-                    alpha = if (currentRole != PageRole.EXITING) .12f * ((if (currentDrawerPose != null) abs(position) else if(vertical) position else -position) / .08f).coerceIn(0f, 1f) else 0f
+                    alpha = .12f * underlay(position(currentPreview()))
                 }.background(shade))
             }
         }

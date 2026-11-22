@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.*
@@ -66,11 +68,11 @@ import com.kigtts.next.ui.components.feedbackClick
                 PersonalAvatar(identity.avatar?.let(stickers::imageFile), Modifier.size(if (compact) 42.dp else 54.dp), identity.avatarFrame)
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(identity.nickname.ifBlank { "我的名片" }, Modifier.weight(1f, fill = false), color = ink,
+                        Text(identity.nickname.ifBlank { uiText("profile.my_card") }, Modifier.weight(1f, fill = false), color = ink,
                             style = MaterialTheme.typography.titleLarge.copy(shadow = shadow), maxLines = 1)
                         AnimatedVisibility(editing, enter = fadeIn(tween(180)) + expandHorizontally(tween(220)),
                             exit = fadeOut(tween(140)) + shrinkHorizontally(tween(220))) {
-                            Icon(Icons.Default.Edit, "编辑资料", Modifier.padding(start = 8.dp).size(18.dp))
+                            Icon(Icons.Default.Edit, uiText("accessibility.edit_profile"), Modifier.padding(start = 8.dp).size(18.dp))
                         }
                     }
                     if (identity.bio.isNotBlank()) Text(identity.bio, color = ink.copy(alpha = .86f), style = MaterialTheme.typography.bodyMedium.copy(shadow = shadow), maxLines = 2)

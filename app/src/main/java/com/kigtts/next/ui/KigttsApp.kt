@@ -164,9 +164,9 @@ fun KigttsApp(model: AppViewModel) {
                     val ownsIme = state.destination is Destination.CardEditor || state.destination.assistantChatHandlesIme()
                     Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (ownsIme) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture, model::dispatchVoiceGestureRelease)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
-                            if (navigation.current.scene != PageScene.Home) back.progress else 0f, back.edge, false) { active ->
+                            back, false) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },
-                                if (active) back.progress else 0f, back.edge)
+                                if (active) back else IdleReturnProgress)
                         }
                         if (!state.destination.assistantChatHandlesIme()) com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }

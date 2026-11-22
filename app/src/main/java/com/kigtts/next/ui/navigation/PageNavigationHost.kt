@@ -13,7 +13,7 @@ import com.kigtts.next.ui.sketch.SketchState
 @Composable
 fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppViewModel,
     sketch: SketchState, shareRequest: Int, shareConsumed: () -> Unit, shareSketch: () -> Unit,
-    progress: Float, edge: Int, drawerActive: Boolean,
+    back: State<ReturnProgress>, drawerActive: Boolean,
     home: @Composable (Boolean) -> Unit) {
     val holder = rememberSaveableStateHolder()
     val current = navigation.current
@@ -23,7 +23,6 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     }, model::navigateBack, { (model.state.value.destination as? Destination.CardCamera)?.requestId }) }
     val latestNavigation = rememberUpdatedState(navigation)
     val latestDrawer = rememberUpdatedState(drawerActive)
-    val latestProgress = rememberUpdatedState(progress)
     val latestState = rememberUpdatedState(state)
     val sideDrawer = remember(model) { HomeSideDrawer(scope, model::openSidePage, model::closeSidePage) }
     val quickSwipe by model.subtitleRenderer.quickSwipe.collectAsState()
@@ -41,10 +40,10 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
         val value = latestState.value
         value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
             !value.voiceInputActive && (!value.forcedFullscreen || quickSwipe) &&
-            !latestDrawer.value && !latestNavigation.value.outgoingAbove && latestProgress.value == 0f && !pull.active
+            !latestDrawer.value && !latestNavigation.value.outgoingAbove && back.value.progress == 0f && !pull.active
     }.cameraPullNavigation(pull) {
         val value = latestNavigation.value; val foreground = value.current
-        if (latestDrawer.value || value.outgoingAbove || latestProgress.value > 0f) null
+        if (latestDrawer.value || value.outgoingAbove || back.value.progress > 0f) null
         else if (foreground.scene == PageScene.Home && latestState.value.let {
                 it.sidePage == null && !it.editing && !it.quickTextEditing && !it.voiceInputActive && !it.forcedFullscreen
             }) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity, horizontal = true)
@@ -53,14 +52,16 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
             CameraPullOrigin(CameraPullMode.EXIT, it.identity, request, horizontal = true)
         } }
     }) {
+        val previous = navigation.wanted.getOrNull(navigation.wanted.lastIndex - 1)
         navigation.pages.forEach { entry -> key(entry) {
             val foreground = entry == current
             val role = if (foreground) PageRole.FOREGROUND else if (entry in navigation.wanted) PageRole.BACKGROUND else PageRole.EXITING
             val active = foreground && !navigation.outgoingAbove && !drawerActive && !sideDrawer.active
             val cameraPose = if (pull.active && (entry.cameraRequestId == pull.cameraRequestId || entry.identity == pull.parentIdentity))
                 remember(pull, entry) { CameraPagePose(pull, entry.cameraRequestId != null) } else null
-            PageMotion(entry, role, active, if (foreground) progress else 0f, edge,
-                if (entry == navigation.wanted.getOrNull(navigation.wanted.lastIndex - 1)) progress else 0f,
+            PageMotion(entry, role, active,
+                { if (foreground && entry.scene != PageScene.Home) back.value else IdleReturnProgress.value },
+                { if (entry == previous) back.value.progress else 0f },
                 {
                     navigation.retention.retire(entry)
                     // Covered pages remain wanted. Only a truly retired visit loses its draft/ACK

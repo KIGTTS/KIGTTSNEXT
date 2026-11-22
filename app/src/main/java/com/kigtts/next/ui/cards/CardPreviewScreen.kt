@@ -37,11 +37,11 @@ fun CardPreviewScreen(cards: CardRepository, stickers: StickerRepository, cardId
     var senderInfo by remember(cardId) { mutableStateOf(false) }
     RegisterPageLoading(busy || actions.busy)
     RegisterPageActions(buildList {
-        add(ToolbarAction("save-card-preview", "保存到系统相册", Icons.Default.Download, enabled, click = { actions.cardAction(saved, CardMenuAction.SAVE) }))
-        if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", "编辑图片", Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
-        add(ToolbarAction("share-card-preview", "分享照片", Icons.Default.Share, enabled, click = { face?.send(listOf(cardId)) ?: actions.share(saved) }))
-        if (receipt != null) add(ToolbarAction("sender-card-preview", "发送者名片", Icons.Default.AccountCircle, enabled, click = { senderInfo = true }))
-        add(ToolbarAction("quick-card-preview", "添加到快捷文本", Icons.Default.TextFields, enabled,
+        add(ToolbarAction("save-card-preview", uiText("photo.album_save_action"), Icons.Default.Download, enabled, click = { actions.cardAction(saved, CardMenuAction.SAVE) }))
+        if (cardId !in readOnly) add(ToolbarAction("edit-card-preview", uiText("photo.edit_image"), Icons.Default.Edit, enabled, click = { openEditor(cardId) }))
+        add(ToolbarAction("share-card-preview", uiText("photo.share_photo"), Icons.Default.Share, enabled, click = { face?.send(listOf(cardId)) ?: actions.share(saved) }))
+        if (receipt != null) add(ToolbarAction("sender-card-preview", uiText("photo.sender_card"), Icons.Default.AccountCircle, enabled, click = { senderInfo = true }))
+        add(ToolbarAction("quick-card-preview", uiText("quick.add_from_text"), Icons.Default.TextFields, enabled,
             click = { actions.cardAction(saved, CardMenuAction.QUICK) })) })
     fun finishPhoto() {
         if (busy) return

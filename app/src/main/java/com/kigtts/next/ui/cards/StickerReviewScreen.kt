@@ -37,7 +37,7 @@ fun StickerReviewScreen(model: AppViewModel, token: String) {
         before.images.filter { old -> planned?.images?.none { it.id == old.id } == true }.forEach { add("图片：${it.width} × ${it.height}") }
     } }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(if (preview == null) "预览已失效，请重新准备修改" else "确认以下修改后才会保存。")
+        Text(if (preview == null) uiText("photo.review_stale") else uiText("photo.review_before_save"))
         removed.forEach { name -> Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.errorContainer) {
             Column(Modifier.fillMaxWidth().padding(16.dp)) { Text(name); Text(uiText("photo.remove_list"), style = MaterialTheme.typography.bodySmall) }
         } }

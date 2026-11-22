@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -44,8 +46,8 @@ internal fun PluginSearchScreen(search: PluginSearch, back: () -> Unit,
             TextField(query, { if (it.length <= 100) query = it },
                 Modifier.fillMaxWidth().focusRequester(focus).testTag("plugin-search-input"), singleLine = true,
                 placeholder = { Text(search.placeholder) },
-                leadingIcon = { IconButton(feedbackClick(exit)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "退出搜索") } },
-                trailingIcon = { if (query.isNotEmpty()) IconButton(feedbackClick { query = "" }) { Icon(Icons.Default.Close, "清除搜索") } },
+                leadingIcon = { IconButton(feedbackClick(exit)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.exit_search")) } },
+                trailingIcon = { if (query.isNotEmpty()) IconButton(feedbackClick { query = "" }) { Icon(Icons.Default.Close, uiText("accessibility.clear_search")) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = {
                     submitted = query; currentInvoke(search.actionId, mapOf("value" to query)); keyboard?.hide()

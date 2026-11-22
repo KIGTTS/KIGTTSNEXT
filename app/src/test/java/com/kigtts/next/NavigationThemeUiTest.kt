@@ -3,6 +3,11 @@ package com.kigtts.next
 import android.app.Application
 import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.core.view.WindowCompat
@@ -11,6 +16,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.KigttsApp
+import com.kigtts.next.ui.navigation.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -57,6 +63,32 @@ class NavigationThemeUiTest {
         compose.runOnIdle { dispatcher.dispatchOnBackStarted(BackEventCompat(0f, 100f, 0f, BackEventCompat.EDGE_LEFT)) }
         compose.runOnIdle { dispatcher.dispatchOnBackProgressed(BackEventCompat(100f, 100f, progress, BackEventCompat.EDGE_LEFT)) }
         compose.waitForIdle()
+    }
+
+    @Test fun predictiveProgressMovesTheLayerWithoutRecomposingTheHost() {
+        var hostCompositions = 0
+        val entry = PageEntry(PageScene.Screen(Destination.Settings), 1)
+        compose.setContent {
+            val back = rememberPredictiveReturn(enabled = true, identity = entry.identity) {}
+            SideEffect { hostCompositions++ }
+            KigttsTheme(ThemeSettings()) {
+                PageMotion(entry, PageRole.FOREGROUND, true, { back.value }, { 0f }, {}) {
+                    Box(Modifier.fillMaxSize().testTag("gesture-layer-content"))
+                }
+            }
+        }
+        val content = compose.onNodeWithTag("gesture-layer-content")
+        val initial = content.getUnclippedBoundsInRoot().left
+        val composed = compose.runOnIdle { hostCompositions }
+        predict(.25f)
+        val first = content.getUnclippedBoundsInRoot().left
+        val dispatcher = compose.activity.onBackPressedDispatcher
+        compose.runOnIdle { dispatcher.dispatchOnBackProgressed(BackEventCompat(100f, 100f, .75f, BackEventCompat.EDGE_LEFT)) }
+        assertTrue(first > initial)
+        assertTrue(content.getUnclippedBoundsInRoot().left > first)
+        compose.runOnIdle { assertEquals(composed, hostCompositions) }
+        compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
+        assertEquals(initial, content.getUnclippedBoundsInRoot().left)
     }
 
     @Test fun settingsBackRestoresHomePanelAndCancelledPredictionKeepsPageOpen() {

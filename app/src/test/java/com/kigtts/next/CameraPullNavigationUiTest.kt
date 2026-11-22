@@ -59,7 +59,7 @@ class CameraPullNavigationUiTest {
             SideEffect { f.pull=pull }
             val latest=rememberUpdatedState(navigation)
             val back=rememberPredictiveReturn(current.cameraRequestId!=null,current.identity,f::back)
-            val latestProgress=rememberUpdatedState(back.progress)
+            val latestProgress=rememberUpdatedState(back.value.progress)
             val camera=navigation.pages.lastOrNull {it.cameraRequestId!=null&&(it==current||it.depth==current.depth+1&&it !in navigation.wanted)}
             val covered=camera?.let {navigation.wanted.lastOrNull {entry->entry.depth==it.depth-1}}
             CompositionLocalProvider(LocalCameraPullState provides pull) {
@@ -75,8 +75,8 @@ class CameraPullNavigationUiTest {
                         val role=if(foreground)PageRole.FOREGROUND else if(entry in navigation.wanted)PageRole.BACKGROUND else PageRole.EXITING
                         val pose=if(pull.active&&(entry.cameraRequestId==pull.cameraRequestId||entry.identity==pull.parentIdentity))
                             remember(pull,entry) {CameraPagePose(pull,entry.cameraRequestId!=null)} else null
-                        PageMotion(entry,role,foreground&&!navigation.outgoingAbove,if(foreground)back.progress else 0f,back.edge,
-                            if(entry==navigation.wanted.getOrNull(navigation.wanted.lastIndex-1))back.progress else 0f,
+                        PageMotion(entry,role,foreground&&!navigation.outgoingAbove,if(foreground)back.value.progress else 0f,back.value.edge,
+                            if(entry==navigation.wanted.getOrNull(navigation.wanted.lastIndex-1))back.value.progress else 0f,
                             {navigation.retention.retire(entry)},vertical=entry==camera||entry==covered,cameraPose=pose) {
                             val body: @Composable () -> Unit = { Box(Modifier.fillMaxSize().background(if(entry.cameraRequestId!=null)Color.Blue else Color.Green)
                                 .then(if(f.slider)Modifier.testTag("fixture-native-slider").draggable(rememberDraggableState {f.sliderDistance+=it},Orientation.Vertical)

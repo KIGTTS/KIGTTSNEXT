@@ -42,7 +42,7 @@ import kotlinx.coroutines.*
                 OutlinedTextField(account, { account = it.take(512) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.account_link")) }, maxLines = 3)
                 OutlinedTextField(qr, { qr = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.qr_optional")) }, maxLines = 3)
                 OutlinedButton(feedbackClick { picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !loading) {
-                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(if (loading) "正在识别…" else "从二维码图片读取")
+                    Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(if (loading) uiText("profile.reading_qr") else uiText("profile.read_qr_image"))
                 }
                 Text(uiText("profile.contact_qr_hint"), style = MaterialTheme.typography.bodySmall)
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

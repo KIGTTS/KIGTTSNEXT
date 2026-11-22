@@ -29,7 +29,7 @@ fun EditablePhraseCard(phrase: QuickPhrase, edit: () -> Unit, delete: () -> Unit
         com.kigtts.next.ui.media.PhraseMediaBackdrop(phrase, repository, Modifier.matchParentSize(), quickPhraseColor(phrase))
         Row(Modifier.fillMaxWidth().padding(8.dp).heightIn(min = 48.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Icon(Icons.Default.DragIndicator, "拖动条目 " + phrase.text,
+            Icon(Icons.Default.DragIndicator, uiText("accessibility.drag_shortcut", "name" to phrase.text),
                 Modifier.size(20.dp).testTag("phrase-grip-" + phrase.id).then(grip), tint = LocalContentColor.current.copy(alpha = .76f))
             QuickPhraseText(phrase, Modifier.weight(if (phrase.mediaId == null) 1f else .65f))
             if (phrase.mediaId != null) Spacer(Modifier.weight(.35f))

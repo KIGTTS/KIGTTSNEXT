@@ -1,5 +1,9 @@
 package com.kigtts.next.identity
 
+import com.kigtts.next.i18n.UiLanguageStore
+
+import com.kigtts.next.i18n.uiCopy
+
 import android.content.Context
 import android.graphics.Color
 import com.kigtts.next.media.WebTheme
@@ -10,35 +14,38 @@ import java.net.URI
 
 internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images: Set<Int>,
     exportTheme: WebTheme = WebThemeState.current): String {
+    fun copy(key: String, vararg arguments: Pair<String, String>) = context.uiCopy(key, *arguments)
+    fun htmlCopy(key: String) = copy(key).html()
+    val locale = UiLanguageStore(context).load().substringBefore("-x-")
     val theme = faceWebTheme(exportTheme)
     val icons = FaceWebIcons(context)
-    val name = identity.nickname.ifBlank { "KIGTTS 用户" }.html()
+    val name = identity.nickname.ifBlank { copy("profile.export_user") }.html()
     val css = context.assets.open("kigtts/profile-archive.css").bufferedReader(Charsets.UTF_8).use { it.readText() }
     fun StringBuilder.preview(label: String, thumbnail: String, content: String) {
-        append("<details><summary aria-label=\"${label.html()}\">$thumbnail<span class=\"close\">关闭</span></summary>")
+        append("<details><summary aria-label=\"${label.html()}\">$thumbnail<span class=\"close\">${htmlCopy("action.close")}</span></summary>")
         append("<section class=\"preview\"><article><div class=\"preview-head\"><strong>${label.html()}</strong></div>$content</article></section></details>")
     }
     fun StringBuilder.contact(link: ContactLink, iconOnly: Boolean = false) {
-        val label = link.label.ifBlank { "联系方式" }
+        val label = link.label.ifBlank { copy("profile.contacts") }
         val payload = contactPayload(link)
-        val open = profileExportLink(payload)?.let { "<a class=\"button\" href=\"${it.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">打开链接 ↗</a>" }.orEmpty()
+        val open = profileExportLink(payload)?.let { "<a class=\"button\" href=\"${it.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">${htmlCopy("profile.export_open_link")} ↗</a>" }.orEmpty()
         val thumbnail = if (iconOnly) icons.icon(link) else "<strong>${label.html()}</strong><span>${link.value.html()}</span>"
-        preview(if (iconOnly) "联系方式：$label" else label, thumbnail,
-            profileArchiveQr(payload, ProfileQrStyle.INK) + "<p class=\"detail\">${link.value.html()}</p>$open")
+        preview(if (iconOnly) copy("profile.export_contact_name", "name" to label) else label, thumbnail,
+            profileArchiveQr(context, payload, ProfileQrStyle.INK) + "<p class=\"detail\">${link.value.html()}</p>$open")
     }
     return buildString {
-        append("<!doctype html><html lang=\"zh-CN\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"no-referrer\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https://kigtts.invalid; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\"><title>$name · 个人主页</title><style>${theme.css()}$css</style>")
-        append("<body><main id=\"home\"><header><div class=\"eyebrow\">KIGTTS · 个人主页</div><h1 class=\"sr\">$name</h1><div class=\"cover-wrap\"><img class=\"cover\" src=\"cover.jpg\" alt=\"$name：${identity.bio.html()}\">")
+        append("<!doctype html><html lang=\"$locale\"><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><meta name=\"referrer\" content=\"no-referrer\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https://kigtts.invalid; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'\"><title>$name · ${htmlCopy("profile.export_title")}</title><style>${theme.css()}$css</style>")
+        append("<body><main id=\"home\"><header><div class=\"eyebrow\">KIGTTS · ${htmlCopy("profile.export_title")}</div><h1 class=\"sr\">$name</h1><div class=\"cover-wrap\"><img class=\"cover\" src=\"cover.jpg\" alt=\"$name：${identity.bio.html()}\">")
         if (identity.contacts.isNotEmpty()) {
-            append("<div class=\"cover-shortcuts\" aria-label=\"联系方式快捷入口\">")
+            append("<div class=\"cover-shortcuts\" aria-label=\"${htmlCopy("profile.export_contact_shortcuts")}\">")
             identity.contacts.take(5).forEach { contact(it, iconOnly = true) }
             if (identity.contacts.size > 5) {
                 val more = identity.contacts.drop(5).joinToString("") { item ->
                     val value = item.value.html()
-                    val display = "<strong>${item.label.ifBlank { "联系方式" }.html()}</strong><p>$value</p>"
+                    val display = "<strong>${item.label.ifBlank { copy("profile.contacts") }.html()}</strong><p>$value</p>"
                     profileExportLink(contactPayload(item))?.let { "<a class=\"button\" href=\"${it.html()}\">$display</a>" } ?: display
                 }
-                preview("更多联系方式", "<span aria-hidden=\"true\">···</span>", more)
+                preview(copy("profile.export_more_contacts"), "<span aria-hidden=\"true\">···</span>", more)
             }
             append("</div>")
         }
@@ -53,7 +60,7 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
                 else -> "minmax(var(--tile-unit),auto)"
             }
         }
-        append("<section class=\"tiles\" style=\"grid-template-rows:$rows\" aria-label=\"主页磁贴\">")
+        append("<section class=\"tiles\" style=\"grid-template-rows:$rows\" aria-label=\"${htmlCopy("profile.export_tiles")}\">")
         placements.forEachIndexed { i, placement ->
             val tile = placement.tile
             val label = tile.title.html()
@@ -77,30 +84,30 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
                 ProfileTileKind.DIVIDER -> append(profileDividerHtml(tile.title, tile.dividerStyle))
                 ProfileTileKind.CONTACT -> {
                     val link = tile.resolveContact(identity.contacts)
-                    val name = tile.title.ifBlank { link?.label?.ifBlank { "联系方式" } ?: "联系方式" }
+                    val name = tile.title.ifBlank { link?.label?.ifBlank { copy("profile.contacts") } ?: copy("profile.contacts") }
                     val graphic = symbol(icons.icon(link ?: ContactLink("", "")), name, link?.value ?: body)
                     val payload = link?.let(::contactPayload).orEmpty()
                     if (link != null && payload.isNotBlank()) {
-                        val open = profileExportLink(payload)?.let { "<a class=\"button\" href=\"${it.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">打开链接 ↗</a>" }.orEmpty()
-                        preview(name, graphic, profileArchiveQr(payload, ProfileQrStyle.INK) + "<p class=\"detail\">${link.value.html()}</p>$open")
+                        val open = profileExportLink(payload)?.let { "<a class=\"button\" href=\"${it.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">${htmlCopy("profile.export_open_link")} ↗</a>" }.orEmpty()
+                        preview(name, graphic, profileArchiveQr(context, payload, ProfileQrStyle.INK) + "<p class=\"detail\">${link.value.html()}</p>$open")
                     } else append(graphic)
                 }
                 ProfileTileKind.LINK -> {
                     val link = profileExportLink(body)
-                    val name = tile.title.ifBlank { "链接" }
+                    val name = tile.title.ifBlank { copy("profile.link_label") }
                     val graphic = symbol(icons.icon(SocialPlatform.LINK), name, body)
                     if (link != null) append("<a href=\"${link.html()}\" aria-label=\"${name.html()}\" target=\"_blank\" rel=\"noopener noreferrer\">$graphic</a>")
                     else append(graphic)
                 }
                 ProfileTileKind.IMAGE -> if (i in images) {
-                    val alt = tile.title.ifBlank { "图片预览" }
+                    val alt = tile.title.ifBlank { copy("profile.export_image_preview") }
                     val image = "<img src=\"tile-$i.jpg\" alt=\"${alt.html()}\">"
                     preview(alt, image, image)
-                } else append("<strong>${label.ifBlank { "图片" }}</strong>")
+                } else append("<strong>${label.ifBlank { htmlCopy("profile.export_image") }}</strong>")
                 ProfileTileKind.QR -> {
-                    val qr = profileArchiveQr(tile.text, tile.qrStyle, qrPalette)
+                    val qr = profileArchiveQr(context, tile.text, tile.qrStyle, qrPalette)
                     val heading = if (qrLayout.isNotBlank()) "<strong>$label</strong>" else ""
-                    preview(tile.title.ifBlank { "查看二维码" }, qr + heading, qr + "<p class=\"detail\">${tile.text.html()}</p>")
+                    preview(tile.title.ifBlank { copy("profile.export_view_qr") }, qr + heading, qr + "<p class=\"detail\">${tile.text.html()}</p>")
                 }
                 else -> append("<strong>$label</strong><span>${body.html()}</span>")
             }
@@ -108,11 +115,11 @@ internal fun profileArchiveHtml(identity: IdentityCard, context: Context, images
         }
         append("</section>")
         if (identity.contacts.isNotEmpty()) {
-            append("<section class=\"contacts\" id=\"contacts\"><h2>联系方式</h2>")
+            append("<section class=\"contacts\" id=\"contacts\"><h2>${htmlCopy("profile.contacts")}</h2>")
             identity.contacts.forEach { link -> contact(link) }
             append("</section>")
         }
-        append("<footer>离线名片 · 外部链接打开时需要联网</footer></main></body></html>")
+        append("<footer>${htmlCopy("profile.export_footer")}</footer></main></body></html>")
     }
 }
 
@@ -131,13 +138,13 @@ private fun String.html(): String = replace("&", "&amp;").replace("<", "&lt;").r
 
 private fun cssColor(color: Int) = "#%06x".format(color and 0xffffff)
 
-private fun profileArchiveQr(value: String, style: ProfileQrStyle, palette: ProfileQrPalette? = null): String {
-    val matrix = profileQrMatrix(value) ?: return "<p>无法生成此二维码</p>"
+private fun profileArchiveQr(context: Context, value: String, style: ProfileQrStyle, palette: ProfileQrPalette? = null): String {
+    val matrix = profileQrMatrix(value) ?: return "<p>${context.uiCopy("profile.export_qr_failed").html()}</p>"
     val edge = matrix.width
     val inkColor = palette?.let { cssColor(it.ink) } ?: "#111"
     val paperColor = palette?.let { cssColor(it.paper) } ?: "#fff"
     return buildString {
-        append("<svg viewBox=\"0 0 $edge $edge\" role=\"img\" aria-label=\"二维码\" style=\"color:$inkColor\"><rect width=\"$edge\" height=\"$edge\" fill=\"$paperColor\"/><path fill=\"currentColor\" d=\"")
+        append("<svg viewBox=\"0 0 $edge $edge\" role=\"img\" aria-label=\"${context.uiCopy("profile.qr").html()}\" style=\"color:$inkColor\"><rect width=\"$edge\" height=\"$edge\" fill=\"$paperColor\"/><path fill=\"currentColor\" d=\"")
         for (y in 0 until edge) for (x in 0 until edge) if (matrix[x, y] && (style != ProfileQrStyle.DOTS || !matrix.qrDotAllowed(x, y)))
             append("M$x ${y}h1v1h-1z")
         append("\"/>")

@@ -34,7 +34,7 @@ fun QuickTextSelectorDialog(
         confirmButton = {
             Button(enabled = selected.any { it in existing }, onClick = dialogFeedbackClick {
                 onConfirm(phrases.filter { it.id in selected }.map { it.id })
-            }) { Text(if (request.mode == QuickTextSelectionMode.SINGLE) "选择" else "完成") }
+            }) { Text(if (request.mode == QuickTextSelectionMode.SINGLE) uiText("action.select") else uiText("action.done")) }
         },
         title = { Text(request.title) },
         text = {

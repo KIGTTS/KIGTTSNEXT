@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.*
@@ -36,12 +38,12 @@ internal fun BoxScope.CardLayerHandles(layer: CardLayer, change: (CardLayer) -> 
             layer, ::center, true, change, handleActive)
         MotionIconButton(feedbackClick { change(layer.copy(flipX = !layer.flipX)) },
             Modifier.align(Alignment.TopStart).requiredSize(32.dp).testTag("card-layer-flip-x/" + layer.id),
-            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Flip, "水平镜像", Modifier.size(18.dp)) }
+            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Flip, uiText("accessibility.mirror_horizontal"), Modifier.size(18.dp)) }
         MotionIconButton(feedbackClick(remove), Modifier.align(Alignment.TopEnd).requiredSize(32.dp).testTag("card-layer-delete/" + layer.id),
-            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Close, "删除贴纸", Modifier.size(18.dp)) }
+            colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Close, uiText("accessibility.remove_sticker"), Modifier.size(18.dp)) }
         if (configure != null) MotionIconButton(feedbackClick(configure), Modifier.align(Alignment.BottomStart).requiredSize(32.dp)
             .testTag("card-layer-settings/" + layer.id), colors = IconButtonDefaults.filledTonalIconButtonColors()) {
-            Icon(Icons.Default.Settings, "贴纸设置", Modifier.size(18.dp))
+            Icon(Icons.Default.Settings, uiText("accessibility.sticker_settings"), Modifier.size(18.dp))
         }
     }
 }

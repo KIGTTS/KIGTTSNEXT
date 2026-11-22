@@ -77,7 +77,7 @@ import java.io.File
                 }
             }
             TopAppBar(title = { Text(uiText("profile.avatar_crop")) }, navigationIcon = {
-                IconButton(feedbackClick { if (!saving) close() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "取消裁剪") }
+                IconButton(feedbackClick { if (!saving) close() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.cancel_crop")) }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)
                 else IconButton(feedbackClick {
@@ -88,11 +88,11 @@ import java.io.File
                         catch (_: Exception) { error = "头像未能保存，请重试" }
                         finally { saving = false }
                     }
-                }, enabled = image != null, modifier = Modifier.testTag("avatar-crop-save")) { Icon(Icons.Default.Check, "使用这张头像") }
+                }, enabled = image != null, modifier = Modifier.testTag("avatar-crop-save")) { Icon(Icons.Default.Check, uiText("accessibility.use_avatar")) }
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, titleContentColor = Color.White,
                 navigationIconContentColor = Color.White, actionIconContentColor = Color.White))
             if (image == null && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
-            Text(error ?: "拖动或双指缩放", Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
+            Text(error ?: uiText("profile.pinch_drag"), Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
                 color = Color.White, style = MaterialTheme.typography.bodyMedium)
         }
     }

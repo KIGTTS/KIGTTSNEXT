@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.AppHeader
+import com.kigtts.next.ui.navigation.IdleReturnProgress
+import com.kigtts.next.ui.navigation.ReturnProgress
 import com.kigtts.next.ui.navigation.predictiveReturn
 import com.kigtts.next.theme.LocalUseCompactControlPalette
 
@@ -31,7 +33,7 @@ import com.kigtts.next.theme.LocalUseCompactControlPalette
 fun HomeScreen(
     state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
     openDrawer: () -> Unit,
-    backProgress: Float = 0f, backEdge: Int = 0,
+    back: State<ReturnProgress> = IdleReturnProgress,
 ) {
     QuickSortPrompt(model.quickSort)
     val sections = rememberSaveableStateHolder()
@@ -45,8 +47,8 @@ fun HomeScreen(
     CompositionLocalProvider(com.kigtts.next.theme.LocalBackdropViewport provides backdropViewport, LocalRecordHomePreview provides true) {
     if (exterior == null) com.kigtts.next.theme.AppearanceBackdrop(state.theme, Modifier.matchParentSize())
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
-        LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
-    else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, backProgress, backEdge)
+        LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, back)
+    else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, back)
     }
     }
 }
@@ -54,7 +56,7 @@ fun HomeScreen(
 @Composable
 private fun PortraitHomeScreen(
     state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
-    openDrawer: () -> Unit, sections: SaveableStateHolder, backProgress: Float, backEdge: Int,
+    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>,
 ) {
     var expandedViewport by remember { mutableFloatStateOf(852f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
@@ -91,7 +93,7 @@ private fun PortraitHomeScreen(
                     AnimatedVisibility(!state.quickTextEditing, enter = enter, exit = exit, modifier = Modifier.fillMaxWidth().weight(1f)) {
                         TextEditor(state, model, showCaptions, !state.subtitleExpanded && motion.panel == HomePanel.QUICK_TEXT,
                             Modifier.fillMaxSize().testTag("editor-area")
-                                .then(if (state.forcedFullscreen && state.sidePage == null) Modifier.predictiveReturn(backProgress, backEdge) else Modifier))
+                                .then(if (state.forcedFullscreen && state.sidePage == null) Modifier.predictiveReturn(back) else Modifier))
                     }
                     Spacer(Modifier.heightFrom {
                         val reserve = if (motion.panel == HomePanel.QUICK_TEXT) motion.height else HomePanelSizes.COLLAPSED
@@ -106,13 +108,13 @@ private fun PortraitHomeScreen(
                     slideOutVertically(androidx.compose.animation.core.tween(220)) { it }) {
                 sections.SaveableStateProvider("quick-text") { HomePanels(state, phrases, categories, model, motion,
                 Modifier.graphicsLayer {
-                    translationY = if (state.sidePage == null) motion.height.dp.toPx() * backProgress * .7f else 0f
+                    translationY = if (state.sidePage == null) motion.height.dp.toPx() * back.value.progress * .7f else 0f
                 }) }
             }
             AnimatedVisibility(state.quickTextEditing, modifier = Modifier.fillMaxSize(),
                 enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInVertically(androidx.compose.animation.core.tween(220)) { it / 6 },
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutVertically(androidx.compose.animation.core.tween(220)) { it / 6 }) {
-                QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(backProgress, backEdge))
+                QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(back))
             }
         }
     }

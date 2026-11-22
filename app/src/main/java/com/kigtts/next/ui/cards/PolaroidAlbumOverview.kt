@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -49,7 +51,7 @@ internal fun PolaroidAlbumOverview(albums: List<PolaroidAlbum>, cards: List<Pola
                 Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 14.dp)) {
                     Text(album.name, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.titleMedium)
-                    Text(album.cardIds.count { it in byId }.toString() + " 张照片", style = MaterialTheme.typography.bodySmall,
+                    Text(uiText("photo.count", "count" to album.cardIds.count { it in byId }.toString()), style = MaterialTheme.typography.bodySmall,
                         color = if (selected) content else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -61,7 +63,7 @@ internal fun PolaroidAlbumOverview(albums: List<PolaroidAlbum>, cards: List<Pola
 private fun AlbumCover(cards: List<PolaroidCard>, imageFile: (String) -> File?, frames: List<PolaroidFrameStyle>,
     emptyTint: androidx.compose.ui.graphics.Color) {
     BoxWithConstraints(Modifier.fillMaxWidth().height(168.dp).padding(12.dp), contentAlignment = Alignment.Center) {
-        if (cards.isEmpty()) Icon(Icons.Default.PhotoAlbum, "空相册", Modifier.size(56.dp), tint = emptyTint)
+        if (cards.isEmpty()) Icon(Icons.Default.PhotoAlbum, uiText("accessibility.empty_album"), Modifier.size(56.dp), tint = emptyTint)
         else cards.forEachIndexed { index, card ->
             val frame = frames.firstOrNull { it.id == card.frameStyleId }
             val width = minOf(maxWidth * .7f, maxHeight * .88f * com.kigtts.next.cards.polaroidPaperGeometry(card, frame).aspectRatio.toFloat())

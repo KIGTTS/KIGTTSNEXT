@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.kigtts.next.ui.media
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.ui.components.animateEnabled
 import com.kigtts.next.ui.components.enabledContentMotion
 
@@ -92,7 +94,7 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
                 WaveSeekBar(state,Modifier.weight(1f),expanded,compact)
                 MotionIconButton(feedbackClick { state.wake();state.muted=!state.muted;state.player?.volume=if(state.muted)0f else 1f },
                     Modifier.width(48.dp*visible*(1f-compact)).graphicsLayer { alpha=1f-compact },enabled=enabled&&expanded) {
-                    Icon(if(state.muted)Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,"切换声音") }
+                    Icon(if(state.muted)Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,uiText("accessibility.toggle_audio")) }
                 if(once)MotionIconButton(feedbackClick { state.cancelScrub();state.wake();close() },Modifier.width(48.dp*visible*(1f-compact)).graphicsLayer { alpha=1f-compact },enabled=active&&expanded&&compact<.96f) { Icon(Icons.Default.Close,closeLabel) }
             }
         }

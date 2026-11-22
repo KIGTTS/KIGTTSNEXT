@@ -66,8 +66,8 @@ fun HtmlFilesScreen(model: AppViewModel, id: String, target: String) {
         withContext(Dispatchers.IO) { model.mediaRepository.htmlImports.tree(id, directory, uri) }
     } }
     RegisterPageActions(listOf(
-        ToolbarAction("html-preview", "预览页面", Icons.Default.PlayArrow, !busy) { model.navigate(Destination.HtmlPreview(id)) },
-        ToolbarAction("html-import-folder", "导入文件夹", Icons.Default.FolderOpen, !busy) { folder.launch(null) },
+        ToolbarAction("html-preview", uiText("file.preview_page"), Icons.Default.PlayArrow, !busy) { model.navigate(Destination.HtmlPreview(id)) },
+        ToolbarAction("html-import-folder", uiText("file.import_folder"), Icons.Default.FolderOpen, !busy) { folder.launch(null) },
     ))
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("html-files")) {
         DirectoryBreadcrumbs(directory, active && !busy, ::navigate)
@@ -76,10 +76,10 @@ fun HtmlFilesScreen(model: AppViewModel, id: String, target: String) {
             { chooseTransfer(selected, false) }, { chooseTransfer(selected, true) }, { command = HtmlFileCommand.Delete(selected.toList()) }) {
             MotionIconButton(feedbackClick { importer.launch(arrayOf("*/*")) }, enabled = active && !busy,
                 modifier = Modifier.testTag("html-import")) {
-                Icon(Icons.Default.FileOpen, "批量导入文件或媒体")
+                Icon(Icons.Default.FileOpen, uiText("accessibility.bulk_import"))
             }
             Box {
-                MotionIconButton(feedbackClick { createMenu = true }, enabled = active && !busy) { Icon(Icons.Default.Add, "新建文件或文件夹") }
+                MotionIconButton(feedbackClick { createMenu = true }, enabled = active && !busy) { Icon(Icons.Default.Add, uiText("accessibility.create_file_or_folder")) }
                 DropdownMenu(createMenu && active, { createMenu = false }) {
                     DropdownMenuItem({ Text(uiText("editor.new_file")) }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(false) })
                     DropdownMenuItem({ Text(uiText("editor.new_folder")) }, feedbackClick { createMenu = false; command = HtmlFileCommand.Create(true) })
@@ -108,7 +108,7 @@ fun HtmlFilesScreen(model: AppViewModel, id: String, target: String) {
                 else emptyList()
             })
     }
-    if (active) transfer?.let { request -> LocalFileDestinationDialog(if (request.copy) "复制文件" else "移动文件", directory,
+    if (active) transfer?.let { request -> LocalFileDestinationDialog(request.copy, directory,
         request.paths, { path -> files.list(id, path).filter { it.directory }.map(::browser) },
         { destination, finish -> work {
             withContext(Dispatchers.IO) {

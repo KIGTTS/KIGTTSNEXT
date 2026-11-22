@@ -46,8 +46,8 @@ fun HtmlCodeEditorScreen(model:AppViewModel,entry:ContentDraft,pending:Boolean) 
     RegisterPageLoading(saving)
     RegisterPageBackGuard(active&&saving) { }
     RegisterPageActions(listOf(
-        ToolbarAction("save-content","保存文件",Icons.Default.Save,active&&!saving) {saveDraft()},
-        ToolbarAction("find-content","查找替换",Icons.Default.FindReplace,!saving) { search=true }
+        ToolbarAction("save-content",uiText("file.save"),Icons.Default.Save,active&&!saving) {saveDraft()},
+        ToolbarAction("find-content",uiText("editor.find_replace"),Icons.Default.FindReplace,!saving) { search=true }
     ))
     Column(Modifier.fillMaxSize().imePadding()) {
         AnimatedVisibility(error!=null) { Text(error.orEmpty(),Modifier.padding(12.dp),color=MaterialTheme.colorScheme.error) }

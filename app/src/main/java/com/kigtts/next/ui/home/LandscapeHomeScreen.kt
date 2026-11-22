@@ -16,10 +16,11 @@ import com.kigtts.next.state.*
 import com.kigtts.next.theme.LocalUseCompactControlPalette
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.navigation.predictiveReturn
+import com.kigtts.next.ui.navigation.ReturnProgress
 
 @Composable
 fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
-    openDrawer: () -> Unit, sections: SaveableStateHolder, backProgress: Float, backEdge: Int) {
+    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>) {
     var captionWidth by rememberSaveable { mutableFloatStateOf(160f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
         BoxWithConstraints(Modifier.fillMaxSize()
@@ -52,7 +53,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
                     AnimatedVisibility(!state.quickTextEditing, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.weight(1f).fillMaxHeight()) {
                         TextEditor(state, model, false, false,
                             Modifier.fillMaxSize().testTag("editor-area").then(if (state.forcedFullscreen && state.sidePage == null)
-                                Modifier.predictiveReturn(backProgress, backEdge) else Modifier),
+                                Modifier.predictiveReturn(back) else Modifier),
                             CornerNeighbors(start = showCaptions, end = !expanded && motion.visible))
                     }
                     AnimatedVisibility(!expanded,
@@ -62,7 +63,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
                             Row(Modifier.fillMaxHeight()) {
                                 Spacer(Modifier.width(8.dp))
                                 LandscapeQuickPanel(state, phrases, categories, model, motion, Modifier.graphicsLayer {
-                                    translationX = if (state.sidePage == null) motion.width.dp.toPx() * backProgress * .7f else 0f
+                                    translationX = if (state.sidePage == null) motion.width.dp.toPx() * back.value.progress * .7f else 0f
                                 })
                             }
                         }
@@ -72,7 +73,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
             AnimatedVisibility(state.quickTextEditing, modifier = Modifier.fillMaxSize(),
                 enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + slideInHorizontally(androidx.compose.animation.core.tween(220)) { it / 6 },
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + slideOutHorizontally(androidx.compose.animation.core.tween(220)) { it / 6 }) {
-                QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(backProgress, backEdge))
+                QuickTextEditor(state, phrases, categories, model, Modifier.predictiveReturn(back))
             }
         }
     }

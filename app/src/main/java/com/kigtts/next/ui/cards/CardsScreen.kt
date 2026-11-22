@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.cards
 
+import com.kigtts.next.i18n.uiText
+
 import com.kigtts.next.i18n.uiCopy
 
 import androidx.compose.foundation.layout.*
@@ -112,16 +114,16 @@ fun CardsScreen(cards: CardRepository, stickers: StickerRepository, openPreview:
         val maximumColumns = minimumColumns + 2
         val columns = minimumColumns + columnLevel.coerceIn(0, 2)
         if (!management.active) RegisterPageActions(buildList {
-            add(ToolbarAction("cards-camera", "拍照，长按使用系统相机", Icons.Default.PhotoCamera, enabled,
+            add(ToolbarAction("cards-camera", uiText("photo.open_camera_hold"), Icons.Default.PhotoCamera, enabled,
                 longClick = openSystemCamera, click = openCamera))
-            add(ToolbarAction("cards-browse-mode", if (mode == PolaroidBrowseMode.GRID) "逐张查看" else "宫格查看",
+            add(ToolbarAction("cards-browse-mode", if (mode == PolaroidBrowseMode.GRID) uiText("photo.view_single") else uiText("photo.view_grid"),
                 if (mode == PolaroidBrowseMode.GRID) Icons.Default.ViewCarousel else Icons.Default.GridView, enabled,
                 click = { mode = if (mode == PolaroidBrowseMode.GRID) PolaroidBrowseMode.STACK else PolaroidBrowseMode.GRID }))
             if (mode == PolaroidBrowseMode.GRID) add(ToolbarAction("cards-columns",
                 if (columns < maximumColumns) "宫格列数：" + columns + "，点按缩小" else "相册总览",
                 if (columns < maximumColumns) Icons.Default.ViewWeek else Icons.Default.PhotoLibrary, enabled,
                 click = { if (columns < maximumColumns) columnLevel++ else mode = PolaroidBrowseMode.ALBUMS }))
-            faceShare?.receive?.let { receive -> add(ToolbarAction("face-discovery", "面对面接收", Icons.Default.Radar, active, click = receive)) }
+            faceShare?.receive?.let { receive -> add(ToolbarAction("face-discovery", uiText("photo.receive_nearby"), Icons.Default.Radar, active, click = receive)) }
         }, primaryCount = 4)
 
         val body: @Composable () -> Unit = {

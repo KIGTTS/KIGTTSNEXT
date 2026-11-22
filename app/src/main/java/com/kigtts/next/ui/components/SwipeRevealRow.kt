@@ -44,6 +44,7 @@ private enum class RevealSide { CLOSED, START, END }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val feedback = LocalHapticFeedback.current
+    val more = com.kigtts.next.i18n.uiText("overlay.row.more")
     val latestInvoke by rememberUpdatedState(invoke)
     val latestActivate by rememberUpdatedState(onActivate)
     fun settle(side: RevealSide, distance: Float) {
@@ -55,8 +56,8 @@ private enum class RevealSide { CLOSED, START, END }
     BackHandler(abs(offset) > .5f) { close() }
     BoxWithConstraints(modifier.clipToBounds().testTag("reveal-row/$id")) {
         val slots = ((maxWidth.value * .8f + 4) / 52).toInt().coerceIn(1, 4)
-        val start = revealVisibleActions(startActions, slots)
-        val end = revealVisibleActions(endActions, slots)
+        val start = remember(startActions, slots, more) { revealVisibleActions(startActions, slots, more) }
+        val end = remember(endActions, slots, more) { revealVisibleActions(endActions, slots, more) }
         val startWidth = with(density) { (start.size * 52).dp.toPx() }
         val endWidth = with(density) { (end.size * 52).dp.toPx() }
         val fullWidth = with(density) { (maxWidth - 16.dp).toPx() }.coerceAtLeast(startWidth)
@@ -123,13 +124,13 @@ private enum class RevealSide { CLOSED, START, END }
 
 private const val MORE = "\u0000more"
 /** A destructive action always stays at the far edge; overflow remains explicitly accessible. */
-internal fun revealVisibleActions(actions: List<RevealAction>, slots: Int): List<RevealAction> {
+internal fun revealVisibleActions(actions: List<RevealAction>, slots: Int, more: String): List<RevealAction> {
     if (actions.size <= slots) return actions
-    if (slots <= 1) return listOf(RevealAction(MORE, "更多操作", Icons.Default.MoreHoriz))
+    if (slots <= 1) return listOf(RevealAction(MORE, more, Icons.Default.MoreHoriz))
     val delete = actions.lastOrNull { it.destructive }
     val regular = actions.filterNot { it == delete }
     return regular.take((slots - 1 - if (delete != null) 1 else 0).coerceAtLeast(0)) +
-        RevealAction(MORE, "更多操作", Icons.Default.MoreHoriz) + listOfNotNull(delete)
+        RevealAction(MORE, more, Icons.Default.MoreHoriz) + listOfNotNull(delete)
 }
 
 @Composable private fun RevealRail(id: String, visible: List<RevealAction>, all: List<RevealAction>, start: Boolean,

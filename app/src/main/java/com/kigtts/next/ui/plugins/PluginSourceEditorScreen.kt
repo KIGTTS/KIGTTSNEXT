@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -81,7 +83,7 @@ internal fun PluginSourceEditorScreen(block: PageBlock.SourceEditor, enabled: Bo
         }
     }
     RegisterPageBackGuard(active && (dirty || saving)) { if (!saving) discard = true }
-    RegisterPageActions(listOf(ToolbarAction("source-save/" + block.id, "保存文件", Icons.Default.Save,
+    RegisterPageActions(listOf(ToolbarAction("source-save/" + block.id, uiText("file.save"), Icons.Default.Save,
         interactive && dirty) { saveDraft() }))
     RegisterPageLoading(!enabled || saving)
     PredictiveBackHandler(active && (dirty || saving) && !discard) { events ->

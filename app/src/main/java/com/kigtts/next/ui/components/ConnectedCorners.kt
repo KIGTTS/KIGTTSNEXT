@@ -6,11 +6,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-val LocalCornerRadius = staticCompositionLocalOf { 24.dp }
+val LocalCornerRadius = compositionLocalOf { 24.dp }
 
 data class CornerNeighbors(
     val start: Boolean = false, val end: Boolean = false,

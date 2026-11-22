@@ -120,7 +120,7 @@ internal fun CardAlbumTargetDialog(albums: List<PolaroidAlbum>, currentId: Strin
             Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
                 albums.forEach { album ->
                     ListItem(headlineContent = { Text(album.name) }, leadingContent = { Icon(Icons.Default.PhotoAlbum, null) },
-                        trailingContent = { if (album.id == currentId) Icon(Icons.Default.Check, "当前相册") },
+                        trailingContent = { if (album.id == currentId) Icon(Icons.Default.Check, uiText("accessibility.album_current")) },
                         modifier = Modifier.clickable(enabled = album.id != currentId, onClick = dialogFeedbackClick { choose(album.id) })
                             .testTag("move-card-album/" + album.id))
                 }

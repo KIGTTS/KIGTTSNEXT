@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.identity
 
+import com.kigtts.next.i18n.uiText
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.tween
@@ -51,7 +53,7 @@ import java.io.File
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         IconButton(feedbackClick { visibility.targetState = false }, colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White)) {
-                            Icon(Icons.Default.Close, "关闭图片预览")
+                            Icon(Icons.Default.Close, uiText("accessibility.close_image"))
                         }
                     }
                     Box(Modifier.weight(1f).fillMaxWidth().clipToBounds().pointerInput(file) {
@@ -76,7 +78,7 @@ import java.io.File
                             finally { saving = false }
                         } }
                     }, Modifier.padding(top = 12.dp).testTag("save-profile-image")) {
-                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp)); Text(if (saving) "保存中…" else "保存到相册")
+                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp)); Text(if (saving) uiText("profile.saving_image") else uiText("profile.save_to_album"))
                     }
                 }
                 SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).windowInsetsPadding(WindowInsets.safeDrawing))

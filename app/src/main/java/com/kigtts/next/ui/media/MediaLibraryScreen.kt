@@ -27,6 +27,7 @@ import com.kigtts.next.ui.components.EmptyContent
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.RegisterPageActions
 import com.kigtts.next.ui.navigation.ToolbarAction
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -40,6 +41,8 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
     val shown = if (pagesOnly) entries.filter { it.kind in setOf(MediaKind.HTML, MediaKind.WEB) } else entries
     val state by model.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope(); val active = LocalPageActive.current
+    val importFailed = uiText("media.import_failed")
+    val pairFailed = uiText("media.pair_failed")
     var importing by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     var menu by remember { mutableStateOf<MediaEntry?>(null) }; var deleting by remember { mutableStateOf<MediaEntry?>(null) }
     var pairing by remember { mutableStateOf<String?>(null) }; var website by remember { mutableStateOf(false) }
@@ -47,7 +50,8 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
     fun import(uri: android.net.Uri?) { if (uri == null) return
         scope.launch { importing = true; error = null
             try { withContext(Dispatchers.IO) { model.mediaRepository.import(uri) } }
-            catch (e: Exception) { error = e.message ?: "导入失败" } finally { importing = false }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { error = e.message ?: importFailed } finally { importing = false }
         }
     }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia(), ::import)
@@ -57,14 +61,15 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
         if (uri != null && id != null && model.state.value.appleLivePhotos) scope.launch {
             importing = true
             try { withContext(Dispatchers.IO) { model.mediaRepository.pair(id, uri) } }
-            catch (e: Exception) { error = e.message ?: "配对失败" } finally { importing = false }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { error = e.message ?: pairFailed } finally { importing = false }
         }
     }
     RegisterPageActions(listOfNotNull(
-        if (pagesOnly) null else ToolbarAction("import-media","导入图片或视频",Icons.Default.AddPhotoAlternate,!importing) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
-        ToolbarAction("import-media-file","导入文件",Icons.Default.FileOpen,!importing) { document.launch(if (pagesOnly) arrayOf("text/html","application/xhtml+xml") else arrayOf("text/html","application/xhtml+xml","image/*","video/*")) },
-        ToolbarAction("create-html","新建网页",Icons.Default.Code) { scope.launch { runCatching { model.content.htmlFiles(target) }.onFailure { error=it.message } } },
-        ToolbarAction("add-webpage","添加网页",Icons.Default.Language) { website=true }
+        if (pagesOnly) null else ToolbarAction("import-media",uiText("media.import_image_video"),Icons.Default.AddPhotoAlternate,!importing) { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+        ToolbarAction("import-media-file",uiText("file.import"),Icons.Default.FileOpen,!importing) { document.launch(if (pagesOnly) arrayOf("text/html","application/xhtml+xml") else arrayOf("text/html","application/xhtml+xml","image/*","video/*")) },
+        ToolbarAction("create-html",uiText("media.new_webpage"),Icons.Default.Code) { scope.launch { runCatching { model.content.htmlFiles(target) }.onFailure { error=it.message } } },
+        ToolbarAction("add-webpage",uiText("media.add_webpage"),Icons.Default.Language) { website=true }
     ))
     Column(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (importing) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -73,27 +78,29 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
         LazyVerticalGrid(GridCells.Adaptive(148.dp), modifier = Modifier.fillMaxSize().testTag("media-library"),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 12.dp)) {
             items(shown, key = { it.id }) { entry ->
+                val kindLabel = entry.kind.displayLabel()
+                val title = mediaDisplayTitle(entry, phrases, kindLabel)
                 Surface(onClick = feedbackClick { model.content.choose(entry, target) }, shape = MaterialTheme.shapes.large,
                     color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.testTag("media-select-" + entry.id)) {
                     Box(Modifier.fillMaxWidth().height(148.dp)) {
                         MediaCardBackdrop(entry, model.mediaRepository, Modifier.matchParentSize(), MaterialTheme.colorScheme.surfaceContainer)
                         Column(Modifier.fillMaxHeight().fillMaxWidth(.6f).padding(12.dp), verticalArrangement = Arrangement.Center) {
-                        Text(mediaDisplayTitle(entry,phrases), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (entry.appleLive) "苹果实况照片" else entry.kind.label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(if (entry.appleLive) uiText("media.apple_live") else kindLabel, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         FilledTonalIconButton(feedbackClick { menu = entry }, Modifier.align(Alignment.TopEnd).padding(4.dp).size(32.dp).testTag("manage-media-" + entry.id)) {
-                            Icon(Icons.Default.MoreVert, "管理 " + mediaDisplayTitle(entry,phrases), Modifier.size(18.dp))
+                            Icon(Icons.Default.MoreVert, uiText("accessibility.manage_item", "name" to title), Modifier.size(18.dp))
                         }
                     }
                 }
             }
         }
         EmptyContent(shown.isEmpty() && !importing, if (pagesOnly) Icons.Default.Language else Icons.Default.PermMedia,
-            if (pagesOnly) "还没有网页" else uiText("media.empty"),
-            description = if (pagesOnly) "添加网址，或编写自己的网页" else uiText("media.empty_body"))
+            if (pagesOnly) uiText("media.no_webpages") else uiText("media.empty"),
+            description = if (pagesOnly) uiText("media.empty_web") else uiText("media.empty_body"))
         }
     }
-    if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(mediaDisplayTitle(entry,phrases)) }, text = { Column {
+    if (active) menu?.let { entry -> MotionAlertDialog(onDismissRequest = { menu = null }, title = { Text(mediaDisplayTitle(entry, phrases, entry.kind.displayLabel())) }, text = { Column {
         TextButton(dialogFeedbackClick { menu = null; framing = entry }, Modifier.testTag("edit-thumbnail-framing")) { Text(uiText("media.thumbnail_framing")) }
         if (state.appleLivePhotos && entry.pluginId == null && entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO)) TextButton(dialogFeedbackClick {
             menu = null; pairing = entry.id; pair.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))

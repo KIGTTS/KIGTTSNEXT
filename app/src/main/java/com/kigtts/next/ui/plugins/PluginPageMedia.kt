@@ -1,5 +1,7 @@
 package com.kigtts.next.ui.plugins
 
+import com.kigtts.next.i18n.uiText
+
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -20,7 +22,7 @@ import java.io.File
 @Composable internal fun PluginMarkdown(block: PageBlock.Markdown, resolve: (PluginResource) -> File?) {
     CompositionLocalProvider(LocalMarkdownImage provides { url, caption ->
         block.images[url]?.let { PluginPageImage(PageImage(it, caption), resolve, Modifier.fillMaxWidth().heightIn(max = 420.dp)) }
-            ?: Text(caption.ifBlank { "图片未提供" }, style = MaterialTheme.typography.bodySmall)
+            ?: Text(caption.ifBlank { uiText("plugin.page_image_missing") }, style = MaterialTheme.typography.bodySmall)
     }) { SelectionContainer { ChatRichText(block.text.take(32000)) } }
 }
 
@@ -42,6 +44,6 @@ import java.io.File
 @Composable internal fun PreviewBitmap(image: PageImage, bitmap: ImageBitmap?, modifier: Modifier) {
     Surface(modifier.clip(MaterialTheme.shapes.medium), color = MaterialTheme.colorScheme.surfaceContainer) {
         if (bitmap != null) Image(bitmap, image.description, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
-        else Box(Modifier.fillMaxWidth().height(160.dp).padding(16.dp)) { Text(image.description.ifBlank { "预览图暂不可用" }, style = MaterialTheme.typography.bodySmall) }
+        else Box(Modifier.fillMaxWidth().height(160.dp).padding(16.dp)) { Text(image.description.ifBlank { uiText("plugin.page_preview_unavailable") }, style = MaterialTheme.typography.bodySmall) }
     }
 }

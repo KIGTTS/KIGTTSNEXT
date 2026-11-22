@@ -52,11 +52,11 @@ import kotlinx.serialization.encodeToString
                         Row(Modifier.fillMaxWidth().height(48.dp).animateItem(fadeInSpec = null, fadeOutSpec = null,
                             placementSpec = if (drag.key == item.id) null else MaterialTheme.motionScheme.fastSpatialSpec())
                             .reorderTranslation(item.id, drag, drop).testTag("chat-queued/" + item.id), verticalAlignment = Alignment.CenterVertically) {
-                            if (action != null) Icon(Icons.Default.DragIndicator, "拖动排序", Modifier.size(36.dp).reorderGrip(item.id, drag).testTag("chat-queue-grip/" + item.id))
+                            if (action != null) Icon(Icons.Default.DragIndicator, uiText("accessibility.drag_reorder"), Modifier.size(36.dp).reorderGrip(item.id, drag).testTag("chat-queue-grip/" + item.id))
                             Text(item.text, Modifier.weight(1f), maxLines = 2, style = MaterialTheme.typography.bodySmall)
                             item.steerAction?.let { steer -> TextButton(onClick = feedbackClick { invoke(steer, emptyMap()) }, enabled = enabled,
                                 modifier = Modifier.testTag("chat-queue-steer/" + item.id)) { Icon(Icons.Default.SubdirectoryArrowRight, null, Modifier.size(16.dp)); Text(uiText("chat.steer")) } }
-                            IconButton(onClick = feedbackClick { invoke(item.removeAction, emptyMap()) }, enabled = enabled, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Close, "移除待发送消息") }
+                            IconButton(onClick = feedbackClick { invoke(item.removeAction, emptyMap()) }, enabled = enabled, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Close, uiText("accessibility.remove_queued_message")) }
                         }
                     }
                 }

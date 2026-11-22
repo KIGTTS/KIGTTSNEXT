@@ -12,7 +12,7 @@ sealed interface PageScene {
 
 data class PageEntry(val scene: PageScene, val depth: Int,
     val direction: Float = if (scene == PageScene.Side(SidePage.SKETCH)) -1f else 1f) {
-    val identity: String get() = "$depth/" + when (val page = scene) {
+    val identity: String = "$depth/" + when (val page = scene) {
         PageScene.Home -> "home"
         is PageScene.Side -> "side/" + page.page.name.lowercase()
         is PageScene.Screen -> when (val destination = page.destination) {
@@ -55,6 +55,7 @@ class PageRetention(initial: List<PageEntry>) {
     var pages by mutableStateOf(initial); private set
     private var wanted = initial
     fun reconcile(target: List<PageEntry>) {
+        if (wanted === target) return
         wanted = target
         pages = (pages + target).distinct().sortedBy { it.depth }
     }
@@ -76,7 +77,13 @@ fun rememberPageNavigation(state: AppState): PageNavigation {
         })
     } }
     val retention = remember { PageRetention(wanted) }
-    val pages = (retention.pages + wanted).distinct().sortedBy { it.depth }
-    SideEffect { retention.reconcile(wanted);directions.keys.retainAll(pages.map { it.identity }.toSet()) }
-    return PageNavigation(wanted, pages, retention)
+    val retained = retention.pages
+    val pages = remember(retained, wanted) {
+        if (wanted.all { it in retained }) retained else (retained + wanted).distinct().sortedBy { it.depth }
+    }
+    SideEffect {
+        retention.reconcile(wanted)
+        if (directions.size > pages.size) directions.keys.retainAll(pages.mapTo(hashSetOf()) { it.identity })
+    }
+    return remember(wanted, pages, retention) { PageNavigation(wanted, pages, retention) }
 }

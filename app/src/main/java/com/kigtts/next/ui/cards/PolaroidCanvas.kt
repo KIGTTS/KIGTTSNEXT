@@ -193,6 +193,9 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                 var textControlWidth by remember(layer.id) { mutableStateOf(72.dp) }
                 val layerWidth = width * layer.width.toFloat()
                 val isSelected = editable && selectedLayer == layer.id
+                val layerDescription = if (!editable) "" else if (layer.kind == CardLayerKind.TEXT)
+                    com.kigtts.next.i18n.uiText("accessibility.text_layer", "text" to layer.text)
+                else com.kigtts.next.i18n.uiText("photo.sticker")
                 val image = layer.imageId?.let { rememberCardImage(imageFile(it), cardImageDecodeSize((canvasWidthPx * layer.width).toFloat() * viewScale, minOf(2048, decodeMaximum))) }
                 val mirrored = Modifier.graphicsLayer { scaleX = if (layer.flipX) -1f else 1f; scaleY = if (layer.flipY) -1f else 1f }
                 Box(Modifier.align(Alignment.Center).offset {
@@ -203,7 +206,7 @@ internal fun PolaroidCanvas(card: PolaroidCard, imageFile: (String) -> File?, mo
                     .then(if (isSelected && layer.kind == CardLayerKind.IMAGE) Modifier.border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp)) else Modifier)
                     .then(if (editable) Modifier.clickable(onClick = feedbackClick { if (isSelected && configureLayer != null) configureLayer(layer) else select.value(layer.id) }) else Modifier)
                     .testTag("card-layer/" + layer.id).semantics {
-                        if (editable) { selected = isSelected; contentDescription = if (layer.kind == CardLayerKind.TEXT) "文字：${layer.text}" else "贴纸" }
+                        if (editable) { selected = isSelected; contentDescription = layerDescription }
                     }, contentAlignment = Alignment.Center) {
                     if (layer.kind == CardLayerKind.IMAGE) {
                         val aspect = if (image != null) image.width.toFloat() / image.height.coerceAtLeast(1) else 1f
