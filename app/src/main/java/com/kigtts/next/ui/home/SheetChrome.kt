@@ -37,7 +37,7 @@ import com.kigtts.plugin.api.PluginGesture
 @Composable
 fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, editPhrases: () -> Unit) {
     val open = state.panel != null
-    val openSystemCamera = systemCameraShortcut(model::message)
+    val openCamera = homeCameraShortcut(model)
     val progress = ((motion.height - HomePanelSizes.COLLAPSED) /
         (HomePanelSizes.PEEK - HomePanelSizes.COLLAPSED)).coerceIn(0f, 1f)
     val sideSize = (48f - 16f * progress).dp
@@ -70,9 +70,9 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
                     4 -> ToolButton(if (open) uiText("quick.collapse") else uiText("quick.camera"), if (open) Icons.Default.ExpandMore else Icons.Default.PhotoCamera,
-                        { if (open) model.closePanel() else model.cardCapture.open(systemCamera = false) },
+                        { if (open) model.closePanel() else openCamera(false) },
                         Modifier.width(width).testTag("dock-end").homePreviewRegion("dock-end"), sources[4], shapes, size = sideSize,
-                        onLongClick = openSystemCamera.takeUnless { open },
+                        onLongClick = if (open) null else ({ openCamera(true) }),
                         iconBlend = ToolIconBlend(Icons.Default.PhotoCamera, Icons.Default.ExpandMore, progress))
                 }
                 if (index < 4) Spacer(Modifier.width((when (index) { 0 -> a; 3 -> b; else -> 1f } * 6f).dp))

@@ -25,7 +25,7 @@ class CardSystemCameraUiTest {
     @Test fun fullCameraReturnsItsNewPhotoDirectlyWithoutLaunchingAnyPicker() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         shadowOf(app).grantPermissions(Manifest.permission.CAMERA, SystemCameraPhotos.permission)
-        app.getSharedPreferences("polaroid_camera", 0).edit().clear().commit()
+        app.getSharedPreferences("polaroid_camera", 0).edit().putBoolean("full-system-camera", false).commit()
         var sources: CardPhotoSources? = null
         var error: String? = null
         var selected = false

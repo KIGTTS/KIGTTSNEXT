@@ -196,6 +196,17 @@ class QuickSortUiTest {
         compose.onNodeWithTag("dock-end").performTouchInput { longClick() }
         assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivity.action)
     }
+    @Test fun portraitCameraButtonSwapsTapAndHoldWhenPreferenceChanges() {
+        val model = show()
+        val preferences = compose.activity.getSharedPreferences("polaroid_camera", 0)
+        compose.runOnIdle { model.closePanel(); preferences.edit().putBoolean("use-system-camera", true).apply() }
+        compose.onNodeWithTag("dock-end").performClick()
+        assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA,
+            org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivity?.action)
+        assertEquals(Destination.Home, model.state.value.destination)
+        compose.onNodeWithTag("dock-end").performTouchInput { longClick() }
+        assertEquals(false, (model.state.value.destination as? Destination.CardCamera)?.systemCamera)
+    }
     @Test fun homeHorizontalSwipeOpensTheCamera() {
         val model = show()
         compose.runOnIdle { model.closePanel() }

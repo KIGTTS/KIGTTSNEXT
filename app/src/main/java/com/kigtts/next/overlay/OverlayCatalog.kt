@@ -76,7 +76,7 @@ internal fun resolveOverlayShortcuts(saved: List<OverlayShortcut>, candidates: L
     saved.map { item ->
         when {
             item.owner != null -> candidates.firstOrNull { it.id == item.id && it.publisher == item.publisher }
-                ?.let { it.copy(showLabel = item.showLabel) } ?: item.copy(enabled = false, badge = null)
+                ?: item.copy(enabled = false, badge = null)
             item.component != null -> item.copy(enabled = item.id in apps)
             else -> item
         }

@@ -138,7 +138,8 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
-                    if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && settings.rightEdge) { Label(); Spacer(Modifier.width(8.dp)) }
+                    val showLabel = settings.showLabels || sorting == item.id
+                    if (showLabel && settings.rightEdge) { Label(); Spacer(Modifier.width(8.dp)) }
                     IconActionHint(item.title, hasLongAction = true) {
                         FilledTonalIconButton(onClick = feedbackClick { if (item.enabled) { interact(); open(item) } }, enabled = expanded && edgeAlpha > .01f && item.enabled,
                             modifier = Modifier.size(48.dp).overlayEntranceReorder(item.id, expanded && (held || edgeAlpha > .01f),
@@ -149,7 +150,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
                             OverlayShortcutIcon(item)
                         }
                     }
-                    if ((settings.showLabels && item.showLabel || !settings.showLabels && sorting == item.id) && !settings.rightEdge) { Spacer(Modifier.width(8.dp)); Label() }
+                    if (showLabel && !settings.rightEdge) { Spacer(Modifier.width(8.dp)); Label() }
                 }
                 }
             }

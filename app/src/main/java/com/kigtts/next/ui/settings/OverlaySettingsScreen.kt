@@ -7,18 +7,13 @@ import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.kigtts.next.overlay.*
 import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.components.feedbackChange
 import com.kigtts.next.ui.components.MotionAlertDialog as AlertDialog
 
 @Composable
@@ -42,7 +37,6 @@ fun OverlaySettingsScreen() {
     }
     var permissionExplanation by remember { mutableStateOf(false) }
     var add by remember { mutableStateOf(false) }
-    var editing by remember { mutableStateOf<OverlayShortcut?>(null) }
     fun enable(value: Boolean) {
         store.update { it.copy(enabled = value) }
         if (!NativeOverlayService.sync(context) && value) android.widget.Toast.makeText(context, copy("overlay.allow.toast"), android.widget.Toast.LENGTH_SHORT).show()
@@ -50,7 +44,7 @@ fun OverlaySettingsScreen() {
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (Settings.canDrawOverlays(context)) enable(true)
     }
-    OverlaySettingsList(displayEntries, store::order, { editing = it }, { add = true }, remove = { entry ->
+    OverlaySettingsList(displayEntries, store::order, { add = true }, remove = { entry ->
         store.update { it.copy(shortcuts = it.shortcuts.filterNot { old -> old.id == entry.id }) }
     }, controls = {
         SettingsGroup(uiText("overlay.entry.title")) {
@@ -75,14 +69,5 @@ fun OverlaySettingsScreen() {
         }) { Text(uiText("overlay.settings")) } }, dismissButton = { TextButton(onClick = feedbackClick { permissionExplanation = false }) { Text(uiText("overlay.later")) } })
     if (add) OverlayEntrancePicker(state.shortcuts.map { it.id }.toSet(), onDismiss = { add = false }) { item ->
         store.update { it.copy(shortcuts = it.shortcuts + item) }; add = false
-    }
-    editing?.let { item ->
-        val current = state.shortcuts.firstOrNull { it.id == item.id }
-        if (current != null) AlertDialog(onDismissRequest = { editing = null }, title = { Text(current.localizedTitle { copy(it) }) }, text = {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) { Text(uiText("overlay.labels.short"), Modifier.weight(1f)); Switch(current.showLabel, feedbackChange { enabled -> store.update { it.copy(shortcuts = it.shortcuts.map { old -> if (old.id == item.id) old.copy(showLabel = enabled) else old }) } }) }
-            }
-        }, confirmButton = { TextButton(onClick = feedbackClick { editing = null }) { Text(uiText("action.done")) } },
-            dismissButton = {})
     }
 }

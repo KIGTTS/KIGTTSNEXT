@@ -20,7 +20,7 @@ import com.kigtts.next.i18n.rememberUiCopy
 /** Uses the same segmented surface and reveal rail as other management lists. */
 @Composable internal fun OverlaySettingsRow(entry: OverlayShortcut, position: SettingPosition,
     modifier: Modifier, grip: Modifier, elevated: Boolean, active: Boolean, activate: () -> Unit,
-    edit: () -> Unit, remove: () -> Unit, move: (Int) -> Unit, holdRequest: Int = 0) {
+    remove: () -> Unit, move: (Int) -> Unit, holdRequest: Int = 0) {
     val copy = rememberUiCopy()
     val content: @Composable (Boolean, () -> Unit, () -> Unit) -> Unit = { revealed, toggle, close ->
         val menu = feedbackClick(toggle)
@@ -49,8 +49,7 @@ import com.kigtts.next.i18n.rememberUiCopy
     Box(modifier) {
     if (elevated) content(false, {}, {})
     else SwipeRevealRow("overlay/${entry.id}", active, activate, modifier = Modifier.fillMaxWidth(),
-        endActions = listOf(RevealAction("settings", copy("overlay.row.configure", "title" to entry.title), Icons.Default.Tune),
-            RevealAction("delete", copy("overlay.row.remove", "title" to entry.title), Icons.Default.Delete, destructive = true)),
-        invoke = { when (it) { "settings" -> edit(); "delete" -> remove() } }, holdRequest = holdRequest, content = content)
+        endActions = listOf(RevealAction("delete", copy("overlay.row.remove", "title" to entry.title), Icons.Default.Delete, destructive = true)),
+        invoke = { remove() }, holdRequest = holdRequest, content = content)
     }
 }

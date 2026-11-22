@@ -5,6 +5,7 @@ import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
@@ -24,6 +25,19 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
 class LandscapeHomeTest {
+    @Test fun landscapeCameraButtonUsesHoldForKigttsWhenSystemCameraIsDefault() {
+        val model = show()
+        val preferences = compose.activity.getSharedPreferences("polaroid_camera", 0)
+        compose.runOnIdle {
+            model.closePanel()
+            preferences.edit().putBoolean("use-system-camera", true).apply()
+        }
+        val camera = compose.onNodeWithTag("dock-start")
+        compose.onNodeWithTag("landscape-quick-panel").assertIsDisplayed()
+        camera.assertContentDescriptionEquals("相机").performSemanticsAction(SemanticsActions.OnLongClick)
+        compose.waitForIdle()
+        assertEquals(false, (model.state.value.destination as? Destination.CardCamera)?.systemCamera)
+    }
     @Test fun draggingToCollapsedRestoresTheLargePillBeforeTheFingerIsReleasedEvenWithPluginSlots() {
         val model=show();val density=compose.activity.resources.displayMetrics.density
         compose.runOnIdle {

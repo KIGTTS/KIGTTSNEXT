@@ -11,7 +11,7 @@ data class OverlayShortcut(
     val id: String, val title: String, val symbol: String,
     val target: String = "home", val component: String? = null,
     val owner: String? = null, val publisher: String? = null, val action: String? = null,
-    val smallWindow: Boolean = false, val showLabel: Boolean = true,
+    val smallWindow: Boolean = false,
     val category: String = "KIGTTS", val enabled: Boolean = true, val badge: OverlayBadge? = null,
     val iconPath: String? = null,
 )

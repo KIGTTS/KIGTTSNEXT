@@ -28,7 +28,7 @@ import com.kigtts.next.i18n.uiText
 
 /** One stable pointer owner, animated neighbors, and a single durable write on release. */
 @Composable internal fun OverlaySettingsList(entries: List<OverlayShortcut>, order: (List<String>) -> Unit,
-    edit: (OverlayShortcut) -> Unit, add: () -> Unit, controls: @Composable () -> Unit,
+    add: () -> Unit, controls: @Composable () -> Unit,
     remove: (OverlayShortcut) -> Unit = {}) {
     val keys = entries.map { it.id }
     var positions by remember { mutableStateOf(keys) }
@@ -69,7 +69,7 @@ import com.kigtts.next.i18n.uiText
             if (positions.size == 1) SettingPosition.SINGLE else if (index == 0) SettingPosition.FIRST else if (index == positions.lastIndex) SettingPosition.LAST else SettingPosition.MIDDLE,
             modifier = modifier, grip = grip, elevated = elevated, active = revealed == id,
             holdRequest = if (held == id) holdRequest else 0,
-            activate = { revealed = id }, edit = { edit(entry) }, remove = { remove(entry) }, move = { delta ->
+            activate = { revealed = id }, remove = { remove(entry) }, move = { delta ->
                     val items = positions.toMutableList(); val i = items.indexOf(id)
                     if (i + delta in items.indices) { items.add(i + delta, items.removeAt(i)); latestOrder(items) }
             })

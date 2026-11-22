@@ -55,7 +55,7 @@ fun LandscapeQuickPanel(state: AppState, phrases: List<QuickPhrase>, categories:
 @Composable
 private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: LandscapePanelMotion) {
     val open = state.panel != null
-    val openSystemCamera = systemCameraShortcut(model::message)
+    val openCamera = homeCameraShortcut(model)
     val progress = ((motion.width - LandscapePanelGeometry.COLLAPSED) / (motion.geometry.widthFor(1) - LandscapePanelGeometry.COLLAPSED)).coerceIn(0f, 1f)
     val context = model.context()
     val longPress = remember(context, state.pluginRevision) { model.registry.gestureActions(PluginGesture.QUICK_TEXT_LONG_PRESS, context).firstOrNull() }
@@ -70,9 +70,9 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
     Column(Modifier.fillMaxHeight().widthFrom { LandscapePanelGeometry.CHROME + 24f * (1f - progress) }.padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         ToolButton(if (open) uiText("quick.edit") else uiText("quick.camera"), if (open) Icons.Default.Edit else Icons.Default.PhotoCamera,
-            { if (open) model.editQuickTexts() else model.cardCapture.open(systemCamera = false) },
+            { if (open) model.editQuickTexts() else openCamera(false) },
             Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start"), shapes = shape, size = sideSize,
-            onLongClick = openSystemCamera.takeUnless { open },
+            onLongClick = if (open) null else ({ openCamera(true) }),
             iconBlend = ToolIconBlend(Icons.Default.PhotoCamera, Icons.Default.Edit, progress))
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
             SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(32.dp), context = context,

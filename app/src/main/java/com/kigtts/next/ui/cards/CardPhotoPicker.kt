@@ -3,7 +3,6 @@ package com.kigtts.next.ui.cards
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.provider.MediaStore
-import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,13 +11,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.FileProvider
 import androidx.core.content.ContextCompat
-import java.io.File
-import java.util.UUID
+import com.kigtts.next.i18n.uiCopy
 import kotlinx.coroutines.*
 
-/** Camera and picker results are imported by the caller before the temporary capture is discarded. */
+/** Camera and picker results are imported by the caller. */
 internal data class CardPhotoSelection(val uri: Uri, val fromCamera: Boolean = false, val release: () -> Unit = {})
 internal data class CardPhotoSources(val camera: () -> Unit, val gallery: () -> Unit, val processing: Boolean)
 
@@ -32,28 +29,10 @@ internal fun rememberCardPhotoSources(onSelected: (CardPhotoSelection) -> Unit,
     val cancelled = rememberUpdatedState(onCameraCancelled)
     val scope = rememberCoroutineScope()
     var processing by remember { mutableStateOf(false) }
-    var captureName by rememberSaveable { mutableStateOf<String?>(null) }
     var fullCameraStart by rememberSaveable { mutableLongStateOf(0L) }
     var fullCameraPreviousId by rememberSaveable { mutableLongStateOf(0L) }
-    val captures = remember(context) { File(context.cacheDir, "cards/captures") }
-    fun captureFile(name: String) = File(captures, name).also {
-        require(it.canonicalFile.parentFile == captures.canonicalFile)
-    }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        val name = captureName; captureName = null
-        if (name != null) {
-            val file = captureFile(name)
-            if (success && file.isFile && file.length() > 0) {
-                // The external camera owns capture quality. Never re-encode/downsample its
-                // JPEG; Polaroid framing is stored separately from this original file.
-                try { selected.value(CardPhotoSelection(Uri.fromFile(file), fromCamera = true) { file.delete() }) }
-                catch (_: Exception) { file.delete(); failure.value("无法处理拍摄的照片，请重试") }
-            } else {
-                file.delete()
-                if (success) failure.value("照片未能保存，请重试") else cancelled.value()
-            }
-        }
-    }
+    fun canReadPhotos() =
+        ContextCompat.checkSelfPermission(context, SystemCameraPhotos.permission) == PackageManager.PERMISSION_GRANTED
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) selected.value(CardPhotoSelection(uri))
     }
@@ -65,54 +44,27 @@ internal fun rememberCardPhotoSources(onSelected: (CardPhotoSelection) -> Unit,
             try {
                 val supplied = result.data?.data?.takeIf { it.scheme == "content" &&
                     runCatching { context.contentResolver.getType(it)?.startsWith("image/") == true }.getOrDefault(false) }
-                val uri = supplied ?: receiveSystemPhoto(context, previous, started)
+                val uri = supplied ?: if (canReadPhotos()) receiveSystemPhoto(context, previous, started) else null
                 if (uri != null) selected.value(CardPhotoSelection(uri, fromCamera = true)) else cancelled.value()
             } catch (cancel: CancellationException) { throw cancel }
-            catch (_: Exception) { failure.value("未能接收系统相机的新照片，请重试") }
+            catch (_: Exception) { failure.value(context.uiCopy("camera.import_photo_failed")) }
             finally { processing = false }
         }
     }
-    fun launchCaptureIntent() {
-        check(captures.mkdirs() || captures.isDirectory)
-        val name = UUID.randomUUID().toString() + ".jpg"
-        captureName = name
-        val uri = FileProvider.getUriForFile(context, context.packageName + ".files", captureFile(name))
-        camera.launch(uri)
-    }
     fun launchFullCamera() {
-        fullCameraPreviousId = SystemCameraPhotos.newestId(context)
-        fullCameraStart = System.currentTimeMillis()
-        try { fullCamera.launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)) }
-        catch (error: Exception) { fullCameraStart = 0L; throw error }
-    }
-    val photosPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-        try { if (allowed) launchFullCamera() else launchCaptureIntent() }
-        catch (_: Exception) { failure.value("无法打开系统相机，请重试") }
-    }
-    fun launchCamera() {
         try {
-            if (context.getSharedPreferences("polaroid_camera", 0).getBoolean("full-system-camera", true)) {
-                // The ordinary camera activity owns its lens UI. Capture-intent mode is restricted by some OEMs.
-                if (ContextCompat.checkSelfPermission(context, SystemCameraPhotos.permission) == PackageManager.PERMISSION_GRANTED) launchFullCamera()
-                else photosPermission.launch(SystemCameraPhotos.permission)
-                return
-            }
-            launchCaptureIntent()
-        } catch (_: ActivityNotFoundException) {
-            captureName?.let { captureFile(it).delete() }; captureName = null
-            failure.value("没有可用的相机应用")
+            fullCameraPreviousId = if (canReadPhotos()) SystemCameraPhotos.newestId(context) else 0L
+            fullCameraStart = System.currentTimeMillis()
+            fullCamera.launch(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
         } catch (_: Exception) {
-            captureName?.let { captureFile(it).delete() }; captureName = null
-            failure.value("无法打开相机，请重试")
+            fullCameraStart = 0L
+            failure.value(context.uiCopy("camera.system_missing"))
         }
     }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed ->
-        if (allowed) launchCamera() else failure.value("需要相机权限才能通过系统相机拍照")
-    }
+    val photosPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { launchFullCamera() }
     return CardPhotoSources(camera = {
-        if (processing || fullCameraStart != 0L || captureName != null) return@CardPhotoSources
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) launchCamera()
-        else permission.launch(Manifest.permission.CAMERA)
+        if (processing || fullCameraStart != 0L) return@CardPhotoSources
+        if (canReadPhotos()) launchFullCamera() else photosPermission.launch(SystemCameraPhotos.permission)
     }, gallery = {
         try { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
         catch (_: ActivityNotFoundException) { failure.value("无法打开图片选择器") }

@@ -18,17 +18,13 @@ import kotlinx.coroutines.launch
     val context = LocalContext.current
     val preferences = remember(context) { context.getSharedPreferences("polaroid_camera", 0) }
     var system by remember { mutableStateOf(preferences.getBoolean("use-system-camera", false)) }
-    var full by remember { mutableStateOf(preferences.getBoolean("full-system-camera", true)) }
     val facts = remember(context) { PhotoServiceSettings(context) }
     val scope = rememberCoroutineScope()
     var record by remember { mutableStateOf(facts.recordCapture) }
     SettingsLayout { SettingsGroup(uiText("quick.camera")) {
         ToggleSetting(uiText("camera.system_default"), uiText("camera.system_default_hint"), Icons.Default.PhotoCamera, system, {
             system = it; preferences.edit().putBoolean("use-system-camera", it).apply()
-        }, position = SettingPosition.FIRST)
-        ToggleSetting(uiText("camera.full_system.title"), uiText("camera.full_system.body"), Icons.Default.PhotoCamera, full, {
-            full = it; preferences.edit().putBoolean("full-system-camera", it).apply()
-        }, position = SettingPosition.LAST)
+        })
     }
         SettingsGroup(uiText("camera.capture_details")) {
             ToggleSetting(uiText("camera.record_facts"), "", Icons.Default.LocationOn, record, {

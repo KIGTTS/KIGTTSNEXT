@@ -36,24 +36,24 @@ class OverlayCatalogTest {
         assertTrue(retainedOverlayActions(listOf(entry), "agent", "key", PluginContributions()).isEmpty())
     }
     @Test fun subtitleMigrationKeepsTheFirstSlotAndDoesNotRestoreRemovedEntries() {
-        val quick = OverlayShortcut("quick-text", "快捷文本", "view_agenda", "quick-text", showLabel = false)
+        val quick = OverlayShortcut("quick-text", "快捷文本", "view_agenda", "quick-text")
         val camera = OverlayShortcut("camera", "拍照", "photo_camera", "camera")
         val home = OverlayShortcut("home", "大字幕", "subtitles")
         val migrated = normalizeOverlayShortcuts(listOf(camera, quick, home))
         assertEquals(listOf("camera", "home"), migrated.map { it.id })
-        assertEquals("字幕板", migrated.last().title); assertFalse(migrated.last().showLabel)
+        assertEquals("字幕板", migrated.last().title)
         assertEquals(listOf(camera), normalizeOverlayShortcuts(listOf(camera)))
         assertEquals(migrated, normalizeOverlayShortcuts(migrated))
     }
     @Test fun absentAppsAndPluginsStayVisibleAndRecoverOnlyWithTheSamePublisher() {
         val plugin = OverlayShortcut("plugin:p:main", "助手", "smart_toy", owner = "p", publisher = "original", badge = OverlayBadge())
         val app = OverlayShortcut("app:demo", "应用", "apps", component = "demo/.Main")
-        val saved = listOf(plugin.copy(showLabel = false), app)
+        val saved = listOf(plugin, app)
         val missing = resolveOverlayShortcuts(saved, emptyList(), emptySet())
         assertEquals(saved.map { it.id }, missing.map { it.id }); assertTrue(missing.none { it.enabled }); assertNull(missing.first().badge)
         assertFalse(resolveOverlayShortcuts(saved, listOf(plugin.copy(publisher = "other")), emptySet()).first().enabled)
         val restored = resolveOverlayShortcuts(missing, listOf(plugin.copy(badge = OverlayBadge(tone = "caution"))), setOf(app.id))
-        assertTrue(restored.all { it.enabled }); assertFalse(restored.first().showLabel); assertEquals("caution", restored.first().badge?.tone)
+        assertTrue(restored.all { it.enabled }); assertEquals("caution", restored.first().badge?.tone)
     }
     @Test fun manualEntriesFollowOwnerAvailabilityAndLiveBadgeUpdates() {
         val context = ApplicationProvider.getApplicationContext<Context>()

@@ -28,8 +28,6 @@
   "camera.weather": "要查拍照那天的天气，需要把大致位置和拍摄日期发给 {service}。",
   "camera.location": "要给照片加上地点和天气吗？需要先读取拍摄位置。",
   "camera.location_provider": "要在照片上写下地点吗？需要把大致位置发给高德地图查询地名。",
-  "camera.full_system.title": "使用系统相机完整模式",
-  "camera.full_system.body": "想用系统相机的镜头和模式？拍完回来会自动导入。",
   "camera.filter": "滤镜预览暂时用不了，先拍照也没问题",
   "camera.motion": "动态照片还没准备好，这次先存为普通照片",
   "camera.video_stabilization": "录像防抖",
