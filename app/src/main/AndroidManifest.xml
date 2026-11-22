@@ -107,6 +107,13 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="kigtts" android:host="source" android:path="/add" />
+                <data android:path="/open" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="kigtts" android:host="source" android:path="/add" />
+                <data android:path="/open" />
             </intent-filter>
             <!-- File managers deliver legacy exports and voice packs as content:// URIs;
                  NFC/web links have their own bounded routes and cannot choose internal destinations. -->

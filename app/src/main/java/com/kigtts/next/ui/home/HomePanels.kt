@@ -6,8 +6,14 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.withSaveLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.*
@@ -25,15 +31,30 @@ fun HomePanels(state: AppState, phrases: List<QuickPhrase>, categories: List<Str
         .heightFrom { motion.height }.testTag("home-sheet").homePreviewRegion("phrases")) {
         Box(Modifier.matchParentSize().testTag("sheet-background")) {
             if (state.panel != null || backdropVisible) {
-                // Keep the collapsed dock off the rounded offscreen layer. On Android 10 its
-                // controls could remain hittable while only a small part of that layer was drawn.
                 com.kigtts.next.theme.DrawerBackdrop(state.theme, Modifier.matchParentSize()
-                    .graphicsLayer { this.shape = shape; clip = true; alpha = background.value })
+                    .drawSheet(shape) { background.value })
             }
         }
-        Column(if (hasContent) Modifier.clip(shape) else Modifier) {
+        Column(if (hasContent) Modifier.drawSheet(shape) else Modifier) {
             SheetChrome(state, model, motion, model::editQuickTexts)
             if (hasContent) QuickTextPanel(state, phrases, categories, model, motion, Modifier.weight(1f))
+        }
+    }
+}
+
+// Android 10 can keep stale outline bounds on the hardware layer while the sheet grows.
+private fun Modifier.drawSheet(shape: Shape, opacity: () -> Float = { 1f }) = drawWithCache {
+    val path = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+    val bounds = Rect(0f, 0f, size.width, size.height)
+    val paint = Paint()
+    onDrawWithContent {
+        val alpha = opacity().coerceIn(0f, 1f)
+        if (alpha > 0f) clipPath(path) {
+            if (alpha == 1f) this@onDrawWithContent.drawContent()
+            else {
+                paint.alpha = alpha
+                drawContext.canvas.withSaveLayer(bounds, paint) { this@onDrawWithContent.drawContent() }
+            }
         }
     }
 }

@@ -2,6 +2,8 @@ package com.kigtts.next
 
 import android.net.Uri
 import android.content.Context
+import android.content.Intent
+import android.nfc.NfcAdapter
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.plugin.api.*
 import com.kigtts.next.plugins.control.SourceLinkCoordinator
@@ -13,6 +15,20 @@ import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35])
 class SourceLinkTest {
+    @Test fun kpmLinksResolveToMainActivityFromBrowserAndNfc() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        fun handlers(action: String, path: String) = context.packageManager.queryIntentActivities(
+            Intent(action, Uri.parse("kigtts://source/$path?url=https%3A%2F%2Fexample.org%2Findex.json&package=expo.quicktext"))
+                .addCategory(if (action == Intent.ACTION_VIEW) Intent.CATEGORY_BROWSABLE else Intent.CATEGORY_DEFAULT)
+                .setPackage(context.packageName), 0,
+        ).map { it.activityInfo.name }
+        for (action in listOf(Intent.ACTION_VIEW, NfcAdapter.ACTION_NDEF_DISCOVERED)) {
+            assertEquals(listOf(MainActivity::class.java.name), handlers(action, "open"))
+            assertEquals(listOf(MainActivity::class.java.name), handlers(action, "add"))
+            assertTrue(handlers(action, "install").isEmpty())
+        }
+    }
+
     @Test fun packageTargetPersistsAcrossRestartAndOldSameSourceReplyCannotEraseIt() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val prefs = context.getSharedPreferences("pending-package-source", Context.MODE_PRIVATE)

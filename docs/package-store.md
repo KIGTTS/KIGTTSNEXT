@@ -123,6 +123,8 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 
 `kigtts://source/open?url=<编码后的HTTPS源地址>&package=<包ID>&addSource=optional` 可在添加源之前查看指定包；`addSource=required` 要求先确认添加源。旧的 `/source/add` 仍保留先添加再打开详情的行为。资源源可通过 `linkPolicy.requireAddition` 选择添加前置，通过 `linkPolicy.recommendAfterInstall` 在导入完成后邀请添加来源；链接不自动安装包。
 
+线下展台可把同一条 KPM 链接写入 NFC 标签的第一条 NDEF URI 记录。装有 KIGTTS 和商店的手机感应后会打开对应包，沿用 KPM 的预览和确认流程。一次性领取快捷文本预设可使用 `/source/open`、`addSource=optional`，资源源将 `requireAddition` 和 `recommendAfterInstall` 设为 `false`。二维码可指向对应的 KPM 网页，方便未安装软件的访客查看。
+
 `CARD_FRAME` 单独表示名片边框，和拍立得 `FRAME` 分开管理。参数贴纸支持数值、颜色、文本和选项，也可包含已授权字体；名片、拍立得与画板选择器统一提供单选、多选及预览。官方资源图的地址附带内容摘要并固定已校验提交，避免分支缓存返回旧图或404。
 
 ### 随主题色显示的 SVG 图标
