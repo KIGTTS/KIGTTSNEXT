@@ -6,9 +6,7 @@ import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.*
@@ -22,6 +20,8 @@ import com.kigtts.next.ui.cards.CardPageScaffold
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
     val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
+    val assistantPermissionPage = destination is Destination.PluginPage &&
+        destination.pluginId == ASSISTANT_SETTINGS_ID && destination.pageId == ASSISTANT_PERMISSIONS_PAGE
     val pluginPage = (destination as? Destination.PluginPage)?.let {
         val cacheBytes = if (it.pluginId == "service.speech-synthesis" && it.pageId == "manager")
             model.readingCacheBytes?.collectAsStateWithLifecycle()?.value else null
@@ -41,7 +41,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> uiText("nav.fonts")
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
-            is Destination.PluginPage -> pluginPage?.title ?: uiText("nav.plugin_page")
+            is Destination.PluginPage -> if (assistantPermissionPage) uiText("assistant.settings.permissions")
+                else pluginPage?.title ?: uiText("nav.plugin_page")
             is Destination.MediaLibrary -> {
                 val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
                 uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")
@@ -88,7 +89,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         subtitle = if (destination == Destination.Plugins) uiText("settings.plugins.subtitle") else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
             destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.PersonalInformationEditor ||
-            destination == Destination.ContactFavorites || destination is Destination.ContactFavoriteDetail || destination == Destination.Plugins ||
+            destination == Destination.ContactFavorites || destination is Destination.ContactFavoriteDetail ||
+            destination == Destination.Plugins || assistantPermissionPage ||
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
@@ -142,8 +144,11 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> {
+                    if (assistantPermissionPage) {
+                        AssistantPermissionsScreen(model, pluginPage, enabled = destination.pluginId !in state.busyPlugins)
+                        return@PageScaffold
+                    }
                     val nativeEditorActive = destination.pluginId == PLUGIN_EDITOR_ID && destination.pageId == EDITOR_MANAGER_PAGE
-                    var assistantGrantSettings by remember(destination) { mutableStateOf(false) }
                     PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins ||
                         (nativeEditorActive && NATIVE_BUILDER_ID in state.busyPlugins),
                     resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
@@ -162,12 +167,9 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                         nativeAction != null -> model.invoke(NATIVE_BUILDER_ID, nativeAction, inputs)
                         destination.pluginId == ASSISTANT_SETTINGS_ID && action == ASSISTANT_PERMISSIONS_ACTION ->
                             model.navigate(Destination.PluginPage(ASSISTANT_SETTINGS_ID, ASSISTANT_PERMISSIONS_PAGE))
-                        destination.pluginId == ASSISTANT_SETTINGS_ID && destination.pageId == ASSISTANT_PERMISSIONS_PAGE &&
-                            action == ASSISTANT_SYSTEM_PERMISSIONS_ACTION -> assistantGrantSettings = true
                         else -> model.invoke(destination.pluginId, action, inputs)
                     }
                     }
-                    if (assistantGrantSettings) PluginPermissionSettings(model, ASSISTANT_SETTINGS_ID, null) { assistantGrantSettings = false }
                 }
             }
     }

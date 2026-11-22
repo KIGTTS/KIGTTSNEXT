@@ -49,8 +49,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
                 }?.page(EDITOR_MANAGER_PAGE, context()))
             pluginId == ASSISTANT_SETTINGS_ID && pageId == ASSISTANT_PERMISSIONS_PAGE ->
-                plugin.page("settings", context())?.let { assistantPermissionsPage(it, hostCopy("assistant.settings.permissions"),
-                    hostCopy("assistant.settings.app_permissions")) }
+                plugin.page("settings", context())?.let { assistantPermissionsPage(it, hostCopy("assistant.settings.permissions")) }
             pluginId == ASSISTANT_SETTINGS_ID && pageId in setOf("settings", "dialogue-settings") && page != null ->
                 assistantSettingsPermissions(page, hostCopy("assistant.settings.permissions"), hostCopy("assistant.settings.manage_permissions"))
             else -> page

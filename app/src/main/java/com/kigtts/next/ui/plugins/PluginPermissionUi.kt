@@ -42,7 +42,6 @@ import com.kigtts.plugin.runtime.*
 }
 
 @Composable internal fun PluginPermissionSettings(model: AppViewModel, pluginId: String, projectId: String?, close: () -> Unit) {
-    val copy = rememberUiCopy()
     val manager = model.pluginManager
     val native = manager.status.firstOrNull { it.installed.manifest.id == pluginId }?.installed
     val project = manager.registry.plugin(pluginId)?.contributions?.managedPackages?.firstOrNull { it.id == projectId }
@@ -55,11 +54,24 @@ import com.kigtts.plugin.runtime.*
         text = { Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (permissions.isEmpty()) Text(uiText("permission.none"))
             permissions.forEach { permission -> key(permission, revision) {
-                Text(pluginPermissionLabel(permission), style = MaterialTheme.typography.titleSmall)
+                val label = pluginPermissionLabel(permission)
+                Text(label, style = MaterialTheme.typography.titleSmall)
                 purposes[permission]?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                ChoiceButtonGroup(pluginPermissionLabel(permission), PermissionAccess.entries, manager.permissions.access(owner, permission),
-                    { when (it) { PermissionAccess.ASK -> copy("permission.ask"); PermissionAccess.ALLOW -> copy("permission.allow"); PermissionAccess.DENY -> copy("permission.deny") } },
-                    { manager.permissions.set(owner, permission, it); revision++ }, compactLabels = true)
+                PermissionAccessChoices(label, manager.permissions.access(owner, permission),
+                    onSelect = { manager.permissions.set(owner, permission, it); revision++ })
             } }
         } }, confirmButton = { MotionTextButton(onClick = dialogFeedbackClick(close)) { Text(uiText("action.done")) } })
+}
+
+@Composable
+internal fun PermissionAccessChoices(label: String, access: PermissionAccess, enabled: Boolean = true,
+    onSelect: (PermissionAccess) -> Unit) {
+    val copy = rememberUiCopy()
+    ChoiceButtonGroup(label, PermissionAccess.entries, access, label = {
+        when (it) {
+            PermissionAccess.ASK -> copy("permission.ask")
+            PermissionAccess.ALLOW -> copy("permission.allow")
+            PermissionAccess.DENY -> copy("permission.deny")
+        }
+    }, onSelect = onSelect, enabled = enabled, compactLabels = true)
 }

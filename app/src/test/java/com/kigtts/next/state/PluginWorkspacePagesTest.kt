@@ -30,7 +30,7 @@ class PluginWorkspacePagesTest {
         assertEquals(listOf(pin), groups.first().children)
         val footer = groups.last().children.single() as PageBlock.Actions
         assertEquals(ASSISTANT_PERMISSIONS_ACTION, footer.actions.single().id)
-        val permissions = assistantPermissionsPage(settings, "Permissions", "App permissions")
-        assertEquals(tools, (permissions.blocks.single() as PageBlock.Group).children.first())
+        val permissions = assistantPermissionsPage(settings, "Permissions")
+        assertEquals(listOf(tools), permissions.blocks)
     }
 }

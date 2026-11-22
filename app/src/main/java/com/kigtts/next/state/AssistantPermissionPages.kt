@@ -8,7 +8,6 @@ import com.kigtts.plugin.api.PluginPage
 internal const val ASSISTANT_SETTINGS_ID = "tools.cloud-agent"
 internal const val ASSISTANT_PERMISSIONS_PAGE = "assistant-permissions"
 internal const val ASSISTANT_PERMISSIONS_ACTION = "assistant-open-permissions"
-internal const val ASSISTANT_SYSTEM_PERMISSIONS_ACTION = "assistant-open-app-permissions"
 
 internal fun assistantSettingsPermissions(
     page: PluginPage,
@@ -21,11 +20,9 @@ internal fun assistantSettingsPermissions(
     return page.copy(blocks = blocks + PageBlock.Group(groupTitle, listOf(PageBlock.Actions(listOf(action)))))
 }
 
-internal fun assistantPermissionsPage(settings: PluginPage, title: String, appPermissions: String): PluginPage {
+internal fun assistantPermissionsPage(settings: PluginPage, title: String): PluginPage {
     val controls = settings.blocks.flatMap { it.findToolPermissions() }
-    val action = PageAction(ASSISTANT_SYSTEM_PERMISSIONS_ACTION, appPermissions, PluginIcon.NONE, symbol = "admin_panel_settings")
-    return PluginPage(ASSISTANT_PERMISSIONS_PAGE, title,
-        listOf(PageBlock.Group(title, controls + PageBlock.Actions(listOf(action)))))
+    return PluginPage(ASSISTANT_PERMISSIONS_PAGE, title, controls)
 }
 
 private fun PageBlock.withoutToolPermission(): PageBlock? = when (this) {
