@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
@@ -22,13 +21,10 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.zIndex
-import androidx.graphics.shapes.Morph
-import com.kigtts.next.R
 import com.kigtts.next.ui.components.*
 import kotlin.math.roundToInt
 
@@ -36,17 +32,21 @@ import kotlin.math.roundToInt
 internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement, expanded: Boolean, hidden: Boolean,
     toggle: () -> Unit, move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit,
     open: (OverlayShortcut) -> Unit, configure: () -> Unit, collapsed: () -> Unit = {}, reorder: (String, Int) -> Boolean = { _, _ -> false },
-    edgeRetraction: Float? = null, initialCenter: Offset? = null, collapsedCenter: Offset? = null,
-    dragging: Boolean = false, centerChanged: (Offset) -> Unit = {}) {
+    edgeRetraction: (() -> Float)? = null, initialCenter: Offset? = null, collapsedCenter: Offset? = null,
+    compactLayout: (() -> OverlayPlacement)? = null, centerChanged: (Offset) -> Unit = {}) {
     val density = LocalDensity.current
     val hostView = LocalView.current
     val hostLocation = remember { IntArray(2) }
-    val motion = rememberOverlayDialMotion(placement, expanded, dragging, initialCenter, collapsedCenter, collapsed)
+    val motion = rememberOverlayDialMotion(placement, expanded, initialCenter, collapsedCenter, compactLayout, collapsed)
     val onCenter by rememberUpdatedState(centerChanged)
     LaunchedEffect(motion) { snapshotFlow { motion.center }.collect { onCenter(it) } }
     val effects = animateFloatAsState(if (expanded) 1f else 0f, MaterialTheme.motionScheme.defaultEffectsSpec(), label = "dial-opacity")
-    val retraction = edgeRetraction ?: animateFloatAsState(if (hidden && !expanded) 1f else 0f,
-        tween(220, easing = FastOutSlowInEasing), label = "dial-edge-hide").value
+    val retraction = edgeRetraction ?: run {
+        val animated = animateFloatAsState(if (hidden && !expanded) 1f else 0f,
+            tween(220, easing = FastOutSlowInEasing), label = "dial-edge-hide")
+        val progress: () -> Float = { animated.value }
+        progress
+    }
     var wheel by remember { mutableStateOf(OverlayWheelPosition()) }
     var sorting by remember { mutableStateOf<String?>(null) }
     var sortCenter by remember { mutableStateOf<Offset?>(null) }
@@ -77,14 +77,15 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
     // WindowManager moves the surface independently of Compose recomposition. Keep the
     // rendered absolute anchor stable even when one frame still has the previous placement.
     Box(Modifier.fillMaxSize().drawWithContent {
-        val resizing = hostView.width != placement.width || hostView.height != placement.height
+        val drawnPlacement = compactLayout?.invoke() ?: placement
+        val resizing = hostView.width != drawnPlacement.width || hostView.height != drawnPlacement.height
         if (resizing) hostView.getLocationOnScreen(hostLocation)
-        translate(left = if (resizing) (placement.x - hostLocation[0]).toFloat() else 0f, top = if (resizing) (placement.y - hostLocation[1]).toFloat() else 0f) {
+        translate(left = if (resizing) (drawnPlacement.x - hostLocation[0]).toFloat() else 0f, top = if (resizing) (drawnPlacement.y - hostLocation[1]).toFloat() else 0f) {
             this@drawWithContent.drawContent()
         }
     }.then(scroll)) {
         val entrancesVisible by remember(expanded) { derivedStateOf { expanded || effects.value > .001f } }
-        if (entrancesVisible) {
+        if (compactLayout == null && entrancesVisible) {
             val count = settings.shortcuts.size
             settings.shortcuts.forEachIndexed { index, item ->
                 val slot = index - wheel.first + (5 - count).coerceAtLeast(0) / 2f
@@ -156,7 +157,7 @@ internal fun OverlayDial(settings: OverlaySettings, placement: OverlayPlacement,
             }
         }
         OverlayFab(motion, expanded, settings.rightEdge, retraction, edgeRetraction != null, effects,
-            toggle, move, drop, interact, configure)
+            toggle, move, drop, configure)
     }
 }
 

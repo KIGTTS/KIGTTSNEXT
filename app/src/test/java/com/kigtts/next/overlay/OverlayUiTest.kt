@@ -100,7 +100,7 @@ class OverlayUiTest {
         compose.setContent { KigttsTheme(ThemeSettings(mode = ThemeMode.LIGHT)) {
             Box(Modifier.size(28.dp, 56.dp).clipToBounds().testTag("half-fab-window")) {
                 OverlayDial(OverlaySettings(rightEdge = right), OverlayPlacement(0, 0, 84, 168, if (right) 84f else 0f, 84f), false, true,
-                    {}, { _, _ -> }, {}, {}, {}, {}, edgeRetraction = 1f)
+                    {}, { _, _ -> }, {}, {}, {}, {}, edgeRetraction = { 1f })
             }
         } }
         for (edge in listOf(true, false)) {

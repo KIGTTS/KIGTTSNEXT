@@ -22,6 +22,7 @@ internal class OverlayEdgeMotion(private val frame: (Float) -> Unit) {
     }
 
     fun snapTo(next: Float) {
+        if (value == next && target == next) return
         animation?.cancel(); animation = null
         target = next; value = next; frame(next)
     }

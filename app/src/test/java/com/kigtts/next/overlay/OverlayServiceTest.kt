@@ -111,7 +111,7 @@ class OverlayServiceTest {
             invoke(service, "drag", -200f, -9000f)
             val top = placement(service)
             val safe = NativeOverlayService::class.java.getDeclaredMethod("safeBounds").apply { isAccessible = true }.invoke(service) as OverlayBounds
-            assertEquals(overlayAnchorRange(safe, service.resources.displayMetrics.density).start, top.centerOnScreen().y, .01f)
+            assertEquals(overlayAnchorRange(safe, service.resources.displayMetrics.density).start, top.centerOnScreen().y, .5f)
             invoke(service, "drop")
             assertTrue(state(service, "docking"))
             invoke(service, "drag", 100f, 120f)
@@ -121,6 +121,31 @@ class OverlayServiceTest {
             assertFalse(state(service, "docking"))
             assertTrue(hidden(service))
         } finally { controller.destroy() }
+    }
+
+    @Test fun pushingEitherEdgeDoesNotAccumulateDistanceOrShrinkTheDragWindow() {
+        ShadowSettings.setCanDrawOverlays(true)
+        val main = shadowOf(android.os.Looper.getMainLooper())
+        for (right in listOf(false, true)) {
+            OverlayStore.get(app).update { it.copy(enabled = true, autoHide = true, rightEdge = right) }
+            val controller = Robolectric.buildService(NativeOverlayService::class.java).create()
+            try {
+                val service = controller.get()
+                main.idleFor(java.time.Duration.ofSeconds(5))
+                val hidden = placement(service)
+                val outward = if (right) 1f else -1f
+                invoke(service, "drag", outward * 3000f, 0f)
+                val atEdge = placement(service)
+                assertTrue(atEdge.width > hidden.width)
+                assertEquals(atEdge.height, atEdge.width)
+                if (right) assertEquals(hidden.x + hidden.width, atEdge.x + atEdge.width)
+                else assertEquals(hidden.x, atEdge.x)
+                repeat(10) { invoke(service, "drag", outward * 100f, 0f) }
+                assertEquals(atEdge, placement(service))
+                invoke(service, "drag", -outward * 4f, 0f)
+                assertEquals(atEdge.copy(x = atEdge.x - outward.toInt() * 4), placement(service))
+            } finally { controller.destroy() }
+        }
     }
     private fun placement(service: NativeOverlayService) = NativeOverlayService::class.java.getDeclaredField("layout").apply { isAccessible = true }.get(service) as OverlayPlacement
     private fun state(service: NativeOverlayService, name: String) = (NativeOverlayService::class.java.getDeclaredField("${name}\$delegate").apply { isAccessible = true }.get(service) as androidx.compose.runtime.State<*>).value == true

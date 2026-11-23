@@ -6,12 +6,12 @@ import org.junit.Test
 
 class OverlayMotionGeometryTest {
     private val safe = OverlayBounds(0, 90, 1080, 2200)
-    @Test fun draggingReservesTopAndBottomMenuSpaceWithOnlyTheVisibleFabCapturingTouch() {
-        for (x in listOf(0f, 1080f)) for (y in listOf(90f, 2290f)) {
+    @Test fun draggingKeepsTheEntireFabWithinEitherSideAndReservesVerticalMenuSpace() {
+        for (x in listOf(-1000f, 2000f)) for (y in listOf(90f, 2290f)) {
             val p = overlayDragPlacement(safe, 3f, Offset(x, y))
             val range = overlayAnchorRange(safe, 3f)
-            assertEquals(Offset(x, y.coerceIn(range.start, range.endInclusive)), p.centerOnScreen())
-            assertEquals(84, p.width); assertEquals(168, p.height)
+            assertEquals(Offset(x.coerceIn(84f, 996f), y.coerceIn(range.start, range.endInclusive)), p.centerOnScreen())
+            assertEquals(168, p.width); assertEquals(168, p.height)
             assertTrue(p.x >= safe.left && p.y >= safe.top)
             assertTrue(p.x + p.width <= 1080 && p.y + p.height <= 2290)
             // A previous expanded host cannot keep a transparent touch rectangle behind.
@@ -26,14 +26,24 @@ class OverlayMotionGeometryTest {
                 for (frame in 0..30) {
                     val point = androidx.compose.ui.geometry.lerp(start, destination.centerOnScreen(), frame / 30f)
                     val host = overlayDragPlacement(safe, 3f, point)
-                    assertEquals(point.x, host.centerOnScreen().x, .01f)
-                    assertEquals(point.y, host.centerOnScreen().y, .01f)
-                    // Outward rounding may add one pixel around a subpixel center.
-                    assertTrue(host.width <= 169); assertTrue(host.height <= 169)
+                    assertEquals(point.x, host.centerOnScreen().x, .5f)
+                    assertEquals(point.y, host.centerOnScreen().y, .5f)
+                    assertEquals(168, host.width); assertEquals(168, host.height)
                     assertTrue(host.x >= safe.left && host.y >= safe.top)
                     assertTrue(host.x + host.width <= 1080 && host.y + host.height <= 2290)
                 }
             }
+        }
+    }
+
+    @Test fun fractionalMotionKeepsOneBufferSizeWithinInsetEdges() {
+        val inset = OverlayBounds(32, 90, 1018, 2200)
+        val density = 2.625f
+        for (step in 0..600) {
+            val p = overlayDragPlacement(inset, density, Offset(-20f + step * 2f, 1100.25f))
+            assertEquals(147, p.width)
+            assertEquals(p.width, p.height)
+            assertTrue(p.x >= inset.left && p.x + p.width <= inset.left + inset.width)
         }
     }
 }

@@ -16,11 +16,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 /** Only the collapsed ball can move; stationary holds still open settings. */
 @Composable
 @OptIn(ExperimentalComposeUiApi::class)
-internal fun Modifier.overlayFabDrag(move: (Float, Float) -> Unit, drop: () -> Unit, interact: () -> Unit, enabled: Boolean = true): Modifier {
+internal fun Modifier.overlayFabDrag(move: (Float, Float) -> Unit, drop: () -> Unit, enabled: Boolean = true): Modifier {
     if (!enabled) return this
     val onMove by rememberUpdatedState(move)
     val onDrop by rememberUpdatedState(drop)
-    val onInteract by rememberUpdatedState(interact)
     val feedback = LocalHapticFeedback.current
     val view = LocalView.current
     var origin by remember { mutableStateOf(Offset.Zero) }
@@ -52,7 +51,6 @@ internal fun Modifier.overlayFabDrag(move: (Float, Float) -> Unit, drop: () -> U
                         if ((point - start).getDistance() < viewConfiguration.touchSlop) continue
                         dragging = true
                         feedback.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onInteract()
                     }
                     change.consume()
                     val amount = point - previous

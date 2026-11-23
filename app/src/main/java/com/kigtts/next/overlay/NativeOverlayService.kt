@@ -22,6 +22,7 @@ import com.kigtts.next.R
 import com.kigtts.next.state.FeedbackSettingsStore
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.ProvideButtonFeedback
+import com.kigtts.next.ui.components.MaterialSymbols
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
@@ -48,14 +49,13 @@ class NativeOverlayService : Service() {
     private var config by mutableStateOf(OverlaySettings())
     private var theme by mutableStateOf(ThemeSettings())
     private var haptics by mutableStateOf(true)
-    private var windowExpanded = false
+    private var windowExpanded by mutableStateOf(false)
     private var retraction by mutableFloatStateOf(0f)
     private val edgeMotion = OverlayEdgeMotion { value ->
         retraction = value
         if (!windowExpanded && dragCenter == null && !docking) place(continuousResize = true)
     }
-    private var dragCenter by mutableStateOf<Offset?>(null)
-    private val isDragging by derivedStateOf { dragCenter != null }
+    private var dragCenter: Offset? = null
     private var motionStart by mutableStateOf<Offset?>(null)
     private var docking by mutableStateOf(false)
     private val dockMotion = OverlayDockMotion({ center ->
@@ -105,17 +105,27 @@ class NativeOverlayService : Service() {
                 val localConfig = remember(config, locale) { config.copy(shortcuts = config.shortcuts.map { item ->
                     item.copy(title = item.localizedTitle { key -> uiCopy(key, locale = locale) })
                 }) }
-                OverlayDial(localConfig, renderedLayout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
+                val compactLayout = remember { { renderedLayout } }
+                val edgeProgress = remember { { retraction } }
+                // Compact frames update the ball's placement and paint without rebuilding the dial.
+                val initialLayout = remember { renderedLayout }
+                val dialLayout = if (windowExpanded) renderedLayout else initialLayout
+                OverlayDial(localConfig, dialLayout, expanded, hidden, ::toggle, ::drag, ::drop, ::interact, ::open,
                     { open(OverlayShortcut("overlay-settings", uiCopy("settings.category.overlay", locale = locale), "tune", "overlay-settings")) }, ::finishCollapse, { id, direction ->
                         val before = store.settings.value.shortcuts.indexOfFirst { it.id == id }
                         store.move(id, direction)
                         before != store.settings.value.shortcuts.indexOfFirst { it.id == id }
-                    }, edgeRetraction = retraction, initialCenter = motionStart,
+                    }, edgeRetraction = edgeProgress, initialCenter = motionStart,
                     collapsedCenter = if (windowExpanded) renderedLayout.local(compactPlacement().centerOnScreen()) else null,
-                    dragging = isDragging, centerChanged = { visibleFabCenter = it })
+                    compactLayout = compactLayout.takeUnless { windowExpanded }, centerChanged = { visibleFabCenter = it })
             } } }
         } }
         place(); interact()
+        scope.launch {
+            snapshotFlow { config.shortcuts.take(5).map { it.symbol }.distinct() }.collectLatest { symbols ->
+                withContext(Dispatchers.Default) { symbols.forEach { ensureActive(); MaterialSymbols.vector(it) } }
+            }
+        }
         if (Build.VERSION.SDK_INT >= 31) windowContext.registerComponentCallbacks(windowConfiguration)
         val apps = MutableStateFlow(config.shortcuts.filter { it.component != null }.map { it.id }.toSet())
         scope.launch { combine(store.settings, hub.candidates, apps) { saved, candidates, installedApps ->
@@ -199,7 +209,6 @@ class NativeOverlayService : Service() {
         val absolute = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
         val target = overlayPlacement(safeBounds(), windowContext.resources.displayMetrics.density, config.rightEdge, config.position, true)
         dragCenter = null; docking = false; windowExpanded = true
-        edgeMotion.snapTo(0f)
         layout = target; motionStart = target.local(absolute)
         renderPlacement(rebase = true)
         expanded = true; interact()
@@ -216,15 +225,19 @@ class NativeOverlayService : Service() {
     }
     private fun drag(x: Float, y: Float) {
         if (expanded || windowExpanded) return
-        dockMotion.cancel()
-        if (docking || dragCenter == null) {
+        val currentCenter = dragCenter
+        val starting = docking || currentCenter == null
+        val start = if (starting) {
+            dockMotion.cancel()
             val current = dial?.stopAtCurrentPosition(layout) ?: layout
-            dragCenter = Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
             docking = false; windowExpanded = false; motionStart = null
-        }
+            Offset(current.x.toFloat(), current.y.toFloat()) + visibleFabCenter
+        } else requireNotNull(currentCenter)
+        val next = clampOverlayDragCenter(safeBounds(), windowContext.resources.displayMetrics.density, start + Offset(x, y))
+        if (!starting && currentCenter == next) return
+        dragCenter = next
         if (hidden || idle != null) { hidden = false; idle?.cancel(); idle = null }
         edgeMotion.snapTo(0f)
-        dragCenter = dragCenter!! + Offset(x, y)
         place(continuousResize = true)
     }
     private fun drop() {
