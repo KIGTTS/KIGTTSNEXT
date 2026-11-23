@@ -6,6 +6,7 @@ import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.components.feedbackChange
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CornerBasedShape
@@ -14,6 +15,7 @@ import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.geometry.Size
@@ -21,12 +23,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.theme.themeFill
 import com.kigtts.next.theme.ThemeText
@@ -64,8 +66,8 @@ internal fun SettingsLayout(content: @Composable ColumnScope.() -> Unit) {
 internal fun SettingsGroup(title: String, subtitle: String = "", headerAction: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit) {
-    com.kigtts.next.theme.AppearanceCardSurface(modifier.fillMaxWidth().settingFocus(title)) {
-        Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+    com.kigtts.next.theme.AppearanceCardSurface(modifier.fillMaxWidth()) {
+        Column(Modifier.fillMaxWidth().settingFocus(title).padding(8.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
             Column(Modifier.padding(8.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     ThemeText(title,Modifier.weight(1f).semantics { heading() },style=MaterialTheme.typography.titleMedium)
@@ -85,11 +87,14 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     leading: (@Composable () -> Unit)? = null,
     badge: com.kigtts.plugin.api.PluginBadge? = null,
     corners: CornerBasedShape = MaterialTheme.shapes.small,
+    interaction: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit = {}) {
-    val located = modifier.settingFocus(title)
     val shape = animatedSettingShape(position, corners)
-    val body: @Composable () -> Unit = {
-        Column(Modifier.fillMaxWidth().themeFill { it.surfaceContainerLow }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val action = if (onClick == null) interaction else Modifier.clickable(enabled = enabled, onClick = feedbackClick(onClick))
+    val contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow)
+    CompositionLocalProvider(LocalContentColor provides contentColor) {
+        Column(modifier.fillMaxWidth().clip(shape).settingFocus(title).then(action)
+            .themeFill { it.surfaceContainerLow }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (leading != null || icon != null || badge != null) com.kigtts.next.ui.components.PluginIconBadge(badge) {
                     if (leading != null) leading() else if (icon != null) ThemeIcon(icon,null,Modifier.size(24.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
@@ -104,10 +109,6 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
             content()
         }
     }
-    val contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow)
-    if (onClick == null) Surface(located, shape = shape, color = Color.Transparent, contentColor = contentColor, content = body)
-    else Surface(onClick = feedbackClick(onClick), enabled = enabled, modifier = located, shape = shape,
-        color = Color.Transparent, contentColor = contentColor, content = body)
 }
 
 @Composable
@@ -115,7 +116,8 @@ internal fun ToggleSetting(title: String, summary: String, icon: ImageVector?, c
     modifier: Modifier = Modifier, position: SettingPosition = SettingPosition.SINGLE, enabled: Boolean = true,
     preserveColorWhenLocked: Boolean = false) {
     SettingItem(title, summary, icon, position,
-        modifier = modifier.toggleable(checked, enabled = enabled, role = Role.Switch,
+        modifier = modifier,
+        interaction = Modifier.toggleable(checked, enabled = enabled, role = Role.Switch,
             onValueChange = feedbackChange(onChange)).semantics { contentDescription = title },
         enabled = enabled, trailing = {
         Switch(checked, onCheckedChange = null, enabled = enabled,

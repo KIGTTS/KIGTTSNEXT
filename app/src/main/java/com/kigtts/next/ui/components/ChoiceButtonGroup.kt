@@ -23,6 +23,7 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
     itemRole: Role = Role.RadioButton, fitContent: Boolean = false, icon: (@Composable (T) -> Unit)? = null) {
     val sources=remember(options) { options.map { MutableInteractionSource() } }
     val paint = LocalThemePaint.current?.takeIf { enabled }
+    val minimumTouchHeight = LocalMinimumInteractiveComponentSize.current
     val motions=options.map { option -> key(option) { rememberChoicePressMotion() } }
     val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
         expansion=100f*ButtonGroupDefaults.ExpandedRatio)
@@ -46,7 +47,9 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
                 else -> defaultsColors
             }
             ToggleButton(checked=checked,onCheckedChange={ selected -> motions[index].commit { if (selected && !checked) onSelect(option) } },
-                modifier=Modifier.then(if (fitContent) Modifier else Modifier.weight(weights[index])).then(if(enabled)Modifier.choicePressFeedback(motions[index])else Modifier)
+                // Measure the native ripple and the animated fill at the same height.
+                modifier=Modifier.then(if (fitContent) Modifier else Modifier.weight(weights[index])).heightIn(min = minimumTouchHeight)
+                    .then(if(enabled)Modifier.choicePressFeedback(motions[index])else Modifier)
                     .then(if(preserveColorWhenLocked) Modifier else Modifier.enabledContentMotion(enabled)).then(fill).semantics {
                     contentDescription="$title：${label(option)}";selected=value==option;role=itemRole
                 },enabled=enabled,shapes=ToggleButtonShapes(shape,shape,shape),interactionSource=sources[index],

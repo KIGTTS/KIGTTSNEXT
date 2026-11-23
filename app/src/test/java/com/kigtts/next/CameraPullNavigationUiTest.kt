@@ -58,7 +58,7 @@ class CameraPullNavigationUiTest {
                 {(f.state.destination as? Destination.CardCamera)?.requestId})}
             SideEffect { f.pull=pull }
             val latest=rememberUpdatedState(navigation)
-            val back=rememberPredictiveReturn(current.cameraRequestId!=null,current.identity,f::back)
+            val back=rememberPredictiveReturn(current.cameraRequestId!=null,current.identity,complete=f::back)
             val latestProgress=rememberUpdatedState(back.value.progress)
             val camera=navigation.pages.lastOrNull {it.cameraRequestId!=null&&(it==current||it.depth==current.depth+1&&it !in navigation.wanted)}
             val covered=camera?.let {navigation.wanted.lastOrNull {entry->entry.depth==it.depth-1}}

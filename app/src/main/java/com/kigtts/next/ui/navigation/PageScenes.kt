@@ -53,13 +53,23 @@ private fun pageTrail(state: AppState): List<PageEntry> = buildList {
 @Stable
 class PageRetention(initial: List<PageEntry>) {
     var pages by mutableStateOf(initial); private set
+    internal data class ReturnHandoff(val outgoing: PageEntry, val parent: PageEntry, val progress: Float)
+    internal var returnHandoff by mutableStateOf<ReturnHandoff?>(null)
+        private set
     private var wanted = initial
+    internal fun commitReturn(outgoing: PageEntry, parent: PageEntry, progress: Float) {
+        returnHandoff = ReturnHandoff(outgoing, parent, progress)
+    }
     fun reconcile(target: List<PageEntry>) {
         if (wanted === target) return
+        if (returnHandoff?.let { it.outgoing in target } == true) returnHandoff = null
         wanted = target
         pages = (pages + target).distinct().sortedBy { it.depth }
     }
-    fun retire(entry: PageEntry) { if (entry !in wanted) pages = pages - entry }
+    fun retire(entry: PageEntry) {
+        if (entry !in wanted) pages = pages - entry
+        if (returnHandoff?.outgoing == entry) returnHandoff = null
+    }
 }
 
 data class PageNavigation(val wanted: List<PageEntry>, val pages: List<PageEntry>, val retention: PageRetention) {

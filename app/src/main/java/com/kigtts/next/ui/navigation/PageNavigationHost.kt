@@ -5,6 +5,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.home.SecondarySidePage
@@ -18,8 +19,13 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     val holder = rememberSaveableStateHolder()
     val current = navigation.current
     val scope = rememberCoroutineScope()
-    val pull = remember(model) { CameraPullState(scope, {
-        model.cardCapture.open(systemCamera = false); (model.state.value.destination as? Destination.CardCamera)?.requestId
+    val context = LocalContext.current
+    val cameraPreferences = remember(context) { context.getSharedPreferences("polaroid_camera", 0) }
+    val pull = remember(model, cameraPreferences) { CameraPullState(scope, {
+        val fromHome = model.state.value.let { it.destination == Destination.Home && it.sidePage == null }
+        model.cardCapture.open(systemCamera = false,
+            fullSystemCamera = fromHome && cameraPreferences.getBoolean("use-system-camera", false))
+        (model.state.value.destination as? Destination.CardCamera)?.requestId
     }, model::navigateBack, { (model.state.value.destination as? Destination.CardCamera)?.requestId }) }
     val latestNavigation = rememberUpdatedState(navigation)
     val latestDrawer = rememberUpdatedState(drawerActive)
@@ -53,6 +59,7 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
         } }
     }) {
         val previous = navigation.wanted.getOrNull(navigation.wanted.lastIndex - 1)
+        val handoff = navigation.retention.returnHandoff
         navigation.pages.forEach { entry -> key(entry) {
             val foreground = entry == current
             val role = if (foreground) PageRole.FOREGROUND else if (entry in navigation.wanted) PageRole.BACKGROUND else PageRole.EXITING
@@ -69,6 +76,8 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
                     if(latestNavigation.value.wanted.none {it.identity==entry.identity})holder.removeState(entry.identity)
                 }, vertical = pull.active && !pull.horizontal && (entry == camera || entry == parent),
                 cameraPose = cameraPose,
+                committedGesture = handoff?.takeIf { it.outgoing == entry }?.progress,
+                committedParentPreview = handoff?.takeIf { it.parent == entry && it.outgoing !in navigation.wanted }?.progress,
                 drawerPose = if (sideDrawer.active && (entry.scene == PageScene.Home || entry.scene == PageScene.Side(sideDrawer.page!!)))
                     remember(entry, sideDrawer) { SideDrawerPose(sideDrawer, entry.scene != PageScene.Home) } else null) {
                 holder.SaveableStateProvider(entry.identity) {

@@ -39,11 +39,11 @@ class CardCaptureCoordinator(private val cards: CardRepository, private val stic
     private var albumRequest: Pair<Destination.CardCamera, String>? = null
     val burst = CardBurstCoordinator(cards, stickers, scope, state, { !pending && printing.value == null },
         { albumRequest?.second ?: selectedAlbum() }, { pending = it }, { printing.value = it }, message)
-    fun open(cardId: String? = null, systemCamera: Boolean = useSystemCamera()) {
+    fun open(cardId: String? = null, systemCamera: Boolean = useSystemCamera(), fullSystemCamera: Boolean = false) {
         if (pending) { message(stickers.context.uiCopy("camera.photo_saving_wait")); return }
         if (printing.value != null) { message(stickers.context.uiCopy("camera.photo_saving_wait")); return }
         printing.value = null
-        val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId, systemCamera)
+        val destination = Destination.CardCamera(UUID.randomUUID().toString(), cardId, systemCamera, fullSystemCamera)
         albumRequest = destination to selectedAlbum()
         navigate(destination)
     }

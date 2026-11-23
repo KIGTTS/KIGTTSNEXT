@@ -86,7 +86,7 @@ class PageMotionTest {
     @Test fun leavingFocusedPagesClearsInputAndParentScrollSurvivesAfterPickerCancellation() {
         val model = show(compact = true)
         compose.runOnIdle { model.navigate(Destination.Settings); model.navigate(Destination.SettingsDetail(SettingsCategory.APPEARANCE)) }
-        compose.onNodeWithContentDescription("选择主题色").performClick()
+        compose.onNodeWithTag("custom-theme-color").performScrollTo().performClick()
         compose.onNodeWithContentDescription("HEX 颜色").performTextReplacement("#123456")
         compose.onNodeWithText("取消").performClick()
         compose.onNodeWithText("恢复默认外观").performScrollTo()
@@ -220,18 +220,18 @@ class PageMotionTest {
         step(1500)
         layer("1/side/sketch").assertDoesNotExist()
         compose.runOnIdle { model.openSidePage(SidePage.CARDS) }; step(96)
-        assertTrue(left("1/side/cards") > 1f)
+        assertTrue(left("1/cards") > 1f)
         capture("navigation-cards-enter-mid")
         step(1500)
         predict(.55f, BackEventCompat.EDGE_RIGHT)
-        val before = left("1/side/cards")
+        val before = left("1/cards")
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
-        assertTrue(abs(left("1/side/cards") - before) < 2f)
+        assertTrue(abs(left("1/cards") - before) < 2f)
         step(96)
-        assertTrue(left("1/side/cards") > before + 20f)
+        assertTrue(left("1/cards") > before + 20f)
         capture("navigation-cards-predictive-return-mid")
         step(1500); compose.mainClock.autoAdvance = true
-        layer("1/side/cards").assertDoesNotExist()
+        layer("1/cards").assertDoesNotExist()
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
     }
 }

@@ -40,6 +40,10 @@ import kotlinx.coroutines.isActive
 @Composable
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 fun PolaroidCameraRoute(model: AppViewModel, destination: Destination.CardCamera) {
+    if (destination.fullSystemCamera) {
+        SystemCameraStandby(model, destination)
+        return
+    }
     val copy = rememberCameraCopy()
     if (destination.cardId == null && !destination.systemCamera) {
         // A new camera visit starts with the gallery icon, independent of earlier queued saves.

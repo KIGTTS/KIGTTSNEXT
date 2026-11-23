@@ -38,26 +38,28 @@ fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean, progress:
     parentPreview: Float, finished: () -> Unit, vertical: Boolean = false,
     cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) =
     PageMotion(entry, role, interactive, { ReturnProgress(progress, edge) }, { parentPreview },
-        finished, vertical, cameraPose, drawerPose, content)
+        finished, vertical, cameraPose, drawerPose, content = content)
 
 @Composable
 internal fun PageMotion(entry: PageEntry, role: PageRole, interactive: Boolean,
     progress: () -> ReturnProgress, parentPreview: () -> Float, finished: () -> Unit, vertical: Boolean = false,
-    cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null, content: @Composable () -> Unit) {
+    cameraPose: CameraPagePose? = null, drawerPose: SideDrawerPose? = null,
+    committedGesture: Float? = null, committedParentPreview: Float? = null, content: @Composable () -> Unit) {
     var mounted by rememberSaveable(entry.identity) { mutableStateOf(false) }
     val memory = remember(entry) { PageMotionMemory(if (mounted) {
         if (role == PageRole.BACKGROUND) if(vertical) .08f else -.08f else 0f
     } else if (entry.scene == PageScene.Home) 0f else
         if (role == PageRole.FOREGROUND) if(vertical) -1f else entry.direction else if(vertical) .08f else -.08f, role) }
     val restoringParent = remember(role) { role == PageRole.FOREGROUND && memory.role == PageRole.BACKGROUND }
-    val prediction = remember(role) { if (role == PageRole.EXITING) memory.gesture else 0f }
+    val prediction = remember(role) { if (role == PageRole.EXITING) committedGesture ?: memory.gesture else 0f }
     val leavingDirection = if (vertical) -1f else entry.direction
     val controlled = cameraPose != null || drawerPose != null
     val animation = remember(role, vertical, controlled) {
         // A settling gesture can finish between render frames. Read its exact final pose,
         // rather than replaying an exit spring from the last frame's partly visible position.
-        val seed = memory.drawerPose?.position ?: memory.overridePosition ?: (memory.animation.value * (1f - memory.parentPreview) -
-            if(vertical && entry.cameraRequestId != null && role == PageRole.EXITING) memory.gesture else 0f)
+        val preview = if (restoringParent) committedParentPreview ?: memory.parentPreview else memory.parentPreview
+        val seed = memory.drawerPose?.position ?: memory.overridePosition ?: (memory.animation.value * (1f - preview) -
+            if (vertical && entry.cameraRequestId != null && role == PageRole.EXITING) prediction else 0f)
         Animatable(seed).also { memory.animation = it }
     }
     val latestFinished by rememberUpdatedState(finished)

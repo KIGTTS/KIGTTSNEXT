@@ -109,7 +109,13 @@ fun KigttsApp(model: AppViewModel) {
     }
     val back = rememberPredictiveReturn(
         (navigation.returningHome || state.voiceInputActive || state.webCanGoBack || state.subtitleExpanded || state.quickTextEditing || state.sidePage != null || state.panel != null || state.captionsVisible || state.destination != Destination.Home),
-        identity = navigation.current.identity) {
+        identity = navigation.current.identity, handoff = { pose ->
+            val updated = model.state.value
+            val parent = navigation.wanted.getOrNull(navigation.wanted.lastIndex - 1)
+            val changedPage = updated.destination != state.destination || updated.navigationStack != state.navigationStack || updated.sidePage != state.sidePage
+            if (changedPage && parent != null) navigation.retention.commitReturn(navigation.current, parent, pose.progress)
+            changedPage && parent != null
+        }) {
         when {
             state.voiceInputActive -> model.endVoiceInput(false)
             state.destination != Destination.Home -> model.navigateBack()

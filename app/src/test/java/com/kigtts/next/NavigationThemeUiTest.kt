@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -172,6 +173,26 @@ class NavigationThemeUiTest {
         compose.runOnIdle { assertEquals(composed, hostCompositions) }
         compose.runOnIdle { dispatcher.dispatchOnBackCancelled() }
         assertEquals(initial, content.getUnclippedBoundsInRoot().left)
+    }
+
+    @Test fun committedPreviewStaysUntilTheNavigationIdentityChanges() {
+        val identity = mutableStateOf("settings")
+        lateinit var back: State<ReturnProgress>
+        var committed: ReturnProgress? = null
+        compose.setContent {
+            back = rememberPredictiveReturn(true, identity.value, handoff = { committed = it; true }) {}
+            Box(Modifier.fillMaxSize())
+        }
+        predict(.65f)
+        compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.mainClock.advanceTimeBy(96)
+        compose.runOnIdle {
+            assertEquals(.65f, committed!!.progress, .001f)
+            assertEquals(committed, back.value)
+            identity.value = "home"
+        }
+        compose.runOnIdle { assertEquals(0f, back.value.progress, .001f); identity.value = "settings" }
+        compose.runOnIdle { assertEquals(0f, back.value.progress, .001f) }
     }
 
     @Test fun settingsBackRestoresHomePanelAndCancelledPredictionKeepsPageOpen() {

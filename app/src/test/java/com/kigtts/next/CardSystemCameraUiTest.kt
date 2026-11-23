@@ -7,9 +7,13 @@ import android.content.Intent
 import android.provider.MediaStore
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.ui.cards.*
+import com.kigtts.next.state.Destination
+import com.kigtts.next.ui.KigttsApp
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -22,6 +26,38 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class CardSystemCameraUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
+    @Test fun homeSwipeLaunchesFullSystemCameraOnlyAfterSettlingAndReturnsHome() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        app.getSharedPreferences("polaroid_camera", 0).edit().putBoolean("use-system-camera", true).commit()
+        val model = testAppModel(app)
+        compose.setContent { KigttsApp(model) }
+        compose.waitForIdle()
+        val activity = shadowOf(compose.activity)
+        val root = compose.onRoot()
+        compose.mainClock.autoAdvance = false
+        root.performTouchInput {
+            down(Offset(width * .8f, height * .62f))
+            moveTo(Offset(width * .68f, height * .62f), 150)
+        }
+        compose.mainClock.advanceTimeBy(64)
+        compose.onNodeWithTag("system-camera-standby").assertExists()
+        assertNull(activity.nextStartedActivityForResult)
+        root.performTouchInput { cancel() }
+        compose.mainClock.advanceTimeBy(800)
+        compose.mainClock.autoAdvance = true
+        compose.onNodeWithTag("system-camera-standby").assertDoesNotExist()
+        assertNull(activity.nextStartedActivityForResult)
+
+        root.performTouchInput { swipeLeft(startX = width * .8f, endX = width * .2f, durationMillis = 400) }
+        compose.onNodeWithTag("system-camera-standby").assertIsDisplayed()
+        val camera = checkNotNull(activity.nextStartedActivityForResult)
+        assertEquals(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA, camera.intent.action)
+        compose.runOnIdle { compose.activity.activityResultRegistry.dispatchResult(camera.requestCode, Activity.RESULT_CANCELED, Intent()) }
+        compose.onNodeWithTag("system-camera-standby").assertDoesNotExist()
+        assertEquals(Destination.Home, model.state.value.destination)
+        assertNull(activity.nextStartedActivityForResult)
+    }
+
     @Test fun fullCameraReturnsItsNewPhotoDirectlyWithoutLaunchingAnyPicker() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         shadowOf(app).grantPermissions(Manifest.permission.CAMERA, SystemCameraPhotos.permission)

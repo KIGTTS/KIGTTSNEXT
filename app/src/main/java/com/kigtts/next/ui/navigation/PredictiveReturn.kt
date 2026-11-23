@@ -18,23 +18,32 @@ internal val IdleReturnProgress: State<ReturnProgress> = mutableStateOf(ReturnPr
 private class ReturnSettlement { var job: Job? = null }
 
 @Composable
-fun rememberPredictiveReturn(enabled: Boolean, identity: Any? = null, complete: () -> Unit): State<ReturnProgress> {
+fun rememberPredictiveReturn(enabled: Boolean, identity: Any? = null,
+    handoff: (ReturnProgress) -> Boolean = { false }, complete: () -> Unit): State<ReturnProgress> {
     val progress = remember { mutableFloatStateOf(0f) }
     var edge by remember { mutableIntStateOf(0) }
     val latestComplete by rememberUpdatedState(complete)
+    val latestHandoff by rememberUpdatedState(handoff)
     val latestIdentity by rememberUpdatedState(identity)
     var owner by remember { mutableStateOf(identity) }
     val scope = rememberCoroutineScope()
     val settling = remember { ReturnSettlement() }
+    SideEffect { if (owner != identity) progress.floatValue = 0f }
     PredictiveBackHandler(enabled) { events ->
         settling.job?.cancel()
         val startedOn = latestIdentity
         owner = startedOn
+        progress.floatValue = 0f
         try {
             events.collect { progress.floatValue = it.progress; edge = it.swipeEdge }
-            if (latestIdentity == startedOn) latestComplete()
-            settling.job = scope.launch {
-                // Hand the rendered gesture pose to the outgoing page before resetting it.
+            var handedOff = false
+            if (latestIdentity == startedOn) {
+                val pose = ReturnProgress(progress.floatValue, edge)
+                latestComplete()
+                handedOff = pose.progress > 0f && latestHandoff(pose)
+            }
+            if (!handedOff) settling.job = scope.launch {
+                // Keep the local preview through the update for in-page actions.
                 withFrameNanos { }
                 progress.floatValue = 0f
             }
