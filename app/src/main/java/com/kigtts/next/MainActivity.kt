@@ -39,9 +39,9 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         enableEdgeToEdge()
         val progress = onboarding
         val startup = NativeStartup(this)
-        if (savedInstanceState == null) startup.install()
         pendingLaunch = savedInstanceState?.getBoolean(PENDING_LAUNCH) ?: true
         setContent { FirstRunHost(model, progress, startup, complete = ::finishOnboarding, exit = ::finish) }
+        if (savedInstanceState == null) startup.install()
         deliverLaunch()
     }
     override fun onSaveInstanceState(outState: Bundle) {

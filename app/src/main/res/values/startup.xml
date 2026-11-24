@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="startup_background_color">#F4FAFA</color>
-    <color name="startup_foreground_color">#00696E</color>
+    <color name="startup_foreground_color">#445656</color>
     <bool name="startup_light_bars">true</bool>
 </resources>
