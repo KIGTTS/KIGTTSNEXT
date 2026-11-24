@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
 
 /** Keep the sensor and its draw-phase state local to the guide. */
 @Composable
-private fun rememberOnboardingTilt(enabled: Boolean): State<Offset> {
+internal fun rememberOnboardingTilt(enabled: Boolean): State<Offset> {
     val context = LocalContext.current.applicationContext
     val owner = LocalLifecycleOwner.current
     val view = LocalView.current
@@ -74,9 +74,8 @@ private fun rememberOnboardingTilt(enabled: Boolean): State<Offset> {
 }
 
 @Composable
-internal fun BoxScope.OnboardingFlowers(reducedMotion: Boolean) {
+internal fun BoxScope.OnboardingFlowers(reducedMotion: Boolean, tilt: State<Offset>) {
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
-    val tilt = rememberOnboardingTilt(motion)
     val colors = MaterialTheme.colorScheme
     Flower("flower", 190.dp, .9f, 16f, colors.primaryContainer.copy(alpha = .76f), tilt, motion,
         Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-44).dp))

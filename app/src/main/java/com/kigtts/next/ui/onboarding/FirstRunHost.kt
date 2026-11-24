@@ -12,8 +12,8 @@ import com.kigtts.next.ui.components.ProvideButtonFeedback
 @Composable
 internal fun FirstRunHost(model: AppViewModel, progress: FirstRunStore, startup: NativeStartup,
     complete: (Boolean) -> Unit, exit: () -> Unit) {
-    var step by remember(progress) { mutableStateOf(progress.step()) }
-    if (step == FirstRunStep.COMPLETE) {
+    var finished by remember(progress) { mutableStateOf(progress.step() == FirstRunStep.COMPLETE) }
+    if (finished) {
         KigttsApp(model, progress, startup)
         return
     }
@@ -23,11 +23,13 @@ internal fun FirstRunHost(model: AppViewModel, progress: FirstRunStore, startup:
         SideEffect { startup.ready(colors) }
         CompositionLocalProvider(LocalUiLocale provides state.uiLocale) {
             ProvideButtonFeedback(state.hapticsEnabled) {
-                OnboardingScreen(step, state.theme, state.subtitleAppearance.reducedMotion, model::theme,
-                    next = { tryQuickText ->
-                        step = progress.advance(step)
-                        if (step == FirstRunStep.COMPLETE) complete(tryQuickText)
-                    }, back = { step = progress.back(step) }, exit = exit)
+                OnboardingScreen(progress, state.theme, state.subtitleAppearance.reducedMotion, model::theme,
+                    complete = { tryQuickText ->
+                        if (progress.finish()) {
+                            finished = true
+                            complete(tryQuickText)
+                        }
+                    }, exit = exit)
             }
         }
     }

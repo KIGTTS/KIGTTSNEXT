@@ -2,16 +2,18 @@
 
 package com.kigtts.next.ui.onboarding
 
+import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Hearing
@@ -25,14 +27,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.R
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
-import com.kigtts.next.theme.AppearanceCardSurface
+import com.kigtts.next.theme.ThemeIcon
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeText
 import com.kigtts.next.theme.themeFill
@@ -42,80 +46,168 @@ import com.kigtts.next.ui.components.dialogFeedbackClick
 import com.kigtts.next.ui.components.expressivePillShapes
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.settings.*
+import kotlinx.coroutines.launch
 
 @Composable
-internal fun OnboardingScreen(step: FirstRunStep, settings: ThemeSettings, reducedMotion: Boolean,
-    changeTheme: (ThemeSettings) -> Unit, next: (Boolean) -> Unit, back: () -> Unit, exit: () -> Unit) {
+internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, reducedMotion: Boolean,
+    changeTheme: (ThemeSettings) -> Unit, complete: (Boolean) -> Unit, exit: () -> Unit) {
+    val scope = rememberCoroutineScope()
     var document by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
-    val key = when (step) {
-        FirstRunStep.AGREEMENT -> "agreement"
-        FirstRunStep.PERMISSIONS -> "permissions"
-        FirstRunStep.APPEARANCE -> "appearance"
-        FirstRunStep.FEATURES -> "features"
-        FirstRunStep.COMPLETE -> return
+    var accepted by remember(progress) { mutableStateOf(progress.agreementAccepted()) }
+    val pageCount = FirstRunStep.COMPLETE.ordinal
+    val pager = rememberPagerState(initialPage = progress.step().ordinal) {
+        if (accepted) pageCount else FirstRunStep.AGREEMENT.ordinal + 1
     }
-    val goBack = if (step == FirstRunStep.AGREEMENT || step == FirstRunStep.PERMISSIONS) exit else back
-    BackHandler(document == null, onBack = goBack)
+    val step = FirstRunStep.entries[pager.settledPage]
+    val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
+    val tilt = rememberOnboardingTilt(motion)
 
-    Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }.testTag("onboarding-$key")) {
-        OnboardingFlowers(reducedMotion)
-        Column(Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 22.dp),
-            horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Icon(painterResource(R.drawable.logo_horizontal), "KIGTTS", Modifier.width(102.dp).height(28.dp),
-                    tint = MaterialTheme.colorScheme.primary)
-                LinearProgressIndicator(progress = { (step.ordinal + 1) / 4f }, modifier = Modifier.weight(1f))
-            }
-            AnimatedContent(step, Modifier.weight(1f).fillMaxWidth(), label = "onboarding-step",
-                transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) }) { current ->
-                val page = when (current) {
-                    FirstRunStep.AGREEMENT -> "agreement"
-                    FirstRunStep.PERMISSIONS -> "permissions"
-                    FirstRunStep.APPEARANCE -> "appearance"
-                    FirstRunStep.FEATURES, FirstRunStep.COMPLETE -> "features"
-                }
-                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 18.dp, bottom = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ThemeText(uiText("onboarding.$page.title"), Modifier.semantics { heading() },
-                            style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground)
-                        ThemeText(uiText("onboarding.$page.body"), style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    LaunchedEffect(pager, progress) {
+        snapshotFlow { pager.settledPage }.collect { progress.visit(FirstRunStep.entries[it]) }
+    }
+
+    fun move(target: Int) {
+        scope.launch {
+            if (motion) pager.animateScrollToPage(target) else pager.scrollToPage(target)
+        }
+    }
+
+    fun back() {
+        val current = pager.settledPage
+        if (current == FirstRunStep.WELCOME.ordinal) exit() else move(current - 1)
+    }
+
+    fun finish(tryQuickText: Boolean) {
+        if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal) return
+        progress.visit(FirstRunStep.PERMISSIONS)
+        complete(tryQuickText)
+    }
+
+    BackHandler(document == null, onBack = ::back)
+    Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }) {
+        OnboardingFlowers(reducedMotion, tilt)
+        Column(
+            Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).heightIn(min = 48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Image(
+                    painterResource(R.drawable.ic_launcher_foreground),
+                    contentDescription = "KIGTTS",
+                    modifier = Modifier.size(40.dp).background(
+                        colorResource(R.color.launcher_background), RoundedCornerShape(13.dp),
+                    ).padding(2.dp),
+                )
+                LinearProgressIndicator(
+                    progress = { (pager.currentPage + pager.currentPageOffsetFraction + 1f) / pageCount },
+                    modifier = Modifier.weight(1f),
+                )
+                if (step != FirstRunStep.WELCOME) {
+                    IconButton(onClick = feedbackClick(::back), modifier = Modifier.testTag("onboarding-back")) {
+                        ThemeIcon(
+                            Icons.AutoMirrored.Filled.ArrowBack, contentDescription = uiText("action.back"),
+                            tint = MaterialTheme.colorScheme.onBackground,
+                        )
                     }
-                    when (current) {
-                        FirstRunStep.AGREEMENT -> SettingsGroup(uiText("onboarding.documents")) {
-                            SettingItem(uiText("settings.category.user_agreement"), "", Icons.Default.Description, SettingPosition.FIRST,
-                                onClick = { document = SettingsCategory.USER_AGREEMENT })
-                            SettingItem(uiText("settings.category.privacy_policy"), "", Icons.Default.Security, SettingPosition.LAST,
-                                onClick = { document = SettingsCategory.PRIVACY_POLICY })
-                        }
-                        FirstRunStep.PERMISSIONS -> OnboardingPermissions()
+                } else {
+                    Spacer(Modifier.size(48.dp))
+                }
+            }
+            HorizontalPager(
+                pager, Modifier.weight(1f).fillMaxWidth().testTag("onboarding-pages"),
+                key = { FirstRunStep.entries[it].name },
+            ) { index ->
+                val page = FirstRunStep.entries[index]
+                val welcome = page == FirstRunStep.WELCOME
+                Column(
+                    Modifier.fillMaxSize().testTag("onboarding-${page.page}")
+                        .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp, if (welcome) Alignment.CenterVertically else Alignment.Top),
+                ) {
+                    if (welcome) {
+                        OnboardingWelcomeArt(
+                            Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 12.dp)
+                                .widthIn(max = 390.dp).fillMaxWidth().aspectRatio(1216f / 1024f),
+                            active = step == FirstRunStep.WELCOME,
+                            reducedMotion = !motion,
+                            tilt = tilt,
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val align = if (welcome) TextAlign.Center else TextAlign.Start
+                        ThemeText(
+                            uiText("onboarding.${page.page}.title"), Modifier.fillMaxWidth().semantics { heading() },
+                            style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = align,
+                        )
+                        ThemeText(
+                            uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = align,
+                        )
+                    }
+                    when (page) {
+                        FirstRunStep.AGREEMENT -> SettingItem(
+                            uiText("settings.category.user_agreement"), "", Icons.Default.Description, SettingPosition.SINGLE,
+                            onClick = { document = SettingsCategory.USER_AGREEMENT },
+                        )
                         FirstRunStep.APPEARANCE -> {
                             ThemeColorSettings(settings, changeTheme)
                             AppearanceDisplaySettings(settings, changeTheme)
                         }
                         FirstRunStep.FEATURES -> OnboardingRecommendations()
-                        FirstRunStep.COMPLETE -> Unit
+                        FirstRunStep.PERMISSIONS -> {
+                            SettingItem(
+                                uiText("settings.category.privacy_policy"), "", Icons.Default.Security, SettingPosition.SINGLE,
+                                onClick = { document = SettingsCategory.PRIVACY_POLICY },
+                            )
+                            OnboardingPermissions()
+                        }
+                        FirstRunStep.WELCOME, FirstRunStep.COMPLETE -> Unit
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                when (step) {
-                    FirstRunStep.AGREEMENT -> MotionTextButton(feedbackClick(exit)) { Text(uiText("onboarding.exit")) }
-                    FirstRunStep.PERMISSIONS -> Unit
-                    FirstRunStep.FEATURES -> MotionTextButton(feedbackClick { next(true) }) { Text(uiText("onboarding.try_quick_text")) }
-                    else -> MotionTextButton(feedbackClick(back)) { Text(uiText("action.back")) }
-                }
-                Button(feedbackClick { next(false) }, modifier = Modifier.weight(1f).testTag("onboarding-next"),
-                    shapes = expressivePillShapes()) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Button(
+                    onClick = feedbackClick {
+                        when (val current = FirstRunStep.entries[pager.settledPage]) {
+                            FirstRunStep.AGREEMENT -> {
+                                val target = current.ordinal + 1
+                                if (accepted) {
+                                    move(target)
+                                } else {
+                                    progress.acceptAgreement()
+                                    accepted = true
+                                    // New pages become measurable on the next layout pass.
+                                    pager.requestScrollToPage(target)
+                                }
+                            }
+                            FirstRunStep.PERMISSIONS -> finish(false)
+                            else -> move(current.ordinal + 1)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("onboarding-next"),
+                    enabled = !pager.isScrollInProgress,
+                    shapes = expressivePillShapes(),
+                ) {
                     Text(uiText(when (step) {
                         FirstRunStep.AGREEMENT -> "onboarding.accept"
-                        FirstRunStep.FEATURES -> "onboarding.start"
+                        FirstRunStep.PERMISSIONS -> "onboarding.start"
                         else -> "onboarding.next"
                     }))
+                }
+                if (step == FirstRunStep.PERMISSIONS) {
+                    MotionTextButton(feedbackClick { finish(true) }, enabled = !pager.isScrollInProgress) {
+                        Text(uiText("onboarding.try_quick_text"))
+                    }
                 }
             }
         }
@@ -132,7 +224,6 @@ internal fun OnboardingScreen(step: FirstRunStep, settings: ThemeSettings, reduc
         })
     }
 }
-
 @Composable
 private fun OnboardingRecommendations() {
     SettingsGroup(uiText("onboarding.recommendations")) {
