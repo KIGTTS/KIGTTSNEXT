@@ -25,7 +25,8 @@ import java.io.File
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-port-xxhdpi")
 class PolaroidManagementRotationUiTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val guide = CompletedGuideRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     private fun exercise(albums: Boolean) {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]

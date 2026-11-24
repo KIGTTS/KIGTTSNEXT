@@ -17,7 +17,8 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class PageRotationTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val guide = CompletedGuideRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun activityRecreationRetainsThePageAndDoesNotAnimateItInAgain() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]

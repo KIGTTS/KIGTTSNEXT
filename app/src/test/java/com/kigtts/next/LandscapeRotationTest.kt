@@ -17,7 +17,8 @@ import org.robolectric.annotation.*
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
 class LandscapeRotationTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val guide = CompletedGuideRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     @Test fun rotationRebuildsTheHomeLayoutAndKeepsSeparateHeightAndColumnPreferences() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         compose.runOnIdle { model.panelHeight(340f); model.panelColumns(3); model.openPanel(HomePanel.QUICK_TEXT) }

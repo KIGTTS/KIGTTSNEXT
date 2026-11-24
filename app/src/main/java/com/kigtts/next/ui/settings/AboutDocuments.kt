@@ -71,7 +71,7 @@ internal val aboutLicenses = listOf(
     }
 }
 
-@Composable private fun AboutDocumentText(document: AboutDocument) {
+@Composable internal fun AboutDocumentText(document: AboutDocument) {
     val copy = rememberUiCopy()
     val context = LocalContext.current
     val content by produceState<Result<String>?>(null, document.asset) {

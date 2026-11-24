@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.KigttsNext.Starting" parent="Theme.KigttsNext">
+        <item name="android:windowBackground">@color/startup_background_color</item>
+        <item name="android:windowSplashScreenBackground">@color/startup_background_color</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/startup_mark</item>
+        <item name="android:windowLightStatusBar">@bool/startup_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/startup_light_bars</item>
+    </style>
+</resources>

@@ -11,8 +11,11 @@ class QuickSortPreference(context: Context) {
     private val asking = MutableStateFlow(false)
     val enabled = choice.asStateFlow()
     val prompt = asking.asStateFlow()
-    fun begin(): Boolean {
+    internal fun offer() {
         if (choice.value == null) asking.value = true
+    }
+    fun begin(): Boolean {
+        offer()
         return choice.value == true
     }
     fun choose(enabled: Boolean) {

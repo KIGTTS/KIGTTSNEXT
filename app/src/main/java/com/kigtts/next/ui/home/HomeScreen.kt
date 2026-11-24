@@ -35,8 +35,9 @@ fun HomeScreen(
     state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
     openDrawer: () -> Unit,
     back: State<ReturnProgress> = IdleReturnProgress,
+    inlineTips: Boolean = false,
 ) {
-    QuickSortPrompt(model.quickSort)
+    if (!inlineTips) QuickSortPrompt(model.quickSort)
     val sections = rememberSaveableStateHolder()
     val preview = LocalHomePreviewGeometry.current
     SideEffect { preview?.automaticRead = state.autoPlayback }

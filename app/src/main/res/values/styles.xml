@@ -7,4 +7,9 @@
         <item name="android:windowBackground">#0E1414</item>
         <item name="android:colorAccent">#00696E</item>
     </style>
+    <style name="Theme.KigttsNext.Starting" parent="Theme.KigttsNext">
+        <item name="android:windowBackground">@drawable/startup_background</item>
+        <item name="android:windowLightStatusBar">@bool/startup_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/startup_light_bars</item>
+    </style>
 </resources>

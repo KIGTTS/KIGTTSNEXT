@@ -24,7 +24,8 @@ import java.io.File
 @LooperMode(LooperMode.Mode.PAUSED)
 @Config(sdk = [35], qualifiers = "zh-rCN-w852dp-h393dp-land-xxhdpi")
 class PolaroidRouteSortUiTest {
-    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
+    @get:Rule(order = 0) val guide = CompletedGuideRule()
+    @get:Rule(order = 1) val compose = createAndroidComposeRule<MainActivity>()
     @Test fun landscapeStartsWithFourColumnsAndRotationRetainsTheDensityLevel() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         val cards = (0..11).map { model.cards.create(PolaroidCard(title = "")) }.reversed()

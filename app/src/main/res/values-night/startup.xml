@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="startup_background_color">#0E1414</color>
+    <color name="startup_foreground_color">#83D5D8</color>
+    <bool name="startup_light_bars">false</bool>
+</resources>

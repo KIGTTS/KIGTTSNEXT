@@ -24,11 +24,17 @@ import com.kigtts.next.ui.sketch.SketchState
 import com.kigtts.plugin.api.PluginOutcome
 import com.kigtts.next.ui.plugins.PluginRequests
 import com.kigtts.next.ui.plugins.PluginExportRequest
+import com.kigtts.next.ui.onboarding.FirstRunStore
+import com.kigtts.next.ui.onboarding.HomeCoachMarks
+import com.kigtts.next.ui.onboarding.NativeStartup
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
 @Composable
-fun KigttsApp(model: AppViewModel) {
+fun KigttsApp(model: AppViewModel) = KigttsApp(model, null, null)
+
+@Composable
+internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup: NativeStartup?) {
     com.kigtts.next.ui.media.WebAndroidPermissionHost()
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
@@ -130,6 +136,8 @@ fun KigttsApp(model: AppViewModel) {
         }
     }
     KigttsTheme(state.theme, publishWebTheme = true) {
+        val colors = MaterialTheme.colorScheme
+        if (startup != null) SideEffect { startup.ready(colors) }
         com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
             CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
@@ -172,7 +180,9 @@ fun KigttsApp(model: AppViewModel) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             back, false) { active ->
                             HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },
-                                if (active) back else IdleReturnProgress)
+                                if (active) back else IdleReturnProgress, inlineTips = onboarding != null)
+                            if (onboarding != null) HomeCoachMarks(state, model.quickSort, homePreview, onboarding,
+                                foreground = active && !inputOverlay)
                         }
                         if (!state.destination.assistantChatHandlesIme()) com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }
