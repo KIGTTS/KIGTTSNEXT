@@ -16,6 +16,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
@@ -132,8 +133,24 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     internal val quickTextBackup by lazy { QuickTextBackup(this) }
+    internal val backupRestore by lazy { com.kigtts.next.backup.BackupRestore(this) }
     internal val sharing by lazy { com.kigtts.next.sharing.SharingCoordinator(this, viewModelScope) }
-    internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(application, quickTexts, mediaRepository, viewModelScope, ::message)
+    internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(
+        application, quickTexts, mediaRepository, viewModelScope, ::message, ::reloadBackedUpSettings,
+        restoreVoices = { content ->
+            val piper = registry.plugin("engine.piper")
+            if (piper != null && registry.available(piper) && piper.voiceManager != null) {
+                val packs = com.kigtts.next.legacy.legacyPiperPackages(content).iterator()
+                while (true) {
+                    val archive = withContext(Dispatchers.IO) { if (packs.hasNext()) packs.next() else null } ?: break
+                    try { externalFiles.importVoice(archive, ExternalFileType.PIPER_VOICE) }
+                    catch (cancel: CancellationException) { throw cancel }
+                    catch (_: Exception) { message(hostCopy("backup.legacy_voice_failed")) }
+                    finally { withContext(NonCancellable + Dispatchers.IO) { archive.delete() } }
+                }
+            }
+        },
+    )
     val quickTextPlugins=hostRuntime?.quickTextPlugins ?: com.kigtts.next.plugins.quicktext.QuickTextHost(quickTexts,mediaRepository,pluginManager.paths) {this}
     init {if(hostRuntime==null)pluginManager.quickTextBrokerFactory=quickTextPlugins::forPlugin}
     private val appPlugins = hostRuntime?.appPlugins ?: com.kigtts.next.plugins.control.AppControlHost(pluginManager) { this }
@@ -302,6 +319,28 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         val current = state.value
         if (current.uiLocale == locale && current.followsSystemUiLanguage == followsSystem) return
         update { it.copy(uiLocale = locale, followsSystemUiLanguage = followsSystem, subtitlePlaceholder = subtitlePlaceholder(locale)) }
+    }
+    internal fun reloadBackedUpSettings() {
+        refreshUiLanguage()
+        quickSort.reload()
+        homeExit.reload()
+        val application = getApplication<Application>()
+        com.kigtts.next.overlay.OverlayStore.get(application).reload()
+        com.kigtts.next.overlay.NativeOverlayService.sync(application)
+        update {
+            it.copy(theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(it.uiLocale),
+                hapticsEnabled = feedbackStore.load(), subtitleAppearance = subtitleAppearanceStore.load(),
+                captionTextSize = captionFonts.panel(), lastExpandedPanelHeight = panelStore.loadHeight(),
+                panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
+                appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
+                autoPlayback = playbackPreferences.getBoolean("automatic", false),
+                contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
+                contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null)),
+                pluginRevision = it.pluginRevision + 1)
+        }
+    }
+    internal suspend fun reloadBackedUpSpeechSettings() {
+        hostRuntime?.reloadBackedUpSpeechSettings()
     }
     private fun subtitlePlaceholder(locale: String) =
         placeholderStore.load(getApplication<Application>().uiCopy("subtitle.placeholder", locale = locale))

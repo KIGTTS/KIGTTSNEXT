@@ -9,6 +9,9 @@ class HomeExitPreference(context: Context) {
     private val preferences = context.getSharedPreferences("interaction", Context.MODE_PRIVATE)
     private val choice = MutableStateFlow(if (preferences.contains("double-back-exit")) preferences.getBoolean("double-back-exit", true) else null)
     val doubleBack = choice.asStateFlow()
+    internal fun reload() {
+        choice.value = if (preferences.contains("double-back-exit")) preferences.getBoolean("double-back-exit", true) else null
+    }
     fun choose(enabled: Boolean) {
         preferences.edit().putBoolean("double-back-exit", enabled).apply()
         choice.value = enabled

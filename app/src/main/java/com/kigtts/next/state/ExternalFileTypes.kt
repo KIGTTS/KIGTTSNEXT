@@ -81,7 +81,8 @@ internal object ExternalFileTypes {
     }
 
     private fun legacy(text: String): ExternalFileType = runCatching {
-        if (legacyJson(text).optString("type") in setOf("quick_subtitle", "soundboard", "kigtts_quick_cards", "kigtts_config_backup"))
+        if (legacyJson(text).optString("type") in setOf("quick_subtitle", "soundboard", "kigtts_quick_cards", "kigtts_config_backup",
+                com.kigtts.next.backup.CONFIG_BACKUP_TYPE))
             ExternalFileType.LEGACY_BACKUP else ExternalFileType.UNKNOWN
     }.getOrDefault(ExternalFileType.UNKNOWN)
     private const val MAX_METADATA = 1024L * 1024

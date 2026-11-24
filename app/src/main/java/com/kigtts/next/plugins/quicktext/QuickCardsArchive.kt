@@ -112,7 +112,9 @@ internal class QuickCardsArchive(private val host:QuickTextHost,private val owne
                     requireQuick(total<=MAX_BYTES&&(entry.name!=metadata.name||bytes<=MAX_JSON),message="导入包展开后过大");output.write(buffer,0,n)}
             }}
         }
-        PluginJson.decodeFromString(File(stage,"cards.json").readText(Charsets.UTF_8))
+        val text = File(stage, "cards.json").readText(Charsets.UTF_8).removePrefix("\uFEFF")
+        com.kigtts.next.legacy.checkBackupJsonDepth(text)
+        PluginJson.decodeFromString(text)
     }
     companion object {
         const val MAX_BYTES=2L*1024*1024*1024;const val MAX_JSON=8*1024*1024

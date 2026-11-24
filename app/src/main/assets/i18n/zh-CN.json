@@ -1407,5 +1407,18 @@
   "onboarding.tip_cursor_body": "左右滑动输入区底部的横条，就能把光标移到想修改的位置。",
   "onboarding.tip_edit": "开启快速编辑？",
   "onboarding.tip_edit_body": "在快捷文本面板里长按条目打开编辑菜单，长按后拖动可以排序。这个选项可以在操作反馈里调整。",
-  "onboarding.got_it": "知道了"
+  "onboarding.got_it": "知道了",
+  "backup.restore_data": "恢复备份数据",
+  "backup.restore_data_hint": "自动识别新版配置、快捷文本和旧版 KIGTTS 备份",
+  "backup.config_export": "备份软件配置",
+  "backup.config_export_hint": "导出外观、字体、字幕、音频、相机和悬浮窗等设置",
+  "backup.config_filename": "KIGTTS-软件配置.kigconfig",
+  "backup.config_exported": "软件配置已备份",
+  "backup.restore_config_title": "恢复软件配置？",
+  "backup.restore_config_body": "将应用文件中的设置和外观资源",
+  "backup.restored": "备份已还原",
+  "backup.legacy_settings_notice": "读到 {count} 项旧版设置，将应用新版支持的设置。",
+  "backup.legacy_voice_notice": "Piper 语音包需已启用 Piper 引擎。旧版专属的语音模型和锁屏资源可继续在原备份中查看。",
+  "backup.legacy_missing_media": "部分图片或音频未随备份保存。可用的内容仍可还原。",
+  "backup.legacy_voice_failed": "部分 Piper 语音包未能还原"
 }

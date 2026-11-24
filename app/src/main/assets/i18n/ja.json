@@ -1407,5 +1407,18 @@
   "onboarding.tip_cursor_body": "入力欄の下にあるバーを左右に動かすと、編集したい位置へカーソルを移動できます。",
   "onboarding.tip_edit": "クイック編集を有効にしますか？",
   "onboarding.tip_edit_body": "クイックテキストで項目を長押しすると編集でき、そのままドラッグすると並べ替えられます。操作フィードバックの設定で変更できます。",
-  "onboarding.got_it": "わかりました"
+  "onboarding.got_it": "わかりました",
+  "backup.restore_data": "バックアップから復元",
+  "backup.restore_data_hint": "設定、定型文、旧版 KIGTTS のバックアップを自動判別します",
+  "backup.config_export": "アプリ設定をバックアップ",
+  "backup.config_export_hint": "外観、フォント、字幕、音声、カメラ、フローティングウィンドウの設定を保存します",
+  "backup.config_filename": "KIGTTS-設定.kigconfig",
+  "backup.config_exported": "アプリ設定をバックアップしました",
+  "backup.restore_config_title": "アプリ設定を復元しますか？",
+  "backup.restore_config_body": "バックアップに含まれる設定と外観の素材を適用します。",
+  "backup.restored": "バックアップを復元しました",
+  "backup.legacy_settings_notice": "旧版の設定が {count} 件あります。対応する設定を適用します。",
+  "backup.legacy_voice_notice": "Piper の音声を復元するには Piper エンジンを有効にしてください。旧版専用の音声モデルとロック画面の素材は元のバックアップに残ります。",
+  "backup.legacy_missing_media": "一部の画像や音声が含まれていません。利用可能な内容は復元できます。",
+  "backup.legacy_voice_failed": "一部の Piper 音声を復元できませんでした"
 }

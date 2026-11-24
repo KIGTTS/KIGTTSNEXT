@@ -11,6 +11,10 @@ class QuickSortPreference(context: Context) {
     private val asking = MutableStateFlow(false)
     val enabled = choice.asStateFlow()
     val prompt = asking.asStateFlow()
+    internal fun reload() {
+        choice.value = if (preferences.contains("quick-sort")) preferences.getBoolean("quick-sort", false) else null
+        asking.value = false
+    }
     internal fun offer() {
         if (choice.value == null) asking.value = true
     }

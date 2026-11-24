@@ -1407,5 +1407,18 @@
   "onboarding.tip_cursor_body": "입력란 아래 막대를 좌우로 밀어 수정할 곳으로 커서를 옮기세요.",
   "onboarding.tip_edit": "빠른 편집을 켤까요?",
   "onboarding.tip_edit_body": "빠른 문구 패널의 항목을 길게 눌러 편집하고, 길게 누른 뒤 끌어서 순서를 바꾸세요. 동작 피드백 설정에서 변경할 수 있습니다.",
-  "onboarding.got_it": "확인"
+  "onboarding.got_it": "확인",
+  "backup.restore_data": "백업 복원",
+  "backup.restore_data_hint": "설정, 빠른 문구, 이전 KIGTTS 백업을 자동으로 인식합니다",
+  "backup.config_export": "앱 설정 백업",
+  "backup.config_export_hint": "외관, 글꼴, 자막, 오디오, 카메라 및 플로팅 창 설정을 내보냅니다",
+  "backup.config_filename": "KIGTTS-설정.kigconfig",
+  "backup.config_exported": "앱 설정을 백업했습니다",
+  "backup.restore_config_title": "앱 설정을 복원할까요?",
+  "backup.restore_config_body": "백업에 포함된 설정과 외관 리소스를 적용합니다.",
+  "backup.restored": "백업을 복원했습니다",
+  "backup.legacy_settings_notice": "이전 버전 설정 {count}개를 읽었습니다. 호환되는 설정이 적용됩니다.",
+  "backup.legacy_voice_notice": "Piper 음성을 복원하려면 Piper 엔진이 켜져 있어야 합니다. 이전 버전 전용 음성 모델과 잠금 화면 리소스는 원본 백업에 남습니다.",
+  "backup.legacy_missing_media": "일부 이미지나 오디오가 없습니다. 사용할 수 있는 콘텐츠는 복원할 수 있습니다.",
+  "backup.legacy_voice_failed": "일부 Piper 음성을 복원하지 못했습니다"
 }

@@ -15,8 +15,10 @@ internal class LegacyMigration(private val library: QuickTextLibrary, private va
     private val contacts = LegacyContactCards(context)
     suspend fun apply(content: LegacyContent): Pair<Int, Int> = withContext(Dispatchers.Main.immediate) {
         val expected = library.revision.value
-        val pendingGroups = content.groups.filter { group -> group.items.any { item -> library.phrases.value.none { it.id == item.id } } }
-        require(library.categories.value.size + pendingGroups.count { it.id !in library.categoryIds.value.values } <= 128) { "快捷文本分组过多，请分批导入" }
+        val existingItems = library.phrases.value.mapTo(hashSetOf()) { it.id }
+        val existingGroups = library.categoryIds.value.values.toHashSet()
+        val pendingGroups = content.groups.filter { group -> group.id !in existingGroups || group.items.any { it.id !in existingItems } }
+        require(library.categories.value.size + pendingGroups.count { it.id !in existingGroups } <= 128) { "快捷文本分组过多，请分批导入" }
         val groups = library.categories.value.toMutableList()
         val icons = library.categoryIcons.value.toMutableMap()
         val ids = library.categoryIds.value.toMutableMap()
@@ -33,7 +35,7 @@ internal class LegacyMigration(private val library: QuickTextLibrary, private va
                         icons[candidate] = runCatching { CategoryIcon.symbol(group.icon) }.getOrDefault(CategoryIcon.LIST)
                         candidate
                     }
-                    group.items.filter { item -> library.phrases.value.none { it.id == item.id } }.forEach { item ->
+                    group.items.filter { it.id !in existingItems }.forEach { item ->
                         val audioId = item.audio?.let { file -> media.import(Uri.fromFile(file), audioMime(file)).id.also { createdMedia += it } }
                         additions += QuickPhrase(item.text, name, item.id, mediaId = audioId,
                             type = if (audioId == null) QuickCardType.TEXT else QuickCardType.AUDIO,
@@ -44,7 +46,7 @@ internal class LegacyMigration(private val library: QuickTextLibrary, private va
             }
             check(library.revision.value == expected) { "快捷文本已更新，请重新导入" }
             val restoredCards = withContext(Dispatchers.IO) { contacts.restore(content.cards) }
-            if (additions.isNotEmpty()) library.commit(library.phrases.value + additions, groups, icons, ids, expected,
+            if (additions.isNotEmpty() || groups != library.categories.value) library.commit(library.phrases.value + additions, groups, icons, ids, expected,
                 "legacy-import" to System.currentTimeMillis().toString())
             additions.size to restoredCards
         } catch (error: Exception) {

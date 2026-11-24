@@ -47,6 +47,14 @@ internal fun normalizeOverlayShortcuts(items: List<OverlayShortcut>): List<Overl
     }.distinctBy(OverlayShortcut::id).take(100)
 }
 
+internal fun portableOverlaySettings(text: String): String {
+    com.kigtts.next.legacy.checkBackupJsonDepth(text)
+    val codec = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    val settings = codec.decodeFromString<OverlaySettings>(text)
+    require(settings.position.isFinite() && settings.position in 0f..1f && settings.shortcuts.size <= 100)
+    return codec.encodeToString(settings.copy(shortcuts = settings.shortcuts.map { it.copy(iconPath = null) }))
+}
+
 /** One process-wide observable store. No activity or worker is retained by the overlay. */
 class OverlayStore private constructor(context: Context) {
     private val application = context.applicationContext
@@ -54,6 +62,7 @@ class OverlayStore private constructor(context: Context) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val mutable = MutableStateFlow(read())
     val settings = mutable.asStateFlow()
+    @Synchronized internal fun reload() { mutable.value = read() }
     private fun read(): OverlaySettings = runCatching {
         json.decodeFromString<OverlaySettings>(prefs.getString("settings", null) ?: "{}")
     }.getOrDefault(OverlaySettings()).let { it.copy(position = it.position.takeIf(Float::isFinite)?.coerceIn(0f, 1f) ?: .55f,

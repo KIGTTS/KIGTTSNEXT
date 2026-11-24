@@ -1407,5 +1407,18 @@
   "onboarding.tip_cursor_body": "Slide the bar below the text left or right to move the cursor where you want to edit.",
   "onboarding.tip_edit": "Enable quick editing?",
   "onboarding.tip_edit_body": "Touch and hold an item in the quick text panel to edit it, or drag after holding to reorder. Change this in Feedback settings.",
-  "onboarding.got_it": "Got it"
+  "onboarding.got_it": "Got it",
+  "backup.restore_data": "Restore backup",
+  "backup.restore_data_hint": "Automatically recognizes settings, quick texts, and original KIGTTS backups",
+  "backup.config_export": "Back up app settings",
+  "backup.config_export_hint": "Export appearance, fonts, captions, audio, camera, and floating window settings",
+  "backup.config_filename": "KIGTTS-settings.kigconfig",
+  "backup.config_exported": "App settings backed up",
+  "backup.restore_config_title": "Restore app settings?",
+  "backup.restore_config_body": "Apply the settings and appearance assets from this backup.",
+  "backup.restored": "Backup restored",
+  "backup.legacy_settings_notice": "Found {count} settings. Compatible settings will be applied.",
+  "backup.legacy_voice_notice": "Piper voices require an enabled Piper engine. Original-only voice models and lock screen assets remain in the backup file.",
+  "backup.legacy_missing_media": "Some images or audio are missing. Available content can still be restored.",
+  "backup.legacy_voice_failed": "Some Piper voices could not be restored"
 }

@@ -33,6 +33,12 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
     val backgroundBakeActive = backgroundBake.asStateFlow()
     @Volatile private var attached = CompletableDeferred<ServiceSynthesis>()
     fun cancelBackgroundBake() { if (::facade.isInitialized) facade.cache?.cancelBake() }
+    fun reloadBackedUpSettings() {
+        if (!::facade.isInitialized) return
+        settings.reload()
+        facade.cache?.cancelBake()
+        facade.settingsChanged()
+    }
     fun synthesizeText(request: TtsRequest, phraseId: String?) = flow {
         emitAll(attached.await().synthesize(request, phraseId))
     }

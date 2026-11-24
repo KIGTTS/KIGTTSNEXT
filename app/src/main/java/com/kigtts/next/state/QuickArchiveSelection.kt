@@ -2,29 +2,23 @@ package com.kigtts.next.state
 
 import com.kigtts.plugin.api.*
 import com.kigtts.next.plugins.quicktext.QuickCardsArchive
+import com.kigtts.next.legacy.checkBackupJsonDepth
+import com.kigtts.next.backup.backupEntries
+import com.kigtts.next.backup.copyBackupEntry
+import com.kigtts.next.backup.readBackupText
 import java.io.File
 import java.util.zip.*
 
 /** Reads bounded metadata before showing the group picker; extraction still uses the normal importer. */
 internal object QuickArchiveSelection {
     fun read(source: File): QuickCardsBundle = ZipFile(source).use { zip ->
-        require(source.length() <= QuickCardsArchive.MAX_BYTES && zip.size() <= 2049) { "备份文件过大" }
-        val entries = zip.entries().toList()
-        require(entries.map { it.name }.distinct().size == entries.size &&
-            entries.all { QuickCardsArchive.safe(it.name.removeSuffix("/")) }) { "备份文件路径不合法" }
-        val entry = requireNotNull(zip.getEntry("cards.json")) { "缺少快捷文本内容" }
-        val data = zip.getInputStream(entry).use { input ->
-            java.io.ByteArrayOutputStream().also { output ->
-                val buffer = ByteArray(8192)
-                while (output.size() <= QuickCardsArchive.MAX_JSON) {
-                    val n = input.read(buffer, 0, minOf(buffer.size, QuickCardsArchive.MAX_JSON + 1 - output.size()))
-                    if (n < 0) break
-                    output.write(buffer, 0, n)
-                }
-            }.toByteArray()
-        }
-        require(data.size <= QuickCardsArchive.MAX_JSON) { "快捷文本数据过大" }
-        PluginJson.decodeFromString<QuickCardsBundle>(data.toString(Charsets.UTF_8)).also {
+        require(source.length() <= QuickCardsArchive.MAX_BYTES) { "备份文件过大" }
+        val entries = zip.backupEntries(QuickCardsArchive.MAX_BYTES + QuickCardsArchive.MAX_JSON, 2049)
+        require(entries.keys.all(QuickCardsArchive::safe)) { "备份文件路径不合法" }
+        val entry = requireNotNull(entries["cards.json"]) { "缺少快捷文本内容" }
+        val text = zip.readBackupText(entry, QuickCardsArchive.MAX_JSON.toLong()).removePrefix("\uFEFF")
+        checkBackupJsonDepth(text)
+        PluginJson.decodeFromString<QuickCardsBundle>(text).also {
             require(it.schema == 1 && it.groups.size <= 256 && it.entries.size <= 10_000 && it.media.size <= 2048) { "备份格式或数量不合法" }
             require(it.groups.map { it.id }.distinct().size == it.groups.size && it.entries.map { it.id }.distinct().size == it.entries.size) { "备份包含重复标识" }
         }
@@ -48,14 +42,8 @@ internal object QuickArchiveSelection {
                 zip.entries().asSequence().filter { !it.isDirectory && (it.name in files || roots.any { root -> it.name.startsWith(root) }) }.forEach { entry ->
                     require(QuickCardsArchive.safe(entry.name)) { "附件路径不合法" }
                     output.putNextEntry(ZipEntry(entry.name))
-                    zip.getInputStream(entry).use { input ->
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) {
-                            val n = input.read(buffer); if (n < 0) break
-                            total += n; require(total <= QuickCardsArchive.MAX_BYTES) { "附件展开后过大" }
-                            output.write(buffer, 0, n)
-                        }
-                    }
+                    zip.copyBackupEntry(entry, output, QuickCardsArchive.MAX_BYTES - total)
+                    total += entry.size
                     output.closeEntry()
                 }
             } }

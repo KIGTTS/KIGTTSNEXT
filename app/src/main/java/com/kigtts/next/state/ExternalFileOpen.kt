@@ -81,6 +81,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                                 archive -> ProfileArchive.MAX_BYTES
                                 profileOnly && legacyCardName -> LegacyArchive.MAX_BYTES
                                 profileFile -> ProfileLongCardRestore.MAX_BYTES
+                                ExternalFileTypes.detect(name) == ExternalFileType.LEGACY_BACKUP -> LegacyArchive.MAX_BYTES
                                 else -> 2L * 1024 * 1024 * 1024
                             }
                             val bytes = com.kigtts.next.legacy.LegacyArchive.copy(input, output, limit)
@@ -224,13 +225,9 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
         job = scope.launch {
             try {
                 when (current.kind) {
-                    ExternalFileType.QUICK_TEXT_BACKUP -> {
-                        model.quickTextBackup.offerImport(context.contentResolver, Uri.fromFile(file))
+                    ExternalFileType.QUICK_TEXT_BACKUP, ExternalFileType.LEGACY_BACKUP -> {
+                        model.backupRestore.offerFile(file)
                         model.navigate(Destination.SettingsDetail(SettingsCategory.BACKUP_RESTORE))
-                    }
-                    ExternalFileType.LEGACY_BACKUP -> {
-                        model.navigate(Destination.SettingsDetail(SettingsCategory.BACKUP_RESTORE))
-                        requireNotNull(model.legacyImports.prepare(Uri.fromFile(file))) { "另一个备份正在导入，请稍后重试" }.join()
                     }
                     ExternalFileType.PIPER_VOICE, ExternalFileType.CLONE_VOICE, ExternalFileType.SHARED_CLONE_VOICE,
                     ExternalFileType.QWEN_VOICE -> importVoice(file, current.kind)

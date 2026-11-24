@@ -5,6 +5,7 @@ import android.net.Uri
 import com.kigtts.plugin.api.*
 import com.kigtts.plugin.runtime.PluginPaths
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
@@ -54,7 +55,7 @@ internal class QuickTextBackup(private val model: AppViewModel) {
         try {
             withContext(Dispatchers.IO) { QuickArchiveSelection.write(storage.file(selection.path), storage.file(path), groups) }
             return broker.request(QuickTextCommand.Import(PluginResource(path), UUID.randomUUID().toString(), model.quickTexts.revision.value))
-        } finally { withContext(Dispatchers.IO) { storage.file(path).delete(); discardImport(selection) } }
+        } finally { withContext(NonCancellable + Dispatchers.IO) { storage.file(path).delete(); discardImport(selection) } }
     }
     fun discardImport(selection: ImportSelection) { require(selection.path.startsWith("imports/")); storage.file(selection.path).delete() }
     suspend fun prepareExport(groupIds: List<String> = emptyList(), entryIds: List<String> = emptyList()): File {

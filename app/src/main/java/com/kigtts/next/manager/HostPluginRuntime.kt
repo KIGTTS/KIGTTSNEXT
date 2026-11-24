@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,6 +72,10 @@ class HostPluginRuntime private constructor(private val application: Application
     }
     internal fun resumeReadingCache() {
         if (reading.backgroundBakeActive.value) ReadingCacheForegroundService.start(application)
+    }
+    internal suspend fun reloadBackedUpSpeechSettings() = withContext(Dispatchers.IO) {
+        reading.reloadBackedUpSettings()
+        recognition.reloadBackedUpSettings()
     }
     private val changes = MutableStateFlow(0); val revision = changes.asStateFlow()
     private val operations = Mutex()

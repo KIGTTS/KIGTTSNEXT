@@ -10,6 +10,11 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
     override val descriptor = PluginDescriptor("service.speech-recognition", "语音识别服务", "聆听字幕、语音输入与识别包", version = "0.8.4")
     override val localization get() = RecognitionCopy.localization
     private lateinit var settings: RecognitionServiceSettings
+    suspend fun reloadBackedUpSettings() {
+        if (!::facade.isInitialized) return
+        settings.reload()
+        facade.settingsChanged()
+    }
     private lateinit var broker: RecognitionBroker
     @Volatile private lateinit var facade: ServiceRecognition
     private var system: AndroidSystemRecognition? = null

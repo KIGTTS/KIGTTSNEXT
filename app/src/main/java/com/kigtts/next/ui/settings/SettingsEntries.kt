@@ -83,7 +83,8 @@ internal fun backupSettingsLinks(registry: PluginRegistry, context: PluginContex
     backupSettingsCards(registry, context).flatMap { it.links }
 
 internal fun backupSettingsCards(registry: PluginRegistry, context: PluginContext): List<SettingsCard> =
-    registry.plugins.flatMap { plugin -> plugin.contributions(context).settingsEntries.filter { it.cardId == "backup" }
+    registry.plugins.flatMap { plugin -> runCatching { plugin.contributions(context).settingsEntries }.getOrDefault(emptyList())
+        .filter { it.cardId == "backup" }
         .map { plugin.descriptor.id to it } }
         .sortedWith(compareBy({ it.second.order }, { it.first }, { it.second.id }))
         .groupBy { (pluginId, entry) -> pluginId to entry.cardTitle.ifBlank { "兼容格式" } }
