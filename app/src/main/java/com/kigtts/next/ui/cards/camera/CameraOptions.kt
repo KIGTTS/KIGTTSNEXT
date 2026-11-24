@@ -22,6 +22,16 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     private var showLevel by mutableStateOf(preferences.getBoolean("level", true))
     private var showExposureWarning by mutableStateOf(preferences.getBoolean("exposure-warning", true))
     val exposureWarning get() = showExposureWarning
+    var faceFocus by mutableStateOf(preferences.getBoolean("face-focus", true)); private set
+    var expressionId by mutableStateOf(preferences.getString("expression-effect", null)); private set
+    fun toggleFaceFocus() {
+        faceFocus = !faceFocus
+        preferences.edit().putBoolean("face-focus", faceFocus).apply()
+    }
+    fun chooseExpression(id: String?) {
+        expressionId = id
+        preferences.edit().putString("expression-effect", id).apply()
+    }
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
     private var motionEnabled by mutableStateOf(preferences.getBoolean("motion", false))

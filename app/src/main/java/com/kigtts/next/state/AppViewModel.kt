@@ -252,6 +252,18 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private fun openSynthesisStore() {
         openSpeechPluginStore("语音合成服务")
     }
+    internal fun openExpressionStore() {
+        val store = com.kigtts.next.plugins.control.STORE_ID
+        storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.EXPRESSIONS) {
+            invokeWithResult(store, "browse-expressions", emptyMap()) { accepted ->
+                if (!accepted) {
+                    navigate(Destination.PluginPage(store, "store"))
+                    message(hostCopy("expression.update_store"))
+                }
+            }
+        }
+    }
+
     internal fun openSpeechPluginStore(query: String) {
         storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
             invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to query)) { accepted ->

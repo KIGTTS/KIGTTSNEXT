@@ -18,10 +18,13 @@ class PolaroidCameraCapture internal constructor(val original: File, val process
     val format: PolaroidFormat, val filter: PhotoFilter, val motion: CameraMotionClip? = null,
     val capturedAt: Long = System.currentTimeMillis(),
     val photoStyle: com.kigtts.next.cards.CapturedPhotoStyle? = null,
-    internal val output: CameraPhotoOutput? = null) : Closeable {
+    internal val output: CameraPhotoOutput? = null,
+    internal val expression: com.kigtts.next.camera.expressions.CameraExpressionPhoto? = null) : Closeable {
     val displayFile: File get() = processed ?: original
-    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip, capturedAt, photoStyle, output)
-    internal fun withOutput(value: CameraPhotoOutput) = PolaroidCameraCapture(original, processed, format, filter, motion, capturedAt, photoStyle, value)
+    internal fun withMotion(clip: CameraMotionClip?) = PolaroidCameraCapture(original, processed, format, filter, clip, capturedAt, photoStyle, output, expression)
+    internal fun withOutput(value: CameraPhotoOutput) = PolaroidCameraCapture(original, processed, format, filter, motion, capturedAt, photoStyle, value, expression)
+    internal fun withExpression(value: com.kigtts.next.camera.expressions.CameraExpressionPhoto?) =
+        PolaroidCameraCapture(original, processed, format, filter, motion, capturedAt, photoStyle, output, value)
     fun discard() { motion?.video?.delete(); processed?.takeIf { it != original }?.delete(); original.delete() }
     override fun close() = discard()
 }

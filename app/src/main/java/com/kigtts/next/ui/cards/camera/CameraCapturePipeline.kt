@@ -40,5 +40,5 @@ internal suspend fun processBurstPhoto(photo: PolaroidCameraCapture, filter: Pho
     message: (String) -> Unit): PolaroidCameraCapture {
     currentCoroutineContext().ensureActive()
     return PolaroidCameraCapture(photo.original, null, photo.format, filter, photo.motion, photo.capturedAt,
-        com.kigtts.next.cards.CapturedPhotoStyle(filter, strength, lut, effects))
+        com.kigtts.next.cards.CapturedPhotoStyle(filter, strength, lut, effects), expression = photo.expression)
 }

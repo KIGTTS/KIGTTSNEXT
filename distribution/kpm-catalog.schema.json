@@ -248,7 +248,8 @@
             "FRAME",
             "STICKERS",
             "CARD_FRAME",
-            "FONT"
+              "FONT",
+              "EXPRESSION"
           ]
         },
         "localizations": {

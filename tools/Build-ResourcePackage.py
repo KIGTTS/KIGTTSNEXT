@@ -8,7 +8,7 @@ import zipfile
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
-TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS", "CARD_FRAME", "FONT")
+TYPES = ("QUICK_TEXT", "PHOTOS", "FILTER", "VOICE", "FRAME", "STICKERS", "CARD_FRAME", "FONT", "EXPRESSION")
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -59,6 +59,17 @@ def build(project, output, private_key):
         if not watermark_file.is_relative_to(project) or not 1 <= watermark_file.stat().st_size <= 4096:
             raise ValueError("Camera watermark XML is too large")
     if photo_defaults.is_file(): api_version = 34
+    if definition["resourceType"] == "EXPRESSION":
+        api_version = 36
+        expression = content.get("payload", "")
+        if not safe(expression) or not expression.endswith(".kigexpression") or any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles")):
+            raise ValueError("Face effects require a single .kigexpression payload")
+        source = (project / expression).resolve()
+        if not source.is_relative_to(project) or not 1 <= source.stat().st_size <= 3 * 1024 * 1024:
+            raise ValueError("Invalid face effect archive")
+        pack = json.loads(source.read_text(encoding="utf-8"))
+        if pack.get("version", 1) != 1 or not 1 <= len(pack.get("effects", [])) <= 24:
+            raise ValueError("Unsupported face effect descriptor")
     if definition["resourceType"] == "FONT":
         api_version = 32
         assert content.get("payload") and not any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles"))

@@ -26,14 +26,16 @@ internal class CameraHistogram : ImageAnalysis.Analyzer {
     private var lastSample: Long? = null
     var bins by mutableStateOf<IntArray?>(null); private set
     override fun analyze(image: ImageProxy) {
-        try {
-            val now = SystemClock.elapsedRealtime()
-            if (lastSample?.let { now - it < 200 } == true) return
-            lastSample = now
-            val plane = image.planes.firstOrNull() ?: return
-            val crop = image.cropRect
-            bins = cameraLuminanceBins(plane.buffer, plane.rowStride, plane.pixelStride, crop.left, crop.top, crop.right, crop.bottom)
-        } finally { image.close() }
+        try { sample(image) } finally { image.close() }
+    }
+
+    fun sample(image: ImageProxy) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastSample?.let { now - it < 200 } == true) return
+        lastSample = now
+        val plane = image.planes.firstOrNull() ?: return
+        val crop = image.cropRect
+        bins = cameraLuminanceBins(plane.buffer, plane.rowStride, plane.pixelStride, crop.left, crop.top, crop.right, crop.bottom)
     }
 
     companion object { val executor by lazy { Executors.newSingleThreadExecutor() } }

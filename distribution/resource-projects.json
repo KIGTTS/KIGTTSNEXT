@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "projects": [
+    {"project":"distribution/resources/star-expressions","name":"星光表情","summary":"抬眼时星星跟着走，适用于真人与娃脸。","symbol":"face_retouching_natural","license":"CC0-1.0","preview":"star-expressions.svg","width":480,"height":900,"localizations":{"en":{"name":"Starry Face","summary":"Starry eyes and a little smile that follow faces and doll heads"},"ja":{"name":"星あかりの表情","summary":"顔やドールの顔に、きらめく瞳と小さな笑顔を"},"ko":{"name":"별빛 표정","summary":"사람과 인형의 얼굴을 따라 움직이는 별빛 눈과 작은 미소"}}},
     {"project":"distribution/resources/amber-watermark","name":"琥珀相机水印","summary":"暖色边框搭配 KIGTTS 字标，可显示时间和拍摄参数。","symbol":"branding_watermark","license":"CC0-1.0","preview":"amber-watermark.svg","width":1200,"height":800},
     {"project":".tools/resource-projects/soft-colors","name":"柔和色彩","summary":"轻柔的暖色调，让日常照片多一点温度。","symbol":"filter","license":"CC0-1.0","preview":"soft-colors.svg","width":480,"height":900},
     {"project":"distribution/resources/card-borders","name":"名片边框","summary":"细线、花瓣与电路，为你的名片添一道轮廓。","symbol":"id_card","license":"CC0-1.0","preview":"card-borders.svg","width":1200,"height":800},

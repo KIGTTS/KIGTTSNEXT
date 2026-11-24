@@ -3,6 +3,7 @@ package com.kigtts.next.ui.cards.camera
 import com.kigtts.next.i18n.uiCopy
 
 import android.content.Context
+import com.kigtts.next.camera.expressions.*
 import android.util.Log
 import android.os.SystemClock
 import androidx.camera.core.*
@@ -41,6 +42,13 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     var availableProcessing by mutableStateOf(setOf(CameraProcessing.STANDARD)); private set
     private var binding: CameraBinding? = null
     private val previewColors = CameraPreviewColors()
+    private val faceFocus by lazy { CameraFaceFocus() }
+    private var automaticFaceFocus = false
+    private var faceView: PreviewView? = null
+    fun faceControls(focus: Boolean, effect: CompiledExpression?) {
+        automaticFaceFocus = focus
+        previewColors.expression = effect
+    }
     val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
     fun setExposureWarning(enabled: Boolean) { previewColors.exposureWarning = enabled }
     fun setPreviewFilter(values: FloatArray, lut: com.kigtts.next.media.color.CubeLut? = null, strength: Float = 1f, effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE) { previewColors.update(values, lut, strength, effects) }
@@ -71,11 +79,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     val countingDown: Boolean get() = countdown.active
     val countdownSeconds: Int get() = countdown.remainingSeconds
     suspend fun bind(view: PreviewView, front: Boolean, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
-        motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO, videoStabilization: Boolean = false) {
+        motion: Boolean = false, mode: CameraMode = CameraMode.PHOTO, videoStabilization: Boolean = false, analyzeFaces: Boolean = false) {
         if (delivering || countingDown) return
         val previous = binding
         unbind(keepLensControls = true); val epoch = generation; loading = true; error = null
         val started = SystemClock.elapsedRealtime()
+        var analyzer: CameraFaceAnalysis? = null
         try {
             if (previous != null) {
                 val closed = withTimeoutOrNull(2_500) { awaitCameraClosed(previous.camera.cameraInfo.cameraState); true } ?: false
@@ -90,10 +99,21 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             val selector = if (front && selfie || !back && selfie) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
             boundFront = selector == CameraSelector.DEFAULT_FRONT_CAMERA
             require(cameras.hasCamera(selector)) { context.uiCopy("camera.no_camera") }
+            if (analyzeFaces && mode != CameraMode.SCAN && CameraFaceAnalysis.supported) {
+                analyzer = CameraFaceAnalysis(context, onUnavailable = {
+                    if (epoch == generation && binding?.faces != null) message(context.uiCopy("expression.unavailable"))
+                }) { frame ->
+                    val current = binding
+                    if (epoch == generation && current?.faces != null && automaticFaceFocus &&
+                        ready && !busy && !countingDown && !manual.manualFocus && focusTarget == null) {
+                        faceFocus.update(current.camera, view, frame)
+                    }
+                }
+            }
             val attached = bindPolaroidCamera(context, cameras, owner, selector, view, rotation, processing,
                 manual.metadataCallback(), motion, previewColors, videoMode = mode.recordsVideo,
                 barcode = scan.analyzer.takeIf { mode == CameraMode.SCAN }, histogram = if (mode == CameraMode.PRO) CameraHistogram() else null,
-                videoStabilization = videoStabilization) { failure ->
+                videoStabilization = videoStabilization, faces = analyzer) { failure ->
                 ContextCompat.getMainExecutor(context).execute {
                     if (epoch == generation && binding != null) {
                         error = context.uiCopy("camera.live_filter_retry")
@@ -104,7 +124,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             if (epoch != generation) { attached.release(); return }
             // Adopt before checking cancellation: catch/unbind can then release the newly created session.
             binding = attached
+            faceView = view
+            previewColors.faces = attached.faces
             histogram = attached.histogram
+            if (analyzer != null && attached.faces == null && previewColors.expression != null) {
+                message(context.uiCopy("expression.unavailable"))
+            }
             scan.bind(view.takeIf { mode == CameraMode.SCAN }, epoch)
             currentCoroutineContext().ensureActive()
             if ((mode.takesPhotos || mode.recordsVideo) && attached.previewEffect == null) message(context.uiCopy("camera.live_filter_retry"))
@@ -167,11 +192,15 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             unbind(); error = context.uiCopy("camera.open_failed")
             Log.w(CAMERA_LOG_TAG, "Camera leaf startup failed", failure)
         } }
-        finally { if (epoch == generation) loading = false }
+        finally {
+            analyzer?.takeIf { binding?.faces !== it }?.close()
+            if (epoch == generation) loading = false
+        }
     }
     fun focus(view: PreviewView, x: Float, y: Float) {
         val camera = binding?.camera ?: return
         if (!ready || busy || countingDown) return
+        if (binding?.faces != null) faceFocus.manual()
         clearFocus()
         focusTarget = CameraFocusTarget(x.coerceIn(0f, view.width.toFloat()), y.coerceIn(0f, view.height.toFloat()))
         val target = requireNotNull(focusTarget); val version = focusVersion
@@ -255,6 +284,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private fun applyFlash() {
         flashMode = applyCameraFlash(binding?.capture, preferredFlash, flashAvailable)
     }
+    private fun expressionPhoto() = faceView?.let { previewColors.expressionDraw()?.photograph(it) }
     fun cancelCountdown(): Boolean = countdown.cancel()
     fun startBurst(format: PolaroidFormat, filter: PhotoFilter, complete: (List<PolaroidCameraCapture>) -> Unit,
         strength: Float = 1f, lut: com.kigtts.next.media.color.CubeLut? = null,
@@ -265,7 +295,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         focusJob?.cancel(); focusJob = null; busy = true
         val started = burst.start(capture = {
             manual.awaitConfigured()
-            capturePolaroidPhoto(context, capture, front, format, PhotoFilter.ORIGINAL, message)
+            var art: CameraExpressionPhoto? = null
+            capturePolaroidPhoto(context, capture, front, format, PhotoFilter.ORIGINAL, message) {
+                art = expressionPhoto()
+            }.withExpression(art)
         }, process = { processBurstPhoto(it, filter, strength, PhotoFilters.lut(filter, lut), effects, message) },
             hasSpace = { context.cacheDir.usableSpace > 64L * 1024 * 1024 }, message = message,
             complete = { shots ->
@@ -314,9 +347,11 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 manual.awaitConfigured()
                 motionTicket = motion?.beginCapture()
                 if (motion != null && motionTicket == null && !motion.failed) message(context.uiCopy("camera.motion"))
+                var art: CameraExpressionPhoto? = null
                 photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength, lut, effects) {
+                    art = expressionPhoto()
                     motionTicket?.let { motion?.exposureStarted(it) }
-                }
+                }.withExpression(art)
                 val clip = motionTicket?.let { ticket -> motion?.finish(ticket,
                     PhotoFilters.coefficients(requireNotNull(photo).filter, strength), lut, strength, effects) }
                 if (clip != null) photo = requireNotNull(photo).withMotion(clip)
@@ -357,6 +392,9 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         motionBuffer?.close(); motionBuffer = null
         clearFocus()
         manual.unbind()
+        binding?.faces?.let { faceFocus.reset(); it.close() }
+        previewColors.faces = null
+        faceView = null
         binding?.let { attached -> observer?.let { attached.camera.cameraInfo.cameraState.removeObserver(it) }
             zoomObserver?.let { attached.camera.cameraInfo.zoomState.removeObserver(it) }
             attached.release() }

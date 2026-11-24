@@ -2,6 +2,7 @@
 package com.kigtts.next.ui.cards.camera
 
 import android.net.Uri
+import com.kigtts.next.camera.expressions.*
 import androidx.camera.view.PreviewView
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -29,7 +30,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 
 private data class CameraBoundRequest(val aspect: Float, val mode: CameraMode, val front: Boolean, val rotation: Int, val retry: Int,
-    val processing: CameraProcessing, val motion: Boolean, val videoStabilization: Boolean)
+    val processing: CameraProcessing, val motion: Boolean, val videoStabilization: Boolean, val analyzeFaces: Boolean)
 
 /** A normal secondary page. The host owns navigation and durable original/filtered image imports. */
 @Composable
@@ -37,7 +38,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
     onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false,
-    watermarkStore: (() -> Unit)? = null) {
+    watermarkStore: (() -> Unit)? = null, expressionStore: (() -> Unit)? = null) {
     val copy = rememberCameraCopy()
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
@@ -87,6 +88,18 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val fullFrame = modern && options.framingAspect == CameraAspect.FULL
     val aspect = if (modern) options.framingAspect.ratio(configuration.screenWidthDp, configuration.screenHeightDp) else format.geometry.photoAspectRatio.toFloat()
     val mode = if (modern) options.mode else CameraMode.PHOTO
+    val library = remember(context) { ExpressionLibrary.get(context) }
+    val revision by library.revision.collectAsState()
+    val expressionId = options.expressionId.takeIf { modern && mode != CameraMode.SCAN }
+    var expressionsOpen by rememberSaveable { mutableStateOf(false) }
+    val analysisSupported = remember { CameraFaceAnalysis.supported }
+    val compiled by produceState<CompiledExpression?>(null, library, expressionId, revision) {
+        value = if (expressionId == null || !analysisSupported) null else withContext(Dispatchers.IO) {
+            runCatching { library.find(expressionId)?.let(CompiledExpression::compile) }.getOrNull()
+        }
+    }
+    val enabledEffect = compiled?.takeIf { it.effect.id == expressionId }
+    SideEffect { session.faceControls(options.faceFocus && mode != CameraMode.SCAN, enabledEffect) }
     var pickedCodes by remember { mutableStateOf<CameraCodeFrame?>(null) }
     var readingCodeImage by remember { mutableStateOf(false) }
     val scanImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -107,11 +120,12 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     SideEffect { session.scan.setImporting(mode == CameraMode.SCAN && (readingCodeImage || pickedCodes != null)) }
     val showExposureWarning = active && mode == CameraMode.PRO && options.exposureWarning && !options.settingsVisible
     SideEffect { session.setExposureWarning(showExposureWarning) }
-    val processing = if (mode == CameraMode.PHOTO) options.processing else CameraProcessing.STANDARD
+    val processing = if (mode == CameraMode.PHOTO && expressionId == null) options.processing else CameraProcessing.STANDARD
     val motion = options.motion && mode == CameraMode.PHOTO
     val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
     val stabilizeVideo = mode.recordsVideo && options.videoStabilization
-    val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion, stabilizeVideo)
+    val analyzeFaces = analysisSupported && mode != CameraMode.SCAN && (options.faceFocus || expressionId != null)
+    val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion, stabilizeVideo, analyzeFaces)
     val locked = session.busy || session.countingDown || session.video.active || session.video.finishing
     val configurationLocked = session.countingDown || session.video.active || session.video.finishing || !modern && session.busy
     var openGalleryWhenReady by remember { mutableStateOf(false) }
@@ -142,7 +156,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             coroutineContext.ensureActive()
             if (morphing || !viewport.layoutReady || !viewport.matchesPhotoRatio) return@LaunchedEffect
             bound = null
-            session.bind(view, front, rotation, processing, motion, mode, videoStabilization = stabilizeVideo)
+            session.bind(view, front, rotation, processing, motion, mode, videoStabilization = stabilizeVideo, analyzeFaces = analyzeFaces)
             coroutineContext.ensureActive()
             bound = desired
         }
@@ -174,14 +188,14 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         else filtersExpanded = false
     }
     RegisterPageBackGuard(interceptBack, backAction)
-    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible ||
+    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || expressionsOpen ||
         filtersExpanded || exposureOpen || proControl != null || session.scan.showing || morphing)
     PredictiveBackHandler(interceptBack) { events ->
         try { events.collect { }; backAction() } catch (_: CancellationException) { }
     }
     val shutter = rememberCameraCaptureAction(session, mode, displayReady && viewport.matchesPhotoRatio,
         format, filter, options, lut, onCapture, onVideo, message)
-    RegisterCameraShutterKeys(active && granted && !options.settingsVisible) { shutter() }
+    RegisterCameraShutterKeys(active && granted && !options.settingsVisible && !expressionsOpen) { shutter() }
     val leave = {
         if (session.video.active) session.video.stop()
         else if (session.scan.showing) session.scan.clear()
@@ -286,5 +300,9 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
         manual = session.manual.takeUnless { modern }, watermarkStore = watermarkStore,
         exposureWarningAvailable = session.previewFilterAvailable || !displayReady,
-        videoStabilizationAvailable = session.videoStabilizationAvailable)
+        videoStabilizationAvailable = session.videoStabilizationAvailable,
+        faceControlsAvailable = analysisSupported,
+        openExpressions = if (modern && analysisSupported) ({ options.hideSettings(); expressionsOpen = true }) else null,
+        expressionTitle = enabledEffect?.effect?.name)
+    if (expressionsOpen) CameraExpressionsSheet(library, options, expressionStore, { expressionsOpen = false }, message)
 }

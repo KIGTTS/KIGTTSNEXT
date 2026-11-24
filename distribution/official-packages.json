@@ -4,6 +4,19 @@
     "summary": "浏览、安装和更新你需要的插件。",
     "symbol": "storefront",
     "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
+    "tags": [
+      "工具"
+    ],
+    "file": "tools.package-store-0.16.19.kigplugin",
+    "notes": "新增相机表情特效资源分类和签名安装流程，需 API36。",
+    "module": "package-store",
+    "githubTag": "v0.16.19"
+  },
+  {
+    "category": "扩展",
+    "summary": "浏览、安装和更新你需要的插件。",
+    "symbol": "storefront",
+    "description": "## 插件商店\n\n按用途浏览插件，查看介绍与预览，再决定安装什么。\n\n支持添加插件来源、选择历史版本，以及一并安装所需插件。",
     "tags": ["工具"],
     "file": "tools.package-store-0.16.18.kigplugin",
     "notes": "Lua 和原生插件统一使用签名安装包。",

@@ -42,7 +42,7 @@ internal class AppConfigPreferences(private val context: Context) {
         "native-overlay" to fields(text = "settings"),
         "management-order" to fields(text = "plugins"),
         "polaroid_camera" to fields(text = "grid flash processing aspect photo-encoding watermark-asset-v1",
-            bool = "level exposure-warning motion video-stabilization watermark-enabled-v1 use-system-camera",
+            bool = "level exposure-warning motion video-stabilization face-focus watermark-enabled-v1 use-system-camera",
             int = "timer", float = "filter-strength effect-vignette effect-grain effect-aberration effect-bloom"),
         "appearance-fonts" to emptyMap(),
         "reading-service" to fields(text = "provider voice systemVoice systemLanguage", bool = "resident cacheEnabled",

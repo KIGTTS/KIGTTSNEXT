@@ -48,8 +48,17 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
             com.kigtts.next.cards.CameraWatermarkAsset.parse(com.kigtts.next.cards.CameraWatermarkLibrary.read(file(it)))
         }
     }
+    internal val expressions by lazy {
+        require(manifest.resourceType == ResourceType.EXPRESSION && manifest.apiVersion >= 36)
+        val path = requireNotNull(content.payload)
+        require(path in manifest.files && path.endsWith(".kigexpression", true))
+        com.kigtts.next.camera.expressions.ExpressionLibrary.read(file(path)).also { pack ->
+            pack.effects.forEach(com.kigtts.next.camera.expressions.CompiledExpression::compile)
+        }
+    }
     fun file(path: String): File = File(directory, path).also { require(safe(path) && it.isFile) { "资源文件不存在" } }
     val count: Int get() = when (manifest.resourceType) {
+        ResourceType.EXPRESSION -> expressions.effects.size
         ResourceType.CARD_FRAME -> cardFrames.items.size
         ResourceType.FILTER -> content.filters.size
         ResourceType.FRAME -> if (cameraWatermark != null) 1 else content.frames.size
@@ -113,6 +122,8 @@ private fun ResourceArchive.validate() {
     require(content.schemaVersion == 1 && content.filters.size <= 32 && content.imageFiles.size <= 2048 && content.frames.size <= 128)
     content.payload?.let(::file); content.filters.forEach { file(it.path) }; content.imageFiles.values.forEach(::file)
     when (manifest.resourceType) {
+        ResourceType.EXPRESSION -> require(content.snapshot == null && content.frames.isEmpty() &&
+            content.filters.isEmpty() && content.imageFiles.isEmpty() && expressions.effects.isNotEmpty())
         ResourceType.FONT -> {
             require(manifest.apiVersion >= 32 && content.payload != null && content.snapshot == null &&
                 content.frames.isEmpty() && content.filters.isEmpty() && content.imageFiles.isEmpty())

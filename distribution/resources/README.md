@@ -23,3 +23,16 @@ API30 新增 `card-borders/` 名片边框与 `word-stickers/` 参数字贴原创
 `remi-stickers/` 按作者文档收录 22 张 1024px PNG，原始像素、透明度与 SHA256 保留于 `origins.json`。Remi 图像权利归原作者，不适用原创资源的 CC0 或字体 OFL。
 
 源条目、介绍、预览尺寸与各包许可集中在 `distribution/resource-projects.json`。构建器保留已发布的版本和哈希，不能用同版本替换其它字节。
+
+## 表情特效
+
+相机从 API36 起支持 `EXPRESSION`。示例在 [star-expressions](star-expressions/)。
+`content.json` 的 `payload` 指向一个 `.kigexpression` 文件。它是 UTF-8 JSON，
+`version` 为 1，`effects` 中每款有自己的 ID、名称和图层。图层的 `svg` 内嵌
+矢量文本，`anchor` 支持 `FACE`、`EYES`、`LEFT_EYE`、`RIGHT_EYE`、`MOUTH`、
+`NOSE` 和 `FOREHEAD`。可设置 `scale`、`x`、`y`、`rotation` 和 `opacity`。
+每款最多 8 层。SVG 可使用路径与本地渐变，宿主拒绝脚本、外链和栅格图片。
+
+通过 `Build-ResourceSource.py --expressions` 生成签名包和独立的 `expressions.json`，
+供商店表情特效分类读取。相机编辑器分享的文件可直接导入，加入商店时则用签名
+`.kigresource` 作外层包装。

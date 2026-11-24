@@ -7,3 +7,7 @@ ZXing core — ZXing authors
 https://github.com/zxing/zxing
 
 The complete license is included in Apache-2.0.txt.
+
+KIGARFACE Five-Point Tracking SDK 1.1.8 includes OpenCV 4.12,
+ONNX Runtime 1.24.3, and YuNet. The upstream license and copyright notices
+are included in assets/licenses/kigarface/.

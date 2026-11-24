@@ -41,6 +41,7 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
         return
     }
     val synthesis = state.purpose == StoreBootstrapPurpose.SYNTHESIS
+    val expressions = state.purpose == StoreBootstrapPurpose.EXPRESSIONS
     MotionAlertDialog(onDismissRequest = dismiss, dismissEnabled = state.phase != StoreBootstrapPhase.INSTALLING,
         icon = { Icon(Icons.Default.Storefront, contentDescription = null) },
         title = { Text(when (state.phase) {
@@ -54,11 +55,11 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
         }) },
         text = { Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(when (state.phase) {
-                StoreBootstrapPhase.OFFER -> if (synthesis) uiText("store.reading") else uiText("store.offer_source")
-                StoreBootstrapPhase.RESTORE -> if (synthesis) uiText("store.restore_reading") else uiText("store.restore_source")
+                StoreBootstrapPhase.OFFER -> if (expressions) uiText("expression.bootstrap") else if (synthesis) uiText("store.reading") else uiText("store.offer_source")
+                StoreBootstrapPhase.RESTORE -> if (expressions) uiText("expression.bootstrap") else if (synthesis) uiText("store.restore_reading") else uiText("store.restore_source")
                 StoreBootstrapPhase.DOWNLOADING -> uiText("store.fetch")
                 StoreBootstrapPhase.REVIEW -> uiText("store.review_ready")
-                StoreBootstrapPhase.INSTALLING -> if (synthesis) uiText("store.after_install_reading") else uiText("store.after_install_source")
+                StoreBootstrapPhase.INSTALLING -> if (expressions) uiText("expression.bootstrap") else if (synthesis) uiText("store.after_install_reading") else uiText("store.after_install_source")
                 StoreBootstrapPhase.COMPLETED -> uiText("store.ready")
                 StoreBootstrapPhase.ERROR -> state.error.orEmpty()
             })
@@ -68,7 +69,7 @@ internal fun StoreBootstrapPrompt(state: StoreBootstrapState?, confirm: () -> Un
                 Text(uiText("plugin.publisher_digest", "digest" to candidate.publisherSha256), style = MaterialTheme.typography.bodySmall)
             }
             if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(if (synthesis) uiText("store.choose_voice_engine") else uiText("store.source"), style = MaterialTheme.typography.bodySmall)
+            if (!expressions) Text(if (synthesis) uiText("store.choose_voice_engine") else uiText("store.source"), style = MaterialTheme.typography.bodySmall)
         } },
         confirmButton = { MotionTextButton(onClick = feedbackClick(confirm), enabled = !busy) { Text(when (state.phase) {
             StoreBootstrapPhase.OFFER -> uiText("store.download")

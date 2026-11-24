@@ -101,6 +101,11 @@ android {
     }
 }
 dependencies {
+    implementation(files(
+        rootProject.file("third-party/kigarface/fivepoint-android-1.1.8.aar"),
+        rootProject.file("third-party/kigarface/opencv-rgb-arm64-4.12.0.aar"),
+        rootProject.file("third-party/kigarface/ort-fivepoint-arm64-1.24.3.aar"),
+    ))
     implementation(project(":reading"))
     implementation(project(":speech-recognition"))
     implementation("org.lsposed.hiddenapibypass:hiddenapibypass:6.1")

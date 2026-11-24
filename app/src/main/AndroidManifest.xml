@@ -50,6 +50,7 @@
     <application android:name=".recovery.RecoveryApplication" android:allowBackup="false" android:enableOnBackInvokedCallback="true" android:label="KIGTTS NEXT"
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
+        <activity android:name="cn.kigarface.prototype.StickerActivity" tools:node="remove" />
         <service android:name=".audio.RecognitionForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".audio.ReadingCacheForegroundService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
@@ -175,6 +176,7 @@
                 <data android:mimeType="application/vnd.kigtts.voice-pack+zip" />
                 <data android:mimeType="application/vnd.kigtts.plugin+zip" />
                 <data android:mimeType="application/vnd.kigtts.backup+zip" />
+                <data android:mimeType="application/vnd.kigtts.expression+json" />
             </intent-filter>
             <intent-filter android:label="@string/open_with_kigtts">
                 <action android:name="android.intent.action.VIEW" />
@@ -188,6 +190,7 @@
                 <data android:pathPattern=".*\\.kigcard" />
                 <data android:pathPattern=".*\\.kigconfig" />
                 <data android:pathPattern=".*\\.kigplugin" />
+                <data android:pathPattern=".*\\.kigexpression" />
                 <data android:pathPattern=".*\\.mhtml" />
                 <data android:pathPattern=".*\\.mht" />
                 <data android:pathSuffix=".kigvpk" />
@@ -197,6 +200,7 @@
                 <data android:pathSuffix=".kigcard" />
                 <data android:pathSuffix=".kigconfig" />
                 <data android:pathSuffix=".kigplugin" />
+                <data android:pathSuffix=".kigexpression" />
                 <data android:pathSuffix=".mhtml" />
                 <data android:pathSuffix=".mht" />
             </intent-filter>
@@ -214,6 +218,7 @@
                 <data android:pathPattern=".*\\.kigcard" />
                 <data android:pathPattern=".*\\.kigconfig" />
                 <data android:pathPattern=".*\\.kigplugin" />
+                <data android:pathPattern=".*\\.kigexpression" />
                 <data android:pathSuffix=".kigvpk" />
                 <data android:pathSuffix=".kigcards" />
                 <data android:pathSuffix=".kigtpk" />
@@ -221,6 +226,7 @@
                 <data android:pathSuffix=".kigcard" />
                 <data android:pathSuffix=".kigconfig" />
                 <data android:pathSuffix=".kigplugin" />
+                <data android:pathSuffix=".kigexpression" />
             </intent-filter>
         </activity>
         <activity-alias android:name=".ProfileImageOpen" android:targetActivity=".MainActivity"

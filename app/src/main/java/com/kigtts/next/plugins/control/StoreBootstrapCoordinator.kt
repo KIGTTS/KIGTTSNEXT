@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 internal enum class StoreBootstrapPhase { OFFER, RESTORE, DOWNLOADING, REVIEW, INSTALLING, COMPLETED, ERROR }
-internal enum class StoreBootstrapPurpose { SOURCE, SYNTHESIS }
+internal enum class StoreBootstrapPurpose { SOURCE, SYNTHESIS, EXPRESSIONS }
 internal data class StoreBootstrapState(val phase: StoreBootstrapPhase, val candidate: StoreDownload? = null, val error: String? = null,
     val purpose: StoreBootstrapPurpose = StoreBootstrapPurpose.SOURCE)
 

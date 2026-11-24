@@ -21,6 +21,73 @@ import java.util.zip.*
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35], application = Application::class)
 class ResourceImportTest {
+    @Test fun signedFaceEffectsReplaceInPlaceAndRejectUnsafeArtwork() = runBlocking {
+        val model = AppViewModel(app, emptyList())
+        val library = com.kigtts.next.camera.expressions.ExpressionLibrary.get(app)
+        val art = library.newDraft().copy(name = "测试特效")
+        val payload = "effects.kigexpression"
+        val content = ResourcePackageContent(payload = payload)
+        fun pack(effect: com.kigtts.next.camera.expressions.ExpressionEffect) =
+            PluginJson.encodeToString(com.kigtts.next.camera.expressions.ExpressionPack(effects = listOf(effect))).toByteArray()
+        val (file, owner) = signed(mapOf(payload to pack(art)), content, ResourceType.EXPRESSION, api = 36)
+        repeat(2) {
+            val archive = ResourceArchive.read(file, File(app.cacheDir, "expression-$it"), owner)
+            assertEquals(1, archive.count)
+            importResource(model, archive)
+        }
+        val effects = library.choices()
+        assertEquals(4, effects.count { it.id.startsWith("builtin.") })
+        assertEquals(1, effects.count { it.name == art.name })
+        assertEquals(art.layers, library.find(effects.single { it.name == art.name }.id)?.layers)
+        assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
+        val unsafe = art.copy(layers = listOf(art.layers.single().copy(
+            svg = """<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.invalid/a.png"/></svg>""")))
+        val (invalid, publisher) = signed(mapOf(payload to pack(unsafe)), content, ResourceType.EXPRESSION, api = 36)
+        val destination = File(app.cacheDir, "expression-invalid")
+        assertTrue(runCatching { ResourceArchive.read(invalid, destination, publisher) }.isFailure)
+        assertFalse(destination.exists())
+        val (old, oldOwner) = signed(mapOf(payload to pack(art)), content, ResourceType.EXPRESSION, api = 35)
+        assertTrue(runCatching { ResourceArchive.read(old, destination, oldOwner) }.isFailure)
+    }
+
+    @Test fun bundledFaceEffectsDrawWithNoBitmapAssets() {
+        val library = com.kigtts.next.camera.expressions.ExpressionLibrary.get(app)
+        library.choices().filter { it.id.startsWith("builtin.") }.forEach { effect ->
+            val image = android.graphics.Bitmap.createBitmap(320, 320, android.graphics.Bitmap.Config.ARGB_8888)
+            try {
+                com.kigtts.next.camera.expressions.CompiledExpression.compile(effect).draw(android.graphics.Canvas(image),
+                    listOf(com.kigtts.next.camera.expressions.ExpressionFace.SAMPLE))
+                val pixels = IntArray(320*320)
+                image.getPixels(pixels, 0, 320, 0, 0, 320, 320)
+                assertTrue(effect.id, pixels.count { it ushr 24 > 100 } > 200)
+            } finally { image.recycle() }
+        }
+    }
+
+    @Test fun faceOverlayUsesUprightCoordinatesInRotatedAndMirroredJpeg() {
+        val face = com.kigtts.next.camera.expressions.ExpressionFace.SAMPLE
+        val draft = com.kigtts.next.camera.expressions.ExpressionLibrary.get(app).newDraft()
+        val art = draft.copy(name = "Test", layers = listOf(draft.layers.single().copy(
+            anchor = com.kigtts.next.camera.expressions.ExpressionAnchor.LEFT_EYE, y = 0f)))
+        val rendered = com.kigtts.next.camera.expressions.CompiledExpression.compile(art)
+        val toUnit = android.graphics.Matrix().apply { setScale(1f / 320, 1f / 320) }
+        val overlay = com.kigtts.next.camera.expressions.CameraExpressionPhoto(rendered, listOf(face), toUnit)
+        val image = android.graphics.Bitmap.createBitmap(640, 480, android.graphics.Bitmap.Config.ARGB_8888)
+        val jpeg = File.createTempFile("effects-", ".jpg", app.cacheDir)
+        try {
+            jpeg.outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, it) }
+            val metadata = androidx.exifinterface.media.ExifInterface(jpeg)
+            metadata.setAttribute(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION,
+                androidx.exifinterface.media.ExifInterface.ORIENTATION_TRANSPOSE.toString())
+            assertTrue(metadata.isFlipped)
+            assertEquals(270, metadata.rotationDegrees)
+            overlay.paint(image, metadata)
+            // Transpose swaps the image axes. The center of the left-eye art is opaque.
+            assertTrue(image.getPixel(250, 184) ushr 24 > 220)
+            assertEquals(0, image.getPixel(390, 295) ushr 24)
+        } finally { image.recycle(); jpeg.delete() }
+    }
+
     @Test fun signedFontAddsToAppearanceWithoutChangingSelectionOrCreatingPlugin() = runBlocking {
         val bytes = requireNotNull(javaClass.getResourceAsStream("/fixtures/appearance-font/fixture.ttf")).use { it.readBytes() }
         val model = AppViewModel(app, emptyList())

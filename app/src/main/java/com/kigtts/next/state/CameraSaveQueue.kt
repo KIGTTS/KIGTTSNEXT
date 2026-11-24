@@ -8,6 +8,9 @@ import com.kigtts.next.cards.*
 import com.kigtts.next.media.*
 import com.kigtts.next.ui.cards.camera.PolaroidCameraCapture
 import com.kigtts.next.ui.cards.camera.CameraMotionClip
+import com.kigtts.next.ui.cards.camera.PhotoFilterWriter
+import java.io.File
+import java.util.UUID
 import com.kigtts.plugin.api.PolaroidCard
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
@@ -60,7 +63,7 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
     private suspend fun save(pending: Pending) {
         val shot = pending.shot
         if (pending.watermark == "none" && pending.encoding == CameraPhotoEncoding.JPEG && shot.motion == null &&
-            shot.displayFile == shot.original && shot.photoStyle?.requiresRendering() != true) {
+            shot.expression == null && shot.displayFile == shot.original && shot.photoStyle?.requiresRendering() != true) {
             check(requestGalleryWrite(stickers.context)) { "未允许保存到系统相册" }
             val uri = GalleryImages(stickers.context).publish(shot.original, "相机", shot.capturedAt)
             shot.discard()
@@ -68,10 +71,17 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
             return
         }
         val original = stickers.importResource(shot.original)
-        val shown = if (shot.displayFile == shot.original) original else stickers.importResource(shot.displayFile)
+        val shown = shot.expression?.let { expression ->
+            val output = File(shot.original.parentFile, "${UUID.randomUUID()}-expression.jpg")
+            val style = shot.photoStyle ?: CapturedPhotoStyle()
+            try {
+                PhotoFilterWriter.write(shot.original, output, style.filter, style.strength, style.lut, style.effects, expression::paint)
+                stickers.importResource(output)
+            } finally { output.delete() }
+        } ?: if (shot.displayFile == shot.original) original else stickers.importResource(shot.displayFile)
         val card = PolaroidCard(title = "", imageId = shown.id, originalImageId = original.id,
             frameStyleId = PhotoFrameSpec(shown.width, shown.height, pending.watermark).id,
-            photoStyle = shot.photoStyle?.persist(stickers)?.takeIf { it.hasPhotoTreatment() })
+            photoStyle = shot.photoStyle?.takeIf { shot.expression == null }?.persist(stickers)?.takeIf { it.hasPhotoTreatment() })
         val facts = cameraWatermarkCaptureFacts(stickers.context, shot.original, shot.capturedAt, pending.watermark)
         shot.motion?.let { saveMotion?.invoke(shown.id, it) }
         cards.systemAlbum.encodings.set(card.id, pending.encoding)

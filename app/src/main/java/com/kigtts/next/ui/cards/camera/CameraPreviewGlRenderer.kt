@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.cards.camera
 
+import android.graphics.Matrix
 import android.graphics.SurfaceTexture
 import android.opengl.*
 import android.util.Size
@@ -13,6 +14,8 @@ import java.nio.FloatBuffer
 internal class CameraGlInput(val textureId: Int, val texture: SurfaceTexture, val surface: Surface)
 internal class CameraGlOutput(val eglSurface: EGLSurface, val size: Size) {
     var bloom: GlPhotoBloom? = null
+    var sensorToOutput: Matrix? = null
+    var expression: CameraExpressionTexture? = null
 }
 
 internal interface CameraPreviewRenderer : Closeable {
@@ -42,6 +45,8 @@ internal class CameraPreviewGlRenderer(private val recordable: Boolean = false) 
     private var bloomNearLocation = -1
     private var bloomFarLocation = -1
     private var exposureWarningLocation = -1
+    private var expressionLocation = -1
+    private var expressionEnabledLocation = -1
     private var initialized = false
     private var displayInitialized = false
 
@@ -77,6 +82,8 @@ internal class CameraPreviewGlRenderer(private val recordable: Boolean = false) 
             bloomFarLocation = GLES20.glGetUniformLocation(program, "uBloomFar")
             exposureWarningLocation = GLES20.glGetUniformLocation(program, "uExposureWarning")
             for (row in 0..3) rowLocations[row] = GLES20.glGetUniformLocation(program, "uRow$row")
+            expressionLocation = GLES20.glGetUniformLocation(program, "uExpression")
+            expressionEnabledLocation = GLES20.glGetUniformLocation(program, "uExpressionEnabled")
             checkGl(); initialized = true
         } catch (failure: Throwable) { close(); throw failure }
     }
@@ -132,6 +139,23 @@ internal class CameraPreviewGlRenderer(private val recordable: Boolean = false) 
         GLES20.glUniform1i(bloomNearLocation, 2)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE3); GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, bloom?.farTexture ?: 0)
         GLES20.glUniform1i(bloomFarLocation, 3)
+        val sensorToOutput = output.sensorToOutput
+        val expression = colors.expression
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE4)
+        val painted = if (expression != null && sensorToOutput != null) {
+            try {
+                val texture = output.expression ?: CameraExpressionTexture(output.size).also { output.expression = it }
+                texture.bind(expression, sensorToOutput)
+                true
+            } catch (failure: RuntimeException) {
+                android.util.Log.w(CAMERA_LOG_TAG, "Expression artwork skipped", failure)
+                output.expression?.close()
+                output.expression = null
+                false
+            }
+        } else false
+        GLES20.glUniform1i(expressionLocation, 4)
+        GLES20.glUniform1f(expressionEnabledLocation, if (painted) 1f else 0f)
         positions.position(0); coordinates.position(0)
         GLES20.glEnableVertexAttribArray(positionLocation); GLES20.glVertexAttribPointer(positionLocation, 2, GLES20.GL_FLOAT, false, 0, positions)
         GLES20.glEnableVertexAttribArray(coordinateLocation); GLES20.glVertexAttribPointer(coordinateLocation, 2, GLES20.GL_FLOAT, false, 0, coordinates)
@@ -148,7 +172,11 @@ internal class CameraPreviewGlRenderer(private val recordable: Boolean = false) 
     }
     override fun releaseOutput(output: CameraGlOutput) {
         var first: Throwable? = null
-        try { makeCurrent(placeholder); output.bloom?.close(); output.bloom = null } catch (failure: Throwable) { first = failure }
+        try {
+            makeCurrent(placeholder)
+            output.expression?.close(); output.expression = null
+            output.bloom?.close(); output.bloom = null
+        } catch (failure: Throwable) { first = failure }
         try {
             check(EGL14.eglDestroySurface(display, output.eglSurface)) { "EGL output release failed: ${EGL14.eglGetError()}" }
         } catch (failure: Throwable) {

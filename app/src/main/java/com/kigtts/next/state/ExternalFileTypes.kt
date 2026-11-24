@@ -10,7 +10,7 @@ internal enum class ExternalFileType(val engineId: String? = null, val engineNam
     SHARED_CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
     CLONE_VOICE("engine.zipvoice-clone", "ZipVoice 语音克隆引擎"),
     QWEN_VOICE("engine.qwen3-clone", "千问语音克隆引擎"),
-    PLUGIN, UNKNOWN;
+    PLUGIN, EXPRESSION, UNKNOWN;
 
     val isVoice get() = engineId != null
 }
@@ -21,6 +21,7 @@ internal object ExternalFileTypes {
         "kigcards" -> ExternalFileType.QUICK_TEXT_BACKUP
         "kigtpk", "kigspk", "kigcard", "kigconfig" -> ExternalFileType.LEGACY_BACKUP
         "kigvpk" -> ExternalFileType.PIPER_VOICE
+        "kigexpression" -> ExternalFileType.EXPRESSION
         "kigplugin" -> ExternalFileType.PLUGIN
         "mhtml", "mht" -> ExternalFileType.PROFILE_ARCHIVE
         else -> ExternalFileType.UNKNOWN

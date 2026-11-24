@@ -15,19 +15,23 @@ import com.kigtts.next.ui.components.*
     val pending by model.resourceInstalls.prompt.collectAsState()
     val prompt = pending ?: return
     val archive = prompt.archive
+    val expression = archive.manifest.resourceType == com.kigtts.plugin.api.ResourceType.EXPRESSION
     val missingVoice = model.resourceInstalls.missingVoice()
     MotionAlertDialog(onDismissRequest = model.resourceInstalls::dismiss,
         title = { Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(if (missingVoice) "先添加语音服务" else "添加${archive.manifest.resourceType.label}", Modifier.weight(1f))
+            Text(if (expression) uiText("expression.install_title") else if (missingVoice) "先添加语音服务" else "添加${archive.manifest.resourceType.label}", Modifier.weight(1f))
             com.kigtts.next.ui.components.MaterialSymbols.vector(archive.manifest.resourceType.symbol)?.let { Icon(it, null, Modifier.size(24.dp)) }
         } }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(archive.manifest.name, style = MaterialTheme.typography.titleMedium)
-            Text(if (missingVoice) "需要语音合成服务和 Piper 语音引擎。安装后，回到下载管理继续添加语音包。"
+            Text(if (expression) uiText("expression.install_count", "count" to archive.count.toString())
+                else if (missingVoice) "需要语音合成服务和 Piper 语音引擎。安装后，回到下载管理继续添加语音包。"
                 else "${archive.count} 项${archive.manifest.resourceType.label}")
             if (archive.manifest.resourceType == com.kigtts.plugin.api.ResourceType.QUICK_TEXT) Text(uiText("resource.quick_text_group"), style = MaterialTheme.typography.bodyMedium)
             prompt.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (prompt.busy) { Text(uiText("resource.adding")); LinearProgressIndicator(Modifier.fillMaxWidth()) }
         } }, confirmButton = { Button(dialogFeedbackClick(model.resourceInstalls::confirm), enabled = !prompt.busy) {
-            Text(if (missingVoice) "前往商店" else if (prompt.error != null) "重试" else "添加")
-        } }, dismissButton = { TextButton(dialogFeedbackClick(model.resourceInstalls::dismiss)) { Text(if (prompt.busy) "后台添加" else "取消") } })
+            Text(if (expression) uiText(if (prompt.error != null) "camera.retry" else "expression.install_action")
+                else if (missingVoice) "前往商店" else if (prompt.error != null) "重试" else "添加")
+        } }, dismissButton = { TextButton(dialogFeedbackClick(model.resourceInstalls::dismiss)) { Text(if (expression) uiText(if (prompt.busy) "expression.install_background" else "action.cancel")
+            else if (prompt.busy) "后台添加" else "取消") } })
 }

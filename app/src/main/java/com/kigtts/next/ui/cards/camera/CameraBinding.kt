@@ -18,13 +18,15 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.*
+import com.kigtts.next.camera.expressions.CameraFaceAnalysis
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 internal data class CameraBinding(val camera: Camera, val preview: Preview, val capture: ImageCapture?,
     val lease: CameraSessionLease, val processing: CameraProcessing = CameraProcessing.STANDARD,
     val motionCapture: VideoCapture<Recorder>? = null, val previewEffect: CameraPreviewEffect? = null, val analysis: ImageAnalysis? = null,
-    val histogram: CameraHistogram? = null, val videoStabilizationAvailable: Boolean = false) {
+    val histogram: CameraHistogram? = null, val videoStabilizationAvailable: Boolean = false,
+    val faces: CameraFaceAnalysis? = null) {
     fun release() { analysis?.clearAnalyzer(); try { lease.close() } finally { try { preview.setSurfaceProvider(null) } finally { previewEffect?.close() } } }
 }
 
@@ -33,7 +35,8 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
     selector: CameraSelector, view: PreviewView, rotation: Int, processing: CameraProcessing = CameraProcessing.STANDARD,
     metadata: CameraCaptureSession.CaptureCallback? = null, motion: Boolean = false,
     previewColors: CameraPreviewColors = CameraPreviewColors(), videoMode: Boolean = false, barcode: CameraBarcodeReader? = null,
-    histogram: CameraHistogram? = null, videoStabilization: Boolean = false, previewFailure: (Throwable) -> Unit = {}): CameraBinding {
+    histogram: CameraHistogram? = null, videoStabilization: Boolean = false, faces: CameraFaceAnalysis? = null,
+    previewFailure: (Throwable) -> Unit = {}): CameraBinding {
     val viewport = requireNotNull(view.getViewPort(rotation)) { "相机预览尚未就绪" }
     // Ordinary capture does not initialize a vendor extension or wait for its metadata discovery.
     val requestedProcessing = if (motion || videoMode || barcode != null) CameraProcessing.STANDARD else processing
@@ -62,6 +65,7 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
     } else listOf(false to false)
     for ((videoFilter, stabilize) in videoAttempts) for (quality in videoQualities) for (mode in modes)
         for (highResolution in if (photoMode) listOf(true, false) else listOf(false))
+        for (faceChoice in if (faces != null && mode == null && barcode == null) listOf(faces, null) else listOf(null))
         for (histogramChoice in histogramChoices) {
         currentCoroutineContext().ensureActive()
         if (mode != null && skipExtensions) continue
@@ -86,7 +90,11 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
         }
         val analysis = when {
             barcode != null -> cameraAnalysis(640, 480).also { it.setAnalyzer(barcode.executor, barcode) }
-            histogramChoice != null -> cameraAnalysis(320, 240).also { it.setAnalyzer(CameraHistogram.executor, histogramChoice) }
+            faceChoice != null -> cameraAnalysis(480, 360, rotation).also {
+                faceChoice.sampleHistogram = histogramChoice?.let { histogram -> histogram::sample }
+                it.setAnalyzer(CameraFaceAnalysis.executor, faceChoice)
+            }
+            histogramChoice != null && mode == null -> cameraAnalysis(320, 240).also { it.setAnalyzer(CameraHistogram.executor, histogramChoice) }
             else -> null
         }
         preview.setSurfaceProvider(view.surfaceProvider)
@@ -106,7 +114,7 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
             val camera = provider.bindToLifecycle(owner, selector, session)
             attached = CameraBinding(camera, preview, capture, owned,
                 CameraProcessing.entries.firstOrNull { it.extensionMode == mode } ?: CameraProcessing.STANDARD,
-                video, effect, analysis, histogramChoice, stabilizationSupported && (!tryStabilized || stabilize))
+                video, effect, analysis, histogramChoice.takeIf { mode == null }, stabilizationSupported && (!tryStabilized || stabilize), faceChoice)
             return finishCameraStartup(attached, { it.release() }) {
                 awaitCameraReady(camera.cameraInfo.cameraState, view.previewStreamState)
                 Log.d(CAMERA_LOG_TAG, "OPEN and STREAMING $label")
@@ -132,7 +140,8 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
 
 internal const val CAMERA_LOG_TAG = "KigPolaroidCamera"
 
-private fun cameraAnalysis(width: Int, height: Int) = ImageAnalysis.Builder()
+private fun cameraAnalysis(width: Int, height: Int, rotation: Int? = null) = ImageAnalysis.Builder()
+    .apply { rotation?.let(::setTargetRotation) }
     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
     .setResolutionSelector(ResolutionSelector.Builder().setResolutionStrategy(ResolutionStrategy(
         android.util.Size(width, height), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)).build()).build()

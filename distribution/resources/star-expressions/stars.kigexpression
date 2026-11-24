@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "effects": [
+    {
+      "id": "starry",
+      "name": "星光表情",
+      "layers": [
+        {
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><path d=\"M160 18Q181 132 301 160Q181 188 160 302Q139 188 19 160Q139 132 160 18Z\" fill=\"#ffe183\" stroke=\"#68452E\" stroke-width=\"14\" stroke-linejoin=\"round\"/><circle cx=\"160\" cy=\"160\" r=\"25\" fill=\"#fff9df\"/></svg>",
+          "anchor": "LEFT_EYE",
+          "scale": 0.82
+        },
+        {
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><path d=\"M160 18Q181 132 301 160Q181 188 160 302Q139 188 19 160Q139 132 160 18Z\" fill=\"#ffe183\" stroke=\"#68452E\" stroke-width=\"14\" stroke-linejoin=\"round\"/><circle cx=\"160\" cy=\"160\" r=\"25\" fill=\"#fff9df\"/></svg>",
+          "anchor": "RIGHT_EYE",
+          "scale": 0.82
+        },
+        {
+          "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 320 320\"><path d=\"M21 140q34-20 66 0m146 0q34-20 66 0\" fill=\"none\" stroke=\"#f794a1\" stroke-width=\"17\" stroke-linecap=\"round\"/><path d=\"M117 159q43 44 86 0\" fill=\"none\" stroke=\"#674b83\" stroke-width=\"13\" stroke-linecap=\"round\"/></svg>",
+          "anchor": "MOUTH",
+          "scale": 1.2,
+          "y": -0.08
+        }
+      ]
+    }
+  ]
+}

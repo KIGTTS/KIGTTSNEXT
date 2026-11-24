@@ -9,6 +9,10 @@ import java.util.UUID
 
 internal suspend fun importResource(model: AppViewModel, archive: ResourceArchive) {
     when (archive.manifest.resourceType) {
+        ResourceType.EXPRESSION -> withContext(Dispatchers.IO) {
+            com.kigtts.next.camera.expressions.ExpressionLibrary.get(model.getApplication())
+                .install(archive.file(requireNotNull(archive.content.payload)), archive.manifest.id)
+        }
         ResourceType.FONT -> withContext(Dispatchers.IO) {
             val context = model.getApplication<android.app.Application>()
             val key = com.kigtts.next.theme.AppearanceAssets(context).importFont(Uri.fromFile(archive.file(requireNotNull(archive.content.payload))))

@@ -27,7 +27,8 @@ import kotlinx.coroutines.withContext
 @Composable internal fun CameraSettingsPanel(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean = true,
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
     watermarkStore: (() -> Unit)? = null,
-    exposureWarningAvailable: Boolean = true, videoStabilizationAvailable: Boolean = false) {
+    exposureWarningAvailable: Boolean = true, videoStabilizationAvailable: Boolean = false,
+    faceControlsAvailable: Boolean = false, openExpressions: (() -> Unit)? = null, expressionTitle: String? = null) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
@@ -47,7 +48,7 @@ import kotlinx.coroutines.withContext
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
             else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable,
-                videoStabilizationAvailable) {
+                videoStabilizationAvailable, faceControlsAvailable, openExpressions, expressionTitle) {
                 watermarkPage = true
             }
         }
@@ -56,7 +57,8 @@ import kotlinx.coroutines.withContext
 
 @Composable internal fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
     availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, exposureWarningAvailable: Boolean,
-    videoStabilizationAvailable: Boolean = false, openWatermark: () -> Unit) {
+    videoStabilizationAvailable: Boolean = false, faceControlsAvailable: Boolean = false,
+    openExpressions: (() -> Unit)? = null, expressionTitle: String? = null, openWatermark: () -> Unit) {
     val copy = rememberCameraCopy()
     val heifAvailable by produceState<Boolean?>(null) {
         value = withContext(Dispatchers.IO) { CameraPhotoEncoding.heifAvailable }
@@ -73,6 +75,12 @@ import kotlinx.coroutines.withContext
         add(CameraSettingTile(copy.text("camera.grid"), copy.label(options.grid), Icons.Default.Grid3x3, enabled) {
             options.setGrid(CameraGrid.entries[(options.grid.ordinal + 1) % CameraGrid.entries.size])
         })
+        if (options.mode != CameraMode.SCAN && faceControlsAvailable) {
+            add(CameraSettingTile(uiText("expression.focus"), copy.toggle(options.faceFocus), Icons.Default.CenterFocusStrong, enabled,
+                options::toggleFaceFocus))
+            if (openExpressions != null) add(CameraSettingTile(uiText("expression.title"),
+                expressionTitle ?: copy.text("option.off"), Icons.Default.Face, enabled, openExpressions))
+        }
         add(CameraSettingTile(copy.text("camera.level"), copy.toggle(options.level), Icons.Default.Straighten, enabled) { options.setLevel(!options.level) })
         if (flashAvailable) add(CameraSettingTile(copy.text("camera.flash"), copy.label(options.flash), Icons.Default.FlashOn, enabled) {
             options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
@@ -84,7 +92,7 @@ import kotlinx.coroutines.withContext
         })
         val processing = availableProcessing.toList().ifEmpty { listOf(CameraProcessing.STANDARD) }
         add(CameraSettingTile(copy.text("camera.process"), copy.label(if (options.mode == CameraMode.PRO) CameraProcessing.STANDARD else options.processing),
-            Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO) {
+            Icons.Default.AutoAwesome, enabled && options.mode == CameraMode.PHOTO && options.expressionId == null) {
             options.setProcessing(processing[(processing.indexOf(options.processing).coerceAtLeast(0) + 1) % processing.size])
         })
         if (options.mode.takesPhotos) {

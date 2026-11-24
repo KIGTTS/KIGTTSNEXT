@@ -30,10 +30,13 @@ def public(relative, expected, revision="master"):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", default=".tools/resource-source"); parser.add_argument("--verify-only", action="store_true")
+    parser.add_argument("--expressions", action="store_true")
     args = parser.parse_args()
+    index_name = "expressions.json" if args.expressions else "index.json"
+    listings = [index_name] if args.expressions else [index_name, "README.md"]
     folder = (ROOT / args.folder).resolve()
     if not folder.is_relative_to(ROOT): raise ValueError("Source must stay in the workspace")
-    catalog = json.loads((folder / "index.json").read_text(encoding="utf-8"))
+    catalog = json.loads((folder / index_name).read_text(encoding="utf-8"))
     files = {}
     revisions = {}
     assets = {}
@@ -61,8 +64,10 @@ def main():
     if not args.verify_only:
         if ModelScopeConfig.get_cookies() is None: raise RuntimeError("ModelScope login required")
         api = HubApi()
-        response = requests.get(BASE + "index.json", timeout=(10, 25))
-        if response.status_code == 404:
+        response = requests.get(BASE + index_name, timeout=(10, 25))
+        if response.status_code == 404 and args.expressions:
+            pass
+        elif response.status_code == 404:
             api.create_dataset("KIGTTS-Resources", "LHTSTUDIO", chinese_name="KIGTTS 资源", license="other", description="KIGTTS 相框、滤镜与其它可添加资源；各包遵循各自许可。")
         else:
             response.raise_for_status()
@@ -84,9 +89,9 @@ def main():
         (folder / "index.json").write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
     for path, expected in files.items(): public(path, expected, revisions.get(path, "master"))
     if api:
-        api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder), allow_patterns=["index.json", "README.md"], commit_message="Publish verified resource catalog")
-    files.update({name: hashlib.sha256((folder / name).read_bytes()).hexdigest() for name in ("index.json", "README.md")})
+        api.upload_folder(repo_id=REPO, repo_type="dataset", folder_path=str(folder), allow_patterns=listings, commit_message="Publish verified resource catalog")
+    files.update({name: hashlib.sha256((folder / name).read_bytes()).hexdigest() for name in listings})
     for name in ("index.json", "README.md"): public(name, files[name])
-    (ROOT / ".tools/resource-source-verified.json").write_text(json.dumps(dict(repository=REPO, verified=files), ensure_ascii=False, indent=2), encoding="utf-8")
+    (ROOT / (".tools/expression-source-verified.json" if args.expressions else ".tools/resource-source-verified.json")).write_text(json.dumps(dict(repository=REPO, verified=files), ensure_ascii=False, indent=2), encoding="utf-8")
 
 if __name__ == "__main__": main()

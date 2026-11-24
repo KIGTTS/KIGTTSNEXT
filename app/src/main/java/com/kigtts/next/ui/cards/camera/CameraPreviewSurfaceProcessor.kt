@@ -58,7 +58,8 @@ internal class CameraPreviewSurfaceProcessor(val colors: CameraPreviewColors, pr
             val surface = surfaceOutput.getSurface(executor) { event ->
                 if (event.eventCode == SurfaceOutput.Event.EVENT_REQUEST_CLOSE) removeOutput(surfaceOutput)
             }
-            outputs[surfaceOutput] = gl().createOutput(surface, surfaceOutput.size)
+            val transform = surfaceOutput.sensorToBufferTransform
+            outputs[surfaceOutput] = gl().createOutput(surface, surfaceOutput.size).apply { sensorToOutput = transform }
         } catch (failure: Exception) {
             removeOutput(surfaceOutput); reportFailure(failure)
             throw processingFailure(failure)

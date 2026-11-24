@@ -39,6 +39,7 @@ internal fun ExternalFilePrompt(model: AppViewModel) {
         title = { Text(when {
             current.busy -> "正在准备"
             current.missing.isNotEmpty() -> "需要语音引擎"
+            current.kind == ExternalFileType.EXPRESSION -> uiText("expression.import")
             current.kind.isVoice -> "导入语音包"
             current.kind == ExternalFileType.UNKNOWN -> "无法打开文件"
             else -> "导入备份"
@@ -71,7 +72,7 @@ internal fun ExternalFilePrompt(model: AppViewModel) {
                 val label = when (current.engineAction) {
                     VoiceImportAction.INSTALL -> "选择安装包"
                     VoiceImportAction.ENABLE -> "启用引擎"
-                    null -> if (current.error != null) "重试" else if (current.kind.isVoice) "导入" else "继续"
+                    null -> if (current.kind == ExternalFileType.EXPRESSION) uiText("expression.install_action") else if (current.error != null) "重试" else if (current.kind.isVoice) "导入" else "继续"
                 }
                 FilledTonalButton(onClick = dialogFeedbackClick {
                     when (current.engineAction) {

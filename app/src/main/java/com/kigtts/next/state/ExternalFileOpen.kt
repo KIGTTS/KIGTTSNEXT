@@ -69,6 +69,9 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     file.parentFile!!.mkdirs()
                     staged = file
                     val fileMime = (mime ?: runCatching { context.contentResolver.getType(uri) }.getOrNull()).orEmpty()
+                    val expression = !voiceOnly && !profileOnly && (
+                        fileMime == com.kigtts.next.camera.expressions.ExpressionPack.MIME ||
+                            ExternalFileTypes.detect(name) == ExternalFileType.EXPRESSION)
                     val archive = ExternalFileTypes.detect(name) == ExternalFileType.PROFILE_ARCHIVE ||
                         fileMime in setOf(ProfileArchive.MIME, "message/rfc822", "application/x-mimearchive", "application/x-mhtml")
                     val photo = fileMime in setOf("image/png", "image/jpeg") ||
@@ -78,6 +81,7 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     requireNotNull(context.contentResolver.openInputStream(uri)) { "无法读取文件，请重新打开" }.use { input ->
                         file.outputStream().use { output ->
                             val limit = when {
+                                expression -> com.kigtts.next.camera.expressions.ExpressionPack.MAX_PACK.toLong()
                                 archive -> ProfileArchive.MAX_BYTES
                                 profileOnly && legacyCardName -> LegacyArchive.MAX_BYTES
                                 profileFile -> ProfileLongCardRestore.MAX_BYTES
@@ -89,7 +93,14 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                         }
                     }
                     val image = profileFile && ProfileLongCardRestore.imageFile(file)
-                    val kind = if (image) ExternalFileType.UNKNOWN else ExternalFileTypes.inspect(file, name)
+                    val kind = when {
+                        expression -> {
+                            com.kigtts.next.camera.expressions.ExpressionLibrary.read(file)
+                            ExternalFileType.EXPRESSION
+                        }
+                        image -> ExternalFileType.UNKNOWN
+                        else -> ExternalFileTypes.inspect(file, name)
+                    }
                     val legacyCard = kind == ExternalFileType.LEGACY_BACKUP && (profileOnly || legacyCardName)
                     require(!voiceOnly || kind.isVoice) { "无法识别此语音包，请选择由受支持的语音引擎导出的语音包" }
                     require(!profileFile || image || legacyCard || kind == ExternalFileType.PROFILE_ARCHIVE) { "没有找到可恢复的 KIGTTS 名片数据" }
@@ -231,11 +242,20 @@ internal class ExternalFileOpen(private val model: AppViewModel, private val sco
                     }
                     ExternalFileType.PIPER_VOICE, ExternalFileType.CLONE_VOICE, ExternalFileType.SHARED_CLONE_VOICE,
                     ExternalFileType.QWEN_VOICE -> importVoice(file, current.kind)
+                    ExternalFileType.EXPRESSION -> {
+                        withContext(Dispatchers.IO) {
+                            com.kigtts.next.camera.expressions.ExpressionLibrary.get(context).install(file)
+                        }
+                        model.message(model.hostCopy("expression.installed"))
+                    }
                     else -> return@launch
                 }
                 cleanup(); mutable.value = null
             } catch (cancel: CancellationException) { throw cancel }
-            catch (failure: Exception) { showReady(failure.message ?: "导入失败，请重试") }
+            catch (failure: Exception) {
+                showReady(if (current.kind == ExternalFileType.EXPRESSION) model.hostCopy("expression.file_invalid")
+                    else failure.message ?: "导入失败，请重试")
+            }
         }
     }
 
