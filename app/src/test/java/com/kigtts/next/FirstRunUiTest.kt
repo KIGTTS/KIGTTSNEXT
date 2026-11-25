@@ -33,6 +33,13 @@ class FirstRunUiTest {
         val guide = FirstRunStore(compose.activity)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
         compose.onNodeWithTag("onboarding-brand").assertIsDisplayed()
+        val copy = compose.onNodeWithTag("onboarding-welcome-copy").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val art = compose.onNodeWithTag("onboarding-welcome-art").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val next = compose.onNodeWithTag("onboarding-next").fetchSemanticsNode().boundsInRoot
+        assertTrue(copy.bottom < art.top)
+        assertTrue(copy.left < art.left)
+        assertEquals(copy.right, art.right, 1f)
+        assertTrue(art.bottom <= next.top)
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()
         swipeForward()
         awaitStep(guide, FirstRunStep.APPEARANCE)

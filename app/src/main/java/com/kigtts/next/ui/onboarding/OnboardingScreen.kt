@@ -24,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -55,7 +56,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     val pager = rememberPagerState(initialPage = progress.step().ordinal) { pageCount }
     val step = FirstRunStep.entries[pager.settledPage]
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
-    val tilt = rememberOnboardingTilt(motion)
+    val (flowerTilt, characterTilt) = rememberOnboardingTilt(motion)
 
     LaunchedEffect(pager, progress) {
         snapshotFlow { pager.settledPage }.collect { progress.visit(FirstRunStep.entries[it]) }
@@ -80,7 +81,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
 
     BackHandler(document == null, onBack = ::back)
     Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }) {
-        OnboardingFlowers(reducedMotion, tilt)
+        OnboardingFlowers(reducedMotion, flowerTilt, welcome = step == FirstRunStep.WELCOME)
         Column(
             Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing),
@@ -112,34 +113,16 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 key = { FirstRunStep.entries[it].name },
             ) { index ->
                 val page = FirstRunStep.entries[index]
-                val welcome = page == FirstRunStep.WELCOME
+                if (page == FirstRunStep.WELCOME) {
+                    OnboardingWelcomePage(step == FirstRunStep.WELCOME, !motion, characterTilt)
+                    return@HorizontalPager
+                }
                 Column(
                     Modifier.fillMaxSize().testTag("onboarding-${page.page}")
                         .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp, if (welcome) Alignment.CenterVertically else Alignment.Top),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    if (welcome) {
-                        OnboardingWelcomeArt(
-                            Modifier.align(Alignment.CenterHorizontally).padding(horizontal = 12.dp)
-                                .widthIn(max = 390.dp).fillMaxWidth().aspectRatio(1216f / 1024f),
-                            active = step == FirstRunStep.WELCOME,
-                            reducedMotion = !motion,
-                            tilt = tilt,
-                        )
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        val align = if (welcome) TextAlign.Center else TextAlign.Start
-                        ThemeText(
-                            uiText("onboarding.${page.page}.title"), Modifier.fillMaxWidth().semantics { heading() },
-                            style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground,
-                            textAlign = align,
-                        )
-                        ThemeText(
-                            uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = align,
-                        )
-                    }
+                    OnboardingPageCopy(page)
                     when (page) {
                         FirstRunStep.APPEARANCE -> {
                             ThemeColorSettings(settings, changeTheme)
@@ -214,6 +197,45 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
         })
     }
 }
+private const val WELCOME_ART_ASPECT = 1216f / 1024f
+
+@Composable
+private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>) {
+    BoxWithConstraints(Modifier.fillMaxSize().testTag("onboarding-welcome")) {
+        val pageHeight = maxHeight
+        val contentWidth = (maxWidth - 44.dp).coerceAtLeast(1.dp)
+        val artWidth = minOf(390.dp, contentWidth * .92f, pageHeight * .64f * WELCOME_ART_ASPECT)
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).heightIn(min = pageHeight)
+                .padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            OnboardingPageCopy(FirstRunStep.WELCOME, Modifier.testTag("onboarding-welcome-copy"))
+            Spacer(Modifier.weight(1f))
+            Box(Modifier.align(Alignment.End).widthIn(max = artWidth).fillMaxWidth()
+                .aspectRatio(WELCOME_ART_ASPECT).testTag("onboarding-welcome-art")) {
+                OnboardingWelcomeArt(Modifier.matchParentSize(), active = active, reducedMotion = reducedMotion, tilt = tilt)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ThemeText(
+            uiText("onboarding.${page.page}.title"), Modifier.fillMaxWidth().semantics { heading() },
+            style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Start,
+        )
+        ThemeText(
+            uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Start,
+        )
+    }
+}
+
 @Composable
 private fun OnboardingRecommendations() {
     SettingsGroup(uiText("onboarding.recommendations")) {
