@@ -136,7 +136,8 @@ class FirstRunUiTest {
         bitmap.eraseColor(0xff12858b.toInt())
         source.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
-        compose.onNodeWithTag("appearance-background-image").performScrollTo().performClick()
+        compose.onNode(hasTestTag("appearance-background-image") and hasAnyAncestor(hasTestTag("theme-palette-settings")))
+            .performScrollTo().performClick()
         var pending: org.robolectric.shadows.ShadowActivity.IntentForResult? = null
         compose.waitUntil(5_000) {
             pending = shadowOf(compose.activity).nextStartedActivityForResult

@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.onboarding
 
 import android.graphics.Picture
+import android.graphics.Paint
 import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
@@ -51,7 +52,9 @@ internal fun OnboardingWelcomeArt(modifier: Modifier, active: Boolean, reducedMo
         if (artwork != null) Box(Modifier.matchParentSize().graphicsLayer {
             val pose = motion.pose
             alpha = pose.alpha
-            translationY = 18.dp.toPx() * pose.entranceY
+            val unit = size.width / WELCOME_ART_WIDTH
+            translationX = pose.bodyShift.x * unit
+            translationY = 18.dp.toPx() * pose.entranceY + pose.bodyShift.y * unit
             rotationZ = pose.bodyRoll
             transformOrigin = TransformOrigin(990f / WELCOME_ART_WIDTH, (1036f + WELCOME_ORIGIN_Y) / WELCOME_ART_HEIGHT)
         }) {
@@ -63,17 +66,14 @@ internal fun OnboardingWelcomeArt(modifier: Modifier, active: Boolean, reducedMo
                         val unit = size.width / WELCOME_ART_WIDTH
                         val head = layer.part in headParts
                         if (head) {
-                            translationX = pose.aim.x * 13f * unit
-                            translationY = pose.aim.y * 8f * unit
+                            translationX = pose.head.x * 15f * unit
+                            translationY = pose.head.y * 10f * unit
                         }
                         when (layer.part) {
                             WelcomePart.BODY -> Unit
-                            WelcomePart.HAIR -> {
-                                rotationZ = pose.hairRoll
-                                transformOrigin = welcomePivot(1010f, 510f)
-                            }
+                            WelcomePart.LEFT_HAIR, WelcomePart.RIGHT_HAIR -> Unit
                             WelcomePart.HEAD -> {
-                                rotationZ = pose.aim.x * .65f
+                                rotationZ = pose.head.x * .86f + pose.head.y * .14f
                                 transformOrigin = welcomePivot(1002f, 564f)
                             }
                             WelcomePart.ARM -> {
@@ -81,11 +81,11 @@ internal fun OnboardingWelcomeArt(modifier: Modifier, active: Boolean, reducedMo
                                 transformOrigin = welcomePivot(898f, 720f)
                             }
                             WelcomePart.LEFT_EAR -> {
-                                rotationZ = pose.leftEar
+                                rotationZ = pose.leftEar * .42f
                                 transformOrigin = welcomePivot(862f, 86f)
                             }
                             WelcomePart.RIGHT_EAR -> {
-                                rotationZ = pose.rightEar
+                                rotationZ = pose.rightEar * .42f
                                 transformOrigin = welcomePivot(1098f, 73f)
                             }
                             WelcomePart.ZIPPER -> {
@@ -93,14 +93,14 @@ internal fun OnboardingWelcomeArt(modifier: Modifier, active: Boolean, reducedMo
                                 transformOrigin = welcomePivot(1085.5f, 735f)
                             }
                         }
-                    })
+                    }, layer.mesh) { motion.pose.bend(layer.part) }
                 }
                 WelcomeEyes(artwork.eyes, motion, Modifier.matchParentSize().graphicsLayer {
-                    val aim = motion.pose.aim
+                    val head = motion.pose.head
                     val unit = size.width / WELCOME_ART_WIDTH
-                    translationX = aim.x * 13f * unit
-                    translationY = aim.y * 8f * unit
-                    rotationZ = aim.x * .65f
+                    translationX = head.x * 15f * unit
+                    translationY = head.y * 10f * unit
+                    rotationZ = head.x * .86f + head.y * .14f
                     transformOrigin = welcomePivot(1002f, 564f)
                 })
             }
@@ -111,14 +111,27 @@ internal fun OnboardingWelcomeArt(modifier: Modifier, active: Boolean, reducedMo
 private val headParts = setOf(WelcomePart.HEAD, WelcomePart.LEFT_EAR, WelcomePart.RIGHT_EAR)
 private fun welcomePivot(x: Float, y: Float) = TransformOrigin(x / WELCOME_ART_WIDTH, (y + WELCOME_ORIGIN_Y) / WELCOME_ART_HEIGHT)
 
+private fun WelcomePose.bend(part: WelcomePart): WelcomeBend = when (part) {
+    WelcomePart.LEFT_EAR -> WelcomeBend(leftEar * 5.5f, leftStretch)
+    WelcomePart.RIGHT_EAR -> WelcomeBend(rightEar * 5.5f, rightStretch)
+    WelcomePart.LEFT_HAIR -> WelcomeBend(leftHair)
+    WelcomePart.RIGHT_HAIR -> WelcomeBend(rightHair)
+    WelcomePart.ARM -> WelcomeBend(armBend)
+    else -> WelcomeBend()
+}
+
 @Composable
-private fun WelcomeVector(picture: Picture, modifier: Modifier) {
+private fun WelcomeVector(picture: Picture, modifier: Modifier, mesh: WelcomeMesh? = null,
+    deformation: () -> WelcomeBend = { WelcomeBend() }) {
+    val vertices = remember(mesh) { mesh?.newVertices() }
+    val paint = remember(mesh) { mesh?.let { Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG) } }
     Canvas(modifier) {
         drawIntoCanvas {
             val canvas = it.nativeCanvas
             val mark = canvas.save()
             canvas.scale(size.width / WELCOME_ART_WIDTH, size.height / WELCOME_ART_HEIGHT)
-            canvas.drawPicture(picture)
+            if (mesh != null && vertices != null && paint != null) mesh.draw(canvas, vertices, paint, deformation())
+            else canvas.drawPicture(picture)
             canvas.restoreToCount(mark)
         }
     }
@@ -132,15 +145,15 @@ private fun WelcomeEyes(eyes: List<WelcomeEye>, motion: WelcomeMotion, modifier:
             val canvas = it.nativeCanvas
             val mark = canvas.save()
             canvas.scale(size.width / WELCOME_ART_WIDTH, size.height / WELCOME_ART_HEIGHT)
-            for (eye in eyes) {
+            eyes.forEachIndexed { index, eye ->
                 if (pose.squeeze) canvas.drawPicture(eye.squeezed)
                 else {
                     val opening = canvas.save()
-                    canvas.scale(1f, pose.eyeOpen, eye.x, eye.y)
+                    canvas.scale(1f, if (index == 0) pose.eyeOpen else pose.rightEyeOpen, eye.x, eye.y)
                     canvas.drawPicture(eye.white)
                     val clip = canvas.save()
                     canvas.clipPath(eye.aperture)
-                    canvas.translate(pose.aim.x * 8f, pose.aim.y * 9f)
+                    canvas.translate(pose.gaze.x * 10f, pose.gaze.y * 10f)
                     canvas.drawPicture(eye.iris)
                     canvas.restoreToCount(clip)
                     canvas.drawPicture(eye.lash)

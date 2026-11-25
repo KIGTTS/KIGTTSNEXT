@@ -21,8 +21,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 import java.util.Locale
+import com.kigtts.next.theme.DEFAULT_THEME_SEED
 
-val ColorPickerPresets=listOf(0xFF00696E,0xFF6750A4,0xFF386A20,0xFF984061,0xFFFFFFFF,0xFF171D1D,
+val ColorPickerPresets=listOf(DEFAULT_THEME_SEED,0xFF6750A4,0xFF386A20,0xFF984061,0xFFFFFFFF,0xFF171D1D,
     0xFFFF6B6B,0xFFFFB86C,0xFFE8D77A,0xFF72C9AB,0xFF80BFFF,0xFFF0A8D7)
 
 /** Reusable opaque HSV picker. Editing is local until the caller confirms the result. */

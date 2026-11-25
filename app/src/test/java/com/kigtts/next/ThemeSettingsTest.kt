@@ -19,7 +19,9 @@ class ThemeSettingsTest {
         assertEquals(settings, ThemeSettingsStore(app).load())
     }
     @Test fun defaultThemeUsesRequestedSeedAndDarkModeUsesBlack() {
-        assertEquals("#00696E", ThemeSettings().hex)
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        assertEquals("#038387", ThemeSettings().hex)
+        assertEquals("#038387", ThemeSettingsStore(app).load().hex)
         assertNotEquals(themeColors(ThemeSettings()).background, themeColors(ThemeSettings(deeperDark = true)).background)
         assertEquals(androidx.compose.ui.graphics.Color.Black, themeColors(ThemeSettings(deeperDark = true)).background)
     }

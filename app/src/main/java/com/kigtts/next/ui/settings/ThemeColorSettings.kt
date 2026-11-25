@@ -24,12 +24,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
 import kotlinx.coroutines.*
 
-@Composable internal fun ThemeColorSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit) {
+@Composable internal fun ThemeColorSettings(settings: ThemeSettings, includeBackground: Boolean = false,
+    onChange: (ThemeSettings) -> Unit) {
     val copy = rememberUiCopy()
     var picker by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
@@ -37,11 +40,12 @@ import kotlinx.coroutines.*
     val current by rememberUpdatedState(settings)
     var selectionRequest by remember { mutableIntStateOf(0) }
     val custom = settings.colorSource == ThemeColorSource.CUSTOM
-    SettingsGroup(uiText("appearance.theme_palette")) {
+    SettingsGroup(uiText("appearance.theme_palette"), modifier = Modifier.testTag("theme-palette-settings")) {
         SettingItem(uiText("appearance.theme_mode"), "", Icons.Default.BrightnessAuto, SettingPosition.FIRST) {
             SettingChoiceGroup(uiText("appearance.theme_mode"), ThemeMode.entries, settings.mode, { copy("appearance.mode." + it.name.lowercase(java.util.Locale.ROOT)) }, { onChange(settings.copy(mode = it)) })
         }
-        SettingItem(uiText("appearance.color_source"), "", Icons.Default.Palette, if (custom) SettingPosition.MIDDLE else SettingPosition.LAST,
+        SettingItem(uiText("appearance.color_source"), "", Icons.Default.Palette,
+            if (custom || includeBackground) SettingPosition.MIDDLE else SettingPosition.LAST,
             modifier = Modifier.testTag("theme-color-source")) {
             ChoiceButtonGroup(uiText("appearance.color_source"), ThemeColorSource.entries, settings.colorSource, { copy("appearance.source." + it.name.lowercase(java.util.Locale.ROOT)) }, { source ->
                 val request = ++selectionRequest
@@ -65,11 +69,16 @@ import kotlinx.coroutines.*
         }
         AnimatedVisibility(custom, enter = fadeIn(tween(180)) + expandVertically(tween(180)),
             exit = fadeOut(tween(180)) + shrinkVertically(tween(180))) {
-            SettingItem(uiText("appearance.custom_seed"), settings.hex, null, SettingPosition.LAST, modifier = Modifier.testTag("custom-theme-color"),
+            SettingItem(uiText("appearance.custom_seed"), settings.hex, null,
+                if (includeBackground) SettingPosition.MIDDLE else SettingPosition.LAST, modifier = Modifier.testTag("custom-theme-color"),
             onClick = { picker = true }, trailing = {
-                IconButton(feedbackClick { picker = true }) { Box(Modifier.size(28.dp).background(Color(settings.seed), CircleShape)) }
+                val label = uiText("appearance.choose_color")
+                IconButton(feedbackClick { picker = true }, Modifier.semantics { contentDescription = label }) {
+                    Box(Modifier.size(28.dp).background(Color(settings.seed), CircleShape))
+                }
             })
         }
+        if (includeBackground) AppearanceBackgroundRows(settings, onChange, startsGroup = false, endsGroup = true)
     }
     if (picker) ColorPickerDialog(settings.seed, onConfirm = { color ->
         selectionRequest++

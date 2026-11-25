@@ -69,7 +69,7 @@ fun AppearanceSettingsScreen(settings: ThemeSettings, onChange: (ThemeSettings) 
                 .windowInsetsPadding(navigation).testTag("appearance-settings-sheet"),
                 verticalArrangement = Arrangement.spacedBy(20.dp)) {
                 AppearanceAssetSettings(settings, onChange, onFonts)
-                ThemeColorSettings(settings, onChange)
+                ThemeColorSettings(settings, onChange = onChange)
                 AppearanceDisplaySettings(settings, onChange)
                 SubtitlePlaceholderSetting(displayedPlaceholder, onPlaceholderChange)
                 SubtitleMotionSettings(subtitle, onSubtitleChange)

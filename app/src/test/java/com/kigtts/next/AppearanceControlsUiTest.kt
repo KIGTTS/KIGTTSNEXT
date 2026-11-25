@@ -83,7 +83,7 @@ class AppearanceControlsUiTest {
         compose.waitForIdle(); assertEquals(ThemeColorSource.BACKGROUND, state.colorSource)
         compose.onNodeWithText("主题色", useUnmergedTree = true).assertDoesNotExist()
         compose.onNodeWithContentDescription("取色：自定义").performClick()
-        compose.waitForIdle(); assertEquals(0xff00696e, state.seed)
+        compose.waitForIdle(); assertEquals(com.kigtts.next.theme.DEFAULT_THEME_SEED, state.seed)
         compose.onNodeWithText("主题色").assertExists()
     }
     @Test fun colorPromptCanRetainColorAndRememberDontAsk() {

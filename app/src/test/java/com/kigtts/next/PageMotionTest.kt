@@ -102,7 +102,7 @@ class PageMotionTest {
         val restored = compose.onNode(scrolling).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
         assertEquals(position, restored, .5f)
         compose.onNode(isDialog()).assertDoesNotExist()
-        compose.runOnIdle { assertEquals(0xFF00696E,model.state.value.theme.seed) }
+        compose.runOnIdle { assertEquals(com.kigtts.next.theme.DEFAULT_THEME_SEED, model.state.value.theme.seed) }
         capture("navigation-parent-scroll-restored")
     }
     @Test fun secondAndThirdLevelEnterAndToolbarReturnRetainMovingPagesUntilFinished() {

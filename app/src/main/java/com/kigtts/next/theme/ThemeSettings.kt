@@ -2,6 +2,8 @@ package com.kigtts.next.theme
 
 import android.content.Context
 
+internal const val DEFAULT_THEME_SEED = 0xFF038387L
+
 enum class ContrastLevel(val label: String, val value: Float) {
     DEFAULT("默认", 0f), MEDIUM("中", .5f), HIGH("高", 1f);
     companion object {
@@ -17,7 +19,7 @@ enum class ThemeMode(val label: String) {
 enum class ThemeColorSource(val label: String) { WALLPAPER("壁纸"), BACKGROUND("背景图"), CUSTOM("自定义") }
 
 data class ThemeSettings(
-    val seed: Long = 0xFF00696E,
+    val seed: Long = DEFAULT_THEME_SEED,
     val contrast: ContrastLevel = ContrastLevel.DEFAULT,
     val deeperDark: Boolean = false,
     val cornerLevel: CornerLevel = CornerLevel.LARGE,
@@ -48,7 +50,7 @@ data class ThemeSettings(
 class ThemeSettingsStore(context: Context) {
     private val preferences = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
     fun load() = ThemeSettings(
-        seed = preferences.getLong("seed", 0xFF00696E),
+        seed = preferences.getLong("seed", DEFAULT_THEME_SEED),
         contrast = ContrastLevel.fromLegacy(preferences.getFloat("contrast", 0f)),
         deeperDark = preferences.getBoolean("deeperDark", false),
         cornerLevel = CornerLevel.fromLegacy(preferences.getFloat("radius", CornerLevel.LARGE.radius)),

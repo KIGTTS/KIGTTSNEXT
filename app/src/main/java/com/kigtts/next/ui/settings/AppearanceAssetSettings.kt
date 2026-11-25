@@ -21,7 +21,18 @@ import com.kigtts.next.theme.*
 import com.kigtts.next.ui.components.*
 import kotlinx.coroutines.*
 
-@Composable internal fun AppearanceAssetSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit, onFonts: (() -> Unit)? = null) {
+@Composable internal fun AppearanceAssetSettings(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit, onFonts: () -> Unit) {
+    SettingsGroup(uiText("appearance.background_fonts")) {
+        AppearanceBackgroundRows(settings, onChange, startsGroup = true, endsGroup = false)
+        ToggleSetting(uiText("appearance.other_pages"), "", Icons.Default.Wallpaper, settings.secondaryPageBackground,
+            { onChange(settings.copy(secondaryPageBackground = it)) }, position = SettingPosition.MIDDLE)
+        SettingItem(uiText("nav.fonts"), settings.fontName, Icons.Default.TextFields, SettingPosition.LAST,
+            onClick = onFonts, trailing = { Icon(Icons.Default.ChevronRight, null) })
+    }
+}
+
+@Composable internal fun AppearanceBackgroundRows(settings: ThemeSettings, onChange: (ThemeSettings) -> Unit,
+    startsGroup: Boolean, endsGroup: Boolean) {
     val copy = rememberUiCopy()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -37,29 +48,23 @@ import kotlinx.coroutines.*
         finally { busy = false } }
     } }
     val hasBackground = settings.background != null
-    val rows: @Composable ColumnScope.() -> Unit = {
-        val imagePosition = if (hasBackground || onFonts != null) SettingPosition.FIRST else SettingPosition.SINGLE
-        SettingItem(uiText("appearance.background_image"), if (!hasBackground) uiText("appearance.not_selected") else uiText("appearance.selected"),
-            Icons.Default.Image, imagePosition, Modifier.testTag("appearance-background-image"),
-            onClick = { if (!busy) background.launch("image/*") }, trailing = {
-                if (busy) CircularProgressIndicator(Modifier.size(24.dp))
-                else if (settings.background != null) IconButton(feedbackClick {
-                    onChange(settings.copy(background = null, backgroundSeed = null, backgroundColorEnabled = false))
-                }) { Icon(Icons.Default.Close, copy("appearance.remove_background")) }
-            })
-        if (hasBackground) SettingItem(uiText("appearance.background_dim"), "", Icons.Default.Opacity,
-            if (onFonts == null) SettingPosition.LAST else SettingPosition.MIDDLE) {
-            Slider(settings.backgroundDim, { onChange(settings.copy(backgroundDim = it)) })
-        }
-        if (onFonts != null) {
-            ToggleSetting(uiText("appearance.other_pages"), "", Icons.Default.Wallpaper, settings.secondaryPageBackground,
-                { onChange(settings.copy(secondaryPageBackground = it)) }, position = SettingPosition.MIDDLE)
-            SettingItem(uiText("nav.fonts"), settings.fontName, Icons.Default.TextFields, SettingPosition.LAST,
-                onClick = onFonts, trailing = { Icon(Icons.Default.ChevronRight, null) })
-        }
+    val imagePosition = when {
+        startsGroup -> SettingPosition.FIRST
+        endsGroup && !hasBackground -> SettingPosition.LAST
+        else -> SettingPosition.MIDDLE
     }
-    if (onFonts != null) SettingsGroup(uiText("appearance.background_fonts"), content = rows)
-    else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp), content = rows)
+    SettingItem(uiText("appearance.background_image"), if (!hasBackground) uiText("appearance.not_selected") else uiText("appearance.selected"),
+        Icons.Default.Image, imagePosition, Modifier.testTag("appearance-background-image"),
+        onClick = { if (!busy) background.launch("image/*") }, trailing = {
+            if (busy) CircularProgressIndicator(Modifier.size(24.dp))
+            else if (hasBackground) IconButton(feedbackClick {
+                onChange(settings.copy(background = null, backgroundSeed = null, backgroundColorEnabled = false))
+            }) { Icon(Icons.Default.Close, copy("appearance.remove_background")) }
+        })
+    if (hasBackground) SettingItem(uiText("appearance.background_dim"), "", Icons.Default.Opacity,
+        if (endsGroup) SettingPosition.LAST else SettingPosition.MIDDLE) {
+        Slider(settings.backgroundDim, { onChange(settings.copy(backgroundDim = it)) })
+    }
     crop?.let { source -> BackgroundCropScreen(source, { crop = null }) { key, seed ->
         val next = current.copy(background = key, backgroundSeed = seed)
         prompt = next.askBackgroundColor && next.colorSource != ThemeColorSource.BACKGROUND

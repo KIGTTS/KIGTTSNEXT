@@ -37,13 +37,11 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.R
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
 import com.kigtts.next.theme.AppearanceBackdrop
@@ -160,8 +158,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                     OnboardingPageCopy(page)
                     when (page) {
                         FirstRunStep.APPEARANCE -> {
-                            AppearanceAssetSettings(settings, changeTheme)
-                            ThemeColorSettings(settings, changeTheme)
+                            ThemeColorSettings(settings, includeBackground = true, onChange = changeTheme)
                             AppearanceDisplaySettings(settings, changeTheme)
                         }
                         FirstRunStep.FEATURES -> OnboardingRecommendations()
@@ -275,9 +272,7 @@ private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier
             textAlign = TextAlign.Start,
         )
         if (page == FirstRunStep.WELCOME) {
-            ThemeIcon(painterResource(R.drawable.logo_kigtts_wordmark), "KIGTTS",
-                Modifier.widthIn(max = 300.dp).fillMaxWidth().aspectRatio(4f).testTag("onboarding-welcome-wordmark"),
-                tint = MaterialTheme.colorScheme.onBackground)
+            OnboardingWordmark(Modifier.widthIn(max = 300.dp).fillMaxWidth().testTag("onboarding-welcome-wordmark"))
         }
         ThemeText(
             uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),

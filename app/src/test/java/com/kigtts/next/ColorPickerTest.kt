@@ -30,7 +30,7 @@ class ColorPickerTest {
         compose.setContent { MaterialTheme { ThemeColorSettings(settings.value) { settings.value=it;commits++ } } }
         compose.onNodeWithContentDescription("选择主题色").performClick()
         compose.onNodeWithContentDescription("预设颜色 #6750A4").performClick()
-        compose.runOnIdle { assertEquals(0xFF00696E,settings.value.seed);assertEquals(0,commits) }
+        compose.runOnIdle { assertEquals(com.kigtts.next.theme.DEFAULT_THEME_SEED, settings.value.seed); assertEquals(0, commits) }
         compose.onNode(isDialog()).captureRoboImage("build/previews/shared-hsv-picker.png")
         compose.onNodeWithText("取消").performClick()
         compose.onNodeWithContentDescription("选择主题色").performClick()

@@ -20,8 +20,8 @@ internal const val WELCOME_ART_HEIGHT = 1200
 internal const val WELCOME_ART_ASPECT = WELCOME_ART_WIDTH.toFloat() / WELCOME_ART_HEIGHT
 internal const val WELCOME_ORIGIN_Y = 24f
 
-internal enum class WelcomePart { BODY, HEAD, HAIR, ARM, LEFT_EAR, RIGHT_EAR, ZIPPER }
-internal data class WelcomeLayer(val part: WelcomePart, val picture: Picture)
+internal enum class WelcomePart { BODY, HEAD, LEFT_HAIR, RIGHT_HAIR, ARM, LEFT_EAR, RIGHT_EAR, ZIPPER }
+internal data class WelcomeLayer(val part: WelcomePart, val picture: Picture, val mesh: WelcomeMesh? = null)
 internal data class WelcomeEye(val white: Picture, val iris: Picture, val lash: Picture, val squeezed: Picture,
     val aperture: Path, val x: Float, val y: Float)
 internal data class WelcomeDrawing(val still: Picture, val layers: List<WelcomeLayer> = emptyList(),
@@ -52,7 +52,8 @@ internal object WelcomeIllustration {
 }
 
 private val layerPlan = listOf(
-    WelcomePart.HAIR to "rear-left rear-right",
+    WelcomePart.LEFT_HAIR to "rear-left",
+    WelcomePart.RIGHT_HAIR to "rear-right",
     WelcomePart.LEFT_EAR to "bunny-ear-left",
     WelcomePart.HEAD to "hood",
     WelcomePart.RIGHT_EAR to "bunny-ear-right",
@@ -75,14 +76,14 @@ internal fun recordWelcomeLayers(source: String, svg: SVG, still: Picture): Welc
         return svg.renderToPicture(WELCOME_ART_WIDTH, WELCOME_ART_HEIGHT, RenderOptions().css(hide + extra))
     }
 
-    val layers = layerPlan.map { (part, selected) ->
+    val layers = recordWelcomeMeshes(layerPlan.map { (part, selected) ->
         val extra = when {
             part == WelcomePart.ZIPPER -> "#zipper-slider{display:none}"
             "zipper-assembly" in selected -> "#zipper-pull{display:none}"
             else -> ""
         }
         WelcomeLayer(part, layer(selected, extra))
-    }
+    })
     fun eye(side: String, x: Float, y: Float): WelcomeEye {
         val other = if (side == "left") "right" else "left"
         val prefix = "#eye-$other{display:none}"

@@ -6,13 +6,17 @@ import androidx.webkit.ScriptHandler
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.kigtts.next.R
+import com.kigtts.next.theme.DEFAULT_THEME_SEED
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
+import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+private val defaultWebPrimary = "#%06x".format(Locale.ROOT, DEFAULT_THEME_SEED and 0xFFFFFF)
+
 /** Theme tokens only; no user text, cookies or host settings are exposed to page scripts. */
-data class WebTheme(val dark: Boolean = false, val colors: Map<String, String> = mapOf("primary" to "#00696e", "on-primary" to "#ffffff", "surface" to "#f4fafb", "on-surface" to "#171d1e"), val corner: Int = 24) {
+data class WebTheme(val dark: Boolean = false, val colors: Map<String, String> = mapOf("primary" to defaultWebPrimary, "on-primary" to "#ffffff", "surface" to "#f4fafb", "on-surface" to "#171d1e"), val corner: Int = 24) {
     fun json() = JSONObject().put("dark", dark).put("colors", JSONObject(colors)).put("corner", corner)
     fun css() = ":root{color-scheme:${if (dark) "dark" else "light"};" + colors.entries.joinToString("") { "--md-sys-color-${it.key}:${it.value};" } +
         "--kigtts-primary:var(--md-sys-color-primary);--kigtts-surface:var(--md-sys-color-surface);--kigtts-on-surface:var(--md-sys-color-on-surface);--kigtts-corner:${corner}px;}"
