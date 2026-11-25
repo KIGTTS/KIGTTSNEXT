@@ -48,7 +48,9 @@ internal fun HomeCoachMarks(
     progress: FirstRunStore,
     sorting: QuickSortPreference,
     active: Boolean,
+    subtitleEditing: Boolean,
     cursorAvailable: Boolean,
+    quickDockCollapsed: Boolean,
     quickTextOpen: Boolean,
     quickTextEditing: Boolean,
     content: @Composable () -> Unit,
@@ -56,7 +58,12 @@ internal fun HomeCoachMarks(
     var seen by remember(progress) { mutableStateOf(HomeTip.entries.filter(progress::seen).toSet()) }
     var presented by remember { mutableStateOf<HomeTip?>(null) }
     var visitedEditor by rememberSaveable { mutableStateOf(false) }
+    var visitedSubtitleInput by rememberSaveable { mutableStateOf(false) }
     val requestedSort by sorting.prompt.collectAsStateWithLifecycle()
+
+    LaunchedEffect(active, subtitleEditing) {
+        if (active && subtitleEditing && HomeTip.SUBTITLE_MENU !in seen) visitedSubtitleInput = true
+    }
 
     LaunchedEffect(quickTextEditing, active, quickTextOpen) {
         if (!active) return@LaunchedEffect
@@ -67,14 +74,17 @@ internal fun HomeCoachMarks(
         }
     }
 
+    fun eligible(tip: HomeTip) = tip == presented || tip !in seen
     val candidate = when {
         !active -> null
         cursorAvailable -> HomeTip.CURSOR
         quickTextOpen && requestedSort -> HomeTip.QUICK_EDIT
-        quickTextOpen -> HomeTip.PANEL
+        subtitleEditing || quickTextEditing -> null
+        visitedSubtitleInput && eligible(HomeTip.SUBTITLE_MENU) -> HomeTip.SUBTITLE_MENU
+        quickDockCollapsed -> HomeTip.PANEL
         else -> null
     }
-    val pending = candidate?.takeIf { it == presented || it !in seen }
+    val pending = candidate?.takeIf(::eligible)
     val target = remember(pending) { pending?.let(::HomeTipTarget) }
     LaunchedEffect(candidate, requestedSort) {
         if (presented != candidate) presented = null
@@ -168,10 +178,12 @@ private fun HomeTipBubble(tip: HomeTip, onPresented: () -> Unit, dismiss: () -> 
         contentColor = MaterialTheme.colorScheme.onSurface,
         shadowElevation = 4.dp,
     ) {
+        val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         val (title, detail) = when (tip) {
-            HomeTip.PANEL -> "onboarding.tip_panel" to "onboarding.tip_panel_body"
+            HomeTip.PANEL -> "onboarding.tip_panel" to if (landscape) "onboarding.tip_panel_landscape" else "onboarding.tip_panel_body"
             HomeTip.CURSOR -> "onboarding.tip_cursor" to "onboarding.tip_cursor_body"
             HomeTip.QUICK_EDIT -> "onboarding.tip_edit" to "onboarding.tip_edit_body"
+            HomeTip.SUBTITLE_MENU -> "onboarding.tip_subtitle_menu" to "onboarding.tip_subtitle_menu_body"
         }
         Column(Modifier.padding(start = 14.dp, top = 12.dp, end = 8.dp),
             verticalArrangement = Arrangement.spacedBy(3.dp)) {

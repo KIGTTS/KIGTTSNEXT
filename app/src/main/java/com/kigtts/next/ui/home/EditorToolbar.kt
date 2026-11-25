@@ -16,14 +16,18 @@ import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.plugin.api.*
 import com.kigtts.next.media.*
+import com.kigtts.next.ui.onboarding.HomeTip
+import com.kigtts.next.ui.onboarding.homeTipAnchor
 
 @Composable
-fun EditorToolbar(state: AppState, model: AppViewModel) {
+fun EditorToolbar(state: AppState, model: AppViewModel, onFontAdjustment: (Boolean) -> Unit = {}) {
     val copy = rememberUiCopy()
     var menu by remember { mutableStateOf(false) }
     var alignmentDialog by remember { mutableStateOf(false) }
     var fontBar by remember { mutableStateOf(false) }
     var listeningSettings by remember { mutableStateOf(false) }
+    val reportFontAdjustment by rememberUpdatedState(onFontAdjustment)
+    DisposableEffect(fontBar) { onDispose { if (fontBar) reportFontAdjustment(false) } }
     val context = model.context()
     val registeredStart = remember(context, state.pluginRevision) {
         cornerActions(UiSlot.EDITOR_TOP_START, model, listenSettings = { listeningSettings = true })
@@ -36,10 +40,16 @@ fun EditorToolbar(state: AppState, model: AppViewModel) {
     Box {
         Row(Modifier.fillMaxWidth()) {
             FontToolbarSwap(fontBar, copy("subtitle.font"), Modifier.weight(.68f)) { expanded ->
-            if (expanded) InlineFontBar(copy("subtitle.font"), state.subtitleSizePercent, SubtitleSize.range, model::setSubtitleSizePercent,
+            if (expanded) InlineFontBar(copy("subtitle.font"), state.subtitleSizePercent, SubtitleSize.range, {
+                reportFontAdjustment(true)
+                model.setSubtitleSizePercent(it)
+            },
                 { fontBar = false }, Modifier.fillMaxWidth(),
-                valueDescription = uiText("subtitle.size", "size" to "%.1f".format(state.subtitleSizePercent)))
-            else ElasticButtonGroup(start, Modifier.fillMaxWidth(), overflowTag = "editor-top-start-more", overflowLabel = copy("subtitle.more_top_start"), stableItems = true)
+                valueDescription = uiText("subtitle.size", "size" to "%.1f".format(state.subtitleSizePercent)),
+                onChangeFinished = { reportFontAdjustment(false) })
+            else ElasticButtonGroup(start, Modifier.fillMaxWidth().testTag("subtitle-toolbar-start")
+                .homeTipAnchor(HomeTip.SUBTITLE_MENU, enabled = !fontBar && !menu),
+                overflowTag = "editor-top-start-more", overflowLabel = copy("subtitle.more_top_start"), stableItems = true)
             }
             Spacer(Modifier.weight(.02f))
             ElasticButtonGroup(end, Modifier.weight(.3f), alignEnd = true,

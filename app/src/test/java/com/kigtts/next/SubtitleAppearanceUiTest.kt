@@ -71,9 +71,10 @@ class SubtitleAppearanceUiTest {
         SubtitleAlignment.entries.forEach { compose.onNodeWithTag("subtitle-align-" + it.name.lowercase()).assertIsDisplayed() }
         compose.onNodeWithTag("subtitle-align-bottom_right").performClick(); compose.waitForIdle()
         compose.onNodeWithTag("editor-menu").performClick()
-        compose.onNodeWithText("开启富文本编辑").performClick()
+        assertTrue(model.state.value.subtitleAppearance.richTextEditing)
+        compose.onNodeWithTag("subtitle-rich-editing").performClick()
         compose.runOnIdle {
-            assertEquals(SubtitleAppearance(true, SubtitleAlignment.BOTTOM_RIGHT, true), SubtitleAppearanceStore(app).load())
+            assertEquals(SubtitleAppearance(true, SubtitleAlignment.BOTTOM_RIGHT, false), SubtitleAppearanceStore(app).load())
             assertEquals("测试字幕", model.state.value.editorText)
         }
     }
@@ -133,8 +134,7 @@ class SubtitleAppearanceUiTest {
                 compose.onNodeWithTag("text-menu-select-all").performClick()
             compose.onNodeWithTag("text-menu-copy").assertIsDisplayed()
         }
-        open(); compose.onNodeWithTag("text-menu-bold").assertDoesNotExist()
-        compose.runOnIdle { model.setSubtitleAppearance(SubtitleAppearance(richTextEditing = true)) }
+        open()
         compose.onNodeWithTag("text-menu-bold").assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertTrue(model.state.value.subtitleFormats.any { it.kind == TextFormat.BOLD })

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.geometry.Offset
@@ -38,6 +39,14 @@ class FirstRunUiTest {
         val guide = FirstRunStore(compose.activity)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
         compose.onNodeWithTag("onboarding-welcome-wordmark").assertIsDisplayed()
+        val language = compose.onNodeWithTag("onboarding-language")
+        language.performClick()
+        compose.onNodeWithTag("onboarding-language/system").assertIsSelected()
+        compose.onNodeWithTag("onboarding-language/en").performClick()
+        assertEquals("en", model.state.value.uiLocale)
+        language.performClick()
+        compose.onNodeWithTag("onboarding-language/system").performClick()
+        assertTrue(model.state.value.followsSystemUiLanguage)
         compose.onNodeWithTag("onboarding-brand").assertDoesNotExist()
         compose.onNodeWithTag("onboarding-progress").assertDoesNotExist()
         val pageTop = compose.onNodeWithTag("onboarding-pages").fetchSemanticsNode().boundsInRoot.top
@@ -93,9 +102,13 @@ class FirstRunUiTest {
         compose.onNodeWithTag("onboarding-permissions").assertIsDisplayed()
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()
         compose.onNodeWithTag("onboarding-next").assertIsNotEnabled()
-        compose.onNodeWithText("试试快捷文本").assertIsNotEnabled()
+        compose.onNodeWithText("试试快捷文本").assertDoesNotExist()
         assertFalse(guide.finish(agreementConfirmed = false))
         assertNull(shadowOf(compose.activity).nextStartedActivityForResult)
+        compose.onNodeWithTag("onboarding-permission-android.permission.SYSTEM_ALERT_WINDOW").performScrollTo().performClick()
+        val overlay = shadowOf(compose.activity).nextStartedActivityForResult.intent
+        assertEquals(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, overlay.action)
+        assertEquals("package:${compose.activity.packageName}", overlay.dataString)
         for (document in listOf("隐私政策", "用户协议")) {
             compose.onNodeWithText(document).performScrollTo().performClick()
             compose.onNode(isDialog()).assertIsDisplayed()
@@ -104,13 +117,13 @@ class FirstRunUiTest {
         }
         compose.onNodeWithTag("onboarding-consent").performScrollTo().assertIsOff().performClick().assertIsOn()
         screenshot("permissions")
-        compose.onNodeWithText("试试快捷文本").performClick()
+        compose.onNodeWithTag("onboarding-next").performClick()
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
-        assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
+        assertNull(model.state.value.panel)
         assertEquals(FirstRunStep.COMPLETE, guide.step())
         assertTrue(guide.agreementAccepted())
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-panel").fetchSemanticsNodes().isNotEmpty() }
-        assertTipClearsAnchor("home-tip-panel", "sheet-handle")
+        assertTipClearsAnchor("home-tip-panel", "dock-main")
         compose.mainClock.autoAdvance = false
         compose.onNodeWithText("知道了").performClick()
         compose.mainClock.advanceTimeBy(32)
@@ -118,6 +131,8 @@ class FirstRunUiTest {
         compose.mainClock.advanceTimeBy(160)
         compose.mainClock.autoAdvance = true
         compose.onNodeWithTag("home-tip-panel").assertDoesNotExist()
+        compose.onNodeWithTag("dock-main").performClick()
+        assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
         assertTrue(guide.seen(HomeTip.PANEL))
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("onboarding-permissions").assertDoesNotExist()
@@ -205,6 +220,10 @@ class FirstRunUiTest {
         assertTrue(guide.seen(HomeTip.CURSOR))
         compose.onNodeWithText("知道了").performClick()
         compose.runOnIdle { model.editing(false) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-subtitle_menu").fetchSemanticsNodes().isNotEmpty() }
+        assertTipClearsAnchor("home-tip-subtitle_menu", "subtitle-toolbar-start")
+        assertTrue(guide.seen(HomeTip.SUBTITLE_MENU))
+        compose.onNode(hasText("知道了") and hasAnyAncestor(hasTestTag("home-tip-subtitle_menu"))).performClick()
         compose.runOnIdle { model.editing(true) }
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
         compose.runOnIdle { model.editing(false); model.editQuickTexts() }

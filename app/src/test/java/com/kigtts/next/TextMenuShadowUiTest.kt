@@ -33,15 +33,16 @@ import java.io.File
 class TextMenuShadowUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private fun show() {
+    private fun show(suspended: State<Boolean> = mutableStateOf(false), selected: State<Rect> =
+        mutableStateOf(Rect(240f, 700f, 480f, 750f))) {
         val data = object : TextContextMenuDataProvider {
             override fun position(destinationCoordinates: LayoutCoordinates) = Offset(300f, 700f)
-            override fun contentBounds(destinationCoordinates: LayoutCoordinates) = Rect(240f, 700f, 480f, 750f)
+            override fun contentBounds(destinationCoordinates: LayoutCoordinates) = selected.value
             override fun data() = TextContextMenuData(listOf(
                 TextContextMenuItem(TextContextMenuKeys.CopyKey, "复制") { },
                 TextContextMenuItem(TextContextMenuKeys.PasteKey, "粘贴") { }))
         }
-        compose.setContent { MaterialTheme { ProvideIconTextContextMenu {
+        compose.setContent { MaterialTheme { ProvideIconTextContextMenu(suspended = suspended.value) {
             val provider = LocalTextContextMenuToolbarProvider.current as IconTextMenuProvider
             LaunchedEffect(Unit) { provider.showTextContextMenu(data) }
             Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.White))
@@ -100,5 +101,26 @@ class TextMenuShadowUiTest {
         show()
         compose.onNodeWithTag("text-icon-menu-window").performTouchInput { click(Offset(2f, height / 2f)) }
         compose.onNodeWithTag("text-icon-menu").assertDoesNotExist()
+    }
+
+    @Test fun fontAdjustmentFadesOutAndRestoresTheSameSelectionAtItsNewPosition() {
+        val suspended = mutableStateOf(false)
+        val selection = mutableStateOf(Rect(240f, 700f, 480f, 750f))
+        show(suspended, selection)
+        val menu = compose.onNodeWithTag("text-icon-menu")
+        fun top(): Int {
+            val root = menu.fetchSemanticsNode().root as ViewRootForTest
+            return IntArray(2).also(root.view::getLocationOnScreen)[1]
+        }
+        val before = top()
+        compose.mainClock.autoAdvance = false
+        compose.runOnIdle { suspended.value = true }
+        compose.mainClock.advanceTimeBy(48)
+        menu.assertExists()
+        compose.mainClock.autoAdvance = true
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("text-icon-menu").fetchSemanticsNodes().isEmpty() }
+        compose.runOnIdle { selection.value = Rect(180f, 430f, 420f, 490f); suspended.value = false }
+        menu.assertIsDisplayed()
+        assertTrue(top() < before)
     }
 }

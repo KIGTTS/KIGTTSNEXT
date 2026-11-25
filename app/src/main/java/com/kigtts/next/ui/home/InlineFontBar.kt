@@ -22,14 +22,15 @@ import com.kigtts.next.ui.navigation.LocalPageActive
 
 @Composable
 fun InlineFontBar(label: String, value: Float, range: ClosedFloatingPointRange<Float>,
-    change: (Float) -> Unit, dismiss: () -> Unit, modifier: Modifier = Modifier, valueDescription: String? = null) {
+    change: (Float) -> Unit, dismiss: () -> Unit, modifier: Modifier = Modifier, valueDescription: String? = null,
+    onChangeFinished: (() -> Unit)? = null) {
     val active = LocalPageActive.current
     BackHandler(active) { dismiss() }
     val source = remember { MutableInteractionSource() }
     val colors = SliderDefaults.colors().animateEnabled(active)
     val sliderDescription = uiText("appearance.slider_named", "name" to label)
     Row(modifier.height(32.dp).testTag("inline-" + label), verticalAlignment = Alignment.CenterVertically) {
-        Slider(value, change, valueRange = range, enabled = active,
+        Slider(value, change, valueRange = range, enabled = active, onValueChangeFinished = onChangeFinished,
             colors = colors,
             modifier = Modifier.weight(1f).height(32.dp).semantics {
                 contentDescription = sliderDescription

@@ -195,8 +195,10 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
                                 HomeCoachMarks(progress = onboarding, sorting = model.quickSort,
                                     active = active && !inputOverlay && !returning && !state.voiceInputActive &&
                                         state.destination == Destination.Home && state.sidePage == null,
+                                    subtitleEditing = state.editing,
                                     cursorAvailable = state.editing && !state.forcedFullscreen &&
                                         state.mediaId == null && state.editorText.isNotBlank(),
+                                    quickDockCollapsed = state.panel == null && !state.subtitleExpanded,
                                     quickTextOpen = state.panel == HomePanel.QUICK_TEXT && !state.subtitleExpanded && !state.quickTextEditing,
                                     quickTextEditing = state.quickTextEditing, content = home)
                             }

@@ -4,16 +4,13 @@ package com.kigtts.next.ui.onboarding
 
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -22,7 +19,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -37,11 +35,13 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.i18n.UiLanguage
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
 import com.kigtts.next.theme.SecondaryPageSurface
@@ -59,7 +59,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, reducedMotion: Boolean,
-    changeTheme: (ThemeSettings) -> Unit, complete: (Boolean, Boolean) -> Unit, exit: () -> Unit) {
+    language: UiLanguage, changeLanguage: (UiLanguage) -> Unit, changeTheme: (ThemeSettings) -> Unit,
+    complete: () -> Unit, exit: () -> Unit) {
     val scope = rememberCoroutineScope()
     var document by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
     var accepted by rememberSaveable { mutableStateOf(progress.agreementAccepted()) }
@@ -91,10 +92,10 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
         if (current == FirstRunStep.WELCOME.ordinal) exit() else move(current - 1)
     }
 
-    fun finish(tryQuickText: Boolean) {
+    fun finish() {
         if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal || !accepted) return
         progress.visit(FirstRunStep.PERMISSIONS)
-        complete(tryQuickText, accepted)
+        if (progress.finish(agreementConfirmed = accepted)) complete()
     }
 
     BackHandler(document == null, onBack = ::back)
@@ -141,6 +142,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 if (page == FirstRunStep.WELCOME) {
                     OnboardingWelcomePage(
                         step == FirstRunStep.WELCOME, !motion, characterTilt,
+                        language, changeLanguage,
                         copyModifier = Modifier.graphicsLayer { alpha = entrance.value },
                     )
                     return@HorizontalPager
@@ -191,7 +193,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                     onClick = feedbackClick {
                         if (pager.isScrollInProgress) return@feedbackClick
                         when (val current = FirstRunStep.entries[pager.settledPage]) {
-                            FirstRunStep.PERMISSIONS -> finish(false)
+                            FirstRunStep.PERMISSIONS -> finish()
                             else -> move(current.ordinal + 1)
                         }
                     },
@@ -211,17 +213,6 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                         Text(uiText(if (lastPage) "onboarding.start" else "onboarding.next"))
                     }
                 }
-                AnimatedVisibility(
-                    visible = step == FirstRunStep.PERMISSIONS,
-                    enter = if (motion) expandVertically(tween(220), expandFrom = Alignment.Top) +
-                        fadeIn(tween(220)) else EnterTransition.None,
-                    exit = if (motion) shrinkVertically(tween(220), shrinkTowards = Alignment.Top) +
-                        fadeOut(tween(220)) else ExitTransition.None,
-                ) {
-                    MotionTextButton(feedbackClick { finish(true) }, enabled = accepted && !pager.isScrollInProgress) {
-                        Text(uiText("onboarding.try_quick_text"))
-                    }
-                }
             }
         }
     }
@@ -239,7 +230,8 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
 }
 
 @Composable
-private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>, copyModifier: Modifier) {
+private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>, language: UiLanguage,
+    changeLanguage: (UiLanguage) -> Unit, copyModifier: Modifier) {
     BoxWithConstraints(Modifier.fillMaxSize().testTag("onboarding-welcome")) {
         val pageHeight = maxHeight
         val contentWidth = (maxWidth - 44.dp).coerceAtLeast(1.dp)
@@ -249,7 +241,9 @@ private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt:
                 .padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            OnboardingPageCopy(FirstRunStep.WELCOME, copyModifier.testTag("onboarding-welcome-copy"))
+            OnboardingPageCopy(FirstRunStep.WELCOME, copyModifier.testTag("onboarding-welcome-copy")) {
+                OnboardingLanguage(language, changeLanguage)
+            }
             Spacer(Modifier.weight(1f))
             Box(Modifier.align(Alignment.End).widthIn(max = artWidth).fillMaxWidth()
                 .aspectRatio(WELCOME_ART_ASPECT).testTag("onboarding-welcome-art")) {
@@ -260,7 +254,7 @@ private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt:
 }
 
 @Composable
-private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier) {
+private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier, footer: @Composable () -> Unit = {}) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ThemeText(
             uiText("onboarding.${page.page}.title"), Modifier.fillMaxWidth().semantics { heading() },
@@ -275,6 +269,7 @@ private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Start,
         )
+        footer()
     }
 }
 
@@ -282,8 +277,33 @@ private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier
 private fun OnboardingRecommendations() {
     SettingsGroup(uiText("onboarding.recommendations")) {
         SettingItem(uiText("onboarding.subtitle_feature"), uiText("onboarding.subtitle_detail"), Icons.Default.Subtitles, SettingPosition.FIRST)
-        SettingItem(uiText("onboarding.quick_feature"), uiText("onboarding.quick_detail"), Icons.AutoMirrored.Filled.TextSnippet, SettingPosition.MIDDLE)
         SettingItem(uiText("onboarding.listening_feature"), uiText("onboarding.listening_detail"), Icons.Default.Hearing, SettingPosition.MIDDLE)
         SettingItem(uiText("nav.camera"), uiText("onboarding.camera_detail"), Icons.Default.PhotoCamera, SettingPosition.LAST)
+    }
+}
+
+@Composable
+private fun OnboardingLanguage(language: UiLanguage, change: (UiLanguage) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        FilledTonalButton(
+            onClick = feedbackClick { expanded = true },
+            modifier = Modifier.testTag("onboarding-language"),
+            shapes = expressivePillShapes(),
+        ) {
+            Icon(Icons.Default.Language, contentDescription = uiText("language.screen"), modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(uiLanguageLabel(language))
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            UiLanguage.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(uiLanguageLabel(option)) },
+                    onClick = feedbackClick { expanded = false; change(option) },
+                    modifier = Modifier.testTag("onboarding-language/${option.tag}").semantics { selected = option == language },
+                )
+            }
+        }
     }
 }

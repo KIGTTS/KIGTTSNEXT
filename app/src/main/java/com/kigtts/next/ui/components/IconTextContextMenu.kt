@@ -29,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.*
@@ -65,7 +66,8 @@ internal class IconTextMenuProvider : TextContextMenuProvider {
 /** Public Foundation menu callbacks keep native copy/paste/selection behavior and accessibility. */
 internal val LocalIconTextMenuEnabled = compositionLocalOf { false }
 @Composable
-internal fun ProvideIconTextContextMenu(enabled: Boolean = true, content: @Composable () -> Unit) {
+internal fun ProvideIconTextContextMenu(enabled: Boolean = true, suspended: Boolean = false,
+    keepInEditor: Boolean = false, content: @Composable () -> Unit) {
     if (!enabled) { content(); return }
     val provider = remember { IconTextMenuProvider() }
     val focus=LocalFocusManager.current
@@ -76,31 +78,38 @@ internal fun ProvideIconTextContextMenu(enabled: Boolean = true, content: @Compo
         Box(Modifier.onGloballyPositioned { coordinates = it }, propagateMinConstraints = true) {
             content()
             provider.displayed?.let { session -> coordinates?.takeIf { it.isAttached }?.let { anchor ->
-                key(session) { IconTextMenuPopup(session,anchor,{ provider.clearVisual(session) }) {
+                key(session) { IconTextMenuPopup(session, anchor, suspended, keepInEditor, { provider.clearVisual(session) }) {
                     if(session.owner==null)focus.clearFocus();session.close()
                 } }
             } }
         }
     }
-    BackHandler(provider.displayed != null) {
+    BackHandler(provider.session != null && !suspended) {
         provider.session?.let { if(it.owner==null)focus.clearFocus();it.close() }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordinates,finished:()->Unit,dismiss:()->Unit) {
+private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordinates, suspended: Boolean,
+    keepInEditor: Boolean, finished: () -> Unit, dismiss: () -> Unit) {
     val density = LocalDensity.current
-    val reveal=remember { Animatable(0f) }
-    LaunchedEffect(session.visible) {
-        reveal.animateTo(if(session.visible)1f else 0f,tween(if(session.visible)160 else 120))
-        if(!session.visible)finished()
+    val view = LocalView.current
+    val reveal = remember { Animatable(0f) }
+    val visible = session.visible && !suspended
+    var popupMounted by remember { mutableStateOf(visible) }
+    LaunchedEffect(visible, session.visible) {
+        if (visible) popupMounted = true
+        reveal.animateTo(if (visible) 1f else 0f, tween(if (visible) 160 else 120))
+        if (!visible) popupMounted = false
+        if (!session.visible) finished()
     }
     LaunchedEffect(session.owner?.focused) { if(session.owner?.focused==false)session.finish() }
+    if (!popupMounted) return
     // Compute during popup placement, after the text field's latest layout. Retain only for exit.
     val lastBounds=remember { arrayOf(Rect.Zero) }
     fun bounds():Rect {
-        if(session.visible&&anchor.isAttached) {
+        if(visible && anchor.isAttached) {
             val selected=session.data.contentBounds(anchor)
             val field=session.owner?.coordinates?.takeIf { it.isAttached }?.let { anchor.localBoundingBoxOf(it) }
             lastBounds[0]=if(field==null)selected else Rect(selected.left.coerceIn(field.left,field.right),
@@ -110,7 +119,8 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
         return lastBounds[0]
     }
     val safe = WindowInsets.safeDrawing
-    val bottom = maxOf(safe.getBottom(density), WindowInsets.ime.getBottom(density))
+    val bottom = safe.getBottom(density)
+    val keyboard = if (visible) WindowInsets.ime.getBottom(density) else 0
     val margin = with(density) { 8.dp.roundToPx() }
     val shadowInset = 18.dp
     val menuShape = MaterialTheme.shapes.medium
@@ -121,17 +131,22 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
     val right = safe.getRight(density,LocalLayoutDirection.current)
     val availableWidth=with(density) { (LocalWindowInfo.current.containerSize.width-left-right-margin*2-shadowPixels*2).coerceAtLeast(1).toDp() }
     val lastItems=remember { arrayOf<List<TextContextMenuItem>>(emptyList()) }
-    val components=if(session.visible)session.data.data().components.filterIsInstance<TextContextMenuItem>()
+    val components=if(visible)session.data.data().components.filterIsInstance<TextContextMenuItem>()
         .filter { it.key !is TextMenuAnchor && it.key !is ProcessTextKey }.also { lastItems[0]=it } else lastItems[0]
     // A field can move while the provider's full-window root stays still (scroll/app bar).
     // Reposition the native popup on actual geometry changes, not on every animation draw.
-    val position = remember(session.owner?.windowBounds,top,bottom,margin,shadowPixels,left,right) {
-        TextMenuPosition(::bounds,top,bottom,margin,shadowPixels,left,right)
+    val fieldBounds = if (visible) session.owner?.windowBounds else null
+    val position = remember(fieldBounds, visible, view, anchor, top, bottom, margin, shadowPixels, left, right, keyboard, keepInEditor) {
+        TextMenuPosition(::bounds, top, bottom, margin, shadowPixels, left, right, keepInContent = keepInEditor) {
+            textMenuVisibleWindow(view)
+        }
     }
-    Popup(position, onDismissRequest = dismiss, properties = PopupProperties(focusable = false)) {
+    Popup(position, onDismissRequest = { if (visible) dismiss() },
+        properties = PopupProperties(focusable = false, dismissOnClickOutside = !keepInEditor)) {
         // Both resize clipping and the alpha offscreen layer must include the shadow, not just the surface.
         Box(Modifier.animateContentSize(tween(140)).graphicsLayer { alpha=reveal.value }
-            .testTag("text-icon-menu-window").pointerInput(session,shadowPixels) {
+            .testTag("text-icon-menu-window").pointerInput(session, shadowPixels, visible) {
+                if (!visible) return@pointerInput
                 awaitEachGesture {
                     val down=awaitFirstDown(requireUnconsumed=false,pass=PointerEventPass.Initial)
                     if(down.position.x<shadowPixels||down.position.x>size.width-shadowPixels||
@@ -153,7 +168,7 @@ private fun IconTextMenuPopup(session: IconTextMenuSession, anchor: LayoutCoordi
                     val action = textMenuAction(item.key, index)
                     TooltipBox(positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
                         tooltip = { PlainTooltip { Text(item.label) } }, state = rememberTooltipState()) {
-                        MotionIconButton(feedbackClick { if(session.visible)item.onClick(session) }, Modifier.size(44.dp).testTag("text-menu-" + action.first)) {
+                        MotionIconButton(feedbackClick { if(visible)item.onClick(session) }, Modifier.size(44.dp).testTag("text-menu-" + action.first)) {
                             Icon(action.second, item.label)
                         }
                     }

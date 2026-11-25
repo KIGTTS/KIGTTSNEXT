@@ -26,7 +26,8 @@ import com.kigtts.plugin.api.PluginGesture
 import com.kigtts.next.ui.navigation.excludeHomeSideSwipes
 
 @Composable
-fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier, rendererInBackground: Boolean = false) {
+fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modifier, rendererInBackground: Boolean = false,
+    onFontAdjustment: (Boolean) -> Unit = {}) {
     val currentState by rememberUpdatedState(state)
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val media = model.mediaRepository.get(state.mediaId)
@@ -42,12 +43,13 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     }
     MediaTransition(media,state,model,surface.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
-        SubtitleText(currentState,model,Modifier.fillMaxSize(),rendererInBackground)
+        SubtitleText(currentState, model, Modifier.fillMaxSize(), rendererInBackground, onFontAdjustment)
     }
 }
 
 @Composable
-private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,rendererInBackground:Boolean) {
+private fun SubtitleText(state: AppState, model: AppViewModel, modifier: Modifier, rendererInBackground: Boolean,
+    onFontAdjustment: (Boolean) -> Unit) {
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -61,6 +63,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     val density = LocalDensity.current
     val text = state.editorText
     val nativeLedZoom = !state.editing && renderer?.native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led
+    val reportFontAdjustment by rememberUpdatedState(onFontAdjustment)
     LaunchedEffect(state.editing) { if (state.editing) { focus.requestFocus(); keyboard?.show() } }
     CompositionLocalProvider(LocalSubtitleFitCache provides rememberSubtitleFitCache()) {
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
@@ -68,7 +71,9 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
         .ledScrubGesture(model.subtitleRenderer.ledPlayback, nativeLedZoom, state.subtitleAppearance.reducedMotion)
         .subtitleZoom(model to nativeLedZoom, onZoomEnd = {
             if (nativeLedZoom) model.subtitleRenderer.takeLedZoom()?.let(model::setSubtitleSizePercent)
+            reportFontAdjustment(false)
         }) { factor ->
+            reportFontAdjustment(true)
             val current = model.state.value.subtitleSizePercent
             if (nativeLedZoom) model.subtitleRenderer.previewLedZoom(current, factor)
             else model.setSubtitleSizePercent(current * factor)

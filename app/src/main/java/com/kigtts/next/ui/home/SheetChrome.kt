@@ -100,10 +100,11 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-handle-height")
     val radius by animateDpAsState(if (pressed && !open) 8.dp else (24f - 21.5f * progress).dp,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-handle-corner")
-    BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle").homeTipAnchor(HomeTip.PANEL, enabled = !motion.active), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
         val gripWidth by animateDpAsState(if (motion.active) 88.dp else 76.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-grip-width")
         Box(Modifier.width(maxWidth * (1f - progress) + gripWidth * progress).height(height)
-            .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius)).themeFill { it.primary }
+            .testTag("dock-main").homePreviewRegion("dock-handle").homeTipAnchor(HomeTip.PANEL, enabled = !open && !motion.active)
+            .clip(RoundedCornerShape(radius)).themeFill { it.primary }
             .clearAndSetSemantics {
                 contentDescription = label; role = Role.Button
                 onClick { click(); true }

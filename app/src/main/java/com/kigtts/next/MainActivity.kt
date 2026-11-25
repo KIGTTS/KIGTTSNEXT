@@ -10,7 +10,6 @@ import androidx.activity.viewModels
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.notificationLink
 import com.kigtts.next.overlay.overlayLink
-import com.kigtts.next.state.HomePanel
 import com.kigtts.next.ui.onboarding.FirstRunHost
 import com.kigtts.next.ui.onboarding.FirstRunStep
 import com.kigtts.next.ui.onboarding.FirstRunStore
@@ -42,7 +41,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         if (progress.step() == FirstRunStep.WELCOME) WelcomeIllustration.prepare(application)
         val startup = NativeStartup(this)
         pendingLaunch = savedInstanceState?.getBoolean(PENDING_LAUNCH) ?: true
-        setContent { FirstRunHost(model, progress, startup, complete = ::finishOnboarding, exit = ::finish) }
+        setContent { FirstRunHost(model, progress, startup, complete = ::deliverLaunch, exit = ::finish) }
         if (savedInstanceState == null) startup.install()
         deliverLaunch()
     }
@@ -63,10 +62,6 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         model.externalIntent(intent)
         model.notificationLink(intent)
         model.overlayLink(intent)
-    }
-    private fun finishOnboarding(tryQuickText: Boolean) {
-        if (tryQuickText && (intent?.action == Intent.ACTION_MAIN || intent?.action == null)) model.openPanel(HomePanel.QUICK_TEXT)
-        deliverLaunch()
     }
     override fun onStart() {
         super.onStart()

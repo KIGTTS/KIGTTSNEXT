@@ -42,4 +42,22 @@ class TextMenuPositionTest {
         assertEquals(50 + 420 - 8, title.y + popup.height - 18)
         assertTrue(title.y > body.y)
     }
+
+    @Test fun theResizedNativeViewportKeepsItsOriginAndDoesNotSubtractTheKeyboardTwice() {
+        val nativeFrame = IntRect(28, 54, 400, 520)
+        val position = TextMenuPosition({ Rect(375f, 458f, 400f, 480f) }, 54, 280, 8,
+            visibleWindow = { nativeFrame })
+        val offset = position.calculatePosition(anchor, IntSize(372, 466), LayoutDirection.Ltr, popup)
+        assertEquals(212, offset.x)
+        assertEquals(358, offset.y)
+    }
+
+    @Test fun tallSelectionsCannotPutTheMenuOverTheSubtitlesFontControls() {
+        val editor = IntRect(0, 188, 400, 490)
+        val position = TextMenuPosition({ Rect(32f, 8f, 380f, 292f) }, 24, 0, 8, shadowInset = 18,
+            keepInContent = true)
+        val offset = position.calculatePosition(editor, window, LayoutDirection.Ltr, popup)
+        assertTrue(offset.y >= editor.top + 8)
+        assertTrue(offset.y + popup.height <= editor.bottom - 8)
+    }
 }

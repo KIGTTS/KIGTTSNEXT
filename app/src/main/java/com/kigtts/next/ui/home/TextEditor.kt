@@ -36,6 +36,8 @@ fun TextEditor(
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val (idle, controlsAlpha) = rememberPanelIdleChrome(renderer?.presentation?.fadeControlsWhenIdle == true && media == null, state.editing)
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
+    val sliderAdjusting = remember { mutableStateOf(false) }
+    val pinchAdjusting = remember { mutableStateOf(false) }
     val horizontal = with(LocalDensity.current) { (if (renderer != null) 2.dp else 12.dp).roundToPx() }
     val backgroundAlpha = if (state.theme.background == null) 1f else .88f
     Surface(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle), shape = homeCardShape(neighbors),
@@ -48,9 +50,13 @@ fun TextEditor(
                 MediaTransition(media,state,model,Modifier.fillMaxSize())
             }
             Column {
-                Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = subtitleControlsInset, top = subtitleControlsInset, end = subtitleControlsInset)) { EditorToolbar(state, model) }
-                Box(Modifier.weight(1f).fillMaxWidth()) { ProvideIconTextContextMenu {
-                    SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true)
+                Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = subtitleControlsInset, top = subtitleControlsInset, end = subtitleControlsInset)) {
+                    EditorToolbar(state, model, onFontAdjustment = { sliderAdjusting.value = it })
+                }
+                Box(Modifier.weight(1f).fillMaxWidth()) { ProvideIconTextContextMenu(suspended = sliderAdjusting.value || pinchAdjusting.value,
+                    keepInEditor = true) {
+                    SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true,
+                        onFontAdjustment = { pinchAdjusting.value = it })
                 } }
                 if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
                 EditorFooter(state, model, Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { bottom = it.height })

@@ -81,14 +81,15 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
                 revision = state.pluginRevision, visible = open && progress > .001f)
         }
         // This owner never changes when the pill morphs or plugin buttons are inserted.
-        Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle").homeTipAnchor(HomeTip.PANEL, enabled = !motion.active), contentAlignment = Alignment.Center) {
+        Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
             val thickness by animateFloatAsState(if (pressed && !open) 44f else 48f - 44f * progress + (if (motion.active) 3f * progress else 0f),
                 MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-thickness")
             val length by animateFloatAsState(if (motion.active) 88f else 76f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-length")
             val radius by animateFloatAsState(if (pressed && !open) 8f else 24f - 22f * progress,
                 MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-radius")
             Box(Modifier.width(thickness.coerceAtLeast(2f).dp).heightFrom { 160f * (1f - progress) + length * progress }
-                .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
+                .testTag("dock-main").homePreviewRegion("dock-handle").homeTipAnchor(HomeTip.PANEL, enabled = !open && !motion.active)
+                .clip(RoundedCornerShape(radius.coerceAtLeast(0f).dp)).background(MaterialTheme.colorScheme.primary)
                 .clearAndSetSemantics {
                     contentDescription = dockLabel
                     role = Role.Button
