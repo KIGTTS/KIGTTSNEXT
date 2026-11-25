@@ -73,7 +73,7 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
             Text(uiText("expression.edit"), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
             Button(save, enabled = draft.name.isNotBlank() && !saving && !loading) { Text(uiText("action.save")) }
         }
-        ExpressionArtPreview(draft)
+        ExpressionArtPreview(draft, layer.anchor)
         OutlinedTextField(draft.name, { change(draft.copy(name = it.take(80))) }, Modifier.fillMaxWidth(),
             singleLine = true, label = { Text(uiText("expression.name")) })
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -99,6 +99,14 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
                     Text(uiText("expression.anchor." + anchor.name.lowercase(Locale.ROOT)))
                 })
             }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(uiText("expression.fringe"), Modifier.weight(1f))
+            Switch(layer.hideUnderFringe, { edit(layer.copy(hideUnderFringe = it)) })
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(uiText("expression.blur_base"), Modifier.weight(1f))
+            Switch(layer.blurBase, { edit(layer.copy(blurBase = it)) })
         }
         ExpressionSlider("scale", layer.scale, .15f..3f) { edit(layer.copy(scale = it)) }
         ExpressionSlider("x", layer.x, -1f..1f) { edit(layer.copy(x = it)) }

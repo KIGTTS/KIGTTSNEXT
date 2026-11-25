@@ -30,19 +30,27 @@ internal fun cameraEvLabel(index: Int, step: Float): String =
 internal fun BoxScope.CameraExposureRail(state: CameraExposureCompensation, bounds: Rect, vertical: Boolean,
     zoomStops: Int, visible: Boolean, enabled: Boolean, toggle: () -> Unit) {
     val copy = rememberCameraCopy()
-    val showButton = visible && state.range.first < state.range.last
+    CameraRailAccessory(bounds, vertical, zoomStops, visible && state.range.first < state.range.last, enabled,
+        false, copy.text("camera.status_ev", "value" to cameraEvLabel(state.baseline, state.step)), Icons.Default.Exposure,
+        "camera-global-exposure", state.baseline != 0, toggle)
+}
+
+@Composable
+internal fun BoxScope.CameraRailAccessory(bounds: Rect, vertical: Boolean, zoomStops: Int, visible: Boolean,
+    enabled: Boolean, opposite: Boolean, description: String, icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tag: String, highlighted: Boolean, click: () -> Unit) {
     val padding = 48.dp * zoomStops / 2 + 28.dp
+    val sign = if (opposite) -1 else 1
     Box(Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds), contentAlignment = Alignment.Center) {
-        val placement = if (vertical) Modifier.offset(y = padding.coerceAtMost((bounds.height / 2 - 22f).coerceAtLeast(0f).dp))
-            else Modifier.offset(x = -padding.coerceAtMost((bounds.width / 2 - 22f).coerceAtLeast(0f).dp))
-        AnimatedVisibility(showButton, placement, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-            ToolButton(copy.text("camera.status_ev", "value" to cameraEvLabel(state.baseline, state.step)), Icons.Default.Exposure, toggle,
-                Modifier.testTag("camera-global-exposure").excludeCameraPull(), size = 44.dp,
+        val placement = if (vertical) Modifier.offset(y = padding.coerceAtMost((bounds.height / 2 - 22f).coerceAtLeast(0f).dp) * sign)
+            else Modifier.offset(x = -padding.coerceAtMost((bounds.width / 2 - 22f).coerceAtLeast(0f).dp) * sign)
+        AnimatedVisibility(visible, placement, enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
+            ToolButton(description, icon, click, Modifier.testTag(tag).excludeCameraPull(), size = 44.dp,
                 shapes = IconButtonDefaults.shapes(CircleShape, MaterialTheme.shapes.small),
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = .88f),
-                    contentColor = if (state.baseline != 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                    .keepColorsWhenLocked(), enabled = enabled && showButton)
+                    contentColor = if (highlighted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                    .keepColorsWhenLocked(), enabled = enabled && visible)
         }
     }
 }

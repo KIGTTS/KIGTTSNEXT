@@ -23,7 +23,8 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                 if (command is AppCommand.Permission) {
                     val projectId = command.projectId
                     if (projectId != null) return managedPermission(manager, owner, capabilities, projectId, command.permission, ui()?.agentAccess)
-                    val allowed = manager.requestPermission(owner, command.permission)
+                    val allowed = if (owner in manager.builtinIds) command.permission in capabilities
+                        else manager.requestPermission(owner, command.permission)
                     return data { put("allowed", allowed) }
                 }
                 if (command is AppCommand.ManagedCall) return managedCall(manager, ui(), owner, capabilities, command)
@@ -31,7 +32,8 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                     catch (cancel: CancellationException) { throw cancel }
                     catch (failure: Exception) { AppReply.Failure("INVALID", failure.message?.take(300) ?: "图标操作失败") }
                 if ("app-control" !in capabilities) return AppReply.Failure("PERMISSION_DENIED", "插件没有应用控制权限")
-                val installedCaller = manager.status.any { it.installed.manifest.id == owner } || withContext(Dispatchers.IO) { manager.packages.installed().any { it.manifest.id == owner } }
+                val installedCaller = owner !in manager.builtinIds && (manager.status.any { it.installed.manifest.id == owner } ||
+                    withContext(Dispatchers.IO) { manager.packages.installed(owner) != null })
                 if (installedCaller && !manager.requestPermission(owner, "app-control"))
                     return AppReply.Failure("PERMISSION_DENIED", "应用控制权限尚未授权或已禁用")
                 return try {

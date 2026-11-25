@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.onboarding.HomeTip
+import com.kigtts.next.ui.onboarding.homeTipAnchor
 import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -71,7 +73,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
         horizontalAlignment = Alignment.CenterHorizontally) {
         ToolButton(if (open) uiText("quick.edit") else uiText("quick.camera"), if (open) Icons.Default.Edit else Icons.Default.PhotoCamera,
             { if (open) model.editQuickTexts() else openCamera(false) },
-            Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start"), shapes = shape, size = sideSize,
+            Modifier.size(sideSize).testTag("dock-start").homePreviewRegion("dock-start").homeTipAnchor(HomeTip.QUICK_EDIT, enabled = !motion.active), shapes = shape, size = sideSize,
             onLongClick = if (open) null else ({ openCamera(true) }),
             iconBlend = ToolIconBlend(Icons.Default.PhotoCamera, Icons.Default.Edit, progress))
         Box(Modifier.width(32.dp).heightFrom { 32f * progress }) {
@@ -79,7 +81,7 @@ private fun LandscapeSheetChrome(state: AppState, model: AppViewModel, motion: L
                 revision = state.pluginRevision, visible = open && progress > .001f)
         }
         // This owner never changes when the pill morphs or plugin buttons are inserted.
-        Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
+        Box(Modifier.weight(1f).fillMaxWidth().then(motion.dragModifier).testTag("sheet-handle").homeTipAnchor(HomeTip.PANEL, enabled = !motion.active), contentAlignment = Alignment.Center) {
             val thickness by animateFloatAsState(if (pressed && !open) 44f else 48f - 44f * progress + (if (motion.active) 3f * progress else 0f),
                 MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-thickness")
             val length by animateFloatAsState(if (motion.active) 88f else 76f, MaterialTheme.motionScheme.fastSpatialSpec(), label = "vertical-dock-length")

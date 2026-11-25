@@ -42,7 +42,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
             is Destination.PluginPage -> if (assistantPermissionPage) uiText("assistant.settings.permissions")
-                else pluginPage?.title ?: uiText("nav.plugin_page")
+                else pluginPage?.title ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
             is Destination.MediaLibrary -> {
                 val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
                 uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import jsonschema
 from datetime import datetime, timezone
+from kpm_catalog_categories import declare_categories
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "https://modelscope.cn/datasets/LHTSTUDIO/KIGTTS-Resources/resolve/master/"
@@ -79,12 +80,13 @@ def main():
     catalog = dict(schemaVersion=2, kind="RESOURCES", id="kigtts.resources", name="KIGTTS 资源", description="为字幕与照片添加新的风格。",
         homepage="https://github.com/KIGTTS/KPM", updatedAt=datetime.now(timezone.utc).isoformat(timespec="seconds"), linkPolicy=dict(recommendAfterInstall=True), icon=dict(symbol="collections_bookmark"), packages=packages, assets=assets)
     if args.expressions:
-        catalog.update(id="kigtts.expressions", name="KIGTTS 表情特效", description="给人脸与娃脸添加跟踪特效。",
+        catalog.update(id="kigtts.expressions", name="KIGTTS 面部贴纸", description="让贴纸跟随真人脸与娃脸。",
             localizations={
-                "en": {"name": "KIGTTS Face Effects", "description": "Tracking effects for faces and dolls."},
-                "ja": {"name": "KIGTTS 表情エフェクト", "description": "顔やドールの顔を追尾するエフェクト"},
-                "ko": {"name": "KIGTTS 표정 효과", "description": "사람과 인형 얼굴을 따라 움직이는 효과"},
+                "en": {"name": "KIGTTS Face Stickers", "description": "Tracking effects for faces and dolls."},
+                "ja": {"name": "KIGTTS 顔ステッカー", "description": "顔やドールの顔を追尾するエフェクト"},
+                "ko": {"name": "KIGTTS 얼굴 스티커", "description": "사람과 인형 얼굴을 따라 움직이는 효과"},
             })
+    declare_categories(catalog)
     jsonschema.Draft202012Validator(json.loads((ROOT / "distribution/kpm-catalog.schema.json").read_text(encoding="utf-8"))).validate(catalog)
     (folder / index_name).write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
     if not args.expressions:

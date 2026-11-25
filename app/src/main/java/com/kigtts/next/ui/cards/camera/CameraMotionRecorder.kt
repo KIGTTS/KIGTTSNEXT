@@ -27,7 +27,9 @@ internal class CameraMotionRecorder(private val context: Context, private val re
                     is VideoRecordEvent.Finalize -> events(CameraMotionEvent.Finished(duration,
                         event.error in setOf(VideoRecordEvent.Finalize.ERROR_NONE,
                             VideoRecordEvent.Finalize.ERROR_DURATION_LIMIT_REACHED,
-                            VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED)))
+                            VideoRecordEvent.Finalize.ERROR_FILE_SIZE_LIMIT_REACHED),
+                        event.error == VideoRecordEvent.Finalize.ERROR_NO_VALID_DATA ||
+                            event.error == VideoRecordEvent.Finalize.ERROR_SOURCE_INACTIVE))
                 }
             }
         }

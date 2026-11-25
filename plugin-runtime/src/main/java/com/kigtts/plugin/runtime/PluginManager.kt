@@ -16,6 +16,7 @@ data class WorkerStatus(val id: String, val slot: Int, val alive: Boolean)
 /** Serialized mutations prevent updates/imports/uninstall racing sessions and class loaders. */
 class PluginManager(private val context: Context, private val builtins: List<KigPlugin>,
     private val pausedPackages: Set<String> = emptySet(), bundled: List<BundledPlugin> = emptyList(),
+    private val builtinAppCapabilities: Map<String, Set<String>> = emptyMap(),
     bundledEnabled: (String) -> Boolean = { false }) {
     fun isPackagePaused(id: String): Boolean = id in pausedPackages
     val builtinIds: Set<String> = builtins.map { it.descriptor.id }.toSet()
@@ -98,10 +99,13 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
             for (plugin in builtins) {
                 val broker = HostSpeechBroker(plugin.descriptor.id, registry, paths)
                 try {
-                    withContext(Dispatchers.IO) { plugin.attach(ScopedEnvironment(context, paths.storage(plugin.descriptor.id),
-                        File(context.filesDir, "builtin-assets/${plugin.descriptor.id}").apply { mkdirs() }, false,
-                        speechBroker = BuiltinSpeechBroker(plugin.descriptor.id, registry, broker),
-                        recognitionBroker = broker.builtinRecognition())) }
+                    val id = plugin.descriptor.id
+                    val capabilities = builtinAppCapabilities[id].orEmpty()
+                    withContext(Dispatchers.IO) { plugin.attach(ScopedEnvironment(context, paths.storage(id),
+                        File(context.filesDir, "builtin-assets/$id").apply { mkdirs() }, "network" in capabilities,
+                        speechBroker = BuiltinSpeechBroker(id, registry, broker),
+                        recognitionBroker = broker.builtinRecognition(),
+                        appBroker = if ("app-control" in capabilities) appBrokerFactory?.invoke(id, capabilities) else null)) }
                     builtinBrokers += broker
                 } catch (error: Exception) { broker.close(); throw error }
             }

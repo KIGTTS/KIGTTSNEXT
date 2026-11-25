@@ -92,6 +92,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val revision by library.revision.collectAsState()
     val expressionId = options.expressionId.takeIf { modern && mode != CameraMode.SCAN }
     var expressionsOpen by rememberSaveable { mutableStateOf(false) }
+    var stickersExpanded by remember(mode, front) { mutableStateOf(false) }
     val analysisSupported = remember { CameraFaceAnalysis.supported }
     val compiled by produceState<CompiledExpression?>(null, library, expressionId, revision) {
         value = if (expressionId == null || !analysisSupported) null else withContext(Dispatchers.IO) {
@@ -178,17 +179,18 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     LaunchedEffect(session.countingDown) { if (session.countingDown) filtersExpanded = false }
     val evAvailable = mode != CameraMode.SCAN && session.manual.automaticExposure && session.exposure.step > 0f
     LaunchedEffect(evAvailable, active) { if (!evAvailable || !active) exposureOpen = false }
-    val interceptBack = pageActive && (session.busy || session.video.active || session.scan.showing || exposureOpen || proControl != null || filtersExpanded && !session.countingDown)
+    val interceptBack = pageActive && (session.busy || session.video.active || session.scan.showing || exposureOpen || stickersExpanded || proControl != null || filtersExpanded && !session.countingDown)
     val backAction = {
         if (session.video.active) session.video.stop()
         else if (session.scan.showing) session.scan.clear()
         else if (session.busy) message(copy.text("camera.capture_busy"))
         else if (exposureOpen) exposureOpen = false
+        else if (stickersExpanded) stickersExpanded = false
         else if (proControl != null) proControl = null
         else filtersExpanded = false
     }
     RegisterPageBackGuard(interceptBack, backAction)
-    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || expressionsOpen ||
+    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || expressionsOpen || stickersExpanded ||
         filtersExpanded || exposureOpen || proControl != null || session.scan.showing || morphing)
     PredictiveBackHandler(interceptBack) { events ->
         try { events.collect { }; backAction() } catch (_: CancellationException) { }
@@ -201,6 +203,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         else if (session.scan.showing) session.scan.clear()
         else if (session.busy) message(copy.text("camera.capture_busy"))
         else if (exposureOpen) exposureOpen = false
+        else if (stickersExpanded) stickersExpanded = false
         else if (proControl != null) proControl = null
         else if (filtersExpanded && !session.countingDown) filtersExpanded = false
         else { session.unbind(); onCancel() }
@@ -222,8 +225,8 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             chrome = { layout ->
             CameraOverlayControls(format, formats, filter, interactive, vertical, filtersExpanded,
                 { if (modern) options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) else format = nextCameraFormat(formats, format) },
-                { exposureOpen = false; proControl = null; options.showSettings() },
-                { exposureOpen = false; proControl = null; filtersExpanded = !filtersExpanded }, { filter = it },
+                { exposureOpen = false; proControl = null; stickersExpanded = false; options.showSettings() },
+                { exposureOpen = false; proControl = null; stickersExpanded = false; filtersExpanded = !filtersExpanded }, { filter = it },
                 options.flash, session.flashAvailable && session.manual.automaticExposure, {
                     options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
                 }, options.filterStrength, options::setFilterStrength, layout,
@@ -236,14 +239,26 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
                         active && granted && !locked && mode == CameraMode.PHOTO, options::setMotion)
                 }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.takeIf { modern }?.let(copy::label),
                 reserveBack = true)
+            CameraViewfinderPicker(stickersExpanded, vertical, layout) {
+                CameraFaceStickerPicker(library, options, vertical, interactive,
+                    close = { stickersExpanded = false },
+                    manage = { stickersExpanded = false; expressionsOpen = true },
+                    store = expressionStore?.let { store -> { stickersExpanded = false; store() } })
+            }
             CameraParameterRail(session, layout.zoom, vertical,
-                active && displayReady && (!session.busy || modern), displayReady && interactive && !session.busy && !filtersExpanded,
+                active && displayReady && (!session.busy || modern), displayReady && interactive && !session.busy && !filtersExpanded && !stickersExpanded,
                 if (exposureOpen) ProControl.EV else proControl, exposureOpen,
                 close = { exposureOpen = false; proControl = null }, dialVisibilityChanged = { zoomDialVisible = it },
                 exposureEnabled = displayReady && interactive && !session.busy,
-                expose = if (mode != CameraMode.PRO && evAvailable) ({ filtersExpanded = false; exposureOpen = true }) else null)
+                expose = if (mode != CameraMode.PRO && evAvailable) ({
+                    filtersExpanded = false; stickersExpanded = false; exposureOpen = true
+                }) else null,
+                stickersActive = stickersExpanded || enabledEffect != null,
+                stickers = if (modern && analysisSupported && mode != CameraMode.SCAN) ({
+                    filtersExpanded = false; exposureOpen = false; proControl = null; stickersExpanded = !stickersExpanded
+                }) else null)
             layout.pro?.let { bounds ->
-                CameraProRail(mode == CameraMode.PRO && !zoomDialVisible && !filtersExpanded,
+                CameraProRail(mode == CameraMode.PRO && !zoomDialVisible && !filtersExpanded && !stickersExpanded,
                     session.manual, session.exposure, displayReady && !locked, vertical, session::setGlobalExposure,
                     Modifier.align(Alignment.TopStart).cameraChromeBounds(bounds), proControl) { proControl = it }
             }
@@ -277,7 +292,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             galleryPreview = galleryPreview, configurationLocked = configurationLocked || mode == CameraMode.SCAN && readingCodeImage,
             gallerySaving = gallerySaving, scanImage = mode == CameraMode.SCAN,
             systemCamera = if (modern) null else ({ onSystemCamera(format) }),
-            burstStart = onBurst?.takeIf { mode == CameraMode.PHOTO }?.let { complete -> { if (displayReady && !locked) {
+            burstStart = onBurst?.takeIf { mode == CameraMode.PHOTO && !motion }?.let { complete -> { if (displayReady && !locked) {
                 val output = CameraPhotoOutput(options.watermark, options.encoding)
                 session.startBurst(format, filter, { shots -> complete(if (modern) shots.map { it.withOutput(output) } else shots) },
                     options.filterStrength, lut, options.effects)
@@ -301,8 +316,6 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         manual = session.manual.takeUnless { modern }, watermarkStore = watermarkStore,
         exposureWarningAvailable = session.previewFilterAvailable || !displayReady,
         videoStabilizationAvailable = session.videoStabilizationAvailable,
-        faceControlsAvailable = analysisSupported,
-        openExpressions = if (modern && analysisSupported) ({ options.hideSettings(); expressionsOpen = true }) else null,
-        expressionTitle = enabledEffect?.effect?.name)
+        faceControlsAvailable = analysisSupported)
     if (expressionsOpen) CameraExpressionsSheet(library, options, expressionStore, { expressionsOpen = false }, message)
 }

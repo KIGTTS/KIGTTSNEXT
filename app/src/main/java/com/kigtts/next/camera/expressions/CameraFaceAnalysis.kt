@@ -42,6 +42,7 @@ internal class CameraFaceAnalysis(
     }
     @Volatile private var current: CameraFaceFrame? = null
     @Volatile private var unavailable = false
+    @Volatile var sampleSurface = false
     @Volatile var sampleHistogram: ((ImageProxy) -> Unit)? = null
 
     fun latest(): CameraFaceFrame? = current?.takeIf { !closed.get() && it.isCurrent() }
@@ -52,7 +53,9 @@ internal class CameraFaceAnalysis(
             sampleHistogram?.invoke(image)
             if (unavailable) return
             val arrivedAt = SystemClock.elapsedRealtime()
-            val result = tracker.value.analyze(image, false)
+            val withSurface = sampleSurface
+            val result = tracker.value.analyze(image, withSurface)
+            val surfaces = if (withSurface) cn.kigarface.prototype.FaceSurfaceSamples.read(result) else emptyMap()
             val upright = sensorToUpright(image.width, image.height, image.imageInfo.rotationDegrees,
                 image.imageInfo.sensorToBufferTransformMatrix)
             val inverse = Matrix()
@@ -65,7 +68,7 @@ internal class CameraFaceAnalysis(
                 if (points.any { !it.x().isFinite() || !it.y().isFinite() }) return@mapNotNull null
                 ExpressionFace(face.id(), RectF(face.left(), face.top(), face.right(), face.bottom()),
                     face.opacity().coerceIn(0f, 1f), face.score().coerceIn(0f, 1f),
-                    points[0].point(), points[1].point(), points[2].point(), points[3].point(), points[4].point())
+                    points[0].point(), points[1].point(), points[2].point(), points[3].point(), points[4].point(), surfaces[face.id()]?.let(ExpressionFaceSurface::from))
             }
             current = CameraFaceFrame(faces, factory.getOutputTransform(image), inverse, arrivedAt)
             if (scheduled.compareAndSet(false, true)) main.execute {

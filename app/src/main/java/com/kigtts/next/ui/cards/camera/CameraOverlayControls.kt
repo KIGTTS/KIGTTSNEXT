@@ -1,25 +1,20 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.ToolButton
-import com.kigtts.next.ui.components.LocalCornerRadius
 import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.navigation.LocalPageActive
-import com.kigtts.next.ui.navigation.excludeCameraPull
 import com.kigtts.plugin.api.PolaroidFormat
 
 /** Portrait actions stay at the top right; landscape actions gather at the bottom left. */
@@ -79,23 +74,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
             4 -> settingsButton()
         }
     }
-    Box(if (layout != null) Modifier.align(Alignment.TopStart).cameraChromeBounds(layout.photo).clip(RoundedCornerShape(LocalCornerRadius.current))
-        else Modifier.matchParentSize()) {
-    // Keep both rails accessible, including while chrome is moving outside the viewfinder.
-    val zoomClearance = if (layout == null) 60f else if (vertical)
-        (layout.photo.right - layout.zoom.left + 8f).coerceAtLeast(8f)
-    else (layout.photo.bottom - layout.zoom.top + 8f).coerceAtLeast(8f)
-    AnimatedVisibility(filtersExpanded,
-        modifier = if (vertical) Modifier.align(Alignment.CenterEnd).width((144f + zoomClearance).dp).fillMaxHeight()
-            else Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
-        enter = fadeIn() + if (vertical) expandHorizontally(expandFrom = Alignment.End) else expandVertically(expandFrom = Alignment.Bottom),
-        exit = fadeOut() + if (vertical) shrinkHorizontally(shrinkTowards = Alignment.End) else shrinkVertically(shrinkTowards = Alignment.Bottom)) {
-        Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = androidx.compose.ui.graphics.RectangleShape) {
-            Box(if (vertical) Modifier.padding(end = zoomClearance.dp) else Modifier.padding(bottom = zoomClearance.dp)) {
-                CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength, customLuts, selectedLut, selectLut, importLut,
-                    effects, changeEffects, toggleFilters)
-            }
-        }
-    }
+    CameraViewfinderPicker(filtersExpanded, vertical, layout) {
+        CameraFilters(filter, enabled, selectFilter, vertical, strength, changeStrength, customLuts, selectedLut, selectLut, importLut,
+            effects, changeEffects, toggleFilters)
     }
 }

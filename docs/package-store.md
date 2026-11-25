@@ -1,6 +1,6 @@
-# 插件商店与包源
+# 拓展市场与包源
 
-`tools.package-store` 是独立 MIT 插件，版本 0.16.9，要求 API33。默认内置一条魔搭官方源，但不自动信任发布者或安装插件。设置中提供一个「插件商店」入口，使用主程序同一套分组、圆角、按钮与页面动效。源管理和浏览视图共用数据模型；可以浏览全部源，也可切到指定源。
+拓展市场随 KIGTTS 内置。设置、相机等入口共用同一市场。默认连接已有的官方插件源和资源源，按发布者签名及原生确认流程安装内容。升级后，既有的自定义源、缓存和下载记录沿用原存储。
 
 兼容性使用宿主 `AppCommand.Describe` 返回的 `pluginApi` / `minimumPluginApi`，由列表、详情、依赖计划与下载共用同一设备快照，不能把商店自身编译 API 当作新版宿主的上限。旧宿主缺少字段或返回非法范围时保守使用编译范围；最低 Android 版本与 ABI 仍分别核对。该响应扩展不改变管理桥版本或旧插件声明。
 
@@ -39,7 +39,7 @@ Native 清单使用现有 RSA/SHA-256 签名协议。Signed Lua 包新增 `manif
 
 官方目录为 Piper 声明 `service.speech-synthesis: ^0.8.0`，为流式识别与 SenseVoice 声明 `service.speech-recognition: ^0.8.0`。通过商店安装引擎时，把缺少或版本不匹配的服务加入同一安装计划，先装服务再装引擎。满足版本的已安装服务会复用；当前不会自动启用被用户禁用的服务，手动导入独立原生包也不会自动查源补齐前置。旧签名包未声明依赖时由目录补充，不重写已发布二进制；新签名清单如包含依赖则以签名内容为准。
 
-从网页打开添加源链接时，宿主先等待插件加载完毕。没有商店会提示下载官方插件商店，用户确认后才联网，随后检查大小、SHA-256、包ID、发布者、签名和兼容性，再由原生弹窗确认安装。商店已安装但停用时改为提示启用。源地址跨重启保留，取消不自动下载；商店可用后继续源确认，不提前读取待添加的第三方源。
+从网页或 NFC 打开添加源链接时，宿主等待拓展市场准备完成，然后打开来源或包的确认页。源地址跨重启保留，仍由用户确认添加。
 
 配置、目录、下载、中途文件与已验签 Lua 投递资源全部位于 `appdata/Kigtts/plugin/plugindata/tools.package-store/` 的 `config/catalogs/downloads/tmp/resources`。每次缓存命中会重新检查 byte count 与 SHA；下载失败或取消会清理本插件中途文件，镜像只在下载阶段切换。HTTPS最多显式跟随5次跳转以兼容魔搭LFS/CDN；每次核验HTTPS与无嵌入帐号，不复制Authorization或Cookie，拒绝HTTP降级，最终仍核对大小、SHA-256和签名。
 
@@ -130,3 +130,9 @@ schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUI
 ### 随主题色显示的 SVG 图标
 
 源和包均可注册 `"icon": {"image": "glyph", "monochrome": true}`，其中 `glyph` 为 assets 中已校验的受限 SVG。该 SVG 的透明度决定形状，前景由当前主题提供；请将留白写进 viewBox，不绘制底板。省略 monochrome 时保留原图颜色，透明白色旧 SVG 仍兼容自动染色。位图和详情预览图保持原色。宿主接口对应 API33 的 PluginResource.monochrome。
+
+## 来源指定分类
+
+源可以通过 `categories` 声明类型。包用 `categoryId` 引用本源的类型。同一类型跨源共用稳定 ID，例如插件的 `plugin.audio` 或资源的 `resource.expression`。名称、图标和 `localizations` 由源提供。市场按已启用源的顺序合并名称与译名，再统一展示包列表。旧式 `category`、`resourceType` 继续可读。
+
+最后一次通过校验的完整源目录含分类定义，一并写入本机缓存。重启时读取缓存，刷新失败不会覆盖它。停用来源后，其独有的类型从浏览列表隐藏。

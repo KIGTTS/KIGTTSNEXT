@@ -101,6 +101,7 @@ android {
     }
 }
 dependencies {
+    implementation(project(":market"))
     implementation(files(
         rootProject.file("third-party/kigarface/fivepoint-android-1.1.8.aar"),
         rootProject.file("third-party/kigarface/opencv-rgb-arm64-4.12.0.aar"),

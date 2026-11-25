@@ -94,6 +94,9 @@ $catalog = [ordered]@{ schemaVersion = 1; id = 'kigtts.official'; name = 'KIGTTS
 & (Join-Path $PSScriptRoot 'Add-OfficialPluginArtwork.ps1') -Catalog $catalog -OutputDirectory $output
 & (Join-Path $PSScriptRoot 'Add-OfficialPluginLocalization.ps1') -Catalog $catalog
 [IO.File]::WriteAllText((Join-Path $output 'index.json'), ($catalog | ConvertTo-Json -Depth 15) + "`n", $utf8)
+& python (Join-Path $PSScriptRoot 'kpm_catalog_categories.py') (Join-Path $output 'index.json')
+if ($LASTEXITCODE -ne 0) { throw 'Could not add catalog categories' }
+
 $readme = @"
 ---
 license: mit

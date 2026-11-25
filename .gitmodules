@@ -1,3 +1,6 @@
 [submodule ".sdk"]
 	path = .sdk
 	url = https://github.com/KIGTTS/plugin-sdk.git
+[submodule "market"]
+	path = .market
+	url = https://github.com/KIGTTS/plugin-package-store.git

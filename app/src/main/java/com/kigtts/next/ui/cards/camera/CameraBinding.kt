@@ -46,12 +46,11 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
     val modes = cameraExtensionPlan(requestedProcessing, available)
     var failure: Exception? = null
     var skipExtensions = false
-    var skipVideo = false
     var skipPreviewEffect = false
     // Preserve high-resolution/quality preference. Only the explicitly selected OEM mode may precede normal fallback.
     val videoQualities = when {
         videoMode -> listOf(Quality.FHD, Quality.HD, Quality.SD)
-        motion -> listOf(Quality.FHD, Quality.HD, null)
+        motion -> listOf(Quality.FHD, Quality.HD, Quality.SD, null)
         else -> listOf(null)
     }
     val photoMode = !videoMode && barcode == null
@@ -64,12 +63,11 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
         if (tryStabilized) listOf(filtered to true, filtered to false) else listOf(filtered to false)
     } else listOf(false to false)
     for ((videoFilter, stabilize) in videoAttempts) for (quality in videoQualities) for (mode in modes)
-        for (highResolution in if (photoMode) listOf(true, false) else listOf(false))
+        for (highResolution in if (photoMode && quality == null) listOf(true, false) else listOf(false))
         for (faceChoice in if (faces != null && mode == null && barcode == null) listOf(faces, null) else listOf(null))
         for (histogramChoice in histogramChoices) {
         currentCoroutineContext().ensureActive()
         if (mode != null && skipExtensions) continue
-        if (quality != null && skipVideo) continue
         if (videoFilter && skipPreviewEffect) continue
         // A previous OPEN/STREAMING value must never make a new session look ready before its first frame.
         awaitCameraPreviewIdle(view.previewStreamState)
@@ -128,7 +126,6 @@ internal suspend fun bindPolaroidCamera(context: Context, provider: ProcessCamer
             Log.w(CAMERA_LOG_TAG, "Binding failed; session released $label", error)
             // A runtime OEM failure is not fixed by trying every OEM mode with the same device.
             if (mode != null && error is CameraStartupException) skipExtensions = true
-            if (motion && !videoMode && quality != null && error is CameraStartupException) skipVideo = true
             if (effect?.failure != null) skipPreviewEffect = true
             attached?.let { previous ->
                 withTimeoutOrNull(2_000) { awaitCameraClosed(previous.camera.cameraInfo.cameraState) }

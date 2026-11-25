@@ -15,7 +15,7 @@ internal data class CameraMotionVideo(val durationMs: Long, val rotationDegrees:
 internal sealed interface CameraMotionEvent {
     data class Started(val durationMs: Long) : CameraMotionEvent
     data class Progress(val durationMs: Long) : CameraMotionEvent
-    data class Finished(val durationMs: Long, val usable: Boolean) : CameraMotionEvent
+    data class Finished(val durationMs: Long, val usable: Boolean, val retryable: Boolean = false) : CameraMotionEvent
 }
 
 internal fun interface CameraMotionRecording { fun stop() }

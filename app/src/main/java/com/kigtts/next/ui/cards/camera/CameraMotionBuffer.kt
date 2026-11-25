@@ -3,11 +3,13 @@ package com.kigtts.next.ui.cards.camera
 import android.os.SystemClock
 import androidx.compose.runtime.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import java.io.Closeable
 import java.io.File
 import java.util.UUID
 
 internal class CameraMotionTicket internal constructor(internal var shutterAtMs: Long) {
+    internal var exposed = false
     internal val finished = CompletableDeferred<List<CameraMotionPart>>()
 }
 
@@ -19,7 +21,6 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
     private val mux: (List<CameraMotionPart>, Long, File) -> CameraMotionVideo = CameraMotionMuxer::write) : Closeable {
     private class Active(val file: File, var startedAtMs: Long) {
         var recording: CameraMotionRecording? = null
-        var started = false
     }
     var ready by mutableStateOf(false); private set
     var failed by mutableStateOf(false); private set
@@ -29,6 +30,8 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
     private var stopJob: Job? = null
     private var closed = false
     private var stopping = false
+    private var retries = 0
+    private var retryJob: Job? = null
 
     fun start() {
         if (closed || failed || current != null || ticket != null || !scope.isActive) return
@@ -45,12 +48,29 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             return
         }
         when (event) {
-            is CameraMotionEvent.Started -> { active.started = true; active.startedAtMs = now() - event.durationMs }
-            is CameraMotionEvent.Progress -> if (event.durationMs >= 250) ready = true
+            is CameraMotionEvent.Started -> { active.startedAtMs = now() - event.durationMs }
+            is CameraMotionEvent.Progress -> if (event.durationMs >= 250) {
+                retries = 0
+                ready = true
+            }
             is CameraMotionEvent.Finished -> {
                 current = null
                 if (!event.usable || event.durationMs <= 0 || !active.file.isFile) {
-                    active.file.delete(); failPreparation(); return
+                    active.file.delete()
+                    if (event.retryable && retries < 2) {
+                        retries++
+                        ready = parts.lastOrNull()?.let { now() - (it.startedAtMs + it.durationMs) < PRE_ROLL_MS } == true
+                        val capture = ticket
+                        if (capture != null && stopping) capture.finished.complete(parts.toList())
+                        else {
+                            retryJob?.cancel()
+                            retryJob = scope.launch {
+                                delay(180)
+                                restartSegment()
+                            }
+                        }
+                    } else failPreparation()
+                    return
                 }
                 parts += CameraMotionPart(active.file, active.startedAtMs, event.durationMs)
                 if (ticket == null) while (parts.size > 2) parts.removeAt(0).file.delete()
@@ -58,18 +78,33 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
                 if (capture != null && stopping) capture.finished.complete(parts.toList())
                 else if (!closed && !failed) {
                     // Keep the existing capture ticket while crossing a segment boundary.
-                    val pending = ticket; ticket = null; start(); ticket = pending
+                    restartSegment()
                 }
             }
         }
     }
+    private fun restartSegment() {
+        val pending = ticket
+        ticket = null
+        start()
+        ticket = pending
+        if (failed) pending?.finished?.complete(emptyList())
+    }
+
+    suspend fun awaitReady() {
+        if (ready || closed || failed) return
+        withTimeoutOrNull(1_350) { snapshotFlow { ready || failed || closed }.first { it } }
+    }
+
     fun beginCapture(): CameraMotionTicket? {
-        if (!ready || closed || failed || current?.started != true || ticket != null) return null
-        return CameraMotionTicket(now()).also { ticket = it; stopping = false; armStop(it) }
+        if (!ready || closed || failed || current == null && parts.isEmpty() || ticket != null) return null
+        return CameraMotionTicket(now()).also { ticket = it; stopping = false }
     }
     fun exposureStarted(capture: CameraMotionTicket) {
-        if (ticket !== capture || stopping || closed) return
-        capture.shutterAtMs = now(); armStop(capture)
+        if (ticket !== capture || capture.exposed || closed) return
+        capture.exposed = true
+        capture.shutterAtMs = now()
+        armStop(capture)
     }
     private fun armStop(capture: CameraMotionTicket) {
         stopJob?.cancel()
@@ -87,11 +122,12 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
         effects: com.kigtts.next.media.color.PhotoEffects = com.kigtts.next.media.color.PhotoEffects.NONE): CameraMotionClip? {
         val destination = File(directory, "${UUID.randomUUID()}-clip.mp4")
         return try {
+            if (!capture.exposed && !capture.finished.isCompleted) exposureStarted(capture)
             val saved = withTimeout(6_000) { capture.finished.await() }
             val relevant = saved.filter { it.startedAtMs + it.durationMs > capture.shutterAtMs - PRE_ROLL_MS &&
                 it.startedAtMs <= capture.shutterAtMs + POST_ROLL_MS }.sortedBy { it.startedAtMs }
             require(relevant.isNotEmpty())
-            val result = withContext(Dispatchers.IO) { mux(relevant, capture.shutterAtMs, destination) }
+            val result = withContext(Dispatchers.IO) { muxWithSingleSegmentFallback(relevant, capture.shutterAtMs, destination) }
             require(result.durationMs > 0 && destination.isFile && destination.length() > 0)
             CameraMotionClip(destination, result.durationMs, result.rotationDegrees, result.shutterPositionMs, colorMatrix.copyOf(), lut, strength, effects)
         } catch (_: TimeoutCancellationException) {
@@ -107,6 +143,21 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             }
         }
     }
+    private fun muxWithSingleSegmentFallback(parts: List<CameraMotionPart>, shutter: Long, destination: File): CameraMotionVideo {
+        try {
+            return mux(parts, shutter, destination)
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } catch (error: Exception) {
+            // An encoder may renegotiate formatting at rollover. Keep the segment that actually spans the shutter.
+            val complete = parts.filter { it.startedAtMs <= shutter && it.startedAtMs + it.durationMs > shutter + 40 }
+                .maxByOrNull { it.durationMs }
+            if (parts.size <= 1 || complete == null) throw error
+            destination.delete()
+            return mux(listOf(complete), shutter, destination)
+        }
+    }
+
     fun abort(capture: CameraMotionTicket?) {
         if (capture == null || ticket !== capture) return
         ticket = null; capture.finished.cancel(); stopJob?.cancel(); stopJob = null
@@ -117,6 +168,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
     private fun failPreparation() {
         if (failed || closed) return
         failed = true; ready = false
+        retryJob?.cancel(); retryJob = null
         current?.recording?.stop(); current?.file?.delete(); current = null
         parts.forEach { it.file.delete() }; parts.clear()
         ticket?.finished?.complete(emptyList())
@@ -125,6 +177,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
     override fun close() {
         if (closed) return
         closed = true; ready = false; stopJob?.cancel(); stopJob = null
+        retryJob?.cancel(); retryJob = null
         ticket?.finished?.cancel(); ticket = null
         val active = current; current = null
         active?.recording?.stop(); active?.file?.delete()

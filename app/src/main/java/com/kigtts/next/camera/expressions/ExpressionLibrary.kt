@@ -17,7 +17,8 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
     private val directory = File(app.filesDir, "camera-expressions")
     private val changes = MutableStateFlow(0)
     val revision = changes.asStateFlow()
-    private val names = listOf("agni", "side_eye", "kim", "lau")
+    private val illustrations = listOf("agni", "side_eye", "kim", "lau")
+    private val names = illustrations + ExpressionPresets.names
 
     fun choices(): List<ExpressionEffect> = names.mapNotNull(::builtIn) + directory.listFiles().orEmpty()
         .asSequence().filter { it.extension == "kigexpression" && it.length() in 1..ExpressionPack.MAX_PACK.toLong() }
@@ -32,12 +33,13 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
     }
 
     private fun builtIn(name: String): ExpressionEffect? {
-        if (name !in names) return null
+        if (name !in illustrations) return ExpressionPresets.read(app, name)
         val svg = app.assets.open("camera-expressions/$name.svg").use {
             AppearanceAssets.readBounded(it, ExpressionPack.MAX_SVG).toString(Charsets.UTF_8)
         }
         return ExpressionEffect("builtin.$name", app.uiCopy("expression.ink.$name"),
-            listOf(ExpressionLayer(svg, ExpressionAnchor.EYES, scale = 1.32f)))
+            listOf(ExpressionLayer(svg, ExpressionAnchor.EYES, scale = 1.32f,
+                hideUnderFringe = true, blurBase = true, pivotY = 99f / 320f)))
     }
 
     fun newDraft() = ExpressionEffect("local.${UUID.randomUUID()}", "", listOf(

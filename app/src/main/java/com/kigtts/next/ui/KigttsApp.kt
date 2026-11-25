@@ -64,7 +64,6 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
     var pluginImport by remember { mutableStateOf<Pair<String, PluginOutcome.ImportResource>?>(null) }
     var pluginExport by remember { mutableStateOf<Pair<String, PluginOutcome.ExportResource>?>(null) }
     var packageInstall by remember { mutableStateOf<Pair<String, PluginOutcome.InstallPackage>?>(null) }
-    val storeBootstrap by model.storeBootstrap.state.collectAsStateWithLifecycle()
     val profileShareFormat by model.sharing.profileFormat.collectAsStateWithLifecycle()
     val sharingSetup = if (com.kigtts.next.sharing.CLOUD_SHARING_ENABLED) model.sharing.setup.state.collectAsStateWithLifecycle().value else null
     val speechPrompt by model.synthesisGuidance.prompt.collectAsStateWithLifecycle()
@@ -73,7 +72,7 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
     val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
     val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || storeBootstrap != null || sharingSetup != null || profileShareFormat != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || sharingSetup != null || profileShareFormat != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -163,7 +162,6 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             com.kigtts.next.ui.plugins.PluginArtworkRequest(model, artworkSelector) { artworkSelector = null }
             PluginExportRequest(model, pluginExport) { pluginExport = null }
             com.kigtts.next.ui.plugins.PackageInstallRequest(model, packageInstall) { packageInstall = null }
-            com.kigtts.next.ui.plugins.StoreBootstrapPrompt(model)
             com.kigtts.next.ui.plugins.SpeechServicePrompt(model)
             com.kigtts.next.ui.home.SystemRecognitionMicPrompt(model)
             com.kigtts.next.ui.plugins.LegacyPiperPrompt(model)
@@ -179,10 +177,21 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
                     Box(Modifier.fillMaxSize().padding(insets).consumeWindowInsets(insets).then(if (ownsIme) Modifier else Modifier.imePadding()).trackVoiceInputGesture(model.voiceInputGesture, model::dispatchVoiceGestureRelease)) {
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             back, false) { active ->
-                            HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model, { model.navigate(Destination.Settings) },
-                                if (active) back else IdleReturnProgress, inlineTips = onboarding != null)
-                            if (onboarding != null) HomeCoachMarks(state, model.quickSort, homePreview, onboarding,
-                                foreground = active && !inputOverlay)
+                            val home: @Composable () -> Unit = {
+                                HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model,
+                                    { model.navigate(Destination.Settings) }, if (active) back else IdleReturnProgress,
+                                    inlineTips = onboarding != null)
+                            }
+                            if (onboarding == null) home() else {
+                                val returning by remember(back) { derivedStateOf { back.value.progress > 0f } }
+                                HomeCoachMarks(progress = onboarding, sorting = model.quickSort,
+                                    active = active && !inputOverlay && !returning && !state.voiceInputActive &&
+                                        state.destination == Destination.Home && state.sidePage == null,
+                                    cursorAvailable = state.editing && !state.forcedFullscreen &&
+                                        state.mediaId == null && state.editorText.isNotBlank(),
+                                    quickTextOpen = state.panel == HomePanel.QUICK_TEXT && !state.subtitleExpanded && !state.quickTextEditing,
+                                    quickTextEditing = state.quickTextEditing, content = home)
+                            }
                         }
                         if (!state.destination.assistantChatHandlesIme()) com.kigtts.next.ui.home.VoiceInputSurface(state, model)
                     }

@@ -36,7 +36,7 @@ class ResourceImportTest {
             importResource(model, archive)
         }
         val effects = library.choices()
-        assertEquals(4, effects.count { it.id.startsWith("builtin.") })
+        assertEquals(14, effects.count { it.id.startsWith("builtin.") })
         assertEquals(1, effects.count { it.name == art.name })
         assertEquals(art.layers, library.find(effects.single { it.name == art.name }.id)?.layers)
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
@@ -86,6 +86,28 @@ class ResourceImportTest {
             assertTrue(image.getPixel(250, 184) ushr 24 > 220)
             assertEquals(0, image.getPixel(390, 295) ushr 24)
         } finally { image.recycle(); jpeg.delete() }
+    }
+
+    @Test fun fringeMaskLeavesTheLowerFaceAndSoftBaseUsesSampledColor() {
+        val face = com.kigtts.next.camera.expressions.ExpressionFace.SAMPLE
+        val base = com.kigtts.next.camera.expressions.ExpressionLayer(
+            """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><rect width="320" height="320" fill="#ff2700"/></svg>""")
+        val effect = com.kigtts.next.camera.expressions.ExpressionEffect("test.fringe", "Mask", listOf(base.copy(hideUnderFringe = true)))
+        val image = android.graphics.Bitmap.createBitmap(320, 320, android.graphics.Bitmap.Config.ARGB_8888)
+        try {
+            com.kigtts.next.camera.expressions.CompiledExpression.compile(effect).draw(android.graphics.Canvas(image), listOf(face))
+            assertEquals(0, image.getPixel(175, 96) ushr 24)
+            assertTrue(image.getPixel(160, 171) ushr 24 > 200)
+            com.kigtts.next.camera.expressions.CompiledExpression.compile(effect.copy(layers = listOf(base)))
+                .draw(android.graphics.Canvas(image), listOf(face))
+            assertTrue(image.getPixel(175, 96) ushr 24 > 200)
+            image.eraseColor(0)
+            val blank = base.copy(svg = """<svg xmlns="http://www.w3.org/2000/svg"><circle fill="none" r="1"/></svg>""", blurBase = true)
+            com.kigtts.next.camera.expressions.CompiledExpression.compile(effect.copy(layers = listOf(blank)))
+                .draw(android.graphics.Canvas(image), listOf(face))
+            assertEquals(0xffeed3c5.toInt(), image.getPixel(160, 142))
+            assertEquals(0, image.getPixel(160, 300) ushr 24)
+        } finally { image.recycle() }
     }
 
     @Test fun signedFontAddsToAppearanceWithoutChangingSelectionOrCreatingPlugin() = runBlocking {

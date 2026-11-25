@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
     watermarkStore: (() -> Unit)? = null,
     exposureWarningAvailable: Boolean = true, videoStabilizationAvailable: Boolean = false,
-    faceControlsAvailable: Boolean = false, openExpressions: (() -> Unit)? = null, expressionTitle: String? = null) {
+    faceControlsAvailable: Boolean = false) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
@@ -48,7 +48,7 @@ import kotlinx.coroutines.withContext
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
             else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable,
-                videoStabilizationAvailable, faceControlsAvailable, openExpressions, expressionTitle) {
+                videoStabilizationAvailable, faceControlsAvailable) {
                 watermarkPage = true
             }
         }
@@ -58,7 +58,7 @@ import kotlinx.coroutines.withContext
 @Composable internal fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
     availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, exposureWarningAvailable: Boolean,
     videoStabilizationAvailable: Boolean = false, faceControlsAvailable: Boolean = false,
-    openExpressions: (() -> Unit)? = null, expressionTitle: String? = null, openWatermark: () -> Unit) {
+    openWatermark: () -> Unit) {
     val copy = rememberCameraCopy()
     val heifAvailable by produceState<Boolean?>(null) {
         value = withContext(Dispatchers.IO) { CameraPhotoEncoding.heifAvailable }
@@ -78,8 +78,6 @@ import kotlinx.coroutines.withContext
         if (options.mode != CameraMode.SCAN && faceControlsAvailable) {
             add(CameraSettingTile(uiText("expression.focus"), copy.toggle(options.faceFocus), Icons.Default.CenterFocusStrong, enabled,
                 options::toggleFaceFocus))
-            if (openExpressions != null) add(CameraSettingTile(uiText("expression.title"),
-                expressionTitle ?: copy.text("option.off"), Icons.Default.Face, enabled, openExpressions))
         }
         add(CameraSettingTile(copy.text("camera.level"), copy.toggle(options.level), Icons.Default.Straighten, enabled) { options.setLevel(!options.level) })
         if (flashAvailable) add(CameraSettingTile(copy.text("camera.flash"), copy.label(options.flash), Icons.Default.FlashOn, enabled) {

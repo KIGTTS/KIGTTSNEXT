@@ -102,6 +102,9 @@ internal fun CameraPaperPreview(view: PreviewView, format: PolaroidFormat, filte
             options?.takeIf { showGuides }?.let {
                 CameraCompositionGuides(it.grid, it.level, rotation, active && displayReady, Modifier.matchParentSize())
             }
+            if (displayReady && options?.faceFocus == true && options.mode != CameraMode.SCAN) {
+                CameraTrackingBoxes(view, session, Modifier.matchParentSize())
+            }
             CameraFocusOverlay(session.focusTarget, session.exposure.focusOffset, if (session.manual.automaticExposure) session.exposure.focusRange else 0..0,
                 enabled.value && displayReady, session::setExposure)
             CameraCountdownOverlay(session.countdownSeconds)

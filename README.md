@@ -40,7 +40,7 @@ Material 组件固定使用官方 `material3:1.5.0-alpha01`，该版本包含 Ex
 需要 JDK 17、Android SDK 36 与 PowerShell 7；本机 `local.properties` 设置 `sdk.dir`。源文件使用 UTF-8 无 BOM，每次修改同步保存本地 PROJECT 记录。
 
 ```powershell
-git submodule update --init .sdk
+git submodule update --init .sdk .market
 ./gradlew.bat :app:assembleDebug
 ./gradlew.bat :app:assembleRelease
 ./gradlew.bat :plugin-api:test :plugin-runtime:testDebugUnitTest :app:testDebugUnitTest :app:lintDebug

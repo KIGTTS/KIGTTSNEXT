@@ -40,15 +40,15 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
         failed
     } }
 
-    suspend fun save(cardId: String, embedOriginal: Boolean = false): Uri = gate.withLock {
+    suspend fun save(cardId: String, embedOriginal: Boolean = false, includeMotion: Boolean = true): Uri = gate.withLock {
         check(permission()) { "未允许保存到系统相册" }; permissionDeclined = false
         val card = requireNotNull(stickers.cards.value.firstOrNull { it.id == cardId }) { "这张照片已移除" }
-        publish(card, force = true, embedOriginal = embedOriginal) ?: error("照片已更新，请重新保存")
+        publish(card, force = true, embedOriginal = embedOriginal, includeMotion = includeMotion) ?: error("照片已更新，请重新保存")
     }
 
-    private suspend fun publish(card: PolaroidCard, force: Boolean, embedOriginal: Boolean = false): Uri? = withContext(Dispatchers.IO) {
+    private suspend fun publish(card: PolaroidCard, force: Boolean, embedOriginal: Boolean = false, includeMotion: Boolean = true): Uri? = withContext(Dispatchers.IO) {
         val cardHash = fingerprint(card)
-        val hash = cardHash + if (embedOriginal) "/embedded-v1" else ""
+        val hash = cardHash + (if (embedOriginal) "/embedded-v1" else "") + (if (includeMotion) "" else "/still")
         val previous = receipt(card.id)
         val previousUri = previous?.optString("uri")?.takeIf(String::isNotBlank)?.let(Uri::parse)
         if (previous?.optString("fingerprint") == hash) {
@@ -56,7 +56,7 @@ internal class PolaroidSystemAlbum(private val context: Context, private val sti
         }
         if (stickers.cards.value.firstOrNull { it.id == card.id } != card) return@withContext null
         val frame = PhotoFrameSpec.from(card.frameStyleId)
-        val motion = CardMotionRepository(stickers).get(card.imageId) != null
+        val motion = includeMotion && CardMotionRepository(stickers).get(card.imageId) != null
         val untouched = frame?.style == "none" && frame.crop == null && card.photoStyle == null && card.layers.isEmpty() &&
             card.title.isEmpty() && card.description.isEmpty() && !motion && card.photoZoom == 1.0 && card.photoX == .5 && card.photoY == .5 &&
             (card.originalImageId == null || card.originalImageId == card.imageId)

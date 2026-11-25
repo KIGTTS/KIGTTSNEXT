@@ -235,13 +235,6 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     // Every callback dependency must exist before bootstrap can resume from background I/O.
     private val navigationHistory = ArrayDeque<Destination>()
     internal var pluginCatalogReady = engineFixtures.isNotEmpty()
-    internal val storeBootstrap: com.kigtts.next.plugins.control.StoreBootstrapCoordinator by lazy { com.kigtts.next.plugins.control.StoreBootstrapCoordinator(viewModelScope,
-        installed = { pluginManager.status.any { it.installed.manifest.id == com.kigtts.next.plugins.control.STORE_ID } },
-        ready = { registry.plugins.any { registry.available(it) && it.contributions.sourceAction != null } },
-        download = { com.kigtts.next.plugins.control.StoreBootstrapDownload(pluginManager.paths.packages, pluginManager.packages::inspect).download() },
-        install = { candidate -> stopSpeech(); pluginManager.install(candidate.file, candidate.preview.publisherSha256); refreshPlugins() },
-        restore = { pluginManager.enable(com.kigtts.next.plugins.control.STORE_ID, true); refreshPlugins() },
-        complete = { sourceLinks.deliver() }) }
     internal val synthesisGuidance = SpeechServiceGuidance(application, status = {
         when {
             registry.plugins.any { it.tts?.info?.role == TtsRole.SERVICE && registry.available(it) } -> SpeechServiceStatus.ENABLED
@@ -253,22 +246,16 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         openSpeechPluginStore("语音合成服务")
     }
     internal fun openExpressionStore() {
-        val store = com.kigtts.next.plugins.control.STORE_ID
-        storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.EXPRESSIONS) {
-            invokeWithResult(store, "browse-expressions", emptyMap()) { accepted ->
-                if (!accepted) {
-                    navigate(Destination.PluginPage(store, "store"))
-                    message(hostCopy("expression.update_store"))
-                }
-            }
+        invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "browse-expressions", emptyMap()) { accepted ->
+            if (!accepted) message(hostCopy("market.unavailable"))
         }
     }
 
     internal fun openSpeechPluginStore(query: String) {
-        storeBootstrap.offer(com.kigtts.next.plugins.control.StoreBootstrapPurpose.SYNTHESIS) {
-            invokeWithResult(com.kigtts.next.plugins.control.STORE_ID, "search-save", mapOf("value" to query)) { accepted ->
-                if (accepted) navigate(Destination.PluginPage(com.kigtts.next.plugins.control.STORE_ID, "search"))
-            }
+        val market = com.kigtts.next.plugins.control.STORE_ID
+        invokeWithResult(market, "search-save", mapOf("value" to query)) { accepted ->
+            if (accepted) navigate(Destination.PluginPage(market, "search"))
+            else message(hostCopy("market.unavailable"))
         }
     }
     internal val legacyPiperGuidance = LegacyPiperGuidance(application,
@@ -280,7 +267,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         } }, install = ::openSpeechPluginStore)
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
         ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },
-        ready = { pluginCatalogReady }, missingStore = { storeBootstrap.offer() }) }
+        ready = { pluginCatalogReady }, missingStore = { message(hostCopy("market.unavailable")) }) }
     internal val externalFiles by lazy { ExternalFileOpen(this, viewModelScope) }
     val externalLinks by lazy { com.kigtts.next.links.ExternalLinks(this) }
     val resourceInstalls by lazy { com.kigtts.next.resources.ResourceInstalls(this, viewModelScope) }
@@ -300,6 +287,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             catch (_: Exception) { /* Failed workers remain handled by plugin management. */ }
         }
     } }
+    init {
+        registry.plugin(com.kigtts.next.plugins.control.STORE_ID)?.let { market ->
+            viewModelScope.launch {
+                market.uiChanges.collect { update { it.copy(pluginRevision = it.pluginRevision + 1) } }
+            }
+        }
+    }
     init { hostRuntime?.let { host -> host.attach(this); viewModelScope.launch { host.revision.drop(1).collect { refreshPlugins() } } } }
     fun sourceLink(uri: android.net.Uri?) = sourceLinks.accept(uri)
 
@@ -708,7 +702,6 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun onBackground() = speech.onBackground(captionOutput.windowOpen())
     override fun onCleared() {
         super.onCleared()
-        storeBootstrap.close()
         sharing.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
         audioDevices.close()

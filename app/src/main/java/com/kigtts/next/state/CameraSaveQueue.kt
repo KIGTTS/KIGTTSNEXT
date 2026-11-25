@@ -83,12 +83,29 @@ class CameraSaveQueue internal constructor(private val cards: CardRepository, pr
             frameStyleId = PhotoFrameSpec(shown.width, shown.height, pending.watermark).id,
             photoStyle = shot.photoStyle?.takeIf { shot.expression == null }?.persist(stickers)?.takeIf { it.hasPhotoTreatment() })
         val facts = cameraWatermarkCaptureFacts(stickers.context, shot.original, shot.capturedAt, pending.watermark)
-        shot.motion?.let { saveMotion?.invoke(shown.id, it) }
+        val motionAttached = shot.motion?.let { clip ->
+            try { saveMotion?.invoke(shown.id, clip); saveMotion != null }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (failure: Exception) {
+                Log.w("KigCameraSave", "Motion attachment could not be read", failure)
+                message(stickers.context.uiCopy("camera.motion_save_warning"))
+                false
+            }
+        } == true
         cards.systemAlbum.encodings.set(card.id, pending.encoding)
         cards.documents.hold(card.id)
         cards.createCameraPhoto(card, facts)
         // Publish the self-contained photo first; never remove the source before MediaStore commits.
-        val uri = cards.systemAlbum.save(card.id, embedOriginal = true)
+        val uri = try {
+            cards.systemAlbum.save(card.id, embedOriginal = true)
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (failure: Exception) {
+            if (!motionAttached) throw failure
+            Log.w("KigCameraSave", "Motion output failed; retrying the still", failure)
+            cards.systemAlbum.save(card.id, embedOriginal = true, includeMotion = false).also {
+                message(stickers.context.uiCopy("camera.motion_save_warning"))
+            }
+        }
         val usedHeif = cards.systemAlbum.isHeif(card.id)
         shot.discard()
         runCatching {

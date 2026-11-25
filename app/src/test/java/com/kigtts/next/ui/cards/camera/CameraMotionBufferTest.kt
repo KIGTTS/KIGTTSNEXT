@@ -69,6 +69,45 @@ class CameraMotionBufferTest {
         } finally { buffer.close() }
     }
 
+    @Test fun waitsForColdBufferAndDoesNotStopBeforeCameraExposure() = runTest {
+        val source = Source({ testScheduler.currentTime })
+        val buffer = CameraMotionBuffer(temporary.root, source, backgroundScope, { fail(it) }, { testScheduler.currentTime })
+        try {
+            buffer.start()
+            val warmup = async { buffer.awaitReady() }
+            runCurrent()
+            assertFalse(warmup.isCompleted)
+            advanceTimeBy(250)
+            source.progress()
+            runCurrent()
+            warmup.await()
+            val capture = requireNotNull(buffer.beginCapture())
+            advanceTimeBy(1700)
+            runCurrent()
+            assertEquals(0, source.recordings.last().stops)
+            buffer.exposureStarted(capture)
+            advanceTimeBy(1200)
+            runCurrent()
+            assertEquals(1, source.recordings.last().stops)
+        } finally { buffer.close() }
+    }
+
+    @Test fun retryableEncoderRolloverRestartsWithoutTakingTheCameraOffline() = runTest {
+        val source = Source({ testScheduler.currentTime })
+        val buffer = CameraMotionBuffer(temporary.root, source, backgroundScope, { fail(it) }, { testScheduler.currentTime })
+        try {
+            buffer.start()
+            source.recordings.last().events(CameraMotionEvent.Finished(0, false, retryable = true))
+            advanceTimeBy(180)
+            runCurrent()
+            assertEquals(2, source.recordings.size)
+            source.progress()
+            assertTrue(buffer.ready)
+            assertFalse(buffer.failed)
+            assertNotNull(buffer.beginCapture())
+        } finally { buffer.close() }
+    }
+
     @Test fun ordinaryPreRecordingIsBoundedAndNeverRetainsMoreThanTwoFinishedSegments() = runTest {
         val source = Source({ testScheduler.currentTime })
         val buffer = CameraMotionBuffer(temporary.root, source, backgroundScope, { fail(it) }, { testScheduler.currentTime })

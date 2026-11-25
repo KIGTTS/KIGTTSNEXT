@@ -23,6 +23,9 @@ internal data class ExpressionLayer(
     val y: Float = 0f,
     val rotation: Float = 0f,
     val opacity: Float = 1f,
+    val hideUnderFringe: Boolean = false,
+    val blurBase: Boolean = false,
+    val pivotY: Float? = null,
 )
 
 @Serializable
@@ -38,7 +41,7 @@ internal data class ExpressionPack(val version: Int = 1, val effects: List<Expre
             effect.layers.forEach { layer ->
                 require(layer.svg.toByteArray(Charsets.UTF_8).size in 1..MAX_SVG &&
                     layer.scale in .15f..3f && layer.x in -1f..1f && layer.y in -1f..1f &&
-                    layer.rotation in -180f..180f && layer.opacity in .1f..1f)
+                    layer.rotation in -180f..180f && layer.opacity in .1f..1f && (layer.pivotY == null || layer.pivotY in 0f..1f))
             }
         }
         return this
@@ -62,6 +65,7 @@ internal data class ExpressionFace(
     val id: Long, val bounds: RectF, val opacity: Float, val confidence: Float,
     val leftEye: ExpressionPoint, val rightEye: ExpressionPoint, val nose: ExpressionPoint,
     val leftMouth: ExpressionPoint, val rightMouth: ExpressionPoint,
+    val surface: ExpressionFaceSurface? = null,
 ) {
     val eyeDistance get() = hypot(rightEye.x - leftEye.x, rightEye.y - leftEye.y)
     private fun center(a: ExpressionPoint, b: ExpressionPoint) = ExpressionPoint((a.x + b.x) / 2f, (a.y + b.y) / 2f)
@@ -72,12 +76,13 @@ internal data class ExpressionFace(
     companion object {
         val SAMPLE = ExpressionFace(0, RectF(80f, 36f, 240f, 284f), 1f, 1f,
             ExpressionPoint(123f, 125f), ExpressionPoint(197f, 125f), ExpressionPoint(160f, 170f),
-            ExpressionPoint(134f, 216f), ExpressionPoint(186f, 216f))
+            ExpressionPoint(134f, 216f), ExpressionPoint(186f, 216f), ExpressionFaceSurface.SAMPLE)
     }
 }
 
 internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Picture>) {
     private val layers = effect.layers.zip(artwork)
+    val samplesSurface = effect.layers.any { it.hideUnderFringe || it.blurBase }
 
     fun draw(canvas: Canvas, faces: List<ExpressionFace>) {
         faces.forEach { face ->
@@ -102,14 +107,16 @@ internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Pi
                 }
                 val nominal = base * layer.scale
                 val save = canvas.save()
+                if (layer.hideUnderFringe) face.surface?.clip(canvas)
+                val alpha = (255 * layer.opacity * face.opacity).toInt().coerceIn(0, 255)
+                if (layer.blurBase) face.surface?.drawBase(canvas, alpha)
                 canvas.translate(point.x, point.y)
                 canvas.rotate(face.roll)
                 canvas.translate(width * layer.x, width * layer.y)
                 canvas.rotate(layer.rotation)
                 // 1.1.8's ink sheets have the eye line on row 99 of the original 320px art.
-                val inset = if (layer.anchor == ExpressionAnchor.EYES) 99f / 320f else .5f
+                val inset = layer.pivotY ?: if (layer.anchor == ExpressionAnchor.EYES) 99f / 320f else .5f
                 val target = RectF(-nominal / 2f, -nominal * inset, nominal / 2f, nominal * (1f - inset))
-                val alpha = (255 * layer.opacity * face.opacity).toInt().coerceIn(0, 255)
                 if (alpha < 255) {
                     val opacity = canvas.saveLayerAlpha(target, alpha)
                     canvas.drawPicture(picture, target)

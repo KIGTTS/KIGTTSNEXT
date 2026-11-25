@@ -79,6 +79,7 @@ class FirstRunUiTest {
         assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
         assertEquals(FirstRunStep.COMPLETE, guide.step())
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-panel").fetchSemanticsNodes().isNotEmpty() }
+        assertTipClearsAnchor("home-tip-panel", "sheet-handle")
         compose.onNodeWithText("知道了").performClick()
         assertTrue(guide.seen(HomeTip.PANEL))
         compose.activityRule.scenario.recreate()
@@ -99,6 +100,7 @@ class FirstRunUiTest {
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
         compose.runOnIdle { model.text("今天想试试光标横条") }
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-cursor").fetchSemanticsNodes().isNotEmpty() }
+        assertTipClearsAnchor("home-tip-cursor", "cursor-track")
         screenshot("cursor-tip")
         assertTrue(guide.seen(HomeTip.CURSOR))
         compose.onNodeWithText("知道了").performClick()
@@ -110,6 +112,7 @@ class FirstRunUiTest {
         compose.onNodeWithTag("home-tip-quick_edit").assertDoesNotExist()
         compose.onNodeWithTag("quick-edit-done").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-quick_edit").fetchSemanticsNodes().isNotEmpty() }
+        assertTipClearsAnchor("home-tip-quick_edit", "dock-start")
         screenshot("quick-edit-tip")
         compose.onNodeWithText("开启").performClick()
         assertEquals(true, model.quickSort.enabled.value)
@@ -117,6 +120,12 @@ class FirstRunUiTest {
         compose.runOnIdle { model.editQuickTexts() }
         compose.onNodeWithTag("quick-edit-done").performClick()
         compose.onNodeWithTag("home-tip-quick_edit").assertDoesNotExist()
+    }
+
+    private fun assertTipClearsAnchor(tipTag: String, anchorTag: String) {
+        val tip = compose.onNodeWithTag(tipTag).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+        val anchor = compose.onNodeWithTag(anchorTag, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertFalse("Tip ${tipTag} at ${tip} overlaps ${anchorTag} at ${anchor}", tip.overlaps(anchor))
     }
 
     private fun screenshot(step: String) = compose.onRoot().captureRoboImage("build/previews/onboarding-$step.png")

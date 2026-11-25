@@ -2,6 +2,8 @@
 
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.onboarding.HomeTip
+import com.kigtts.next.ui.onboarding.homeTipAnchor
 import com.kigtts.next.i18n.uiText
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -65,7 +67,7 @@ fun SheetChrome(state: AppState, model: AppViewModel, motion: HomeSheetMotion, e
                 when (index) {
                     0 -> ToolButton(if (open) uiText("quick.edit") else uiText("quick.sketch"), if (open) Icons.Default.Edit else Icons.Default.Draw,
                         { if (open) editPhrases() else model.openSidePage(SidePage.SKETCH) },
-                        Modifier.width(width).testTag("dock-start").homePreviewRegion("dock-start"), sources[0], shapes, size = sideSize)
+                        Modifier.width(width).testTag("dock-start").homePreviewRegion("dock-start").homeTipAnchor(HomeTip.QUICK_EDIT, enabled = !motion.active), sources[0], shapes, size = sideSize)
                     1 -> SlotActions(UiSlot.QUICK_PANEL_START, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = startSlot)
                     2 -> DockHandle(state, model, motion, sources[2], progress, Modifier.width(width).height(chromeHeight))
                     3 -> SlotActions(UiSlot.QUICK_PANEL_END, model.registry, model::invoke, Modifier.width(width).clipToBounds(), context = context, revision = state.pluginRevision, visible = endSlot)
@@ -98,7 +100,7 @@ private fun DockHandle(state: AppState, model: AppViewModel, motion: HomeSheetMo
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-handle-height")
     val radius by animateDpAsState(if (pressed && !open) 8.dp else (24f - 21.5f * progress).dp,
         MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-handle-corner")
-    BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle"), contentAlignment = Alignment.Center) {
+    BoxWithConstraints(modifier.then(motion.dragModifier).testTag("sheet-handle").homeTipAnchor(HomeTip.PANEL, enabled = !motion.active), contentAlignment = Alignment.Center) {
         val gripWidth by animateDpAsState(if (motion.active) 88.dp else 76.dp, MaterialTheme.motionScheme.fastSpatialSpec(), label = "dock-grip-width")
         Box(Modifier.width(maxWidth * (1f - progress) + gripWidth * progress).height(height)
             .testTag("dock-main").homePreviewRegion("dock-handle").clip(RoundedCornerShape(radius)).themeFill { it.primary }

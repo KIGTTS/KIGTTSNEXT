@@ -31,6 +31,8 @@ API30 新增 `card-borders/` 名片边框与 `word-stickers/` 参数字贴原创
 `version` 为 1，`effects` 中每款有自己的 ID、名称和图层。图层的 `svg` 内嵌
 矢量文本，`anchor` 支持 `FACE`、`EYES`、`LEFT_EYE`、`RIGHT_EYE`、`MOUTH`、
 `NOSE` 和 `FOREHEAD`。可设置 `scale`、`x`、`y`、`rotation` 和 `opacity`。
+可选的 `hideUnderFringe` 让图层避开刘海，`blurBase` 在图层下绘制取样肤色的羽化底，
+`pivotY` 指定 0 到 1 之间的图稿垂直锚点。
 每款最多 8 层。SVG 可使用路径与本地渐变，宿主拒绝脚本、外链和栅格图片。
 
 通过 `Build-ResourceSource.py --expressions` 生成签名包和独立的 `expressions.json`，

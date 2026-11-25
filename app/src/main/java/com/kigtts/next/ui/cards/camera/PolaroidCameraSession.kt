@@ -45,9 +45,12 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private val faceFocus by lazy { CameraFaceFocus() }
     private var automaticFaceFocus = false
     private var faceView: PreviewView? = null
+    var trackedFaces by mutableStateOf<CameraFaceFrame?>(null); private set
     fun faceControls(focus: Boolean, effect: CompiledExpression?) {
         automaticFaceFocus = focus
         previewColors.expression = effect
+        previewColors.faces?.sampleSurface = effect?.samplesSurface == true
+        if (!focus) trackedFaces = null
     }
     val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
     fun setExposureWarning(enabled: Boolean) { previewColors.exposureWarning = enabled }
@@ -101,9 +104,13 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             require(cameras.hasCamera(selector)) { context.uiCopy("camera.no_camera") }
             if (analyzeFaces && mode != CameraMode.SCAN && CameraFaceAnalysis.supported) {
                 analyzer = CameraFaceAnalysis(context, onUnavailable = {
-                    if (epoch == generation && binding?.faces != null) message(context.uiCopy("expression.unavailable"))
+                    if (epoch == generation && binding?.faces != null) {
+                        trackedFaces = null
+                        message(context.uiCopy("expression.unavailable"))
+                    }
                 }) { frame ->
                     val current = binding
+                    if (epoch == generation && current?.faces != null && automaticFaceFocus) trackedFaces = frame
                     if (epoch == generation && current?.faces != null && automaticFaceFocus &&
                         ready && !busy && !countingDown && !manual.manualFocus && focusTarget == null) {
                         faceFocus.update(current.camera, view, frame)
@@ -126,6 +133,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             binding = attached
             faceView = view
             previewColors.faces = attached.faces
+            attached.faces?.sampleSurface = previewColors.expression?.samplesSurface == true
             histogram = attached.histogram
             if (analyzer != null && attached.faces == null && previewColors.expression != null) {
                 message(context.uiCopy("expression.unavailable"))
@@ -345,6 +353,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             var delivered = false
             try {
                 manual.awaitConfigured()
+                motion?.awaitReady()
                 motionTicket = motion?.beginCapture()
                 if (motion != null && motionTicket == null && !motion.failed) message(context.uiCopy("camera.motion"))
                 var art: CameraExpressionPhoto? = null
@@ -395,6 +404,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         binding?.faces?.let { faceFocus.reset(); it.close() }
         previewColors.faces = null
         faceView = null
+        trackedFaces = null
         binding?.let { attached -> observer?.let { attached.camera.cameraInfo.cameraState.removeObserver(it) }
             zoomObserver?.let { attached.camera.cameraInfo.zoomState.removeObserver(it) }
             attached.release() }

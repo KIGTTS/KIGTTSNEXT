@@ -11,9 +11,7 @@ internal enum class FirstRunStep(val page: String) {
     COMPLETE("complete"),
 }
 
-internal enum class HomeTip(val anchor: String) {
-    PANEL("dock-handle"), CURSOR("cursor-track"), QUICK_EDIT("dock-start"),
-}
+internal enum class HomeTip { PANEL, CURSOR, QUICK_EDIT }
 
 /** The next step and the tips already shown survive process death independently. */
 internal class FirstRunStore(context: Context, existingInstall: Boolean = false) {

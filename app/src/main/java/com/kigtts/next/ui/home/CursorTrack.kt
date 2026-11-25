@@ -2,6 +2,8 @@
 
 package com.kigtts.next.ui.home
 
+import com.kigtts.next.ui.onboarding.HomeTip
+import com.kigtts.next.ui.onboarding.homeTipAnchor
 import com.kigtts.next.i18n.uiText
 
 import androidx.compose.animation.core.animateFloatAsState
@@ -58,7 +60,7 @@ fun CursorTrack(model: AppViewModel, modifier: Modifier = Modifier, enabled: Boo
                 dragOffset = (dragOffset + amount).coerceIn(-size.width * .3f, size.width * .3f)
             }
         } else Modifier.clearAndSetSemantics { }
-    Surface(modifier.padding(horizontal = 8.dp).height(32.dp).testTag("cursor-track").homePreviewRegion("cursor-track").then(input),
+    Surface(modifier.padding(horizontal = 8.dp).height(32.dp).testTag("cursor-track").homePreviewRegion("cursor-track").homeTipAnchor(HomeTip.CURSOR).then(input),
         shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHighest) {
         Box(contentAlignment = Alignment.Center) {
             PanelDragIndicator(press.pressed || dragging, "cursor-drag-indicator", Modifier.graphicsLayer { translationX = offset }, baseWidth = 40.dp)
