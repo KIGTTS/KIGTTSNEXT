@@ -28,7 +28,7 @@ import org.robolectric.annotation.LooperMode
 class FirstRunUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun guideSwipesBackAndRequiresConsentOnTheLastPage() {
+    @Test fun guideIgnoresSwipesAndRequiresConsentOnTheLastPage() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         val guide = FirstRunStore(compose.activity)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
@@ -40,9 +40,21 @@ class FirstRunUiTest {
         assertTrue(copy.left < art.left)
         assertEquals(copy.right, art.right, 1f)
         assertTrue(art.bottom <= next.top)
+        assertEquals(1576f / 1200f, art.width / art.height, .01f)
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()
         swipeForward()
+        awaitStep(guide, FirstRunStep.WELCOME)
+        val clover = compose.onNodeWithTag("onboarding-clover")
+        val welcomeFlowerTop = clover.fetchSemanticsNode().boundsInRoot.top
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithTag("onboarding-next").performClick()
+        compose.mainClock.advanceTimeBy(160)
+        val movingFlowerTop = clover.fetchSemanticsNode().boundsInRoot.top
+        compose.mainClock.autoAdvance = true
         awaitStep(guide, FirstRunStep.APPEARANCE)
+        val appearanceFlowerTop = clover.fetchSemanticsNode().boundsInRoot.top
+        assertTrue(movingFlowerTop < welcomeFlowerTop)
+        assertTrue(movingFlowerTop > appearanceFlowerTop)
         compose.onNodeWithTag("onboarding-appearance").assertIsDisplayed()
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         awaitStep(guide, FirstRunStep.WELCOME)
@@ -62,6 +74,8 @@ class FirstRunUiTest {
         compose.onNodeWithTag("onboarding-features").assertIsDisplayed()
         screenshot("features")
         swipeForward()
+        awaitStep(guide, FirstRunStep.FEATURES)
+        compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.PERMISSIONS)
         compose.onNodeWithTag("onboarding-permissions").assertIsDisplayed()
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()

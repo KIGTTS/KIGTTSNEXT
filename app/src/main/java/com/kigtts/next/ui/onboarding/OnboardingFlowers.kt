@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.lerp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -83,13 +84,15 @@ internal fun rememberOnboardingTilt(enabled: Boolean): Pair<State<Offset>, State
 }
 
 @Composable
-internal fun BoxScope.OnboardingFlowers(reducedMotion: Boolean, tilt: State<Offset>, welcome: Boolean) {
+internal fun BoxScope.OnboardingFlowers(reducedMotion: Boolean, tilt: State<Offset>, welcomeFraction: () -> Float) {
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
     val colors = MaterialTheme.colorScheme
     Flower("flower", 190.dp, .9f, 16f, colors.primaryContainer.copy(alpha = .76f), tilt, motion,
         Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-44).dp))
     Flower("clover", 116.dp, .55f, -23f, colors.tertiaryContainer.copy(alpha = .7f), tilt, motion,
-        Modifier.align(Alignment.TopStart).offset(x = (-38).dp, y = if (welcome) 210.dp else 98.dp))
+        Modifier.align(Alignment.TopStart).offset(x = (-38).dp, y = 222.dp).graphicsLayer {
+            translationY = 24.dp.toPx() * welcomeFraction()
+        }.testTag("onboarding-clover"))
     Flower("cookie", 212.dp, .75f, -12f, colors.primaryContainer.copy(alpha = .36f), tilt, motion,
         Modifier.align(Alignment.CenterStart).offset(x = (-120).dp, y = 36.dp))
     Flower("soft-burst", 164.dp, 1.15f, 9f, colors.secondaryContainer.copy(alpha = .65f), tilt, motion,

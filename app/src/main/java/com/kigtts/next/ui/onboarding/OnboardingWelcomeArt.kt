@@ -24,6 +24,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 private const val ART_ORIGIN = "https://kigtts-welcome.invalid/"
+internal const val WELCOME_ART_ASPECT = 1576f / 1200f
 
 @Composable
 internal fun OnboardingWelcomeArt(
@@ -40,7 +41,7 @@ internal fun OnboardingWelcomeArt(
             assets.open("onboarding/welcome.svg").bufferedReader(Charsets.UTF_8).use { input ->
                 val svg = input.readText().substringAfter("?>")
                 """<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
-<style>html,body{margin:0;overflow:hidden}body>svg{display:block;width:100%;height:auto;aspect-ratio:1216/1024;touch-action:none}</style>
+<style>html,body{margin:0;overflow:hidden}body>svg{display:block;width:100%;height:auto!important;aspect-ratio:$WELCOME_ART_ASPECT;touch-action:none;opacity:0}</style>
 </head><body>$svg</body></html>"""
             }
         }
@@ -88,7 +89,7 @@ private class WelcomeArtView(context: Context, onReady: (WelcomeArtView) -> Unit
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
 
             override fun onPageFinished(view: WebView, url: String) {
-                if (!disposed) script("document.getElementById('welcome-art') !== null") { hasArt ->
+                script("document.getElementById('welcome-art') !== null") { hasArt ->
                     if (!disposed && hasArt == "true") onReady(this@WelcomeArtView)
                 }
             }

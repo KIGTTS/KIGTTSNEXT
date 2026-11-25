@@ -51,12 +51,12 @@ class QuickPhraseStore(context: Context) {
             }.apply()
     }
     private val defaults get() = listOf(
-        QuickPhrase("你好呀！很高兴认识你~", "扩列社交"),
-        QuickPhrase("有点口渴，方便帮我拿瓶水或找根吸管吗？多谢多谢！", "后勤求助"),
-        QuickPhrase("头套太厚隔音听不清，能麻烦靠近一点或者稍微大声点吗？", "展会常用"),
-        QuickPhrase("可以合影集邮吗？请稍等我摆好动作~", "合影集邮"),
-        QuickPhrase("面具视野有限看不到两侧，请在正前方跟我挥手哦。", "展会常用"),
-        QuickPhrase("能帮我看看后背拉链拉好了没、假发有没有乱吗？多谢啦！", "后勤求助"),
-        QuickPhrase("今天出毛辛苦啦！漫展好好玩，我先去卸头套休息啦，回见！", "扩列社交"),
+        QuickPhrase("你好呀！", "扩列社交"),
+        QuickPhrase("能帮我拿瓶水吗？", "后勤求助"),
+        QuickPhrase("我听不清，能靠近点吗？", "展会常用"),
+        QuickPhrase("可以合个影吗？", "合影集邮"),
+        QuickPhrase("能站到我正前面吗？", "展会常用"),
+        QuickPhrase("帮我看看拉链和假发？", "后勤求助"),
+        QuickPhrase("我去歇会儿，回见！", "扩列社交"),
     )
 }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg id="welcome-art" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1216" height="1024" viewBox="320 0 1216 1024" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="art-title art-description" style="display:block;width:100%;height:100%;touch-action:none;user-select:none;overflow:hidden;isolation:isolate" fill-rule="nonzero" stroke-linejoin="round" stroke-linecap="round">
+<svg id="welcome-art" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1576" height="1200" viewBox="0 -24 1576 1200" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="art-title art-description" style="display:block;width:100%;height:100%;touch-action:none;user-select:none;overflow:hidden;isolation:isolate" fill-rule="nonzero" stroke-linejoin="round" stroke-linecap="round">
   <title id="art-title">兔耳少女 · 动态立绘</title>
   <desc id="art-description">移动鼠标或用手指拖动，角色会看向指针，肩膀和身体稍后跟上。按住任意一只兔耳拖动，双眼会眯成「&gt;&lt;」。松开后耳朵回弹，双眼睁开。胸前的拉链拉片也可以单独拖动。</desc>
   <defs>
@@ -27,7 +27,7 @@
       <path d="M1029.25,354.38C1034.88,345.74 1042.85,338.75 1051.98,334C1061.59,329.55 1072.57,329.05 1082.92,330.64C1095.77,333.27 1108.44,338.7 1117.53,348.44C1125.12,355.34 1129.82,365.19 1130.73,375.37C1131,379.32 1130.76,383.28 1130.38,387.22C1128.59,395.06 1126.51,403.13 1121.53,409.61C1113.31,420.21 1101.12,427.64 1087.98,430.16C1079.45,430.89 1070.46,431.85 1062.3,428.66C1053.2,425.87 1045.8,419.25 1040.25,411.71C1033.53,403.19 1031.2,392.31 1028.8,381.98C1027.82,377.81 1028.17,373.5 1028.83,369.31C1028.86,367.29 1028.8,365.28 1028.95,363.27C1029.54,360.35 1030.55,357.27 1029.25,354.38Z" fill="white" />
     </clipPath>
   </defs>
-  <rect id="pointer-area" width="1536" height="1024" fill="#ffffff" fill-opacity="0" pointer-events="all" />
+  <rect id="pointer-area" y="-24" width="1576" height="1200" fill="#ffffff" fill-opacity="0" pointer-events="all" />
   <g id="character" pointer-events="visiblePainted" data-pivot="990 1036">
     <g id="rear-left" inkscape:groupmode="layer" inkscape:label="左后发" data-rig="rearL">
       <g id="rear-left-backing">
@@ -662,7 +662,7 @@
     chain('bangR',1.72,1.33,.57,2.18,2.31,.42,1.42,1.21)
   ];
   let targetX=0,targetY=0, touch=null, pointerActive=false;
-  let gravityX=0,gravityY=0,gravityTargetX=0,gravityTargetY=0;
+  let gravityX=0,gravityY=0,gravityTargetX=0,gravityTargetY=0,entranceAim=0;
   const cursor=svg.createSVGPoint();
   function pointInArt(e){
     if(e.isPrimary===false)return null;
@@ -787,7 +787,8 @@
     if(earGrip&amp;&amp;e.pointerId===earGrip.id){
       letGoEar();
       const p=e.type==='pointerup'&amp;&amp;e.pointerType==='mouse'?pointInArt(e):null;
-      if(p&amp;&amp;p.x&gt;=0&amp;&amp;p.x&lt;=1536&amp;&amp;p.y&gt;=0&amp;&amp;p.y&lt;=1024)aim(p);else home();
+      const bounds=svg.viewBox.baseVal;
+      if(p&amp;&amp;p.x&gt;=bounds.x&amp;&amp;p.x&lt;=bounds.x+bounds.width&amp;&amp;p.y&gt;=bounds.y&amp;&amp;p.y&lt;=bounds.y+bounds.height)aim(p);else home();
     }
     if(e.pointerId===pull.grip)pull.grip=null;
     if(e.pointerId===touch){touch=null;home();}
@@ -830,7 +831,7 @@
     gravityX=easeGravity(gravityX,gravityTargetX,dt);
     gravityY=easeGravity(gravityY,gravityTargetY,dt);
     const pointerOwnsAim=pointerActive||earGrip!==null||pull.grip!==null;
-    const aimX=pointerOwnsAim?targetX:gravityX,aimY=pointerOwnsAim?targetY:gravityY;
+    const aimX=pointerOwnsAim?targetX:gravityX,aimY=pointerOwnsAim?targetY:clip(gravityY+entranceAim,-1,1);
     const x=advance(headX,aimX+idle*(.050*wave(.73)+.018*wave(1.61)),dt);
     const y=advance(headY,aimY+idle*(.044*wave(.89)+.016*wave(1.42)),dt);
     const lastRollSpeed=torsoRoll.v;
@@ -872,6 +873,17 @@
     return Math.abs(next-target)&lt;.001?target:next;
   }
   let last=0, raf=0, welcomeActive=false, welcomeReduced=false;
+  const entranceDuration=.52;
+  let entranceTime=0;
+  function updateWelcomeEntrance(dt) {
+    if(entranceTime&gt;=entranceDuration)return;
+    entranceTime=welcomeReduced||motion.matches?entranceDuration:Math.min(entranceDuration,entranceTime+dt);
+    const progress=entranceTime/entranceDuration, remaining=1-progress;
+    const offset=remaining*remaining*(3*remaining-2);
+    svg.style.opacity=Math.min(1,progress*2.4);
+    svg.style.transform=offset===0?'none':'translateY('+(18*offset)+'px)';
+    entranceAim=.58*offset;
+  }
   win.setWelcomeTilt=(x,y)=&gt;{
     gravityTargetX=welcomeReduced?0:tiltToAim(-x,.32);
     gravityTargetY=welcomeReduced?0:tiltToAim(y,.22);
@@ -884,7 +896,7 @@
   win.setWelcomeMotion=(active,reduced)=&gt;{
     welcomeActive=active;
     welcomeReduced=reduced;
-    if(reduced||!active)gravityX=gravityY=gravityTargetX=gravityTargetY=0;
+    if(reduced||!active)gravityX=gravityY=gravityTargetX=gravityTargetY=entranceAim=0;
     syncWelcomeMotion();
   };
   function frame(now) {
@@ -892,6 +904,7 @@
     if(last&amp;&amp;now-last&lt;14.5)return;
     const delta=last?Math.min((now-last)/1000,.050):1/60;
     last=now;
+    updateWelcomeEntrance(delta);
     const n=Math.ceil(delta/.0083),step=delta/n;
     for(let j=0;j&lt;n;j++)physics(step,welcomeReduced||motion.matches);
     if(t&gt;=nextGlance){glanceX=Math.random()*2-1;glanceY=Math.random()*2-1;nextGlance=t+1.8+Math.random()*3;}

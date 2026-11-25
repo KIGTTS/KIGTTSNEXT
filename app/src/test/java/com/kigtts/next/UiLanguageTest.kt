@@ -31,7 +31,7 @@ class UiLanguageTest {
         val phrases = QuickPhraseStore(app)
         val first = phrases.load()
         assertEquals(listOf("展会常用", "合影集邮", "后勤求助", "扩列社交"), phrases.loadCategories(first))
-        assertTrue(first.any { it.text == "你好呀！很高兴认识你~" })
+        assertTrue(first.any { it.text == "你好呀！" })
         language.save(UiLanguage.CASUAL)
         assertEquals("zh-CN-x-casual", UiLanguageStore(app).load())
         assertEquals("把字幕倒过来", app.uiCopy("subtitle.flip"))

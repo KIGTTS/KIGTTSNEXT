@@ -4,6 +4,16 @@ package com.kigtts.next.ui.onboarding
 
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -25,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -57,18 +68,25 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     val step = FirstRunStep.entries[pager.settledPage]
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
     val (flowerTilt, characterTilt) = rememberOnboardingTilt(motion)
+    val entrance = remember { Animatable(if (motion) 0f else 1f) }
+    LaunchedEffect(motion) {
+        if (motion) entrance.animateTo(1f, tween(240)) else entrance.snapTo(1f)
+    }
 
     LaunchedEffect(pager, progress) {
         snapshotFlow { pager.settledPage }.collect { progress.visit(FirstRunStep.entries[it]) }
     }
 
     fun move(target: Int) {
+        if (pager.isScrollInProgress) return
         scope.launch {
-            if (motion) pager.animateScrollToPage(target) else pager.scrollToPage(target)
+            if (motion) pager.animateScrollToPage(target, animationSpec = tween(320))
+            else pager.scrollToPage(target)
         }
     }
 
     fun back() {
+        if (pager.isScrollInProgress) return
         val current = pager.settledPage
         if (current == FirstRunStep.WELCOME.ordinal) exit() else move(current - 1)
     }
@@ -81,14 +99,17 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
 
     BackHandler(document == null, onBack = ::back)
     Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }) {
-        OnboardingFlowers(reducedMotion, flowerTilt, welcome = step == FirstRunStep.WELCOME)
+        OnboardingFlowers(reducedMotion, flowerTilt) {
+            1f - (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+        }
         Column(
             Modifier.align(Alignment.TopCenter).widthIn(max = 600.dp).fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).heightIn(min = 48.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).heightIn(min = 48.dp)
+                    .graphicsLayer { alpha = entrance.value },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
@@ -97,28 +118,37 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                     progress = { (pager.currentPage + pager.currentPageOffsetFraction + 1f) / pageCount },
                     modifier = Modifier.weight(1f),
                 )
-                if (step != FirstRunStep.WELCOME) {
-                    IconButton(onClick = feedbackClick(::back), modifier = Modifier.testTag("onboarding-back")) {
-                        ThemeIcon(
-                            Icons.AutoMirrored.Filled.ArrowBack, contentDescription = uiText("action.back"),
-                            tint = MaterialTheme.colorScheme.onBackground,
-                        )
+                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = step != FirstRunStep.WELCOME,
+                        enter = if (motion) fadeIn(tween(200)) else EnterTransition.None,
+                        exit = if (motion) fadeOut(tween(200)) else ExitTransition.None,
+                    ) {
+                        IconButton(onClick = feedbackClick(::back), modifier = Modifier.testTag("onboarding-back")) {
+                            ThemeIcon(
+                                Icons.AutoMirrored.Filled.ArrowBack, contentDescription = uiText("action.back"),
+                                tint = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
                     }
-                } else {
-                    Spacer(Modifier.size(48.dp))
                 }
             }
             HorizontalPager(
                 pager, Modifier.weight(1f).fillMaxWidth().testTag("onboarding-pages"),
                 key = { FirstRunStep.entries[it].name },
+                userScrollEnabled = false,
             ) { index ->
                 val page = FirstRunStep.entries[index]
                 if (page == FirstRunStep.WELCOME) {
-                    OnboardingWelcomePage(step == FirstRunStep.WELCOME, !motion, characterTilt)
+                    OnboardingWelcomePage(
+                        step == FirstRunStep.WELCOME, !motion, characterTilt,
+                        copyModifier = Modifier.graphicsLayer { alpha = entrance.value },
+                    )
                     return@HorizontalPager
                 }
                 Column(
                     Modifier.fillMaxSize().testTag("onboarding-${page.page}")
+                        .graphicsLayer { alpha = entrance.value }
                         .verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
@@ -154,30 +184,41 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 }
             }
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 10.dp)
+                    .graphicsLayer { alpha = entrance.value },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Button(
                     onClick = feedbackClick {
+                        if (pager.isScrollInProgress) return@feedbackClick
                         when (val current = FirstRunStep.entries[pager.settledPage]) {
                             FirstRunStep.PERMISSIONS -> finish(false)
                             else -> move(current.ordinal + 1)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("onboarding-next"),
-                    enabled = !pager.isScrollInProgress && (step != FirstRunStep.PERMISSIONS || accepted),
+                    enabled = step != FirstRunStep.PERMISSIONS || accepted,
                     shapes = expressivePillShapes(),
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     ),
                 ) {
-                    Text(uiText(when (step) {
-                        FirstRunStep.PERMISSIONS -> "onboarding.start"
-                        else -> "onboarding.next"
-                    }))
+                    Crossfade(
+                        targetState = step == FirstRunStep.PERMISSIONS,
+                        animationSpec = tween(if (motion) 200 else 0),
+                        label = "Onboarding primary action",
+                    ) { lastPage ->
+                        Text(uiText(if (lastPage) "onboarding.start" else "onboarding.next"))
+                    }
                 }
-                if (step == FirstRunStep.PERMISSIONS) {
+                AnimatedVisibility(
+                    visible = step == FirstRunStep.PERMISSIONS,
+                    enter = if (motion) expandVertically(tween(220), expandFrom = Alignment.Top) +
+                        fadeIn(tween(220)) else EnterTransition.None,
+                    exit = if (motion) shrinkVertically(tween(220), shrinkTowards = Alignment.Top) +
+                        fadeOut(tween(220)) else ExitTransition.None,
+                ) {
                     MotionTextButton(feedbackClick { finish(true) }, enabled = accepted && !pager.isScrollInProgress) {
                         Text(uiText("onboarding.try_quick_text"))
                     }
@@ -197,20 +238,19 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
         })
     }
 }
-private const val WELCOME_ART_ASPECT = 1216f / 1024f
 
 @Composable
-private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>) {
+private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>, copyModifier: Modifier) {
     BoxWithConstraints(Modifier.fillMaxSize().testTag("onboarding-welcome")) {
         val pageHeight = maxHeight
         val contentWidth = (maxWidth - 44.dp).coerceAtLeast(1.dp)
-        val artWidth = minOf(390.dp, contentWidth * .92f, pageHeight * .64f * WELCOME_ART_ASPECT)
+        val artWidth = minOf(440.dp, contentWidth * .97f, pageHeight * .64f * WELCOME_ART_ASPECT)
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).heightIn(min = pageHeight)
                 .padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            OnboardingPageCopy(FirstRunStep.WELCOME, Modifier.testTag("onboarding-welcome-copy"))
+            OnboardingPageCopy(FirstRunStep.WELCOME, copyModifier.testTag("onboarding-welcome-copy"))
             Spacer(Modifier.weight(1f))
             Box(Modifier.align(Alignment.End).widthIn(max = artWidth).fillMaxWidth()
                 .aspectRatio(WELCOME_ART_ASPECT).testTag("onboarding-welcome-art")) {
