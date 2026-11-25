@@ -130,6 +130,10 @@ class FirstRunUiTest {
         compose.runOnIdle { model.theme(model.state.value.theme.copy(askBackgroundColor = false)) }
         compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.APPEARANCE)
+        val pageBackdrop = compose.onNodeWithTag("secondary-page-backdrop", useUnmergedTree = true)
+        val cardBackdrops = compose.onAllNodesWithTag("secondary-card-backdrop", useUnmergedTree = true)
+        pageBackdrop.assertDoesNotExist()
+        cardBackdrops.assertCountEquals(0)
 
         val source = File(compose.activity.cacheDir, "onboarding-wallpaper.png")
         val bitmap = Bitmap.createBitmap(240, 320, Bitmap.Config.ARGB_8888)
@@ -159,8 +163,25 @@ class FirstRunUiTest {
         assertNotNull(model.state.value.theme.backgroundSeed)
         assertEquals(FirstRunStep.APPEARANCE, guide.step())
         assertNotNull(com.kigtts.next.theme.AppearanceAssets(compose.activity).file(key))
+        pageBackdrop.assertExists()
+        compose.onNode(hasTestTag("secondary-card-backdrop") and hasAnyAncestor(hasTestTag("theme-palette-settings")),
+            useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("onboarding-next").performClick()
+        awaitStep(guide, FirstRunStep.FEATURES)
+        pageBackdrop.assertExists()
+        compose.onNode(hasTestTag("secondary-card-backdrop") and hasAnyAncestor(hasTestTag("onboarding-features")),
+            useUnmergedTree = true).assertExists()
+        compose.runOnIdle { model.theme(model.state.value.theme.copy(secondaryPageBackground = false)) }
+        pageBackdrop.assertDoesNotExist()
+        cardBackdrops.assertCountEquals(0)
+        compose.runOnIdle {
+            model.theme(model.state.value.theme.copy(secondaryPageBackground = true))
+            compose.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        awaitStep(guide, FirstRunStep.APPEARANCE)
         compose.onNodeWithContentDescription("移除背景图片").performScrollTo().performClick()
         assertNull(model.state.value.theme.background)
+        pageBackdrop.assertDoesNotExist()
     }
 
     @Test fun cursorAndQuickEditTipsAppearOnUseAndPersistTheirDismissalOrChoice() {

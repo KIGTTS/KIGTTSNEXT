@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 
 /** A stronger cached blur remains registered to the page background through scrolling. */
 @Composable internal fun AppearanceCardSurface(modifier: Modifier = Modifier,
@@ -33,7 +34,8 @@ import androidx.compose.ui.platform.LocalDensity
     Surface(outer, shape = shape ?: if (outer === modifier) large else RectangleShape,
         color = Color.Transparent, contentColor = if (background == null) contentColorFor(container) else LocalContentColor.current) {
         Box(if (background == null) Modifier.themeFill(color = fill) else Modifier) {
-            if (background != null) AppearanceBackdrop(background, Modifier.matchParentSize(), blur = BackgroundBlur.CARD,
+            if (background != null) AppearanceBackdrop(background,
+                Modifier.matchParentSize().testTag("secondary-card-backdrop"), blur = BackgroundBlur.CARD,
                 overlayColor = { fill(it).copy(alpha = .72f) })
             content()
         }

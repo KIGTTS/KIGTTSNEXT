@@ -1,6 +1,8 @@
 package com.kigtts.next.theme
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -15,12 +17,27 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 internal val LocalAppAppearanceSettings = compositionLocalOf { ThemeSettings() }
 internal val LocalSecondaryBackground = compositionLocalOf<ThemeSettings?> { null }
+
+/** Share the secondary-page image, scrim and screen coordinates with its outer cards. */
+@Composable
+internal fun SecondaryPageSurface(settings: ThemeSettings, modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit) {
+    val background = settings.takeIf { it.secondaryPageBackground && it.background != null }
+    CompositionLocalProvider(LocalSecondaryBackground provides background) {
+        Box(if (background == null) modifier.themeFill { it.background } else modifier) {
+            if (background != null) AppearanceBackdrop(background,
+                Modifier.matchParentSize().testTag("secondary-page-backdrop"), blur = BackgroundBlur.PAGE)
+            content()
+        }
+    }
+}
 
 internal fun appearanceBackgroundDim(base: Float, blur: BackgroundBlur): Float =
     if (blur == BackgroundBlur.NONE) base.coerceIn(0f, 1f) else (1f - .8f * (1f - base.coerceIn(0f, 1f)))

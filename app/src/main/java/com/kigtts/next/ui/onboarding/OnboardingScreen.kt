@@ -44,11 +44,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
-import com.kigtts.next.theme.AppearanceBackdrop
+import com.kigtts.next.theme.SecondaryPageSurface
 import com.kigtts.next.theme.ThemeIcon
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeText
-import com.kigtts.next.theme.themeFill
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.MotionTextButton
 import com.kigtts.next.ui.components.dialogFeedbackClick
@@ -99,10 +98,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     }
 
     BackHandler(document == null, onBack = ::back)
-    Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }) {
-        if (step == FirstRunStep.APPEARANCE && settings.background != null) {
-            AppearanceBackdrop(settings, Modifier.matchParentSize())
-        }
+    SecondaryPageSurface(settings, Modifier.fillMaxSize().clipToBounds()) {
         OnboardingFlowers(reducedMotion, flowerTilt) {
             1f - (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
         }

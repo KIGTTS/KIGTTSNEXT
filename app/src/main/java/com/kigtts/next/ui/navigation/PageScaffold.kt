@@ -47,13 +47,11 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
         }
     }
     val guardedBack = { if (host.backGuard?.value?.invoke() != true) back() }
-    val background = (backgroundSettings ?: LocalAppAppearanceSettings.current).takeIf { it.secondaryPageBackground && it.background != null }
+    val settings = backgroundSettings ?: LocalAppAppearanceSettings.current
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
-        LocalSecondaryBackground provides background,
         LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
-        val frame = Modifier.fillMaxSize()
-        Box(if (background == null) frame.themeFill { it.background } else frame) {
-        background?.let { AppearanceBackdrop(it,Modifier.matchParentSize(),blur=BackgroundBlur.PAGE) }
+        SecondaryPageSurface(settings, Modifier.fillMaxSize()) {
+        val background = LocalSecondaryBackground.current
         backgroundDecoration?.invoke(this)
         // Sheets own their vertical scroll chain; the bar still supports direct dragging.
         Scaffold(modifier.fillMaxSize().then(if(largeBar&&contentScrollsHeader)Modifier.nestedScroll(behavior.nestedScrollConnection) else Modifier).testTag("immersive-page"),
