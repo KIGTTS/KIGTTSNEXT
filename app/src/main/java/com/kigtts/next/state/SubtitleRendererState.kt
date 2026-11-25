@@ -31,6 +31,7 @@ class SubtitleRendererState {
     private val mutableQuickSwipe = MutableStateFlow(false)
     val quickSwipe = mutableQuickSwipe.asStateFlow()
     private val zoomPreview = mutableFloatStateOf(Float.NaN)
+    internal val ledPlayback = LedPlayback()
 
     fun ledZoomPreview(): Float = zoomPreview.floatValue
 
@@ -70,6 +71,7 @@ class SubtitleRendererState {
         if (wasSelected && current?.native == renderer && current.presentation == presentation && current.appearance == appearance) return
         if (!wasSelected) {
             mutableQuickSwipe.value = false
+            ledPlayback.restart()
             if (collapseQuickText) collapse()
         }
         mutableSelection.value = SubtitleRendererSelection(owner, null, "", plugin, presentation, renderer, appearance)
@@ -80,6 +82,7 @@ class SubtitleRendererState {
         if (owner == null || mutableSelection.value?.owner == owner) {
             mutableSelection.value = null; mutableQuickSwipe.value = false
             zoomPreview.floatValue = Float.NaN
+            ledPlayback.layout(0f, loop = true, right = false)
         }
     }
 

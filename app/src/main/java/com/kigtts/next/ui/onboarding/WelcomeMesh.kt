@@ -46,10 +46,11 @@ internal fun deformWelcomePoint(point: Offset, root: Offset, axis: Offset, lengt
 
 /** Record only the moving parts as tight, full-resolution textures, off the UI thread. */
 internal fun recordWelcomeMeshes(layers: List<WelcomeLayer>): List<WelcomeLayer> {
-    val width = WELCOME_ART_WIDTH
-    val height = WELCOME_ART_HEIGHT
+    val boundsSample = 4
+    val width = WELCOME_ART_WIDTH / boundsSample
+    val height = WELCOME_ART_HEIGHT / boundsSample
     val scratch = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(scratch)
+    val canvas = Canvas(scratch).apply { scale(1f / boundsSample, 1f / boundsSample) }
     val pixels = IntArray(width * height)
     try {
         return layers.map { layer ->
@@ -64,9 +65,14 @@ internal fun recordWelcomeMeshes(layers: List<WelcomeLayer>): List<WelcomeLayer>
             scratch.eraseColor(0)
             canvas.drawPicture(layer.picture)
             scratch.getPixels(pixels, 0, width, 0, 0, width, height)
-            val bounds = alphaBounds(pixels, width, height) ?: return@map layer
+            val sample = alphaBounds(pixels, width, height) ?: return@map layer
+            val bounds = Rect(sample.left * boundsSample, sample.top * boundsSample,
+                sample.right * boundsSample, sample.bottom * boundsSample)
             val bitmap = Bitmap.createBitmap(bounds.width(), bounds.height(), Bitmap.Config.ARGB_8888)
-            bitmap.setPixels(pixels, bounds.top * width + bounds.left, width, 0, 0, bounds.width(), bounds.height())
+            Canvas(bitmap).apply {
+                translate(-bounds.left.toFloat(), -bounds.top.toFloat())
+                drawPicture(layer.picture)
+            }
             layer.copy(mesh = WelcomeMesh(bitmap, bounds, pivot + Offset(0f, WELCOME_ORIGIN_Y),
                 direction / direction.getDistance(), length))
         }

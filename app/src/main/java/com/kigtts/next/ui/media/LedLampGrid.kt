@@ -3,7 +3,6 @@ package com.kigtts.next.ui.media
 import android.graphics.Bitmap
 import android.graphics.BitmapShader
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.ComposeShader
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -18,7 +17,7 @@ import com.kigtts.plugin.api.NativeSubtitleRenderer.Led
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
+import kotlin.math.abs
 
 internal class LedInkMask(val width: Int, val height: Int) {
     private val pixels = ByteArray(width * height)
@@ -39,40 +38,34 @@ internal class LedInkMask(val width: Int, val height: Int) {
         val right = floor(x + radius).toInt()
         val top = floor(y - radius).toInt()
         val bottom = floor(y + radius).toInt()
-        return (alpha(left, top) + alpha(right, top) + alpha(left, bottom) + alpha(right, bottom) + 2) / 4
+        val center = alpha(floor(x).toInt(), floor(y).toInt())
+        return (alpha(left, top) + alpha(right, top) + alpha(left, bottom) + alpha(right, bottom) + center + 2) / 5
     }
 }
 
-private val lampLevels = IntArray(256) { level ->
-    val alpha = (sqrt(level / 255f) * 255f).roundToInt()
-    if (alpha == 0) 0 else (alpha shl 24) or 0xffffff
-}
-
-/** The board shaders always use card coordinates. The moving glyph only updates cell intensities. */
+/** The board shaders stay in card coordinates and the moving glyph switches whole cells on or off. */
 internal class LedLampGrid(
     board: IntSize,
-    private val pitch: Float,
-    style: Led,
+    initialPitch: Float,
+    private val style: Led,
     private val ink: LedInkMask,
 ) {
-    private val width = board.width.toFloat()
-    private val height = board.height.toFloat()
-    private val columns = ceil(width / pitch).toInt()
-    private val rows = ceil(height / pitch).toInt()
-    private val levels = IntArray(columns * rows)
-    private val activation = Bitmap.createBitmap(columns, rows, Bitmap.Config.ARGB_8888)
-    private val mask = BitmapShader(activation, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
-        setLocalMatrix(Matrix().also { it.setScale(pitch, pitch) })
-        if (Build.VERSION.SDK_INT >= 33) setFilterMode(BitmapShader.FILTER_MODE_NEAREST)
-    }
-    private val lit = lampShader(style, pitch, lit = true)
-    private val unlit = Paint(Paint.FILTER_BITMAP_FLAG).also { it.shader = lampShader(style, pitch, lit = false) }
-    private val composite = Paint(Paint.FILTER_BITMAP_FLAG).apply {
-        // Android 8 cannot hardware-accelerate a composition of two bitmap shaders.
-        shader = if (Build.VERSION.SDK_INT >= 28) ComposeShader(lit, mask, PorterDuff.Mode.DST_IN) else lit
-    }
+    private var board = IntSize.Zero
+    private var pitch = 0f
+    private var columns = 0
+    private var rows = 0
+    private var stride = 0
+    private var capacityRows = 0
+    private var levels = IntArray(0)
+    private lateinit var activation: Bitmap
+    private lateinit var mask: BitmapShader
+    private val transform = Matrix()
+    private val lit = lampShader(style, lit = true)
+    private val dark = lampShader(style, lit = false)
+    private val unlit = Paint(Paint.FILTER_BITMAP_FLAG).also { it.shader = dark }
+    // Avoid linearly sampling the binary mask on versions without per-shader filtering.
+    private val composite = Paint()
     private val legacyMask = if (Build.VERSION.SDK_INT < 28) Paint().also {
-        it.shader = mask
         it.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
     } else null
 
@@ -82,17 +75,45 @@ internal class LedLampGrid(
     private var lastRepeat = Float.NaN
     private val lastViewport = RectF()
 
+    init { resize(board, initialPitch) }
+
+    fun resize(next: IntSize, spacing: Float) {
+        if (next == board && abs(spacing - pitch) < .0001f) return
+        board = next
+        pitch = spacing
+        columns = ceil(next.width / pitch).toInt().coerceAtLeast(1)
+        rows = ceil(next.height / pitch).toInt().coerceAtLeast(1)
+        if (columns > stride || rows > capacityRows) {
+            // Round both dimensions together so continuously resizing a panel reuses the same storage.
+            stride = (columns + 31) / 32 * 32
+            capacityRows = (rows + 31) / 32 * 32
+            levels = IntArray(stride * capacityRows)
+            activation = Bitmap.createBitmap(stride, capacityRows, Bitmap.Config.ARGB_8888)
+            mask = BitmapShader(activation, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP).apply {
+                if (Build.VERSION.SDK_INT >= 33) setFilterMode(BitmapShader.FILTER_MODE_NEAREST)
+            }
+            legacyMask?.shader = mask
+        }
+        transform.setScale(pitch, pitch)
+        mask.setLocalMatrix(transform)
+        transform.setScale(pitch / LAMP_TEXTURE_SIZE, pitch / LAMP_TEXTURE_SIZE)
+        lit.setLocalMatrix(transform)
+        dark.setLocalMatrix(transform)
+        composite.shader = if (Build.VERSION.SDK_INT >= 28) ComposeShader(lit, mask, PorterDuff.Mode.DST_IN) else lit
+        lastX = Float.NaN
+    }
+
     fun drawUnlit(canvas: Canvas) {
-        canvas.drawRect(0f, 0f, width, height, unlit)
+        canvas.drawRect(0f, 0f, board.width.toFloat(), board.height.toFloat(), unlit)
     }
 
     fun drawLit(canvas: Canvas, viewport: RectF, x: Float, y: Float, unit: Float, repeat: Float) {
         if (lastX != x || lastY != y || lastUnit != unit || lastRepeat.toBits() != repeat.toBits() ||
             lastViewport != viewport) {
-            levels.fill(0)
+            levels.fill(0, 0, stride * rows)
             projectGlyph(viewport, x, y, unit)
             if (repeat.isFinite()) projectGlyph(viewport, repeat, y, unit)
-            activation.setPixels(levels, 0, columns, 0, 0, columns, rows)
+            activation.setPixels(levels, 0, stride, 0, 0, columns, rows)
             lastX = x
             lastY = y
             lastUnit = unit
@@ -119,18 +140,19 @@ internal class LedLampGrid(
         for (row in startRow until endRow) {
             val inkY = ((row + .5f) * pitch - y) / unit
             var inkX = firstX
-            val rowStart = row * columns
+            val rowStart = row * stride
             for (column in startCol until endCol) {
-                val coverage = ink.coverage(inkX, inkY, radius)
-                if (coverage > 0) levels[rowStart + column] = lampLevels[coverage]
+                if (ink.coverage(inkX, inkY, radius) >= 42) levels[rowStart + column] = -1
                 inkX += step
             }
         }
     }
 }
 
-private fun lampShader(style: Led, pitch: Float, lit: Boolean): BitmapShader {
-    val side = 64
+private const val LAMP_TEXTURE_SIZE = 256f
+
+private fun lampShader(style: Led, lit: Boolean): BitmapShader {
+    val side = LAMP_TEXTURE_SIZE.toInt()
     val image = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(image)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -144,23 +166,11 @@ private fun lampShader(style: Led, pitch: Float, lit: Boolean): BitmapShader {
             null, Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, side.toFloat(), side.toFloat(), paint)
     }
-    if (lit) paint.shader = RadialGradient(center - radius * .18f, center - radius * .24f, radius * 1.27f,
-        intArrayOf(mixLedColor(base, Color.WHITE, .70f), base, mixLedColor(base, Color.BLACK, .32f)),
-        floatArrayOf(0f, .56f, 1f), Shader.TileMode.CLAMP)
-    else {
-        paint.shader = null
-        paint.color = 0x267f7f7f
-    }
+    paint.shader = null
+    paint.color = if (lit) base else 0x267f7f7f
     if (style.squareDots) canvas.drawRect(center - radius, center - radius, center + radius, center + radius, paint)
     else canvas.drawCircle(center, center, radius, paint)
     return BitmapShader(image, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT).apply {
-        setLocalMatrix(Matrix().also { it.setScale(pitch / side, pitch / side) })
         if (Build.VERSION.SDK_INT >= 33) setFilterMode(BitmapShader.FILTER_MODE_LINEAR)
     }
-}
-
-private fun mixLedColor(from: Int, to: Int, fraction: Float): Int {
-    fun mix(a: Int, b: Int) = (a + (b - a) * fraction).roundToInt()
-    return Color.argb(Color.alpha(from), mix(Color.red(from), Color.red(to)),
-        mix(Color.green(from), Color.green(to)), mix(Color.blue(from), Color.blue(to)))
 }

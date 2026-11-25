@@ -25,6 +25,6 @@ internal fun SubtitleRendererBackdrop(state: AppState, model: AppViewModel, safe
             modifier.graphicsLayer { rotationZ = rotation.value }, safeArea = insets,
             onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(renderer.owner, it) },
             onUnavailable = { model.rendererUnavailable(renderer.owner) }, reducedMotion = state.subtitleAppearance.reducedMotion,
-            zoomPreview = model.subtitleRenderer::ledZoomPreview)
+            zoomPreview = model.subtitleRenderer::ledZoomPreview, ledPlayback = model.subtitleRenderer.ledPlayback)
     }
 }

@@ -10,13 +10,10 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.compose.ui.unit.IntSize
-import com.kigtts.next.state.SubtitleSize
 import com.kigtts.plugin.api.LedAlignment
 import com.kigtts.plugin.api.NativeSubtitleRenderer.Led
 import kotlin.coroutines.coroutineContext
 import kotlin.math.ceil
-import kotlin.math.max
-import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlinx.coroutines.ensureActive
 
@@ -24,28 +21,25 @@ private const val TILE = 512
 private const val MASK_PIXEL_BUDGET = 4_000_000f
 private const val GRID_CELL_BUDGET = 65_000f
 
-internal fun ledLampPitch(board: IntSize, density: Float, referenceFont: Float, rows: Int): Float {
-    // Give the low end more room to distinguish coarse dots, while keeping fine grids and saved values usable.
-    val coarseSpacing = (24f / rows).coerceAtLeast(1f).pow(.75f)
-    return maxOf(1.5f * density, sqrt(board.width.toFloat() * board.height / GRID_CELL_BUDGET),
-        referenceFont * 1.2f * coarseSpacing / rows)
-}
+internal fun ledLampPitch(board: IntSize, density: Float, displayHeight: Float, rows: Int): Float =
+    maxOf(1.5f * density, sqrt(board.width.toFloat() * board.height / GRID_CELL_BUDGET), displayHeight / rows)
 
 private data class LedTypeSize(val font: Float, val height: Float)
 
-private fun ledTypeSize(width: Int, height: Int, percent: Float, style: Led): LedTypeSize {
-    val fill = if (style.wrap) 0f else max((style.fontScale - 1f) / 2f, (percent - 28f) / 22f).coerceIn(0f, 1f)
-    val displayHeight = height * (style.displayHeight + (1f - style.displayHeight) * fill)
+private fun ledTypeSize(fontWidth: Float, height: Int, percent: Float, style: Led): LedTypeSize {
+    val displayHeight = height * style.displayHeight
     val limit = (displayHeight / 1.18f).coerceAtLeast(1f)
-    val preferred = width * percent * style.fontScale / 100f
-    return LedTypeSize((preferred + (limit - preferred) * fill).coerceIn(1f, limit), displayHeight)
+    val preferred = fontWidth * percent / 100f
+    return LedTypeSize(preferred.coerceIn(1f, limit), displayHeight)
 }
 
 internal class LedRaster(
-    private val board: IntSize,
+    val board: IntSize,
     private val safe: MediaSafeArea,
     private val style: Led,
     private val percent: Float,
+    private val fontWidth: Float,
+    private val density: Float,
     private val unit: Float,
     private val textWidth: Int,
     private val textHeight: Int,
@@ -54,30 +48,38 @@ internal class LedRaster(
 ) {
     private val width = board.width - safe.left - safe.right
     private val height = board.height - safe.top - safe.bottom
-    private val committed = ledTypeSize(width, height, percent, style)
+    private val committed = ledTypeSize(fontWidth, height, percent, style)
     private val viewport = RectF()
     private val background = Paint().also { it.color = style.background.toInt() }
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    val distance = if (style.wrap) (textHeight * unit - committed.height).coerceAtLeast(0f)
-        else (textWidth * unit - width).coerceAtLeast(0f)
 
-    fun period(gap: Float) = if (style.wrap) distance else textWidth * unit + gap
+    fun period(gap: Float, bounds: IntSize = board, insets: MediaSafeArea = safe, preview: Float = percent): Float {
+        val availableHeight = bounds.height - insets.top - insets.bottom
+        val availableWidth = bounds.width - insets.left - insets.right
+        if (availableWidth < 4 || availableHeight < 4) return 0f
+        val type = ledTypeSize(fontWidth, availableHeight, preview, style)
+        val sample = unit * type.font / committed.font
+        return if (style.wrap) (textHeight * sample - type.height).coerceAtLeast(0f)
+        else if (textWidth * sample > availableWidth) textWidth * sample + gap else 0f
+    }
 
-    fun draw(canvas: Canvas, offset: Float, gap: Float, preview: Float = percent) {
-        canvas.drawRect(0f, 0f, board.width.toFloat(), board.height.toFloat(), background)
-        matrix?.drawUnlit(canvas)
-        val type = if (preview == percent) committed else ledTypeSize(width, height, preview, style)
+    fun draw(canvas: Canvas, offset: Float, gap: Float, preview: Float = percent, bounds: IntSize = board, insets: MediaSafeArea = safe) {
+        canvas.drawRect(0f, 0f, bounds.width.toFloat(), bounds.height.toFloat(), background)
+        val width = bounds.width - insets.left - insets.right
+        val height = bounds.height - insets.top - insets.bottom
+        if (width < 4 || height < 4) return
+        val type = if (height == this.height && preview == percent) committed else ledTypeSize(fontWidth, height, preview, style)
         val scale = type.font / committed.font
         val sampleUnit = unit * scale
         val visible = textWidth * sampleUnit
-        val viewTop = safe.top + (height - type.height) / 2f
-        viewport.set(safe.left.toFloat(), viewTop, (board.width - safe.right).toFloat(), viewTop + type.height)
-        val x = safe.left + if (style.wrap || visible > width) 0f else when (style.alignment) {
+        val viewTop = insets.top + (height - type.height) / 2f
+        viewport.set(0f, 0f, width.toFloat(), type.height)
+        val x = if (style.wrap || visible > width) 0f else when (style.alignment) {
             LedAlignment.START -> 0f
             LedAlignment.CENTER -> (width - visible) / 2f
             LedAlignment.END -> width - visible
         }
-        val y = viewTop + ((type.height - textHeight * sampleUnit) / 2f).coerceAtLeast(0f)
+        val y = ((type.height - textHeight * sampleUnit) / 2f).coerceAtLeast(0f)
         var drawX = x
         var drawY = y
         var repeatX = Float.NaN
@@ -89,9 +91,14 @@ internal class LedRaster(
             repeatX = drawX + if (style.scrollRight) -length else length
         }
         canvas.save()
+        canvas.translate(insets.left.toFloat(), viewTop)
         canvas.clipRect(viewport)
-        if (matrix != null) matrix.drawLit(canvas, viewport, drawX, drawY, sampleUnit, repeatX)
-        else {
+        if (matrix != null) {
+            val area = IntSize(width, ceil(type.height).toInt())
+            matrix.resize(area, ledLampPitch(area, density, type.height, style.dotRows))
+            matrix.drawUnlit(canvas)
+            matrix.drawLit(canvas, viewport, drawX, drawY, sampleUnit, repeatX)
+        } else {
             drawPlain(canvas, drawX, drawY, sampleUnit)
             if (repeatX.isFinite()) drawPlain(canvas, repeatX, drawY, sampleUnit)
         }
@@ -117,14 +124,14 @@ internal data class LedTextTile(val left: Int, val top: Int, val bitmap: Bitmap)
 
 internal suspend fun rasterLed(
     text: String, board: IntSize, safe: MediaSafeArea, percent: Float, density: Float, style: Led, typeface: Typeface,
+    fontWidth: Float = (board.width - safe.left - safe.right).toFloat(),
 ): LedRaster? {
     val width = board.width - safe.left - safe.right
     val height = board.height - safe.top - safe.bottom
     if (width < 4 || height < 4) return null
-    val type = ledTypeSize(width, height, percent, style)
-    val reference = ledTypeSize(width, height, SubtitleSize.DEFAULT_PERCENT, style)
-    // Density settings determine the physical board. Zoom only changes the glyph projected onto it.
-    val pitch = ledLampPitch(board, density, reference.font, style.dotRows)
+    val type = ledTypeSize(fontWidth, height, percent, style)
+    val area = IntSize(width, ceil(type.height).toInt())
+    val pitch = ledLampPitch(area, density, type.height, style.dotRows)
     // Keep the glyph mask detailed enough to sample small strokes even on a coarse panel.
     var unit = maxOf(1f, if (style.dotMatrix) minOf(pitch / 3f, type.font / 24f) else 1f,
         type.font * sqrt(text.length.coerceAtLeast(1) / MASK_PIXEL_BUDGET))
@@ -139,7 +146,6 @@ internal suspend fun rasterLed(
             textSize = (type.font / pixelUnit).coerceAtLeast(.5f)
             this.typeface = typeface
             color = if (style.dotMatrix) Color.WHITE else style.foreground.toInt()
-            if (!style.dotMatrix && style.glow > 0f) setShadowLayer(textSize * style.glow * .16f, 0f, 0f, color)
         }
         val cells = if (style.wrap) (width / pixelUnit).toInt().coerceAtLeast(1)
             else (ceil(paint.measureText(content)).toInt() + 2).coerceAtLeast(1)
@@ -174,6 +180,6 @@ internal suspend fun rasterLed(
             }
         }
     }
-    val grid = mask?.let { LedLampGrid(board, pitch, style, it) }
-    return LedRaster(board, safe, style, percent, unit, maskWidth, maskHeight, grid, tiles)
+    val grid = mask?.let { LedLampGrid(area, pitch, style, it) }
+    return LedRaster(board, safe, style, percent, fontWidth, density, unit, maskWidth, maskHeight, grid, tiles)
 }

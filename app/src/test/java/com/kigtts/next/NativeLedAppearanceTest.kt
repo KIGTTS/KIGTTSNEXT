@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.IntSize
 import com.kigtts.next.state.AppState
 import com.kigtts.next.state.HomePanel
 import com.kigtts.next.state.HomePanelSizes
+import com.kigtts.next.state.LedPlayback
 import com.kigtts.next.state.MediaQuickTextCollapse
 import com.kigtts.next.state.afterOpeningMedia
 import com.kigtts.next.theme.ContrastLevel
@@ -65,7 +66,7 @@ class NativeLedAppearanceTest {
         val board = IntSize(300, 160)
         val scene = requireNotNull(rasterLed("Hello LED ".repeat(12), board, MediaSafeArea(12, 16, 12, 16),
             23f, 1f, NativeSubtitleRenderer.Led(), Typeface.DEFAULT_BOLD))
-        assertTrue(scene.distance > 0f)
+        assertTrue(scene.period(96f) > 0f)
         val target = Bitmap.createBitmap(board.width, board.height, Bitmap.Config.ARGB_8888)
         scene.draw(Canvas(target), 0f, 96f)
         val pixels = IntArray(board.width * board.height)
@@ -93,13 +94,52 @@ class NativeLedAppearanceTest {
         assertArrayEquals(original, draw(-24.25f, -17.5f, 1.4f))
     }
 
-    @Test fun lowDensityUsesAVisiblyWiderPitchWhileRegularDensityKeepsItsSpacing() {
-        val board = IntSize(1358, 2480)
-        val font = 124f
-        val density = 3.4f
-        fun pitch(rows: Int) = ledLampPitch(board, density, font, rows)
-        assertTrue(pitch(8) > 2f * font * 1.2f / 8f)
-        assertTrue(pitch(8) > pitch(12) && pitch(12) > pitch(16) && pitch(16) > pitch(24))
-        assertEquals(kotlin.math.sqrt(1358f * 2480f / 65_000f), pitch(24), .001f)
+    @Test fun lampRowsFollowTheHeightEvenWhenTheViewportWidthChanges() {
+        assertEquals(90f, ledLampPitch(IntSize(600, 720), 3f, 720f, 8), .001f)
+        assertEquals(90f, ledLampPitch(IntSize(1200, 720), 3f, 720f, 8), .001f)
+        assertEquals(45f, ledLampPitch(IntSize(600, 360), 3f, 360f, 8), .001f)
+        assertEquals(45f, ledLampPitch(IntSize(600, 720), 3f, 720f, 16), .001f)
+    }
+
+    @Test fun panelResizeReusesGlyphsAndDrawsToTheNewBounds() = runBlocking {
+        val style = NativeSubtitleRenderer.Led(background = 0xff132333, displayHeight = 1f, dotRows = 8)
+        val raster = requireNotNull(rasterLed("LED", IntSize(150, 100), MediaSafeArea(),
+            30f, 1f, style, Typeface.DEFAULT_BOLD))
+        val expanded = IntSize(150, 240)
+        val target = Bitmap.createBitmap(expanded.width, expanded.height, Bitmap.Config.ARGB_8888)
+        raster.draw(Canvas(target), 0f, 96f, bounds = expanded)
+        assertEquals(style.background.toInt(), target.getPixel(0, 239))
+        assertNotEquals(style.background.toInt(), target.getPixel(15, 225))
+    }
+
+    @Test fun aPartiallyCoveredCellStillUsesTheFullLampColor() {
+        val board = IntSize(80, 80)
+        val ink = LedInkMask(80, 80)
+        ink.copyTile(IntArray(80 * 80) { 0x70ffffff }, 0, 0, 80, 80)
+        val color = 0xffa9eff2
+        val grid = LedLampGrid(board, 20f, NativeSubtitleRenderer.Led(foreground = color, glow = 0f), ink)
+        val viewport = RectF(0f, 0f, 80f, 80f)
+        val target = Bitmap.createBitmap(80, 80, Bitmap.Config.ARGB_8888)
+        grid.drawLit(Canvas(target), viewport, 0f, 0f, 1f, Float.NaN)
+        assertEquals(color.toInt(), target.getPixel(30, 30))
+    }
+
+    @Test fun swipeCoastsThenResumesAutomaticScroll() {
+        val playback = LedPlayback()
+        playback.layout(800f, loop = true, right = false)
+        assertTrue(playback.startScrub())
+        playback.scrub(-100f)
+        assertEquals(100f, playback.offset, .01f)
+        playback.tick(.1f, 40f)
+        assertEquals(100f, playback.offset, .01f)
+        playback.finishScrub(-700f)
+        playback.tick(.05f, 40f)
+        val first = playback.offset
+        assertTrue(first > 100f)
+        repeat(36) { playback.tick(.05f, 40f) }
+        val settled = playback.offset
+        assertTrue(settled > first)
+        playback.tick(.25f, 40f)
+        assertTrue(playback.offset > settled)
     }
 }

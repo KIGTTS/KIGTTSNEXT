@@ -31,6 +31,7 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val media = model.mediaRepository.get(state.mediaId)
     val ownsSwipes = !state.editing && (media != null || renderer?.presentation?.blockHomeSideSwipes == true ||
+        renderer?.native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led ||
         model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
     val surface = modifier.excludeHomeSideSwipes(ownsSwipes)
     // The full-card WebView is already mounted below this column. An invisible AnimatedContent
@@ -64,6 +65,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
     CompositionLocalProvider(LocalSubtitleFitCache provides rememberSubtitleFitCache()) {
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
         .semantics { stateDescription = if (flipped) "倒置字幕" else "正向字幕" }
+        .ledScrubGesture(model.subtitleRenderer.ledPlayback, nativeLedZoom, state.subtitleAppearance.reducedMotion)
         .subtitleZoom(model to nativeLedZoom, onZoomEnd = {
             if (nativeLedZoom) model.subtitleRenderer.takeLedZoom()?.let(model::setSubtitleSizePercent)
         }) { factor ->
@@ -84,7 +86,7 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
                     onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(selection.owner, it) }, onUnavailable = {
                         model.rendererUnavailable(selection.owner)
                     }, reducedMotion = state.subtitleAppearance.reducedMotion,
-                    zoomPreview = model.subtitleRenderer::ledZoomPreview) }
+                    zoomPreview = model.subtitleRenderer::ledZoomPreview, ledPlayback = model.subtitleRenderer.ledPlayback) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.
                 if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
                     Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))

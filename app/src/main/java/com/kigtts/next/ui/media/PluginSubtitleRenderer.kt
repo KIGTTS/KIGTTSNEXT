@@ -21,6 +21,7 @@ import com.kigtts.next.media.applyKigttsTheme
 import com.kigtts.next.media.installKigttsThemeAtDocumentStart
 import com.kigtts.next.media.WebThemeState
 import com.kigtts.next.state.SubtitleRendererSelection
+import com.kigtts.next.state.LedPlayback
 import com.kigtts.next.ui.navigation.LocalPageActive
 import java.io.ByteArrayInputStream
 import java.security.MessageDigest
@@ -30,13 +31,13 @@ import kotlinx.coroutines.withContext
 
 /** Offline display only: no native bridge, network, device grants, downloads or editable document. */
 @Composable
-fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, placeholder: String,
+internal fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, placeholder: String,
     fontSizePercent: Float, modifier: Modifier = Modifier, safeArea: MediaSafeArea = MediaSafeArea(),
     onQuickSwipe: (Boolean) -> Unit = {}, onUnavailable: () -> Unit = {}, reducedMotion: Boolean = false,
-    zoomPreview: () -> Float = { Float.NaN }) {
+    zoomPreview: () -> Float = { Float.NaN }, ledPlayback: LedPlayback) {
     val native = selection.native
     if (native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led) {
-        NativeLedRenderer(native, text, placeholder, fontSizePercent, safeArea, reducedMotion, onQuickSwipe, zoomPreview, modifier)
+        NativeLedRenderer(native, text, placeholder, fontSizePercent, safeArea, reducedMotion, ledPlayback, zoomPreview, modifier)
         return
     }
     val context = LocalContext.current
