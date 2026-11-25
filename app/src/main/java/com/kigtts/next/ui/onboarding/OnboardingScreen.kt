@@ -37,13 +37,16 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.R
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
+import com.kigtts.next.theme.AppearanceBackdrop
 import com.kigtts.next.theme.ThemeIcon
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeText
@@ -99,6 +102,9 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
 
     BackHandler(document == null, onBack = ::back)
     Box(Modifier.fillMaxSize().clipToBounds().themeFill { it.background }) {
+        if (step == FirstRunStep.APPEARANCE && settings.background != null) {
+            AppearanceBackdrop(settings, Modifier.matchParentSize())
+        }
         OnboardingFlowers(reducedMotion, flowerTilt) {
             1f - (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
         }
@@ -107,23 +113,22 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 .windowInsetsPadding(WindowInsets.safeDrawing),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).heightIn(min = 48.dp)
-                    .graphicsLayer { alpha = entrance.value },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                SafeModeBrand(active = false, modifier = Modifier.testTag("onboarding-brand"))
-                LinearProgressIndicator(
-                    progress = { (pager.currentPage + pager.currentPageOffsetFraction + 1f) / pageCount },
-                    modifier = Modifier.weight(1f),
-                )
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = step != FirstRunStep.WELCOME,
-                        enter = if (motion) fadeIn(tween(200)) else EnterTransition.None,
-                        exit = if (motion) fadeOut(tween(200)) else ExitTransition.None,
+            Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).height(48.dp)) {
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = pager.currentPage != FirstRunStep.WELCOME.ordinal,
+                    enter = if (motion) fadeIn(tween(200)) else EnterTransition.None,
+                    exit = if (motion) fadeOut(tween(200)) else ExitTransition.None,
+                ) {
+                    Row(
+                        Modifier.fillMaxSize(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
+                        SafeModeBrand(active = false, modifier = Modifier.testTag("onboarding-brand"))
+                        LinearProgressIndicator(
+                            progress = { (pager.currentPage + pager.currentPageOffsetFraction + 1f) / pageCount },
+                            modifier = Modifier.weight(1f).testTag("onboarding-progress"),
+                        )
                         IconButton(onClick = feedbackClick(::back), modifier = Modifier.testTag("onboarding-back")) {
                             ThemeIcon(
                                 Icons.AutoMirrored.Filled.ArrowBack, contentDescription = uiText("action.back"),
@@ -155,6 +160,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                     OnboardingPageCopy(page)
                     when (page) {
                         FirstRunStep.APPEARANCE -> {
+                            AppearanceAssetSettings(settings, changeTheme)
                             ThemeColorSettings(settings, changeTheme)
                             AppearanceDisplaySettings(settings, changeTheme)
                         }
@@ -268,6 +274,11 @@ private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier
             style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Start,
         )
+        if (page == FirstRunStep.WELCOME) {
+            ThemeIcon(painterResource(R.drawable.logo_kigtts_wordmark), "KIGTTS",
+                Modifier.widthIn(max = 300.dp).fillMaxWidth().aspectRatio(4f).testTag("onboarding-welcome-wordmark"),
+                tint = MaterialTheme.colorScheme.onBackground)
+        }
         ThemeText(
             uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,

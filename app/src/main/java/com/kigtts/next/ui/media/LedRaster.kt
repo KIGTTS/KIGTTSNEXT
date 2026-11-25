@@ -16,12 +16,20 @@ import com.kigtts.plugin.api.NativeSubtitleRenderer.Led
 import kotlin.coroutines.coroutineContext
 import kotlin.math.ceil
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlinx.coroutines.ensureActive
 
 private const val TILE = 512
 private const val MASK_PIXEL_BUDGET = 4_000_000f
 private const val GRID_CELL_BUDGET = 65_000f
+
+internal fun ledLampPitch(board: IntSize, density: Float, referenceFont: Float, rows: Int): Float {
+    // Give the low end more room to distinguish coarse dots, while keeping fine grids and saved values usable.
+    val coarseSpacing = (24f / rows).coerceAtLeast(1f).pow(.75f)
+    return maxOf(1.5f * density, sqrt(board.width.toFloat() * board.height / GRID_CELL_BUDGET),
+        referenceFont * 1.2f * coarseSpacing / rows)
+}
 
 private data class LedTypeSize(val font: Float, val height: Float)
 
@@ -116,9 +124,9 @@ internal suspend fun rasterLed(
     val type = ledTypeSize(width, height, percent, style)
     val reference = ledTypeSize(width, height, SubtitleSize.DEFAULT_PERCENT, style)
     // Density settings determine the physical board. Zoom only changes the glyph projected onto it.
-    val pitch = maxOf(1.5f * density, sqrt(board.width.toFloat() * board.height / GRID_CELL_BUDGET),
-        reference.font * 1.2f / style.dotRows)
-    var unit = maxOf(1f, if (style.dotMatrix) pitch / 3f else 1f,
+    val pitch = ledLampPitch(board, density, reference.font, style.dotRows)
+    // Keep the glyph mask detailed enough to sample small strokes even on a coarse panel.
+    var unit = maxOf(1f, if (style.dotMatrix) minOf(pitch / 3f, type.font / 24f) else 1f,
         type.font * sqrt(text.length.coerceAtLeast(1) / MASK_PIXEL_BUDGET))
     val layoutAlignment = when (style.alignment) {
         LedAlignment.START -> Layout.Alignment.ALIGN_NORMAL

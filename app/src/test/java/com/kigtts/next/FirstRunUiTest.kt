@@ -1,5 +1,9 @@
 package com.kigtts.next
 
+import android.app.Activity
+import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.geometry.Offset
@@ -20,6 +24,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -32,7 +37,10 @@ class FirstRunUiTest {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         val guide = FirstRunStore(compose.activity)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
-        compose.onNodeWithTag("onboarding-brand").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-welcome-wordmark").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-brand").assertDoesNotExist()
+        compose.onNodeWithTag("onboarding-progress").assertDoesNotExist()
+        val pageTop = compose.onNodeWithTag("onboarding-pages").fetchSemanticsNode().boundsInRoot.top
         val copy = compose.onNodeWithTag("onboarding-welcome-copy").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val art = compose.onNodeWithTag("onboarding-welcome-art").assertIsDisplayed().fetchSemanticsNode().boundsInRoot
         val next = compose.onNodeWithTag("onboarding-next").fetchSemanticsNode().boundsInRoot
@@ -56,9 +64,13 @@ class FirstRunUiTest {
         assertTrue(movingFlowerTop < welcomeFlowerTop)
         assertTrue(movingFlowerTop > appearanceFlowerTop)
         compose.onNodeWithTag("onboarding-appearance").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-brand").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-progress").assertIsDisplayed()
+        assertEquals(pageTop, compose.onNodeWithTag("onboarding-pages").fetchSemanticsNode().boundsInRoot.top, 1f)
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         awaitStep(guide, FirstRunStep.WELCOME)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-brand").assertDoesNotExist()
         compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.APPEARANCE)
         assertFalse(guide.agreementAccepted())
@@ -109,6 +121,44 @@ class FirstRunUiTest {
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("onboarding-permissions").assertDoesNotExist()
         compose.onNodeWithTag("home-tip-panel").assertDoesNotExist()
+    }
+
+    @Test fun appearanceStepSelectsCropsAndStoresABackground() {
+        val guide = FirstRunStore(compose.activity)
+        val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        compose.runOnIdle { model.theme(model.state.value.theme.copy(askBackgroundColor = false)) }
+        compose.onNodeWithTag("onboarding-next").performClick()
+        awaitStep(guide, FirstRunStep.APPEARANCE)
+
+        val source = File(compose.activity.cacheDir, "onboarding-wallpaper.png")
+        val bitmap = Bitmap.createBitmap(240, 320, Bitmap.Config.ARGB_8888)
+        bitmap.eraseColor(0xff12858b.toInt())
+        source.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        bitmap.recycle()
+        compose.onNodeWithTag("appearance-background-image").performScrollTo().performClick()
+        var pending: org.robolectric.shadows.ShadowActivity.IntentForResult? = null
+        compose.waitUntil(5_000) {
+            pending = shadowOf(compose.activity).nextStartedActivityForResult
+            pending != null
+        }
+        val request = requireNotNull(pending)
+        assertEquals(Intent.ACTION_GET_CONTENT, request.intent.action)
+        assertEquals("image/*", request.intent.type)
+        compose.runOnIdle {
+            compose.activity.activityResultRegistry.dispatchResult(request.requestCode, Activity.RESULT_OK,
+                Intent().setData(Uri.fromFile(source)))
+        }
+        compose.waitUntil(15_000) {
+            compose.onAllNodes(hasTestTag("background-crop-save") and isEnabled()).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithTag("background-crop-save").performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithTag("background-crop-square").fetchSemanticsNodes().isEmpty() }
+        val key = requireNotNull(model.state.value.theme.background)
+        assertNotNull(model.state.value.theme.backgroundSeed)
+        assertEquals(FirstRunStep.APPEARANCE, guide.step())
+        assertNotNull(com.kigtts.next.theme.AppearanceAssets(compose.activity).file(key))
+        compose.onNodeWithContentDescription("移除背景图片").performScrollTo().performClick()
+        assertNull(model.state.value.theme.background)
     }
 
     @Test fun cursorAndQuickEditTipsAppearOnUseAndPersistTheirDismissalOrChoice() {

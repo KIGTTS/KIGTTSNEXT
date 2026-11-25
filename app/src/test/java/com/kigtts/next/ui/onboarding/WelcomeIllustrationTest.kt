@@ -52,7 +52,7 @@ class WelcomeIllustrationTest {
         assertTrue(motion.pose.entranceY > .8f)
         repeat(22) { motion.step(.016f, Offset.Zero, false) }
         assertTrue(motion.pose.entranceY < 0f)
-        repeat(60) { motion.step(.016f, Offset(-.4f, 0f), false) }
+        repeat(20) { motion.step(.016f, Offset(-.4f, 0f), false) }
         assertTrue(motion.pose.aim.x > .8f)
         assertTrue(motion.press(Offset(680f, 325f)))
         motion.drag(Offset(555f, 371f))
@@ -61,10 +61,19 @@ class WelcomeIllustrationTest {
         assertTrue(motion.pose.aim.x < -.6f)
         assertTrue(kotlin.math.abs(motion.pose.leftEar) > 1f)
         motion.release()
-        repeat(45) { motion.step(.016f, Offset(-.4f, 0f), false) }
+        repeat(32) { motion.step(.016f, Offset(-.4f, 0f), false) }
         val tilted = motion.pose.aim.x
-        assertTrue(tilted > .7f)
-        repeat(9) { motion.step(.016f, Offset.Zero, false) }
-        assertTrue(motion.pose.aim.x in .45f..tilted)
+        assertTrue(tilted > .2f)
+        repeat(240) { motion.step(.016f, Offset(-.4f, 0f), false) }
+        assertEquals(0f, motion.pose.aim.x, .05f)
+
+        val downTilt = Offset(-.4f, .5f)
+        repeat(20) { motion.step(.016f, downTilt, false) }
+        val down = motion.pose.aim.y
+        assertTrue(down > .8f)
+        repeat(80) { motion.step(.016f, downTilt, false) }
+        assertTrue(motion.pose.aim.y in .20f..<down)
+        repeat(220) { motion.step(.016f, downTilt, false) }
+        assertEquals(0f, motion.pose.aim.y, .05f)
     }
 }

@@ -17,6 +17,7 @@ import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.media.MediaSafeArea
 import com.kigtts.next.ui.media.LedInkMask
 import com.kigtts.next.ui.media.LedLampGrid
+import com.kigtts.next.ui.media.ledLampPitch
 import com.kigtts.next.ui.media.rasterLed
 import com.kigtts.plugin.api.AppearanceBackground
 import com.kigtts.plugin.api.AppearanceContrast
@@ -90,5 +91,15 @@ class NativeLedAppearanceTest {
         val original = draw(-22f, -15f, 1f)
         assertTrue(original.distinct().size > 2)
         assertArrayEquals(original, draw(-24.25f, -17.5f, 1.4f))
+    }
+
+    @Test fun lowDensityUsesAVisiblyWiderPitchWhileRegularDensityKeepsItsSpacing() {
+        val board = IntSize(1358, 2480)
+        val font = 124f
+        val density = 3.4f
+        fun pitch(rows: Int) = ledLampPitch(board, density, font, rows)
+        assertTrue(pitch(8) > 2f * font * 1.2f / 8f)
+        assertTrue(pitch(8) > pitch(12) && pitch(12) > pitch(16) && pitch(16) > pitch(24))
+        assertEquals(kotlin.math.sqrt(1358f * 2480f / 65_000f), pitch(24), .001f)
     }
 }

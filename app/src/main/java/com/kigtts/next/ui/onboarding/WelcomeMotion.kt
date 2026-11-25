@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.lerp
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.exp
@@ -31,6 +32,7 @@ internal class WelcomeMotion {
     private var anchor = Offset.Zero
     private var part = WelcomePart.BODY
     private var aim = Offset.Zero
+    private var restingGravity = Offset.Zero
     private var age = 0f
     private val left = WelcomeSpring()
     private val right = WelcomeSpring()
@@ -59,7 +61,10 @@ internal class WelcomeMotion {
         val entrance = remaining * remaining * (3f * remaining - 2f)
         val hand = held
         val position = hand ?: hover
-        val target = if (position == null) Offset(tiltAim(-gravity.x, .32f), tiltAim(gravity.y, .22f) + .58f * entrance)
+        // Follow changes in posture, then let a held angle become the neutral pose.
+        restingGravity = lerp(restingGravity, gravity, 1f - exp(-dt / 1.25f))
+        val movement = gravity - restingGravity
+        val target = if (position == null) Offset(tiltAim(-movement.x, .32f), tiltAim(movement.y, .22f) + .58f * entrance)
             else Offset(((position.x - 986f) / 520f).coerceIn(-1f, 1f), ((position.y - 392f) / 420f).coerceIn(-1f, 1f))
         fun ease(value: Float, goal: Float): Float {
             val time = if (position != null) .085f else if (kotlin.math.abs(goal) < kotlin.math.abs(value)) .52f else .13f

@@ -42,7 +42,7 @@ import kotlinx.coroutines.withContext
     var error by remember { mutableStateOf<String?>(null) }
     val bitmap by produceState<android.graphics.Bitmap?>(null, source) {
         value = withContext(Dispatchers.IO) { AppearanceAssets(context).file(source)?.let { BitmapFactory.decodeFile(it.path) } }
-        if (value == null) error = "无法读取这张图片，请重新选择"
+        if (value == null) error = "appearance.background_read_failed"
     }
     LaunchedEffect(confirm) {
         if (!confirm || bitmap == null) return@LaunchedEffect
@@ -60,7 +60,7 @@ import kotlinx.coroutines.withContext
             }
             onSave(key, seed)
         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-        catch (e: Exception) { android.util.Log.w("BackgroundCrop", "Could not save background", e); error = "背景未能保存，请重试" }
+        catch (e: Exception) { android.util.Log.w("BackgroundCrop", "Could not save background", e); error = "appearance.background_save_failed" }
         finally { saving = false; confirm = false }
     }
     Dialog(onDismissRequest = { if (!saving) onDismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
@@ -105,13 +105,13 @@ import kotlinx.coroutines.withContext
                 IconButton(feedbackClick { if (!saving) onDismiss() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.cancel_crop")) }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)
-                else IconButton(feedbackClick { if (bitmap != null) confirm = true }, Modifier.testTag("background-crop-save")) {
+                else IconButton(feedbackClick { confirm = true }, Modifier.testTag("background-crop-save"), enabled = image != null) {
                     Icon(Icons.Default.Check, uiText("accessibility.save_background"))
                 }
             }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent,
                 titleContentColor = Color.White, navigationIconContentColor = Color.White, actionIconContentColor = Color.White))
             if (image == null && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
-            Text(error ?: uiText("appearance.pinch_background"), Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
+            Text(uiText(error ?: "appearance.pinch_background"), Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(24.dp),
                 color = Color.White.copy(alpha = .9f), style = MaterialTheme.typography.bodyMedium)
         }
     }
