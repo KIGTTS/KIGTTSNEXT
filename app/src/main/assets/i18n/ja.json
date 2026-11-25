@@ -1469,5 +1469,11 @@
   "expression.preset.sweat": "汗マーク",
   "expression.preset.erase": "目鼻口を隠す",
   "market.name": "拡張マーケット",
-  "market.unavailable": "拡張マーケットは現在利用できません。しばらくしてから再試行してください"
+  "market.unavailable": "拡張マーケットは現在利用できません。しばらくしてから再試行してください",
+  "feedback.media_collapse": "メディアやウェブページを開くときの定型文バー",
+  "feedback.media_collapse.keep": "そのまま",
+  "feedback.media_collapse.single_row": "1行",
+  "feedback.media_collapse.collapse": "折りたたむ",
+  "plugin.appearance.save_title": "外観の変更を保存しますか？",
+  "plugin.appearance.save_body": "「{plugin}」が保存済みの外観設定の変更を求めています。"
 }

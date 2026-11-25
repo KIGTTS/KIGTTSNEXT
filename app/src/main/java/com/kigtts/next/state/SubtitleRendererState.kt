@@ -1,7 +1,9 @@
 package com.kigtts.next.state
 
 import com.kigtts.next.media.WebContentPolicy
+import com.kigtts.next.theme.ResolvedAppearance
 import com.kigtts.plugin.api.KigPlugin
+import com.kigtts.plugin.api.NativeSubtitleRenderer
 import com.kigtts.plugin.api.PanelPresentation
 import com.kigtts.plugin.api.PluginRegistry
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,11 +13,16 @@ import java.io.File
 /** A renderer belongs to one live plugin generation and never changes the editable document. */
 class SubtitleRendererSelection internal constructor(
     val owner: String,
-    val root: File,
+    private val webRoot: File?,
     val mainPage: String,
     internal val plugin: KigPlugin,
     val presentation: PanelPresentation = PanelPresentation(),
-)
+    val native: NativeSubtitleRenderer? = null,
+    internal val appearance: ResolvedAppearance? = null,
+) {
+    val root: File get() = checkNotNull(webRoot)
+    internal fun available(): Boolean = native != null || webRoot?.let { WebContentPolicy.file(it, mainPage) } != null
+}
 
 class SubtitleRendererState {
     private val mutableSelection = MutableStateFlow<SubtitleRendererSelection?>(null)
@@ -33,9 +40,23 @@ class SubtitleRendererState {
         val directory = root.canonicalFile
         require(directory.isDirectory && WebContentPolicy.file(directory, mainPage) != null) { "Renderer main page is unavailable" }
         val current = mutableSelection.value
-        if (current?.owner == owner && current.plugin === plugin && current.root == directory && current.mainPage == mainPage && current.presentation == presentation) return
+        if (current?.owner == owner && current.plugin === plugin && current.native == null &&
+            current.root == directory && current.mainPage == mainPage && current.presentation == presentation) return
         mutableQuickSwipe.value = false
         mutableSelection.value = SubtitleRendererSelection(owner, directory, mainPage, plugin, presentation)
+    }
+
+    internal fun selectNative(plugin: KigPlugin, renderer: NativeSubtitleRenderer, presentation: PanelPresentation,
+        appearance: ResolvedAppearance?, collapseQuickText: Boolean, collapse: () -> Unit) {
+        val owner = plugin.descriptor.id
+        val current = mutableSelection.value
+        val wasSelected = current?.plugin === plugin && current.native != null
+        if (wasSelected && current?.native == renderer && current.presentation == presentation && current.appearance == appearance) return
+        if (!wasSelected) {
+            mutableQuickSwipe.value = false
+            if (collapseQuickText) collapse()
+        }
+        mutableSelection.value = SubtitleRendererSelection(owner, null, "", plugin, presentation, renderer, appearance)
     }
 
     /** A plugin can only turn off its own renderer. The host may clear any renderer. */
@@ -47,6 +68,6 @@ class SubtitleRendererState {
 
     fun reconcile(registry: PluginRegistry) {
         val current = mutableSelection.value ?: return
-        if (registry.plugins.none { it === current.plugin } || WebContentPolicy.file(current.root, current.mainPage) == null) clear()
+        if (registry.plugins.none { it === current.plugin } || !current.available()) clear()
     }
 }

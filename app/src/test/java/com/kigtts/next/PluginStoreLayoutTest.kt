@@ -46,6 +46,19 @@ class PluginStoreLayoutTest {
     @Test @Config(qualifiers = "zh-rCN-w840dp-h1000dp-xhdpi")
     fun tabletSectionsKeepTwoColumns() = catalog(true)
 
+    @Test fun aLargeCatalogSectionOnlyComposesVisibleEntries() {
+        val items = List(80) { ManagementItem("large-$it", "项目 $it", group = "分类") }
+        val list = ManagementList("store/large", items, style = ManagementListStyle.CATALOG,
+            sectionActions = mapOf("分类" to PageAction("more", "更多")))
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            PluginPageScreen(PluginPage("store", "拓展市场", emptyList(), list)) { _, _ -> }
+        } }
+        compose.onNodeWithTag("managed-item/large-0").assertIsDisplayed()
+        compose.onNodeWithTag("managed-item/large-79").assertDoesNotExist()
+        compose.onNodeWithTag("managed-list/store/large").performScrollToKey("large-79")
+        compose.onNodeWithTag("managed-item/large-79").assertIsDisplayed()
+    }
+
     @Test fun detailBodyHasReadingInsetsInsideItsCard() {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             PluginPageScreen(PluginPage("package", "云端语音", listOf(

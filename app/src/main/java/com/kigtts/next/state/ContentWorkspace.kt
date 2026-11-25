@@ -58,12 +58,12 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         if (entry.kind == MediaKind.AUDIO) {
             history.clear();resetSelection()
             update { it.copy(mediaId=null,audioId=null,editing=false,mediaEditing=false,quickTextEditing=false,
-                webCanGoBack=false,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1) }
+                webCanGoBack=false,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1).afterOpeningMedia() }
             playAudio(entry,autoPlay&&state().autoPlayback);return
         }
         saveSelection(entry.id,autoPlay,audioMode)
         update { it.copy(mediaId=entry.id,webPermissionEntryId=null,editing=false,mediaEditing=false,quickTextEditing=false,sidePage=null,
-            webCanGoBack=false,audioId=null,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1,subtitleFormats=emptyList(),subtitleRevision=it.subtitleRevision+1) }
+            webCanGoBack=false,audioId=null,contentAutoPlay=autoPlay,contentAudioMode=audioMode,contentRevision=it.contentRevision+1,subtitleFormats=emptyList(),subtitleRevision=it.subtitleRevision+1).afterOpeningMedia() }
     }
     fun closeContent() {
         val current=state(); if(current.mediaId==null&&current.audioId==null)return
@@ -85,12 +85,15 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
     fun send(phrase:QuickPhrase) {
         val entry = repository.get(phrase.mediaId)
         if (entry?.kind == MediaKind.WEB && phrase.metadata["web.openMode"] == "custom-tab" && openCustomTab != null) {
+            update { it.afterOpeningMedia() }
             openCustomTab.invoke(entry.primary, phrase.title); return
         }
         when (phrase.cardType(entry?.kind)) {
             QuickCardType.MEDIA, QuickCardType.PAGE -> entry?.let { show(it,phrase.autoPlay,phrase.audioMode); update { state -> state.copy(webPermissionEntryId=phrase.id) }; preferences.edit { putString("webEntry",phrase.id) } } ?: setText(phrase.text)
             QuickCardType.AUDIO -> { history.clear();setText(phrase.text);update { it.copy(contentAutoPlay=phrase.autoPlay,
-                subtitleFormats=if(phrase.richText)phrase.formats else emptyList()) }
+                subtitleFormats=if(phrase.richText)phrase.formats else emptyList()).let { state ->
+                    if (entry?.kind == MediaKind.AUDIO) state.afterOpeningMedia() else state
+                } }
                 if (entry?.kind == MediaKind.AUDIO) playAudio(entry,phrase.autoPlay&&state().autoPlayback) }
             QuickCardType.TEXT -> {
                 history.clear(); setText(phrase.text)

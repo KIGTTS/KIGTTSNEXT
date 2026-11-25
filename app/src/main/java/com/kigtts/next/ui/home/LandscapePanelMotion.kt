@@ -37,7 +37,7 @@ fun rememberLandscapePanel(state: AppState, model: AppViewModel, availableWidth:
     val latestFeedback by rememberUpdatedState(feedback)
     val latestGeometry by rememberUpdatedState(geometry)
     val target = if (state.panel == null) LandscapePanelGeometry.COLLAPSED
-        else geometry.widthFor(state.panelColumns.coerceAtMost(geometry.maximumColumns))
+        else geometry.widthFor(if (state.mediaSingleRow) 1 else state.panelColumns.coerceAtMost(geometry.maximumColumns))
     val animation = remember { Animatable(target) }
     val dragging = remember { mutableStateOf(false) }
     val rawWidth = remember { mutableFloatStateOf(target) }

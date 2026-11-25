@@ -158,5 +158,11 @@
   "market.unavailable": "拓展市场暂时打不开，等会儿再试试",
   "link.install_store": "拓展市场暂时打不开，等会儿再试试",
   "link.store_open_failed": "暂时打不开这项内容，到拓展市场看看",
-  "store.catalog_categories": "分类"
+  "store.catalog_categories": "分类",
+  "feedback.media_collapse": "打开媒体或网页时收起快捷文本栏",
+  "feedback.media_collapse.keep": "不折叠",
+  "feedback.media_collapse.single_row": "单行",
+  "feedback.media_collapse.collapse": "折叠",
+  "plugin.appearance.save_title": "保存外观更改？",
+  "plugin.appearance.save_body": "「{plugin}」想修改你保存的外观设置。"
 }

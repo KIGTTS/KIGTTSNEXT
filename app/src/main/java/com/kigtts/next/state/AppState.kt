@@ -81,6 +81,9 @@ data class AppState(
     val contentRevision: Int = 0,
     val uiLocale: String = "zh-CN",
     val followsSystemUiLanguage: Boolean = true,
+    internal val pageVersion: Long = 0,
+    val mediaQuickTextCollapse: MediaQuickTextCollapse = MediaQuickTextCollapse.KEEP,
+    internal val mediaSingleRow: Boolean = false,
 ) {
     val editorText: String get() = editorValue.text
     val subtitleExpanded: Boolean get() = editing || forcedFullscreen || mediaEditing

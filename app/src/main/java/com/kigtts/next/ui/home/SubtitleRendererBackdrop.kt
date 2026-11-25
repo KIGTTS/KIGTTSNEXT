@@ -20,10 +20,10 @@ internal fun SubtitleRendererBackdrop(state: AppState, model: AppViewModel, safe
     val rotation = animateFloatAsState(if (flipped) 180f else 0f, tween(if (state.subtitleAppearance.reducedMotion) 0 else 320,
         easing = FastOutSlowInEasing), label = "renderer-flip")
     val insets = if (flipped) MediaSafeArea(safeArea.bottom, safeArea.left, safeArea.top, safeArea.right) else safeArea
-    key(renderer) {
+    key(if (renderer.native == null) renderer else renderer.plugin) {
         PluginSubtitleRenderer(renderer, state.editorText, state.subtitlePlaceholder, state.subtitleSizePercent,
             modifier.graphicsLayer { rotationZ = rotation.value }, safeArea = insets,
             onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(renderer.owner, it) },
-            onUnavailable = { model.rendererUnavailable(renderer.owner) })
+            onUnavailable = { model.rendererUnavailable(renderer.owner) }, reducedMotion = state.subtitleAppearance.reducedMotion)
     }
 }

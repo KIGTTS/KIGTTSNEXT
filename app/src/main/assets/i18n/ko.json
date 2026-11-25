@@ -1469,5 +1469,11 @@
   "expression.preset.sweat": "땀방울",
   "expression.preset.erase": "이목구비 지우기",
   "market.name": "확장 마켓",
-  "market.unavailable": "지금은 확장 마켓을 사용할 수 없습니다. 잠시 후 다시 시도하세요"
+  "market.unavailable": "지금은 확장 마켓을 사용할 수 없습니다. 잠시 후 다시 시도하세요",
+  "feedback.media_collapse": "미디어 또는 웹 페이지를 열 때 빠른 문구 표시",
+  "feedback.media_collapse.keep": "그대로",
+  "feedback.media_collapse.single_row": "한 줄",
+  "feedback.media_collapse.collapse": "접기",
+  "plugin.appearance.save_title": "모양 변경을 저장할까요?",
+  "plugin.appearance.save_body": "“{plugin}”에서 저장된 모양 설정을 변경하려고 합니다."
 }

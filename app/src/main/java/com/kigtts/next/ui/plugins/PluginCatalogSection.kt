@@ -12,12 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.settings.SettingsGroup
-import com.kigtts.plugin.api.*
-import java.io.File
 
 /** Inner corners stay small where cells meet, including a two-column section's last partial row. */
 internal fun catalogGroupShape(index: Int, count: Int, columns: Int, outer: CornerBasedShape): RoundedCornerShape {
@@ -31,26 +27,6 @@ internal fun catalogGroupShape(index: Int, count: Int, columns: Int, outer: Corn
         topEnd = if (row == 0 && column == lastColumn) outer.topEnd else inner,
         bottomStart = if (row == lastRow && column == 0) outer.bottomStart else inner,
         bottomEnd = if (row == lastRow && column == lastColumn) outer.bottomEnd else inner)
-}
-
-@Composable internal fun PluginCatalogSection(title: String, entries: List<ManagementItem>, columns: Int,
-    list: ManagementList, active: Boolean, canInvoke: Boolean, resolve: (PluginResource) -> File?,
-    invoke: (String, Map<String, String>) -> Unit) {
-    SettingsGroup(title, headerAction = list.sectionActions[title]?.let { action -> {
-        CatalogSectionAction(action.label) { if (canInvoke) invoke(action.id, emptyMap()) }
-    } }) {
-        Column(Modifier.testTag("catalog-section/" + title), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            entries.chunked(columns).forEachIndexed { row, cells ->
-                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    cells.forEachIndexed { column, item ->
-                        PluginCatalogEntry(item, list.itemActions[item.id], active, canInvoke, resolve, invoke,
-                            Modifier.weight(1f).fillMaxHeight(),
-                            catalogGroupShape(row * columns + column, entries.size, columns, MaterialTheme.shapes.small))
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable internal fun CatalogSectionAction(label: String, onClick: () -> Unit) {

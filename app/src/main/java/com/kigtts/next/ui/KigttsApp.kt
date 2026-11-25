@@ -38,6 +38,14 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
     com.kigtts.next.ui.media.WebAndroidPermissionHost()
     com.kigtts.next.ui.media.ObserveMediaPreviews(model.mediaRepository)
     val state by model.state.collectAsStateWithLifecycle()
+    val renderer by model.subtitleRenderer.selection.collectAsStateWithLifecycle()
+    val pageAppearance by model.pageAppearance.collectAsStateWithLifecycle()
+    val savedAppearance by model.savedAppearance.collectAsStateWithLifecycle()
+    val baseAppearance = remember(state.theme, state.pageVersion, pageAppearance) {
+        pageAppearance.filter { it.page == state.pageVersion }.fold(state.theme) { base, entry -> entry.appearance.applyTo(base) }
+    }
+    val visibleAppearance = if (state.destination == Destination.Home && state.sidePage == null)
+        renderer?.appearance?.applyTo(baseAppearance) ?: baseAppearance else baseAppearance
     val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
     val categories by model.categories.collectAsStateWithLifecycle()
@@ -72,7 +80,7 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
     val externalLink by model.externalLinks.pending.collectAsStateWithLifecycle()
     val resourceInstall by model.resourceInstalls.prompt.collectAsStateWithLifecycle()
     val modalWindows = remember { ModalWindows() }
-    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || sharingSetup != null || profileShareFormat != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null
+    val inputOverlay = recovery.prompt || resourceInstall != null || externalLink != null || modalWindows.count > 0 || dialog != null || pluginMenu != null || quickTextSelector != null || artworkSelector != null || pluginControls != null || pluginConfirmation != null || pluginInput != null || packageInstall != null || sharingSetup != null || profileShareFormat != null || speechPrompt != null || legacyPiperPrompt != null || externalFile != null || savedAppearance != null
     LaunchedEffect(state.mediaId) { if (state.mediaId != null) { focus.clearFocus(); keyboard?.hide() } }
     var restoreInput by remember { mutableStateOf(false) }
     ObserveImeDismissal(state.editing, inputOverlay) { model.editing(false) }
@@ -134,14 +142,14 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             else -> model.dismissCaptionPanel()
         }
     }
-    KigttsTheme(state.theme, publishWebTheme = true) {
+    KigttsTheme(visibleAppearance, publishWebTheme = true) {
         val colors = MaterialTheme.colorScheme
         if (startup != null) SideEffect { startup.ready(colors) }
         com.kigtts.next.ui.cards.PhotoFactsConsentHost()
         ProvideButtonFeedback(state.hapticsEnabled) {
             CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
                 com.kigtts.next.i18n.LocalUiLocale provides state.uiLocale,
-                com.kigtts.next.theme.LocalAppAppearanceSettings provides state.theme,
+                com.kigtts.next.theme.LocalAppAppearanceSettings provides visibleAppearance,
                 LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
                 com.kigtts.next.ui.plugins.LocalPluginEntryBlocked provides inputOverlay,
                 com.kigtts.next.sharing.LocalFaceShare provides com.kigtts.next.sharing.FaceShareActions(model.sharing::shareMedia,
@@ -178,7 +186,7 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
                         PageNavigationHost(navigation, state, model, sketch, sketchShare, { sketchShare = 0 }, { sketchShare++ },
                             back, false) { active ->
                             val home: @Composable () -> Unit = {
-                                HomeScreen(state.copy(destination = Destination.Home), phrases, categories, model,
+                                HomeScreen(state.copy(destination = Destination.Home, theme = visibleAppearance), phrases, categories, model,
                                     { model.navigate(Destination.Settings) }, if (active) back else IdleReturnProgress,
                                     inlineTips = onboarding != null)
                             }
@@ -198,6 +206,9 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
                 }
             com.kigtts.next.ui.cards.PolaroidPrintPreviewHost(model)
             com.kigtts.next.ui.plugins.PluginPermissionPrompts(model)
+            savedAppearance?.let { request ->
+                com.kigtts.next.ui.plugins.PluginAppearanceConfirmation(request) { model.answerSavedAppearance(request, it) }
+            }
             pluginConfirmation?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginConfirmation(request,
                 { pluginConfirmation = null }, { pluginConfirmation = null; model.invoke(plugin, request.action.id) }) }
             pluginControls?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginControlsDialog(request,

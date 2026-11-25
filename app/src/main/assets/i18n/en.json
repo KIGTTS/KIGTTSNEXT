@@ -1469,5 +1469,11 @@
   "expression.preset.sweat": "Sweat drop",
   "expression.preset.erase": "Erase features",
   "market.name": "Extension Market",
-  "market.unavailable": "The Extension Market is temporarily unavailable. Try again shortly."
+  "market.unavailable": "The Extension Market is temporarily unavailable. Try again shortly.",
+  "feedback.media_collapse": "Quick Text when opening media or a web page",
+  "feedback.media_collapse.keep": "Keep open",
+  "feedback.media_collapse.single_row": "One row",
+  "feedback.media_collapse.collapse": "Collapse",
+  "plugin.appearance.save_title": "Save appearance changes?",
+  "plugin.appearance.save_body": "“{plugin}” is requesting a change to your saved appearance."
 }

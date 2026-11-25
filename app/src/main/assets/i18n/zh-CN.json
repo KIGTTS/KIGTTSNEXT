@@ -1469,5 +1469,11 @@
   "expression.preset.sweat": "流汗",
   "expression.preset.erase": "去五官",
   "market.name": "拓展市场",
-  "market.unavailable": "拓展市场暂时不可用，请稍后重试"
+  "market.unavailable": "拓展市场暂时不可用，请稍后重试",
+  "feedback.media_collapse": "打开媒体或网页时折叠快捷文本栏",
+  "feedback.media_collapse.keep": "不折叠",
+  "feedback.media_collapse.single_row": "单行",
+  "feedback.media_collapse.collapse": "折叠",
+  "plugin.appearance.save_title": "保存外观更改？",
+  "plugin.appearance.save_body": "「{plugin}」请求修改已保存的外观设置。"
 }

@@ -76,6 +76,7 @@ internal val localizedSearchTitles = mapOf(
     "按键震动反馈" to "feedback.haptic",
     "快捷文本" to "feedback.quick_phrases",
     "长按快速排序" to "feedback.quick_sort",
+    "打开媒体或网页时折叠快捷文本栏" to "feedback.media_collapse",
     "返回操作" to "feedback.back_action",
     "二次返回退出" to "feedback.double_back",
     "更暗的深色模式" to "appearance.dark",

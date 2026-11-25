@@ -94,7 +94,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
-        backgroundSettings = state.theme,
+        backgroundSettings = com.kigtts.next.theme.LocalAppAppearanceSettings.current,
         contentHandlesIme = chatHandlesIme,
         contentScrollsHeader = destination != Destination.SettingsDetail(SettingsCategory.APPEARANCE)) {
             when (destination) {
@@ -114,7 +114,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                         languageName = uiLanguageLabel(language),
                         onLanguage = { model.navigate(Destination.SettingsDetail(SettingsCategory.LANGUAGE)) })
                     SettingsCategory.LANGUAGE -> UiLanguageScreen(language, model::setUiLanguage)
-                    SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit)
+                    SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit,
+                        state.mediaQuickTextCollapse, model::mediaQuickTextCollapse)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
                     SettingsCategory.EXPERIMENTAL -> ExperimentalSettingsScreen(state, model)
                     SettingsCategory.WEB -> WebSettingsScreen()

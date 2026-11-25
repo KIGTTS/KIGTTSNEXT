@@ -1,6 +1,5 @@
 package com.kigtts.next.theme
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
@@ -22,9 +21,10 @@ val LocalBackdropViewport = compositionLocalOf { Rect.Zero }
     val context = androidx.compose.ui.platform.LocalContext.current
     val viewport = LocalBackdropViewport.current
     var origin by remember { mutableStateOf(Offset.Zero) }
-    val bitmap by produceState(AppearanceBackgrounds.peek(context, settings.background, true)?.asImageBitmap(), settings.background) {
+    val asset = settings.background.takeIf { settings.backgroundDim < 1f }
+    val bitmap by produceState(AppearanceBackgrounds.peek(context, asset, true)?.asImageBitmap(), asset) {
         value = withContext(Dispatchers.IO) { runCatching {
-            AppearanceBackgrounds.load(context, settings.background, true)?.asImageBitmap()
+            AppearanceBackgrounds.load(context, asset, true)?.asImageBitmap()
         }.getOrNull() }
     }
     val colors = MaterialTheme.colorScheme
@@ -32,7 +32,7 @@ val LocalBackdropViewport = compositionLocalOf { Rect.Zero }
     Canvas(modifier.onGloballyPositioned { origin = it.positionInWindow() }) {
         val current = paint?.palette?.colors ?: colors
         val tint = current.surfaceContainer
-        val image = bitmap
+        val image = bitmap.takeIf { asset != null }
         if (image != null && viewport.width > 0 && viewport.height > 0) {
             val scale = max(viewport.width / image.width, viewport.height / image.height)
             withTransform({

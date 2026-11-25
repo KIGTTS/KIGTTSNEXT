@@ -83,6 +83,45 @@ class SubtitleRendererHostTest {
         compose.onNodeWithTag("plugin-subtitle-renderer").assertDoesNotExist()
         compose.onNodeWithTag("speech-editor").assertTextEquals("编辑后的文字")
     }
+    @Test fun pluginAppearanceIsPageScopedAndSavingRequiresHostApproval() {
+        val (model, plugin) = show()
+        val base = model.state.value.theme
+        val patch = AppearancePatch(mode = AppearanceMode.DARK, backgroundDim = 1f, pureBlackDark = true)
+        plugin.outcome = PluginOutcome.SetTemporaryAppearance(patch)
+        invoke(model, plugin)
+        assertEquals(patch, model.pageAppearance.value.single().appearance.patch)
+        assertEquals(base, model.state.value.theme)
+        compose.runOnIdle { model.navigate(Destination.Settings) }
+        assertTrue(model.pageAppearance.value.isEmpty())
+
+        plugin.outcome = PluginOutcome.ChangeSavedAppearance(patch)
+        invoke(model, plugin)
+        assertEquals(base, model.state.value.theme)
+        compose.runOnIdle { model.answerSavedAppearance(requireNotNull(model.savedAppearance.value), false) }
+        assertEquals(base, model.state.value.theme)
+        invoke(model, plugin)
+        compose.runOnIdle { model.answerSavedAppearance(requireNotNull(model.savedAppearance.value), true) }
+        val saved = com.kigtts.next.theme.ThemeSettingsStore(compose.activity).load()
+        assertEquals(base.copy(mode = com.kigtts.next.theme.ThemeMode.DARK, backgroundDim = 1f, deeperDark = true), saved)
+    }
+
+    @Test fun nativeRendererShrinksTheDockOnlyWhenFirstSelected() {
+        val (model, plugin) = show()
+        compose.runOnIdle {
+            model.text("LED caption")
+            model.openPanel(HomePanel.QUICK_TEXT)
+        }
+        val style = NativeSubtitleRenderer.Led()
+        plugin.outcome = PluginOutcome.SetNativeSubtitleRenderer(style, collapseQuickText = true)
+        invoke(model, plugin)
+        compose.onNodeWithTag("native-led-renderer", useUnmergedTree = true).assertExists()
+        assertNull(model.state.value.panel)
+        assertEquals("LED caption", model.state.value.editorText)
+        compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
+        plugin.outcome = PluginOutcome.SetNativeSubtitleRenderer(style.copy(glow = .7f), collapseQuickText = true)
+        invoke(model, plugin)
+        assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
+    }
     @Test fun invalidOrForeignResourceCannotReplaceExistingRendererAndOwnerCannotClearAnotherOne() {
         val (model, plugin) = show()
         invoke(model, plugin)

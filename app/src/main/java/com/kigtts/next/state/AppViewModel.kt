@@ -5,6 +5,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.theme.ThemeSettingsStore
+import com.kigtts.next.theme.PageAppearance
+import com.kigtts.next.theme.SavedAppearanceRequest
+import com.kigtts.next.theme.resolveAppearance
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.CancellationException
 import com.kigtts.next.audio.*
@@ -67,6 +70,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(pluginRevision = it.pluginRevision + 1) }
     }
     private val themeStore = ThemeSettingsStore(application)
+    internal val pageAppearance = MutableStateFlow<List<PageAppearance>>(emptyList())
+    internal val savedAppearance = MutableStateFlow<SavedAppearanceRequest?>(null)
     private val placeholderStore = SubtitlePlaceholderStore(application)
     private val subtitleAppearanceStore = SubtitleAppearanceStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
@@ -104,6 +109,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val mutableState = MutableStateFlow(AppState(uiLocale = initialUiLocale,
         followsSystemUiLanguage = initialUiLanguage == com.kigtts.next.i18n.UiLanguage.SYSTEM,
         theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(initialUiLocale), hapticsEnabled = feedbackStore.load(),
+        mediaQuickTextCollapse = feedbackStore.loadMediaCollapse(),
         subtitleAppearance = subtitleAppearanceStore.load(),
         captionTextSize = captionFonts.panel(),
         lastExpandedPanelHeight = panelStore.loadHeight(), panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
@@ -300,7 +306,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun externalIntent(intent: android.content.Intent?) { if (sharing.accept(intent)) return; externalFiles.accept(intent); externalLinks.accept(intent) }
 
     private fun update(transform: (AppState) -> AppState) {
-        mutableState.update(transform)
+        mutableState.update { previous ->
+            val next = transform(previous)
+            if (next.destination != previous.destination || next.sidePage != previous.sidePage ||
+                next.navigationStack != previous.navigationStack) next.copy(pageVersion = previous.pageVersion + 1)
+            else next
+        }
+        val page = state.value.pageVersion
+        if (pageAppearance.value.any { it.page != page }) pageAppearance.update { patches -> patches.filter { it.page == page } }
         cardCapture.onDestinationChanged(state.value.destination)
         content.onDestinationChanged(state.value.destination)
     }
@@ -336,6 +349,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update {
             it.copy(theme = themeStore.load(), subtitlePlaceholder = subtitlePlaceholder(it.uiLocale),
                 hapticsEnabled = feedbackStore.load(), subtitleAppearance = subtitleAppearanceStore.load(),
+                mediaQuickTextCollapse = feedbackStore.loadMediaCollapse(),
                 captionTextSize = captionFonts.panel(), lastExpandedPanelHeight = panelStore.loadHeight(),
                 panelColumns = panelStore.loadColumns(), subtitleSizePercent = subtitleSizeStore.load(),
                 appleLivePhotos = experiments.getBoolean("apple-live-photos", false),
@@ -377,6 +391,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         feedbackStore.save(enabled)
         update { it.copy(hapticsEnabled = enabled) }
     }
+    fun mediaQuickTextCollapse(value: MediaQuickTextCollapse) {
+        feedbackStore.saveMediaCollapse(value)
+        update { it.copy(mediaQuickTextCollapse = value) }
+    }
     fun appleLivePhotos(enabled: Boolean) {
         experiments.edit { putBoolean("apple-live-photos", enabled) }
         update { it.copy(appleLivePhotos = enabled) }
@@ -401,7 +419,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun webHistory(canGoBack: Boolean) { update { it.copy(webCanGoBack = canGoBack) } }
     fun webBack() { update { it.copy(webBackRevision = it.webBackRevision + 1) } }
     fun openPanel(panel: HomePanel, dragHeight: Float? = null) {
-        update { it.copy(destination = Destination.Home, panel = panel, panelHeight = dragHeight ?: it.lastExpandedPanelHeight) }
+        update { it.copy(destination = Destination.Home, panel = panel, panelHeight = dragHeight ?: it.lastExpandedPanelHeight, mediaSingleRow = false) }
     }
     fun openSidePage(page: SidePage) {
         if (page == SidePage.CARDS) { navigate(Destination.Cards); return }
@@ -419,8 +437,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         content.editPhrase { it.copy(text = current.editorText) }
     }
     fun closeSidePage() { update { it.copy(sidePage = null) } }
-    fun closePanel() { update { it.copy(panel = null, quickTextEditing = false) } }
-    fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false, forcedFullscreen = false) } }
+    fun closePanel() { update { it.copy(panel = null, quickTextEditing = false, mediaSingleRow = false) } }
+    fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false, forcedFullscreen = false, mediaSingleRow = false) } }
     fun editPhraseDetails(phrase: QuickPhrase?, category: String) {
         content.beginPhrase(phrase, category)
         navigate(Destination.PhraseEditor(requireNotNull(content.phraseDraft.value).key, phrase == null))
@@ -429,14 +447,14 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun panelHeight(height: Float) {
         val value = height.coerceAtLeast(HomePanelSizes.COLLAPSED)
         if (value > HomePanelSizes.COLLAPSED) panelStore.saveHeight(value)
-        update { it.copy(panelHeight = value,
+        update { it.copy(panelHeight = value, mediaSingleRow = false,
             lastExpandedPanelHeight = if (value > HomePanelSizes.COLLAPSED) value else it.lastExpandedPanelHeight) }
     }
     fun closeListeningPanel() = speech.closeListening()
     fun panelColumns(columns: Int) {
         val value = columns.coerceIn(1, 6)
         panelStore.saveColumns(value)
-        update { it.copy(panelColumns = value) }
+        update { it.copy(panelColumns = value, mediaSingleRow = false) }
     }
     fun captionHeight(height: Float) { update { it.copy(captionHeight = height) } }
     fun editing(editing: Boolean) {
@@ -514,6 +532,16 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         themeStore.save(settings)
         update { it.copy(theme = settings) }
     }
+    internal fun answerSavedAppearance(request: SavedAppearanceRequest, accept: Boolean) {
+        if (!savedAppearance.compareAndSet(request, null) || !accept) return
+        if (registry.plugin(request.plugin.descriptor.id) === request.plugin) theme(request.appearance.applyTo(state.value.theme))
+    }
+
+    private suspend fun resolvePluginAppearance(pluginId: String, patch: AppearancePatch) =
+        resolveAppearance(getApplication(), patch) { resource ->
+            checkPluginAction(resource.pluginId == null || resource.pluginId == pluginId, "plugin.subtitle_resource_mismatch")
+            pluginManager.paths.existingResource(pluginId, resource.path)
+        }
     fun setSubtitlePlaceholder(value: String) {
         val normalized = SubtitlePlaceholder.normalize(value)
         placeholderStore.save(normalized); update { it.copy(subtitlePlaceholder = normalized) }
@@ -554,6 +582,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             update { it.copy(pluginRevision = it.pluginRevision + 1) }; complete?.invoke(true); return
         }
         if (pluginId in state.value.busyPlugins) { complete?.invoke(false); return }
+        val invokingPage = state.value.pageVersion
         update { it.copy(busyPlugins = it.busyPlugins + pluginId) }
         viewModelScope.launch {
             var accepted = false
@@ -607,6 +636,30 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         pluginManager.refreshUi(pluginId, context())
                         update { it.copy(pluginRevision = it.pluginRevision + 1) }
                     }
+                    is PluginOutcome.SetNativeSubtitleRenderer -> {
+                        val renderer = outcome.renderer
+                        val appearance = outcome.appearance?.let { resolvePluginAppearance(pluginId, it) }
+                        if (registry.plugin(pluginId) !== plugin || state.value.pageVersion != invokingPage) return@launch
+                        if (renderer == null) subtitleRenderer.clear(pluginId)
+                        else subtitleRenderer.selectNative(plugin, renderer, outcome.presentation, appearance,
+                            outcome.collapseQuickText, ::closePanel)
+                        outcome.controls?.let { outcomes.send(pluginId to it) }
+                        pluginManager.refreshUi(pluginId, context())
+                        update { it.copy(pluginRevision = it.pluginRevision + 1) }
+                    }
+                    is PluginOutcome.SetTemporaryAppearance -> {
+                        val appearance = outcome.appearance?.let { resolvePluginAppearance(pluginId, it) }
+                        if (registry.plugin(pluginId) !== plugin || state.value.pageVersion != invokingPage) return@launch
+                        pageAppearance.update { current ->
+                            val remaining = current.filterNot { it.plugin === plugin }
+                            if (appearance == null) remaining else remaining + PageAppearance(plugin, invokingPage, appearance)
+                        }
+                    }
+                    is PluginOutcome.ChangeSavedAppearance -> {
+                        val appearance = resolvePluginAppearance(pluginId, outcome.appearance)
+                        if (registry.plugin(pluginId) === plugin && state.value.pageVersion == invokingPage)
+                            savedAppearance.compareAndSet(null, SavedAppearanceRequest(plugin, appearance))
+                    }
                     is PluginOutcome.SetListeningPanel -> {
                         listeningPanel.select(plugin, outcome, context())
                         pluginManager.refreshUi(pluginId, context())
@@ -655,6 +708,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         safeModeSession.synchronize()
         pluginManager.reload()
         subtitleRenderer.reconcile(registry)
+        pageAppearance.update { patches -> patches.filter { registry.plugin(it.plugin.descriptor.id) === it.plugin } }
+        savedAppearance.value?.takeUnless { registry.plugin(it.plugin.descriptor.id) === it.plugin }
+            ?.let { savedAppearance.compareAndSet(it, null) }
         listeningPanel.reconcile(registry)
         pluginManager.refreshContext(context())
         for (key in listOf("tts", "asr")) {

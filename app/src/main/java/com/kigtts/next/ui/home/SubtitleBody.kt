@@ -72,11 +72,11 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
         } else if (renderer != null) {
             val selection = renderer!!
             Box(Modifier.fillMaxSize()) {
-                if (!rendererInBackground) key(selection) { PluginSubtitleRenderer(selection, text, state.subtitlePlaceholder,
+                if (!rendererInBackground) key(if (selection.native == null) selection else selection.plugin) { PluginSubtitleRenderer(selection, text, state.subtitlePlaceholder,
                     state.subtitleSizePercent, Modifier.fillMaxSize(),
                     onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(selection.owner, it) }, onUnavailable = {
                         model.rendererUnavailable(selection.owner)
-                    }) }
+                    }, reducedMotion = state.subtitleAppearance.reducedMotion) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.
                 if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
                     Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))

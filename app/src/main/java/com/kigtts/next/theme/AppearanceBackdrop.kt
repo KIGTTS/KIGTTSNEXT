@@ -37,13 +37,14 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
     overlayColor: ((ColorScheme) -> Color)? = null) {
     val context = LocalContext.current
     val window = LocalWindowInfo.current.containerSize
-    val bitmap by produceState(AppearanceBackgrounds.peek(context, settings.background, blur), settings.background, blur) {
-        value = withContext(Dispatchers.IO) { AppearanceBackgrounds.load(context, settings.background, blur) }
+    val asset = settings.background.takeIf { settings.backgroundDim < 1f }
+    val bitmap by produceState(AppearanceBackgrounds.peek(context, asset, blur), asset, blur) {
+        value = withContext(Dispatchers.IO) { AppearanceBackgrounds.load(context, asset, blur) }
     }
     val colors = MaterialTheme.colorScheme
     val paint = LocalThemePaint.current
     var origin by remember { mutableStateOf(Offset.Zero) }
-    val image = remember(bitmap) { bitmap?.asImageBitmap() }
+    val image = remember(bitmap, asset) { bitmap?.takeIf { asset != null }?.asImageBitmap() }
     Canvas(if (screenAnchored && image != null) modifier.onGloballyPositioned { origin = it.positionInWindow() } else modifier) {
         val current = paint?.palette?.colors ?: colors
         if (image != null) {

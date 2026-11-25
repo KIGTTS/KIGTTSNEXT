@@ -1,5 +1,6 @@
 package com.kigtts.next.ui.management
 
+import android.util.LruCache
 import com.kigtts.next.media.decodeResourceArtwork
 import com.kigtts.next.media.isWhiteLineArtwork
 import com.kigtts.next.media.decodeResourceVector
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import com.kigtts.next.ui.components.vector
 import com.kigtts.next.ui.components.SvgResourcePainter
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -32,14 +34,23 @@ private sealed interface AvatarArtwork {
     data class Pixels(val bitmap: ImageBitmap, val whiteLine: Boolean) : AvatarArtwork
 }
 
+private data class AvatarKey(val path: String, val timestamp: Long, val targetPixels: Int)
+private val avatarCache = LruCache<AvatarKey, AvatarArtwork>(64)
+private val avatarDecoding = Dispatchers.IO.limitedParallelism(2)
+
 @Composable
 internal fun ResourceAvatar(item: ManagementItem, resolve: (PluginResource) -> File?, size: androidx.compose.ui.unit.Dp = 40.dp) {
     val file = item.image?.let { runCatching { resolve(it) }.getOrNull() }
-    val version = file?.lastModified()
-    val artwork by produceState<AvatarArtwork?>(null, file?.path, version) {
-        value = withContext(Dispatchers.IO) {
-            decodeResourceVector(file)?.let(AvatarArtwork::Vector)
-                ?: decodeResourceArtwork(file)?.let { AvatarArtwork.Pixels(it.asImageBitmap(), it.isWhiteLineArtwork()) }
+    val targetPixels = with(LocalDensity.current) { size.roundToPx() }.coerceIn(24, 256)
+    val cacheKey = file?.let { AvatarKey(it.path, it.lastModified(), targetPixels) }
+    val artwork by key(cacheKey) {
+        produceState<AvatarArtwork?>(cacheKey?.let(avatarCache::get), cacheKey) {
+            if (cacheKey != null && value == null) value = withContext(avatarDecoding) {
+                avatarCache.get(cacheKey) ?: (decodeResourceVector(file)?.let(AvatarArtwork::Vector)
+                    ?: decodeResourceArtwork(file, targetPixels)?.let {
+                        AvatarArtwork.Pixels(it.asImageBitmap(), it.isWhiteLineArtwork())
+                    })?.also { avatarCache.put(cacheKey, it) }
+            }
         }
     }
     if (artwork != null) {

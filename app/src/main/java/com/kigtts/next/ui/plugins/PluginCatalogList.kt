@@ -34,33 +34,31 @@ import java.io.File
     val active = LocalPageActive.current
     val canInvoke = active && !busy
     val scroll = key(list.id) { rememberLazyGridState() }
+    val sections = remember(list.items) { list.items.groupBy { it.group } }
     CatalogLoadMore(list, scroll, canInvoke, invoke)
     ReadablePage {
-    val wide = maxWidth >= 600.dp
+    val columns = if (maxWidth >= 600.dp) 2 else 1
     Box(Modifier.fillMaxSize()) {
-    LazyVerticalGrid(columns = GridCells.Fixed(if (wide) 2 else 1), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
-        state = scroll, contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+    LazyVerticalGrid(columns = GridCells.Fixed(columns), Modifier.fillMaxSize().testTag("managed-list/" + list.id),
+        state = scroll, contentPadding = com.kigtts.next.ui.navigation.pageContentPadding(), verticalArrangement = Arrangement.spacedBy(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
-        list.items.groupBy { it.group }.forEach { (group, entries) ->
-            if (group.isNotBlank() && list.sectionActions.isNotEmpty()) {
-                item("section/$group", span = { GridItemSpan(maxLineSpan) }) {
-                    Box(Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120))) {
-                        PluginCatalogSection(group, entries, if (wide) 2 else 1, list, active, canInvoke, resolve, invoke)
+        sections.forEach { (group, entries) ->
+            val grouped = group.isNotBlank() && list.sectionActions.isNotEmpty()
+            if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) {
+                Row(Modifier.fillMaxWidth().testTag("catalog-section/$group").padding(top = 14.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(group, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    list.sectionActions[group]?.let { action ->
+                        CatalogSectionAction(action.label) { if (canInvoke) invoke(action.id, emptyMap()) }
                     }
                 }
-                return@forEach
             }
-            if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) {
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(group, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    list.sectionActions[group]?.let { action -> TextButton(feedbackClick { if (canInvoke) invoke(action.id, emptyMap()) }) {
-                        Text(action.label); Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp))
-                    } }
-                }
-            }
-            items(entries, key = { it.id }) { item ->
+            itemsIndexed(entries, key = { _, item -> item.id }) { index, item ->
+                val shape = if (grouped) catalogGroupShape(index, entries.size, columns, MaterialTheme.shapes.small)
+                    else MaterialTheme.shapes.large
                 PluginCatalogEntry(item, list.itemActions[item.id], active, canInvoke, resolve, invoke,
-                    Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)))
+                    Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120))
+                        .padding(vertical = if (grouped) 0.dp else 5.dp), shape)
             }
         }
         if (list.loadMore != null) item("catalog-more", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
