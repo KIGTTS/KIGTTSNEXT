@@ -54,6 +54,7 @@ class FirstRunUiTest {
         awaitStep(guide, FirstRunStep.WELCOME)
         val clover = compose.onNodeWithTag("onboarding-clover")
         val welcomeFlowerTop = clover.fetchSemanticsNode().boundsInRoot.top
+        assertTrue("The welcome flower clears the wordmark and copy", welcomeFlowerTop >= copy.bottom)
         compose.mainClock.autoAdvance = false
         compose.onNodeWithTag("onboarding-next").performClick()
         compose.mainClock.advanceTimeBy(160)

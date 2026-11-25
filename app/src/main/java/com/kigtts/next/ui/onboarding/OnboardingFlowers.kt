@@ -91,7 +91,7 @@ internal fun BoxScope.OnboardingFlowers(reducedMotion: Boolean, tilt: State<Offs
         Modifier.align(Alignment.TopEnd).offset(x = 72.dp, y = (-44).dp))
     Flower("clover", 116.dp, .55f, -23f, colors.tertiaryContainer.copy(alpha = .7f), tilt, motion,
         Modifier.align(Alignment.TopStart).offset(x = (-38).dp, y = 222.dp).graphicsLayer {
-            translationY = 24.dp.toPx() * welcomeFraction()
+            translationY = 72.dp.toPx() * welcomeFraction()
         }.testTag("onboarding-clover"))
     Flower("cookie", 212.dp, .75f, -12f, colors.primaryContainer.copy(alpha = .36f), tilt, motion,
         Modifier.align(Alignment.CenterStart).offset(x = (-120).dp, y = 36.dp))
