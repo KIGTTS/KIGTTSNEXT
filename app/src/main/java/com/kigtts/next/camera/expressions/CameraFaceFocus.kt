@@ -1,5 +1,6 @@
 package com.kigtts.next.camera.expressions
 
+import android.graphics.RectF
 import android.os.SystemClock
 import androidx.camera.core.Camera
 import androidx.camera.core.FocusMeteringAction
@@ -12,27 +13,29 @@ internal class CameraFaceFocus {
     private val policy = FocusPolicy()
     private var lockedId: Long? = null
 
-    fun manual() { policy.manual(SystemClock.elapsedRealtime()); lockedId = null }
-    fun reset() { policy.reset(); lockedId = null }
+    private val presence = FaceConfirmation()
+    fun manual() { policy.manual(SystemClock.elapsedRealtime()); lockedId = null; presence.clear() }
+    fun reset() { policy.reset(); lockedId = null; presence.clear() }
 
     fun update(camera: Camera, view: PreviewView, frame: CameraFaceFrame) {
-        val target = view.outputTransform ?: return
-        if (view.width <= 0 || view.height <= 0) return
-        val mapping = frame.toView(target)
-        val candidates = frame.faces.filter { it.confidence >= .5f && it.opacity >= .65f }.mapNotNull { face ->
+        val mapping = frame.toView(view) ?: return
+        val now = frame.arrivedAt
+        val candidates = frame.faces.mapNotNull { face ->
+            val bounds = RectF(face.bounds).also { mapping.mapRect(it) }
+            if (!faceCanTrack(face, bounds, view.width, view.height)) return@mapNotNull null
             val point = floatArrayOf(face.nose.x, face.nose.y)
             mapping.mapPoints(point)
             val x = point[0] / view.width
             val y = point[1] / view.height
             if (x !in 0f..1f || y !in 0f..1f) null else Candidate(face, x, y)
         }
-        val selection = candidates.firstOrNull { it.face.id == lockedId }
-            ?: candidates.maxByOrNull { it.rank }
-            ?: return
+        val confirmed = presence.update(candidates.map { it.face.id }, now)
+        val selection = candidates.filter { it.face.id in confirmed }.let { eligible ->
+            eligible.firstOrNull { it.face.id == lockedId } ?: eligible.maxByOrNull { it.rank }
+        } ?: return
         val face = selection.face
         lockedId = face.id
         val scale = mapping.mapRadius(face.bounds.width()) / view.width
-        val now = SystemClock.elapsedRealtime()
         if (!policy.shouldRequest(now, selection.x, selection.y, scale, face.confidence)) return
         val action = FocusMeteringAction.Builder(view.meteringPointFactory.createPoint(
             selection.x * view.width, selection.y * view.height, .12f), FocusMeteringAction.FLAG_AF)

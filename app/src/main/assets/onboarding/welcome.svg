@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1536" height="1024" viewBox="320 0 1216 1024" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="art-title art-description" style="display:block;width:100%;height:100%;touch-action:none;user-select:none;overflow:hidden;isolation:isolate" fill-rule="nonzero" stroke-linejoin="round" stroke-linecap="round">
+<svg id="welcome-art" xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="1216" height="1024" viewBox="320 0 1216 1024" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="art-title art-description" style="display:block;width:100%;height:100%;touch-action:none;user-select:none;overflow:hidden;isolation:isolate" fill-rule="nonzero" stroke-linejoin="round" stroke-linecap="round">
   <title id="art-title">兔耳少女 · 动态立绘</title>
   <desc id="art-description">移动鼠标或用手指拖动，角色会看向指针，肩膀和身体稍后跟上。按住任意一只兔耳拖动，双眼会眯成「&gt;&lt;」。松开后耳朵回弹，双眼睁开。胸前的拉链拉片也可以单独拖动。</desc>
   <defs>
@@ -367,7 +367,7 @@
   <animateTransform attributeName="transform" dur="7.2s" repeatCount="indefinite" values="0 -0.24;0 -0.13;0 0.01;0 0.13;0 0.23;0 0.28;0 0.29;0 0.26;0 0.2;0 0.12;0 0.02;0 -0.08;0 -0.19;0 -0.27;0 -0.31;0 -0.3;0 -0.24" type="translate" class="passive" /><animateTransform attributeName="transform" dur="7.2s" repeatCount="indefinite" values="-0.1566 990 1036;-0.0016 990 1036;0.1333 990 1036;0.2137 990 1036;0.2335 990 1036;0.2124 990 1036;0.1793 990 1036;0.1531 990 1036;0.1317 990 1036;0.0956 990 1036;0.0245 990 1036;-0.0844 990 1036;-0.2085 990 1036;-0.3063 990 1036;-0.3371 990 1036;-0.2824 990 1036;-0.1566 990 1036" type="rotate" additive="sum" class="passive" /></g>
   <script type="application/ecmascript">(() =&gt; {
   'use strict';
-  const svg = document.currentScript?.ownerSVGElement || document.documentElement;
+  const svg = document.currentScript?.ownerSVGElement || document.getElementById("welcome-art");
   const find = id =&gt; svg.querySelector('#' + id);
   const win = svg.ownerDocument.defaultView;
   if (!win || !win.requestAnimationFrame) return;

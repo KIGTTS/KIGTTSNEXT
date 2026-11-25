@@ -5,11 +5,12 @@ import android.graphics.Color
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -17,11 +18,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
 import com.kigtts.next.i18n.uiText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-private const val ART_URL = "https://appassets.androidplatform.net/assets/onboarding/welcome.svg"
+private const val ART_ORIGIN = "https://kigtts-welcome.invalid/"
 
 @Composable
 internal fun OnboardingWelcomeArt(
@@ -32,6 +34,17 @@ internal fun OnboardingWelcomeArt(
 ) {
     val owner = LocalLifecycleOwner.current
     val description = uiText("onboarding.welcome.art")
+    val assets = LocalContext.current.assets
+    val document by produceState<String?>(null, assets) {
+        value = withContext(Dispatchers.IO) {
+            assets.open("onboarding/welcome.svg").bufferedReader(Charsets.UTF_8).use { input ->
+                val svg = input.readText().substringAfter("?>")
+                """<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html,body{margin:0;overflow:hidden}body>svg{display:block;width:100%;height:auto;aspect-ratio:1216/1024;touch-action:none}</style>
+</head><body>$svg</body></html>"""
+            }
+        }
+    }
     var ready by remember { mutableStateOf<WelcomeArtView?>(null) }
     AndroidView(
         factory = { context ->
@@ -42,6 +55,7 @@ internal fun OnboardingWelcomeArt(
                 View(context)
             }
         },
+        update = { view -> document?.let { (view as? WelcomeArtView)?.loadArt(it) } },
         modifier = modifier.semantics { contentDescription = description },
         onRelease = { (it as? WelcomeArtView)?.dispose() },
     )
@@ -61,11 +75,9 @@ internal fun OnboardingWelcomeArt(
 
 private class WelcomeArtView(context: Context, onReady: (WelcomeArtView) -> Unit) : WebView(context) {
     private var disposed = false
+    private var loading = false
 
     init {
-        val assets = WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context.applicationContext))
-            .build()
         settings.apply {
             javaScriptEnabled = true
             allowFileAccess = false
@@ -73,15 +85,19 @@ private class WelcomeArtView(context: Context, onReady: (WelcomeArtView) -> Unit
             blockNetworkLoads = true
         }
         webViewClient = object : WebViewClientCompat() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                if (request.url.toString() == ART_URL) return assets.shouldInterceptRequest(request.url)
-                return WebResourceResponse("text/plain", "UTF-8", null)
-            }
-
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean = true
 
             override fun onPageFinished(view: WebView, url: String) {
-                if (!disposed && url == ART_URL) onReady(this@WelcomeArtView)
+                if (!disposed) script("document.getElementById('welcome-art') !== null") { hasArt ->
+                    if (!disposed && hasArt == "true") onReady(this@WelcomeArtView)
+                }
+            }
+
+            override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                Log.w("OnboardingWelcome", "Welcome illustration renderer stopped")
+                (parent as? android.view.ViewGroup)?.removeView(this@WelcomeArtView)
+                dispose()
+                return true
             }
         }
         setBackgroundColor(Color.TRANSPARENT)
@@ -89,7 +105,12 @@ private class WelcomeArtView(context: Context, onReady: (WelcomeArtView) -> Unit
         isVerticalScrollBarEnabled = false
         isHorizontalScrollBarEnabled = false
         overScrollMode = OVER_SCROLL_NEVER
-        loadUrl(ART_URL)
+    }
+
+    fun loadArt(document: String) {
+        if (disposed || loading) return
+        loading = true
+        loadDataWithBaseURL(ART_ORIGIN, document, "text/html", "UTF-8", ART_ORIGIN)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -109,11 +130,12 @@ private class WelcomeArtView(context: Context, onReady: (WelcomeArtView) -> Unit
         script("window.setWelcomeTilt?.(${tilt.x},${tilt.y})")
     }
 
-    private fun script(command: String) {
-        if (!disposed) evaluateJavascript(command, null)
+    private fun script(command: String, result: android.webkit.ValueCallback<String>? = null) {
+        if (!disposed) evaluateJavascript(command, result)
     }
 
     fun dispose() {
+        if (disposed) return
         disposed = true
         destroy()
     }

@@ -10,3 +10,11 @@
 -keep,allowoptimization class kotlin.** { *; }
 -keep,allowoptimization class kotlinx.coroutines.** { *; }
 -keep,allowoptimization class kotlinx.serialization.** { *; }
+
+
+# Media3 carries nullable API 31 identifiers across its transformer and decoder boundaries.
+# Keep those boundaries so Release compilation cannot add unconditional casts on API 26–30.
+-keep,allowobfuscation,allowshrinking class androidx.media3.transformer.** { *; }
+-keep,allowobfuscation,allowshrinking class androidx.media3.exoplayer.analytics.PlayerId** { *; }
+-keep,allowobfuscation,allowshrinking class androidx.media3.exoplayer.mediacodec.MediaCodecRenderer** { *; }
+-keep,allowobfuscation,allowshrinking class androidx.media3.exoplayer.audio.AudioTrackAudioOutput { *; }

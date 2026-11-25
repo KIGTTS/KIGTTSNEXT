@@ -24,8 +24,8 @@ internal fun FirstRunHost(model: AppViewModel, progress: FirstRunStore, startup:
         CompositionLocalProvider(LocalUiLocale provides state.uiLocale) {
             ProvideButtonFeedback(state.hapticsEnabled) {
                 OnboardingScreen(progress, state.theme, state.subtitleAppearance.reducedMotion, model::theme,
-                    complete = { tryQuickText ->
-                        if (progress.finish()) {
+                    complete = { tryQuickText, agreementConfirmed ->
+                        if (progress.finish(agreementConfirmed)) {
                             finished = true
                             complete(tryQuickText)
                         }

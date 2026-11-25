@@ -28,32 +28,22 @@ import org.robolectric.annotation.LooperMode
 class FirstRunUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    @Test fun guideSwipesBackThroughTheAgreementAndFinishesOnPermissions() {
+    @Test fun guideSwipesBackAndRequiresConsentOnTheLastPage() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         val guide = FirstRunStore(compose.activity)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
+        compose.onNodeWithTag("onboarding-brand").assertIsDisplayed()
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()
         swipeForward()
-        awaitStep(guide, FirstRunStep.AGREEMENT)
-        compose.onNodeWithTag("onboarding-agreement").assertIsDisplayed()
+        awaitStep(guide, FirstRunStep.APPEARANCE)
+        compose.onNodeWithTag("onboarding-appearance").assertIsDisplayed()
         compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
         awaitStep(guide, FirstRunStep.WELCOME)
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
         compose.onNodeWithTag("onboarding-next").performClick()
-        awaitStep(guide, FirstRunStep.AGREEMENT)
-        swipeForward()
-        compose.onNodeWithTag("onboarding-agreement").assertIsDisplayed()
-        assertFalse(guide.agreementAccepted())
-        compose.onNodeWithText("隐私政策").assertDoesNotExist()
-        screenshot("agreement")
-        compose.onNodeWithText("用户协议").performClick()
-        compose.onNode(isDialog()).assertIsDisplayed()
-        compose.onNodeWithText("关闭").performClick()
-        compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.APPEARANCE)
-        compose.onNodeWithTag("onboarding-appearance").assertIsDisplayed()
-        assertEquals(FirstRunStep.APPEARANCE, guide.step())
-        assertTrue(guide.agreementAccepted())
+        assertFalse(guide.agreementAccepted())
+        compose.onNodeWithText("用户协议").assertDoesNotExist()
         compose.activityRule.scenario.recreate()
         compose.onNodeWithTag("onboarding-appearance").assertIsDisplayed()
         compose.onNodeWithContentDescription("主题模式：深色").performScrollTo().performClick()
@@ -67,32 +57,48 @@ class FirstRunUiTest {
         swipeForward()
         awaitStep(guide, FirstRunStep.PERMISSIONS)
         compose.onNodeWithTag("onboarding-permissions").assertIsDisplayed()
-        assertEquals(FirstRunStep.PERMISSIONS, guide.step())
+        compose.onNodeWithTag("speech-editor").assertDoesNotExist()
+        compose.onNodeWithTag("onboarding-next").assertIsNotEnabled()
+        compose.onNodeWithText("试试快捷文本").assertIsNotEnabled()
+        assertFalse(guide.finish(agreementConfirmed = false))
         assertNull(shadowOf(compose.activity).nextStartedActivityForResult)
-        compose.onNodeWithText("隐私政策").performClick()
-        compose.onNode(isDialog()).assertIsDisplayed()
-        compose.onNodeWithText("关闭").performClick()
-        compose.mainClock.advanceTimeBy(350)
+        for (document in listOf("隐私政策", "用户协议")) {
+            compose.onNodeWithText(document).performScrollTo().performClick()
+            compose.onNode(isDialog()).assertIsDisplayed()
+            compose.onNodeWithText("关闭").performClick()
+            compose.waitForIdle()
+        }
+        compose.onNodeWithTag("onboarding-consent").performScrollTo().assertIsOff().performClick().assertIsOn()
         screenshot("permissions")
         compose.onNodeWithText("试试快捷文本").performClick()
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
         assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
         assertEquals(FirstRunStep.COMPLETE, guide.step())
+        assertTrue(guide.agreementAccepted())
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-panel").fetchSemanticsNodes().isNotEmpty() }
         assertTipClearsAnchor("home-tip-panel", "sheet-handle")
+        compose.mainClock.autoAdvance = false
         compose.onNodeWithText("知道了").performClick()
+        compose.mainClock.advanceTimeBy(32)
+        compose.onNodeWithTag("home-tip-panel").assertExists()
+        compose.mainClock.advanceTimeBy(160)
+        compose.mainClock.autoAdvance = true
+        compose.onNodeWithTag("home-tip-panel").assertDoesNotExist()
         assertTrue(guide.seen(HomeTip.PANEL))
         compose.activityRule.scenario.recreate()
-        compose.onNodeWithTag("onboarding-agreement").assertDoesNotExist()
+        compose.onNodeWithTag("onboarding-permissions").assertDoesNotExist()
         compose.onNodeWithTag("home-tip-panel").assertDoesNotExist()
     }
 
     @Test fun cursorAndQuickEditTipsAppearOnUseAndPersistTheirDismissalOrChoice() {
         val guide = FirstRunStore(compose.activity)
-        FirstRunStep.entries.drop(1).forEach { target ->
+        FirstRunStep.entries.drop(1).dropLast(1).forEach { target ->
             compose.onNodeWithTag("onboarding-next").assertIsEnabled().performClick()
             awaitStep(guide, target)
         }
+        compose.onNodeWithTag("onboarding-consent").performScrollTo().performClick()
+        compose.onNodeWithTag("onboarding-next").performClick()
+        awaitStep(guide, FirstRunStep.COMPLETE)
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
@@ -115,6 +121,7 @@ class FirstRunUiTest {
         assertTipClearsAnchor("home-tip-quick_edit", "dock-start")
         screenshot("quick-edit-tip")
         compose.onNodeWithText("开启").performClick()
+        compose.waitForIdle()
         assertEquals(true, model.quickSort.enabled.value)
         assertTrue(guide.seen(HomeTip.QUICK_EDIT))
         compose.runOnIdle { model.editQuickTexts() }

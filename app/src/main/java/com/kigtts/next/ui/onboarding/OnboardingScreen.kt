@@ -4,13 +4,11 @@ package com.kigtts.next.ui.onboarding
 
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,13 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.kigtts.next.R
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
 import com.kigtts.next.theme.ThemeIcon
@@ -45,19 +41,18 @@ import com.kigtts.next.ui.components.MotionTextButton
 import com.kigtts.next.ui.components.dialogFeedbackClick
 import com.kigtts.next.ui.components.expressivePillShapes
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.navigation.SafeModeBrand
 import com.kigtts.next.ui.settings.*
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, reducedMotion: Boolean,
-    changeTheme: (ThemeSettings) -> Unit, complete: (Boolean) -> Unit, exit: () -> Unit) {
+    changeTheme: (ThemeSettings) -> Unit, complete: (Boolean, Boolean) -> Unit, exit: () -> Unit) {
     val scope = rememberCoroutineScope()
     var document by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
-    var accepted by remember(progress) { mutableStateOf(progress.agreementAccepted()) }
+    var accepted by rememberSaveable { mutableStateOf(progress.agreementAccepted()) }
     val pageCount = FirstRunStep.COMPLETE.ordinal
-    val pager = rememberPagerState(initialPage = progress.step().ordinal) {
-        if (accepted) pageCount else FirstRunStep.AGREEMENT.ordinal + 1
-    }
+    val pager = rememberPagerState(initialPage = progress.step().ordinal) { pageCount }
     val step = FirstRunStep.entries[pager.settledPage]
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
     val tilt = rememberOnboardingTilt(motion)
@@ -78,9 +73,9 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     }
 
     fun finish(tryQuickText: Boolean) {
-        if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal) return
+        if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal || !accepted) return
         progress.visit(FirstRunStep.PERMISSIONS)
-        complete(tryQuickText)
+        complete(tryQuickText, accepted)
     }
 
     BackHandler(document == null, onBack = ::back)
@@ -96,13 +91,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Image(
-                    painterResource(R.drawable.ic_launcher_foreground),
-                    contentDescription = "KIGTTS",
-                    modifier = Modifier.size(40.dp).background(
-                        colorResource(R.color.launcher_background), RoundedCornerShape(13.dp),
-                    ).padding(2.dp),
-                )
+                SafeModeBrand(active = false, modifier = Modifier.testTag("onboarding-brand"))
                 LinearProgressIndicator(
                     progress = { (pager.currentPage + pager.currentPageOffsetFraction + 1f) / pageCount },
                     modifier = Modifier.weight(1f),
@@ -152,21 +141,30 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                         )
                     }
                     when (page) {
-                        FirstRunStep.AGREEMENT -> SettingItem(
-                            uiText("settings.category.user_agreement"), "", Icons.Default.Description, SettingPosition.SINGLE,
-                            onClick = { document = SettingsCategory.USER_AGREEMENT },
-                        )
                         FirstRunStep.APPEARANCE -> {
                             ThemeColorSettings(settings, changeTheme)
                             AppearanceDisplaySettings(settings, changeTheme)
                         }
                         FirstRunStep.FEATURES -> OnboardingRecommendations()
                         FirstRunStep.PERMISSIONS -> {
-                            SettingItem(
-                                uiText("settings.category.privacy_policy"), "", Icons.Default.Security, SettingPosition.SINGLE,
-                                onClick = { document = SettingsCategory.PRIVACY_POLICY },
-                            )
                             OnboardingPermissions()
+                            SettingsGroup(uiText("onboarding.legal_title")) {
+                                SettingItem(uiText("settings.category.privacy_policy"), "", Icons.Default.Security,
+                                    SettingPosition.FIRST, onClick = { document = SettingsCategory.PRIVACY_POLICY })
+                                SettingItem(uiText("settings.category.user_agreement"), "", Icons.Default.Description,
+                                    SettingPosition.LAST, onClick = { document = SettingsCategory.USER_AGREEMENT })
+                            }
+                            Row(
+                                Modifier.fillMaxWidth().testTag("onboarding-consent")
+                                    .toggleable(value = accepted, role = Role.Checkbox, onValueChange = { accepted = it })
+                                    .heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Checkbox(checked = accepted, onCheckedChange = null)
+                                ThemeText(uiText("onboarding.legal_confirm"), style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface)
+                            }
                         }
                         FirstRunStep.WELCOME, FirstRunStep.COMPLETE -> Unit
                     }
@@ -179,33 +177,25 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 Button(
                     onClick = feedbackClick {
                         when (val current = FirstRunStep.entries[pager.settledPage]) {
-                            FirstRunStep.AGREEMENT -> {
-                                val target = current.ordinal + 1
-                                if (accepted) {
-                                    move(target)
-                                } else {
-                                    progress.acceptAgreement()
-                                    accepted = true
-                                    // New pages become measurable on the next layout pass.
-                                    pager.requestScrollToPage(target)
-                                }
-                            }
                             FirstRunStep.PERMISSIONS -> finish(false)
                             else -> move(current.ordinal + 1)
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("onboarding-next"),
-                    enabled = !pager.isScrollInProgress,
+                    enabled = !pager.isScrollInProgress && (step != FirstRunStep.PERMISSIONS || accepted),
                     shapes = expressivePillShapes(),
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 ) {
                     Text(uiText(when (step) {
-                        FirstRunStep.AGREEMENT -> "onboarding.accept"
                         FirstRunStep.PERMISSIONS -> "onboarding.start"
                         else -> "onboarding.next"
                     }))
                 }
                 if (step == FirstRunStep.PERMISSIONS) {
-                    MotionTextButton(feedbackClick { finish(true) }, enabled = !pager.isScrollInProgress) {
+                    MotionTextButton(feedbackClick { finish(true) }, enabled = accepted && !pager.isScrollInProgress) {
                         Text(uiText("onboarding.try_quick_text"))
                     }
                 }

@@ -18,6 +18,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
     private val scope: CoroutineScope, private val message: (String) -> Unit,
     private val now: () -> Long = SystemClock::elapsedRealtime,
     private val resolve: (String, String) -> String = { _, fallback -> fallback },
+    private val reportFailure: (Throwable) -> Unit = {},
     private val mux: (List<CameraMotionPart>, Long, File) -> CameraMotionVideo = CameraMotionMuxer::write) : Closeable {
     private class Active(val file: File, var startedAtMs: Long) {
         var recording: CameraMotionRecording? = null
@@ -40,7 +41,7 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             val active = Active(File(directory, "${UUID.randomUUID()}-buffer.mp4"), now())
             current = active
             active.recording = source.start(active.file) { event -> accept(active, event) }
-        } catch (_: Exception) { failPreparation() }
+        } catch (failure: Exception) { reportFailure(failure); failPreparation() }
     }
     private fun accept(active: Active, event: CameraMotionEvent) {
         if (closed || current !== active) {
@@ -130,12 +131,13 @@ internal class CameraMotionBuffer(private val directory: File, private val sourc
             val result = withContext(Dispatchers.IO) { muxWithSingleSegmentFallback(relevant, capture.shutterAtMs, destination) }
             require(result.durationMs > 0 && destination.isFile && destination.length() > 0)
             CameraMotionClip(destination, result.durationMs, result.rotationDegrees, result.shutterPositionMs, colorMatrix.copyOf(), lut, strength, effects)
-        } catch (_: TimeoutCancellationException) {
+        } catch (failure: TimeoutCancellationException) {
             destination.delete(); currentCoroutineContext().ensureActive()
+            reportFailure(failure)
             message(resolve("camera.motion_save_warning", "实况短片未能保存，本次保留照片")); null
         }
         catch (cancel: CancellationException) { destination.delete(); throw cancel }
-        catch (_: Exception) { destination.delete(); message(resolve("camera.motion_save_warning", "实况短片未能保存，本次保留照片")); null }
+        catch (failure: Exception) { destination.delete(); reportFailure(failure); message(resolve("camera.motion_save_warning", "实况短片未能保存，本次保留照片")); null }
         finally {
             if (ticket === capture) {
                 ticket = null; stopJob?.cancel(); stopJob = null; ready = false

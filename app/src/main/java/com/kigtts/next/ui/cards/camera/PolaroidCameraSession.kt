@@ -47,9 +47,13 @@ internal class PolaroidCameraSession(private val context: Context, private val o
     private var faceView: PreviewView? = null
     var trackedFaces by mutableStateOf<CameraFaceFrame?>(null); private set
     fun faceControls(focus: Boolean, effect: CompiledExpression?) {
+        if (automaticFaceFocus && !focus) faceFocus.reset()
         automaticFaceFocus = focus
         previewColors.expression = effect
-        previewColors.faces?.sampleSurface = effect?.samplesSurface == true
+        previewColors.faces?.apply {
+            sampleSurface = effect?.samplesSurface == true
+            trackFaces(focus || effect != null)
+        }
         if (!focus) trackedFaces = null
     }
     val previewFilterAvailable: Boolean get() = binding?.previewEffect != null
@@ -133,7 +137,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             binding = attached
             faceView = view
             previewColors.faces = attached.faces
-            attached.faces?.sampleSurface = previewColors.expression?.samplesSurface == true
+            attached.faces?.apply {
+                sampleSurface = previewColors.expression?.samplesSurface == true
+                trackFaces(automaticFaceFocus || previewColors.expression != null)
+            }
             histogram = attached.histogram
             if (analyzer != null && attached.faces == null && previewColors.expression != null) {
                 message(context.uiCopy("expression.unavailable"))
@@ -144,7 +151,8 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             attached.motionCapture?.takeIf { motion && mode == CameraMode.PHOTO }?.let { video ->
                 motionBuffer = CameraMotionBuffer(File(context.cacheDir, "polaroid-camera/motion/${UUID.randomUUID()}"),
                     CameraMotionRecorder(context, video.output), scope, message,
-                    resolve = { key, _ -> context.uiCopy(key) }).also { it.start() }
+                    resolve = { key, _ -> context.uiCopy(key) },
+                    reportFailure = { Log.w(CAMERA_LOG_TAG, "Live Photo clip failed", it) }).also { it.start() }
             }
             if (motion && attached.motionCapture == null) message(context.uiCopy("camera.motion_unsupported"))
             flashAvailable = attached.camera.cameraInfo.hasFlashUnit()
@@ -355,7 +363,10 @@ internal class PolaroidCameraSession(private val context: Context, private val o
                 manual.awaitConfigured()
                 motion?.awaitReady()
                 motionTicket = motion?.beginCapture()
-                if (motion != null && motionTicket == null && !motion.failed) message(context.uiCopy("camera.motion"))
+                if (motion != null && motionTicket == null && !motion.failed) {
+                    Log.w(CAMERA_LOG_TAG, "Live Photo buffer did not warm up before capture")
+                    message(context.uiCopy("camera.motion_save_warning"))
+                }
                 var art: CameraExpressionPhoto? = null
                 photo = capturePolaroidPhoto(context, camera, front, format, filter, message, strength, lut, effects) {
                     art = expressionPhoto()

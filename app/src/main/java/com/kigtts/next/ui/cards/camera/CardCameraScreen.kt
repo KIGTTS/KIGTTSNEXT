@@ -99,6 +99,9 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             runCatching { library.find(expressionId)?.let(CompiledExpression::compile) }.getOrNull()
         }
     }
+    val expressionCatalog by produceState(emptyList<ExpressionEffect>(), library, revision, LocalConfiguration.current, active) {
+        if (active) value = withContext(Dispatchers.IO) { library.choices() }
+    }
     val enabledEffect = compiled?.takeIf { it.effect.id == expressionId }
     SideEffect { session.faceControls(options.faceFocus && mode != CameraMode.SCAN, enabledEffect) }
     var pickedCodes by remember { mutableStateOf<CameraCodeFrame?>(null) }
@@ -125,7 +128,9 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val motion = options.motion && mode == CameraMode.PHOTO
     val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
     val stabilizeVideo = mode.recordsVideo && options.videoStabilization
-    val analyzeFaces = analysisSupported && mode != CameraMode.SCAN && (options.faceFocus || expressionId != null)
+    // CameraX selects the preview size from the complete use-case group. Keep the
+    // analysis stream across toggle changes and pause only the inference itself.
+    val analyzeFaces = analysisSupported && mode != CameraMode.SCAN
     val desired = CameraBoundRequest(aspect, mode, front, rotation, retry, processing, motion, stabilizeVideo, analyzeFaces)
     val locked = session.busy || session.countingDown || session.video.active || session.video.finishing
     val configurationLocked = session.countingDown || session.video.active || session.video.finishing || !modern && session.busy
@@ -240,7 +245,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
                 }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.takeIf { modern }?.let(copy::label),
                 reserveBack = true)
             CameraViewfinderPicker(stickersExpanded, vertical, layout) {
-                CameraFaceStickerPicker(library, options, vertical, interactive,
+                CameraFaceStickerPicker(expressionCatalog, options, vertical, interactive,
                     close = { stickersExpanded = false },
                     manage = { stickersExpanded = false; expressionsOpen = true },
                     store = expressionStore?.let { store -> { stickersExpanded = false; store() } })

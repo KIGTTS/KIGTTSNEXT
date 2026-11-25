@@ -9,11 +9,10 @@ import androidx.exifinterface.media.ExifInterface
 
 internal data class CameraExpressionDraw(val effect: CompiledExpression, val frame: CameraFaceFrame) {
     fun photograph(view: PreviewView): CameraExpressionPhoto? {
-        val output = view.outputTransform ?: return null
         if (view.width <= 0 || view.height <= 0) return null
-        val toPhoto = frame.toView(output).apply {
+        val toPhoto = frame.toView(view)?.apply {
             postScale(1f / view.width, 1f / view.height)
-        }
+        } ?: return null
         return CameraExpressionPhoto(effect, frame.faces, toPhoto)
     }
 }

@@ -148,10 +148,16 @@ private fun SettledHomeTip(
 private fun HomeTipBubble(tip: HomeTip, onPresented: () -> Unit, dismiss: () -> Unit, enable: () -> Unit) {
     var placed by remember(tip) { mutableStateOf(false) }
     val show = remember(tip) { Animatable(0f) }
-    LaunchedEffect(placed) {
-        if (placed) {
-            onPresented()
+    var closing by remember(tip) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(placed) { if (placed) onPresented() }
+    LaunchedEffect(placed, closing) {
+        if (!placed) return@LaunchedEffect
+        val choice = closing
+        if (choice == null) {
             show.animateTo(1f, tween(150))
+        } else {
+            show.animateTo(0f, tween(120))
+            if (choice) enable() else dismiss()
         }
     }
     Surface(
@@ -173,10 +179,10 @@ private fun HomeTipBubble(tip: HomeTip, onPresented: () -> Unit, dismiss: () -> 
             ThemeText(uiText(detail), Modifier.padding(end = 6.dp), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(Modifier.align(Alignment.End), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                TextButton(feedbackClick(dismiss)) {
+                TextButton(feedbackClick { closing = false }, enabled = closing == null) {
                     Text(uiText(if (tip == HomeTip.QUICK_EDIT) "quick.not_now" else "onboarding.got_it"))
                 }
-                if (tip == HomeTip.QUICK_EDIT) TextButton(feedbackClick(enable)) { Text(uiText("action.enable")) }
+                if (tip == HomeTip.QUICK_EDIT) TextButton(feedbackClick { closing = true }, enabled = closing == null) { Text(uiText("action.enable")) }
             }
         }
     }

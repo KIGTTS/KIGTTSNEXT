@@ -9,9 +9,7 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.camera.view.transform.CoordinateTransform
-import androidx.camera.view.transform.ImageProxyTransformFactory
-import androidx.camera.view.transform.OutputTransform
+import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import cn.kigarface.prototype.KigFaceTracker
 import java.util.concurrent.Executors
@@ -19,12 +17,13 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class CameraFaceFrame(
     val faces: List<ExpressionFace>,
-    val source: OutputTransform,
     val uprightToSensor: Matrix,
     val arrivedAt: Long,
 ) {
     fun isCurrent(now: Long = SystemClock.elapsedRealtime()) = now - arrivedAt in 0..400
-    fun toView(target: OutputTransform): Matrix = Matrix().also { CoordinateTransform(source, target).transform(it) }
+    fun toView(view: PreviewView): Matrix? = view.sensorToViewTransform?.let { sensorToView ->
+        Matrix().apply { setConcat(sensorToView, uprightToSensor) }
+    }
 }
 
 internal class CameraFaceAnalysis(
@@ -36,22 +35,33 @@ internal class CameraFaceAnalysis(
     private val main = ContextCompat.getMainExecutor(context)
     private val closed = AtomicBoolean(false)
     private val scheduled = AtomicBoolean(false)
-    private val factory = ImageProxyTransformFactory().apply {
-        isUsingRotationDegrees = true
-        isUsingCropRect = false
-    }
+    private data class Tracking(val enabled: Boolean = false, val revision: Int = 0)
+    @Volatile private var tracking = Tracking()
+    private var analyzedRevision = 0
     @Volatile private var current: CameraFaceFrame? = null
     @Volatile private var unavailable = false
     @Volatile var sampleSurface = false
     @Volatile var sampleHistogram: ((ImageProxy) -> Unit)? = null
 
-    fun latest(): CameraFaceFrame? = current?.takeIf { !closed.get() && it.isCurrent() }
+    fun trackFaces(enabled: Boolean) {
+        val previous = tracking
+        if (previous.enabled == enabled) return
+        tracking = Tracking(enabled, previous.revision + 1)
+        current = null
+    }
+
+    fun latest(): CameraFaceFrame? = current?.takeIf { !closed.get() && tracking.enabled && it.isCurrent() }
 
     override fun analyze(image: ImageProxy) {
         try {
             if (closed.get()) return
             sampleHistogram?.invoke(image)
-            if (unavailable) return
+            val request = tracking
+            if (!request.enabled || unavailable) return
+            if (analyzedRevision != request.revision) {
+                if (tracker.isInitialized()) tracker.value.reset()
+                analyzedRevision = request.revision
+            }
             val arrivedAt = SystemClock.elapsedRealtime()
             val withSurface = sampleSurface
             val result = tracker.value.analyze(image, withSurface)
@@ -70,7 +80,8 @@ internal class CameraFaceAnalysis(
                     face.opacity().coerceIn(0f, 1f), face.score().coerceIn(0f, 1f),
                     points[0].point(), points[1].point(), points[2].point(), points[3].point(), points[4].point(), surfaces[face.id()]?.let(ExpressionFaceSurface::from))
             }
-            current = CameraFaceFrame(faces, factory.getOutputTransform(image), inverse, arrivedAt)
+            if (tracking != request || closed.get()) return
+            current = CameraFaceFrame(faces, inverse, arrivedAt)
             if (scheduled.compareAndSet(false, true)) main.execute {
                 scheduled.set(false)
                 latest()?.let(onFrame)

@@ -2,6 +2,7 @@
 package com.kigtts.next.cards
 
 import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Handler
 import android.os.HandlerThread
@@ -27,13 +28,17 @@ suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard,
     val options = PolaroidExportOptions(includeFrame, includeStickers)
     val directory = File(stickers.context.cacheDir, "cards/motion-" + UUID.randomUUID())
     check(withContext(Dispatchers.IO) { directory.mkdirs() }) { "无法准备实况导出" }
-    val clip = File(directory, "composed.mp4"); val jpeg = File(directory, "cover.jpg")
+    val jpeg = File(directory, "cover.jpg")
     var overlay: Bitmap? = null
     try {
-        val paper = withContext(Dispatchers.IO) { PolaroidRenderer.renderBitmap(stickers, card, options, transparentPhoto = true, maximumHeight = 1080) }
-        overlay = paper
-        val effect = CardMotionPaperEffect(card, stickers.frameStyle(card), paper, motion.colorMatrix, includeFrame, motion.lut, motion.lutStrength, motion.effects)
-        transform(stickers, motion, effect, clip)
+        val clip = if (canKeepEncodedMotion(card, motion)) {
+            motion.video
+        } else {
+            val paper = withContext(Dispatchers.IO) { PolaroidRenderer.renderBitmap(stickers, card, options, transparentPhoto = true, maximumHeight = 1080) }
+            overlay = paper
+            val effect = CardMotionPaperEffect(card, stickers.frameStyle(card), paper, motion.colorMatrix, includeFrame, motion.lut, motion.lutStrength, motion.effects)
+            File(directory, "composed.mp4").also { transform(stickers, motion, effect, it) }
+        }
         return withContext(Dispatchers.IO) {
             val still = PolaroidRenderer.renderBitmap(stickers, card, options, maximumHeight = maximumHeight)
             try { jpeg.outputStream().use { check(still.compress(Bitmap.CompressFormat.JPEG, 95, it)) { "无法生成实况封面" } } }
@@ -42,6 +47,30 @@ suspend fun exportPolaroidMedia(stickers: StickerRepository, card: PolaroidCard,
             MotionPhotoWriter.write(jpeg, clip, output, motion.shutterPositionMs * 1000)
         }
     } finally { overlay?.recycle(); withContext(NonCancellable + Dispatchers.IO) { directory.deleteRecursively() } }
+}
+
+/** The default camera cover and clip already share the same viewfinder crop. */
+private suspend fun canKeepEncodedMotion(card: PolaroidCard, motion: CardMotionClip): Boolean {
+    val frame = PhotoFrameSpec.from(card.frameStyleId) ?: return false
+    val plain = frame.style == "none" && frame.crop == null && card.title.isEmpty() && card.description.isEmpty() &&
+        card.layers.isEmpty() && card.photoZoom == 1.0 && card.photoX == .5 && card.photoY == .5 &&
+        motion.colorMatrix.contentEquals(CardMotionRepository.identity()) && motion.lut == null &&
+        motion.effects == com.kigtts.next.media.color.PhotoEffects.NONE
+    return plain && withContext(Dispatchers.IO) {
+        val metadata = MediaMetadataRetriever()
+        try {
+            metadata.setDataSource(motion.video.absolutePath)
+            val width = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toLongOrNull() ?: 0
+            val height = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toLongOrNull() ?: 0
+            val rotated = motion.rotationDegrees % 180 != 0
+            val clipWidth = if (rotated) height else width
+            val clipHeight = if (rotated) width else height
+            // Imported covers and clips can have different crops. Re-compose those clips as usual.
+            clipWidth > 0 && clipHeight > 0 &&
+                kotlin.math.abs(clipWidth * frame.height - clipHeight * frame.width) * 100 <= clipHeight * frame.width
+        } catch (_: RuntimeException) { false }
+        finally { metadata.release() }
+    }
 }
 
 private suspend fun transform(stickers: StickerRepository, source: CardMotionClip, effect: CardMotionPaperEffect, output: File) {
@@ -68,6 +97,8 @@ private suspend fun transform(stickers: StickerRepository, source: CardMotionCli
                 transformer.start(EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(source.video)))
                     .setEffects(Effects(emptyList(), listOf(effect))).build(), output.absolutePath)
             } catch (failure: Exception) { transformer.cancel(); if (continuation.isActive) continuation.resumeWithException(failure) }
-        } } finally { current?.cancel() }
+        } } catch (unavailable: LinkageError) {
+            throw IllegalStateException("Motion Photo video export unavailable", unavailable)
+        } finally { current?.cancel() }
     } } finally { thread.quitSafely() }
 }

@@ -4,7 +4,6 @@ import android.content.Context
 
 internal enum class FirstRunStep(val page: String) {
     WELCOME("welcome"),
-    AGREEMENT("agreement"),
     APPEARANCE("appearance"),
     FEATURES("features"),
     PERMISSIONS("permissions"),
@@ -17,17 +16,14 @@ internal enum class HomeTip { PANEL, CURSOR, QUICK_EDIT }
 internal class FirstRunStore(context: Context, existingInstall: Boolean = false) {
     private val preferences = context.getSharedPreferences("first-run", Context.MODE_PRIVATE)
     init {
-        if (!preferences.contains("agreement_accepted")) {
-            val previous = preferences.getString("step", null)
+        val saved = preferences.getString("step", null)
+        if (saved == "AGREEMENT" || saved == null) {
             val initial = when {
-                previous == FirstRunStep.PERMISSIONS.name -> FirstRunStep.APPEARANCE
-                previous != null -> step()
+                saved == "AGREEMENT" -> FirstRunStep.APPEARANCE
                 existingInstall -> FirstRunStep.COMPLETE
                 else -> FirstRunStep.WELCOME
             }
-            preferences.edit().putString("step", initial.name)
-                .putBoolean("agreement_accepted", initial.ordinal > FirstRunStep.AGREEMENT.ordinal)
-                .apply()
+            preferences.edit().putString("step", initial.name).apply()
         }
     }
 
@@ -36,19 +32,17 @@ internal class FirstRunStore(context: Context, existingInstall: Boolean = false)
 
     fun agreementAccepted(): Boolean = preferences.getBoolean("agreement_accepted", false)
 
-    fun acceptAgreement() {
-        preferences.edit().putBoolean("agreement_accepted", true).apply()
-    }
-
     fun visit(page: FirstRunStep) {
         if (step() == FirstRunStep.COMPLETE || page == FirstRunStep.COMPLETE) return
-        if (!agreementAccepted() && page.ordinal > FirstRunStep.AGREEMENT.ordinal) return
-        preferences.edit().putString("step", page.name).apply()
+        if (step() != page) preferences.edit().putString("step", page.name).apply()
     }
 
-    fun finish(): Boolean {
-        if (step() != FirstRunStep.PERMISSIONS || !agreementAccepted()) return false
-        preferences.edit().putString("step", FirstRunStep.COMPLETE.name).apply()
+    fun finish(agreementConfirmed: Boolean): Boolean {
+        if (step() != FirstRunStep.PERMISSIONS || !agreementConfirmed) return false
+        preferences.edit()
+            .putBoolean("agreement_accepted", true)
+            .putString("step", FirstRunStep.COMPLETE.name)
+            .apply()
         return true
     }
 

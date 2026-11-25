@@ -163,19 +163,12 @@ internal fun ExpressionArtPreview(effect: ExpressionEffect, activeAnchor: Expres
         pictures?.takeIf { it.first == vectors }?.second?.let { CompiledExpression(effect, it) }
     }
     val accent = MaterialTheme.colorScheme.primary
-    val ink = MaterialTheme.colorScheme.outlineVariant
-    val face = MaterialTheme.colorScheme.surfaceContainerHigh
     Canvas(modifier.clip(MaterialTheme.shapes.large)
         .background(MaterialTheme.colorScheme.surfaceContainerLow)) {
         val scale = size.minDimension / 320f
         val x = size.width / 2f
         val y = size.height / 2f
-        drawOval(face, androidx.compose.ui.geometry.Offset(x - 80f * scale, y - 124f * scale),
-            androidx.compose.ui.geometry.Size(160f * scale, 248f * scale))
-        val sample = ExpressionFace.SAMPLE
-        listOf(sample.leftEye, sample.rightEye, sample.nose, sample.mouthCenter).forEach { point ->
-            drawCircle(ink, 4f * scale, androidx.compose.ui.geometry.Offset(x + (point.x - 160f) * scale, y + (point.y - 160f) * scale))
-        }
+        val sample = expressionPreviewFace
         drawIntoCanvas {
             val native = it.nativeCanvas
             val save = native.save()
