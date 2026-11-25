@@ -32,10 +32,11 @@ import kotlinx.coroutines.withContext
 @Composable
 fun PluginSubtitleRenderer(selection: SubtitleRendererSelection, text: String, placeholder: String,
     fontSizePercent: Float, modifier: Modifier = Modifier, safeArea: MediaSafeArea = MediaSafeArea(),
-    onQuickSwipe: (Boolean) -> Unit = {}, onUnavailable: () -> Unit = {}, reducedMotion: Boolean = false) {
+    onQuickSwipe: (Boolean) -> Unit = {}, onUnavailable: () -> Unit = {}, reducedMotion: Boolean = false,
+    zoomPreview: () -> Float = { Float.NaN }) {
     val native = selection.native
     if (native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led) {
-        NativeLedRenderer(native, text, placeholder, fontSizePercent, safeArea, reducedMotion, onQuickSwipe, modifier)
+        NativeLedRenderer(native, text, placeholder, fontSizePercent, safeArea, reducedMotion, onQuickSwipe, zoomPreview, modifier)
         return
     }
     val context = LocalContext.current

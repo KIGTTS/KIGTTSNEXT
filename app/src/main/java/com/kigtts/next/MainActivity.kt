@@ -15,6 +15,7 @@ import com.kigtts.next.ui.onboarding.FirstRunHost
 import com.kigtts.next.ui.onboarding.FirstRunStep
 import com.kigtts.next.ui.onboarding.FirstRunStore
 import com.kigtts.next.ui.onboarding.NativeStartup
+import com.kigtts.next.ui.onboarding.WelcomeIllustration
 import com.kigtts.next.ui.cards.camera.CameraShutterKeys
 import com.kigtts.next.ui.cards.camera.CameraShutterKeyOwner
 
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         // starts on Home instead of reopening an editor or project from an old task bundle.
         enableEdgeToEdge()
         val progress = onboarding
+        if (progress.step() == FirstRunStep.WELCOME) WelcomeIllustration.prepare(application)
         val startup = NativeStartup(this)
         pendingLaunch = savedInstanceState?.getBoolean(PENDING_LAUNCH) ?: true
         setContent { FirstRunHost(model, progress, startup, complete = ::finishOnboarding, exit = ::finish) }

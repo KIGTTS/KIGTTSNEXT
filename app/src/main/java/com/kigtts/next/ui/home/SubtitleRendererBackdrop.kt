@@ -24,6 +24,7 @@ internal fun SubtitleRendererBackdrop(state: AppState, model: AppViewModel, safe
         PluginSubtitleRenderer(renderer, state.editorText, state.subtitlePlaceholder, state.subtitleSizePercent,
             modifier.graphicsLayer { rotationZ = rotation.value }, safeArea = insets,
             onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(renderer.owner, it) },
-            onUnavailable = { model.rendererUnavailable(renderer.owner) }, reducedMotion = state.subtitleAppearance.reducedMotion)
+            onUnavailable = { model.rendererUnavailable(renderer.owner) }, reducedMotion = state.subtitleAppearance.reducedMotion,
+            zoomPreview = model.subtitleRenderer::ledZoomPreview)
     }
 }

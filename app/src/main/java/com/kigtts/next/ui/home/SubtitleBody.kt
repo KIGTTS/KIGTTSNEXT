@@ -59,11 +59,18 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
         textAlign = state.subtitleAppearance.alignment.textAlignment))
     val density = LocalDensity.current
     val text = state.editorText
+    val nativeLedZoom = !state.editing && renderer?.native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led
     LaunchedEffect(state.editing) { if (state.editing) { focus.requestFocus(); keyboard?.show() } }
     CompositionLocalProvider(LocalSubtitleFitCache provides rememberSubtitleFitCache()) {
     BoxWithConstraints(modifier.testTag("subtitle-content").subtitleInputGestures(model, !state.editing).padding(20.dp, 12.dp)
         .semantics { stateDescription = if (flipped) "倒置字幕" else "正向字幕" }
-        .subtitleZoom(model) { model.setSubtitleSizePercent(model.state.value.subtitleSizePercent * it) }
+        .subtitleZoom(model to nativeLedZoom, onZoomEnd = {
+            if (nativeLedZoom) model.subtitleRenderer.takeLedZoom()?.let(model::setSubtitleSizePercent)
+        }) { factor ->
+            val current = model.state.value.subtitleSizePercent
+            if (nativeLedZoom) model.subtitleRenderer.previewLedZoom(current, factor)
+            else model.setSubtitleSizePercent(current * factor)
+        }
         .graphicsLayer { rotationZ = rotation.value }, contentAlignment = Alignment.Center) {
         val width = with(density) { maxWidth.roundToPx() }
         val height = with(density) { maxHeight.roundToPx() }
@@ -76,7 +83,8 @@ private fun SubtitleText(state:AppState,model:AppViewModel,modifier:Modifier,ren
                     state.subtitleSizePercent, Modifier.fillMaxSize(),
                     onQuickSwipe = { model.subtitleRenderer.setQuickSwipe(selection.owner, it) }, onUnavailable = {
                         model.rendererUnavailable(selection.owner)
-                    }, reducedMotion = state.subtitleAppearance.reducedMotion) }
+                    }, reducedMotion = state.subtitleAppearance.reducedMotion,
+                    zoomPreview = model.subtitleRenderer::ledZoomPreview) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.
                 if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
                     Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))

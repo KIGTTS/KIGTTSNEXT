@@ -117,10 +117,31 @@ class SubtitleRendererHostTest {
         compose.onNodeWithTag("native-led-renderer", useUnmergedTree = true).assertExists()
         assertNull(model.state.value.panel)
         assertEquals("LED caption", model.state.value.editorText)
+        val originalSize = model.state.value.subtitleSizePercent
+        compose.runOnIdle {
+            model.subtitleRenderer.previewLedZoom(originalSize, 1.25f)
+            model.subtitleRenderer.previewLedZoom(originalSize, 1.1f)
+        }
+        assertEquals(originalSize, model.state.value.subtitleSizePercent, .001f)
+        assertEquals(originalSize * 1.375f, model.subtitleRenderer.ledZoomPreview(), .001f)
+        compose.runOnIdle { model.subtitleRenderer.takeLedZoom()?.let(model::setSubtitleSizePercent) }
+        assertEquals(originalSize * 1.375f, model.state.value.subtitleSizePercent, .001f)
+        assertTrue(model.subtitleRenderer.ledZoomPreview().isNaN())
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT) }
         plugin.outcome = PluginOutcome.SetNativeSubtitleRenderer(style.copy(glow = .7f), collapseQuickText = true)
         invoke(model, plugin)
         assertEquals(HomePanel.QUICK_TEXT, model.state.value.panel)
+    }
+    @Test fun standaloneHomeChromeRequestCanBeAppliedAndRemovedWithoutRenderer() {
+        val (model, plugin) = show()
+        val chrome = HomeChromePresentation(fadeHeaderWhenIdle = true)
+        plugin.outcome = PluginOutcome.SetHomeChrome(chrome)
+        invoke(model, plugin)
+        assertNull(model.subtitleRenderer.selection.value)
+        assertEquals(chrome, model.homeChrome.value[plugin])
+        plugin.outcome = PluginOutcome.SetHomeChrome()
+        invoke(model, plugin)
+        assertTrue(model.homeChrome.value.isEmpty())
     }
     @Test fun invalidOrForeignResourceCannotReplaceExistingRendererAndOwnerCannotClearAnotherOne() {
         val (model, plugin) = show()

@@ -15,10 +15,16 @@ internal class PanelIdleChrome {
     var pressed by mutableStateOf(false)
     var idle by mutableStateOf(false)
     fun wake() { pulse++; idle = false }
+    fun pointer(hasPress: Boolean) {
+        if (pressed && hasPress) return
+        pressed = hasPress
+        wake()
+    }
 }
 
 /** Fade only the drawing layer: controls stay reachable and safe areas never collapse. */
-@Composable internal fun rememberPanelIdleChrome(enabled: Boolean, keepVisible: Boolean = false): Pair<PanelIdleChrome, State<Float>> {
+@Composable internal fun rememberPanelIdleChrome(enabled: Boolean, keepVisible: Boolean = false,
+    reducedMotion: Boolean = false): Pair<PanelIdleChrome, State<Float>> {
     val state = remember { PanelIdleChrome() }
     val timeout = LocalAccessibilityManager.current?.calculateRecommendedTimeoutMillis(6000L,
         containsIcons = true, containsControls = true) ?: 6000L
@@ -26,7 +32,8 @@ internal class PanelIdleChrome {
         state.idle = false
         if (enabled && !keepVisible && !state.pressed) { delay(timeout); state.idle = true }
     }
-    val alpha = animateFloatAsState(if (state.idle) .18f else 1f, tween(300), label = "panel-idle-controls")
+    val alpha = animateFloatAsState(if (state.idle && enabled && !keepVisible) .18f else 1f,
+        tween(if (reducedMotion) 0 else 300), label = "panel-idle-controls")
     return state to alpha
 }
 
@@ -36,8 +43,7 @@ internal fun Modifier.panelIdleWake(state: PanelIdleChrome): Modifier = onPrevie
             awaitPointerEventScope {
                 while (true) {
                     val event = awaitPointerEvent(PointerEventPass.Initial)
-                    state.pressed = event.changes.any { it.pressed }
-                    state.wake()
+                    state.pointer(event.changes.any { it.pressed })
                 }
             }
         } finally { state.pressed = false }

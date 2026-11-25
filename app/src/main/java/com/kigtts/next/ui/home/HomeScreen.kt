@@ -42,15 +42,16 @@ fun HomeScreen(
     val preview = LocalHomePreviewGeometry.current
     SideEffect { preview?.automaticRead = state.autoPlayback }
     val renderer by model.subtitleRenderer.selection.collectAsState()
+    val fade = rememberHomeChromeFade(state, model, renderer?.presentation?.homeChrome)
     val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
     var backdropViewport by remember { mutableStateOf(Rect.Zero) }
     Box(Modifier.fillMaxSize().homePreviewRegion("viewport").onGloballyPositioned { backdropViewport = Rect(it.positionInWindow(), androidx.compose.ui.geometry.Size(it.size.width.toFloat(), it.size.height.toFloat())) }
-        .then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier)) {
+        .then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier).then(fade.wake)) {
     CompositionLocalProvider(com.kigtts.next.theme.LocalBackdropViewport provides backdropViewport, LocalRecordHomePreview provides true) {
     if (exterior == null) com.kigtts.next.theme.AppearanceBackdrop(state.theme, Modifier.matchParentSize())
     if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE)
-        LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, back)
-    else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, back)
+        LandscapeHomeScreen(state, phrases, categories, model, openDrawer, sections, back, fade)
+    else PortraitHomeScreen(state, phrases, categories, model, openDrawer, sections, back, fade)
     }
     }
 }
@@ -58,11 +59,11 @@ fun HomeScreen(
 @Composable
 private fun PortraitHomeScreen(
     state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
-    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>,
+    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>, fade: HomeChromeFade,
 ) {
     var expandedViewport by remember { mutableFloatStateOf(852f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
-        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal))
+        BoxWithConstraints(Modifier.fillMaxSize().windowInsetsPadding(homeDrawingInsets().only(WindowInsetsSides.Top+WindowInsetsSides.Horizontal))
             .smallWindowSafeArea()) {
             val topMaximum = (maxHeight.value * .4f).coerceAtLeast(112f)
             LaunchedEffect(maxHeight, state.subtitleExpanded) { if (!state.subtitleExpanded) expandedViewport = maxHeight.value }
@@ -82,7 +83,7 @@ private fun PortraitHomeScreen(
                 shrinkVertically(androidx.compose.animation.core.tween(220), shrinkTowards = Alignment.Top)
             Column(Modifier.fillMaxSize()) {
                 AnimatedVisibility(!state.subtitleExpanded && !state.quickTextEditing, enter = enter, exit = exit,
-                    modifier = Modifier.testTag("header-transition")) {
+                    modifier = Modifier.testTag("header-transition").then(fade.header)) {
                     sections.SaveableStateProvider("header") { AppHeader(state, model, openDrawer) }
                 }
                 Column(Modifier.weight(1f).horizontalPaddingFrom { 12f * chrome.value.coerceIn(0f, 1f) }) {
@@ -103,7 +104,7 @@ private fun PortraitHomeScreen(
                     })
                 }
             }
-            AnimatedVisibility(!state.subtitleExpanded && !state.quickTextEditing, modifier = Modifier.align(Alignment.BottomCenter),
+            AnimatedVisibility(!state.subtitleExpanded && !state.quickTextEditing, modifier = Modifier.align(Alignment.BottomCenter).then(fade.dock),
                 enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) +
                     slideInVertically(androidx.compose.animation.core.tween(220)) { it },
                 exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +

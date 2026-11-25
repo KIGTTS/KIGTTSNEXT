@@ -47,7 +47,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     var entered by remember { mutableStateOf(false) }
     LaunchedEffect(pageSettled) { if (pageSettled) entered = true }
     val active = pageActive && entered && !suspended && lifecycle.isAtLeast(Lifecycle.State.STARTED)
-    CameraStatusBar(pageActive && !suspended)
+    com.kigtts.next.ui.components.HideStatusBar(pageActive && !suspended)
     val configuration = LocalConfiguration.current
     val formats = cameraFormats(configuration.screenWidthDp, configuration.screenHeightDp, configuration.smallestScreenWidthDp)
     var format by rememberSaveable { mutableStateOf(initialFormat?.takeIf { it in formats } ?: formats.first()) }

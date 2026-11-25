@@ -19,12 +19,12 @@ import com.kigtts.next.ui.navigation.predictiveReturn
 import com.kigtts.next.ui.navigation.ReturnProgress
 
 @Composable
-fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
-    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>) {
+internal fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories: List<String>, model: AppViewModel,
+    openDrawer: () -> Unit, sections: SaveableStateHolder, back: State<ReturnProgress>, fade: HomeChromeFade) {
     var captionWidth by rememberSaveable { mutableFloatStateOf(160f) }
     CompositionLocalProvider(LocalUseCompactControlPalette provides true) {
         BoxWithConstraints(Modifier.fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+            .windowInsetsPadding(homeDrawingInsets().only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
             .smallWindowSafeArea().testTag("landscape-home")) {
             val expanded = state.subtitleExpanded || state.quickTextEditing
             val bodyWidth = maxWidth.value - LandscapePanelGeometry.RAIL - 24f
@@ -39,7 +39,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
             val enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(androidx.compose.animation.core.tween(220), Alignment.Start)
             val exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(androidx.compose.animation.core.tween(220), Alignment.Start)
             Row(Modifier.fillMaxSize()) {
-                AnimatedVisibility(!expanded, enter = enter, exit = exit, modifier = Modifier.testTag("header-transition")) {
+                AnimatedVisibility(!expanded, enter = enter, exit = exit, modifier = Modifier.testTag("header-transition").then(fade.header)) {
                     sections.SaveableStateProvider("header") { LandscapeAppRail(state, model, openDrawer) }
                 }
                 Row(Modifier.weight(1f).fillMaxHeight().horizontalPaddingFrom { 12f * chrome.value.coerceIn(0f, 1f) }
@@ -56,7 +56,7 @@ fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, categories:
                                 Modifier.predictiveReturn(back) else Modifier),
                             CornerNeighbors(start = showCaptions, end = !expanded && motion.visible))
                     }
-                    AnimatedVisibility(!expanded,
+                    AnimatedVisibility(!expanded, modifier = fade.dock,
                         enter = fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()) + expandHorizontally(androidx.compose.animation.core.tween(220), Alignment.End),
                         exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) + shrinkHorizontally(androidx.compose.animation.core.tween(220), Alignment.End)) {
                         sections.SaveableStateProvider("quick-text") {

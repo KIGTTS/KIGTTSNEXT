@@ -1,4 +1,4 @@
-package com.kigtts.next.ui.cards.camera
+package com.kigtts.next.ui.components
 
 import android.app.Activity
 import android.content.Context
@@ -18,16 +18,16 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 
-private tailrec fun Context.cameraActivity(): Activity? = when (this) {
+private tailrec fun Context.statusBarActivity(): Activity? = when (this) {
     is Activity -> this
-    is ContextWrapper -> baseContext.takeUnless { it === this }?.cameraActivity()
+    is ContextWrapper -> baseContext.takeUnless { it === this }?.statusBarActivity()
     else -> null
 }
 
-/** The camera can stay composed under the album, so window ownership follows the active page. */
+/** Own the status bar only while the calling surface requests it. */
 @Composable
-internal fun CameraStatusBar(active: Boolean) {
-    val activity = LocalContext.current.cameraActivity()
+internal fun HideStatusBar(active: Boolean) {
+    val activity = LocalContext.current.statusBarActivity()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(activity, lifecycle, active) {
         if (!active || activity == null) return@DisposableEffect onDispose {}

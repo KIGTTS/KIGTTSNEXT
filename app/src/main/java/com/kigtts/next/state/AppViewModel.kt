@@ -72,6 +72,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private val themeStore = ThemeSettingsStore(application)
     internal val pageAppearance = MutableStateFlow<List<PageAppearance>>(emptyList())
     internal val savedAppearance = MutableStateFlow<SavedAppearanceRequest?>(null)
+    internal val homeChrome = MutableStateFlow<Map<KigPlugin, HomeChromePresentation>>(emptyMap())
     private val placeholderStore = SubtitlePlaceholderStore(application)
     private val subtitleAppearanceStore = SubtitleAppearanceStore(application)
     private val feedbackStore = FeedbackSettingsStore(application)
@@ -660,6 +661,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         if (registry.plugin(pluginId) === plugin && state.value.pageVersion == invokingPage)
                             savedAppearance.compareAndSet(null, SavedAppearanceRequest(plugin, appearance))
                     }
+                    is PluginOutcome.SetHomeChrome -> {
+                        if (registry.plugin(pluginId) !== plugin) return@launch
+                        val presentation = outcome.presentation
+                        homeChrome.update { if (presentation == null) it - plugin else it + (plugin to presentation) }
+                    }
                     is PluginOutcome.SetListeningPanel -> {
                         listeningPanel.select(plugin, outcome, context())
                         pluginManager.refreshUi(pluginId, context())
@@ -708,6 +714,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         safeModeSession.synchronize()
         pluginManager.reload()
         subtitleRenderer.reconcile(registry)
+        homeChrome.update { requests -> requests.filterKeys { registry.plugin(it.descriptor.id) === it } }
         pageAppearance.update { patches -> patches.filter { registry.plugin(it.plugin.descriptor.id) === it.plugin } }
         savedAppearance.value?.takeUnless { registry.plugin(it.plugin.descriptor.id) === it.plugin }
             ?.let { savedAppearance.compareAndSet(it, null) }

@@ -1,5 +1,6 @@
 package com.kigtts.next.state
 
+import androidx.compose.runtime.mutableFloatStateOf
 import com.kigtts.next.media.WebContentPolicy
 import com.kigtts.next.theme.ResolvedAppearance
 import com.kigtts.plugin.api.KigPlugin
@@ -29,6 +30,21 @@ class SubtitleRendererState {
     val selection = mutableSelection.asStateFlow()
     private val mutableQuickSwipe = MutableStateFlow(false)
     val quickSwipe = mutableQuickSwipe.asStateFlow()
+    private val zoomPreview = mutableFloatStateOf(Float.NaN)
+
+    fun ledZoomPreview(): Float = zoomPreview.floatValue
+
+    fun previewLedZoom(base: Float, factor: Float) {
+        if (mutableSelection.value?.native !is NativeSubtitleRenderer.Led) return
+        val previous = zoomPreview.floatValue.takeIf(Float::isFinite) ?: base
+        zoomPreview.floatValue = SubtitleSize.normalize(previous * factor)
+    }
+
+    fun takeLedZoom(): Float? {
+        val preview = zoomPreview.floatValue
+        zoomPreview.floatValue = Float.NaN
+        return preview.takeIf(Float::isFinite)
+    }
 
     fun setQuickSwipe(owner: String, enabled: Boolean) {
         if (mutableSelection.value?.owner == owner) mutableQuickSwipe.value = enabled
@@ -63,6 +79,7 @@ class SubtitleRendererState {
     fun clear(owner: String? = null) {
         if (owner == null || mutableSelection.value?.owner == owner) {
             mutableSelection.value = null; mutableQuickSwipe.value = false
+            zoomPreview.floatValue = Float.NaN
         }
     }
 

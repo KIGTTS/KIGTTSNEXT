@@ -130,4 +130,21 @@ class PluginControlsUiTest {
             assertTrue(changes.single().second.getValue("value").toFloat() in .25f..4f)
         }
     }
+
+    @Test fun ledDialogSliderOnlyCommitsOnceWhenReleased() {
+        val changes = mutableListOf<Pair<String, String?>>()
+        val request = PluginOutcome.Controls("LED 样式",
+            listOf(PluginControl.Slider("灯珠大小", "size", 58f, 10f, 100f, suffix = "%")))
+        compose.setContent {
+            MaterialTheme {
+                PluginControlsDialog(request, { action, value -> changes += action to value }, {},
+                    commitSlidersOnRelease = true)
+            }
+        }
+        val slider = compose.onNodeWithContentDescription("灯珠大小")
+        slider.performTouchInput { down(center); moveBy(Offset(40f, 0f)) }
+        compose.runOnIdle { assertTrue(changes.isEmpty()) }
+        slider.performTouchInput { up() }
+        compose.runOnIdle { assertEquals("size", changes.single().first) }
+    }
 }

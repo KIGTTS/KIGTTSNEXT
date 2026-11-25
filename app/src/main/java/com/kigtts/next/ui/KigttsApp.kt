@@ -211,8 +211,12 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             }
             pluginConfirmation?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginConfirmation(request,
                 { pluginConfirmation = null }, { pluginConfirmation = null; model.invoke(plugin, request.action.id) }) }
-            pluginControls?.let { (plugin, request) -> com.kigtts.next.ui.plugins.PluginControlsDialog(request,
-                { action, value -> model.invokeControl(plugin, action, value) }, { pluginControls = null }, controlsRevision) }
+            pluginControls?.let { (plugin, request) ->
+                val adjustsLed = renderer?.owner == plugin && renderer?.native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led
+                com.kigtts.next.ui.plugins.PluginControlsDialog(request,
+                    { action, value -> model.invokeControl(plugin, action, value) }, { pluginControls = null },
+                    controlsRevision, commitSlidersOnRelease = adjustsLed)
+            }
             dialog?.let { content -> MotionAlertDialog(onDismissRequest = { dialog = null }, title = { Text(content.title) }, text = { Text(content.text) },
                 confirmButton = { TextButton(onClick = dialogFeedbackClick { dialog = null }) { Text(uiText("plugin.stroke_done")) } }) }
             pluginMenu?.let { (plugin, content) ->

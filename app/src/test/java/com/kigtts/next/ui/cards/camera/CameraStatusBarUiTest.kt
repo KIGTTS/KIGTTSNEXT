@@ -20,7 +20,7 @@ class CameraStatusBarUiTest {
 
     @Test fun cameraHidesStatusAfterFocusReturnsAndRestoresWindowOnExit() {
         var active by mutableStateOf(false)
-        compose.setContent { CameraStatusBar(active) }
+        compose.setContent { com.kigtts.next.ui.components.HideStatusBar(active) }
         val window = compose.activity.window
         val originalFlags = window.attributes.flags
         compose.runOnIdle { active = true }
