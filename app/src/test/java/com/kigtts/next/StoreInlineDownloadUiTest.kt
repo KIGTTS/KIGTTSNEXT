@@ -30,7 +30,8 @@ class StoreInlineDownloadUiTest {
                 ManagementItem("led", "LED 灯珠字幕", "把字幕变成发光灯板", symbol = "lightbulb", primaryAction = "led-detail")),
                 style = ManagementListStyle.CATALOG, itemActions = mapOf("agent" to action, "led" to ManagementProgressAction("已安装")))), false) { id, _ -> calls += id }
         } }
-        compose.onNodeWithText("获取").performClick()
+        val actionButton = compose.onNodeWithTag("managed-action/agent")
+        actionButton.performClick()
         assertEquals(listOf("download"), calls)
         compose.runOnIdle { action = ManagementProgressAction("取消下载", "cancel", .42f, true) }
         compose.waitForIdle()
@@ -41,7 +42,7 @@ class StoreInlineDownloadUiTest {
         compose.onRoot().captureRoboImage("build/previews/store-inline-${if (dark) "landscape-dark" else "portrait-light"}.png")
         compose.runOnIdle { action = ManagementProgressAction("安装", "install") }
         compose.waitForIdle()
-        compose.onNodeWithText("安装").performClick()
+        actionButton.performClick()
         assertEquals("install", calls.last())
     }
     @Test fun portrait() = check(false)

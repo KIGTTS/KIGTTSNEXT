@@ -23,7 +23,7 @@ import com.kigtts.next.i18n.uiText
 fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel:String=uiText("nav.back"),largeBar:Boolean=true,
     actions:List<ToolbarAction> = emptyList(),backTag:String="page-back",subtitle:String?=null,extendToBottom:Boolean=false,
     backgroundSettings:com.kigtts.next.theme.ThemeSettings?=null,contentScrollsHeader:Boolean=true,contentHandlesIme:Boolean=false,
-    backgroundDecoration:(@Composable BoxScope.()->Unit)?=null,content:@Composable ()->Unit) {
+    backgroundDecoration:(@Composable BoxScope.()->Unit)?=null,backdropMovesWithPage:Boolean=false,content:@Composable ()->Unit) {
     val host=remember { PageToolbarActions() }
     val active=rememberUpdatedState(LocalPageActive.current)
     val barState=rememberTopAppBarState()
@@ -50,7 +50,7 @@ fun PageScaffold(title:String,back:()->Unit,modifier:Modifier=Modifier,backLabel
     val settings = backgroundSettings ?: LocalAppAppearanceSettings.current
     CompositionLocalProvider(LocalPageToolbarActions provides host, LocalPageBackAction provides back,
         LocalPageBottomInset provides if (extendToBottom) bottomClearance else androidx.compose.ui.unit.Dp(0f)) {
-        SecondaryPageSurface(settings, Modifier.fillMaxSize()) {
+        SecondaryPageSurface(settings, Modifier.fillMaxSize(), backdropMovesWithPage = backdropMovesWithPage) {
         val background = LocalSecondaryBackground.current
         backgroundDecoration?.invoke(this)
         // Sheets own their vertical scroll chain; the bar still supports direct dragging.

@@ -13,6 +13,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
@@ -24,17 +25,24 @@ import kotlin.math.max
 
 internal val LocalAppAppearanceSettings = compositionLocalOf { ThemeSettings() }
 internal val LocalSecondaryBackground = compositionLocalOf<ThemeSettings?> { null }
+private val LocalSecondaryBackdropAnchor = staticCompositionLocalOf<LayoutCoordinates?> { null }
 
 /** Share the secondary-page image, scrim and screen coordinates with its outer cards. */
 @Composable
 internal fun SecondaryPageSurface(settings: ThemeSettings, modifier: Modifier = Modifier,
+    backdropMovesWithPage: Boolean = false,
     content: @Composable BoxScope.() -> Unit) {
     val background = settings.takeIf { it.secondaryPageBackground && it.background != null }
+    var pageAnchor by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val trackPage = backdropMovesWithPage && background != null
     CompositionLocalProvider(LocalSecondaryBackground provides background) {
-        Box(if (background == null) modifier.themeFill { it.background } else modifier) {
-            if (background != null) AppearanceBackdrop(background,
-                Modifier.matchParentSize().testTag("secondary-page-backdrop"), blur = BackgroundBlur.PAGE)
-            content()
+        val fill = if (background == null) modifier.themeFill { it.background } else modifier
+        Box(if (trackPage) fill.onGloballyPositioned { pageAnchor = it } else fill) {
+            CompositionLocalProvider(LocalSecondaryBackdropAnchor provides if (trackPage) pageAnchor else null) {
+                if (background != null) AppearanceBackdrop(background,
+                    Modifier.matchParentSize().testTag("secondary-page-backdrop"), blur = BackgroundBlur.PAGE)
+                content()
+            }
         }
     }
 }
@@ -53,6 +61,7 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
     screenAnchored: Boolean = true, blur: BackgroundBlur = BackgroundBlur.NONE, overlay: Color = Color.Transparent,
     overlayColor: ((ColorScheme) -> Color)? = null) {
     val context = LocalContext.current
+    val pageAnchor = LocalSecondaryBackdropAnchor.current
     val window = LocalWindowInfo.current.containerSize
     val asset = settings.background.takeIf { settings.backgroundDim < 1f }
     val bitmap by produceState(AppearanceBackgrounds.peek(context, asset, blur), asset, blur) {
@@ -62,7 +71,11 @@ internal fun backgroundImageRect(image: Size, viewport: Size, origin: Offset): R
     val paint = LocalThemePaint.current
     var origin by remember { mutableStateOf(Offset.Zero) }
     val image = remember(bitmap, asset) { bitmap?.takeIf { asset != null }?.asImageBitmap() }
-    Canvas(if (screenAnchored && image != null) modifier.onGloballyPositioned { origin = it.positionInWindow() } else modifier) {
+    Canvas(if (screenAnchored && image != null) modifier.onGloballyPositioned {
+        // Sampling within the same page keeps the blur aligned without rebuilding draw commands
+        // for every translated frame of its navigation layer.
+        origin = if (pageAnchor?.isAttached == true) pageAnchor.localPositionOf(it, Offset.Zero) else it.positionInWindow()
+    } else modifier) {
         val current = paint?.palette?.colors ?: colors
         if (image != null) {
             val viewport = if (screenAnchored && window.width > 0 && window.height > 0) Size(window.width.toFloat(), window.height.toFloat()) else size

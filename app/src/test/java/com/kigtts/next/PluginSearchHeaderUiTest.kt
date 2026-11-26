@@ -30,7 +30,7 @@ class PluginSearchHeaderUiTest {
         val button = compose.onNodeWithTag("managed-action/plugin")
         val title = compose.onNodeWithText("语音识别增强").getUnclippedBoundsInRoot()
         assertTrue(button.getUnclippedBoundsInRoot().left >= title.right)
-        compose.onNodeWithText("获取").performClick()
+        button.performClick()
         compose.runOnIdle { assertEquals(listOf("download"), calls)
             page.value = page.value.copy(headerAction = ManagementProgressAction("取消下载", "cancel", .4f, true)) }
         compose.onNodeWithContentDescription("取消下载").performClick()

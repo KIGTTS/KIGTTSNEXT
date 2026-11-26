@@ -21,6 +21,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.*
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 @RunWith(RobolectricTestRunner::class) @Config(sdk = [35], qualifiers = "zh-rCN-w700dp-h900dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE) @LooperMode(LooperMode.Mode.PAUSED)
@@ -57,10 +58,15 @@ class PreviewGalleryUiTest {
             val file = File(root, "carousel-$index.svg").apply { writeText("""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 $width $height"><rect width="$width" height="$height" fill="#71aaa5"/></svg>""") }
             PageImage(PluginResource(file.name), "预览 ${index + 1}", width, height)
         }
+        val requested = ConcurrentHashMap.newKeySet<String>()
         compose.setContent { KigttsTheme(ThemeSettings()) { Surface(Modifier.width(360.dp)) {
-            PluginGallery(PageBlock.Gallery(images)) { File(root, it.path) }
+            PluginGallery(PageBlock.Gallery(images)) { resource ->
+                requested += resource.path
+                File(root, resource.path)
+            }
         } } }
         compose.waitUntil(10000) { compose.onAllNodesWithContentDescription("预览 1").fetchSemanticsNodes().isNotEmpty() }
+        assertFalse("Hidden previews should not be decoded on gallery entry", images.last().resource.path in requested)
         compose.onRoot().captureRoboImage("build/previews/store-mixed-gallery-mobile.png")
         compose.onNodeWithTag("plugin-preview-position").assertTextEquals("1 / 8")
         compose.onNodeWithTag("plugin-preview-carousel").performTouchInput {

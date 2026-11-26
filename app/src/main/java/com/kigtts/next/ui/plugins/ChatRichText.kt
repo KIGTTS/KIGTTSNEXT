@@ -21,7 +21,7 @@ internal val LocalMarkdownImage = staticCompositionLocalOf<(@Composable (String,
 @Composable private fun MarkdownBlocks(parent: Node, small: Boolean, depth: Int = 0) {
     MarkdownNodes(remember(parent) { parent.markdownChildren() }, small, depth)
 }
-@Composable private fun MarkdownNodes(nodes: List<Node>, small: Boolean, depth: Int = 0) {
+@Composable internal fun MarkdownNodes(nodes: List<Node>, small: Boolean, depth: Int = 0) {
     if (depth > 20) return
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         nodes.filterNot { it is TaskListItemMarker }.forEach { node -> key(node) { MarkdownBlock(node, small, depth) } }

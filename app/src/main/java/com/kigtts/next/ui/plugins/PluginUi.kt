@@ -46,15 +46,18 @@ fun SlotActions(slot: UiSlot, registry: PluginRegistry, onAction: (RegisteredAct
 @Composable
 fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginResource) -> java.io.File? = { null }, browser: (@Composable (PageBlock.Browser) -> Unit)? = null, historyCache: ChatHistoryCache? = null, historyKey: String = "", onBack: () -> Unit = {}, extraSettings: (@Composable () -> Unit)? = null,
     startVoiceInput: (() -> (suspend (Boolean) -> String?)?)? = null, followIme: Boolean = false,
+    progressiveMarket: Boolean = false,
     invoke: (String, Map<String, String>) -> Unit) {
     page?.search?.let { search ->
         PluginSearchScreen(search, onBack, invoke) {
             PluginPageScreen(page.copy(search = null), busy, resolve, browser, historyCache, historyKey, onBack, extraSettings,
-                startVoiceInput, followIme, invoke)
+                startVoiceInput, followIme, progressiveMarket, invoke)
         }
         return
     }
-    PluginPageEntry(page, busy, invoke)
+    val ready = page?.let { rememberMarketContentReady(it.id, progressiveMarket) } ?: true
+    val entryReady = !progressiveMarket || (ready && com.kigtts.next.ui.navigation.LocalPageSettled.current)
+    PluginPageEntry(page, busy, ready = entryReady, retainEntry = progressiveMarket, invoke = invoke)
     RegisterPageLoading(busy || page?.loading == true)
     if (page == null) { PageContentMotion(busy) { loading -> Text(if(loading)uiText("plugin.page.loading") else uiText("plugin.page.unavailable"), Modifier.padding(24.dp)) }; return }
     val toolbar=LocalPageToolbarActions.current!=null
@@ -82,9 +85,12 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
         PluginFilesScreen(files, !busy, invoke)
         return
     }
+    CompositionLocalProvider(LocalProgressiveMarketContent provides progressiveMarket) {
     PluginPageRefresh(page, busy, invoke) {
         val list = page.management
-        when {
+        val content: @Composable () -> Unit = {
+          when {
+            progressiveMarket && list == null -> MarketArticle(page, blocks, ready, busy, resolve, invoke)
             list?.style == ManagementListStyle.CATALOG -> PluginCatalogList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             list != null && list.usesSettingsLayout() -> PluginSettingsList(list, busy, invoke, blocks.isNotEmpty() || page.header != null, resolve) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
             list != null -> ManagedItemList(list, busy, resolve, invoke) { PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke); extraSettings?.invoke(); PluginBlocks(blocks,!busy,invoke, resolve = resolve) }
@@ -93,7 +99,18 @@ fun PluginPageScreen(page: PluginPage?, busy: Boolean = false, resolve: (PluginR
                 extraSettings?.invoke()
                 PluginBlocks(blocks,!busy,invoke, resolve = resolve)
             } }
+          }
         }
+        if (progressiveMarket && list != null) MarketContentReveal(ready, Modifier.fillMaxSize(), placeholder = {
+            ReadablePage {
+                Column(Modifier.fillMaxSize().padding(com.kigtts.next.ui.navigation.pageContentPadding()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PluginPageHeader(page.header, resolve, page.headerAction, !busy, invoke, loadArtwork = false)
+                    repeat(3) { MarketCardPlaceholder(84.dp) }
+                }
+            }
+        }, content = content) else content()
+    }
     }
 }
 
@@ -125,7 +142,7 @@ internal fun PluginBlocks(blocks:List<PageBlock>,enabled:Boolean,invoke:(String,
 }
 
 @Composable
-private fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?, grouped: Boolean = false) {
+internal fun RenderBlock(block: PageBlock, enabled: Boolean, invoke: (String, Map<String,String>) -> Unit, position:SettingPosition, resolve: (PluginResource) -> java.io.File?, grouped: Boolean = false) {
     if (grouped && (block is PageBlock.Text || block is PageBlock.Markdown || block is PageBlock.Gallery)) {
         Surface(Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerLow,
             shape = groupedSettingShape(position, MaterialTheme.shapes.small)) {

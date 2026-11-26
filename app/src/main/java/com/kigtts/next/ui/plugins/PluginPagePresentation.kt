@@ -26,16 +26,19 @@ import java.io.File
 /** Entry effects wait while native reviews or other modal surfaces cover the page. */
 internal val LocalPluginEntryBlocked = staticCompositionLocalOf { false }
 
-/** An entry action runs once per visible visit, never on page snapshot reads or UI revisions. */
-@Composable internal fun PluginPageEntry(page: PluginPage?, busy: Boolean, invoke: (String, Map<String, String>) -> Unit) {
+/** A retained market route keeps its refresh state as users browse its children. */
+@Composable internal fun PluginPageEntry(page: PluginPage?, busy: Boolean, ready: Boolean = true,
+    retainEntry: Boolean = false, invoke: (String, Map<String, String>) -> Unit) {
     val active = LocalPageActive.current
     val blocked = LocalPluginEntryBlocked.current
     val action = page?.onEnterAction
     var entered by remember(page?.id, action) { mutableStateOf(false) }
     val currentInvoke by rememberUpdatedState(invoke)
-    LaunchedEffect(page?.id, action, active, busy, blocked) {
-        if (!active) entered = false
-        else if (action != null && !busy && !blocked && !entered) {
+    LaunchedEffect(page?.id, action, active, busy, blocked, ready, retainEntry) {
+        if (!active) {
+            if (!retainEntry) entered = false
+        }
+        else if (action != null && !busy && !blocked && ready && !entered) {
             entered = true
             currentInvoke(action, emptyMap())
         }
@@ -44,11 +47,11 @@ internal val LocalPluginEntryBlocked = staticCompositionLocalOf { false }
 
 @Composable internal fun PluginPageHeader(item: ManagementItem?, resolve: (PluginResource) -> File?,
     action: ManagementProgressAction? = null, enabled: Boolean = true,
-    invoke: (String, Map<String, String>) -> Unit = { _, _ -> }) {
+    invoke: (String, Map<String, String>) -> Unit = { _, _ -> }, loadArtwork: Boolean = true) {
     if (item == null) return
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("plugin-page-header"),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        ResourceAvatar(item, resolve, 80.dp)
+        ResourceAvatar(if (loadArtwork) item else item.copy(image = null), resolve, 80.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(item.title, style = MaterialTheme.typography.headlineSmall)
             if (item.subtitle.isNotBlank()) Text(item.subtitle, style = MaterialTheme.typography.bodyMedium,

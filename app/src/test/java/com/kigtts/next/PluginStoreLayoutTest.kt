@@ -1,11 +1,15 @@
 package com.kigtts.next
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.plugins.PluginPageScreen
+import com.kigtts.next.ui.navigation.LocalPageActive
+import com.kigtts.next.ui.navigation.LocalPageSettled
 import com.kigtts.plugin.api.*
 import org.junit.Assert.*
 import org.junit.Rule
@@ -31,6 +35,7 @@ class PluginStoreLayoutTest {
         compose.setContent { KigttsTheme(ThemeSettings()) {
             PluginPageScreen(PluginPage("store", "插件商店", emptyList(), list)) { action, _ -> actions += action }
         } }
+        compose.onNodeWithTag("catalog-section-card/语音").assertIsDisplayed()
         compose.onNodeWithTag("catalog-section/语音").assertIsDisplayed()
         val first = compose.onNodeWithTag("managed-item/item0").getUnclippedBoundsInRoot()
         val second = compose.onNodeWithTag("managed-item/item1").getUnclippedBoundsInRoot()
@@ -70,5 +75,52 @@ class PluginStoreLayoutTest {
         assertTrue(body.left > title.left)
         compose.onNodeWithText("支持多个账户，按需配置。").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/previews/store-detail-insets.png")
+    }
+
+    @Test fun theMarketDetailShowsItsHeaderThenLoadsVisibleSectionsAndKeepsItsPosition() {
+        val settled = mutableStateOf(false)
+        val active = mutableStateOf(true)
+        val calls = mutableListOf<String>()
+        val page = PluginPage("package", "预览插件", listOf(
+            PageBlock.Group("介绍", listOf(PageBlock.Markdown("**带格式的介绍**"))),
+        ) + List(36) { PageBlock.Group("区块 $it", listOf(PageBlock.Text("版本内容 $it"))) },
+            header = ManagementItem("preview", "预览插件"), onEnterAction = "open-detail")
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CompositionLocalProvider(LocalPageSettled provides settled.value, LocalPageActive provides active.value) {
+                PluginPageScreen(page, progressiveMarket = true) { action, _ -> calls += action }
+            }
+        } }
+        compose.onNodeWithTag("plugin-page-header").assertIsDisplayed()
+        compose.onAllNodesWithTag("market-page-placeholder")[0].assertIsDisplayed()
+        compose.onNodeWithText("介绍").assertDoesNotExist()
+        assertTrue(calls.isEmpty())
+        compose.runOnIdle { settled.value = true }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("带格式的介绍").fetchSemanticsNodes().isNotEmpty() }
+        assertEquals(listOf("open-detail"), calls)
+        compose.onNodeWithText("区块 35").assertDoesNotExist()
+        compose.onNodeWithTag("market-article").performScrollToIndex(37)
+        compose.onNodeWithText("区块 35").assertIsDisplayed()
+        compose.runOnIdle { active.value = false; settled.value = false }
+        compose.runOnIdle { active.value = true }
+        compose.onNodeWithTag("market-page-placeholder").assertDoesNotExist()
+        compose.onNodeWithText("区块 35").assertIsDisplayed()
+        compose.runOnIdle { settled.value = true }
+        compose.waitForIdle()
+        assertEquals(listOf("open-detail"), calls)
+    }
+
+    @Test fun catalogRowsMountAfterEntrance() {
+        val settled = mutableStateOf(false)
+        val list = ManagementList("store/all", listOf(ManagementItem("test-entry", "插件资源")),
+            style = ManagementListStyle.CATALOG)
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CompositionLocalProvider(LocalPageSettled provides settled.value) {
+                PluginPageScreen(PluginPage("store", "拓展市场", emptyList(), list), progressiveMarket = true) { _, _ -> }
+            }
+        } }
+        compose.onAllNodesWithTag("market-page-placeholder")[0].assertIsDisplayed()
+        compose.onNodeWithTag("managed-item/test-entry").assertDoesNotExist()
+        compose.runOnIdle { settled.value = true }
+        compose.onNodeWithTag("managed-item/test-entry").assertIsDisplayed()
     }
 }

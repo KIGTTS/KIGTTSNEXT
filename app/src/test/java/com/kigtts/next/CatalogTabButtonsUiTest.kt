@@ -31,14 +31,14 @@ class CatalogTabButtonsUiTest {
         var dark by mutableStateOf(false)
         var selected by mutableStateOf("all")
         val calls = mutableListOf<String>()
-        compose.setContent { KigttsTheme(ThemeSettings(mode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT)) {
+        compose.setContent { key(dark) { KigttsTheme(ThemeSettings(mode = if (dark) ThemeMode.DARK else ThemeMode.LIGHT), publishWebTheme = true) {
             Box(Modifier.width(360.dp)) {
                 CatalogTabs(listOf(ManagementFilter("all", "全部", "all", selected == "all"),
                     ManagementFilter("audio", "声音", "audio", selected == "audio")), enabled) { action, _ ->
                     calls += action; selected = action
                 }
             }
-        } }
+        } } }
         fun image(label: String): IntArray {
             val file = File("build/previews/catalog-buttons-$label.png").apply { parentFile?.mkdirs() }
             compose.onNodeWithTag("catalog-tabs").captureRoboImage(file.absolutePath)
@@ -47,16 +47,17 @@ class CatalogTabButtonsUiTest {
             finally { bitmap.recycle() }
         }
         for (theme in listOf(false, true)) {
-            compose.runOnIdle { dark = theme; enabled = true }; compose.waitForIdle()
+            compose.runOnIdle { dark = theme; enabled = true }
+            compose.waitForIdle()
             val normal = image("$theme-normal")
             compose.runOnIdle { enabled = false }; compose.waitForIdle()
-            compose.onNodeWithContentDescription("插件分类：全部").assertIsNotEnabled().assertIsSelected()
+            compose.onNodeWithContentDescription("：全部", substring = true).assertIsNotEnabled().assertIsSelected()
             assertArrayEquals("Busy state must not flash disabled colors", normal, image("$theme-locked"))
         }
         compose.runOnIdle { enabled = true }
-        compose.onNodeWithContentDescription("插件分类：声音").performTouchInput { click() }
+        compose.onNodeWithContentDescription("：声音", substring = true).performTouchInput { click() }
         compose.waitForIdle()
         assertEquals(listOf("audio"), calls)
-        compose.onNodeWithContentDescription("插件分类：声音").assertIsSelected()
+        compose.onNodeWithContentDescription("：声音", substring = true).assertIsSelected()
     }
 }

@@ -22,7 +22,7 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
     modifier:Modifier=Modifier,enabled:Boolean=true,compactLabels:Boolean=false,preserveColorWhenLocked:Boolean=false,
     itemRole: Role = Role.RadioButton, fitContent: Boolean = false, icon: (@Composable (T) -> Unit)? = null) {
     val sources=remember(options) { options.map { MutableInteractionSource() } }
-    val paint = LocalThemePaint.current?.takeIf { enabled }
+    val paint = LocalThemePaint.current?.takeIf { enabled || preserveColorWhenLocked }
     val minimumTouchHeight = LocalMinimumInteractiveComponentSize.current
     val motions=options.map { option -> key(option) { rememberChoicePressMotion() } }
     val weights=balancedButtonWidths(options.map { 100f },motions.map { it.progress.value },minimum=60f,
@@ -43,6 +43,7 @@ internal fun <T> ChoiceButtonGroup(title:String,options:List<T>,value:T,label:(T
             val defaultsColors = ToggleButtonDefaults.toggleButtonColors()
             val colors = when {
                 paint != null -> defaultsColors.copy(containerColor = Color.Transparent, checkedContainerColor = Color.Transparent)
+                    .let { if (preserveColorWhenLocked) it.keepColorsWhenLocked(checked) else it }
                 preserveColorWhenLocked -> defaultsColors.keepColorsWhenLocked(checked)
                 else -> defaultsColors
             }

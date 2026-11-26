@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -36,15 +37,14 @@ import java.io.File
     if (images.isEmpty()) return
     val state = rememberLazyListState()
     val current by remember { derivedStateOf { state.firstVisibleItemIndex } }
-    val bitmaps = images.map { previewBitmap(it, resolve) }
+    val learnedRatios = remember(images) { mutableStateMapOf<Int, Float>() }
     var expanded by remember(images) { mutableIntStateOf(-1) }
     val scope = rememberCoroutineScope()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val targetHeight = (maxWidth * .6f).coerceIn(180.dp, 280.dp)
             val sizes = images.mapIndexed { index, image ->
-                val ratio = if (image.width != null && image.height != null) image.width!!.toFloat() / image.height!!
-                    else bitmaps[index]?.let { it.width.toFloat() / it.height } ?: 1f
+                val ratio = image.previewRatio() ?: learnedRatios[index] ?: 1f
                 val width = (targetHeight * ratio).coerceAtMost((maxWidth * .88f).coerceAtMost(560.dp))
                 width to width / ratio
             }
@@ -55,7 +55,14 @@ import java.io.File
                 flingBehavior = rememberSnapFlingBehavior(state, SnapPosition.Start)) {
                 itemsIndexed(images, key = { index, image -> "$index/${image.resource.path}" }) { index, original ->
                     val image = original.withPreviewLabel(index)
-                    PreviewBitmap(image, bitmaps[index], Modifier.size(sizes[index].first, sizes[index].second)
+                    // Keep request size independent of late aspect-ratio metadata, so it only decodes once.
+                    val pixels = with(LocalDensity.current) { targetHeight.roundToPx() }.coerceIn(192, 720)
+                    val preview = previewBitmap(image, resolve, pixels)
+                    val bitmap = preview.bitmap
+                    if (bitmap != null && original.previewRatio() == null && index !in learnedRatios) {
+                        SideEffect { learnedRatios[index] = bitmap.width.toFloat() / bitmap.height }
+                    }
+                    PreviewBitmap(image, preview, Modifier.size(sizes[index].first, sizes[index].second)
                     .clickable(onClickLabel = "放大预览") { expanded = index }
                     .testTag("plugin-preview/$index"))
                 }
@@ -73,6 +80,12 @@ import java.io.File
     if (expanded in images.indices) PreviewGalleryViewer(images, expanded, resolve) { page ->
         scope.launch { state.scrollToItem(page); expanded = -1 }
     }
+}
+
+private fun PageImage.previewRatio(): Float? {
+    val w = width ?: return null
+    val h = height ?: return null
+    return (w.toFloat() / h).takeIf { it.isFinite() && it > 0 }
 }
 
 @Composable private fun PreviewGalleryViewer(images: List<PageImage>, initialPage: Int,

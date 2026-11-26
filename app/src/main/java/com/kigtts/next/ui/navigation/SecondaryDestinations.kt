@@ -5,6 +5,7 @@ import com.kigtts.next.i18n.uiText
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -15,6 +16,13 @@ import com.kigtts.next.ui.media.*
 import com.kigtts.next.ui.home.PhraseEditorScreen
 import com.kigtts.next.ui.cards.CardHostScreen
 import com.kigtts.next.ui.cards.CardPageScaffold
+import com.kigtts.next.plugins.control.STORE_ID
+import com.kigtts.plugin.api.PluginPage
+
+private class MarketPageSnapshot {
+    var initialized = false
+    var page: PluginPage? = null
+}
 
 /** Page content is independent of its lifetime and transition in the navigation host. */
 @Composable
@@ -22,13 +30,20 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
     val assistantPermissionPage = destination is Destination.PluginPage &&
         destination.pluginId == ASSISTANT_SETTINGS_ID && destination.pageId == ASSISTANT_PERMISSIONS_PAGE
+    val marketPage = destination is Destination.PluginPage && destination.pluginId == STORE_ID
     val pluginPage = (destination as? Destination.PluginPage)?.let {
         val cacheBytes = if (it.pluginId == "service.speech-synthesis" && it.pageId == "manager")
             model.readingCacheBytes?.collectAsStateWithLifecycle()?.value else null
         // Built-in pages derive controls from the current context. Do not rebuild their lists
         // just because a parent animates, the theme changes, or the page moves to the back stack.
-        val context = model.context()
-        remember(model, it, state.pluginRevision, context, cacheBytes) { model.pluginPage(it.pluginId, it.pageId) }
+        val snapshot = if (marketPage) remember(model, it) { MarketPageSnapshot() } else null
+        if (snapshot?.initialized == true && !LocalPageActive.current) snapshot.page
+        else {
+            val context = model.context()
+            val page = remember(model, it, state.pluginRevision, context, cacheBytes) { model.pluginPage(it.pluginId, it.pageId) }
+            if (snapshot != null) SideEffect { snapshot.page = page; snapshot.initialized = true }
+            page
+        }
     }
     val chatHandlesIme = destination.assistantChatHandlesIme()
     val title = when (destination) {
@@ -74,7 +89,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     if (destination is Destination.PluginPage && pluginPage?.search != null) {
         PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins,
             resolve = { model.pluginManager.paths.existingResource(it.pluginId ?: destination.pluginId, it.path) },
-            onBack = model::navigateBack) { action, inputs -> model.invoke(destination.pluginId, action, inputs) }
+            onBack = model::navigateBack, progressiveMarket = marketPage) { action, inputs -> model.invoke(destination.pluginId, action, inputs) }
         return
     }
     val chatPage = pluginPage?.blocks?.any { it is com.kigtts.plugin.api.PageBlock.Chat } == true
@@ -95,6 +110,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
         backgroundSettings = com.kigtts.next.theme.LocalAppAppearanceSettings.current,
+        backdropMovesWithPage = marketPage,
         contentHandlesIme = chatHandlesIme,
         contentScrollsHeader = destination != Destination.SettingsDetail(SettingsCategory.APPEARANCE)) {
             when (destination) {
@@ -162,7 +178,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                             BuiltInToolPermissionEntry(model, destination.pluginId)
                     },
                     startVoiceInput = (model::startChatVoiceInput).takeIf { destination.pluginId == "tools.cloud-agent" && model.captionServiceReady },
-                    followIme = chatHandlesIme) { action, inputs ->
+                    followIme = chatHandlesIme, progressiveMarket = marketPage) { action, inputs ->
                     val nativeAction = editorNativeAction(destination.pluginId, destination.pageId, action)
                     when {
                         nativeAction != null -> model.invoke(NATIVE_BUILDER_ID, nativeAction, inputs)

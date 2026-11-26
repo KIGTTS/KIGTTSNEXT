@@ -44,6 +44,13 @@ import java.io.File
         if (loading) item("category-loading", span = { GridItemSpan(maxLineSpan) }) { CatalogLoadingFooter() }
         sections.forEach { (group, entries) ->
             val grouped = group.isNotBlank() && list.sectionActions.isNotEmpty()
+            if (grouped && entries.size <= 3) {
+                item("section/$group", span = { GridItemSpan(maxLineSpan) }) {
+                    PluginCatalogSection(group, entries, columns, list, active, canInvoke, resolve, invoke,
+                        Modifier.animateItem(fadeInSpec = tween(180), placementSpec = tween(200), fadeOutSpec = tween(120)))
+                }
+                return@forEach
+            }
             if (group.isNotBlank()) item("category/$group", span = { GridItemSpan(maxLineSpan) }) {
                 Row(Modifier.fillMaxWidth().testTag("catalog-section/$group").padding(top = 14.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
