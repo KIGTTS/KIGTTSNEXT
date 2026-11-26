@@ -17,6 +17,15 @@ class RecognitionServiceTest {
     private lateinit var root: File
     @Before fun setup() { root = Files.createTempDirectory("recognition-service-test").toFile() }
     @After fun cleanup() { root.deleteRecursively() }
+    @Test fun settingsCanOpenWhileVoiceRecognitionIsStarting() {
+        val service = RecognitionServicePlugin()
+        val context = PluginContext("", "", locale = "en")
+        val page = requireNotNull(service.page("manager", context))
+        assertTrue(page.loading)
+        assertTrue(page.blocks.isEmpty())
+        assertEquals("Speech recognition", page.title)
+    }
+
     private class Broker : RecognitionBroker {
         var catalog = listOf(AsrProvider("test.segmented", "离线分段", AsrInfo(streaming = StreamingKind.SEGMENTED)),
             AsrProvider("test.online", "在线", AsrInfo(), settingsPages = listOf(AsrSettingsPage("packs", "识别包"))))

@@ -56,9 +56,13 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
             listOf(GestureAction("input", t(if (context.continuousRecognition) "stop_continuous" else "voice_input"), PluginGesture.QUICK_TEXT_LONG_PRESS))
             else emptyList())
     }
-    override fun page(pageId: String, context: PluginContext) = recognitionServicePage(pageId, settings, broker, context, descriptor.id)
+    override fun page(pageId: String, context: PluginContext): PluginPage? {
+        if (::facade.isInitialized) return recognitionServicePage(pageId, settings, broker, context, descriptor.id)
+        return if (pageId == "manager") PluginPage(pageId, RecognitionCopy.text("settings", context.locale), emptyList(), loading = true) else null
+    }
     override suspend fun execute(actionId: String, context: PluginContext): PluginOutcome {
         fun t(key: String) = RecognitionCopy.text(key, context.locale)
+        if (!::facade.isInitialized) return PluginOutcome.Message(t("choose_ready"))
         val parts = actionId.split('/'); val id = parts.getOrNull(1)
         fun provider() = broker.providers().first { it.pluginId == id }
         return when (parts[0]) {

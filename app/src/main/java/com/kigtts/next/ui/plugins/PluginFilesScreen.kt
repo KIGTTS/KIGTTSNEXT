@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.plugins
 
 import com.kigtts.next.i18n.uiText
+import androidx.activity.compose.BackHandler
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -43,11 +44,14 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
         mapOf("op" to op, "paths" to PluginJson.encodeToString(paths), "destination" to destination))
     fun chooseTransfer(paths: List<String>, copy: Boolean) { transfer = PluginFileTransfer(paths.toList(), copy, files.directory) }
     LaunchedEffect(files.directory) { selected = emptyList() }
-    RegisterPageBackGuard(foreground && transfer == null && rename == null && deleting.isEmpty() &&
-        (selected.isNotEmpty() || files.directory.isNotEmpty())) {
+    val interceptBack = foreground && transfer == null && rename == null && deleting.isEmpty() &&
+        (selected.isNotEmpty() || files.directory.isNotEmpty())
+    val backInFolder = {
         if (selected.isNotEmpty()) selected = emptyList()
         else if (active) navigate(files.directory.substringBeforeLast('/', ""))
     }
+    RegisterPageBackGuard(interceptBack, backInFolder)
+    BackHandler(interceptBack, onBack = backInFolder)
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("plugin-files")) {
         DirectoryBreadcrumbs(files.directory, active, ::navigate)
         FileSelectionBar(selected, items.size, active,
