@@ -39,7 +39,7 @@ class HostPluginRuntime private constructor(private val application: Application
         ExperimentalTool.enabled(application, it)
     }.apply {
         bundledPermission = { id, permission ->
-            permission == "network" && (id == ExperimentalTool.ASSISTANT.id || id == ExperimentalTool.EDITOR.id)
+            permission == "network" && id in bundledIds
         }
     }
     private fun voiceCatalogUpdates(): Flow<Unit> = manager.catalogChanges.map { Unit }

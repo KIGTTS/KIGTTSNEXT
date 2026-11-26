@@ -44,6 +44,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         }
     }
     val chatHandlesIme = destination.assistantChatHandlesIme()
+    val editorProject = destination is Destination.PluginPage && destination.pageId.startsWith("project/") &&
+        destination.pluginId in setOf(PLUGIN_EDITOR_ID, NATIVE_BUILDER_ID) && pluginPage?.header != null
     val title = when (destination) {
             Destination.Home -> "KIGTTS"
             Destination.Settings -> uiText("nav.settings")
@@ -54,7 +56,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> uiText("nav.fonts")
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
-            is Destination.PluginPage -> pluginPage?.title ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
+            is Destination.PluginPage -> if (editorProject) "" else pluginPage?.title
+                ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
             is Destination.MediaLibrary -> {
                 val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
                 uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")
@@ -96,7 +99,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme)
         return
     }
-    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail && !chatPage,
+    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail && !chatPage && !editorProject,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         subtitle = if (destination == Destination.Plugins) uiText("settings.plugins.subtitle") else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||

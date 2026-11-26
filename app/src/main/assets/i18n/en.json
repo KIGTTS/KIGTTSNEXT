@@ -745,6 +745,7 @@
   "experiments.assistant.summary": "Enable chat, research and app actions",
   "experiments.editor.title": "Plugin editor",
   "experiments.editor.summary": "Create, debug and publish Lua or native plugins",
+  "plugin.editor_projects": "Plugin projects",
   "experiments.failed": "Could not start. Turn it off and try again.",
   "experiments.open": "Open {tool}",
   "chat.attach": "Add attachment",

@@ -745,6 +745,7 @@
   "experiments.assistant.summary": "チャット、調べもの、アプリ操作を有効化",
   "experiments.editor.title": "プラグインエディター",
   "experiments.editor.summary": "Lua やネイティブプラグインの作成、デバッグ、公開",
+  "plugin.editor_projects": "プラグインプロジェクト",
   "experiments.failed": "起動できませんでした。オフにしてからもう一度お試しください",
   "experiments.open": "{tool}を開く",
   "chat.attach": "添付ファイルを追加",

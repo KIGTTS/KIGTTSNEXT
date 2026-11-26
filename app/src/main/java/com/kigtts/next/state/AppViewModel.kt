@@ -54,7 +54,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 page, registry.plugin(NATIVE_BUILDER_ID)?.takeIf {
                     pluginManager.status.any { status -> status.installed.manifest.id == NATIVE_BUILDER_ID &&
                         status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
-                }?.page(EDITOR_MANAGER_PAGE, context()))
+                }?.page(EDITOR_MANAGER_PAGE, context()), hostCopy("plugin.editor_projects"))
             else -> page
         }
     }
@@ -425,7 +425,11 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     private fun subtitlePlaceholder(locale: String) =
         placeholderStore.load(getApplication<Application>().uiCopy("subtitle.placeholder", locale = locale))
-    fun navigate(destination: Destination) {
+    fun navigate(requested: Destination) {
+        val destination = if (requested == Destination.PluginPage(NATIVE_BUILDER_ID, EDITOR_MANAGER_PAGE) &&
+            NATIVE_BUILDER_ID in pluginManager.bundledIds && registry.plugin(PLUGIN_EDITOR_ID) != null) {
+            Destination.PluginPage(PLUGIN_EDITOR_ID, EDITOR_MANAGER_PAGE)
+        } else requested
         if (destination is Destination.PluginPage && pluginManager.isPackagePaused(destination.pluginId)) return
         if (destination is Destination.PluginPage && sharing.showNative(destination.pluginId, destination.pageId)) return
         if (destination is Destination.CardEditor && cards.isReadOnly(destination.cardId)) {

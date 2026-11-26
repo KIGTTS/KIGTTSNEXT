@@ -35,6 +35,7 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
         val dependency = if (plugin != null && !model.registry.available(plugin)) " · 缺少依赖：语音识别服务" else ""
         ManagementItem(id, name, "v$version · " + (installed?.error ?: if (installed?.installed?.enabled == false) "已停用" else plugin?.descriptor?.description.orEmpty()) + availability + dependency,
             icon = if (plugin?.asr != null) PluginIcon.HEARING else if (plugin?.tts != null) PluginIcon.SPEAKER else PluginIcon.SETTINGS,
+            image = installed?.installed?.manifest?.icon?.path?.let { PluginResource(it, id) },
             symbol = installed?.installed?.manifest?.icon?.symbol,
             primaryAction = if (id == com.kigtts.next.state.NATIVE_BUILDER_ID) {
                 model.registry.plugin(com.kigtts.next.state.PLUGIN_EDITOR_ID)?.let { "page/${it.descriptor.id}/manager" }
@@ -42,4 +43,17 @@ internal fun pluginManagementItems(model: AppViewModel): List<ManagementItem> {
             toggle = installed?.let { ManagementToggle(it.installed.enabled, "enable/$id") },
             badges = if (installed?.installed?.development == true) listOf(model.hostCopy("plugin.dev_tag")) else emptyList())
     }
+}
+
+internal fun installedPluginArtwork(model: AppViewModel, resource: PluginResource): java.io.File? {
+    val id = resource.pluginId ?: return null
+    val installed = model.pluginManager.status.firstOrNull { it.installed.manifest.id == id }?.installed ?: return null
+    val manifest = installed.manifest
+    if (manifest.icon?.path != resource.path || resource.path !in manifest.files) return null
+    return runCatching {
+        val directory = model.pluginManager.packages.currentDirectory(id).canonicalFile
+        directory.resolve(resource.path).canonicalFile.takeIf {
+            it.toPath().startsWith(directory.toPath()) && it.isFile && it.length() in 1..1_048_576L
+        }
+    }.getOrNull()
 }

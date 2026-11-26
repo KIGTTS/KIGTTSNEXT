@@ -745,6 +745,7 @@
   "experiments.assistant.summary": "开启对话、查资料和应用操作",
   "experiments.editor.title": "插件编辑器",
   "experiments.editor.summary": "创建、调试和发布 Lua 或原生插件",
+  "plugin.editor_projects": "插件项目",
   "experiments.failed": "无法启动，请关闭后重试",
   "experiments.open": "打开{tool}",
   "chat.attach": "添加附件",

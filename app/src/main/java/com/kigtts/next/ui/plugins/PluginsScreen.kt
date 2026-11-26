@@ -57,6 +57,7 @@ fun PluginsScreen(model: AppViewModel) {
         ToolbarAction("refresh-plugins",uiText("plugin.refresh"),Icons.Default.Refresh,!working,preserveColorWhenLocked=true) { scope.launch { busy=true;try { model.refreshPlugins() } finally { busy=false } } }
     ))
     com.kigtts.next.ui.management.ManagedItemList(ManagementList("plugins", rows, "plugins-order", emptyText = uiText("plugin.empty")), working, compactActions = true,
+        resolve = { installedPluginArtwork(model, it) },
         invoke = { action, inputs ->
             val pieces = action.split('/')
             when (pieces[0]) {

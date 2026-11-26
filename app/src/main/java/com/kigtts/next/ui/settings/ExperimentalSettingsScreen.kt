@@ -11,6 +11,7 @@ import com.kigtts.next.i18n.uiText
 import com.kigtts.next.manager.ExperimentalTool
 import com.kigtts.next.state.AppState
 import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.state.NATIVE_BUILDER_ID
 
 @Composable
 internal fun ExperimentalSettingsScreen(state: AppState, model: AppViewModel) {
@@ -23,8 +24,9 @@ internal fun ExperimentalSettingsScreen(state: AppState, model: AppViewModel) {
             ExperimentalTool.entries.forEach { tool ->
                 val enabled = model.experimentalToolEnabled(tool)
                 val busy = tool.id in state.busyPlugins
-                val error = model.pluginManager.bundledErrors.containsKey(tool.id) ||
-                    model.pluginManager.status.any { it.installed.manifest.id == tool.id && it.error != null }
+                val bundleIds = if (tool == ExperimentalTool.EDITOR) setOf(tool.id, NATIVE_BUILDER_ID) else setOf(tool.id)
+                val error = bundleIds.any(model.pluginManager.bundledErrors::containsKey) ||
+                    model.pluginManager.status.any { it.installed.manifest.id in bundleIds && it.error != null }
                 ToggleSetting(uiText("experiments.${tool.key}.title"),
                     uiText(if (enabled && error) "experiments.failed" else "experiments.${tool.key}.summary"),
                     if (tool == ExperimentalTool.ASSISTANT) Icons.Default.AutoAwesome else Icons.Default.Code,
