@@ -13,9 +13,7 @@ import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.Signature
-import java.security.interfaces.RSAPrivateCrtKey
 import java.security.spec.PKCS8EncodedKeySpec
-import java.security.spec.RSAPublicKeySpec
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -95,14 +93,14 @@ internal class EditorSigningVault(private val context: Context) {
         return try {
             val private = key(raw)
             val signature = Signature.getInstance("SHA256withRSA").apply { initSign(private); update(manifest) }.sign()
-            EditorSignature(publicKey(private), signature)
+            EditorSignature(editorRsaPublicKey(rsa, raw), signature)
         } finally { raw.fill(0) }
     }
 
     private fun save(name: String, bytes: ByteArray): EditorSigningKey {
         require(name.trim().length in 1..64)
-        val private = key(bytes)
-        val hash = MessageDigest.getInstance("SHA-256").digest(publicKey(private)).joinToString("") { "%02x".format(it) }
+        key(bytes)
+        val hash = MessageDigest.getInstance("SHA-256").digest(editorRsaPublicKey(rsa, bytes)).joinToString("") { "%02x".format(it) }
         val target = file(hash)
         if (target.isFile) return PluginJson.decodeFromString<StoredEditorKey>(target.readText()).info
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, wrappingKey()) }
@@ -133,12 +131,7 @@ internal class EditorSigningVault(private val context: Context) {
         return File(directory, "$hash.json")
     }
 
-    private fun key(bytes: ByteArray) = (rsa.generatePrivate(PKCS8EncodedKeySpec(bytes)) as RSAPrivateCrtKey).also {
-        require(it.modulus.bitLength() in 2048..4096)
-    }
-
-    private fun publicKey(key: RSAPrivateCrtKey): ByteArray =
-        rsa.generatePublic(RSAPublicKeySpec(key.modulus, key.publicExponent)).encoded
+    private fun key(bytes: ByteArray) = rsa.generatePrivate(PKCS8EncodedKeySpec(bytes))
 
     private fun wrappingKey(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

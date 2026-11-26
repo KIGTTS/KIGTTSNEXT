@@ -39,6 +39,7 @@ internal fun EditorSigningScreen(model: AppViewModel) {
     var request by remember { mutableStateOf<SigningRequest?>(null) }
     var keys by remember { mutableStateOf(emptyList<EditorSigningKey>()) }
     var busy by remember { mutableStateOf(true) }
+    var requestFailed by remember { mutableStateOf(false) }
     var pendingExport by remember { mutableStateOf<Pair<EditorSigningKey, CharArray>?>(null) }
     suspend fun refresh() { keys = workspace.keys() }
     LaunchedEffect(workspace) {
@@ -84,7 +85,10 @@ internal fun EditorSigningScreen(model: AppViewModel) {
         }
     }
     request?.let { current ->
-        SignatureRequestDialog(current, busy, { if (!busy) request = null }) { name, password ->
+        SignatureRequestDialog(current, busy, requestFailed, {
+            if (!busy) { request = null; requestFailed = false }
+        }) { name, password ->
+            requestFailed = false
             if (current is SigningRequest.Export) {
                 pendingExport = current.key to password
                 request = null
@@ -101,7 +105,10 @@ internal fun EditorSigningScreen(model: AppViewModel) {
                     request = null
                     model.message(done)
                 } catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { model.message(genericFailure) }
+                catch (failure: Exception) {
+                    android.util.Log.w("KigttsEditorSigning", "Signature operation failed (${failure.javaClass.simpleName})")
+                    requestFailed = true
+                }
                 finally { busy = false; password.fill('\u0000') }
             }
         }
@@ -109,7 +116,7 @@ internal fun EditorSigningScreen(model: AppViewModel) {
 }
 
 @Composable
-private fun SignatureRequestDialog(request: SigningRequest, busy: Boolean, close: () -> Unit,
+private fun SignatureRequestDialog(request: SigningRequest, busy: Boolean, failed: Boolean, close: () -> Unit,
     submit: (String, CharArray) -> Unit) {
     var name by remember(request) { mutableStateOf("") }
     var password by remember(request) { mutableStateOf("") }
@@ -126,6 +133,8 @@ private fun SignatureRequestDialog(request: SigningRequest, busy: Boolean, close
                 modifier = Modifier.fillMaxWidth().testTag("editor-signature-password"),
                 visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 label = { Text(uiText("editor.signature_password")) }, enabled = !busy)
+            if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (failed) Text(uiText("editor.sign_failed"), color = MaterialTheme.colorScheme.error)
         }
     }, confirmButton = {
         MotionTextButton(onClick = feedbackClick { submit(name.trim(), password.toCharArray()); password = "" },
