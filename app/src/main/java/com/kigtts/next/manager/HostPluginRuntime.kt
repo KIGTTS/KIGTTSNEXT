@@ -33,9 +33,14 @@ class HostPluginRuntime private constructor(private val application: Application
         playbackProvider = { id -> manager.cachedReadingProvider(id)?.let { (provider, pkg) -> provider to cacheRevision(pkg) } })
     private val recognition = com.kigtts.engines.recognitionservice.RecognitionServicePlugin(::legacyRecognitionEnabled)
     private val market = com.kigtts.tools.store.PackageStorePlugin { com.kigtts.next.plugins.control.marketStrings(application) }
-    val manager = PluginManager(application, listOf(reading, recognition, market), com.kigtts.next.sharing.pausedSharingPlugins,
+    val manager = PluginManager(application, listOf(reading, recognition, market),
+        com.kigtts.next.sharing.pausedSharingPlugins + com.kigtts.next.quickactions.LEGACY_GESTURE_PLUGIN,
         ExperimentalTool.bundles, builtinAppCapabilities = mapOf(market.descriptor.id to setOf("network", "app-control"))) {
         ExperimentalTool.enabled(application, it)
+    }.apply {
+        bundledPermission = { id, permission ->
+            permission == "network" && (id == ExperimentalTool.ASSISTANT.id || id == ExperimentalTool.EDITOR.id)
+        }
     }
     private fun voiceCatalogUpdates(): Flow<Unit> = manager.catalogChanges.map { Unit }
     private fun legacyRecognitionEnabled(): Boolean? = manager.packages.installed()

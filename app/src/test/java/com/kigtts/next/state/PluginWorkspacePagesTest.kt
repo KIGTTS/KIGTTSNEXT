@@ -20,17 +20,4 @@ class PluginWorkspacePagesTest {
         assertNull(editorNativeAction(PLUGIN_EDITOR_ID, "project/same", requireNotNull(items.last().primaryAction)))
         assertEquals(listOf("Projects", "Tools"), combined.blocks.filterIsInstance<PageBlock.Group>().map { it.title })
     }
-
-    @Test fun assistantMovesPermissionControlsUnderTheBottomEntryOnly() {
-        val tools = PageBlock.Toggle("Operations", true, "tools")
-        val pin = PageBlock.Toggle("Pin", true, "pin-home-icon")
-        val settings = PluginPage("settings", "Settings", listOf(PageBlock.Group("Experience", listOf(pin, tools))))
-        val updated = assistantSettingsPermissions(settings, "Permissions", "Manage permissions")
-        val groups = updated.blocks.filterIsInstance<PageBlock.Group>()
-        assertEquals(listOf(pin), groups.first().children)
-        val footer = groups.last().children.single() as PageBlock.Actions
-        assertEquals(ASSISTANT_PERMISSIONS_ACTION, footer.actions.single().id)
-        val permissions = assistantPermissionsPage(settings, "Permissions")
-        assertEquals(listOf(tools), permissions.blocks)
-    }
 }

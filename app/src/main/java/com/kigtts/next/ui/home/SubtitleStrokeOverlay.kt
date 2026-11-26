@@ -15,10 +15,8 @@ import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.AppViewModel
-import com.kigtts.plugin.api.PluginGesture
-import org.json.JSONArray
 
-/** Only installed foreground stroke contributions enable sampling; taps and pinches stay native. */
+/** Render a stroke while keeping taps and multi-touch gestures available to the home screen. */
 @Composable
 internal fun SubtitleStrokeOverlay(model: AppViewModel, modifier: Modifier = Modifier) {
     var trail by remember { mutableStateOf<List<Offset>>(emptyList()) }
@@ -47,12 +45,7 @@ internal fun SubtitleStrokeOverlay(model: AppViewModel, modifier: Modifier = Mod
                 trail = emptyList()
                 val duration = endTime - down.uptimeMillis
                 if (!cancelled && drawing && points.size >= 8 && duration in 120..5000) {
-                    val target = model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).firstOrNull()
-                    if (target != null) {
-                        val json = JSONArray().also { rows -> points.forEach { rows.put(JSONArray().put(it.x.toDouble()).put(it.y.toDouble())) } }
-                        model.invoke(target.plugin.descriptor.id, target.action.id, mapOf("gesture.points" to json.toString(),
-                            "gesture.durationMs" to duration.toString(), "gesture.width" to size.width.toString(), "gesture.height" to size.height.toString()))
-                    }
+                    model.submitSubtitleStroke(points, duration, size.width, size.height, 22.dp.toPx())
                 }
             }
         }) {

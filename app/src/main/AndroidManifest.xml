@@ -33,6 +33,7 @@
     <uses-feature android:name="android.hardware.nfc.hce" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -51,6 +52,15 @@
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
         <activity android:name="cn.kigarface.prototype.StickerActivity" tools:node="remove" />
+        <activity android:name=".quickactions.LockScreenActivity" android:exported="false"
+            android:showWhenLocked="true" android:excludeFromRecents="true"
+            android:taskAffinity="${applicationId}.lockscreen" android:windowSoftInputMode="adjustResize" />
+        <receiver android:name=".quickactions.LockScreenShortcutBootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <service android:name=".audio.RecognitionForegroundService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".audio.ReadingCacheForegroundService" android:exported="false" android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

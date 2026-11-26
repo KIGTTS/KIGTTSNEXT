@@ -62,10 +62,12 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         model.externalIntent(intent)
         model.notificationLink(intent)
         model.overlayLink(intent)
+        com.kigtts.next.quickactions.LockScreenShortcut.deliver(this, intent, model)
     }
     override fun onStart() {
         super.onStart()
         model.refreshUiLanguage()
+        if (model.quickActionPreferences.lockScreenShortcut) com.kigtts.next.quickactions.LockScreenShortcut.sync(this)
         com.kigtts.next.manager.HostPluginRuntime.get(application).resumeReadingCache()
         com.kigtts.next.overlay.NativeOverlayService.sync(this)
     }

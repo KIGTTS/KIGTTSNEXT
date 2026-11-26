@@ -28,8 +28,6 @@ private class MarketPageSnapshot {
 @Composable
 fun SecondaryDestination(destination: Destination, state: AppState, model: AppViewModel) {
     val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
-    val assistantPermissionPage = destination is Destination.PluginPage &&
-        destination.pluginId == ASSISTANT_SETTINGS_ID && destination.pageId == ASSISTANT_PERMISSIONS_PAGE
     val marketPage = destination is Destination.PluginPage && destination.pluginId == STORE_ID
     val pluginPage = (destination as? Destination.PluginPage)?.let {
         val cacheBytes = if (it.pluginId == "service.speech-synthesis" && it.pageId == "manager")
@@ -56,8 +54,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> uiText("nav.fonts")
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
-            is Destination.PluginPage -> if (assistantPermissionPage) uiText("assistant.settings.permissions")
-                else pluginPage?.title ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
+            is Destination.PluginPage -> pluginPage?.title ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
             is Destination.MediaLibrary -> {
                 val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
                 uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")
@@ -105,7 +102,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
             destination == Destination.Fonts || destination == Destination.PersonalCards || destination == Destination.PersonalInformationEditor ||
             destination == Destination.ContactFavorites || destination is Destination.ContactFavoriteDetail ||
-            destination == Destination.Plugins || assistantPermissionPage ||
+            destination == Destination.Plugins ||
             (destination is Destination.PluginPage && !chatPage && pluginPage?.blocks?.none {
                 it is com.kigtts.plugin.api.PageBlock.Browser || it is com.kigtts.plugin.api.PageBlock.Files || it is com.kigtts.plugin.api.PageBlock.SourceEditor
             } == true),
@@ -130,6 +127,7 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                         languageName = uiLanguageLabel(language),
                         onLanguage = { model.navigate(Destination.SettingsDetail(SettingsCategory.LANGUAGE)) })
                     SettingsCategory.LANGUAGE -> UiLanguageScreen(language, model::setUiLanguage)
+                    SettingsCategory.QUICK_ACTIONS -> QuickActionsSettings(model)
                     SettingsCategory.FEEDBACK -> FeedbackSettingsScreen(state.hapticsEnabled, model::haptics, model.quickSort, model.homeExit,
                         state.mediaQuickTextCollapse, model::mediaQuickTextCollapse)
                     SettingsCategory.OVERLAY -> OverlaySettingsScreen()
@@ -161,10 +159,6 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.StickerLibrary -> com.kigtts.next.ui.cards.StickerLibraryScreen(model.cards, model.stickers, model::message,
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> {
-                    if (assistantPermissionPage) {
-                        AssistantPermissionsScreen(model, pluginPage, enabled = destination.pluginId !in state.busyPlugins)
-                        return@PageScaffold
-                    }
                     val nativeEditorActive = destination.pluginId == PLUGIN_EDITOR_ID && destination.pageId == EDITOR_MANAGER_PAGE
                     PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins ||
                         (nativeEditorActive && NATIVE_BUILDER_ID in state.busyPlugins),
@@ -174,16 +168,12 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     extraSettings = {
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
                             com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
-                        if (nativeEditorActive)
-                            BuiltInToolPermissionEntry(model, destination.pluginId)
                     },
                     startVoiceInput = (model::startChatVoiceInput).takeIf { destination.pluginId == "tools.cloud-agent" && model.captionServiceReady },
                     followIme = chatHandlesIme, progressiveMarket = marketPage) { action, inputs ->
                     val nativeAction = editorNativeAction(destination.pluginId, destination.pageId, action)
                     when {
                         nativeAction != null -> model.invoke(NATIVE_BUILDER_ID, nativeAction, inputs)
-                        destination.pluginId == ASSISTANT_SETTINGS_ID && action == ASSISTANT_PERMISSIONS_ACTION ->
-                            model.navigate(Destination.PluginPage(ASSISTANT_SETTINGS_ID, ASSISTANT_PERMISSIONS_PAGE))
                         else -> model.invoke(destination.pluginId, action, inputs)
                     }
                     }

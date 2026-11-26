@@ -28,6 +28,8 @@ import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.manager.HostPluginRuntime
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.plugins.control.hideBundledEntries
+import com.kigtts.next.quickactions.*
+import androidx.compose.ui.geometry.Offset
 
 class AppViewModel @JvmOverloads constructor(application: Application, engineFixtures: List<KigPlugin> = emptyList(),
     audio: AudioPlatform = AndroidAudioPlatform(application)) : AndroidViewModel(application) {
@@ -35,7 +37,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val pluginChatHistory = com.kigtts.next.ui.plugins.ChatHistoryCache()
     val sketch = com.kigtts.next.ui.sketch.SketchState()
     private val hostRuntime = if (engineFixtures.isEmpty()) HostPluginRuntime.get(application) else null
-    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures, com.kigtts.next.sharing.pausedSharingPlugins)
+    val pluginManager = hostRuntime?.manager ?: PluginManager(application, engineFixtures,
+        com.kigtts.next.sharing.pausedSharingPlugins + LEGACY_GESTURE_PLUGIN)
     private val recovery = hostRuntime?.recovery ?: com.kigtts.next.recovery.CrashRecovery(application)
     internal val safeModeSession = com.kigtts.next.recovery.SafeModeSession(recovery, ::refreshPlugins)
     init { pluginManager.safeMode = recovery::safeMode }
@@ -46,16 +49,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         val page = audioDevices.decorate(plugin, plugin.page(pageId, context()))
         when {
-            pluginId == com.kigtts.next.plugins.control.STORE_ID -> page?.hideBundledEntries(pluginManager.bundledIds)
+            pluginId == com.kigtts.next.plugins.control.STORE_ID -> page?.hideBundledEntries(pluginManager.bundledIds + LEGACY_GESTURE_PLUGIN)
             pluginId == PLUGIN_EDITOR_ID && pageId == EDITOR_MANAGER_PAGE && page != null -> editorWorkspace(
                 page, registry.plugin(NATIVE_BUILDER_ID)?.takeIf {
                     pluginManager.status.any { status -> status.installed.manifest.id == NATIVE_BUILDER_ID &&
                         status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
                 }?.page(EDITOR_MANAGER_PAGE, context()))
-            pluginId == ASSISTANT_SETTINGS_ID && pageId == ASSISTANT_PERMISSIONS_PAGE ->
-                plugin.page("settings", context())?.let { assistantPermissionsPage(it, hostCopy("assistant.settings.permissions")) }
-            pluginId == ASSISTANT_SETTINGS_ID && pageId in setOf("settings", "dialogue-settings") && page != null ->
-                assistantSettingsPermissions(page, hostCopy("assistant.settings.permissions"), hostCopy("assistant.settings.manage_permissions"))
             else -> page
         }
     }
@@ -119,6 +118,63 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         contentAutoPlay = presentationPreferences.getBoolean("autoPlay", true),
         contentAudioMode = com.kigtts.next.media.MediaAudioMode.read(presentationPreferences.getString("audioMode", null))))
     val state = mutableState.asStateFlow()
+    internal val quickActionPreferences = QuickActionPreferences(application)
+    internal val subtitleGestures = SubtitleGestureStore(application)
+    private val bluetoothSubtitles = lazy { BluetoothSubtitleOutput(application) }
+    private var lastBluetoothSubtitle = ""
+    init {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                subtitleGestures.migrate(pluginManager.paths.storage(LEGACY_GESTURE_PLUGIN).file("config/gestures.properties"))
+            }
+        }
+        viewModelScope.launch {
+            state.map { current ->
+                when {
+                    current.mediaId != null || current.audioId != null -> ""
+                    current.editing -> null
+                    else -> current.editorText
+                }
+            }.distinctUntilChanged().filterNotNull().collect(::publishBluetoothSubtitle)
+        }
+    }
+
+    internal fun setBluetoothSubtitles(enabled: Boolean) {
+        quickActionPreferences.bluetoothSubtitles = enabled
+        if (enabled) publishBluetoothSubtitle(lastBluetoothSubtitle)
+        else if (bluetoothSubtitles.isInitialized()) bluetoothSubtitles.value.setEnabled(false)
+    }
+
+    private fun publishBluetoothSubtitle(text: String) {
+        lastBluetoothSubtitle = text
+        if (quickActionPreferences.bluetoothSubtitles) {
+            bluetoothSubtitles.value.update(text)
+            bluetoothSubtitles.value.setEnabled(true)
+        }
+    }
+
+    internal fun submitSubtitleStroke(points: List<Offset>, duration: Long, width: Int, height: Int, minimumSpan: Float) {
+        val settings = subtitleGestures.state.value
+        val invocation = state.value.pageVersion
+        viewModelScope.launch {
+            val gesture = if (settings.active && state.value.mediaId == null && state.value.audioId == null)
+                withContext(Dispatchers.Default) { matchSubtitleGesture(points, minimumSpan) } else null
+            if (state.value.pageVersion != invocation || state.value.editing) return@launch
+            val currentSettings = subtitleGestures.state.value
+            val entry = gesture?.let(settings.bindings::get)?.takeIf { it.enabled && currentSettings == settings }
+            val phrase = entry?.let { binding -> phrases.value.firstOrNull { it.id == binding.phraseId } }
+            if (phrase != null) {
+                content.send(phrase)
+                return@launch
+            }
+            val target = registry.gestureActions(PluginGesture.SUBTITLE_STROKE, context()).firstOrNull() ?: return@launch
+            val json = org.json.JSONArray().also { rows ->
+                points.forEach { rows.put(org.json.JSONArray().put(it.x.toDouble()).put(it.y.toDouble())) }
+            }
+            invoke(target.plugin.descriptor.id, target.action.id, mapOf("gesture.points" to json.toString(),
+                "gesture.durationMs" to duration.toString(), "gesture.width" to width.toString(), "gesture.height" to height.toString()))
+        }
+    }
     init { audioDevices.onChanged = { update { it.copy(pluginRevision = it.pluginRevision + 1) } } }
     val cameraSaves = CameraSaveQueue(cards, stickers, viewModelScope, ::message, saveMotion = { imageId, clip ->
         cardMotions.import(imageId, clip.video, clip.durationMs, clip.rotationDegrees, clip.shutterPositionMs, clip.colorMatrix, clip.lut, clip.lutStrength, clip.effects)
@@ -339,8 +395,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         val current = state.value
         if (current.uiLocale == locale && current.followsSystemUiLanguage == followsSystem) return
         update { it.copy(uiLocale = locale, followsSystemUiLanguage = followsSystem, subtitlePlaceholder = subtitlePlaceholder(locale)) }
+        if (quickActionPreferences.lockScreenShortcut) LockScreenShortcut.sync(getApplication<Application>())
     }
     internal fun reloadBackedUpSettings() {
+        subtitleGestures.reload()
+        setBluetoothSubtitles(quickActionPreferences.bluetoothSubtitles)
+        LockScreenShortcut.sync(getApplication<Application>())
         refreshUiLanguage()
         quickSort.reload()
         homeExit.reload()
@@ -462,6 +522,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         update { it.copy(editing = editing) }
     }
     fun submitSubtitle() {
+        val current = state.value
+        if (current.mediaId == null && current.audioId == null) publishBluetoothSubtitle(current.editorText)
         if(state.value.autoPlayback && state.value.mediaId == null) autoRead()
     }
     fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
@@ -623,8 +685,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                         quickTexts.phrases.value.firstOrNull { it.id == outcome.entryId }?.let(content::send)
                     }
                     is PluginOutcome.OpenPage -> {
-                        if (plugin.page(outcome.pageId, context()) != null) { navigate(Destination.PluginPage(pluginId, outcome.pageId)); accepted = true }
-                        else message(hostCopy("plugin.page_missing"))
+                        if (plugin.page(outcome.pageId, context()) != null) {
+                            val target = Destination.PluginPage(pluginId, outcome.pageId)
+                            if (state.value.destination == target) update { it.copy(pluginRevision = it.pluginRevision + 1) }
+                            else navigate(target)
+                            accepted = true
+                        } else message(hostCopy("plugin.page_missing"))
                     }
                     is PluginOutcome.ReplaceEditorText -> { text(outcome.text); navigate(Destination.Home) }
                     is PluginOutcome.SetSubtitleRenderer -> {
@@ -767,6 +833,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         super.onCleared()
         sharing.close()
         if (audioSessionDelegate.isInitialized()) cardAudio.release()
+        if (bluetoothSubtitles.isInitialized()) bluetoothSubtitles.value.setEnabled(false)
         audioDevices.close()
         captionOutput.close()
         hostRuntime?.detach(this)

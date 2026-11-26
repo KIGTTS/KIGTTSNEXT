@@ -2,7 +2,6 @@ package com.kigtts.next.ui.plugins
 
 import com.kigtts.next.i18n.uiText
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.files.*
 import com.kigtts.next.ui.navigation.LocalPageActive
+import com.kigtts.next.ui.navigation.RegisterPageBackGuard
 import com.kigtts.plugin.api.*
 
 private data class PluginFileTransfer(val paths: List<String>, val copy: Boolean, val origin: String)
@@ -28,8 +28,13 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
     var transfer by remember(files.openAction) { mutableStateOf<PluginFileTransfer?>(null) }
     var rename by remember(files.openAction) { mutableStateOf<BrowserFile?>(null) }
     var deleting by remember(files.openAction) { mutableStateOf(emptyList<String>()) }
-    val items = files.items.map { BrowserFile(it.path, it.name, it.directory,
-        if (it.directory) "文件夹" else fileSizeSummary(it.bytes)) }
+    val folder = uiText("file.folder")
+    val items = remember(files.items, folder) {
+        files.items.map { file ->
+            if (file.directory) BrowserFile(file.path, file.name, true, folder)
+            else BrowserFile(file.path, file.name, false, sizeBytes = file.bytes)
+        }
+    }
     fun navigate(directory: String) {
         if (directory.isEmpty() && files.parentAction != null) invoke(requireNotNull(files.parentAction), mapOf("directory" to directory, "path" to directory))
         else invoke(files.openAction, mapOf("path" to directory, "directory" to directory))
@@ -38,7 +43,11 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
         mapOf("op" to op, "paths" to PluginJson.encodeToString(paths), "destination" to destination))
     fun chooseTransfer(paths: List<String>, copy: Boolean) { transfer = PluginFileTransfer(paths.toList(), copy, files.directory) }
     LaunchedEffect(files.directory) { selected = emptyList() }
-    BackHandler(foreground && selected.isNotEmpty() && transfer == null && rename == null && deleting.isEmpty()) { selected = emptyList() }
+    RegisterPageBackGuard(foreground && transfer == null && rename == null && deleting.isEmpty() &&
+        (selected.isNotEmpty() || files.directory.isNotEmpty())) {
+        if (selected.isNotEmpty()) selected = emptyList()
+        else if (active) navigate(files.directory.substringBeforeLast('/', ""))
+    }
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp).testTag("plugin-files")) {
         DirectoryBreadcrumbs(files.directory, active, ::navigate)
         FileSelectionBar(selected, items.size, active,
@@ -51,13 +60,16 @@ internal fun PluginFilesScreen(files: PageBlock.Files, enabled: Boolean, invoke:
                 Icon(Icons.Default.Add, uiText("accessibility.create_file_or_folder"))
             } }
         }
-        FileBrowserRows(items, selected, active, { path -> selected = if (path in selected) selected - path else selected + path },
-            { item -> invoke(files.openAction, mapOf("path" to item.path)) }, { item, action -> when (action) {
-                FileAction.MOVE -> chooseTransfer(listOf(item.path), false)
-                FileAction.COPY -> chooseTransfer(listOf(item.path), true)
-                FileAction.RENAME -> rename = item
-                FileAction.DELETE -> deleting = listOf(item.path)
-            } }, Modifier.weight(1f), tagPrefix = "plugin-file")
+        key(files.directory) {
+            FileBrowserRows(items, selected, active, { path -> selected = if (path in selected) selected - path else selected + path },
+                { item -> if (item.directory) navigate(item.path) else invoke(files.openAction, mapOf("path" to item.path)) },
+                { item, action -> when (action) {
+                    FileAction.MOVE -> chooseTransfer(listOf(item.path), false)
+                    FileAction.COPY -> chooseTransfer(listOf(item.path), true)
+                    FileAction.RENAME -> rename = item
+                    FileAction.DELETE -> deleting = listOf(item.path)
+                } }, Modifier.weight(1f), tagPrefix = "plugin-file", emptyText = uiText("file.empty"))
+        }
     }
     if (foreground) transfer?.let { request -> FileDestinationDialog(request.copy, files.directory,
         items, request.paths, active, ::navigate, { destination, finish ->

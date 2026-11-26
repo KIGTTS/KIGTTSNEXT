@@ -38,6 +38,7 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         return (current ?: ProviderCatalog(paths).cachedTts(id))?.let { it to installed }
     }
     val permissions = PluginPermissions(context)
+    @Volatile var bundledPermission: (String, String) -> Boolean = { _, _ -> false }
     @Volatile var automaticPermission: (String, String) -> Boolean = { _, _ -> false }
     @Volatile var safeMode: () -> Boolean = { false }
     fun permissionOwner(id: String, project: String? = null): String {
@@ -48,10 +49,12 @@ class PluginManager(private val context: Context, private val builtins: List<Kig
         val installed = status.firstOrNull { it.installed.manifest.id == id }?.installed
             ?: withContext(Dispatchers.IO) { packages.installed().firstOrNull { it.manifest.id == id } } ?: return false
         if (permission !in installed.manifest.capabilities || permission !in PluginPermissions.sensitive) return false
+        if (bundledPermission(id, permission) && bundles.verified(installed)) return true
         if (permission !in setOf("notifications", "overlay") && automaticPermission(id, permission)) return true
         return permissions.request("${id}:${installed.publisherSha256}", permission, installed.manifest.name,
             installed.manifest.permissionPurposes[permission] ?: "插件未提供具体用途；此权限允许${PluginPermissions.label(permission)}。")
     }
+    fun isVerifiedBundle(id: String) = status.firstOrNull { it.installed.manifest.id == id }?.installed?.let(bundles::verified) == true
     private val readiness = TtsReadiness(registry)
     @Volatile var quickTextBrokerFactory:((String,Set<String>)->QuickTextBroker)?=null
     @Volatile var appBrokerFactory: ((String, Set<String>) -> AppBroker)? = null

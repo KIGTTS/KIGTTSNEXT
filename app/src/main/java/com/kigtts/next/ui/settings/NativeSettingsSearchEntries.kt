@@ -4,6 +4,9 @@ import com.kigtts.next.state.*
 
 /** Native option paths. Plugin entrances are merged from their live contributions. */
 internal val nativeSettingsSearchEntries = listOf(
+    SettingsSearchResult("锁屏实况入口", "设置 / 外观与交互 / 快捷操作 / 锁屏实况入口", Destination.SettingsDetail(SettingsCategory.QUICK_ACTIONS)),
+    SettingsSearchResult("蓝牙设备字幕", "设置 / 外观与交互 / 快捷操作 / 蓝牙设备字幕", Destination.SettingsDetail(SettingsCategory.QUICK_ACTIONS)),
+    SettingsSearchResult("手势触发", "设置 / 外观与交互 / 快捷操作 / 手势触发", Destination.SettingsDetail(SettingsCategory.QUICK_ACTIONS)),
     SettingsSearchResult("界面语言", "设置 / 外观 / 界面语言", Destination.SettingsDetail(SettingsCategory.LANGUAGE), alias = "语言与文案"),
     SettingsSearchResult("版本", "设置 / 关于 / 版本", Destination.SettingsDetail(SettingsCategory.ABOUT)),
     SettingsSearchResult("项目主页", "设置 / 关于 / 帮助与反馈 / 项目主页", Destination.SettingsDetail(SettingsCategory.ABOUT)),
@@ -62,6 +65,9 @@ internal val nativeSettingsSearchEntries = listOf(
 )
 
 internal val localizedSearchTitles = mapOf(
+    "锁屏实况入口" to "quick_actions.lock_screen",
+    "蓝牙设备字幕" to "quick_actions.bluetooth",
+    "手势触发" to "quick_actions.gestures",
     "背景与字体" to "appearance.background_fonts",
     "背景图片" to "appearance.background_image",
     "背景遮罩" to "appearance.background_dim",

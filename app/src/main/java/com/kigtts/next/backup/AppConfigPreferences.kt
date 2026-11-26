@@ -30,6 +30,10 @@ internal class AppConfigPreferences(private val context: Context) {
             int = "fontWeight", long = "seed backgroundSeed", float = "contrast radius backgroundDim subtitleWidthPercent"),
         UI_LANGUAGE_PREFERENCES to fields(text = "locale"),
         "interaction" to fields(bool = "haptics quick-sort double-back-exit"),
+        "quick-actions" to (fields(bool = "lock-screen-shortcut bluetooth-subtitles gestures-enabled") +
+            com.kigtts.next.quickactions.SubtitleGesture.entries.flatMap { gesture ->
+                listOf("gesture-${gesture.id}" to Kind.TEXT, "gesture-enabled-${gesture.id}" to Kind.BOOL)
+            }.toMap()),
         "subtitle-appearance" to fields(text = "alignment", bool = "bold rich-text-editing reduced-motion display-reflow"),
         "caption-window" to fields(float = "panel-font-size font-size"),
         "home-panel" to fields(int = "expanded-columns", float = "expanded-height"),

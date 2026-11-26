@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DriveFileMove
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.*
@@ -25,10 +26,11 @@ import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.EmptyContent
 
 internal data class BrowserFile(val path: String, val name: String, val directory: Boolean,
-    val summary: String = "", val icon: ImageVector = if (directory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile)
-internal enum class FileAction(val label: String, val icon: ImageVector) {
-    MOVE("移动到…", Icons.Default.DriveFileMove), COPY("复制到…", Icons.Default.ContentCopy),
-    RENAME("重命名", Icons.Default.Edit), DELETE("删除", Icons.Default.Delete),
+    val summary: String = "", val icon: ImageVector = if (directory) Icons.Default.Folder else Icons.AutoMirrored.Filled.InsertDriveFile,
+    val sizeBytes: Long? = null)
+internal enum class FileAction(val labelKey: String, val icon: ImageVector) {
+    MOVE("file.move_to", Icons.AutoMirrored.Filled.DriveFileMove), COPY("file.copy_to", Icons.Default.ContentCopy),
+    RENAME("common.rename", Icons.Default.Edit), DELETE("action.delete", Icons.Default.Delete),
 }
 internal data class FileMenuAction(val label: String, val icon: ImageVector, val click: () -> Unit)
 
@@ -38,10 +40,15 @@ internal fun FileBrowserRows(items: List<BrowserFile>, selected: List<String>, e
     select: (String) -> Unit, open: (BrowserFile) -> Unit, action: (BrowserFile, FileAction) -> Unit,
     modifier: Modifier = Modifier, tagPrefix: String = "file", extra: (BrowserFile) -> List<FileMenuAction> = { emptyList() },
     showMenu: Boolean = true, emptyText: String = "这里还没有文件") {
+    val selectedPaths = remember(selected) { selected.toHashSet() }
+    val selecting = selectedPaths.isNotEmpty()
     Box(modifier) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         items(items, key = { it.path }) { item ->
-            val selectedColor by animateColorAsState(if (item.path in selected) MaterialTheme.colorScheme.secondaryContainer
+            val detail = remember(item.summary, item.sizeBytes) {
+                item.sizeBytes?.let(::fileSizeSummary) ?: item.summary.ifBlank { " " }
+            }
+            val selectedColor by animateColorAsState(if (item.path in selectedPaths) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.surfaceContainer, tween(120), label = "file-selection")
             Surface(Modifier.animateItem().testTag("$tagPrefix/${item.path}"), shape = MaterialTheme.shapes.medium, color = selectedColor) {
                 Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).combinedClickable(enabled = enabled,
@@ -51,15 +58,15 @@ internal fun FileBrowserRows(items: List<BrowserFile>, selected: List<String>, e
                     Icon(item.icon, null, Modifier.size(24.dp))
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(item.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(item.summary.ifBlank { " " }, style = MaterialTheme.typography.bodySmall,
+                        Text(detail, style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                         if (!showMenu) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null)
                         else {
-                        Crossfade(selected.isNotEmpty(), animationSpec = tween(120), label = "file-trailing") { selecting ->
-                            if (selecting) Checkbox(item.path in selected, null, modifier = Modifier.size(48.dp))
-                            else FileRowMenu(item, enabled && selected.isEmpty(), tagPrefix, action, extra(item))
+                        Crossfade(selecting, animationSpec = tween(120), label = "file-trailing") { showSelection ->
+                            if (showSelection) Checkbox(item.path in selectedPaths, null, modifier = Modifier.size(48.dp))
+                            else FileRowMenu(item, enabled && !selecting, tagPrefix, action, extra)
                         }
                         }
                     }
@@ -73,16 +80,16 @@ internal fun FileBrowserRows(items: List<BrowserFile>, selected: List<String>, e
 
 @Composable
 private fun FileRowMenu(item: BrowserFile, enabled: Boolean, tagPrefix: String,
-    action: (BrowserFile, FileAction) -> Unit, extra: List<FileMenuAction>) {
+    action: (BrowserFile, FileAction) -> Unit, extra: (BrowserFile) -> List<FileMenuAction>) {
     var expanded by remember(item.path) { mutableStateOf(false) }
     Box(Modifier.size(48.dp)) {
         MotionIconButton(feedbackClick { expanded = true }, Modifier.size(48.dp).testTag("$tagPrefix-menu/${item.path}"), enabled = enabled) {
             Icon(Icons.Default.MoreVert, uiText("accessibility.file_actions"))
         }
         DropdownMenu(expanded && enabled, { expanded = false }) {
-            extra.forEach { item -> DropdownMenuItem({ Text(item.label) }, feedbackClick { expanded = false; item.click() },
+            extra(item).forEach { item -> DropdownMenuItem({ Text(item.label) }, feedbackClick { expanded = false; item.click() },
                 leadingIcon = { Icon(item.icon, null) }) }
-            FileAction.entries.forEach { operation -> DropdownMenuItem({ Text(operation.label) },
+            FileAction.entries.forEach { operation -> DropdownMenuItem({ Text(uiText(operation.labelKey)) },
                 feedbackClick { expanded = false; action(item, operation) }, leadingIcon = { Icon(operation.icon, null) }) }
         }
     }

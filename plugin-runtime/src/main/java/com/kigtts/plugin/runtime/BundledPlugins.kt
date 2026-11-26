@@ -10,6 +10,9 @@ internal class BundledPlugins(private val context: Context, private val packages
     private val specs: List<BundledPlugin>, private val optedIn: (String) -> Boolean) {
     val ids = specs.mapTo(mutableSetOf()) { it.id }
     fun allowed(id: String) = id !in ids || optedIn(id)
+    fun verified(info: InstalledPlugin) = optedIn(info.manifest.id) && specs.any {
+        it.id == info.manifest.id && it.publisher == info.publisherSha256 && it.versionCode == info.manifest.versionCode
+    }
 
     /** Install only after opt-in. Keep the existing same-publisher data directory and grants. */
     fun prepare(): Map<String, String> = buildMap {

@@ -34,7 +34,7 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                 if ("app-control" !in capabilities) return AppReply.Failure("PERMISSION_DENIED", "插件没有应用控制权限")
                 val installedCaller = owner !in manager.builtinIds && (manager.status.any { it.installed.manifest.id == owner } ||
                     withContext(Dispatchers.IO) { manager.packages.installed(owner) != null })
-                if (installedCaller && !manager.requestPermission(owner, "app-control"))
+                if (installedCaller && !editorBuilderRequest(owner, command) && !manager.requestPermission(owner, "app-control"))
                     return AppReply.Failure("PERMISSION_DENIED", "应用控制权限尚未授权或已禁用")
                 return try {
                     val readsMedia = command is AppCommand.BrowserCapture && command.mediaId != null || command is AppCommand.BrowserSession && command.operation in setOf("open", "open-subtitle") && command.mediaId != null
@@ -51,6 +51,19 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
             }
         }
     }
+
+    private fun editorBuilderRequest(owner: String, command: AppCommand): Boolean {
+        if (owner != PLUGIN_EDITOR_ID || !manager.isVerifiedBundle(owner)) return false
+        if (command == AppCommand.Describe) return true
+        if (manager.status.none { it.installed.manifest.id == NATIVE_BUILDER_ID && it.installed.publisherSha256 == STORE_PUBLISHER })
+            return false
+        return when (command) {
+            is AppCommand.PluginAction -> command.pluginId == NATIVE_BUILDER_ID && command.actionId in setOf("new", "open", "import")
+            is AppCommand.DeliverResource -> command.pluginId == NATIVE_BUILDER_ID && command.actionId == "import"
+            else -> false
+        }
+    }
+
     private fun perform(owner: String, command: AppCommand): AppReply {
         if (command == AppCommand.Describe) return data {
             put("protocol", 1)

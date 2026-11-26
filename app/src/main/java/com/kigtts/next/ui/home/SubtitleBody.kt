@@ -31,9 +31,16 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     val currentState by rememberUpdatedState(state)
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val media = model.mediaRepository.get(state.mediaId)
+    val gestures by model.subtitleGestures.state.collectAsState()
+    val pluginContext = model.context()
+    val pluginStrokes = remember(model, state.pluginRevision, pluginContext) {
+        model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, pluginContext).isNotEmpty()
+    }
+    val strokes = !state.editing && (pluginStrokes ||
+        (gestures.active && state.mediaId == null && state.audioId == null))
     val ownsSwipes = !state.editing && (media != null || renderer?.presentation?.blockHomeSideSwipes == true ||
         renderer?.native is com.kigtts.plugin.api.NativeSubtitleRenderer.Led ||
-        model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
+        strokes)
     val surface = modifier.excludeHomeSideSwipes(ownsSwipes)
     // The full-card WebView is already mounted below this column. An invisible AnimatedContent
     // above AndroidView can own its hit path; leave only a layout spacer for interactive pages.
@@ -43,12 +50,12 @@ fun SubtitleBody(state: AppState, model: AppViewModel, modifier: Modifier = Modi
     }
     MediaTransition(media,state,model,surface.then(if(media!=null)Modifier.testTag("subtitle-content") else Modifier).clipToBounds(),
         renderFullCardMedia=false) {
-        SubtitleText(currentState, model, Modifier.fillMaxSize(), rendererInBackground, onFontAdjustment)
+        SubtitleText(currentState, model, Modifier.fillMaxSize(), rendererInBackground, strokes, onFontAdjustment)
     }
 }
 
 @Composable
-private fun SubtitleText(state: AppState, model: AppViewModel, modifier: Modifier, rendererInBackground: Boolean,
+private fun SubtitleText(state: AppState, model: AppViewModel, modifier: Modifier, rendererInBackground: Boolean, strokes: Boolean,
     onFontAdjustment: (Boolean) -> Unit) {
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val focus = remember { FocusRequester() }
@@ -93,11 +100,11 @@ private fun SubtitleText(state: AppState, model: AppViewModel, modifier: Modifie
                     }, reducedMotion = state.subtitleAppearance.reducedMotion,
                     zoomPreview = model.subtitleRenderer::ledZoomPreview, ledPlayback = model.subtitleRenderer.ledPlayback) }
                 // Display renderers never own editing/zoom gestures. Keep the native input affordance.
-                if (model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isEmpty())
+                if (!strokes)
                     Spacer(Modifier.matchParentSize().testTag("subtitle-renderer-input").subtitleInputGestures(model))
             }
         } else SubtitleDisplay(state, model, text, style, width, height, hintOpacity)
-        if (!state.editing && model.registry.gestureActions(PluginGesture.SUBTITLE_STROKE, model.context()).isNotEmpty())
+        if (strokes)
             SubtitleStrokeOverlay(model, Modifier.matchParentSize())
     }
     }
