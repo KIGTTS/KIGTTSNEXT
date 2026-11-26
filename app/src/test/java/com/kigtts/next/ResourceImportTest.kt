@@ -8,6 +8,9 @@ import com.kigtts.next.state.AppViewModel
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -130,12 +133,15 @@ class ResourceImportTest {
     @Before fun before() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun after() { Dispatchers.resetMain() }
     private fun signed(payload: Map<String, ByteArray>, content: ResourcePackageContent, type: ResourceType,
-        hashes: Map<String, String>? = null, api: Int = 29): Pair<File, String> {
+        hashes: Map<String, String>? = null, api: Int = 29, author: String? = null): Pair<File, String> {
         val key = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
         fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
         val files = payload + ("content.json" to PluginJson.encodeToString(content).toByteArray())
-        val raw = PluginJson.encodeToString(ResourcePackageManifest(id = "test.resources", name = "测试资源", version = "1.0.0",
-            versionCode = 1, apiVersion = api, resourceType = type, files = hashes ?: files.mapValues { hash(it.value) })).toByteArray()
+        val manifest = ResourcePackageManifest(id = "test.resources", name = "测试资源", version = "1.0.0",
+            versionCode = 1, apiVersion = api, resourceType = type, files = hashes ?: files.mapValues { hash(it.value) })
+        val json = PluginJson.parseToJsonElement(PluginJson.encodeToString(manifest)).jsonObject
+        val raw = (author?.let { JsonObject(json + ("author" to JsonPrimitive(it))) } ?: json)
+            .toString().toByteArray()
         val signature = Signature.getInstance("SHA256withRSA").run { initSign(key.private); update(raw); sign() }
         val file = File.createTempFile("resource-", ".kigresource", app.cacheDir)
         ZipOutputStream(file.outputStream()).use { zip ->
@@ -144,6 +150,28 @@ class ResourceImportTest {
             }
         }
         return file to hash(key.public.encoded)
+    }
+
+    @Test fun unsignedResourcesAcceptOptionalAuthorAndRejectAnExpectedSignature() {
+        val content = ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "Frame")))
+        listOf(null, "KIGTTS").forEach { author ->
+            val (signed, publisher) = signed(emptyMap(), content, ResourceType.FRAME, author = author)
+            val unsigned = File.createTempFile("unsigned-", ".kigresource", app.cacheDir)
+            java.util.zip.ZipFile(signed).use { source ->
+                ZipOutputStream(unsigned.outputStream()).use { target ->
+                    source.entries().asSequence().filterNot { it.name.startsWith("signature/") }.forEach { entry ->
+                        target.putNextEntry(ZipEntry(entry.name))
+                        source.getInputStream(entry).use { it.copyTo(target) }
+                        target.closeEntry()
+                    }
+                }
+            }
+            val destination = File(app.cacheDir, "unsigned-${author.orEmpty()}")
+            assertEquals(author, ResourceArchive.read(unsigned, destination).author)
+            val pinned = File(app.cacheDir, "pinned-${author.orEmpty()}")
+            assertTrue(runCatching { ResourceArchive.read(unsigned, pinned, publisher) }.isFailure)
+            assertFalse(pinned.exists())
+        }
     }
     @Test fun rejectsTraversalTamperedPayloadAndWrongPublisherAndCleansStage() {
         val content = ResourcePackageContent(frames = listOf(PolaroidFrameStyle("frame", "边框")))

@@ -9,7 +9,9 @@ data class PackageManifest(val id: String, val name: String, val version: String
     val runtime: String = "android-dex", val license: String = "MIT",
     val capabilities: List<String> = emptyList(), val abis: List<String> = emptyList(),
     val files: Map<String, String>, val permissionPurposes: Map<String, String> = emptyMap(),
-    val icon: PackageIcon? = null)
+    val icon: PackageIcon? = null, val author: String? = null) {
+    init { require(author == null || author.length <= 120) }
+}
 
 /** Signed presentation only. File paths are package-relative, never URLs or plugin code. */
 @Serializable

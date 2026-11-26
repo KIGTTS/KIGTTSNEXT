@@ -43,6 +43,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal val safeModeSession = com.kigtts.next.recovery.SafeModeSession(recovery, ::refreshPlugins)
     init { pluginManager.safeMode = recovery::safeMode }
     val registry = pluginManager.registry
+    internal val editorWorkspace by lazy { com.kigtts.next.plugins.editor.EditorWorkspace(getApplication(), pluginManager) }
     val readingCacheBytes get() = hostRuntime?.reading?.cacheBytes
     val readingBakeProgress get() = hostRuntime?.reading?.bakeProgress
     val audioDevices = (audio as? AndroidAudioPlatform)?.devices ?: AudioDeviceRouting(application)
@@ -54,7 +55,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
                 page, registry.plugin(NATIVE_BUILDER_ID)?.takeIf {
                     pluginManager.status.any { status -> status.installed.manifest.id == NATIVE_BUILDER_ID &&
                         status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
-                }?.page(EDITOR_MANAGER_PAGE, context()), hostCopy("plugin.editor_projects"))
+                }?.page(EDITOR_MANAGER_PAGE, context()), hostCopy("plugin.editor_projects"), hostCopy("editor.signatures"))
             else -> page
         }
     }

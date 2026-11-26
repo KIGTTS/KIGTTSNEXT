@@ -68,6 +68,14 @@ signature/manifest.sig      # 原始 plugin.json 的 SHA256withRSA 签名
 
 Lua 源码 ZIP 由 [插件编辑器](lua-plugins.md) 管理，发布时生成自带 Lua 运行时的签名 `.kigplugin`。Java/Kotlin 项目可由 [原生构建扩展](native-builder.md) 生成同格式包。商店和主程序用同一套签名、依赖和升级规则。模板、发布源 Schema 与签名脚本见 [KIGTTS-PLUGIN-TEMPLATES](https://github.com/LHT02/KIGTTS-PLUGIN-TEMPLATES)。
 
+### 编辑器预设与签名
+
+新建项目时可选 Lua 或原生组件目录。两套预设包含可构建源码、宿主与字幕示例、语音接口、网页与震动演示。AI 助手的 `plugin_template` 工具可以列出预设、读取源码和发起创建，创建时由编辑器显示审核界面。
+
+模板仓库发布新版后，在宿主仓库运行 `./tools/Sync-EditorPresets.ps1 -TemplateRoot <模板仓库路径>`。把两套源码归档、指南及记录版本、SDK API、源提交、SHA-256 的索引一起提交，再打包主程序。
+
+从插件编辑器的「签名管理」生成、导入或以密码保护的 `.kigsign` 导出签名。可导入 `.kigsign`、只含一把 RSA 私钥的 PKCS#12，以及 RSA PKCS#8 DER。项目详情的「包信息」用于填写作者和选择签名。同包名发更新时继续使用原发布者签名。作者文字纳入签名清单，发布者身份由公钥指纹校验。
+
 ## 安装与生命周期
 
 从“设置 → 插件管理”安装本地 `.kigplugin`，也可使用 [独立管理器](plugin-manager.md) 或 [插件商店](package-store.md)。首次安装显示名称、版本、许可证、能力与发布者指纹，用户确认后安装；商店的 expectedPublisher 不会替用户授予信任。

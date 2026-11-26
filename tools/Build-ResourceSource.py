@@ -25,7 +25,7 @@ def add_artwork(folder, assets, module, name, local, width, height, alt):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--folder", default=".tools/resource-source")
-    parser.add_argument("--private-key", required=True)
+    parser.add_argument("--private-key", help="Preserve signatures when rebuilding older signed resource releases")
     parser.add_argument("--expressions", action="store_true")
     args = parser.parse_args()
     folder = (ROOT / args.folder).resolve()
@@ -91,6 +91,6 @@ def main():
     (folder / index_name).write_bytes((json.dumps(catalog, ensure_ascii=False, indent=2)+"\n").encode("utf-8"))
     if not args.expressions:
         (folder / "README.md").write_text("---\nlicense: other\n---\n# KIGTTS 资源\n\n在商店添加相框、滤镜、名片边框与贴纸。每个包按自己的许可提供；字体和第三方素材不统一套用 CC0。\n\n" + "\n".join(f"- {p['name']}：{p['license']}" for p in packages) + "\n\nRemi 来源：[原作者文档](https://jafq11jkbyg.feishu.cn/docx/DPIxd0bRRoLxrixSuDccNvUYnbd)，权利归原作者。\n", encoding="utf-8", newline="\n")
-    print(f"Prepared {len(packages)} signed resource packages -> {folder}")
+    print(f"Prepared {len(packages)} resource packages -> {folder}")
 
 if __name__ == "__main__": main()

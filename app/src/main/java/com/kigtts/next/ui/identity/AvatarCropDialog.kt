@@ -36,6 +36,13 @@ import kotlinx.coroutines.*
 import java.io.File
 
 @Composable internal fun AvatarCropDialog(source: File, stickers: StickerRepository, close: () -> Unit, save: (String) -> Unit) {
+    SquareImageCropDialog(source, close, save, roundPreview = true, title = uiText("profile.avatar_crop")) { bitmap, crop ->
+        saveAvatarCrop(stickers, bitmap, crop)
+    }
+}
+
+@Composable internal fun <T> SquareImageCropDialog(source: File, close: () -> Unit, save: (T) -> Unit,
+    roundPreview: Boolean, title: String, write: (Bitmap, BackgroundCrop) -> T) {
     var crop by rememberSaveable(source.path, stateSaver = listSaver<BackgroundCrop, Float>(
         save = { listOf(it.x, it.y, it.zoom) }, restore = { BackgroundCrop(it[0], it[1], it[2]) })) { mutableStateOf(BackgroundCrop()) }
     var saving by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
@@ -71,19 +78,20 @@ import java.io.File
                     val outside = Path().apply {
                         fillType = PathFillType.EvenOdd
                         addRect(androidx.compose.ui.geometry.Rect(Offset.Zero, size))
-                        addOval(androidx.compose.ui.geometry.Rect(Offset(left, top), Size(extent, extent)))
+                        val preview = androidx.compose.ui.geometry.Rect(Offset(left, top), Size(extent, extent))
+                        if (roundPreview) addOval(preview) else addRect(preview)
                     }
                     drawPath(outside, Color.Black.copy(alpha = .65f))
                 }
             }
-            TopAppBar(title = { Text(uiText("profile.avatar_crop")) }, navigationIcon = {
+            TopAppBar(title = { Text(title) }, navigationIcon = {
                 IconButton(feedbackClick { if (!saving) close() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("accessibility.cancel_crop")) }
             }, actions = {
                 if (saving) CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), color = Color.White)
                 else IconButton(feedbackClick {
                     if (image != null) scope.launch {
                         saving = true
-                        try { save(withContext(Dispatchers.IO) { saveAvatarCrop(stickers, image, crop) }) }
+                        try { save(withContext(Dispatchers.IO) { write(image, crop) }) }
                         catch (cancel: CancellationException) { throw cancel }
                         catch (_: Exception) { error = "头像未能保存，请重试" }
                         finally { saving = false }

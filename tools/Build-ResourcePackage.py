@@ -1,4 +1,4 @@
-"""Build a signed data-only KPM archive from a resource project. Never copies the signing key."""
+"""Build a data-only KPM archive. Existing publishers can continue signing the resource manifest."""
 import argparse
 import hashlib
 import json
@@ -16,7 +16,7 @@ def digest(data):
 def safe(path):
     return 0 < len(path) <= 240 and not any(x in path for x in ("\\", ":")) and all(x not in ("", ".", "..") for x in path.split("/")) and all(ord(x) >= 32 for x in path)
 
-def build(project, output, private_key):
+def build(project, output, private_key=None):
     project = Path(project).resolve()
     definition = json.loads((project / "package.json").read_text(encoding="utf-8"))
     assert re.fullmatch(r"[a-z][a-z0-9.-]{0,63}", definition["id"])
@@ -88,15 +88,23 @@ def build(project, output, private_key):
         payload[name] = file.read_bytes()
     assert len(payload) <= 4093 and sum(map(len, payload.values())) <= 768 * 1024 * 1024
     manifest = {k: definition[k] for k in ("id", "name", "version", "versionCode", "resourceType")}
+    author = definition.get("author")
+    if author is not None:
+        if not isinstance(author, str) or len(author) > 120: raise ValueError("Resource author must be at most 120 characters")
+        if author.strip(): manifest["author"] = author.strip()
     manifest.update(schemaVersion=1, apiVersion=api_version, minSdk=26, content="content.json", dependencies=definition.get("dependencies", {}), files={p: digest(b) for p, b in sorted(payload.items())})
     raw = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-    key = serialization.load_der_private_key(Path(private_key).read_bytes(), password=None)
-    if not isinstance(key, rsa.RSAPrivateKey) or key.key_size < 2048: raise ValueError("RSA 2048+ required")
-    public = key.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
-    signature = key.sign(raw, padding.PKCS1v15(), hashes.SHA256())
-    key.public_key().verify(signature, raw, padding.PKCS1v15(), hashes.SHA256())
+    contents = {**payload, "resource.json": raw}
+    publisher = ""
+    if private_key:
+        key = serialization.load_der_private_key(Path(private_key).read_bytes(), password=None)
+        if not isinstance(key, rsa.RSAPrivateKey) or key.key_size < 2048: raise ValueError("RSA 2048+ required")
+        public = key.public_key().public_bytes(serialization.Encoding.DER, serialization.PublicFormat.SubjectPublicKeyInfo)
+        signature = key.sign(raw, padding.PKCS1v15(), hashes.SHA256())
+        key.public_key().verify(signature, raw, padding.PKCS1v15(), hashes.SHA256())
+        contents.update({"signature/public.der": public, "signature/manifest.sig": signature})
+        publisher = digest(public)
     output = Path(output).resolve(); output.parent.mkdir(parents=True, exist_ok=True)
-    contents = {**payload, "resource.json": raw, "signature/public.der": public, "signature/manifest.sig": signature}
     if output.exists():
         with zipfile.ZipFile(output) as existing:
             if set(existing.namelist()) != set(contents) or any(existing.read(p) != b for p, b in contents.items()):
@@ -108,11 +116,14 @@ def build(project, output, private_key):
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, data)
     if output.stat().st_size > 256 * 1024 * 1024: raise ValueError("Archive too large")
-    return dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=api_version, minSdk=26,
-        sha256=digest(output.read_bytes()), bytes=output.stat().st_size, expectedPublisher=digest(public), dependencies=manifest["dependencies"])
+    release = dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=api_version, minSdk=26,
+        sha256=digest(output.read_bytes()), bytes=output.stat().st_size, dependencies=manifest["dependencies"])
+    if publisher:
+        release["expectedPublisher"] = publisher
+    return release
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("project"); parser.add_argument("--output", required=True); parser.add_argument("--private-key", required=True)
+    parser.add_argument("project"); parser.add_argument("--output", required=True); parser.add_argument("--private-key")
     args = parser.parse_args()
     print(json.dumps(build(args.project, args.output, args.private_key), ensure_ascii=False, indent=2))

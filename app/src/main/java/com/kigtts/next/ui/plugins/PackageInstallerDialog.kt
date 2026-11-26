@@ -98,10 +98,13 @@ internal fun PackageInstallerDialog(packages: List<PackageInstallerInfo>?, busy:
     else Text(uiText("plugin.install_use", "name" to info.manifest.name))
     HorizontalDivider()
     InstallerInfoRow(uiText("plugin.software_license"), info.manifest.license)
+    val publisher = info.candidate.preview.publisherSha256
+    val author = if (publisher == com.kigtts.next.plugins.control.STORE_PUBLISHER) "KIGTTS" else info.manifest.author.orEmpty()
+    if (author.isNotBlank()) InstallerInfoRow(uiText("editor.author"), author)
     InstallerInfoRow(uiText("plugin.compatibility"), uiText("plugin.compatible_here"))
     TextButton(onClick = feedbackClick(permissions), contentPadding = PaddingValues(0.dp)) { Text(uiText("plugin.permission_count", "count" to info.permissions.size.toString())) }
     Text(uiText("plugin.publisher_hash"), style = MaterialTheme.typography.labelMedium)
-    SelectionContainer { Text(info.candidate.preview.publisherSha256, style = MaterialTheme.typography.bodySmall) }
+    SelectionContainer { Text(publisher, style = MaterialTheme.typography.bodySmall) }
 }
 
 @Composable private fun InstallerInfoRow(label: String, value: String) {

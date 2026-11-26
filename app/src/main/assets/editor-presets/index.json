@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "sourceRevision": "1bf23498388340eb58f397307e79877cd738f54a",
+  "items": [
+    {
+      "id": "lua-catalog",
+      "language": "lua",
+      "owner": "runtime.lua",
+      "archive": "lua-catalog.zip",
+      "version": "0.2.2",
+      "apiVersion": 38,
+      "name": "Lua 插件组件目录",
+      "exampleId": "example.lua-smoke",
+      "manifest": "manifest.json",
+      "sha256": "182d6ba818597fe29a0fb7a8756123b6a4cf83e26fcf6c706618b9409f172636"
+    },
+    {
+      "id": "native-catalog",
+      "language": "java",
+      "owner": "tools.native-builder",
+      "archive": "native-catalog.zip",
+      "version": "0.2.2",
+      "apiVersion": 38,
+      "name": "原生插件组件目录",
+      "exampleId": "example.native-smoke",
+      "manifest": "plugin-spec.json",
+      "sha256": "fb6f7b52cf2e40b7fac57eb0058ebb71b33e42e17040f74efcfb5595f6a24140"
+    }
+  ]
+}

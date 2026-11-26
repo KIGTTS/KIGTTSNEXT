@@ -204,7 +204,7 @@
       "properties": {
         "id": {
           "$ref": "#/$defs/id",
-          "description": "Must match the signed package manifest id. Same ID uses the same signing publisher across versions and sources."
+          "description": "Must match the package manifest ID. Plugins keep the same signing publisher across versions and sources."
         },
         "name": {
           "type": "string",
@@ -400,9 +400,10 @@
         "format",
         "sha256",
         "bytes",
-        "expectedPublisher",
         "mirrors"
       ],
+      "if": { "properties": { "format": { "enum": ["LUA", "NATIVE"] } } },
+      "then": { "required": ["expectedPublisher"] },
       "properties": {
         "version": {
           "$ref": "#/$defs/semver"
@@ -432,7 +433,7 @@
         },
         "expectedPublisher": {
           "$ref": "#/$defs/hash",
-          "description": "SHA-256 of signature/public.der (DER SubjectPublicKeyInfo RSA key), not a publisher name or certificate text."
+          "description": "SHA-256 of signature/public.der (DER SubjectPublicKeyInfo RSA key). Required for plugins and omitted for unsigned resources."
         },
         "apiVersion": {
           "type": "integer",

@@ -33,7 +33,8 @@ internal fun installedPresentation(directory: File, manifest: PackageManifest): 
     }.sorted().take(16).mapNotNull { path -> read(path, minOf(131_072, remaining)).takeIf(String::isNotBlank)?.let {
         remaining -= it.toByteArray(Charsets.UTF_8).size; "$path\n\n$it"
     } }.joinToString("\n\n────────\n\n")
-    return InstalledPluginDetails(manifest.name, manifest.version, description, field("author", 120), manifest.license, licenses, field("homepage", 2048))
+    return InstalledPluginDetails(manifest.name, manifest.version, description,
+        manifest.author.orEmpty().ifBlank { field("author", 120) }, manifest.license, licenses, field("homepage", 2048))
 }
 
 internal fun installedPluginDetails(model: AppViewModel, id: String): InstalledPluginDetails {
@@ -41,7 +42,8 @@ internal fun installedPluginDetails(model: AppViewModel, id: String): InstalledP
     val descriptor = model.registry.plugin(id)?.descriptor
     if (status != null) {
         val info = installedPresentation(model.pluginManager.packages.currentDirectory(id), status.installed.manifest)
-        return info.copy(description = info.description.ifBlank { descriptor?.description.orEmpty() })
+        return info.copy(description = info.description.ifBlank { descriptor?.description.orEmpty() },
+            author = if (status.installed.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER) "KIGTTS" else info.author)
     }
     val managed = model.registry.plugin(id.substringBefore("::"))?.contributions?.managedPackages?.firstOrNull { it.id == id.substringAfter("::", "") }
     return InstalledPluginDetails(managed?.name ?: descriptor?.name ?: id, managed?.version ?: descriptor?.version.orEmpty(),

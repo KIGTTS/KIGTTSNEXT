@@ -29,7 +29,7 @@ class ResourceInstalls(private val model: AppViewModel, private val scope: Corou
         val file = requireNotNull(model.pluginManager.paths.existingResource(owner, source.path))
         val token = UUID.randomUUID().toString()
         val directory = File(model.getApplication<android.app.Application>().cacheDir, "kpm-imports/$token")
-        val archive = withContext(Dispatchers.IO) { ResourceArchive.read(file, directory, requireNotNull(command.expectedPublisher)) }
+        val archive = withContext(Dispatchers.IO) { ResourceArchive.read(file, directory, command.expectedPublisher?.takeIf(String::isNotBlank)) }
         receipts[token] = ResourceReceipt(owner, "PENDING")
         while (receipts.size > 128) receipts.remove(receipts.keys.first())
         withContext(Dispatchers.Main) { mutable.value = ResourceInstallPrompt(token, archive) }

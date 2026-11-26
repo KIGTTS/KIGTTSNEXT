@@ -23,6 +23,7 @@ import com.kigtts.next.ui.components.*
             com.kigtts.next.ui.components.MaterialSymbols.vector(archive.manifest.resourceType.symbol)?.let { Icon(it, null, Modifier.size(24.dp)) }
         } }, text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(archive.manifest.name, style = MaterialTheme.typography.titleMedium)
+            archive.author?.takeIf(String::isNotBlank)?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
             Text(if (expression) uiText("expression.install_count", "count" to archive.count.toString())
                 else if (missingVoice) "需要语音合成服务和 Piper 语音引擎。安装后，回到下载管理继续添加语音包。"
                 else "${archive.count} 项${archive.manifest.resourceType.label}")

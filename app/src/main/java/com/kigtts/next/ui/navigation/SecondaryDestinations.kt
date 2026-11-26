@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.plugins.*
@@ -44,6 +45,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         }
     }
     val chatHandlesIme = destination.assistantChatHandlesIme()
+    val editorSigningPage = destination == Destination.PluginPage(PLUGIN_EDITOR_ID,
+        com.kigtts.next.plugins.editor.EDITOR_SIGNING_PAGE)
     val editorProject = destination is Destination.PluginPage && destination.pageId.startsWith("project/") &&
         destination.pluginId in setOf(PLUGIN_EDITOR_ID, NATIVE_BUILDER_ID) && pluginPage?.header != null
     val title = when (destination) {
@@ -56,8 +59,12 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             Destination.Fonts -> uiText("nav.fonts")
             is Destination.SettingsDetail -> uiText("settings.category.${destination.category.name.lowercase()}")
             Destination.Plugins -> uiText("nav.plugins")
-            is Destination.PluginPage -> if (editorProject) "" else pluginPage?.title
-                ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID) "market.name" else "nav.plugin_page")
+            is Destination.PluginPage -> when {
+                editorProject -> ""
+                editorSigningPage -> uiText("editor.signatures")
+                else -> pluginPage?.title ?: uiText(if (destination.pluginId == com.kigtts.next.plugins.control.STORE_ID)
+                    "market.name" else "nav.plugin_page")
+            }
             is Destination.MediaLibrary -> {
                 val draft by model.content.phraseDraft.collectAsStateWithLifecycle()
                 uiText(if (destination.target.startsWith("phrase:") && draft?.type == QuickCardType.PAGE) "nav.pages" else "nav.media")
@@ -163,12 +170,23 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     onQuickImage = model::quickImageCard, requestedLibrary = destination.libraryId)
                 is Destination.PluginPage -> {
                     val nativeEditorActive = destination.pluginId == PLUGIN_EDITOR_ID && destination.pageId == EDITOR_MANAGER_PAGE
-                    PluginPageScreen(pluginPage, destination.pluginId in state.busyPlugins ||
-                        (nativeEditorActive && NATIVE_BUILDER_ID in state.busyPlugins),
-                    resolve = { resource -> model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path) },
+                    if (editorSigningPage) {
+                        com.kigtts.next.ui.plugins.editor.EditorSigningScreen(model)
+                    } else {
+                    var creating by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                    val projectHeader = if (editorProject) pluginPage?.header else null
+                    val busy = destination.pluginId in state.busyPlugins ||
+                        (nativeEditorActive && NATIVE_BUILDER_ID in state.busyPlugins)
+                    val resolve: (com.kigtts.plugin.api.PluginResource) -> java.io.File? = { resource ->
+                        model.pluginManager.paths.existingResource(resource.pluginId ?: destination.pluginId, resource.path)
+                    }
+                    PluginPageScreen(if (projectHeader == null) pluginPage else pluginPage?.copy(header = null, search = pluginPage.search), busy,
+                    resolve = resolve,
                     browser = { block -> PluginBrowserScreen(model, destination.pluginId, destination.pageId, block) },
                     historyCache = model.pluginChatHistory, historyKey = destination.pluginId + "/",
                     extraSettings = {
+                        if (projectHeader != null) com.kigtts.next.ui.plugins.editor.EditorProjectHeader(
+                            model, destination.pluginId, projectHeader, busy, resolve)
                         if (destination.pluginId == "service.speech-recognition" && destination.pageId == "manager")
                             com.kigtts.next.ui.home.CaptionWindowSetting(model.captionServiceReady, model::openCaptionWindow)
                     },
@@ -176,9 +194,14 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                     followIme = chatHandlesIme, progressiveMarket = marketPage) { action, inputs ->
                     val nativeAction = editorNativeAction(destination.pluginId, destination.pageId, action)
                     when {
+                        nativeEditorActive && action == "create" -> creating = true
+                        nativeEditorActive && action == "editor-signatures" -> model.navigate(Destination.PluginPage(
+                            PLUGIN_EDITOR_ID, com.kigtts.next.plugins.editor.EDITOR_SIGNING_PAGE))
                         nativeAction != null -> model.invoke(NATIVE_BUILDER_ID, nativeAction, inputs)
                         else -> model.invoke(destination.pluginId, action, inputs)
                     }
+                    }
+                    if (creating) com.kigtts.next.ui.plugins.editor.EditorCreationDialog(model) { creating = false }
                     }
                 }
             }

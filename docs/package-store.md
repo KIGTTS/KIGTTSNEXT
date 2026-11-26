@@ -26,7 +26,7 @@ Java/Kotlin 和 Lua 的签名 `.kigplugin` 都在目录使用 `NATIVE`。商店�
 | 包的 `id/name/summary/releases` | 必须匹配签名包的 ID、名称、说明与全部历史版本 |
 | `version/versionCode/format` | SemVer 名称、签名清单整数版本号，以及 `NATIVE`/`RESOURCE` |
 | `sha256/bytes` | 最终下载 ZIP 的 SHA-256 与准确字节数；所有镜像必须一致 |
-| `expectedPublisher` | 包内 `signature/public.der` 的 SHA-256，不是发布者名称 |
+| `expectedPublisher` | 包内 `signature/public.der` 的 SHA-256。插件必填，未签名的资源包省略 |
 | `apiVersion/minSdk/abis` | 精确接口版本、最低 Android 版本与可用架构 |
 | `dependencies` | 前置包 ID → 版本范围；Lua 必须包括 `runtime.lua` |
 | `mirrors` | 按顺序尝试的 HTTPS 下载地址与显示名称 |
@@ -109,7 +109,7 @@ kigtts://source/add?url=<编码后的HTTPS源地址>&package=<插件ID>。packag
 
 ## 资源与预览（API29，商店0.15.0）
 
-schemaVersion=2的资源源使用kind=RESOURCES。各包声明resourceType（QUICK_TEXT/PHOTOS/FILTER/VOICE/FRAME/STICKERS），发行format为RESOURCE，下载扩展名为.kigresource。签名、镜像、依赖和哈希规则继续适用。资源经用户确认进入各自资料库，快捷文本可重复导入，不计入插件安装或卸载列表。语音包缺少前置服务时先引导添加。
+资源源使用 `schemaVersion=2` 和 `kind=RESOURCES`。各包声明 `resourceType`，发行格式为 `RESOURCE`，下载扩展名为 `.kigresource`。`resource.json` 可以填写 `author`。所有下载仍校验镜像、归档 SHA-256、内容哈希和依赖。若保留旧签名，源应继续声明其发布者指纹。资源经用户确认进入各自资料库，快捷文本可重复导入。语音包缺少前置服务时先引导添加。
 
 首页按分类展示少量内容，标题右侧“更多”进入完整渐进列表；资源入口提供独立分类与来源管理。预览素材支持任意原始宽高比，assets可同时提供width和height；原生和网页图库保留比例并可放大，SVG预览也按viewBox比例展示。
 

@@ -27,7 +27,14 @@ class AppControlHost(private val manager: PluginManager, private val backgroundB
                         else manager.requestPermission(owner, command.permission)
                     return data { put("allowed", allowed) }
                 }
-                if (command is AppCommand.ManagedCall) return managedCall(manager, ui(), owner, capabilities, command)
+                if (command is AppCommand.ManagedCall) {
+                    val model = ui()
+                    if (command.channel in setOf("editor-template", "editor-signing")) {
+                        return model?.editorWorkspace?.request(model, owner, command)
+                            ?: AppReply.Failure("HOST_UNAVAILABLE", "Open the plugin editor first")
+                    }
+                    return managedCall(manager, model, owner, capabilities, command)
+                }
                 if (command is AppCommand.UiAssets) return try { uiAssets(requireNotNull(ui()), owner, command) }
                     catch (cancel: CancellationException) { throw cancel }
                     catch (failure: Exception) { AppReply.Failure("INVALID", failure.message?.take(300) ?: "图标操作失败") }
