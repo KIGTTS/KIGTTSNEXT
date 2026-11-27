@@ -14,6 +14,19 @@ import org.json.JSONArray
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class QuickTextLibraryTest {
+    @Test fun restoredPresetsKeepAllNineGroupIconsOnReload() {
+        val app = app()
+        QuickPhraseStore.prepareForOnboarding(app)
+        val library = QuickTextLibrary(QuickPhraseStore(app))
+        val presets = localizedQuickTextPresets { app.uiCopy(it, locale = "zh-CN") }
+        library.appendPresets(presets)
+
+        val restarted = QuickTextLibrary(QuickPhraseStore(app))
+        assertEquals(9, restarted.categories.value.size)
+        assertEquals(51, restarted.phrases.value.size)
+        assertEquals(presets.associate { it.name to it.icon }, restarted.categoryIcons.value)
+    }
+
     @Test fun skippingEveryOnboardingPresetKeepsAnEmptyGroupAndFinishingAgainIsSafe() {
         val app = app()
         QuickPhraseStore.prepareForOnboarding(app)

@@ -14,9 +14,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.kigtts.next.state.CategoryIcon
+import com.kigtts.next.theme.ThemeIcon
 import com.kigtts.plugin.api.QuickGroup
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.home.vector
 
 @Composable
 internal fun QuickBackupGroupPicker(title: String, groups: List<QuickGroup>, confirmLabel: String,
@@ -30,12 +33,16 @@ internal fun QuickBackupGroupPicker(title: String, groups: List<QuickGroup>, con
             }
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
                 items(groups, key = { it.id }) { group ->
+                    val icon = remember(group.icon) { runCatching { CategoryIcon.valueOf(group.icon) }.getOrDefault(CategoryIcon.LIST) }
                     Row(Modifier.fillMaxWidth().testTag("backup-group/${group.id}")
                         .toggleable(group.id in selected, role = Role.Checkbox, onValueChange = { checked ->
                             selection = ArrayList(if (checked) selected + group.id else selected - group.id)
-                        }).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        }).heightIn(min = 48.dp).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ThemeIcon(icon.vector(), null, Modifier.size(24.dp).testTag("backup-group-icon/${group.id}"),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(group.name, Modifier.weight(1f))
                         Checkbox(group.id in selected, null)
-                        Spacer(Modifier.width(8.dp)); Text(group.name, Modifier.weight(1f))
                     }
                 }
             }

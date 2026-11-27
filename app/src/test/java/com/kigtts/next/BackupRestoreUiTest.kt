@@ -80,14 +80,17 @@ class BackupRestoreUiTest {
         for (suffix in 1..2) {
             compose.onNodeWithTag("backup-restore-presets").performScrollTo().performClick()
             compose.onNodeWithTag("backup-group-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("backup-group-icon/general", useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithTag("backup-group/general").assertIsOff().performClick().assertIsOn()
             compose.onNodeWithTag("backup-group/photo").assertIsOff()
             compose.onNodeWithTag("backup-group-confirm").performClick()
             compose.waitUntil(5_000) { "常用($suffix)" in model.categories.value }
             val restored = model.phrases.value.filter { it.category == "常用($suffix)" }
-            assertEquals(7, restored.size)
+            assertEquals(8, restored.size)
             assertEquals("谢谢", restored.first().title)
             assertEquals("谢谢你", restored.first().text)
+            assertEquals("下次再见~", restored.last().text)
+            assertEquals(CategoryIcon.valueOf("symbol:chat"), model.quickTexts.categoryIcons.value["常用($suffix)"])
         }
         assertEquals(original, model.phrases.value.take(original.size))
         assertFalse("拍照" in model.categories.value)
