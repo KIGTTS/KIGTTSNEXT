@@ -39,7 +39,7 @@ class PackageVerifier(private val paths: PluginPaths) {
         val raw = read(MANIFEST, 256 * 1024)
         val manifest = PluginJson.decodeFromString<PackageManifest>(raw.toString(Charsets.UTF_8))
         paths.validatePackageId(manifest.id)
-        require(manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..PLUGIN_API_VERSION) { "插件接口版本不兼容" }
+        require(com.kigtts.plugin.api.supportsPluginApi(manifest.apiVersion)) { "插件接口版本不兼容" }
         require(manifest.runtime == "android-dex" && manifest.minSdk <= Build.VERSION.SDK_INT) { "插件运行时不兼容" }
         require(manifest.versionCode > 0 && manifest.version.isNotBlank() && manifest.name.isNotBlank())
         require(manifest.permissionPurposes.size <= 32 && manifest.permissionPurposes.all { (key, purpose) -> key in manifest.capabilities && purpose.length in 1..600 }) { "权限用途声明无效" }

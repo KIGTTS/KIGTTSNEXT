@@ -20,9 +20,11 @@ internal class LegacyPiperGuidance(context: Context, private val gate: AtomicBoo
     val prompt = mutablePrompt.asStateFlow()
     suspend fun onStartup() {
         if (!gate.compareAndSet(false, true) || preferences.getBoolean("never-remind", false)) return
-        val components = missing()
-        if (components.isEmpty()) return
-        if (withContext(Dispatchers.IO) { runCatching(hasPacks).getOrDefault(false) }) mutablePrompt.value = components
+        if (withContext(Dispatchers.IO) { runCatching(hasPacks).getOrDefault(false) }) onDetected()
+    }
+    fun onDetected() {
+        if (!preferences.getBoolean("never-remind", false))
+            mutablePrompt.value = missing().takeIf { it.isNotEmpty() }
     }
     fun dismiss(neverRemind: Boolean) {
         if (neverRemind) preferences.edit().putBoolean("never-remind", true).apply()

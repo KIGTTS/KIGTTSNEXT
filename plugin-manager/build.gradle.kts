@@ -2,7 +2,7 @@ plugins { id("com.android.application");kotlin("android");id("org.jetbrains.kotl
 android {
     namespace="com.kigtts.manager"
     compileSdk=36
-    defaultConfig { applicationId="com.kigtts.manager";minSdk=26;targetSdk=36;versionCode=1;versionName="0.1.0" }
+    defaultConfig { applicationId="com.kigtts.manager";minSdk=26;targetSdk=36;versionCode=10000;versionName="1.0.0" }
     buildFeatures { compose=true;buildConfig=true }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_17;targetCompatibility=JavaVersion.VERSION_17 }
     kotlin { jvmToolchain(17) }

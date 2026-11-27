@@ -12,24 +12,27 @@
     "repository": "https://github.com/KIGTTS/plugin-cloud-agent",
     "id": "tools.cloud-agent",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "cloud-agent"
+    "directory": "cloud-agent",
+    "distribution": "bundled",
+    "sourceCommit": "e644824c67cb84bcea4f76a16b6a0f2271ebddd5"
   },
   {
     "module": "lua-runtime",
     "repository": "https://github.com/KIGTTS/plugin-lua-runtime",
     "id": "runtime.lua",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "lua-runtime"
+    "directory": "lua-runtime",
+    "distribution": "bundled",
+    "sourceCommit": "b5c0eda0fc7c819070220ed8389ffcb126b3226b"
   },
   {
     "module": "native-builder",
     "repository": "https://github.com/KIGTTS/plugin-native-builder",
     "id": "tools.native-builder",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "native-builder"
+    "directory": "native-builder",
+    "distribution": "bundled",
+    "sourceCommit": "bbed857113491f1c1e7957011623a2e0a10fc8a3"
   },
   {
     "module": "package-store",
@@ -37,70 +40,105 @@
     "id": "tools.package-store",
     "license": "MIT",
     "sourceCommit": "841bbdc945978cf81154361e8f581bae90a24140",
-    "directory": "package-store"
+    "directory": "package-store",
+    "distribution": "bundled"
   },
   {
     "module": "piper-tts",
     "repository": "https://github.com/KIGTTS/plugin-piper-tts",
     "id": "engine.piper",
     "license": "GPL-3.0-only",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "piper-tts"
+    "directory": "piper-tts",
+    "sourceCommit": "8a9ee07239f51d9b70baab2dadbc67b3e3632783"
   },
   {
     "module": "sensevoice-asr",
     "repository": "https://github.com/KIGTTS/plugin-sensevoice-asr",
     "id": "engine.sensevoice",
     "license": "GPL-3.0-only",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "sensevoice-asr"
+    "directory": "sensevoice-asr",
+    "sourceCommit": "4909755590226745a929bec4943763275b3721c0"
   },
   {
     "module": "streaming-asr",
     "repository": "https://github.com/KIGTTS/plugin-streaming-asr",
     "id": "engine.streaming-asr",
     "license": "MIT",
-    "sourceCommit": "63a9e1d70cc78f7f2384fd998c1f831d627ee995",
-    "directory": "streaming-asr"
+    "directory": "streaming-asr",
+    "sourceCommit": "1b1deb16ed966071c9af711babbdfe3d1956a680"
   },
   {
     "module": "speech-service",
     "repository": "https://github.com/KIGTTS/plugin-speech-service",
     "id": "service.speech-synthesis",
     "license": "GPL-3.0-only",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "speech-service"
+    "directory": "speech-service",
+    "distribution": "bundled",
+    "sourceCommit": "7f64b6d0ce632e52a5bb6dc641e9d9172c3d5844"
   },
   {
     "module": "recognition-service",
     "repository": "https://github.com/KIGTTS/plugin-recognition-service",
     "id": "service.speech-recognition",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "recognition-service"
+    "directory": "recognition-service",
+    "distribution": "bundled",
+    "sourceCommit": "4ffa61da26e144b913c3821e3116f17d564c56bb"
   },
   {
     "module": "ui-debug",
     "repository": "https://github.com/KIGTTS/plugin-ui-debug",
     "id": "debug.ui",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "ui-debug"
+    "directory": "ui-debug",
+    "sourceCommit": "480516becce64f36692f24138fa928795da6104d"
   },
   {
     "module": "quick-text-tools",
     "repository": "https://github.com/KIGTTS/plugin-quick-text-tools",
     "id": "tools.quick-text-example",
     "license": "MIT",
-    "sourceCommit": "36e4d8fbb1a199009c01c95ae65f4e97b1759e81",
-    "directory": "quick-text-tools"
+    "directory": "quick-text-tools",
+    "sourceCommit": "47b9eceb32d0307d15db92ece56c007f31f6bbae"
   },
   {
     "module": "zipvoice-clone",
     "repository": "https://github.com/KIGTTS/plugin-zipvoice-clone",
     "id": "engine.zipvoice-clone",
     "license": "MIT",
-    "sourceCommit": "d608d73e5e06aff4ffcb496f61d77125b1bf89a1",
-    "directory": "zipvoice-clone"
+    "directory": "zipvoice-clone",
+    "sourceCommit": "c77289fc8eeac5cf5d87d3c438e29a0868eb0d2f"
+  },
+  {
+    "module": "cloud-asr",
+    "id": "engine.cloud-asr",
+    "repository": "https://github.com/KIGTTS/plugin-cloud-asr",
+    "directory": "cloud-asr",
+    "license": "MIT",
+    "sourceCommit": "f0f48303a9c42982f1df3dfd80280662fe1e3e91"
+  },
+  {
+    "module": "cloud-tts",
+    "id": "engine.cloud-tts",
+    "repository": "https://github.com/KIGTTS/plugin-cloud-tts",
+    "directory": "cloud-tts",
+    "license": "GPL-3.0-only",
+    "sourceCommit": "4fee6cb12611bcea7d97e10fc34d818422a089e1"
+  },
+  {
+    "module": "led-caption",
+    "id": "display.led",
+    "repository": "https://github.com/KIGTTS/plugin-led-caption",
+    "directory": "led-caption",
+    "license": "MIT",
+    "sourceCommit": "22c86c367cae72b6adc206ceeca7fb76de8259bb"
+  },
+  {
+    "module": "kigusay-backup",
+    "id": "backup.kigusay",
+    "repository": "https://github.com/KIGTTS/plugin-kigusay-backup",
+    "directory": "kigusay-backup",
+    "license": "GPL-3.0-only",
+    "sourceCommit": "a4ebd696251c0b26af50373609113fe6ff1085af"
   }
 ]

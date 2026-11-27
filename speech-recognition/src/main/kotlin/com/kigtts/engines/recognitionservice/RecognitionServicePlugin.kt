@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { null }) : KigPlugin {
-    override val descriptor = PluginDescriptor("service.speech-recognition", "语音识别服务", "聆听字幕、语音输入与识别包", version = "0.8.4")
+    override val descriptor = PluginDescriptor("service.speech-recognition", "语音识别服务", "聆听字幕、语音输入与识别包", version = "1.0.0")
     override val localization get() = RecognitionCopy.localization
     private lateinit var settings: RecognitionServiceSettings
     suspend fun reloadBackedUpSettings() {

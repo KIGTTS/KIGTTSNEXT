@@ -37,7 +37,7 @@ def main():
     assert config["schemaVersion"] == 1
     # Original 3D LUT. Blue-major, green, red order follows the .cube specification.
     filters = ROOT / ".tools/resource-projects/soft-colors"; filters.mkdir(parents=True, exist_ok=True)
-    (filters / "package.json").write_text(json.dumps(dict(id="resources.soft-colors", name="柔和色彩", version="1.0.0", versionCode=1, resourceType="FILTER"), ensure_ascii=False), encoding="utf-8")
+    (filters / "package.json").write_text(json.dumps(dict(id="resources.soft-colors", name="柔和色彩", author="KIGTTS", version="1.0.0", versionCode=10000, resourceType="FILTER"), ensure_ascii=False), encoding="utf-8")
     (filters / "content.json").write_text(json.dumps(dict(filters=[dict(path="soft-warm.cube", name="柔和暖色")])), encoding="utf-8")
     lines = ['TITLE "柔和暖色"', 'LUT_3D_SIZE 5', 'DOMAIN_MIN 0 0 0', 'DOMAIN_MAX 1 1 1']
     for b in range(5):

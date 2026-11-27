@@ -19,7 +19,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
@@ -50,7 +49,9 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     fun pluginPage(pluginId: String, pageId: String): PluginPage? = registry.plugin(pluginId)?.let { plugin ->
         val page = audioDevices.decorate(plugin, plugin.page(pageId, context()))
         when {
-            pluginId == com.kigtts.next.plugins.control.STORE_ID -> page?.hideBundledEntries(pluginManager.bundledIds + LEGACY_GESTURE_PLUGIN)
+            pluginId == com.kigtts.next.plugins.control.STORE_ID ->
+                page?.hideBundledEntries(pluginManager.bundledIds + setOf(
+                    LEGACY_GESTURE_PLUGIN, "tools.package-store", "service.speech-synthesis", "service.speech-recognition"))
             pluginId == PLUGIN_EDITOR_ID && pageId == EDITOR_MANAGER_PAGE && page != null -> editorWorkspace(
                 page, registry.plugin(NATIVE_BUILDER_ID)?.takeIf {
                     pluginManager.status.any { status -> status.installed.manifest.id == NATIVE_BUILDER_ID &&
@@ -208,16 +209,10 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(
         application, quickTexts, mediaRepository, viewModelScope, ::message, ::reloadBackedUpSettings,
         restoreVoices = { content ->
-            val piper = registry.plugin("engine.piper")
-            if (piper != null && registry.available(piper) && piper.voiceManager != null) {
-                val packs = com.kigtts.next.legacy.legacyPiperPackages(content).iterator()
-                while (true) {
-                    val archive = withContext(Dispatchers.IO) { if (packs.hasNext()) packs.next() else null } ?: break
-                    try { externalFiles.importVoice(archive, ExternalFileType.PIPER_VOICE) }
-                    catch (cancel: CancellationException) { throw cancel }
-                    catch (_: Exception) { message(hostCopy("backup.legacy_voice_failed")) }
-                    finally { withContext(NonCancellable + Dispatchers.IO) { archive.delete() } }
-                }
+            if (withContext(Dispatchers.IO) { com.kigtts.next.legacy.migrateLegacyPiperPacks(content, pluginManager.paths.data) }) {
+                // This callback resumes after I/O, by which time the view model's guidance is initialized.
+                legacyPiperGuidance.onDetected()
+                if (registry.plugin("engine.piper") != null) refreshPlugins()
             }
         },
     )
@@ -333,7 +328,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         hasPacks = { LegacyPiperPacks.exists(application.filesDir, pluginManager.paths.data) },
         missing = { buildSet {
             if (registry.plugins.none { it.tts?.info?.role == TtsRole.SERVICE }) add(MissingPiperComponent.SERVICE)
-            if (pluginManager.status.none { it.installed.manifest.id == "engine.piper" }) add(MissingPiperComponent.ENGINE)
+            if (registry.plugin("engine.piper")?.let(registry::available) != true) add(MissingPiperComponent.ENGINE)
         } }, install = ::openSpeechPluginStore)
     private val sourceLinks: com.kigtts.next.plugins.control.SourceLinkCoordinator by lazy { com.kigtts.next.plugins.control.SourceLinkCoordinator(application, registry,
         ::invokeWithResult, ::message, available = { it !in state.value.busyPlugins },

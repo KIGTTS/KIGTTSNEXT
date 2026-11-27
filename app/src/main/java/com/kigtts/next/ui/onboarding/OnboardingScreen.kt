@@ -68,10 +68,13 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     var accepted by rememberSaveable { mutableStateOf(progress.agreementAccepted()) }
     var presetGroups by remember(progress) { mutableStateOf(progress.presetGroups()) }
     val copy = rememberUiCopy()
-    val presets = remember(copy) { localizedQuickTextPresets { copy(it) } }
-    val pageCount = FirstRunStep.COMPLETE.ordinal
-    val pager = rememberPagerState(initialPage = progress.step().ordinal) { pageCount }
-    val step = FirstRunStep.entries[pager.settledPage]
+    val presets = remember(copy, progress.upgrade) {
+        if (progress.upgrade) emptyList() else localizedQuickTextPresets { copy(it) }
+    }
+    val pages = progress.pages
+    val pageCount = pages.size
+    val pager = rememberPagerState(initialPage = pages.indexOf(progress.step()).coerceAtLeast(0)) { pageCount }
+    val step = pages[pager.settledPage]
     val motion = !reducedMotion && ValueAnimator.areAnimatorsEnabled()
     val (flowerTilt, characterTilt) = rememberOnboardingTilt(motion)
     val entrance = remember { Animatable(if (motion) 0f else 1f) }
@@ -80,7 +83,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     }
 
     LaunchedEffect(pager, progress) {
-        snapshotFlow { pager.settledPage }.collect { progress.visit(FirstRunStep.entries[it]) }
+        snapshotFlow { pager.settledPage }.collect { progress.visit(pages[it]) }
     }
 
     fun move(target: Int) {
@@ -94,13 +97,13 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     fun back() {
         if (pager.isScrollInProgress) return
         val current = pager.settledPage
-        if (current == FirstRunStep.WELCOME.ordinal) exit() else move(current - 1)
+        if (current == 0) exit() else move(current - 1)
     }
 
     fun finish() {
-        if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal || !accepted) return
-        progress.visit(FirstRunStep.PERMISSIONS)
-        savePresets(presetGroups)
+        if (pager.settledPage != pages.lastIndex || !progress.upgrade && !accepted) return
+        progress.visit(pages.last())
+        if (!progress.upgrade) savePresets(presetGroups)
         if (progress.finish(agreementConfirmed = accepted)) complete()
     }
 
@@ -116,7 +119,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
         ) {
             Box(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 8.dp).height(48.dp)) {
                 androidx.compose.animation.AnimatedVisibility(
-                    visible = pager.currentPage != FirstRunStep.WELCOME.ordinal,
+                    visible = pager.currentPage != 0,
                     enter = if (motion) fadeIn(tween(200)) else EnterTransition.None,
                     exit = if (motion) fadeOut(tween(200)) else ExitTransition.None,
                 ) {
@@ -141,14 +144,14 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
             }
             HorizontalPager(
                 pager, Modifier.weight(1f).fillMaxWidth().testTag("onboarding-pages"),
-                key = { FirstRunStep.entries[it].name },
+                key = { pages[it].name },
                 userScrollEnabled = false,
             ) { index ->
-                val page = FirstRunStep.entries[index]
+                val page = pages[index]
                 if (page == FirstRunStep.WELCOME) {
                     OnboardingWelcomePage(
                         step == FirstRunStep.WELCOME, !motion, characterTilt,
-                        language, changeLanguage,
+                        language, changeLanguage, upgrade = progress.upgrade,
                         copyModifier = Modifier.graphicsLayer { alpha = entrance.value },
                     )
                     return@HorizontalPager
@@ -202,10 +205,8 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                 Button(
                     onClick = feedbackClick {
                         if (pager.isScrollInProgress) return@feedbackClick
-                        when (val current = FirstRunStep.entries[pager.settledPage]) {
-                            FirstRunStep.PERMISSIONS -> finish()
-                            else -> move(current.ordinal + 1)
-                        }
+                        val current = pager.settledPage
+                        if (current == pages.lastIndex) finish() else move(current + 1)
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("onboarding-next"),
                     enabled = step != FirstRunStep.PERMISSIONS || accepted,
@@ -216,7 +217,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                     ),
                 ) {
                     Crossfade(
-                        targetState = step == FirstRunStep.PERMISSIONS,
+                        targetState = step == pages.last(),
                         animationSpec = tween(if (motion) 200 else 0),
                         label = "Onboarding primary action",
                     ) { lastPage ->
@@ -241,7 +242,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
 
 @Composable
 private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt: State<Offset>, language: UiLanguage,
-    changeLanguage: (UiLanguage) -> Unit, copyModifier: Modifier) {
+    changeLanguage: (UiLanguage) -> Unit, upgrade: Boolean, copyModifier: Modifier) {
     BoxWithConstraints(Modifier.fillMaxSize().testTag("onboarding-welcome")) {
         val pageHeight = maxHeight
         val contentWidth = (maxWidth - 44.dp).coerceAtLeast(1.dp)
@@ -251,7 +252,8 @@ private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt:
                 .padding(start = 22.dp, end = 22.dp, top = 18.dp, bottom = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            OnboardingPageCopy(FirstRunStep.WELCOME, copyModifier.testTag("onboarding-welcome-copy")) {
+            OnboardingPageCopy(FirstRunStep.WELCOME, copyModifier.testTag("onboarding-welcome-copy"),
+                prefix = if (upgrade) "onboarding.upgrade" else "onboarding.welcome") {
                 OnboardingLanguage(language, changeLanguage)
             }
             Spacer(Modifier.weight(1f))
@@ -264,10 +266,11 @@ private fun OnboardingWelcomePage(active: Boolean, reducedMotion: Boolean, tilt:
 }
 
 @Composable
-private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier, footer: @Composable () -> Unit = {}) {
+private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier,
+    prefix: String = "onboarding.${page.page}", footer: @Composable () -> Unit = {}) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         ThemeText(
-            uiText("onboarding.${page.page}.title"), Modifier.fillMaxWidth().semantics { heading() },
+            uiText("$prefix.title"), Modifier.fillMaxWidth().semantics { heading() },
             style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Start,
         )
@@ -275,7 +278,7 @@ private fun OnboardingPageCopy(page: FirstRunStep, modifier: Modifier = Modifier
             OnboardingWordmark(Modifier.widthIn(max = 300.dp).fillMaxWidth().testTag("onboarding-welcome-wordmark"))
         }
         ThemeText(
-            uiText("onboarding.${page.page}.body"), Modifier.fillMaxWidth(),
+            uiText("$prefix.body"), Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Start,
         )

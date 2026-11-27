@@ -27,7 +27,8 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
         @Suppress("DEPRECATION")
         val install = packageManager.getPackageInfo(packageName, 0)
         val existing = install.lastUpdateTime > install.firstInstallTime && getSharedPreferences("quick-phrases", 0).contains("items")
-        FirstRunStore(this, existingInstall = existing)
+        FirstRunStore(this, existingInstall = existing, upgradingOriginal =
+            install.lastUpdateTime > install.firstInstallTime && com.kigtts.next.legacy.OriginalPreferences.exists(this))
     }
     private var pendingLaunch = false
 

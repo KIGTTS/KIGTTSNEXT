@@ -18,7 +18,7 @@ internal object LegacyPiperPacks {
             }
         }
     }
-    private fun valid(pack: File) = runCatching {
+    internal fun valid(pack: File) = runCatching {
         fun file(name: String): File? {
             if (name.isBlank() || name.contains('\\') || File(name).isAbsolute || name.split('/').any { it == ".." }) return null
             return File(pack, name).canonicalFile.takeIf { it.toPath().startsWith(pack.canonicalFile.toPath()) && it.isFile }
@@ -26,9 +26,12 @@ internal object LegacyPiperPacks {
         val manifest = file("manifest.json") ?: return@runCatching false
         val bytes = manifest.inputStream().use { it.readUpTo(65537) }
         if (bytes.size > 65536) return@runCatching false
-        val paths = JSONObject(bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF")).optJSONObject("files") ?: return@runCatching false
-        val model = file(paths.optString("model")) ?: return@runCatching false
-        val config = file(paths.optString("config")) ?: return@runCatching false
+        val descriptor = JSONObject(bytes.toString(Charsets.UTF_8).removePrefix("\uFEFF"))
+        if (descriptor.optString("engine").equals("kokoro", true) || descriptor.optString("type").equals("kokoro", true)) return@runCatching false
+        val paths = descriptor.optJSONObject("files") ?: return@runCatching false
+        val modelPath = paths.optString("model")
+        val model = file(modelPath) ?: return@runCatching false
+        val config = file(paths.optString("config").ifBlank { "$modelPath.json" }) ?: return@runCatching false
         model.extension.equals("onnx", true) && model.length() > 0 && config.length() > 0
     }.getOrDefault(false)
 }

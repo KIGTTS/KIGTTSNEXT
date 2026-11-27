@@ -28,7 +28,13 @@ class AdminClient(private val context:Context) {
             }
             connection=binding
             result.invokeOnCancellation { runCatching { context.unbindService(binding) };if(connection===binding)connection=null }
-            try { if(!context.bindService(Intent().setComponent(ComponentName(AdminContract.HOST,AdminContract.SERVICE)),binding,Context.BIND_AUTO_CREATE))
+            try {
+                val pm = context.packageManager
+                val host = listOf(AdminContract.HOST, AdminContract.PREVIEW_HOST).firstOrNull {
+                    pm.checkSignatures(context.packageName, it) == android.content.pm.PackageManager.SIGNATURE_MATCH &&
+                        pm.resolveService(Intent().setComponent(ComponentName(it, AdminContract.SERVICE)), 0) != null
+                }
+                if(host == null || !context.bindService(Intent().setComponent(ComponentName(host,AdminContract.SERVICE)),binding,Context.BIND_AUTO_CREATE))
                 result.resumeWithException(IllegalStateException("无法连接主程序，请先打开 KIGTTS，或允许它在后台启动")) }
             catch(error:Exception) { result.resumeWithException(error) }
         } }

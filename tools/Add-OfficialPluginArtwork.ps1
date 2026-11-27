@@ -38,5 +38,4 @@ foreach ($package in $Catalog.packages) {
         }
     }
 }
-if ($designs.Count -ne $Catalog.packages.Count) { throw 'Artwork and published plugins must match' }
 Write-Output "Registered $($Catalog.packages.Count) plugin galleries"

@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 param([switch]$SkipBuild, [string]$SigningKey,
-    [ValidateSet('sensevoice-asr','piper-tts','speech-service','streaming-asr','recognition-service','quick-text-tools','cloud-agent','lua-runtime','package-store','native-builder','ui-debug')]
-    [string[]]$Modules=@('sensevoice-asr','piper-tts','speech-service','streaming-asr','recognition-service','cloud-agent','lua-runtime','package-store','native-builder','ui-debug'),
+    [ValidateSet('sensevoice-asr','piper-tts','streaming-asr','quick-text-tools','cloud-asr','cloud-tts','led-caption','kigusay-backup','cloud-agent','lua-runtime','native-builder','ui-debug')]
+    [string[]]$Modules=@('sensevoice-asr','piper-tts','streaming-asr','cloud-asr','cloud-tts','led-caption','kigusay-backup','ui-debug'),
     [string]$PluginSourceRoot, [string]$AndroidSdk,
     [string]$WorkDirectory=(Join-Path $env:LOCALAPPDATA 'Temp/KIGTTSNEXT/plugin-package-work'))
 $ErrorActionPreference='Stop'

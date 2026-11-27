@@ -1,6 +1,6 @@
 package com.kigtts.next.sharing
 
-import com.kigtts.plugin.api.PLUGIN_API_VERSION
+import com.kigtts.plugin.api.supportsPluginApi
 import com.kigtts.plugin.runtime.PackagePreview
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -31,7 +31,7 @@ internal class CloudSharingDownload(private val directory: File, private val ins
             val preview = inspect(file)
             require(preview.publisherSha256 == PUBLISHER && preview.manifest.let {
                 it.id == CLOUD_SHARING_ID && it.version == version && it.versionCode == code &&
-                    it.apiVersion <= PLUGIN_API_VERSION && it.minSdk <= android.os.Build.VERSION.SDK_INT &&
+                    supportsPluginApi(it.apiVersion) && it.minSdk <= android.os.Build.VERSION.SDK_INT &&
                     it.capabilities.toSet() == setOf("ui", "network")
             }) { "云共享签名或版本不匹配，请更新软件后重试" }
             return file to preview

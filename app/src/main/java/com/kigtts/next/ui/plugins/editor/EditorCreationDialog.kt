@@ -31,6 +31,7 @@ internal fun EditorCreationDialog(model: AppViewModel, close: () -> Unit) {
     var error by remember { mutableStateOf(false) }
     val workspace = model.editorWorkspace
     val selectedPreset = if (preset) workspace.presets.byId(if (native) "native-catalog" else "lua-catalog") else null
+    val templateName = selectedPreset?.let { uiText("editor.preset_name_${it.language}") }.orEmpty()
     val scope = rememberCoroutineScope()
     val suggested = uiText("editor.preset")
     MotionAlertDialog(onDismissRequest = { if (!busy) close() }, dismissEnabled = !busy, title = { Text(uiText("editor.create")) }, text = {
@@ -75,7 +76,7 @@ internal fun EditorCreationDialog(model: AppViewModel, close: () -> Unit) {
                 busy = true
                 try {
                     val language = if (!native) "lua" else if (kotlin && !preset) "kotlin" else "java"
-                    workspace.create(model, language, selectedPreset?.id, name.trim().ifBlank { selectedPreset?.name.orEmpty() }, packageName.trim(), "")
+                    workspace.create(model, language, selectedPreset?.id, name.trim().ifBlank { templateName }, packageName.trim(), "")
                     close()
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (_: Exception) { error = true }

@@ -57,17 +57,20 @@ internal class LegacyImportController(private val context: Context, library: Qui
     fun migrateOriginalInstallation() {
         val preferences = context.getSharedPreferences("original-kigtts-migration", 0)
         if (preferences.getBoolean("completed-v1", false)) return
-        val source = File(context.filesDir, "datastore/user_prefs.preferences_pb")
-        if (!source.isFile || running.value) return
+        val source = OriginalPreferences.source(context)
+        if (!OriginalPreferences.exists(context) || running.value) return
         running.value = true
         scope.launch {
             try {
                 val content = OriginalPreferences.read(context, source)
                 val (phrases, cards) = migration.apply(content)
+                val settings = withContext(Dispatchers.IO) { restoreLegacySettings(context, content) }
+                if (settings) reloadSettings()
+                restoreVoices(content.copy(resourceRoot = File(context.filesDir, "models")))
                 check(preferences.edit().putBoolean("completed-v1", true).commit())
                 if (phrases + cards > 0) notify(context.uiCopy("backup.legacy_imported", "entries" to phrases.toString(), "cards" to cards.toString()))
             } catch (cancel: CancellationException) { throw cancel }
-            catch (error: Exception) { notify("旧版数据未迁移完成，可在备份与还原中导入：${error.message}") }
+            catch (_: Exception) { notify(context.uiCopy("backup.legacy_upgrade_failed")) }
             finally { running.value = false }
         }
     }

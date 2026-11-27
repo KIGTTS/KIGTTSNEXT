@@ -5,12 +5,15 @@ $projectRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Set-Location -LiteralPath $projectRoot
 $env:JAVA_HOME='C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 if(-not $SkipBuild) {
-    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home :app:assembleRelease :app:lintRelease --console=plain
+    & .tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home -PkigttsPreviewPackage=true :app:assembleRelease :app:lintRelease --console=plain
     if($LASTEXITCODE -ne 0){throw 'Release build failed'}
 }
 $buildTools=Join-Path $projectRoot '.tools/android-sdk/build-tools/36.0.0'
 $unsigned=Join-Path $projectRoot 'app/build/outputs/apk/release/app-release-unsigned.apk'
 $debug=Join-Path $projectRoot 'app/build/outputs/apk/debug/app-debug.apk'
+if ((& (Join-Path $buildTools 'aapt.exe') dump badging $unsigned | Select-Object -First 1) -notmatch "name='com\.kigtts\.next'") {
+    throw 'Build with -PkigttsPreviewPackage=true before signing a preview APK'
+}
 $keystore=Join-Path $env:USERPROFILE '.android/debug.keystore'
 $output=Join-Path $projectRoot 'app/build/outputs/apk/release-test'
 [IO.Directory]::CreateDirectory($output) | Out-Null

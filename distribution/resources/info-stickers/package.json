@@ -1,8 +1,9 @@
 {
+  "author": "KIGTTS",
   "id": "resources.info-stickers",
   "name": "照片信息贴纸",
   "version": "1.0.0",
-  "versionCode": 1,
+  "versionCode": 10000,
   "resourceType": "STICKERS",
   "licenses": [
     "LICENSE.txt",

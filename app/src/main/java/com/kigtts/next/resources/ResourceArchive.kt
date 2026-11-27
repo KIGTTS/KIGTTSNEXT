@@ -14,12 +14,12 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
     internal val photoStickerDefaults by lazy {
         val path = com.kigtts.next.cards.generators.PhotoStickerDefaults.FILE
         if (path !in manifest.files) emptyMap() else {
-            require(manifest.resourceType == ResourceType.STICKERS && manifest.apiVersion >= 34)
+            require(manifest.resourceType == ResourceType.STICKERS && resourceApiIncludes(manifest.apiVersion, 34))
             com.kigtts.next.cards.generators.PhotoStickerDefaults.read(file(path), generators.items)
         }
     }
     val cardFrames: PersonalCardFramePackage by lazy {
-        require(manifest.resourceType == ResourceType.CARD_FRAME && manifest.apiVersion >= 30)
+        require(manifest.resourceType == ResourceType.CARD_FRAME && resourceApiIncludes(manifest.apiVersion, 30))
         require("card-frames.json" in manifest.files)
         val source = file("card-frames.json"); require(source.length() in 1..256L*1024)
         PluginJson.decodeFromString<PersonalCardFramePackage>(source.readText(Charsets.UTF_8)).also { list ->
@@ -29,7 +29,7 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
     }
     val generators: StickerGenerators by lazy {
         if ("generators.json" !in manifest.files) StickerGenerators() else {
-            require(manifest.resourceType == ResourceType.STICKERS && manifest.apiVersion >= 30)
+            require(manifest.resourceType == ResourceType.STICKERS && resourceApiIncludes(manifest.apiVersion, 30))
             val descriptor = file("generators.json"); require(descriptor.length() in 1..512L*1024)
             PluginJson.decodeFromString<StickerGenerators>(descriptor.readText(Charsets.UTF_8)).also { list ->
                 require(list.schemaVersion == 1 && list.items.size in 1..32 && list.items.map { it.id }.distinct().size == list.items.size)
@@ -51,7 +51,7 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
         }
     }
     internal val expressions by lazy {
-        require(manifest.resourceType == ResourceType.EXPRESSION && manifest.apiVersion >= 36)
+        require(manifest.resourceType == ResourceType.EXPRESSION && resourceApiIncludes(manifest.apiVersion, 36))
         val path = requireNotNull(content.payload)
         require(path in manifest.files && path.endsWith(".kigexpression", true))
         com.kigtts.next.camera.expressions.ExpressionLibrary.read(file(path)).also { pack ->
@@ -94,7 +94,7 @@ data class ResourceArchive(val directory: File, val manifest: ResourcePackageMan
                 val manifest = PluginJson.decodeFromJsonElement<ResourcePackageManifest>(json)
                 val author = json["author"]?.jsonPrimitive?.contentOrNull
                 require(author == null || author.length <= 120)
-                require(manifest.schemaVersion == 1 && manifest.apiVersion <= PLUGIN_API_VERSION && manifest.apiVersion >= 29 && manifest.minSdk <= android.os.Build.VERSION.SDK_INT)
+                require(manifest.schemaVersion == 1 && supportsResourceApi(manifest.apiVersion) && manifest.minSdk <= android.os.Build.VERSION.SDK_INT)
                 require(manifest.id.matches(Regex("[a-z][a-z0-9.-]{0,63}")) && manifest.name.length in 1..128 && manifest.versionCode > 0)
                 if (publisher != null || entries.any { it.name.startsWith("signature/") }) {
                     val keyBytes = bytes("signature/public.der", 8192)
@@ -134,7 +134,7 @@ private fun ResourceArchive.validate() {
         ResourceType.EXPRESSION -> require(content.snapshot == null && content.frames.isEmpty() &&
             content.filters.isEmpty() && content.imageFiles.isEmpty() && expressions.effects.isNotEmpty())
         ResourceType.FONT -> {
-            require(manifest.apiVersion >= 32 && content.payload != null && content.snapshot == null &&
+            require(resourceApiIncludes(manifest.apiVersion, 32) && content.payload != null && content.snapshot == null &&
                 content.frames.isEmpty() && content.filters.isEmpty() && content.imageFiles.isEmpty())
             val font = file(requireNotNull(content.payload))
             require(font.extension.lowercase() in setOf("ttf", "otf") && font.length() in 12..com.kigtts.next.theme.AppearanceAssets.MAX_FONT.toLong()) { "请选择小于 40 MB 的 TTF 或 OTF 字体" }

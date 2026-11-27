@@ -30,14 +30,21 @@ class PluginPackageStore(val paths: PluginPaths) {
     }
 
     @Synchronized fun install(file: File, trustedPublisher: String, allowVersionChange: Boolean = false,
-        development: Boolean = false): InstalledPlugin {
+        development: Boolean = false): InstalledPlugin =
+        installVerified(file, trustedPublisher, allowVersionChange, development, bundled = false)
+
+    @Synchronized internal fun installBundled(file: File, trustedPublisher: String): InstalledPlugin =
+        installVerified(file, trustedPublisher, allowVersionChange = true, development = false, bundled = true)
+
+    private fun installVerified(file: File, trustedPublisher: String, allowVersionChange: Boolean, development: Boolean,
+        bundled: Boolean): InstalledPlugin {
         val preview = inspect(file)
         require(preview.publisherSha256 == trustedPublisher) { "发布者与确认内容不符" }
         val previous = installed().firstOrNull { it.manifest.id == preview.manifest.id }
         if (previous != null) {
             require(previous.publisherSha256 == preview.publisherSha256) { "更新包发布者签名不匹配" }
             require(!development || previous.development) { "已有正式安装的同名插件" }
-            require(development || previous.development || preview.manifest.versionCode > previous.manifest.versionCode ||
+            require(bundled || development || previous.development || preview.manifest.versionCode > previous.manifest.versionCode ||
                 allowVersionChange && preview.manifest.versionCode != previous.manifest.versionCode) { "请使用版本号更高的更新包，或明确确认切换版本" }
         }
         val root = paths.packageDirectory(preview.manifest.id).apply { mkdirs() }
@@ -82,7 +89,7 @@ class PluginPackageStore(val paths: PluginPaths) {
         clearRuntimeCodeCache(directory)
         val raw = File(directory, MANIFEST).readBytes()
         val manifest = PluginJson.decodeFromString<PackageManifest>(raw.toString(Charsets.UTF_8))
-        require(manifest.id == id && manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
+        require(manifest.id == id && com.kigtts.plugin.api.supportsPluginApi(manifest.apiVersion))
         val key = java.security.KeyFactory.getInstance("RSA").generatePublic(
             java.security.spec.X509EncodedKeySpec(File(directory, PUBLIC_KEY).readBytes()))
         require(File(directory, PUBLIC_KEY).readBytes().sha256() == File(paths.packageDirectory(id), "publisher").readText().trim()) { "已安装插件发布者发生变化" }

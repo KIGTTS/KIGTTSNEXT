@@ -49,18 +49,14 @@ def build(project, output, private_key=None):
         assert 1 <= len(descriptor["items"]) <= 64
         payload["card-frames.json"] = card_frames.read_bytes()
         paths.extend(item["artwork"] for item in descriptor["items"])
-    api_version = 30 if generators.is_file() or definition["resourceType"] == "CARD_FRAME" else 29
     if definition["resourceType"] == "FRAME" and content.get("payload"):
-        api_version = 34
         watermark = content["payload"]
         if not safe(watermark) or not watermark.lower().endswith(".xml") or any(content.get(k) for k in ("frames", "filters", "snapshot", "imageFiles")):
             raise ValueError("Camera watermark packages require a single XML payload")
         watermark_file = (project / watermark).resolve()
         if not watermark_file.is_relative_to(project) or not 1 <= watermark_file.stat().st_size <= 4096:
             raise ValueError("Camera watermark XML is too large")
-    if photo_defaults.is_file(): api_version = 34
     if definition["resourceType"] == "EXPRESSION":
-        api_version = 36
         expression = content.get("payload", "")
         if not safe(expression) or not expression.endswith(".kigexpression") or any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles")):
             raise ValueError("Face effects require a single .kigexpression payload")
@@ -71,7 +67,6 @@ def build(project, output, private_key=None):
         if pack.get("version", 1) != 1 or not 1 <= len(pack.get("effects", [])) <= 24:
             raise ValueError("Unsupported face effect descriptor")
     if definition["resourceType"] == "FONT":
-        api_version = 32
         assert content.get("payload") and not any(content.get(k) for k in ("filters", "frames", "snapshot", "imageFiles"))
         font_path = (project / content["payload"]).resolve()
         if not font_path.is_relative_to(project) or font_path.suffix.lower() not in (".ttf", ".otf"):
@@ -92,7 +87,7 @@ def build(project, output, private_key=None):
     if author is not None:
         if not isinstance(author, str) or len(author) > 120: raise ValueError("Resource author must be at most 120 characters")
         if author.strip(): manifest["author"] = author.strip()
-    manifest.update(schemaVersion=1, apiVersion=api_version, minSdk=26, content="content.json", dependencies=definition.get("dependencies", {}), files={p: digest(b) for p, b in sorted(payload.items())})
+    manifest.update(schemaVersion=1, apiVersion=1, minSdk=26, content="content.json", dependencies=definition.get("dependencies", {}), files={p: digest(b) for p, b in sorted(payload.items())})
     raw = json.dumps(manifest, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     contents = {**payload, "resource.json": raw}
     publisher = ""
@@ -116,7 +111,7 @@ def build(project, output, private_key=None):
                 info.external_attr = 0o100644 << 16
                 archive.writestr(info, data)
     if output.stat().st_size > 256 * 1024 * 1024: raise ValueError("Archive too large")
-    release = dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=api_version, minSdk=26,
+    release = dict(version=manifest["version"], versionCode=manifest["versionCode"], format="RESOURCE", apiVersion=manifest["apiVersion"], minSdk=26,
         sha256=digest(output.read_bytes()), bytes=output.stat().st_size, dependencies=manifest["dependencies"])
     if publisher:
         release["expectedPublisher"] = publisher

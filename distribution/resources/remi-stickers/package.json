@@ -2,7 +2,7 @@
   "id": "resources.remi-stickers",
   "name": "偶域 Remi",
   "version": "1.0.0",
-  "versionCode": 1,
+  "versionCode": 10000,
   "resourceType": "STICKERS",
   "licenses": [
     "SOURCE.md"

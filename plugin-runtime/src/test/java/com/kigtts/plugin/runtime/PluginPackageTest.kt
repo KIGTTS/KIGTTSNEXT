@@ -114,7 +114,8 @@ class PluginPackageTest {
         assertThrows(IllegalArgumentException::class.java) { store.install(foreign, store.inspect(foreign).publisherSha256, true) }
     }
     @Test fun tamperingTraversalWrongApiAndPublisherReplacementAreRejected() {
-        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 1), pack(api = 2), pack(api = 3), pack(api = 4), pack(api = 5),pack(api=6),pack(api=7),pack(api=8))) {
+        assertEquals(1, store.inspect(pack(api = 1)).manifest.apiVersion)
+        for (file in listOf(pack(tamper = true), pack(badPath = true), pack(api = 2), pack(api = 3), pack(api = 4), pack(api = 5),pack(api=6),pack(api=7),pack(api=8))) {
             assertThrows(IllegalArgumentException::class.java) { store.inspect(file) }
         }
         val valid = pack(); val publisher = store.inspect(valid).publisherSha256; store.install(valid, publisher)
@@ -200,28 +201,24 @@ class PluginPackageTest {
         assertEquals(base.publisherSha256, service.publisherSha256)
         val example=File(directory,"tools.quick-text-example-0.8.0.kigplugin")
         if(example.isFile) {val tools=store.inspect(example);assertEquals(base.publisherSha256,tools.publisherSha256)
-            assertTrue(tools.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
+            assertTrue(com.kigtts.plugin.api.supportsPluginApi(tools.manifest.apiVersion))
             assertTrue("quick-text-write" in tools.manifest.capabilities);assertFalse("network" in tools.manifest.capabilities)
             assertTrue(tools.manifest.files.keys.contains("assets/calculator.html"))}
         val modules = mapOf("tools.cloud-agent" to "cloud-agent", "runtime.lua" to "lua-runtime",
             "tools.package-store" to "package-store", "tools.native-builder" to "native-builder")
         val project = requireNotNull(directory.parentFile?.parentFile)
         val published = PluginJson.parseToJsonElement(File(project, "distribution/official-packages.json").readText()).jsonArray
-        for ((id, module) in modules) {
-          val releases = published.filter { it.jsonObject.getValue("module").jsonPrimitive.content == module }
-          assertTrue("Published package metadata for $module", releases.isNotEmpty())
-          for (release in releases) {
-            val filename = release.jsonObject.getValue("file").jsonPrimitive.content
-            val version = filename.removePrefix("$id-").removeSuffix(".kigplugin")
-            val extension = store.inspect(File(directory, filename))
-            assertEquals(id, extension.manifest.id)
-            assertEquals(version, extension.manifest.version)
-            assertTrue(extension.manifest.versionCode > 0)
-            assertTrue(extension.manifest.apiVersion in com.kigtts.plugin.api.MIN_PLUGIN_API_VERSION..com.kigtts.plugin.api.PLUGIN_API_VERSION)
-            assertEquals(base.publisherSha256, extension.publisherSha256)
-            assertTrue(extension.manifest.files.keys.any { it.startsWith("code/") && it.endsWith(".dex") })
-            assertTrue(extension.manifest.files.keys.none { it.startsWith("lib/") || it.endsWith(".onnx") })
-          }
+        assertTrue(published.none { it.jsonObject.getValue("module").jsonPrimitive.content in modules.values })
+        val officialPiper = File(directory, "engine.piper-1.0.0.kigplugin")
+        if (officialPiper.isFile) {
+            val current = try {
+                org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
+                store.inspect(officialPiper)
+            } finally { org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", originalAbis) }
+            assertEquals(1, current.manifest.apiVersion)
+            assertEquals("1.0.0", current.manifest.version)
+            assertEquals(10000, current.manifest.versionCode)
+            assertEquals(base.publisherSha256, current.publisherSha256)
         }
     }
     @Test fun disabledRecognitionProvidersRemainManageableBeforeFirstLoadAndAfterCaching() {

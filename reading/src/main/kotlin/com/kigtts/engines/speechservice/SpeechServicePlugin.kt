@@ -16,7 +16,7 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
     private val catalogUpdates: Flow<Unit> = emptyFlow(),
     private val playbackProvider: (String) -> Pair<TtsProvider, String>? = { null }) : KigPlugin {
     override val descriptor = PluginDescriptor("service.speech-synthesis", "朗读设置",
-        "选择朗读声音，管理语音包", version = "0.8.5", license = "GPL-3.0-only")
+        "选择朗读声音，管理语音包", version = "1.0.0", license = "GPL-3.0-only")
     override val localization get() = ReadingCopy.localization
     private lateinit var environment: AndroidPluginEnvironment
     private lateinit var settings: ServiceSettings

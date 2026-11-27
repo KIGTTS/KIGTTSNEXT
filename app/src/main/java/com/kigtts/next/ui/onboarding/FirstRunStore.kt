@@ -16,11 +16,13 @@ internal enum class FirstRunStep(val page: String) {
 internal enum class HomeTip { PANEL, CURSOR, QUICK_EDIT, SUBTITLE_MENU }
 
 /** The next step and the tips already shown survive process death independently. */
-internal class FirstRunStore(context: Context, existingInstall: Boolean = false) {
+internal class FirstRunStore(context: Context, existingInstall: Boolean = false, upgradingOriginal: Boolean = false) {
     private val preferences = context.getSharedPreferences("first-run", Context.MODE_PRIVATE)
     init {
         val saved = preferences.getString("step", null)
-        if (saved == "AGREEMENT" || saved == null) {
+        if (saved == null && upgradingOriginal) {
+            preferences.edit().putBoolean("original-upgrade", true).putString("step", FirstRunStep.WELCOME.name).apply()
+        } else if (saved == "AGREEMENT" || saved == null) {
             val initial = when {
                 saved == "AGREEMENT" -> FirstRunStep.APPEARANCE
                 existingInstall -> FirstRunStep.COMPLETE
@@ -30,6 +32,9 @@ internal class FirstRunStore(context: Context, existingInstall: Boolean = false)
         }
         if (step() != FirstRunStep.COMPLETE) QuickPhraseStore.prepareForOnboarding(context)
     }
+
+    val upgrade: Boolean get() = preferences.getBoolean("original-upgrade", false)
+    val pages: List<FirstRunStep> get() = if (upgrade) upgradePages else newInstallPages
 
     fun step(): FirstRunStep = FirstRunStep.entries.firstOrNull { it.name == preferences.getString("step", null) }
         ?: FirstRunStep.WELCOME
@@ -43,14 +48,14 @@ internal class FirstRunStore(context: Context, existingInstall: Boolean = false)
     }
 
     fun visit(page: FirstRunStep) {
-        if (step() == FirstRunStep.COMPLETE || page == FirstRunStep.COMPLETE) return
+        if (step() == FirstRunStep.COMPLETE || page !in pages) return
         if (step() != page) preferences.edit().putString("step", page.name).apply()
     }
 
     fun finish(agreementConfirmed: Boolean): Boolean {
-        if (step() != FirstRunStep.PERMISSIONS || !agreementConfirmed) return false
+        if (step() != pages.last() || !upgrade && !agreementConfirmed) return false
         preferences.edit()
-            .putBoolean("agreement_accepted", true)
+            .putBoolean("agreement_accepted", agreementConfirmed || agreementAccepted())
             .putString("step", FirstRunStep.COMPLETE.name)
             .apply()
         return true
@@ -58,4 +63,9 @@ internal class FirstRunStore(context: Context, existingInstall: Boolean = false)
 
     fun seen(tip: HomeTip): Boolean = preferences.getBoolean("tip_${tip.name}", false)
     fun markSeen(tip: HomeTip) { preferences.edit().putBoolean("tip_${tip.name}", true).apply() }
+
+    private companion object {
+        val newInstallPages = FirstRunStep.entries.filter { it != FirstRunStep.COMPLETE }
+        val upgradePages = listOf(FirstRunStep.WELCOME, FirstRunStep.APPEARANCE, FirstRunStep.FEATURES)
+    }
 }

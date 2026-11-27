@@ -1,6 +1,7 @@
 package com.kigtts.next.plugins.editor
 
 import android.content.Context
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.plugin.api.PLUGIN_API_VERSION
 import com.kigtts.plugin.api.PluginJson
 import com.kigtts.plugin.runtime.PluginManager
@@ -36,7 +37,9 @@ internal class EditorPresets(private val application: Context, private val manag
 
     fun describe() = buildJsonObject {
         put("sourceRevision", index.sourceRevision)
-        put("items", PluginJson.encodeToJsonElement(items))
+        put("items", PluginJson.encodeToJsonElement(items.map {
+            it.copy(name = application.uiCopy("editor.preset_name_${it.language}"))
+        }))
     }
 
     suspend fun describeFiles(preset: EditorPreset) = withContext(Dispatchers.IO) {
@@ -104,6 +107,6 @@ internal class EditorPresets(private val application: Context, private val manag
     }
 
     private fun textExtension(path: String) = path.substringAfterLast('.') in setOf("lua", "java", "kt", "json", "html", "css", "js", "md")
-    private val guides = listOf("guides/component-catalog.md", "guides/quick-text-web.md", "guides/contracts.md")
+    private val guides = listOf("guides/plugin-template.md", "guides/plugin-ui.md", "guides/quick-text-web.md", "guides/contracts.md")
     private fun guide(path: String) = application.assets.open("editor-presets/$path").use { it.readBytes() }
 }

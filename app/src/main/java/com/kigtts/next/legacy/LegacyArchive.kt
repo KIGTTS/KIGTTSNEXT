@@ -12,7 +12,7 @@ import java.util.zip.ZipFile
 internal object LegacyArchive {
     const val MAX_BYTES = 32L * 1024 * 1024 * 1024
     const val MAX_METADATA = 16L * 1024 * 1024
-    private val resourceRoots = setOf("quick_cards", "soundboard", "font", "voice", "kokoro", "lock_screen")
+    private val resourceRoots = setOf("quick_cards", "soundboard", "font", "voice", "lock_screen")
 
     fun read(source: File, staging: File): LegacyContent {
         require(source.length() in 1..MAX_BYTES)

@@ -1,9 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="com.kigtts.next.permission.MANAGE_PLUGINS" />
+    <uses-permission android:name="com.lhtstudio.kigtts.app.permission.MANAGE_PLUGINS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <queries><package android:name="com.kigtts.next" /></queries>
+    <queries><package android:name="com.kigtts.next" /><package android:name="com.lhtstudio.kigtts.app" /></queries>
     <application android:label="KIGTTS 插件管理器" android:icon="@android:drawable/ic_menu_manage"
         android:allowBackup="false" android:supportsRtl="true" android:theme="@style/ManagerTheme">
         <activity android:name=".ManagerActivity" android:exported="true"><intent-filter>

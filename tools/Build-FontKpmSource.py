@@ -67,7 +67,7 @@ def build(folder, private_key):
         project.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(original, project / original.name)
         shutil.copyfile(license_file, project / "OFL.txt")
-        definition = dict(id="fonts." + font["id"], name=font["name"], version="1.0.0", versionCode=1,
+        definition = dict(id="fonts." + font["id"], name=font["name"], version="1.0.0", versionCode=10000,
                           resourceType="FONT", licenses=["OFL.txt"])
         (project / "package.json").write_text(json.dumps(definition, ensure_ascii=False), encoding="utf-8")
         (project / "content.json").write_text(json.dumps(dict(payload=original.name)), encoding="utf-8")
