@@ -43,6 +43,16 @@ class CameraOptionsTest {
         options.setExposureWarning(true)
         assertTrue(CameraOptions(prefs).exposureWarning)
     }
+    @Test fun faceFocusDefaultsOffAndRemainsIndependentOfStickers() {
+        val options = CameraOptions(prefs)
+        assertFalse(options.faceFocus)
+        options.chooseExpression("builtin.giggle")
+        assertFalse(CameraOptions(prefs).faceFocus)
+        options.toggleFaceFocus()
+        options.chooseExpression(null)
+        assertTrue(CameraOptions(prefs).faceFocus)
+        assertNull(CameraOptions(prefs).expressionId)
+    }
     @Test fun unknownPreferencesRecoverAndUnsupportedCountdownsAreRejected() {
         prefs.edit().putString("grid", "future").putString("flash", "future").putString("processing", "future")
             .putFloat("filter-strength", Float.NaN).putInt("timer", -3).commit()

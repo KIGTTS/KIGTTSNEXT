@@ -2,6 +2,7 @@ package com.kigtts.next.camera.expressions
 
 import android.content.Context
 import com.kigtts.next.i18n.uiCopy
+import com.kigtts.next.state.ManagementOrderStore
 import com.kigtts.next.theme.AppearanceAssets
 import com.kigtts.plugin.api.PluginJson
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,9 +19,21 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
     private val changes = MutableStateFlow(0)
     val revision = changes.asStateFlow()
     private val illustrations = listOf("agni", "side_eye", "kim", "lau")
-    private val names = illustrations + ExpressionPresets.names
+    private val favorites = listOf("giggle", "not_giggle", "wise")
+    private val names = favorites + (ExpressionPresets.names - favorites.toSet()) + illustrations
+    private val orderStore = ManagementOrderStore(app)
 
-    fun choices(): List<ExpressionEffect> = names.mapNotNull(::builtIn) + directory.listFiles().orEmpty()
+    fun choices(): List<ExpressionEffect> {
+        val effects = catalog().associateBy { it.id }
+        return orderStore.ordered(ORDER_KEY, effects.keys.toList()).map(effects::getValue)
+    }
+
+    @Synchronized fun reorder(order: List<String>) {
+        orderStore.save(ORDER_KEY, order, catalog().map { it.id })
+        changes.update { it + 1 }
+    }
+
+    private fun catalog(): List<ExpressionEffect> = names.mapNotNull(::builtIn) + directory.listFiles().orEmpty()
         .asSequence().filter { it.extension == "kigexpression" && it.length() in 1..ExpressionPack.MAX_PACK.toLong() }
         .sortedBy { it.name }.take(128)
         .flatMap { runCatching { read(it).effects }.getOrDefault(emptyList()) }.toList()
@@ -103,6 +116,7 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
     }
 
     companion object {
+        private const val ORDER_KEY = "camera-face-stickers"
         private const val DEFAULT_SPARKLE = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><path d="M160 20Q184 134 300 160Q184 186 160 300Q135 186 20 160Q135 135 160 20Z" fill="#ffd661" stroke="#803e25" stroke-width="12"/></svg>"""
         @Volatile private var instance: ExpressionLibrary? = null
 

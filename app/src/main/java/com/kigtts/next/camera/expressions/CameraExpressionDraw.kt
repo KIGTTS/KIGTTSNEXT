@@ -13,7 +13,7 @@ internal data class CameraExpressionDraw(val effect: CompiledExpression, val fra
         val toPhoto = frame.toView(view)?.apply {
             postScale(1f / view.width, 1f / view.height)
         } ?: return null
-        return CameraExpressionPhoto(effect, frame.faces, toPhoto)
+        return CameraExpressionPhoto(effect, frame.stickerFaces, toPhoto)
     }
 }
 

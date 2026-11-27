@@ -19,6 +19,7 @@ internal data class CameraFaceFrame(
     val faces: List<ExpressionFace>,
     val uprightToSensor: Matrix,
     val arrivedAt: Long,
+    val stickerFaces: List<ExpressionFace>,
 ) {
     fun isCurrent(now: Long = SystemClock.elapsedRealtime()) = now - arrivedAt in 0..400
     fun toView(view: PreviewView): Matrix? = view.sensorToViewTransform?.let { sensorToView ->
@@ -38,9 +39,12 @@ internal class CameraFaceAnalysis(
     private data class Tracking(val enabled: Boolean = false, val revision: Int = 0)
     @Volatile private var tracking = Tracking()
     private var analyzedRevision = 0
+    private val stickerFilter = StickerTrackingFilter()
+    private var stickerTransform: Matrix? = null
     @Volatile private var current: CameraFaceFrame? = null
     @Volatile private var unavailable = false
     @Volatile var sampleSurface = false
+    @Volatile var stabilizeStickers = false
     @Volatile var sampleHistogram: ((ImageProxy) -> Unit)? = null
 
     fun trackFaces(enabled: Boolean) {
@@ -60,6 +64,7 @@ internal class CameraFaceAnalysis(
             if (!request.enabled || unavailable) return
             if (analyzedRevision != request.revision) {
                 if (tracker.isInitialized()) tracker.value.reset()
+                stickerFilter.reset()
                 analyzedRevision = request.revision
             }
             val arrivedAt = SystemClock.elapsedRealtime()
@@ -81,7 +86,16 @@ internal class CameraFaceAnalysis(
                     points[0].point(), points[1].point(), points[2].point(), points[3].point(), points[4].point(), surfaces[face.id()]?.let(ExpressionFaceSurface::from))
             }
             if (tracking != request || closed.get()) return
-            current = CameraFaceFrame(faces, inverse, arrivedAt)
+            val stickers = if (stabilizeStickers) {
+                if (stickerTransform != inverse) stickerFilter.reset()
+                stickerTransform = inverse
+                stickerFilter.update(faces, arrivedAt)
+            } else {
+                stickerFilter.reset()
+                stickerTransform = null
+                emptyList()
+            }
+            current = CameraFaceFrame(faces, inverse, arrivedAt, stickers)
             if (scheduled.compareAndSet(false, true)) main.execute {
                 scheduled.set(false)
                 latest()?.let(onFrame)

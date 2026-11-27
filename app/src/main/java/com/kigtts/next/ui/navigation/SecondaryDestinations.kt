@@ -78,6 +78,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
             is Destination.CardPreview -> uiText("nav.photo_preview")
             Destination.Cards -> uiText("nav.album")
             is Destination.CardCamera -> uiText("nav.camera")
+            Destination.CameraExpressionManagement -> uiText("expression.title")
+            is Destination.CameraExpressionEditor -> uiText(if (destination.effectId == null) "expression.new" else "expression.edit")
             is Destination.StickerReview -> uiText("nav.change_preview")
             is Destination.StickerLibrary -> uiText("nav.stickers")
         }
@@ -106,7 +108,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
         }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme)
         return
     }
-    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail && !chatPage && !editorProject,
+    PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail &&
+        destination !is Destination.CameraExpressionEditor && !chatPage && !editorProject,
         backTag=if(destination is Destination.PhraseEditor)"cancel-phrase-details" else "page-back",
         subtitle = if (destination == Destination.Plugins) uiText("settings.plugins.subtitle") else null,
         extendToBottom = destination == Destination.Settings || destination is Destination.SettingsDetail ||
@@ -162,6 +165,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
                 is Destination.PhraseEditor -> PhraseEditorScreen(model, destination.token)
                 is Destination.CardEditor -> Unit // Shares the album's adaptive chrome above.
                 is Destination.CardCamera -> Unit // Native camera/printing route handled above.
+                Destination.CameraExpressionManagement -> com.kigtts.next.ui.cards.camera.CameraExpressionManagementPage(model)
+                is Destination.CameraExpressionEditor -> com.kigtts.next.ui.cards.camera.CameraExpressionEditPage(model, destination.effectId)
                 is Destination.CardPreview -> com.kigtts.next.ui.cards.CardPreviewScreen(model.cards, model.stickers, destination.cardId,
                     { model.navigate(Destination.CardEditor(it)) }, model::message, onQuickImage = model::quickImageCard)
                 Destination.Cards -> Unit // Handled by the window-adaptive scaffold above.

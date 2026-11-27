@@ -29,7 +29,8 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
     moveAccessible: (Int) -> Unit, shadowElevation: Dp = if (elevated) 8.dp else 0.dp,
     catalog: Boolean = false, trailingAction: ManagementProgressAction? = null,
     position: SettingPosition = SettingPosition.SINGLE, compactActions: Boolean = false,
-    revealActive: Boolean = false, activateReveal: () -> Unit = {}, holdRequest: Int = 0) {
+    revealActive: Boolean = false, activateReveal: () -> Unit = {}, holdRequest: Int = 0,
+    leading: (@Composable (ManagementItem) -> Unit)? = null) {
     val primary = item.primaryAction
     val clickAction = managedItemClickAction(item)
     val direct = if (compactActions) item.actions.firstOrNull { it.id == primary } else null
@@ -54,7 +55,8 @@ internal fun ManagedItemRow(item: ManagementItem, modifier: Modifier = Modifier,
                     onLongClick(more) { menu(); true }
                 } else Modifier) else Modifier)
                 .padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
+                if (leading != null) leading(item)
+                else if (item.image != null || item.icon != PluginIcon.NONE || item.symbol != null)
                     ResourceAvatar(item, resolve, if (catalog) 64.dp else 40.dp)
                 ManagedItemHeading(item, Modifier.weight(1f))
                 trailingAction?.let { InlineProgressButton(item.id, it, enabled, invoke) }

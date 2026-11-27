@@ -52,6 +52,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
         previewColors.expression = effect
         previewColors.faces?.apply {
             sampleSurface = effect?.samplesSurface == true
+            stabilizeStickers = effect != null
             trackFaces(focus || effect != null)
         }
         if (!focus) trackedFaces = null
@@ -139,6 +140,7 @@ internal class PolaroidCameraSession(private val context: Context, private val o
             previewColors.faces = attached.faces
             attached.faces?.apply {
                 sampleSurface = previewColors.expression?.samplesSurface == true
+                stabilizeStickers = previewColors.expression != null
                 trackFaces(automaticFaceFocus || previewColors.expression != null)
             }
             histogram = attached.histogram

@@ -22,7 +22,7 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     private var showLevel by mutableStateOf(preferences.getBoolean("level", true))
     private var showExposureWarning by mutableStateOf(preferences.getBoolean("exposure-warning", true))
     val exposureWarning get() = showExposureWarning
-    var faceFocus by mutableStateOf(preferences.getBoolean("face-focus", true)); private set
+    var faceFocus by mutableStateOf(preferences.getBoolean("face-focus", false)); private set
     var expressionId by mutableStateOf(preferences.getString("expression-effect", null)); private set
     fun toggleFaceFocus() {
         faceFocus = !faceFocus
@@ -31,6 +31,9 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     fun chooseExpression(id: String?) {
         expressionId = id
         preferences.edit().putString("expression-effect", id).apply()
+    }
+    fun refreshExpressionSelection() {
+        expressionId = preferences.getString("expression-effect", null)
     }
     private var selectedFlash by mutableStateOf(enumPreference("flash", CameraFlash.OFF))
     private var selectedProcessing by mutableStateOf(enumPreference("processing", CameraProcessing.STANDARD))
@@ -128,15 +131,23 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
 }
 
 @Composable
-internal fun rememberCameraOptions(): CameraOptions {
+internal fun rememberCameraOptions(loadWatermarks: Boolean = true): CameraOptions {
     val context = LocalContext.current.applicationContext
     val preferences = remember(context) { context.getSharedPreferences("polaroid_camera", 0) }
     val options = rememberSaveable(saver = Saver<CameraOptions, String>(
         save = { it.mode.name },
         restore = { saved -> CameraOptions(preferences).apply { chooseMode(CameraMode.valueOf(saved)) } },
     )) { CameraOptions(preferences) }
+    DisposableEffect(options, preferences) {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "expression-effect") options.refreshExpressionSelection()
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        options.refreshExpressionSelection()
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     val open = options.settingsVisible
-    LaunchedEffect(context, options, open) {
+    if (loadWatermarks) LaunchedEffect(context, options, open) {
         if (open || options.watermarks.isEmpty()) options.loadWatermarks(withContext(Dispatchers.IO) { CameraWatermarkLibrary(context).choices() })
     }
     return options

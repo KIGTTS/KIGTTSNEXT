@@ -38,7 +38,8 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     initialFormat: PolaroidFormat? = null, suspended: Boolean = false, onGallery: (PolaroidFormat) -> Unit = {},
     onSystemCamera: (PolaroidFormat) -> Unit = {}, onBurst: ((List<PolaroidCameraCapture>) -> Unit)? = null,
     onVideo: ((java.io.File, Boolean) -> Unit)? = null, galleryPreview: Uri? = null, gallerySaving: Boolean = false,
-    watermarkStore: (() -> Unit)? = null, expressionStore: (() -> Unit)? = null) {
+    watermarkStore: (() -> Unit)? = null, expressionStore: (() -> Unit)? = null,
+    expressionManagement: () -> Unit = {}) {
     val copy = rememberCameraCopy()
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current
     val lifecycle by lifecycleOwner.lifecycle.currentStateFlow.collectAsState()
@@ -92,7 +93,6 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val library = remember(context) { ExpressionLibrary.get(context) }
     val revision by library.revision.collectAsState()
     val expressionId = options.expressionId.takeIf { modern && mode != CameraMode.SCAN }
-    var expressionsOpen by rememberSaveable { mutableStateOf(false) }
     var stickersExpanded by remember(mode, front) { mutableStateOf(false) }
     val analysisSupported = remember { CameraFaceAnalysis.supported }
     val compiled by produceState<CompiledExpression?>(null, library, expressionId, revision) {
@@ -197,14 +197,14 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         else filtersExpanded = false
     }
     RegisterPageBackGuard(interceptBack, backAction)
-    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || expressionsOpen || stickersExpanded ||
+    RegisterCameraPullGuard(session.busy || session.video.active || session.video.finishing || options.settingsVisible || stickersExpanded ||
         filtersExpanded || exposureOpen || proControl != null || session.scan.showing || morphing)
     PredictiveBackHandler(interceptBack) { events ->
         try { events.collect { }; backAction() } catch (_: CancellationException) { }
     }
     val shutter = rememberCameraCaptureAction(session, mode, displayReady && viewport.matchesPhotoRatio,
         format, filter, options, lut, onCapture, onVideo, message)
-    RegisterCameraShutterKeys(active && granted && !options.settingsVisible && !expressionsOpen) { shutter() }
+    RegisterCameraShutterKeys(active && granted && !options.settingsVisible) { shutter() }
     val leave = {
         if (session.video.active) session.video.stop()
         else if (session.scan.showing) session.scan.clear()
@@ -248,7 +248,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             CameraViewfinderPicker(stickersExpanded, vertical, layout) {
                 CameraFaceStickerPicker(expressionCatalog, options, vertical, interactive,
                     close = { stickersExpanded = false },
-                    manage = { stickersExpanded = false; expressionsOpen = true },
+                    manage = { stickersExpanded = false; expressionManagement() },
                     store = expressionStore?.let { store -> { stickersExpanded = false; store() } })
             }
             CameraParameterRail(session, layout.zoom, vertical,
@@ -282,7 +282,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
     val queueShutter = modern && mode.takesPhotos && options.timerSeconds == 0 && !session.motionAvailable
     val canCapture = displayReady && viewport.matchesPhotoRatio
-    val toolsOpen = options.settingsVisible || expressionsOpen || stickersExpanded || filtersExpanded || exposureOpen || proControl != null
+    val toolsOpen = options.settingsVisible || stickersExpanded || filtersExpanded || exposureOpen || proControl != null
     val controls = rememberCameraControlsContent { vertical ->
         val bar: @Composable () -> Unit = { CameraActionBar(session.busy, active, canCapture, session.canFlip,
             leave,
@@ -346,5 +346,4 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             stickersExpanded = false
             filtersExpanded = true
         })
-    if (expressionsOpen) CameraExpressionsSheet(library, options, expressionStore, { expressionsOpen = false }, message)
 }

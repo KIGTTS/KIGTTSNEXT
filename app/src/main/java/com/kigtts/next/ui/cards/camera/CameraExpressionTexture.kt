@@ -35,7 +35,7 @@ internal class CameraExpressionTexture(private val output: Size) : AutoCloseable
         try {
             canvas.scale(bitmap.width.toFloat() / output.width, bitmap.height.toFloat() / output.height)
             canvas.concat(transform)
-            draw.effect.draw(canvas, draw.frame.faces)
+            draw.effect.draw(canvas, draw.frame.stickerFaces)
         } finally { canvas.restoreToCount(save) }
         if (fresh) GLUtils.texImage2D(GL_TEXTURE_2D, 0, bitmap, 0)
         else GLUtils.texSubImage2D(GL_TEXTURE_2D, 0, 0, 0, bitmap)

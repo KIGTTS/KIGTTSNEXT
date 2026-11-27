@@ -35,7 +35,8 @@ import kotlin.math.roundToInt
 /** Shared virtualized list with stable container gestures, drop animation and one persisted commit. */
 @Composable
 fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (PluginResource) -> File? = { null },
-    invoke: (String, Map<String, String>) -> Unit, compactActions: Boolean = false, header: @Composable ColumnScope.() -> Unit = {}) {
+    invoke: (String, Map<String, String>) -> Unit, compactActions: Boolean = false,
+    leading: (@Composable (ManagementItem) -> Unit)? = null, header: @Composable ColumnScope.() -> Unit = {}) {
     com.kigtts.next.ui.components.ReadablePage {
     val columns = if (maxWidth >= 960.dp) 2 else 1
     val lazy = rememberLazyGridState()
@@ -116,7 +117,7 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
                     compactActions = compactActions,
                     revealActive = revealedItem == item.id, activateReveal = { revealedItem = item.id },
                     holdRequest = if (heldItem == item.id) holdRequest else 0,
-                    position = managedGridPosition(section, index, columns))
+                    position = managedGridPosition(section, index, columns), leading = leading)
             }
             }
         }
@@ -131,7 +132,8 @@ fun ManagedItemList(list: ManagementList, busy: Boolean = false, resolve: (Plugi
             Modifier, list.reorderAction != null, true, pageActive, resolve, { _, _ -> }, {}, shadowElevation = elevation,
             catalog = list.style == ManagementListStyle.CATALOG, trailingAction = list.itemActions[draggedItem.id],
             compactActions = compactActions,
-            position = if (draggedPosition >= 0) managedGridPosition(ordered, draggedPosition, columns) else com.kigtts.next.ui.settings.SettingPosition.SINGLE)
+            position = if (draggedPosition >= 0) managedGridPosition(ordered, draggedPosition, columns) else com.kigtts.next.ui.settings.SettingPosition.SINGLE,
+            leading = leading)
         ReorderAutoScroll(drag, { lazy.layoutInfo.viewportSize.height.toFloat() }, { lazy.scrollBy(it) })
     }
     }

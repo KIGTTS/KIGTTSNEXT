@@ -49,6 +49,8 @@ fun AppHeader(state: AppState, model: AppViewModel, openSettings: () -> Unit) {
         is Destination.CardPreview -> uiText("nav.photo_preview")
         Destination.Cards -> uiText("nav.album")
         is Destination.CardCamera -> uiText("nav.camera")
+        Destination.CameraExpressionManagement -> uiText("expression.title")
+        is Destination.CameraExpressionEditor -> uiText(if (destination.effectId == null) "expression.new" else "expression.edit")
         is Destination.StickerReview -> uiText("nav.change_preview")
         is Destination.StickerLibrary -> uiText("nav.stickers")
     }

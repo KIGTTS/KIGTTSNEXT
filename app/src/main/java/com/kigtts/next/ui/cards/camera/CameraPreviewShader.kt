@@ -28,7 +28,7 @@ internal class CameraPreviewColors(initial: FloatArray = PhotoFilters.coefficien
     @Volatile var expression: CompiledExpression? = null
     fun expressionDraw(): CameraExpressionDraw? {
         val effect = expression ?: return null
-        val frame = faces?.latest()?.takeIf { it.faces.isNotEmpty() } ?: return null
+        val frame = faces?.latest()?.takeIf { it.stickerFaces.isNotEmpty() } ?: return null
         return CameraExpressionDraw(effect, frame)
     }
 

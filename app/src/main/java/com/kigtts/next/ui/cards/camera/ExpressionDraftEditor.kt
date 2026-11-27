@@ -8,7 +8,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.*
@@ -30,7 +29,7 @@ import java.util.Locale
 
 @Composable
 internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, change: (ExpressionEffect) -> Unit,
-    back: () -> Unit, save: () -> Unit, error: (String) -> Unit) {
+    save: () -> Unit, error: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var index by remember(draft.id) { mutableIntStateOf(0) }
@@ -68,11 +67,6 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)
         .testTag("camera-expression-editor"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(back, enabled = !saving) { Icon(Icons.AutoMirrored.Filled.ArrowBack, uiText("action.back")) }
-            Text(uiText("expression.edit"), Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-            Button(save, enabled = draft.name.isNotBlank() && !saving && !loading) { Text(uiText("action.save")) }
-        }
         ExpressionArtPreview(draft, layer.anchor)
         OutlinedTextField(draft.name, { change(draft.copy(name = it.take(80))) }, Modifier.fillMaxWidth(),
             singleLine = true, label = { Text(uiText("expression.name")) })
@@ -113,6 +107,9 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
         ExpressionSlider("y", layer.y, -1f..1f) { edit(layer.copy(y = it)) }
         ExpressionSlider("rotation", layer.rotation, -180f..180f) { edit(layer.copy(rotation = it)) }
         ExpressionSlider("opacity", layer.opacity, .1f..1f) { edit(layer.copy(opacity = it)) }
+        Button(save, Modifier.align(Alignment.End), enabled = draft.name.isNotBlank() && !saving && !loading) {
+            Text(uiText("action.save"))
+        }
     }
 }
 

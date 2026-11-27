@@ -36,6 +36,8 @@ data class PageEntry(val scene: PageScene, val depth: Int,
             is Destination.CardPreview -> "card-preview/" + destination.cardId
             Destination.Cards -> "cards"
             is Destination.CardCamera -> "card-camera/" + destination.requestId
+            Destination.CameraExpressionManagement -> "camera-face-stickers"
+            is Destination.CameraExpressionEditor -> "camera-face-stickers/editor/" + destination.effectId.orEmpty()
             is Destination.StickerReview -> "sticker-review/" + destination.token
             is Destination.StickerLibrary -> "sticker-library/" + destination.libraryId.orEmpty()
         }

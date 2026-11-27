@@ -28,6 +28,8 @@ sealed interface Destination {
     data object Cards : Destination
     data class CardCamera(val requestId: String, val cardId: String? = null, val systemCamera: Boolean = false,
         val fullSystemCamera: Boolean = false) : Destination
+    data object CameraExpressionManagement : Destination
+    data class CameraExpressionEditor(val effectId: String? = null) : Destination
     data class StickerReview(val token: String) : Destination
     data class StickerLibrary(val libraryId: String? = null) : Destination
 }
