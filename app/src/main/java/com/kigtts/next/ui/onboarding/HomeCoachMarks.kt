@@ -1,21 +1,15 @@
 package com.kigtts.next.ui.onboarding
 
 import android.content.res.Configuration
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
@@ -23,8 +17,6 @@ import androidx.compose.ui.unit.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.QuickSortPreference
-import com.kigtts.next.theme.ThemeText
-import com.kigtts.next.ui.components.feedbackClick
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
@@ -156,46 +148,15 @@ private fun SettledHomeTip(
 
 @Composable
 private fun HomeTipBubble(tip: HomeTip, onPresented: () -> Unit, dismiss: () -> Unit, enable: () -> Unit) {
-    var placed by remember(tip) { mutableStateOf(false) }
-    val show = remember(tip) { Animatable(0f) }
-    var closing by remember(tip) { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(placed) { if (placed) onPresented() }
-    LaunchedEffect(placed, closing) {
-        if (!placed) return@LaunchedEffect
-        val choice = closing
-        if (choice == null) {
-            show.animateTo(1f, tween(150))
-        } else {
-            show.animateTo(0f, tween(120))
-            if (choice) enable() else dismiss()
-        }
+    val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val (title, detail) = when (tip) {
+        HomeTip.PANEL -> "onboarding.tip_panel" to if (landscape) "onboarding.tip_panel_landscape" else "onboarding.tip_panel_body"
+        HomeTip.CURSOR -> "onboarding.tip_cursor" to "onboarding.tip_cursor_body"
+        HomeTip.QUICK_EDIT -> "onboarding.tip_edit" to "onboarding.tip_edit_body"
+        HomeTip.SUBTITLE_MENU -> "onboarding.tip_subtitle_menu" to "onboarding.tip_subtitle_menu_body"
     }
-    Surface(
-        Modifier.fillMaxWidth().onPlaced { placed = true }.graphicsLayer { alpha = show.value }
-            .testTag("home-tip-${tip.name.lowercase(Locale.ROOT)}"),
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surfaceContainerHighest,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = 4.dp,
-    ) {
-        val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val (title, detail) = when (tip) {
-            HomeTip.PANEL -> "onboarding.tip_panel" to if (landscape) "onboarding.tip_panel_landscape" else "onboarding.tip_panel_body"
-            HomeTip.CURSOR -> "onboarding.tip_cursor" to "onboarding.tip_cursor_body"
-            HomeTip.QUICK_EDIT -> "onboarding.tip_edit" to "onboarding.tip_edit_body"
-            HomeTip.SUBTITLE_MENU -> "onboarding.tip_subtitle_menu" to "onboarding.tip_subtitle_menu_body"
-        }
-        Column(Modifier.padding(start = 14.dp, top = 12.dp, end = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            ThemeText(uiText(title), style = MaterialTheme.typography.titleSmall)
-            ThemeText(uiText(detail), Modifier.padding(end = 6.dp), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(Modifier.align(Alignment.End), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                TextButton(feedbackClick { closing = false }, enabled = closing == null) {
-                    Text(uiText(if (tip == HomeTip.QUICK_EDIT) "quick.not_now" else "onboarding.got_it"))
-                }
-                if (tip == HomeTip.QUICK_EDIT) TextButton(feedbackClick { closing = true }, enabled = closing == null) { Text(uiText("action.enable")) }
-            }
-        }
+    key(tip) {
+        CoachMarkBubble(uiText(title), uiText(detail), Modifier.testTag("home-tip-${tip.name.lowercase(Locale.ROOT)}"),
+            onPresented, dismiss, enable.takeIf { tip == HomeTip.QUICK_EDIT })
     }
 }

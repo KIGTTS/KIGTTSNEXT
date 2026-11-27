@@ -37,7 +37,8 @@ internal fun cameraRecordAccent(): Color {
 @Composable
 internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: Boolean,
     capture: () -> Unit, modifier: Modifier = Modifier, burstStart: (() -> Unit)? = null,
-    burstEnd: () -> Unit = {}, burstRunning: Boolean = false, burstHeld: Boolean = false, count: Int = 0) {
+    burstEnd: () -> Unit = {}, burstRunning: Boolean = false, burstHeld: Boolean = false, count: Int = 0,
+    temporary: Boolean = false) {
     val copy = rememberCameraCopy()
     var pressed by remember { mutableStateOf(false) }
     val click = rememberUpdatedState(feedbackClick(capture))
@@ -48,7 +49,13 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
     val colors = MaterialTheme.colorScheme
     val overlay = LocalCameraShutterOverlay.current
     val fill = cameraShutterAccent()
-    val label = when { burstHeld -> copy.text("camera.burst_release"); burstRunning -> copy.text("camera.preparing_photos"); countingDown -> copy.text("camera.cancel_timer"); else -> copy.text("camera.take_photo") }
+    val label = when {
+        burstHeld -> copy.text("camera.burst_release")
+        burstRunning -> copy.text("camera.preparing_photos")
+        countingDown -> copy.text("camera.cancel_timer")
+        temporary -> copy.text("camera.temporary_shutter")
+        else -> copy.text("camera.take_photo")
+    }
     fun longPress() { start.value?.let { feedback.performHapticFeedback(HapticFeedbackType.LongPress); it() } }
     Surface(modifier.size(76.dp).semantics {
         role = Role.Button; contentDescription = label
@@ -71,7 +78,7 @@ internal fun CameraShutterButton(enabled: Boolean, busy: Boolean, countingDown: 
         androidx.compose.foundation.layout.Box(contentAlignment = androidx.compose.ui.Alignment.Center) {
             if (burstRunning) Text("$count", style = MaterialTheme.typography.headlineMedium)
             else if (countingDown || busy) Icon(if (countingDown) Icons.Default.TimerOff else Icons.Default.HourglassEmpty, null, Modifier.size(30.dp))
-            else Icon(Icons.Default.PhotoCamera, null, Modifier.size(32.dp))
+            else Icon(Icons.Default.PhotoCamera, null, Modifier.size(if (temporary) 26.dp else 32.dp))
         }
     }
 }

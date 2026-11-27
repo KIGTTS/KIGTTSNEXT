@@ -32,6 +32,10 @@ internal fun CameraError(session: PolaroidCameraSession, active: Boolean, retry:
     }
 }
 
+internal fun cameraPhotoShutterEnabled(active: Boolean, busy: Boolean, canCapture: Boolean,
+    locked: Boolean, countingDown: Boolean, burstRunning: Boolean, queueShutter: Boolean): Boolean =
+    active && (burstRunning || queueShutter && canCapture || !busy && (countingDown || !locked && canCapture))
+
 /** Independent alignment keeps the shutter centered regardless of either auxiliary action's width. */
 @Composable
 internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean, canFlip: Boolean,
@@ -41,7 +45,7 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
     burstStart: (() -> Unit)? = null, burstEnd: () -> Unit = {}, burstRunning: Boolean = false,
     burstHeld: Boolean = false, burstCount: Int = 0, shutter: (@Composable () -> Unit)? = null,
     queueShutter: Boolean = false, galleryPreview: Uri? = null, configurationLocked: Boolean = locked,
-    gallerySaving: Boolean = false, scanImage: Boolean = false) {
+    gallerySaving: Boolean = false, scanImage: Boolean = false, floatingShutter: CameraFloatingShutterState? = null) {
     val copy = rememberCameraCopy()
     val tonal = compactTonalIconColors().let { if (!active) it.keepColorsWhenLocked() else it }
     Box(if (vertical) Modifier.width(92.dp).fillMaxHeight().testTag("camera-side-controls")
@@ -62,10 +66,14 @@ internal fun CameraActionBar(busy: Boolean, active: Boolean, canCapture: Boolean
             }
         }
         if (shutter != null) Box(Modifier.align(Alignment.Center).testTag("camera-video-shutter")) { shutter() }
-        else CameraShutterButton(active && (burstRunning || queueShutter && canCapture ||
-            !busy && (countingDown || !locked && canCapture)), busy && !queueShutter,
-            countingDown, if (countingDown) cancelCountdown else capture,
-            Modifier.align(Alignment.Center).testTag("camera-shutter"), burstStart, burstEnd, burstRunning, burstHeld, burstCount)
+        else {
+            val enabled = cameraPhotoShutterEnabled(active, busy, canCapture, locked, countingDown, burstRunning, queueShutter)
+            var position = Modifier.align(Alignment.Center).testTag("camera-shutter")
+            if (floatingShutter != null) position = position.cameraFloatingShutterDrag(floatingShutter, vertical,
+                dock = true, enabled = enabled && !burstRunning && !countingDown && !busy)
+            CameraShutterButton(enabled, busy && !queueShutter, countingDown, if (countingDown) cancelCountdown else capture,
+                position, burstStart, burstEnd, burstRunning, burstHeld, burstCount)
+        }
         ToolButton(copy.text("camera.switch_lens"), Icons.Default.Cameraswitch, flip,
             Modifier.align(if (vertical) Alignment.TopCenter else Alignment.CenterEnd).padding(12.dp).testTag("camera-flip"),
             size = 44.dp, shapes = IconButtonDefaults.shapes(RoundedCornerShape(22.dp), RoundedCornerShape(10.dp)),

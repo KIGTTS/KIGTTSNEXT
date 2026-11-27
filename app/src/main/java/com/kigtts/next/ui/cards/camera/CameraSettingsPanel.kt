@@ -28,7 +28,8 @@ import kotlinx.coroutines.withContext
     availableProcessing: Set<CameraProcessing> = setOf(CameraProcessing.STANDARD), manual: CameraManualController? = null,
     watermarkStore: (() -> Unit)? = null,
     exposureWarningAvailable: Boolean = true, videoStabilizationAvailable: Boolean = false,
-    faceControlsAvailable: Boolean = false) {
+    faceControlsAvailable: Boolean = false, motionStatus: String? = null, motionChangeEnabled: Boolean = true,
+    filter: PhotoFilter = PhotoFilter.ORIGINAL, openFilters: (() -> Unit)? = null) {
     if (!options.settingsVisible) return
     var watermarkPage by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<com.kigtts.next.cards.CameraWatermarkAsset?>(null) }
@@ -48,7 +49,7 @@ import kotlinx.coroutines.withContext
                 watermarkStore?.let { store -> { options.hideSettings(); store() } },
                 { lastEdited = it; editing = it }) { watermarkPage = false }
             else CameraSettingsGrid(options, flashAvailable, enabled, availableProcessing, manual, exposureWarningAvailable,
-                videoStabilizationAvailable, faceControlsAvailable) {
+                videoStabilizationAvailable, faceControlsAvailable, motionStatus, motionChangeEnabled, filter, openFilters) {
                 watermarkPage = true
             }
         }
@@ -58,6 +59,8 @@ import kotlinx.coroutines.withContext
 @Composable internal fun CameraSettingsGrid(options: CameraOptions, flashAvailable: Boolean, enabled: Boolean,
     availableProcessing: Set<CameraProcessing>, manual: CameraManualController?, exposureWarningAvailable: Boolean,
     videoStabilizationAvailable: Boolean = false, faceControlsAvailable: Boolean = false,
+    motionStatus: String? = null, motionChangeEnabled: Boolean = true,
+    filter: PhotoFilter = PhotoFilter.ORIGINAL, openFilters: (() -> Unit)? = null,
     openWatermark: () -> Unit) {
     val copy = rememberCameraCopy()
     val heifAvailable by produceState<Boolean?>(null) {
@@ -80,9 +83,15 @@ import kotlinx.coroutines.withContext
                 options::toggleFaceFocus))
         }
         add(CameraSettingTile(copy.text("camera.level"), copy.toggle(options.level), Icons.Default.Straighten, enabled) { options.setLevel(!options.level) })
-        if (flashAvailable) add(CameraSettingTile(copy.text("camera.flash"), copy.label(options.flash), Icons.Default.FlashOn, enabled) {
-            options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
-        })
+        if (options.mode.takesPhotos || flashAvailable) add(CameraSettingTile(copy.text("camera.flash"),
+            if (flashAvailable) copy.label(options.flash) else copy.text("camera.unavailable_lens"),
+            options.flash.icon, enabled && flashAvailable, options::cycleFlash))
+        if (options.mode == CameraMode.PHOTO) add(CameraSettingTile(copy.text("camera.motion_photo"),
+            motionStatus ?: copy.toggle(options.motion), if (options.motion) Icons.Default.MotionPhotosOn else Icons.Default.MotionPhotosOff,
+            enabled && motionChangeEnabled) { options.setMotion(!options.motion) })
+        if (options.mode != CameraMode.SCAN && openFilters != null) {
+            add(CameraSettingTile(copy.text("camera.filters"), copy.label(filter), Icons.Default.PhotoFilter, enabled, openFilters))
+        }
         if (options.mode.recordsVideo) add(CameraSettingTile(copy.text("camera.video_stabilization"),
             if (videoStabilizationAvailable) copy.toggle(options.videoStabilization) else copy.text("camera.unavailable_lens"),
             Icons.Default.VideoStable, enabled && videoStabilizationAvailable) {

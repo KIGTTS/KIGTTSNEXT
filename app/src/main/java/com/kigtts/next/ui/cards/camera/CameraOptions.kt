@@ -93,6 +93,7 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
         preferences.edit().putBoolean("exposure-warning", value).apply()
     }
     fun setFlash(value: CameraFlash) { selectedFlash = value; preferences.edit().putString("flash", value.name).apply() }
+    fun cycleFlash() { setFlash(CameraFlash.entries[(flash.ordinal + 1) % CameraFlash.entries.size]) }
     fun setProcessing(value: CameraProcessing) { selectedProcessing = value; preferences.edit().putString("processing", value.name).apply() }
     fun chooseEncoding(value: CameraPhotoEncoding) {
         encoding = value
@@ -118,6 +119,8 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
     }
     fun showSettings() { settingsVisible = true }
     fun hideSettings() { settingsVisible = false }
+    fun volumeHintSeen(): Boolean = preferences.getBoolean("volume-shutter-tip-seen", false)
+    fun markVolumeHintSeen() { preferences.edit().putBoolean("volume-shutter-tip-seen", true).apply() }
     companion object {
         val TIMERS = listOf(0, 3, 10)
         const val ENCODING_KEY = "photo-encoding"

@@ -1658,5 +1658,8 @@
   "quick_presets.notice.resting.title": "쉬는 중",
   "quick_presets.notice.resting.text": "쉬는 중이에요~ 사진은 잠시만 기다려 주세요",
   "quick_presets.notice.shy.title": "낯가려요",
-  "quick_presets.notice.shy.text": "멍하니 있으면 긴장한 걸지도 몰라요. 어깨를 톡 쳐 주세요"
+  "quick_presets.notice.shy.text": "멍하니 있으면 긴장한 걸지도 몰라요. 어깨를 톡 쳐 주세요",
+  "camera.temporary_shutter": "플로팅 셔터",
+  "camera.volume_shutter_tip": "음량 버튼으로 촬영",
+  "camera.volume_shutter_tip_body": "음량을 높이거나 낮추는 버튼을 눌러 사진을 찍을 수 있어요"
 }

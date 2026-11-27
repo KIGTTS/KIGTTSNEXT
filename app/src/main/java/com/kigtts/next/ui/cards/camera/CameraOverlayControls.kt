@@ -17,6 +17,12 @@ import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.plugin.api.PolaroidFormat
 
+internal val CameraFlash.icon get() = when (this) {
+    CameraFlash.OFF -> Icons.Default.FlashOff
+    CameraFlash.AUTO -> Icons.Default.FlashAuto
+    CameraFlash.ON -> Icons.Default.FlashOn
+}
+
 /** Portrait actions stay at the top right; landscape actions gather at the bottom left. */
 @Composable
 internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: List<PolaroidFormat>,
@@ -45,11 +51,8 @@ internal fun BoxScope.CameraOverlayControls(format: PolaroidFormat, formats: Lis
     }
     val flashButton: @Composable () -> Unit = {
         val shape = IconButtonDefaults.shapes(LocalCameraControlShape.current ?: RoundedCornerShape(22.dp), RoundedCornerShape(10.dp))
-            ToolButton(copy.text("camera.status_flash", "value" to copy.label(flash)), when (flash) {
-                CameraFlash.OFF -> Icons.Default.FlashOff
-                CameraFlash.AUTO -> Icons.Default.FlashAuto
-                CameraFlash.ON -> Icons.Default.FlashOn
-            }, cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape,
+            ToolButton(copy.text("camera.status_flash", "value" to copy.label(flash)), flash.icon,
+                cycleFlash, Modifier.testTag("camera-flash"), size = 44.dp, shapes = shape,
                 colors = if (flashAvailable) colors else colors.keepColorsWhenLocked(), enabled = enabled && flashAvailable)
     }
     val settingsButton: @Composable () -> Unit = {

@@ -21,11 +21,19 @@ import com.kigtts.next.ui.components.keepColorsWhenLocked
 import com.kigtts.next.ui.navigation.LocalPageActive
 import com.kigtts.next.ui.navigation.excludeCameraPull
 
+internal fun CameraCopy.motionStatus(requested: Boolean, available: Boolean, ready: Boolean, preparing: Boolean) = when {
+    !requested -> text("action.close")
+    preparing -> text("camera.preparing")
+    ready -> text("camera.enabled")
+    !available -> text("camera.lens_unavailable")
+    else -> text("camera.preparing")
+}
+
 @Composable
 internal fun CameraMotionButton(requested: Boolean, available: Boolean, ready: Boolean, preparing: Boolean,
     enabled: Boolean, change: (Boolean) -> Unit) {
     val copy = rememberCameraCopy()
-    val status = when { !requested -> copy.text("action.close"); preparing -> copy.text("camera.preparing"); ready -> copy.text("camera.enabled"); !available -> copy.text("camera.lens_unavailable"); else -> copy.text("camera.preparing") }
+    val status = copy.motionStatus(requested, available, ready, preparing)
     Box(Modifier.size(44.dp).excludeCameraPull()) {
         ToolButton(copy.text("camera.status_motion", "value" to status), if (requested) Icons.Default.MotionPhotosOn else Icons.Default.MotionPhotosOff,
             { change(!requested) }, Modifier.size(44.dp).testTag("camera-motion").semantics { selected = requested },

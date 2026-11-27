@@ -207,5 +207,8 @@
   "onboarding.presets.groups": "预设分组",
   "backup.restore_presets": "恢复预设快捷文本",
   "backup.restore_presets_hint": "选哪组加哪组，名字一样就加个编号",
-  "backup.presets_restored": "选中的分组加好啦"
+  "backup.presets_restored": "选中的分组加好啦",
+  "camera.temporary_shutter": "临时快门",
+  "camera.volume_shutter_tip": "音量键也能拍照",
+  "camera.volume_shutter_tip_body": "按一下音量加或减，就能拍一张"
 }

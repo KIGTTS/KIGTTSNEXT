@@ -1658,5 +1658,8 @@
   "quick_presets.notice.resting.title": "休息中",
   "quick_presets.notice.resting.text": "休息中～暂不集邮哦",
   "quick_presets.notice.shy.title": "社恐",
-  "quick_presets.notice.shy.text": "如果看到我发呆，可能是在社恐发作，请戳我肩膀哦"
+  "quick_presets.notice.shy.text": "如果看到我发呆，可能是在社恐发作，请戳我肩膀哦",
+  "camera.temporary_shutter": "临时快门",
+  "camera.volume_shutter_tip": "音量键也能拍照",
+  "camera.volume_shutter_tip_body": "按一下音量加键或减键即可拍照"
 }

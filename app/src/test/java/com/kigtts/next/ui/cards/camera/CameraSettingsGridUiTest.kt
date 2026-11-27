@@ -36,6 +36,31 @@ import org.robolectric.annotation.GraphicsMode
 class CameraSettingsGridUiTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun flashMotionAndFiltersHaveEntriesInTheCameraSettingsGrid() {
+        val preferences = compose.activity.getSharedPreferences("camera-shooting-settings-test", 0)
+        preferences.edit().clear().commit()
+        val options = CameraOptions(preferences)
+        val hasFlash = mutableStateOf(true)
+        var filterRequests = 0
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            CompositionLocalProvider(LocalUiLocale provides "en") {
+                CameraSettingsGrid(options, flashAvailable = hasFlash.value, enabled = true,
+                    availableProcessing = setOf(CameraProcessing.STANDARD), manual = null, exposureWarningAvailable = true,
+                    openFilters = { filterRequests++ }, openWatermark = {})
+            }
+        } }
+        compose.onNodeWithText("Flash").assertIsEnabled().performClick()
+        compose.onNodeWithText("Motion photo").assertIsEnabled().performClick()
+        compose.onNodeWithText("Filters").assertIsEnabled().performClick()
+        compose.runOnIdle {
+            assertEquals(CameraFlash.AUTO, CameraOptions(preferences).flash)
+            assertTrue(CameraOptions(preferences).motion)
+            assertEquals(1, filterRequests)
+            hasFlash.value = false
+        }
+        compose.onNodeWithText("Flash").assertIsNotEnabled()
+    }
+
     @Test fun videoStabilizationDefaultsOnPersistsAndFollowsLensSupport() {
         val preferences = compose.activity.getSharedPreferences("camera-stabilization-test", 0)
         val options = CameraOptions(preferences)

@@ -1658,5 +1658,8 @@
   "quick_presets.notice.resting.title": "休憩中",
   "quick_presets.notice.resting.text": "休憩中です〜ツーショットはあとでね",
   "quick_presets.notice.shy.title": "人見知り",
-  "quick_presets.notice.shy.text": "ぼーっとしていたら緊張しているのかも。肩を軽くつついてください"
+  "quick_presets.notice.shy.text": "ぼーっとしていたら緊張しているのかも。肩を軽くつついてください",
+  "camera.temporary_shutter": "フローティングシャッター",
+  "camera.volume_shutter_tip": "音量ボタンで撮影",
+  "camera.volume_shutter_tip_body": "音量の上げ下げ、どちらのボタンでも撮影できます"
 }

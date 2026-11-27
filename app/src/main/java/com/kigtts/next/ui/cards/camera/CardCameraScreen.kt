@@ -88,6 +88,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     val fullFrame = modern && options.framingAspect == CameraAspect.FULL
     val aspect = if (modern) options.framingAspect.ratio(configuration.screenWidthDp, configuration.screenHeightDp) else format.geometry.photoAspectRatio.toFloat()
     val mode = if (modern) options.mode else CameraMode.PHOTO
+    val floatingShutter = rememberCameraFloatingShutter(visit)
     val library = remember(context) { ExpressionLibrary.get(context) }
     val revision by library.revision.collectAsState()
     val expressionId = options.expressionId.takeIf { modern && mode != CameraMode.SCAN }
@@ -126,6 +127,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     SideEffect { session.setExposureWarning(showExposureWarning) }
     val processing = if (mode == CameraMode.PHOTO && expressionId == null) options.processing else CameraProcessing.STANDARD
     val motion = options.motion && mode == CameraMode.PHOTO
+    val motionPreparing = options.motion && (session.loading || session.motionAvailable && !session.motionReady)
     val viewport by remember(aspect, rotation) { derivedStateOf { cameraViewportKey(viewSize, aspect.toDouble(), rotation) } }
     val stabilizeVideo = mode.recordsVideo && options.videoStabilization
     // CameraX selects the preview size from the complete use-case group. Keep the
@@ -232,15 +234,14 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
                 { if (modern) options.chooseAspect(CameraAspect.entries[(options.aspect.ordinal + 1) % CameraAspect.entries.size]) else format = nextCameraFormat(formats, format) },
                 { exposureOpen = false; proControl = null; stickersExpanded = false; options.showSettings() },
                 { exposureOpen = false; proControl = null; stickersExpanded = false; filtersExpanded = !filtersExpanded }, { filter = it },
-                options.flash, session.flashAvailable && session.manual.automaticExposure, {
-                    options.setFlash(CameraFlash.entries[(options.flash.ordinal + 1) % CameraFlash.entries.size])
-                }, options.filterStrength, options::setFilterStrength, layout,
+                options.flash, session.flashAvailable && session.manual.automaticExposure, options::cycleFlash,
+                options.filterStrength, options::setFilterStrength, layout,
                 customLuts = customLuts, selectedLut = selectedLut,
                 selectLut = { selectedLut = it; filter = PhotoFilter.CUSTOM },
                 importLut = { importLut.launch(arrayOf("*/*")) }, showMotion = mode == CameraMode.PHOTO,
                 showFilters = mode != CameraMode.SCAN, showFormat = mode != CameraMode.SCAN, motionButton = {
                     CameraMotionButton(options.motion, session.motionAvailable, session.motionReady,
-                        options.motion && (session.loading || session.motionAvailable && !session.motionReady),
+                        motionPreparing,
                         active && granted && !locked && mode == CameraMode.PHOTO, options::setMotion)
                 }, effects = options.effects, changeEffects = options::setEffects, aspectLabel = options.aspect.takeIf { modern }?.let(copy::label),
                 reserveBack = true)
@@ -279,8 +280,11 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         }
     }
     val error: @Composable () -> Unit = { CameraError(session, active) { retry++ } }
+    val queueShutter = modern && mode.takesPhotos && options.timerSeconds == 0 && !session.motionAvailable
+    val canCapture = displayReady && viewport.matchesPhotoRatio
+    val toolsOpen = options.settingsVisible || expressionsOpen || stickersExpanded || filtersExpanded || exposureOpen || proControl != null
     val controls = rememberCameraControlsContent { vertical ->
-        val bar: @Composable () -> Unit = { CameraActionBar(session.busy, active, displayReady && viewport.matchesPhotoRatio, session.canFlip,
+        val bar: @Composable () -> Unit = { CameraActionBar(session.busy, active, canCapture, session.canFlip,
             leave,
             shutter,
             { front = !front }, vertical, locked,
@@ -304,7 +308,8 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
             } } },
             burstEnd = session.burst::stop, burstRunning = session.burst.running,
             burstHeld = session.burst.held, burstCount = session.burst.count,
-            queueShutter = modern && mode.takesPhotos && options.timerSeconds == 0 && !session.motionAvailable,
+            queueShutter = queueShutter,
+            floatingShutter = floatingShutter.takeIf { mode.takesPhotos && !toolsOpen },
             shutter = when {
                 mode.recordsVideo -> ({ VideoShutter(session.video.active, session.video.finishing,
                     active && !session.video.finishing && (displayReady || session.video.active), shutter) })
@@ -315,12 +320,31 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
         if (modern) CameraModeControls(mode, { filtersExpanded = false; options.chooseMode(it) }, interactive,
             vertical, session.video.active, session.video.durationMs, controls = bar) else bar()
     }
-    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame, captureBaseline = modern, professional = mode == CameraMode.PRO)
+    CameraPageLayout(preview, controls, error, header, aspect, zoomDialVisible, fullFrame,
+        captureBaseline = modern, professional = mode == CameraMode.PRO) { vertical ->
+        if (mode.takesPhotos && active && !toolsOpen) {
+            val enabled = cameraPhotoShutterEnabled(active, session.busy, canCapture, locked, session.countingDown,
+                session.burst.running, queueShutter)
+            CameraFloatingShutter(floatingShutter, vertical, enabled, session.busy && !queueShutter,
+                session.countingDown, capture = { if (session.burst.running) session.burst.stop() else shutter() })
+        }
+        CameraVolumeCoachMark(options, active && pageSettled && canCapture && mode.takesPhotos && !locked && !toolsOpen &&
+            !floatingShutter.interacting,
+            vertical, rotation)
+    }
     CameraSettingsPanel(options, flashAvailable = session.flashAvailable && session.manual.automaticExposure, enabled = interactive,
         availableProcessing = if (options.motion) setOf(CameraProcessing.STANDARD) else session.availableProcessing,
         manual = session.manual.takeUnless { modern }, watermarkStore = watermarkStore,
         exposureWarningAvailable = session.previewFilterAvailable || !displayReady,
         videoStabilizationAvailable = session.videoStabilizationAvailable,
-        faceControlsAvailable = analysisSupported)
+        faceControlsAvailable = analysisSupported,
+        motionStatus = copy.motionStatus(options.motion, session.motionAvailable, session.motionReady, motionPreparing),
+        motionChangeEnabled = !locked, filter = filter, openFilters = {
+            options.hideSettings()
+            exposureOpen = false
+            proControl = null
+            stickersExpanded = false
+            filtersExpanded = true
+        })
     if (expressionsOpen) CameraExpressionsSheet(library, options, expressionStore, { expressionsOpen = false }, message)
 }

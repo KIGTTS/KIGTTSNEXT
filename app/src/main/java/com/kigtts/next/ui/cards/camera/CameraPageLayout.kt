@@ -32,7 +32,8 @@ internal val LocalCameraStageSettled = compositionLocalOf { true }
 internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
     controls: @Composable (Boolean) -> Unit, error: @Composable () -> Unit = {},
     header: @Composable (Boolean) -> Unit = {}, photoAspect: Float? = null, zoomDialVisible: Boolean = false,
-    fullFrame: Boolean = false, captureBaseline: Boolean = false, professional: Boolean = false) {
+    fullFrame: Boolean = false, captureBaseline: Boolean = false, professional: Boolean = false,
+    overlayContent: @Composable BoxScope.(Boolean) -> Unit = {}) {
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).safeDrawingPadding().testTag("polaroid-camera")) {
         val vertical = cameraSideControls(maxWidth.value, maxHeight.value)
         var controlsSize by remember { mutableStateOf(IntSize.Zero) }
@@ -97,6 +98,7 @@ internal fun CameraPageLayout(preview: @Composable (Modifier, Boolean) -> Unit,
                 dock.place(if (vertical) start else 0, if (vertical) 0 else start)
             }
         }
+        Box(Modifier.matchParentSize()) { overlayContent(vertical) }
     }
 }
 

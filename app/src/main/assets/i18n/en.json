@@ -1658,5 +1658,8 @@
   "quick_presets.notice.resting.title": "On a break",
   "quick_presets.notice.resting.text": "On a break~ No photos for now",
   "quick_presets.notice.shy.title": "Feeling shy",
-  "quick_presets.notice.shy.text": "If I look spaced out, I might just be feeling shy. Give my shoulder a tap"
+  "quick_presets.notice.shy.text": "If I look spaced out, I might just be feeling shy. Give my shoulder a tap",
+  "camera.temporary_shutter": "Floating shutter",
+  "camera.volume_shutter_tip": "Take photos with the volume buttons",
+  "camera.volume_shutter_tip_body": "Press either volume button to take a photo."
 }
