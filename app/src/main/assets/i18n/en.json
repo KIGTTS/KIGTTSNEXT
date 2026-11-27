@@ -1664,5 +1664,9 @@
   "quick_presets.notice.shy.text": "If I look spaced out, I might just be feeling shy. Give my shoulder a tap",
   "camera.temporary_shutter": "Floating shutter",
   "camera.volume_shutter_tip": "Take photos with the volume buttons",
-  "camera.volume_shutter_tip_body": "Press either volume button to take a photo."
+  "camera.volume_shutter_tip_body": "Press either volume button to take a photo.",
+  "editor.project_type": "Plugin type",
+  "editor.project_template": "Start from",
+  "editor.source_language": "Source language",
+  "editor.debug_enabled": "Debugging enabled"
 }

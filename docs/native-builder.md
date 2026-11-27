@@ -81,10 +81,9 @@ D8 使用官方 `D8Command.parse(...)` 和 `D8.run(...)` 将项目 class 与运�
 **普通桌面 Kotlin 编译器并不自动兼容 Android/ART。**
 工具链的 Kotlin 入口可由经过 Android 适配的扩展提供同样签名；未声明 Kotlin、缺少入口或实际运行失败会明确报错，不产生伪造成功结果。
 “已配置”只表示已确认工具链资源，不等于手机兼容性已验证。
-独立构建扩展仓库的 `tools/Build-Toolchain.ps1` 从本地依赖生成 Java `.kigtools`。给 `-AsmJar` 指定 Gradle 的 ASM JAR。运行归档包含 DEX、ECJ 消息和语法解析资源，以及旧版 Android 缺少的标准流读取方法。官方 Java 库已在 Android 10 完成真实的 Java 编译、DEX 转换、签名和调试加载。
-`-ExperimentalKotlin` 用于生成待验证的 Kotlin 工具链。可从 [原生构建扩展发行页](https://github.com/KIGTTS/plugin-native-builder/releases/tag/v0.8.5) 获取官方 Java 工具链。
+独立构建扩展仓库的 `tools/Build-Toolchain.ps1` 默认生成包含 Java、Kotlin 和 D8 的同一个 `.kigtools`，可用 `-JavaOnly` 构建仅 Java 的工具链。`-AsmJar` 指定 Gradle 的 ASM JAR。运行归档保留编译器资源，并提供旧版 Android 所需的兼容代码。
+从 [原生构建扩展发行页](https://github.com/KIGTTS/plugin-native-builder/releases/tag/v0.8.9) 可以获取官方工具链。编辑器在首次构建时，或当前工具链缺少项目所用语言时，下载并校验官方包。
 生成脚本保留依赖中已有的许可证、生成逐项 SHA 并记录来源，不改变主程序包体。
-本轮桌面测试使用真实 ECJ 3.39.0、Kotlin 2.2.21 和 SDK36 D8，成功生成实际 `KigPlugin` DEX；手机工具链适配和安装仍需在设备连接后验证。
 
 ## 签名、打包与分享
 

@@ -15,6 +15,8 @@ import com.kigtts.next.i18n.uiText
 import com.kigtts.next.plugins.editor.validEditorPackageName
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.ui.components.*
+import com.kigtts.next.ui.settings.SettingItem
+import com.kigtts.next.ui.settings.SettingPosition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -31,26 +33,41 @@ internal fun EditorCreationDialog(model: AppViewModel, close: () -> Unit) {
     val selectedPreset = if (preset) workspace.presets.byId(if (native) "native-catalog" else "lua-catalog") else null
     val scope = rememberCoroutineScope()
     val suggested = uiText("editor.preset")
-    MotionAlertDialog(onDismissRequest = { if (!busy) close() }, title = { Text(uiText("editor.create")) }, text = {
-        Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            EditorSegments(listOf("Lua", uiText("editor.native")), if (native) 1 else 0) {
-                native = it == 1
-                if (preset) name = ""
+    MotionAlertDialog(onDismissRequest = { if (!busy) close() }, dismissEnabled = !busy, title = { Text(uiText("editor.create")) }, text = {
+        Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val pluginType = uiText("editor.project_type")
+            val nativeLabel = uiText("editor.native")
+            SettingItem(pluginType, "", MaterialSymbols.vector("extension"), SettingPosition.FIRST) {
+                ChoiceButtonGroup(pluginType, listOf(false, true), native, { if (it) nativeLabel else "Lua" }, {
+                    native = it
+                    if (preset) name = ""
+                }, enabled = !busy, compactLabels = true)
             }
-            EditorSegments(listOf(uiText("editor.empty"), suggested), if (preset) 1 else 0) {
-                preset = it == 1
+            val template = uiText("editor.project_template")
+            val blank = uiText("editor.empty")
+            SettingItem(template, "", MaterialSymbols.vector("dashboard_customize"), SettingPosition.MIDDLE) {
+                ChoiceButtonGroup(template, listOf(false, true), preset, { if (it) suggested else blank }, { preset = it },
+                    enabled = !busy, compactLabels = true)
+                selectedPreset?.let {
+                    Text(uiText("editor.preset_version", "version" to it.version, "api" to it.apiVersion.toString()),
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
-            if (native && !preset) EditorSegments(listOf("Java", "Kotlin"), if (kotlin) 1 else 0) { kotlin = it == 1 }
-            selectedPreset?.let {
-                Text(uiText("editor.preset_version", "version" to it.version, "api" to it.apiVersion.toString()),
-                    style = MaterialTheme.typography.bodySmall)
+            if (native && !preset) {
+                val sourceLanguage = uiText("editor.source_language")
+                SettingItem(sourceLanguage, "", MaterialSymbols.vector("code"), SettingPosition.MIDDLE) {
+                    ChoiceButtonGroup(sourceLanguage, listOf(false, true), kotlin, { if (it) "Kotlin" else "Java" }, { kotlin = it },
+                        enabled = !busy, compactLabels = true)
+                }
             }
-            OutlinedTextField(name, { name = it.take(64); error = false }, label = { Text(uiText("editor.name")) },
-                singleLine = true, modifier = Modifier.fillMaxWidth().testTag("editor-create-name"))
-            OutlinedTextField(packageName, { packageName = it.take(80); error = false },
-                label = { Text(uiText("editor.package_name")) }, placeholder = { Text("com.example.myplugin") },
-                singleLine = true, modifier = Modifier.fillMaxWidth().testTag("editor-create-package"))
-            if (error) Text(uiText("editor.create_failed"), color = MaterialTheme.colorScheme.error)
+            SettingItem(uiText("editor.package_details"), "", MaterialSymbols.vector("inventory_2"), SettingPosition.LAST) {
+                OutlinedTextField(name, { name = it.take(64); error = false }, label = { Text(uiText("editor.name")) },
+                    singleLine = true, enabled = !busy, modifier = Modifier.fillMaxWidth().testTag("editor-create-name"))
+                OutlinedTextField(packageName, { packageName = it.take(80); error = false }, enabled = !busy,
+                    label = { Text(uiText("editor.package_name")) }, placeholder = { Text("com.example.myplugin") },
+                    singleLine = true, modifier = Modifier.fillMaxWidth().testTag("editor-create-package"))
+                if (error) Text(uiText("editor.create_failed"), color = MaterialTheme.colorScheme.error)
+            }
         }
     }, confirmButton = {
         MotionTextButton(onClick = feedbackClick {
@@ -69,14 +86,4 @@ internal fun EditorCreationDialog(model: AppViewModel, close: () -> Unit) {
     }, dismissButton = {
         MotionTextButton(onClick = dialogFeedbackClick { if (!busy) close() }) { Text(uiText("action.cancel")) }
     })
-}
-
-@Composable
-internal fun EditorSegments(labels: List<String>, selected: Int, select: (Int) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-        labels.forEachIndexed { index, label ->
-            SegmentedButton(selected == index, feedbackClick { select(index) },
-                SegmentedButtonDefaults.itemShape(index, labels.size), label = { Text(label) })
-        }
-    }
 }

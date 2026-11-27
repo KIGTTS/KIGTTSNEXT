@@ -1664,5 +1664,9 @@
   "quick_presets.notice.shy.text": "멍하니 있으면 긴장한 걸지도 몰라요. 어깨를 톡 쳐 주세요",
   "camera.temporary_shutter": "플로팅 셔터",
   "camera.volume_shutter_tip": "음량 버튼으로 촬영",
-  "camera.volume_shutter_tip_body": "음량을 높이거나 낮추는 버튼을 눌러 사진을 찍을 수 있어요"
+  "camera.volume_shutter_tip_body": "음량을 높이거나 낮추는 버튼을 눌러 사진을 찍을 수 있어요",
+  "editor.project_type": "플러그인 유형",
+  "editor.project_template": "프로젝트 시작 방법",
+  "editor.source_language": "소스 언어",
+  "editor.debug_enabled": "디버깅을 켰어요"
 }

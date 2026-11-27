@@ -21,6 +21,6 @@ internal enum class ExperimentalTool(val id: String, val key: String, val versio
             preferences(context).edit { putBoolean("bundle/${tool.id}", enabled) }
         val bundles = entries.map { tool ->
             BundledPlugin(tool.id, "experimental/${tool.key}.kigplugin", tool.versionCode, PUBLISHER)
-        } + BundledPlugin(NATIVE_BUILDER_ID, "experimental/native-builder.kigplugin", 9, PUBLISHER)
+        } + BundledPlugin(NATIVE_BUILDER_ID, "experimental/native-builder.kigplugin", 10, PUBLISHER)
     }
 }

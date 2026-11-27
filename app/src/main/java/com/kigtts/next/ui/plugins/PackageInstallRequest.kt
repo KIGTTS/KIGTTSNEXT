@@ -14,6 +14,16 @@ import java.util.UUID
 internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, PluginOutcome.InstallPackage>?, dismiss: () -> Unit) {
     if (request == null) return
     val (owner, outcome) = request
+    val debug = owner in setOf("runtime.lua", "tools.native-builder") && outcome.dependencies.isEmpty() &&
+        outcome.resource.path.matches(Regex("debug-builds/[a-zA-Z0-9_.+-]+\\.kigplugin")) &&
+        model.experimentalToolEnabled(com.kigtts.next.manager.ExperimentalTool.EDITOR) &&
+        model.pluginManager.status.any { status -> status.installed.let {
+            it.manifest.id == owner && it.enabled && it.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER
+        } }
+    if (debug) {
+        EditorDebugInstall(model, owner, outcome.resource, dismiss)
+        return
+    }
     var candidates by remember(request) { mutableStateOf<List<PackageInstallerInfo>?>(null) }
     var error by remember(request) { mutableStateOf<String?>(null) }
     var busy by remember(request) { mutableStateOf(false) }
@@ -40,29 +50,9 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
             withContext(Dispatchers.IO) {
                 require(outcome.dependencies.size <= 32) { copy("plugin.too_many_dependencies") }
                 (outcome.dependencies + outcome.resource).forEach { resource ->
-                    require(resource.pluginId == null || resource.pluginId == owner) { copy("plugin.invalid_install_owner") }
-                    val source = model.pluginManager.paths.storage(owner).file(resource.path)
-                    require(source.isFile && source.length() in 1..768L * 1024 * 1024) { copy("plugin.invalid_package_size") }
-                    val frozen = File(model.pluginManager.paths.packages, ".incoming-${UUID.randomUUID()}.kigplugin")
-                    try { source.copyTo(frozen); copied += PendingPackage(frozen, model.pluginManager.packages.inspect(frozen)) }
-                    catch (failure: Exception) { frozen.delete(); throw failure }
+                    copied += freezeInstallPackage(model, owner, resource, copy)
                 }
                 require(copied.map { it.preview.manifest.id }.distinct().size == copied.size) { copy("plugin.install_duplicates") }
-            }
-            val debug = owner in setOf("runtime.lua", "tools.native-builder") && outcome.dependencies.isEmpty() &&
-                outcome.resource.path.matches(Regex("debug-builds/[a-zA-Z0-9_.+-]+\\.kigplugin")) &&
-                (owner != "runtime.lua" || copied.single().preview.manifest.entryClass == "com.kigtts.engines.lua.LuaPackagedPlugin") &&
-                model.experimentalToolEnabled(com.kigtts.next.manager.ExperimentalTool.EDITOR) &&
-                model.pluginManager.status.any { status -> status.installed.let {
-                    it.manifest.id == owner && it.enabled && it.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER
-                } }
-            if (debug) {
-                val candidate = copied.single()
-                model.pluginManager.install(candidate.file, candidate.preview.publisherSha256, development = true)
-                model.refreshPlugins()
-                copied.forEach { it.file.delete() }
-                dismiss()
-                return@LaunchedEffect
             }
             val builder = copied.singleOrNull()?.preview?.takeIf { builderAction != null &&
                 it.manifest.id == "tools.native-builder" && it.publisherSha256 == com.kigtts.next.plugins.control.STORE_PUBLISHER }
@@ -121,4 +111,41 @@ internal fun PackageInstallRequest(model: AppViewModel, request: Pair<String, Pl
         if (page?.pluginId == owner) model.registry.plugin(owner)?.page(page.pageId, model.context())
             ?.onEnterAction?.let { model.invoke(owner, it) }
     })
+}
+
+@Composable
+private fun EditorDebugInstall(model: AppViewModel, owner: String, resource: PluginResource, dismiss: () -> Unit) {
+    val copy = rememberUiCopy()
+    LaunchedEffect(owner, resource) {
+        var candidate: PendingPackage? = null
+        try {
+            val staged = withContext(Dispatchers.IO) { freezeInstallPackage(model, owner, resource, copy).also { candidate = it } }
+            require(owner != "runtime.lua" || staged.preview.manifest.entryClass == "com.kigtts.engines.lua.LuaPackagedPlugin") {
+                copy("plugin.install_plan_failed")
+            }
+            model.pluginManager.install(staged.file, staged.preview.publisherSha256, development = true)
+            model.refreshPlugins()
+            model.message(copy("editor.debug_enabled"))
+            dismiss()
+        } catch (cancel: CancellationException) { throw cancel }
+        catch (failure: Exception) {
+            model.message(failure.message ?: copy("plugin.install_plan_failed"))
+            dismiss()
+        } finally { candidate?.file?.delete() }
+    }
+}
+
+private fun freezeInstallPackage(model: AppViewModel, owner: String, resource: PluginResource,
+    copy: com.kigtts.next.i18n.UiCopy): PendingPackage {
+    require(resource.pluginId == null || resource.pluginId == owner) { copy("plugin.invalid_install_owner") }
+    val source = model.pluginManager.paths.storage(owner).file(resource.path)
+    require(source.isFile && source.length() in 1..768L * 1024 * 1024) { copy("plugin.invalid_package_size") }
+    val frozen = File(model.pluginManager.paths.packages, ".incoming-${UUID.randomUUID()}.kigplugin")
+    return try {
+        source.copyTo(frozen)
+        PendingPackage(frozen, model.pluginManager.packages.inspect(frozen))
+    } catch (failure: Exception) {
+        frozen.delete()
+        throw failure
+    }
 }

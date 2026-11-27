@@ -1664,5 +1664,9 @@
   "quick_presets.notice.shy.text": "ぼーっとしていたら緊張しているのかも。肩を軽くつついてください",
   "camera.temporary_shutter": "フローティングシャッター",
   "camera.volume_shutter_tip": "音量ボタンで撮影",
-  "camera.volume_shutter_tip_body": "音量の上げ下げ、どちらのボタンでも撮影できます"
+  "camera.volume_shutter_tip_body": "音量の上げ下げ、どちらのボタンでも撮影できます",
+  "editor.project_type": "プラグインの種類",
+  "editor.project_template": "作成元",
+  "editor.source_language": "ソース言語",
+  "editor.debug_enabled": "デバッグを有効にしました"
 }
