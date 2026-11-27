@@ -86,9 +86,10 @@ class BackupRestoreUiTest {
             compose.onNodeWithTag("backup-group-confirm").performClick()
             compose.waitUntil(5_000) { "常用($suffix)" in model.categories.value }
             val restored = model.phrases.value.filter { it.category == "常用($suffix)" }
-            assertEquals(8, restored.size)
+            assertEquals(9, restored.size)
             assertEquals("谢谢", restored.first().title)
             assertEquals("谢谢你", restored.first().text)
+            assertEquals("不好意思，我听不太清，可以靠近一点说吗？", restored.single { it.title == "听不清" }.text)
             assertEquals("下次再见~", restored.last().text)
             assertEquals(CategoryIcon.valueOf("symbol:chat"), model.quickTexts.categoryIcons.value["常用($suffix)"])
         }

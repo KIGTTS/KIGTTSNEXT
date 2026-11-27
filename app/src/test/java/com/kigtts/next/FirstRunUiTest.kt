@@ -138,7 +138,7 @@ class FirstRunUiTest {
         assertTrue(guide.agreementAccepted())
         assertEquals(listOf("常用", "应急"), restarted.categories.value.drop(originalGroups.size).map { it.substringBefore('(') })
         assertEquals(originalItems, restarted.phrases.value.take(originalItems.size))
-        assertEquals(originalItems.size + 16, restarted.phrases.value.size)
+        assertEquals(originalItems.size + 17, restarted.phrases.value.size)
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-panel").fetchSemanticsNodes().isNotEmpty() }
         assertTipClearsAnchor("home-tip-panel", "dock-main")
         compose.mainClock.autoAdvance = false
@@ -231,7 +231,7 @@ class FirstRunUiTest {
         awaitStep(guide, FirstRunStep.COMPLETE)
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
         assertEquals(listOf("常用", "拍照"), model.categories.value.drop(groupsBefore).map { it.substringBefore('(') })
-        assertEquals(cardCountBefore + 13, model.phrases.value.size)
+        assertEquals(cardCountBefore + 14, model.phrases.value.size)
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
         compose.runOnIdle { model.editing(true) }
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()

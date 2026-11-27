@@ -1557,6 +1557,8 @@
   "quick_presets.general.wait.text": "少し待ってください",
   "quick_presets.general.make_room.title": "通してください",
   "quick_presets.general.make_room.text": "ちょっと通してもらえますか？",
+  "quick_presets.general.cant_hear.title": "よく聞こえません",
+  "quick_presets.general.cant_hear.text": "すみません、よく聞こえないので、もう少し近くで話してもらえますか？",
   "quick_presets.general.loud.title": "聞こえません",
   "quick_presets.general.loud.text": "音が大きくて聞こえません！ここに入力するか、手書きでお願いします！",
   "quick_presets.general.photos.title": "ツーショット",

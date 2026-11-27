@@ -14,7 +14,7 @@ internal data class QuickTextPreset(
 private data class PresetDefinition(val id: String, val icon: String, val entries: List<String>)
 
 private val presets = listOf(
-    PresetDefinition("general", "chat", listOf("thanks", "cant_talk", "wait", "make_room", "loud", "photos", "contacts", "bye")),
+    PresetDefinition("general", "chat", listOf("thanks", "cant_talk", "wait", "make_room", "cant_hear", "loud", "photos", "contacts", "bye")),
     PresetDefinition("urgent", "warning", listOf("remove_head", "get_out", "stuck", "heatstroke", "medical", "clear_way", "lost_friend", "dont_pull")),
     PresetDefinition("visitors", "emoji_people", listOf("human", "ready", "no_photo", "secret", "kig", "no_touch", "keep_head_on")),
     PresetDefinition("event", "groups", listOf("go_play", "take_break", "go_back", "this_way", "waiting", "starting")),

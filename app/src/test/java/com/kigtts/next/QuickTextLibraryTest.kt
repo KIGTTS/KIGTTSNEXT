@@ -23,7 +23,7 @@ class QuickTextLibraryTest {
 
         val restarted = QuickTextLibrary(QuickPhraseStore(app))
         assertEquals(9, restarted.categories.value.size)
-        assertEquals(51, restarted.phrases.value.size)
+        assertEquals(52, restarted.phrases.value.size)
         assertEquals(presets.associate { it.name to it.icon }, restarted.categoryIcons.value)
     }
 

@@ -1557,6 +1557,8 @@
   "quick_presets.general.wait.text": "잠깐만 기다려 주세요",
   "quick_presets.general.make_room.title": "잠시 비켜 주세요",
   "quick_presets.general.make_room.text": "잠시만 비켜 주시겠어요?",
+  "quick_presets.general.cant_hear.title": "잘 안 들려요",
+  "quick_presets.general.cant_hear.text": "죄송해요, 잘 안 들려서 그런데 조금 더 가까이 와서 말해 주시겠어요?",
   "quick_presets.general.loud.title": "너무 시끄러워요",
   "quick_presets.general.loud.text": "너무 시끄러워요! 여기에 타이핑하거나 손글씨로 써 주세요!",
   "quick_presets.general.photos.title": "같이 사진 찍어요",

@@ -1557,6 +1557,8 @@
   "quick_presets.general.wait.text": "请稍等我一下",
   "quick_presets.general.make_room.title": "让一下",
   "quick_presets.general.make_room.text": "麻烦让一下哦",
+  "quick_presets.general.cant_hear.title": "听不清",
+  "quick_presets.general.cant_hear.text": "不好意思，我听不太清，可以靠近一点说吗？",
   "quick_presets.general.loud.title": "太吵了",
   "quick_presets.general.loud.text": "太吵了！请打字或手写，麻烦写在这里哦！",
   "quick_presets.general.photos.title": "集邮",

@@ -1557,6 +1557,8 @@
   "quick_presets.general.wait.text": "Give me a moment, please",
   "quick_presets.general.make_room.title": "Excuse me",
   "quick_presets.general.make_room.text": "Could you make a little room, please?",
+  "quick_presets.general.cant_hear.title": "Can't hear clearly",
+  "quick_presets.general.cant_hear.text": "Sorry, I can't hear you very well. Could you come a little closer to talk?",
   "quick_presets.general.loud.title": "Too loud",
   "quick_presets.general.loud.text": "It's too loud! Could you type or write it here, please?",
   "quick_presets.general.photos.title": "Photo together?",
