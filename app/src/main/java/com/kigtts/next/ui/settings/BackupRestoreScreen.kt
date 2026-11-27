@@ -15,9 +15,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.i18n.uiText
+import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.plugins.quicktext.groups
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
+import com.kigtts.next.state.localizedQuickTextPresets
 import com.kigtts.next.ui.components.MotionAlertDialog
 import com.kigtts.next.ui.components.dialogFeedbackClick
 import com.kigtts.next.ui.navigation.RegisterPageLoading
@@ -39,6 +41,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     var working by remember { mutableStateOf(false) }
     var exportName by rememberSaveable { mutableStateOf<String?>(null) }
     var exportGroups by remember { mutableStateOf<List<QuickGroup>?>(null) }
+    var pickingPresets by rememberSaveable { mutableStateOf(false) }
     val importing by texts.pendingImport.collectAsStateWithLifecycle()
     val config by restore.pendingConfig.collectAsStateWithLifecycle()
     val restoring by restore.busy.collectAsStateWithLifecycle()
@@ -51,6 +54,7 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
     val exported = uiText("backup.quick_exported")
     val configExported = uiText("backup.config_exported")
     val restored = uiText("backup.restored")
+    val presetsRestored = uiText("backup.presets_restored")
     RegisterPageLoading(busy)
 
     fun work(errorText: String, action: suspend () -> Unit) {
@@ -112,10 +116,13 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
                 SettingPosition.MIDDLE, Modifier.testTag("backup-config-export"), enabled = !busy && exportName == null,
                 onClick = { export(configFilename, restore::prepareConfigExport) })
             SettingItem(uiText("backup.quick_export"), uiText("backup.quick_export_hint"), Icons.Default.FileUpload,
-                SettingPosition.LAST, Modifier.testTag("backup-export"), enabled = !busy && exportName == null,
+                SettingPosition.MIDDLE, Modifier.testTag("backup-export"), enabled = !busy && exportName == null,
                 onClick = { work(errorExport) {
                     exportGroups = model.quickTexts.groups().also { check(it.isNotEmpty()) }
                 } })
+            SettingItem(uiText("backup.restore_presets"), uiText("backup.restore_presets_hint"), Icons.Default.SettingsBackupRestore,
+                SettingPosition.LAST, Modifier.testTag("backup-restore-presets"), enabled = !busy && exportName == null,
+                onClick = { pickingPresets = true })
         }
         formats.forEach { card ->
             SettingsGroup(card.title) {
@@ -133,6 +140,18 @@ internal fun BackupRestoreScreen(model: AppViewModel) {
         }
     }
     LegacyRestorePreview(model.legacyImports)
+    if (pickingPresets) {
+        val copy = rememberUiCopy()
+        val groups = remember(copy) { localizedQuickTextPresets { copy(it) }.map { QuickGroup(it.id, it.name, it.icon.name) } }
+        QuickBackupGroupPicker(uiText("backup.pick_restore"), groups, uiText("backup.restore_presets"),
+            initialSelection = emptySet(), dismiss = { pickingPresets = false }) { selected ->
+            pickingPresets = false
+            work(errorImport) {
+                model.installQuickTextPresets(selected)
+                model.message(presetsRestored)
+            }
+        }
+    }
     exportGroups?.let { groups ->
         QuickBackupGroupPicker(uiText("backup.pick_export"), groups, uiText("backup.export"),
             dismiss = { exportGroups = null }) { selected ->

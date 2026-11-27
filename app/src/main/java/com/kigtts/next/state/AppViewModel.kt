@@ -197,6 +197,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val phrases = quickTexts.phrases
     val categories = quickTexts.categories
     internal val quickTextBackup by lazy { QuickTextBackup(this) }
+
+    internal fun installQuickTextPresets(selected: Set<String>, firstRun: Boolean = false) {
+        val presets = localizedQuickTextPresets { hostCopy(it) }.filter { it.id in selected }
+        val first = quickTexts.appendPresets(presets, initialGroup = hostCopy("quick_presets.general.name").takeIf { firstRun })
+        if (first != null && state.value.selectedCategory !in categories.value) category(first)
+    }
     internal val backupRestore by lazy { com.kigtts.next.backup.BackupRestore(this) }
     internal val sharing by lazy { com.kigtts.next.sharing.SharingCoordinator(this, viewModelScope) }
     internal val legacyImports = com.kigtts.next.legacy.LegacyImportController(

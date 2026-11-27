@@ -6,7 +6,20 @@ import org.json.JSONObject
 
 class QuickPhraseStore(context: Context) {
     init { com.kigtts.next.icons.MaterialSymbolCatalog.initialize(context) }
-    private val preferences = context.getSharedPreferences("quick-phrases", Context.MODE_PRIVATE)
+    private val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+
+    companion object {
+        private const val PREFERENCES = "quick-phrases"
+
+        internal fun prepareForOnboarding(context: Context) {
+            val preferences = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
+            if (!preferences.contains("items")) {
+                val edit = preferences.edit().putString("items", "[]")
+                if (!preferences.contains("categories")) edit.putString("categories", "[]")
+                edit.apply()
+            }
+        }
+    }
     fun groupIds(categories:List<String>):Map<String,String> {
         val json=runCatching { JSONObject(preferences.getString("category-ids",null) ?: "{}") }.getOrDefault(JSONObject())
         val seen=mutableSetOf<String>()

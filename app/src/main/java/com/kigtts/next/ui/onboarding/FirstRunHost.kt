@@ -27,6 +27,7 @@ internal fun FirstRunHost(model: AppViewModel, progress: FirstRunStore, startup:
                 val language = if (state.followsSystemUiLanguage) UiLanguage.SYSTEM else UiLanguage.fromTag(state.uiLocale)
                 OnboardingScreen(progress, state.theme, state.subtitleAppearance.reducedMotion,
                     language, model::setUiLanguage, model::theme,
+                    savePresets = { model.installQuickTextPresets(it, firstRun = true) },
                     complete = { finished = true; complete() }, exit = exit)
             }
         }

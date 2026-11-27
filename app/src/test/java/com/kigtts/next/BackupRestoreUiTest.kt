@@ -10,7 +10,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.lifecycle.ViewModelProvider
 import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.state.CategoryIcon
 import com.kigtts.next.state.QuickArchiveSelection
+import com.kigtts.next.state.QuickPhrase
 import com.kigtts.next.theme.KigttsTheme
 import com.kigtts.next.theme.ThemeSettings
 import com.kigtts.next.ui.settings.BackupRestoreScreen
@@ -65,6 +67,31 @@ class BackupRestoreUiTest {
         compose.waitUntil(10_000) { model.legacyImports.preview.value != null }
         compose.onNodeWithText("原版分组 · 1 条").assertIsDisplayed()
         assertTrue(model.phrases.value.none { it.text == "从备份恢复" })
+    }
+
+    @Test fun restoresOnlyCheckedPresetGroupsAndKeepsEveryExistingCopy() {
+        val model = openBackupScreen()
+        compose.runOnIdle {
+            val library = model.quickTexts
+            library.commit(listOf(QuickPhrase("保留我的内容", "常用")), listOf("常用"),
+                mapOf("常用" to CategoryIcon.INFO), mapOf("常用" to java.util.UUID.randomUUID().toString()), library.revision.value)
+        }
+        val original = model.phrases.value
+        for (suffix in 1..2) {
+            compose.onNodeWithTag("backup-restore-presets").performScrollTo().performClick()
+            compose.onNodeWithTag("backup-group-confirm").assertIsNotEnabled()
+            compose.onNodeWithTag("backup-group/general").assertIsOff().performClick().assertIsOn()
+            compose.onNodeWithTag("backup-group/photo").assertIsOff()
+            compose.onNodeWithTag("backup-group-confirm").performClick()
+            compose.waitUntil(5_000) { "常用($suffix)" in model.categories.value }
+            val restored = model.phrases.value.filter { it.category == "常用($suffix)" }
+            assertEquals(7, restored.size)
+            assertEquals("谢谢", restored.first().title)
+            assertEquals("谢谢你", restored.first().text)
+        }
+        assertEquals(original, model.phrases.value.take(original.size))
+        assertFalse("拍照" in model.categories.value)
+        assertEquals(model.phrases.value.size, model.phrases.value.map { it.id }.toSet().size)
     }
 
     private fun openBackupScreen(): AppViewModel {

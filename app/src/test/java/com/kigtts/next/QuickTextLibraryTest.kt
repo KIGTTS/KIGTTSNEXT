@@ -2,6 +2,7 @@ package com.kigtts.next
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.state.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -13,6 +14,21 @@ import org.json.JSONArray
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class QuickTextLibraryTest {
+    @Test fun skippingEveryOnboardingPresetKeepsAnEmptyGroupAndFinishingAgainIsSafe() {
+        val app = app()
+        QuickPhraseStore.prepareForOnboarding(app)
+        val library = QuickTextLibrary(QuickPhraseStore(app))
+        assertTrue(library.categories.value.isEmpty())
+        assertTrue(library.phrases.value.isEmpty())
+        assertEquals("常用", library.appendPresets(emptyList(), initialGroup = "常用"))
+
+        val restored = QuickTextLibrary(QuickPhraseStore(app))
+        val photo = localizedQuickTextPresets { app.uiCopy(it, locale = "zh-CN") }.filter { it.id == "photo" }
+        assertEquals("常用", restored.appendPresets(photo, initialGroup = "常用"))
+        assertEquals(listOf("常用"), restored.categories.value)
+        assertTrue(restored.phrases.value.isEmpty())
+    }
+
     @Test fun titleMigrationPreservesContentIdsMediaAndExplicitEmptyTitles() {
         val app = app(); val preferences = app.getSharedPreferences("quick-phrases", 0)
         preferences.edit().putString("items", """[

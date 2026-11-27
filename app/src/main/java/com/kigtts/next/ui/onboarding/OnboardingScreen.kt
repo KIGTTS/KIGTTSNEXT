@@ -42,8 +42,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.i18n.UiLanguage
+import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.SettingsCategory
+import com.kigtts.next.state.localizedQuickTextPresets
 import com.kigtts.next.theme.SecondaryPageSurface
 import com.kigtts.next.theme.ThemeIcon
 import com.kigtts.next.theme.ThemeSettings
@@ -60,10 +62,13 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, reducedMotion: Boolean,
     language: UiLanguage, changeLanguage: (UiLanguage) -> Unit, changeTheme: (ThemeSettings) -> Unit,
-    complete: () -> Unit, exit: () -> Unit) {
+    savePresets: (Set<String>) -> Unit, complete: () -> Unit, exit: () -> Unit) {
     val scope = rememberCoroutineScope()
     var document by rememberSaveable { mutableStateOf<SettingsCategory?>(null) }
     var accepted by rememberSaveable { mutableStateOf(progress.agreementAccepted()) }
+    var presetGroups by remember(progress) { mutableStateOf(progress.presetGroups()) }
+    val copy = rememberUiCopy()
+    val presets = remember(copy) { localizedQuickTextPresets { copy(it) } }
     val pageCount = FirstRunStep.COMPLETE.ordinal
     val pager = rememberPagerState(initialPage = progress.step().ordinal) { pageCount }
     val step = FirstRunStep.entries[pager.settledPage]
@@ -95,6 +100,7 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
     fun finish() {
         if (pager.settledPage != FirstRunStep.PERMISSIONS.ordinal || !accepted) return
         progress.visit(FirstRunStep.PERMISSIONS)
+        savePresets(presetGroups)
         if (progress.finish(agreementConfirmed = accepted)) complete()
     }
 
@@ -160,6 +166,10 @@ internal fun OnboardingScreen(progress: FirstRunStore, settings: ThemeSettings, 
                             AppearanceDisplaySettings(settings, changeTheme)
                         }
                         FirstRunStep.FEATURES -> OnboardingRecommendations()
+                        FirstRunStep.PRESETS -> OnboardingQuickTextPresets(presets, presetGroups) { id ->
+                            presetGroups = if (id in presetGroups) presetGroups - id else presetGroups + id
+                            progress.savePresetGroups(presetGroups)
+                        }
                         FirstRunStep.PERMISSIONS -> {
                             OnboardingPermissions()
                             SettingsGroup(uiText("onboarding.legal_title")) {

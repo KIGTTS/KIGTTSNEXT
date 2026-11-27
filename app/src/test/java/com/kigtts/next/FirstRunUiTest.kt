@@ -36,7 +36,10 @@ class FirstRunUiTest {
 
     @Test fun guideIgnoresSwipesAndRequiresConsentOnTheLastPage() {
         val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        clearPresetReceipt(model)
         val guide = FirstRunStore(compose.activity)
+        val originalItems = model.phrases.value
+        val originalGroups = model.categories.value
         compose.onNodeWithTag("onboarding-welcome").assertIsDisplayed()
         compose.onNodeWithTag("onboarding-welcome-wordmark").assertIsDisplayed()
         val language = compose.onNodeWithTag("onboarding-language")
@@ -98,6 +101,16 @@ class FirstRunUiTest {
         swipeForward()
         awaitStep(guide, FirstRunStep.FEATURES)
         compose.onNodeWithTag("onboarding-next").performClick()
+        awaitStep(guide, FirstRunStep.PRESETS)
+        compose.onNodeWithTag("onboarding-preset/general").performScrollTo().assertIsOn()
+        compose.onNodeWithTag("onboarding-preset/photo").performScrollTo().assertIsOn().performClick().assertIsOff()
+        compose.onNodeWithTag("onboarding-preset/urgent").performScrollTo().assertIsOff().performClick().assertIsOn()
+        compose.activityRule.scenario.recreate()
+        compose.onNodeWithTag("onboarding-preset/photo").performScrollTo().assertIsOff()
+        compose.onNodeWithTag("onboarding-preset/urgent").performScrollTo().assertIsOn()
+        val restarted = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        assertEquals(originalItems, restarted.phrases.value)
+        compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.PERMISSIONS)
         compose.onNodeWithTag("onboarding-permissions").assertIsDisplayed()
         compose.onNodeWithTag("speech-editor").assertDoesNotExist()
@@ -122,6 +135,9 @@ class FirstRunUiTest {
         assertNull(model.state.value.panel)
         assertEquals(FirstRunStep.COMPLETE, guide.step())
         assertTrue(guide.agreementAccepted())
+        assertEquals(listOf("常用", "应急"), restarted.categories.value.drop(originalGroups.size).map { it.substringBefore('(') })
+        assertEquals(originalItems, restarted.phrases.value.take(originalItems.size))
+        assertEquals(originalItems.size + 15, restarted.phrases.value.size)
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("home-tip-panel").fetchSemanticsNodes().isNotEmpty() }
         assertTipClearsAnchor("home-tip-panel", "dock-main")
         compose.mainClock.autoAdvance = false
@@ -201,6 +217,10 @@ class FirstRunUiTest {
 
     @Test fun cursorAndQuickEditTipsAppearOnUseAndPersistTheirDismissalOrChoice() {
         val guide = FirstRunStore(compose.activity)
+        val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        clearPresetReceipt(model)
+        val groupsBefore = model.categories.value.size
+        val cardCountBefore = model.phrases.value.size
         FirstRunStep.entries.drop(1).dropLast(1).forEach { target ->
             compose.onNodeWithTag("onboarding-next").assertIsEnabled().performClick()
             awaitStep(guide, target)
@@ -209,7 +229,8 @@ class FirstRunUiTest {
         compose.onNodeWithTag("onboarding-next").performClick()
         awaitStep(guide, FirstRunStep.COMPLETE)
         compose.onNodeWithTag("speech-editor").assertIsDisplayed()
-        val model = ViewModelProvider(compose.activity)[AppViewModel::class.java]
+        assertEquals(listOf("常用", "拍照"), model.categories.value.drop(groupsBefore).map { it.substringBefore('(') })
+        assertEquals(cardCountBefore + 12, model.phrases.value.size)
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
         compose.runOnIdle { model.editing(true) }
         compose.onNodeWithTag("home-tip-cursor").assertDoesNotExist()
@@ -240,6 +261,12 @@ class FirstRunUiTest {
         compose.runOnIdle { model.editQuickTexts() }
         compose.onNodeWithTag("quick-edit-done").performClick()
         compose.onNodeWithTag("home-tip-quick_edit").assertDoesNotExist()
+    }
+
+    private fun clearPresetReceipt(model: AppViewModel) {
+        // Separate guide scenarios share the Robolectric package's quick-text preferences.
+        model.getApplication<android.app.Application>().getSharedPreferences("quick-phrases", 0)
+            .edit().remove("plugin-receipts").commit()
     }
 
     private fun assertTipClearsAnchor(tipTag: String, anchorTag: String) {

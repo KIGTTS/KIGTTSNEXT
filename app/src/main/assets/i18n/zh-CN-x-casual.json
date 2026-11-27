@@ -201,5 +201,11 @@
   "feedback.media_collapse.single_row": "单行",
   "feedback.media_collapse.collapse": "折叠",
   "plugin.appearance.save_title": "保存外观更改？",
-  "plugin.appearance.save_body": "「{plugin}」想修改你保存的外观设置。"
+  "plugin.appearance.save_body": "「{plugin}」想修改你保存的外观设置。",
+  "onboarding.presets.title": "挑几组顺手的快捷文本",
+  "onboarding.presets.body": "勾上想带到首页的分组，以后也能在「备份与还原」里再加",
+  "onboarding.presets.groups": "预设分组",
+  "backup.restore_presets": "恢复预设快捷文本",
+  "backup.restore_presets_hint": "选哪组加哪组，名字一样就加个编号",
+  "backup.presets_restored": "选中的分组加好啦"
 }

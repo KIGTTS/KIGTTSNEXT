@@ -1,5 +1,6 @@
 package com.kigtts.next.state
 
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -23,10 +24,37 @@ class QuickTextLibrary(private val store: QuickPhraseStore) {
         val next=revisionState.value+1;store.save(itemState.value,groupState.value,iconState.value,idState.value,next);revisionState.value=next
     }
     /** Validation happens before this one durable commit; UI state publishes only after persistence. */
-    fun commit(items:List<QuickPhrase>,groups:List<String>,icons:Map<String,CategoryIcon>,ids:Map<String,String>,expected:Long,receipt:Pair<String,String>) {
+    fun commit(items:List<QuickPhrase>,groups:List<String>,icons:Map<String,CategoryIcon>,ids:Map<String,String>,expected:Long,receipt:Pair<String,String>? = null) {
         check(revisionState.value==expected) { "快捷文本已更新，请重新预览" }
         val next=expected+1;store.save(items,groups,icons,ids,next,receipt)
         itemState.value=items;groupState.value=groups;iconState.value=icons;idState.value=ids;revisionState.value=next
+    }
+
+    internal fun appendPresets(presets: List<QuickTextPreset>, initialGroup: String? = null): String? {
+        val firstRunReceipt = initialGroup?.let { "onboarding-preset-groups" to "saved" }
+        if (firstRunReceipt != null && store.receipt(firstRunReceipt.first) != null) return categories.value.firstOrNull()
+        if (firstRunReceipt == null && presets.isEmpty()) return null
+
+        val names = groupState.value.toMutableSet()
+        val items = itemState.value.toMutableList()
+        val icons = iconState.value.toMutableMap()
+        val ids = idState.value.toMutableMap()
+        val added = presets.map { preset ->
+            var name = preset.name
+            var suffix = 1
+            while (!names.add(name)) name = "${preset.name}(${suffix++})"
+            icons[name] = preset.icon
+            ids[name] = UUID.randomUUID().toString()
+            items += preset.phrases.map { QuickPhrase(it.text, name, title = it.title) }
+            name
+        }
+        if (names.isEmpty() && initialGroup != null) {
+            names += initialGroup
+            icons[initialGroup] = CategoryIcon.LIST
+            ids[initialGroup] = UUID.randomUUID().toString()
+        }
+        commit(items, names.toList(), icons, ids, revisionState.value, firstRunReceipt)
+        return added.firstOrNull() ?: names.firstOrNull()
     }
     fun savePhrase(phrase: QuickPhrase): Boolean {
         if (phrase.category !in groupState.value || (phrase.text.isBlank() &&
