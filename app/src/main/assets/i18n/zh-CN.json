@@ -860,6 +860,8 @@
   "permission.voice-packs": "管理语音包",
   "permission.camera": "使用摄像头",
   "permission.microphone": "使用麦克风",
+  "permission.web-presentation": "临时调整界面",
+  "permission.web-presentation-purpose": "允许此网页词条临时调整主题、背景和主界面控件。离开网页后自动恢复。",
   "permission.motion-sensors": "读取运动与重力传感器",
   "permission.downloads": "下载文件",
   "permission.review.new": "新增权限",

@@ -40,7 +40,7 @@ class AudioCardSessionTest {
         val app=ApplicationProvider.getApplicationContext<Application>()
         val model=testAppModel(app)
         val fixture=AudioPlayerFixture();val session=AudioCardSession { fixture.player }
-        var state=AppState()
+        var state=AppState(autoPlayback = true)
         var stoppedOnMain=false
         val workspace=ContentWorkspace(app,model.mediaRepository,QuickTextLibrary(QuickPhraseStore(app)),
             { state },{ state=it(state) },{},{},{ state=state.copy(editorValue=androidx.compose.ui.text.input.TextFieldValue(it)) },
@@ -101,7 +101,7 @@ class AudioCardSessionTest {
         val after = compose.onNodeWithTag("audio-card-controls").getUnclippedBoundsInRoot()
         assertTrue((before.bottom - before.top).value > (middle.bottom - middle.top).value)
         assertTrue((middle.bottom - middle.top).value > (after.bottom - after.top).value)
-        compose.onNodeWithTag("play-card-audio").performClick()
+        compose.onNodeWithTag("play-card-audio").performTouchInput { click() }
         compose.mainClock.advanceTimeBy(800); compose.waitForIdle()
         assertTrue(session.expanded); assertTrue(fixture.playing); assertEquals(0L, fixture.position)
         assertEquals(1, created); assertEquals(1, fixture.prepares)

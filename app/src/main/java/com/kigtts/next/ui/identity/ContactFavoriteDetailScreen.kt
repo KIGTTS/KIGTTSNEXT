@@ -1,7 +1,6 @@
 package com.kigtts.next.ui.identity
 
 import com.kigtts.next.i18n.uiText
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContactPage
@@ -11,9 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.identity.ContactFavorites
 import com.kigtts.next.identity.ContactLink
@@ -65,23 +61,10 @@ import kotlinx.coroutines.*
     var contact by remember { mutableStateOf<ContactLink?>(null) }
     val links = entry.person.contacts
     val aspect = profileCoverAspect(entry.profile)
-    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(aspect).clip(MaterialTheme.shapes.extraLarge)) {
+    Box(Modifier.fillMaxWidth().aspectRatio(aspect).clip(MaterialTheme.shapes.extraLarge)) {
         ProfileTileImage(file, Modifier.matchParentSize(), uiText("accessibility.card_cover", "name" to entry.person.name))
         if (!entry.profile.optBoolean("coverButtonsBaked", true)) {
             PersonalContactButtons(links, true, { contact = it }, Modifier.padding(8.dp))
-        } else if (links.isNotEmpty()) {
-            // Older archives painted buttons into the cover. Keep the artwork and layer the hit targets over it.
-            val height = maxWidth / aspect
-            val edge = height * (.085f * 32f / 22f)
-            Row(Modifier.padding(start = height * .04f, top = height * .04f), horizontalArrangement = Arrangement.spacedBy(edge * .125f)) {
-                val buttons = links.take(5) + links.drop(5).take(1)
-                val linkLabel = uiText("accessibility.link")
-                buttons.forEach { link ->
-                    val description = uiText("accessibility.contact_label", "name" to link.label.ifBlank { linkLabel })
-                    Box(Modifier.size(edge).clickable(role = Role.Button, onClick = feedbackClick { contact = link })
-                        .semantics { contentDescription = description })
-                }
-            }
         }
     }
     contact?.let { PersonalContactDialog(it) { contact = null } }

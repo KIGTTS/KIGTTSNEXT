@@ -1,6 +1,6 @@
 package com.kigtts.next.media
 
-internal val WEB_DEVICE_SCRIPT = """
+internal fun webDeviceScript(presentation: Boolean) = """
 (()=>{
   const native=window.KigttsDeviceConsent;if(!native)return;
   let serial=0;const pending=new Map();
@@ -23,6 +23,12 @@ internal val WEB_DEVICE_SCRIPT = """
   }
   add.call(document,'click',e=>{const a=e.target.closest?.('a[download]');if(a&&/^(blob:|data:)/.test(a.href)){e.preventDefault();download(a.href,a.download||'download').catch(console.error);}},true);
   Object.defineProperty(window,'KigttsDevices',{value:Object.freeze({requestMotionPermission,download})});
+  ${if (presentation) """
+  if(window===window.top)Object.defineProperty(window,'KigttsPresentation',{value:Object.freeze({
+    apply({appearance,controls}={}){return request('presentation',{appearance,controls});},
+    clear(){return request('clear-presentation');}
+  })});
+  """ else ""}
   request('document-start');
 })();
 """.trimIndent()

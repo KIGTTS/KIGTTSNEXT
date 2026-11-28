@@ -34,3 +34,20 @@ API11 的 `PageBlock.Browser` 在原生插件页面中嵌入浏览器，指定�
 普通网页首次实际请求摄像头、麦克风、运动传感器或下载时，原生弹窗按词条/插件和HTTPS origin独立询问，支持授权、仅本次允许、禁用；Android摄像头/麦克风/旧系统存储权限另行请求。进入页面不会预先申请。离场停止设备；跨来源不能继承授权，可在词条网络与网页设备设置中清除设备授权。
 
 使用标准`navigator.mediaDevices.getUserMedia`；运动可监听`devicemotion`/`deviceorientation`或调用`KigttsDevices.requestMotionPermission()`，返回granted/denied。原生未授权传感器由Permissions-Policy关闭，经同意的桥提供约10Hz运动数据。下载可用`KigttsDevices.download(httpsUrlOrBlob,name)`；HTTPS交系统下载，不携带模型密钥，本地Blob/data文件最多8MiB，保存到系统下载目录。页面须处理拒绝和设备不支持，不能循环请求。
+
+## 网页词条的临时外观
+
+以已保存的快捷文本打开网页时，主框架可以调用 `window.KigttsPresentation`。首次调用按词条和网站来源请求授权。离开网页、切换条目、网页跳转、应用退到后台或调用 `clear()` 都会撤销临时外观。页面预览和插件浏览器没有这个入口。
+
+```javascript
+const result = await window.KigttsPresentation?.apply({
+  appearance: {
+    themeColor: '#038387', mode: 'dark', background: 'assets/backdrop.webp',
+    backgroundDim: 0.65, pureBlackDark: false, contrast: 'default'
+  },
+  controls: { fadeHeaderWhenIdle: true, fadeDockWhenIdle: true }
+});
+// result?.ok 表示是否应用成功
+```
+
+每次 `apply()` 提交完整的临时覆盖，可省略任意字段以沿用软件外观。`mode` 接受 `system`、`light`、`dark`。`contrast` 接受 `default`、`medium`、`high`。`background: null` 临时移除背景。本地网页可用所属项目内的相对路径（最多 8 MiB）。本地及远程网页都可使用 PNG、JPEG 或 WebP Base64 data URL（解码后最多 4 MiB）。控件在静置后淡化，屏幕交互会重新显示控件。

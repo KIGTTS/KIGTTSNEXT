@@ -5,6 +5,7 @@ import android.os.Build
 import android.webkit.*
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
+import com.kigtts.next.i18n.uiCopy
 import com.kigtts.plugin.runtime.PluginPermissions
 import kotlinx.coroutines.*
 import org.json.JSONObject
@@ -14,7 +15,7 @@ import java.security.MessageDigest
 /** Device grants belong to an entry and origin; the Android grant alone never authorizes a webpage. */
 internal class WebPagePrivileges(private val web: WebView, private val ledger: PluginPermissions, private val entry: String,
     private val name: String, private val scope: CoroutineScope, private val active: () -> Boolean,
-    private val network: (String) -> Boolean) {
+    private val network: (String) -> Boolean, private val presentation: WebPresentationSession? = null) {
     private val requests = mutableMapOf<PermissionRequest, Job>()
     private val motion = WebMotion(web) { active() }
     private var motionWanted = false
@@ -28,6 +29,7 @@ internal class WebPagePrivileges(private val web: WebView, private val ledger: P
             "camera" -> "此页面请求使用摄像头，仅当前词条和网站可使用此授权。"
             "microphone" -> "此页面请求录制麦克风声音，仅当前词条和网站可使用此授权。"
             "motion-sensors" -> "此页面请求读取设备运动、重力和方向数据。"
+            "web-presentation" -> web.context.uiCopy("permission.web-presentation-purpose")
             else -> "此页面请求将文件保存到系统下载目录。"
         }
         return ledger.request(owner, permission, name.take(60), purpose, current) && active() && origin(web.url) == current
@@ -73,6 +75,13 @@ internal class WebPagePrivileges(private val web: WebView, private val ledger: P
                     try {
                         when (data.optString("operation")) {
                             "document-start" -> { motionWanted = false; motion.stop(); result.put("ok", true) }
+                            "presentation" -> {
+                                val expected = origin(sourceOrigin.toString())
+                                val allowed = raw.length <= 6 * 1024 * 1024 && presentation?.apply(data, expected == WebContentPolicy.ORIGIN,
+                                    { active() && origin(web.url) == expected }) { allow("web-presentation", expected) } == true
+                                result.put("ok", allowed)
+                            }
+                            "clear-presentation" -> { presentation?.clear(); result.put("ok", presentation != null) }
                             "motion" -> { val allowed = allow("motion-sensors"); motionWanted = allowed && motion.start(); result.put("ok", motionWanted) }
                             "download-url" -> {
                                 val url = data.getString("url"); require(WebContentPolicy.https(url) && URI(url).userInfo == null)
@@ -95,10 +104,10 @@ internal class WebPagePrivileges(private val web: WebView, private val ledger: P
                     if (active()) reply.postMessage(result.toString())
                 }
             }
-            WebViewCompat.addDocumentStartJavaScript(web, WEB_DEVICE_SCRIPT, setOf("*"))
+            WebViewCompat.addDocumentStartJavaScript(web, webDeviceScript(presentation != null), setOf("*"))
         }
     }
-    fun pause() { motion.stop(); web.evaluateJavascript("window.__kigttsStopDeviceTracks?.()", null); requests.keys.toList().forEach { request -> requests.remove(request)?.cancel(); runCatching { request.deny() } } }
+    fun pause() { presentation?.clear(); motion.stop(); web.evaluateJavascript("window.__kigttsStopDeviceTracks?.()", null); requests.keys.toList().forEach { request -> requests.remove(request)?.cancel(); runCatching { request.deny() } } }
     fun resume() { if (motionWanted && active()) motion.start() }
     fun close() { motionWanted = false; pause() }
 }

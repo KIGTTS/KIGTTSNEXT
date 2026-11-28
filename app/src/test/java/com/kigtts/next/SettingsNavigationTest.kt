@@ -30,6 +30,10 @@ class SettingsNavigationTest {
     }
     private fun back() = compose.runOnIdle { compose.activity.onBackPressedDispatcher.onBackPressed() }
     private fun capture(name: String) = compose.onRoot().captureRoboImage("build/previews/" + name + ".png")
+    private fun openSettingsEntry(title: String) {
+        compose.onNodeWithTag("settings-list").performScrollToNode(hasText(title))
+        compose.onNodeWithText(title).performScrollTo().performClick()
+    }
 
     @Test fun headerOpensSettingsDirectlyAndAllPluginEntrancesShareSettingsCards() {
         val model = show()
@@ -51,7 +55,7 @@ class SettingsNavigationTest {
         compose.runOnIdle { model.openPanel(HomePanel.QUICK_TEXT); model.navigate(Destination.Settings) }
         val documents = setOf(SettingsCategory.USER_AGREEMENT, SettingsCategory.PRIVACY_POLICY, SettingsCategory.OPEN_SOURCE_LICENSES)
         SettingsCategory.entries.filterNot { it in documents || it in setOf(SettingsCategory.PHOTO_WEATHER, SettingsCategory.LANGUAGE) }.forEach { category ->
-            compose.onNodeWithText(category.title).performScrollTo().performClick()
+            openSettingsEntry(category.title)
             compose.runOnIdle {
                 assertEquals(Destination.SettingsDetail(category), model.state.value.destination)
                 assertEquals(listOf(Destination.Home, Destination.Settings), model.state.value.navigationStack)
@@ -70,7 +74,7 @@ class SettingsNavigationTest {
             } else compose.onNodeWithContentDescription("返回上一页").performClick()
             compose.runOnIdle { assertEquals(Destination.Settings, model.state.value.destination) }
         }
-        compose.onNodeWithText(SettingsCategory.CAMERA.title).performScrollTo().performClick()
+        openSettingsEntry(SettingsCategory.CAMERA.title)
         compose.onNodeWithText(SettingsCategory.PHOTO_WEATHER.title).performScrollTo().performClick()
         compose.runOnIdle {
             assertEquals(Destination.SettingsDetail(SettingsCategory.PHOTO_WEATHER), model.state.value.destination)
@@ -79,7 +83,7 @@ class SettingsNavigationTest {
         back()
         compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.CAMERA), model.state.value.destination) }
         back()
-        compose.onNodeWithText("关于").performScrollTo().performClick()
+        openSettingsEntry("关于")
         documents.forEach { category ->
             compose.onNode(hasText(category.title) and hasClickAction()).performScrollTo().performClick()
             compose.runOnIdle {
@@ -90,7 +94,7 @@ class SettingsNavigationTest {
             compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.ABOUT), model.state.value.destination) }
         }
         back()
-        compose.onNodeWithText("插件管理").performScrollTo().performClick()
+        openSettingsEntry("插件管理")
         compose.runOnIdle { assertEquals(Destination.Plugins, model.state.value.destination) }
         compose.onNodeWithTag("managed-list/plugins").assertIsDisplayed()
         compose.onNodeWithTag("managed-item/input.voice").assertDoesNotExist()
@@ -125,7 +129,7 @@ class SettingsNavigationTest {
             assertEquals(ThemeSettings(), model.state.value.theme)
         }
         back()
-        compose.onNodeWithText(SettingsCategory.FEEDBACK.title).performScrollTo().performClick()
+        openSettingsEntry(SettingsCategory.FEEDBACK.title)
         compose.onNodeWithContentDescription("按键震动反馈").performClick().assertIsOff()
         compose.runOnIdle { assertFalse(testAppModel(ApplicationProvider.getApplicationContext()).state.value.hapticsEnabled) }
         back()

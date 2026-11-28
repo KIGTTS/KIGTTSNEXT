@@ -54,10 +54,17 @@ internal fun backgroundThemeSeed(bitmap: Bitmap): Long {
 internal class BackgroundBlurCache(context: Context) {
     private val assets = AppearanceAssets(context)
     private val root = File(context.cacheDir, "appearance-blur-f32-dither-v3").apply { mkdirs() }
+    fun removeTemporary(source: File) = synchronized(lock) {
+        source.delete()
+        for (blur in listOf(BackgroundBlur.PAGE, BackgroundBlur.CARD)) output(source, blur).delete()
+    }
+
+    private fun output(source: File, blur: BackgroundBlur) = File(root, blur.name.lowercase() + "-" + source.nameWithoutExtension + ".png")
+
     fun file(key: String?, blur: BackgroundBlur = BackgroundBlur.CARD): File? {
         require(blur != BackgroundBlur.NONE)
         val source = assets.file(key) ?: return null
-        val output = File(root, blur.name.lowercase() + "-" + source.nameWithoutExtension + ".png")
+        val output = output(source, blur)
         if (output.length() > 0) return output
         synchronized(lock) {
             if (output.length() > 0) return output

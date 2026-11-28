@@ -860,6 +860,8 @@
   "permission.voice-packs": "音声パックを管理",
   "permission.camera": "カメラを使用",
   "permission.microphone": "マイクを使用",
+  "permission.web-presentation": "外観の一時変更",
+  "permission.web-presentation-purpose": "このウェブショートカットによるテーマ、背景、ホーム画面の操作ボタンの一時変更を許可します。ページを離れると元に戻ります。",
   "permission.motion-sensors": "動きと重力のセンサーを読み取る",
   "permission.downloads": "ファイルをダウンロード",
   "permission.review.new": "追加の権限",

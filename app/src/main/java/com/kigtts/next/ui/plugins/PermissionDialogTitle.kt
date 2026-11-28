@@ -33,7 +33,7 @@ internal fun PermissionDialogTitle(prompt: PermissionPrompt) {
     "tts", "speech-service" -> uiText("permission.tts")
     "asr-batch", "asr-segmented", "asr-incremental", "asr-service" -> uiText("permission.asr")
     "network", "app-control", "quick-text-read", "notifications", "overlay", "quick-text-write", "stickers-read",
-    "stickers-write", "voice-packs", "camera", "microphone", "motion-sensors", "downloads" -> uiText("permission.$permission")
+    "stickers-write", "voice-packs", "camera", "microphone", "motion-sensors", "downloads", "web-presentation" -> uiText("permission.$permission")
     else -> permission
 }
 

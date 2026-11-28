@@ -10,6 +10,7 @@ import com.kigtts.next.ui.components.MotionIconButton
 
 import androidx.compose.animation.core.*
 import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.*
@@ -25,20 +26,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpSize
 import kotlinx.coroutines.delay
 import com.kigtts.next.ui.components.feedbackClick
-import com.kigtts.next.ui.components.expressivePillShapes
 import com.kigtts.next.ui.components.rememberImmediateButtonPress
 import com.kigtts.next.ui.components.immediateButtonPress
 
@@ -75,18 +75,27 @@ fun PlaybackControls(state:PlaybackState,expanded:Boolean,once:Boolean,start:()-
             color=lerp(MaterialTheme.colorScheme.secondaryContainer,MaterialTheme.colorScheme.surfaceContainerHigh,visible).copy(alpha=.94f*(1f-compact))) {
         Row(Modifier.height(height).padding(horizontal=4.dp*visible).clipToBounds(),verticalAlignment=Alignment.CenterVertically) {
             // One play button survives the entire morph; the label yields its width to the track.
-            FilledTonalButton(onClick=feedbackClick {
+            val playColor = lerp(MaterialTheme.colorScheme.onSecondaryContainer, MaterialTheme.colorScheme.onSurface, visible)
+            val playClick = feedbackClick {
                 immediate.click()
                 state.wake();if(!expanded)start() else state.toggle()
-            },enabled=enabled,modifier=Modifier.then(if(enabled)Modifier.immediateButtonPress(immediate)else Modifier).width((small+(48.dp-small)*visible)*(1f-compact)).graphicsLayer { alpha=1f-compact }.semantics { contentDescription=if(!expanded)collapsedLabel else if(state.playing)"暂停" else "播放" }
-                .then(if(!expanded)Modifier.testTag(collapsedTag) else Modifier),
-                contentPadding=PaddingValues(4.dp),interactionSource=immediate.native,shapes=expressivePillShapes(),
-                colors=ButtonDefaults.filledTonalButtonColors(containerColor=Color.Transparent,
-                    contentColor=lerp(MaterialTheme.colorScheme.onSecondaryContainer,MaterialTheme.colorScheme.onSurface,visible)).animateEnabled(enabled)) {
-                Crossfade(if(!expanded)collapsedIcon else if(state.playing)Icons.Default.Pause else Icons.Default.PlayArrow,
-                    Modifier.size(24.dp).testTag("media-playback-icon"),animationSpec=tween(120),label="playback-icon") { icon->Icon(icon,null,Modifier.size(24.dp)) }
-                Spacer(Modifier.width(8.dp*(1f-visible)))
-                Box(Modifier.width(labelWidth*(1f-visible)).clipToBounds().graphicsLayer { alpha=1f-visible }) { Text(collapsedLabel,maxLines=1,softWrap=false) }
+            }
+            Row(Modifier.then(if(enabled) Modifier.immediateButtonPress(immediate) else Modifier)
+                .width((small+(48.dp-small)*visible)*(1f-compact)).fillMaxHeight()
+                .graphicsLayer { alpha=1f-compact }
+                .semantics { contentDescription=if(!expanded)collapsedLabel else if(state.playing)"暂停" else "播放" }
+                .then(if(!expanded) Modifier.testTag(collapsedTag) else Modifier)
+                .clickable(interactionSource = immediate.native, indication = ripple(), enabled = enabled,
+                    role = Role.Button, onClick = playClick)
+                .padding(4.dp), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                CompositionLocalProvider(LocalContentColor provides if (enabled) playColor else playColor.copy(alpha = .38f)) {
+                    Crossfade(if(!expanded)collapsedIcon else if(state.playing)Icons.Default.Pause else Icons.Default.PlayArrow,
+                        Modifier.size(24.dp).testTag("media-playback-icon"),animationSpec=tween(120),label="playback-icon") { icon->Icon(icon,null,Modifier.size(24.dp)) }
+                    Spacer(Modifier.width(8.dp*(1f-visible)))
+                    Box(Modifier.width(labelWidth*(1f-visible)).clipToBounds().graphicsLayer { alpha=1f-visible }) {
+                        Text(collapsedLabel, style = MaterialTheme.typography.labelLarge, maxLines=1,softWrap=false)
+                    }
+                }
             }
             if(visible>0f)Row(Modifier.weight(1f).clipToBounds().graphicsLayer {
                 alpha=visible;scaleX=.82f+.18f*phase;scaleY=scaleX;transformOrigin=TransformOrigin(0f,.5f)

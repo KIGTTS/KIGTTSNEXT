@@ -58,10 +58,16 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
                 else model.pluginManager.paths.storage(entry.pluginId).file("cache/web/" + entry.id)
             val localRoot = if(entry.kind==MediaKind.HTML && entry.pluginId==null) model.mediaRepository.htmlFiles.root(entry.id)
                 else if(entry.pluginId!=null&&entry.projectRoot!=null)model.pluginManager.paths.storage(entry.pluginId).file(entry.projectRoot) else source?.parentFile
+            val phrase = state.webPermissionEntryId?.takeIf { state.destination == Destination.Home }
+            val presentation = phrase?.let {
+                WebPresentationSession(context, entry.id, it, localRoot.takeIf { entry.kind == MediaKind.HTML },
+                    model.viewModelScope, model::updateWebPresentation)
+            }
             val loader = WebResourceLoader(cache, localRoot, true,
                 pageOrigin = if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN,
                 bundledResource = { WebUiResources.response(it, context.assets::open) }, authorizeNetwork = networkGate::authorize, networkGranted = networkGate::granted)
             webViewClient = object : WebViewClient() {
+                override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) { presentation?.clear() }
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest) = loader.intercept(request.url.toString(), request.method, request.isForMainFrame)
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
                     !(request.url.toString().startsWith(WebContentPolicy.ORIGIN + "/content/") || WebContentPolicy.https(request.url.toString()))
@@ -82,7 +88,10 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             if (entry.kind == MediaKind.HTML) installNetworkConsent(scope, networkGate::authorize)
             val relative = if(source!=null && localRoot!=null)source.relativeTo(localRoot).invariantSeparatorsPath else ""
             devices[0] = WebPagePrivileges(this, model.pluginManager.permissions, entryKey,
-                draft?.title?.ifBlank { draft.text }?.take(60) ?: entry.name, scope, { currentActive }, networkGate::authorize).also { it.install() }
+                draft?.title?.ifBlank { draft.text }?.take(60) ?: entry.name, scope, {
+                    currentActive && (phrase == null || ownsPage() && model.state.value.webPermissionEntryId == phrase &&
+                        model.state.value.destination == Destination.Home)
+                }, networkGate::authorize, presentation).also { it.install() }
             installKigttsThemeAtDocumentStart()
             loadUrl(if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN + "/content/" + android.net.Uri.encode(relative,"/"))
         }

@@ -40,12 +40,14 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
     val state by model.state.collectAsStateWithLifecycle()
     val renderer by model.subtitleRenderer.selection.collectAsStateWithLifecycle()
     val pageAppearance by model.pageAppearance.collectAsStateWithLifecycle()
+    val webPresentation by model.webPresentation.collectAsStateWithLifecycle()
     val savedAppearance by model.savedAppearance.collectAsStateWithLifecycle()
     val baseAppearance = remember(state.theme, state.pageVersion, pageAppearance) {
         pageAppearance.filter { it.page == state.pageVersion }.fold(state.theme) { base, entry -> entry.appearance.applyTo(base) }
     }
-    val visibleAppearance = if (state.destination == Destination.Home && state.sidePage == null)
+    val rendererAppearance = if (state.destination == Destination.Home && state.sidePage == null)
         renderer?.appearance?.applyTo(baseAppearance) ?: baseAppearance else baseAppearance
+    val visibleAppearance = webPresentation?.takeIf { it.matches(state) }?.appearance?.applyTo(rendererAppearance) ?: rendererAppearance
     val recovery by model.safeModeSession.state.collectAsStateWithLifecycle()
     val phrases by model.phrases.collectAsStateWithLifecycle()
     val categories by model.categories.collectAsStateWithLifecycle()

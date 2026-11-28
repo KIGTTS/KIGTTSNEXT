@@ -23,7 +23,7 @@
     "license": "MIT",
     "directory": "lua-runtime",
     "distribution": "bundled",
-    "sourceCommit": "b5c0eda0fc7c819070220ed8389ffcb126b3226b"
+    "sourceCommit": "30bd8db3570a015eaadaab0102f2b3f53899a195"
   },
   {
     "module": "native-builder",
@@ -91,7 +91,7 @@
     "id": "debug.ui",
     "license": "MIT",
     "directory": "ui-debug",
-    "sourceCommit": "480516becce64f36692f24138fa928795da6104d"
+    "sourceCommit": "19cad6777ddd9814b6cb9a44d740a281a75b54f5"
   },
   {
     "module": "quick-text-tools",
@@ -107,7 +107,7 @@
     "id": "engine.zipvoice-clone",
     "license": "MIT",
     "directory": "zipvoice-clone",
-    "sourceCommit": "c77289fc8eeac5cf5d87d3c438e29a0868eb0d2f"
+    "sourceCommit": "e6f0a6e9ccfee9d90513302e565ee4110e009e14"
   },
   {
     "module": "cloud-asr",
@@ -115,7 +115,7 @@
     "repository": "https://github.com/KIGTTS/plugin-cloud-asr",
     "directory": "cloud-asr",
     "license": "MIT",
-    "sourceCommit": "f0f48303a9c42982f1df3dfd80280662fe1e3e91"
+    "sourceCommit": "7b4541ddacf10f0782a038fcefd6442d6a19faac"
   },
   {
     "module": "cloud-tts",
@@ -123,7 +123,7 @@
     "repository": "https://github.com/KIGTTS/plugin-cloud-tts",
     "directory": "cloud-tts",
     "license": "GPL-3.0-only",
-    "sourceCommit": "4fee6cb12611bcea7d97e10fc34d818422a089e1"
+    "sourceCommit": "f1076980a6afead9e889f43dacdad9f1589aa397"
   },
   {
     "module": "led-caption",

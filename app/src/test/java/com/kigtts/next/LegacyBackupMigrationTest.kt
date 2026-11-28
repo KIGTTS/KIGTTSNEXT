@@ -72,7 +72,7 @@ class LegacyBackupMigrationTest {
     }
     @Test fun legacyCardsKeepBothOrientationsAndQrInSavedContacts() = runBlocking {
         val archive = zip("manifest.json" to json("""{"type":"kigtts_quick_cards","version":1,"cards":[{"id":5,"type":"qr","title":"二维码","link":"https://example.org/你好","portraitImage":"images/p.png","landscapeImage":"images/l.png"},{"id":6,"type":"text","title":"色卡","themeColor":"#123456"}]}"""),
-            "images/p.png" to image(), "images/l.png" to image(8, 4))
+            "images/p.png" to image(144, 256), "images/l.png" to image(192, 108))
         val (library, media, cards) = repositories(); val plan = read(archive)
         assertEquals(3, plan.cards.size)
         assertTrue(plan.cardPackage)
@@ -82,11 +82,23 @@ class LegacyBackupMigrationTest {
         val saved = ContactFavorites.get(app).items.value.associateWith { JSONObject(it.profile) }
         assertEquals(3, saved.size)
         assertTrue(saved.values.all { it.optBoolean("coverIsBackground") })
-        val qr = saved.values.filter { it.getString("nickname") == "二维码" }
-        assertEquals(setOf(.5, 2.0), qr.map { it.getDouble("coverAspect") }.toSet())
-        assertTrue(qr.map { PublicIdentityProfile.from(it).tiles.single() }.all {
-            it.kind == ProfileTileKind.QR && it.text == "https://example.org/你好"
-        })
+        val qr = saved.filterValues { it.getString("nickname") == "二维码" }
+        val favorites = ContactFavorites.get(app)
+        val images = qr.map { (item, profile) ->
+            assertEquals(16.0 / 9, profile.getDouble("coverAspect"), .001)
+            assertEquals(2, profile.getInt("legacyCardLayout"))
+            val (photo, link) = PublicIdentityProfile.from(profile).tiles
+            assertEquals(ProfileTileKind.IMAGE, photo.kind)
+            assertEquals(ProfileTileKind.QR, link.kind)
+            assertEquals("https://example.org/你好", link.text)
+            val cover = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(item.cover!!.path, cover)
+            assertEquals(16.0 / 9, cover.outWidth.toDouble() / cover.outHeight, .03)
+            val original = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(requireNotNull(favorites.image(photo.image)).path, original)
+            original.outWidth to original.outHeight
+        }
+        assertEquals(setOf(144 to 256, 192 to 108), images.toSet())
         val solid = saved.entries.single { (_, profile) -> profile.getString("nickname") == "色卡" }.key
         val bitmap = android.graphics.BitmapFactory.decodeFile(solid.cover!!.path)
         try {
@@ -95,6 +107,25 @@ class LegacyBackupMigrationTest {
             assertEquals(0x34.toDouble(), android.graphics.Color.green(color).toDouble(), 2.0)
             assertEquals(0x56.toDouble(), android.graphics.Color.blue(color).toDouble(), 2.0)
         } finally { bitmap.recycle() }
+    }
+    @Test fun savedLegacyImageConvertsOnceAndKeepsItsIdentity() {
+        val favorites = ContactFavorites.get(app)
+        val id = legacyId("existing-old-card")
+        val cover = File(root, "old-cover.png").apply { writeBytes(image(144, 256)) }
+        val old = favorites.save(PublicIdentityProfile("原收藏", "", null, "circle", emptyList(), emptyList(), emptyList())
+            .json().put("identityId", id).put("coverIsBackground", true).put("coverButtonsBaked", false)
+            .put("coverAspect", .5625), cover)
+        val converter = LegacyContactCards(app)
+        converter.upgradeSaved()
+        val converted = favorites.items.value.single()
+        assertEquals(old.id, converted.id)
+        val profile = JSONObject(converted.profile)
+        assertEquals(16.0 / 9, profile.getDouble("coverAspect"), .001)
+        val photo = PublicIdentityProfile.from(profile).tiles.single()
+        assertEquals(ProfileTileKind.IMAGE, photo.kind)
+        assertNotNull(favorites.image(photo.image))
+        converter.upgradeSaved()
+        assertEquals(converted, favorites.items.value.single())
     }
     @Test fun fullBackupRebasesOnlyKnownResourcesAndDoesNotReadOldAbsolutePaths() {
         val configuration = """{"cards":[{"id":1,"title":"原卡","type":"image","portraitImagePath":"/data/user/0/com.lhtstudio.kigtts.app/files/quick_cards/p.png"}]}"""

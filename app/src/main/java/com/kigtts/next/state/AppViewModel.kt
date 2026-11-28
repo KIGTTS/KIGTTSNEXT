@@ -24,6 +24,7 @@ import androidx.compose.ui.text.TextRange
 import android.icu.text.BreakIterator
 import androidx.core.content.edit
 import com.kigtts.next.media.MediaRepository
+import com.kigtts.next.media.WebPagePresentation
 import com.kigtts.next.manager.HostPluginRuntime
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.plugins.control.hideBundledEntries
@@ -72,6 +73,13 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     private val themeStore = ThemeSettingsStore(application)
     internal val pageAppearance = MutableStateFlow<List<PageAppearance>>(emptyList())
+    internal val webPresentation = MutableStateFlow<WebPagePresentation?>(null)
+    internal fun updateWebPresentation(owner: Any, presentation: WebPagePresentation?) {
+        webPresentation.update { previous ->
+            if (presentation?.matches(state.value) == true) presentation
+            else if (previous?.owner === owner) null else previous
+        }
+    }
     internal val savedAppearance = MutableStateFlow<SavedAppearanceRequest?>(null)
     internal val homeChrome = MutableStateFlow<Map<KigPlugin, HomeChromePresentation>>(emptyMap())
     private val placeholderStore = SubtitlePlaceholderStore(application)

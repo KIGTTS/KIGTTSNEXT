@@ -860,6 +860,8 @@
   "permission.voice-packs": "음성 팩 관리",
   "permission.camera": "카메라 사용",
   "permission.microphone": "마이크 사용",
+  "permission.web-presentation": "화면 모양 임시 변경",
+  "permission.web-presentation-purpose": "이 웹 바로가기가 테마, 배경, 홈 화면의 조작 버튼을 일시적으로 변경할 수 있도록 허용합니다. 페이지를 나가면 원래대로 돌아갑니다.",
   "permission.motion-sensors": "동작 및 중력 센서 읽기",
   "permission.downloads": "파일 다운로드",
   "permission.review.new": "새 권한",

@@ -28,8 +28,10 @@ internal fun homeDrawingInsets(): WindowInsets = WindowInsets.safeDrawing.union(
 @Composable
 internal fun rememberHomeChromeFade(state: AppState, model: AppViewModel, renderer: HomeChromePresentation?): HomeChromeFade {
     val requests by model.homeChrome.collectAsState()
-    val header = renderer?.fadeHeaderWhenIdle == true || requests.values.any { it.fadeHeaderWhenIdle }
-    val dock = renderer?.fadeDockWhenIdle == true || requests.values.any { it.fadeDockWhenIdle }
+    val web by model.webPresentation.collectAsState()
+    val page = web?.takeIf { it.matches(state) }?.chrome
+    val header = renderer?.fadeHeaderWhenIdle == true || page?.fadeHeaderWhenIdle == true || requests.values.any { it.fadeHeaderWhenIdle }
+    val dock = renderer?.fadeDockWhenIdle == true || page?.fadeDockWhenIdle == true || requests.values.any { it.fadeDockWhenIdle }
     val enabled = (header || dock) && LocalPageActive.current && state.sidePage == null
     val keepVisible = state.panel != null || state.quickTextEditing || state.editing || state.mediaEditing ||
         state.voiceInputActive || (LocalModalWindows.current?.count ?: 0) > 0

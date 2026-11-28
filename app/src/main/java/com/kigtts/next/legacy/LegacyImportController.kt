@@ -56,12 +56,18 @@ internal class LegacyImportController(private val context: Context, library: Qui
     }
     fun migrateOriginalInstallation() {
         val preferences = context.getSharedPreferences("original-kigtts-migration", 0)
-        if (preferences.getBoolean("completed-v1", false)) return
+        val updateCards = !preferences.getBoolean("contact-layout-v2", false)
+        val migrate = !preferences.getBoolean("completed-v1", false) && OriginalPreferences.exists(context)
         val source = OriginalPreferences.source(context)
-        if (!OriginalPreferences.exists(context) || running.value) return
+        if ((!migrate && !updateCards) || running.value) return
         running.value = true
         scope.launch {
             try {
+                if (updateCards) withContext(Dispatchers.IO) {
+                    LegacyContactCards(context).upgradeSaved()
+                    check(preferences.edit().putBoolean("contact-layout-v2", true).commit())
+                }
+                if (!migrate) return@launch
                 val content = OriginalPreferences.read(context, source)
                 val (phrases, cards) = migration.apply(content)
                 val settings = withContext(Dispatchers.IO) { restoreLegacySettings(context, content) }

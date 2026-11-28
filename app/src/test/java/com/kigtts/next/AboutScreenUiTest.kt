@@ -36,6 +36,7 @@ class AboutScreenUiTest {
                 else AboutScreen(openLink = urls::add, openDocument = documents::add, version = "0.1.0")
             }
         } }
+        compose.onNodeWithTag("settings-list").performScrollToNode(hasTestTag("settings-entry/about"))
         compose.onNodeWithTag("settings-entry/about").performScrollTo().performClick()
         compose.runOnIdle { assertEquals(Destination.SettingsDetail(SettingsCategory.ABOUT), destination) }
         compose.onNodeWithText("版本 0.1.0").assertIsDisplayed()

@@ -1,4 +1,6 @@
 {
+  "permission.web-presentation": "临时调整界面",
+  "permission.web-presentation-purpose": "这个网页词条想临时调整主题、背景和主界面控件。离开网页就会恢复。",
   "settings.category.quick_actions": "快捷操作",
   "settings.category.quick_actions.summary": "锁屏入口、蓝牙字幕和手势",
   "quick_actions.shortcuts": "快捷入口",

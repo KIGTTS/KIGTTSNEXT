@@ -161,7 +161,7 @@
     "engine.cloud-asr": {
       "en": {
         "summary": "Convert speech to text with your cloud provider",
-        "description": "Connect Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek, then select the engine in Live captions. Each provider can have its own settings.",
+        "description": "Connect Xiaomi MiMo, DeepSeek, Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek, then select the engine in Live captions. Setup guides are included in the plugin.",
         "tags": [
           "Speech recognition"
         ],
@@ -176,7 +176,7 @@
       },
       "ko": {
         "summary": "클라우드 서비스로 음성을 텍스트로 변환하세요",
-        "description": "텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek을 연결한 뒤 실시간 자막에서 엔진을 선택하세요. 서비스별로 설정을 저장할 수 있습니다.",
+        "description": "Xiaomi MiMo, DeepSeek, 텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek을 연결한 뒤 실시간 자막에서 엔진을 선택하세요. 서비스별 연결 가이드는 플러그인에서 볼 수 있습니다.",
         "tags": [
           "음성 인식"
         ],
@@ -192,7 +192,7 @@
       "ja": {
         "name": "クラウド音声認識",
         "summary": "クラウドサービスで音声をテキストに変換",
-        "description": "Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek の API に接続し、リアルタイム字幕でエンジンを選択できます。設定はサービスごとに保存できます。",
+        "description": "Xiaomi MiMo、DeepSeek、Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek の API に接続し、リアルタイム字幕でエンジンを選択できます。各サービスの接続ガイドはプラグインで読めます。",
         "tags": [
           "音声認識"
         ],
@@ -208,7 +208,7 @@
     "engine.cloud-tts": {
       "en": {
         "summary": "Read text aloud with cloud voices",
-        "description": "Connect Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek to add preset voices. Existing Tencent Cloud cloned voices and Azure custom voices are also supported. Manage added voices in the voice pack list.",
+        "description": "Connect Xiaomi MiMo, Tencent Cloud, Alibaba Cloud, Azure, Baidu Cloud or iFlytek to add preset voices. Existing Tencent Cloud cloned voices and Azure custom voices are also supported. Setup guides are included in the plugin.",
         "tags": [
           "Speech synthesis"
         ],
@@ -223,7 +223,7 @@
       },
       "ko": {
         "summary": "클라우드 음성으로 텍스트를 읽어 주세요",
-        "description": "텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek에 연결하여 기본 음성을 추가하세요. 텐센트 클라우드의 복제 음성과 Azure 사용자 지정 음성도 지원합니다. 추가한 음성은 음성 팩 목록에서 관리할 수 있습니다.",
+        "description": "Xiaomi MiMo, 텐센트 클라우드, 알리바바 클라우드, Azure, 바이두 클라우드 또는 iFlytek에 연결하여 기본 음성을 추가하세요. 텐센트 클라우드의 복제 음성과 Azure 사용자 지정 음성도 지원합니다. 서비스별 연결 가이드는 플러그인에서 볼 수 있습니다.",
         "tags": [
           "음성 합성"
         ],
@@ -239,7 +239,7 @@
       "ja": {
         "name": "クラウド音声合成",
         "summary": "クラウドの音声でテキストを読み上げ",
-        "description": "Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek に接続し、プリセット音声を追加できます。Tencent Cloud の既存クローン音声と Azure のカスタム音声にも対応します。追加した音声は音声パック一覧で管理できます。",
+        "description": "Xiaomi MiMo、Tencent Cloud、Alibaba Cloud、Azure、Baidu Cloud、iFlytek に接続し、プリセット音声を追加できます。Tencent Cloud の既存クローン音声と Azure のカスタム音声にも対応します。各サービスの接続ガイドはプラグインで読めます。",
         "tags": [
           "音声合成"
         ],

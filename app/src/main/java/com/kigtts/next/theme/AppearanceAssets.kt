@@ -13,8 +13,13 @@ import java.security.MessageDigest
 /** Private durable copies: document picker grants can disappear after restart. */
 class AppearanceAssets(private val context: Context) {
     private val root = File(context.filesDir, "appearance-assets").apply { mkdirs() }
-    fun file(key: String?): File? = key?.takeIf { it.matches(Regex("[a-f0-9]{64}\\.(ttf|otf|jpg)")) }
-        ?.let { File(root, it) }?.takeIf { it.isFile }
+    fun file(key: String?): File? = key?.let {
+        when {
+            it.matches(Regex("[a-f0-9]{64}\\.(ttf|otf|jpg)")) -> File(root, it)
+            it.matches(Regex("web-[0-9a-f-]{36}\\.jpg")) -> File(context.cacheDir, "web-presentation/$it")
+            else -> null
+        }
+    }?.takeIf(File::isFile)
 
     fun importFont(uri: Uri): String = requireNotNull(context.contentResolver.openInputStream(uri)).use { stream ->
         val bytes = readBounded(stream, MAX_FONT)

@@ -32,7 +32,7 @@ private val LocalHomeTipTarget = compositionLocalOf<HomeTipTarget?> { null }
 internal fun Modifier.homeTipAnchor(tip: HomeTip, enabled: Boolean = true): Modifier {
     val target = LocalHomeTipTarget.current?.takeIf { enabled && it.tip == tip } ?: return this
     DisposableEffect(target) { onDispose { target.bounds = null } }
-    return onGloballyPositioned { target.bounds = it.boundsInRoot() }
+    return onGloballyPositioned { if (it.isAttached) target.bounds = it.boundsInRoot() }
 }
 
 @Composable
@@ -126,7 +126,7 @@ private fun SettledHomeTip(
     var origin by remember { mutableStateOf<Offset?>(null) }
     val preferSide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     Layout(
-        modifier = modifier.onGloballyPositioned { origin = it.positionInRoot() },
+        modifier = modifier.onGloballyPositioned { if (it.isAttached) origin = it.positionInRoot() },
         content = { HomeTipBubble(target.tip, onPresented, dismiss, enable) },
     ) { measurables, constraints ->
         val margin = 12.dp.roundToPx()

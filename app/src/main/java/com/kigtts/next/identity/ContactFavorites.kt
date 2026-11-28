@@ -18,6 +18,7 @@ internal fun copyProfileCoverMetadata(source: JSONObject, target: JSONObject) {
         (source.opt(key) as? Boolean)?.let { target.put(key, it) }
     }
     (source.opt("coverAspect") as? Number)?.toDouble()?.takeIf { it in .25..4.0 }?.let { target.put("coverAspect", it) }
+    if (source.optInt("legacyCardLayout") == 2) target.put("legacyCardLayout", 2)
 }
 
 /** Independent snapshots; ending a sharing session never revokes a saved contact. */
