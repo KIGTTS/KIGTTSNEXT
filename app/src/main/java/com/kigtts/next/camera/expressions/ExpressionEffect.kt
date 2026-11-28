@@ -132,9 +132,10 @@ internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Pi
     companion object {
         fun compile(effect: ExpressionEffect): CompiledExpression {
             ExpressionPack(effects = listOf(effect)).validate()
-            return CompiledExpression(effect, effect.layers.map { layer ->
-                layer.bitmapWebp?.let(::expressionBitmapPicture) ?: UiIcons.renderSvgPicture(layer.svg, 320)
-            })
+            return CompiledExpression(effect, effect.layers.map { renderExpressionArtwork(it.svg, it.bitmapWebp) })
         }
     }
 }
+
+internal fun renderExpressionArtwork(svg: String, bitmap: String?): Picture =
+    bitmap?.let(::expressionBitmapPicture) ?: UiIcons.renderSvgPicture(svg, 320)

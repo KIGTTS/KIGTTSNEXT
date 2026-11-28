@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.camera.expressions.*
 import com.kigtts.plugin.api.PluginJson
@@ -56,5 +57,30 @@ class ExpressionLibraryOrderTest {
             org.junit.Assert.assertTrue(Color.green(green) > 225)
             assertEquals(0, Color.alpha(result.getPixel(160, 85)))
         } finally { result.recycle() }
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun avatarBackdropIsMutedInTheEditorWithoutDimmingTheEffect() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val portrait = ExpressionPreviewPortrait.load(context.assets)
+        val layer = ExpressionLayer(
+            """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"><circle cx="160" cy="160" r="40" fill="#FF0000"/></svg>""",
+            anchor = ExpressionAnchor.NOSE,
+        )
+        val effect = CompiledExpression.compile(ExpressionEffect("test", "Test", listOf(layer)))
+        val scrim = Paint().apply { color = Color.WHITE; alpha = (255 * EXPRESSION_PORTRAIT_SCRIM).toInt() }
+        val image = Bitmap.createBitmap(EXPRESSION_PREVIEW_EDGE, EXPRESSION_PREVIEW_EDGE, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(image)
+        try {
+            drawExpressionPortrait(canvas, portrait)
+            val original = image.getPixel(105, 177)
+            assertEquals(255, Color.alpha(original))
+            drawExpressionPortrait(canvas, portrait, scrim)
+            val muted = image.getPixel(105, 177)
+            org.junit.Assert.assertTrue(Color.luminance(muted) > Color.luminance(original))
+            effect.draw(canvas, listOf(expressionPreviewFace))
+            val nose = expressionPreviewFace.nose
+            assertEquals(Color.RED, image.getPixel(nose.x.toInt(), nose.y.toInt()))
+        } finally { image.recycle() }
     }
 }

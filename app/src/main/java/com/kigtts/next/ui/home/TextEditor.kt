@@ -16,6 +16,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -87,10 +91,12 @@ private fun Modifier.subtitleCardCorners(neighbors: CornerNeighbors, square: Boo
     val topEnd = corner(neighbors.end || neighbors.above, "subtitle-corner-top-end")
     val bottomEnd = corner(neighbors.end || neighbors.below, "subtitle-corner-bottom-end")
     val bottomStart = corner(neighbors.start || neighbors.below, "subtitle-corner-bottom-start")
-    return graphicsLayer {
-        shape = RoundedCornerShape(topStart.value.coerceIn(0.dp, 20.dp), topEnd.value.coerceIn(0.dp, 20.dp),
+    // Android 10 can retain a stale hardware-layer clip after the listening panel resizes this card.
+    return drawWithCache {
+        val shape = RoundedCornerShape(topStart.value.coerceIn(0.dp, 20.dp), topEnd.value.coerceIn(0.dp, 20.dp),
             bottomEnd.value.coerceIn(0.dp, 20.dp), bottomStart.value.coerceIn(0.dp, 20.dp))
-        clip = true
+        val outline = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+        onDrawWithContent { clipPath(outline) { this@onDrawWithContent.drawContent() } }
     }
 }
 

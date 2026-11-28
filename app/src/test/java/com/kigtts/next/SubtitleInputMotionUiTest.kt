@@ -85,6 +85,35 @@ class SubtitleInputMotionUiTest {
         compose.runOnIdle { state = state.copy(editing = false) }
         assertEquals(magenta, corner("exit-editing"))
     }
+
+    @Test @Config(sdk = [29], qualifiers = "zh-rCN-w393dp-h852dp-xxhdpi")
+    fun subtitleKeepsDrawingWhenListeningControlsChangeItsBounds() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        val state = model.state.value
+        var captionsAbove by mutableStateOf(false)
+        compose.setContent {
+            KigttsTheme(ThemeSettings()) {
+                Column(Modifier.size(320.dp, 480.dp).background(Color.Magenta)) {
+                    if (captionsAbove) Spacer(Modifier.height(160.dp))
+                    TextEditor(state, model, captionsAbove, false, Modifier.weight(1f).fillMaxWidth())
+                }
+            }
+        }
+        fun assertCardDrawn(stage: String) {
+            val path = "build/previews/subtitle-card-resize-$stage.png"
+            compose.onNodeWithTag("subtitle-card").captureRoboImage(path)
+            val bitmap = requireNotNull(android.graphics.BitmapFactory.decodeFile(path))
+            try {
+                assertNotEquals(android.graphics.Color.MAGENTA, bitmap.getPixel(bitmap.width / 2, bitmap.height / 4))
+                assertEquals(android.graphics.Color.MAGENTA, bitmap.getPixel(1, 1))
+            } finally { bitmap.recycle() }
+        }
+        assertCardDrawn("initial")
+        compose.runOnIdle { captionsAbove = true }
+        assertCardDrawn("listening")
+        compose.runOnIdle { captionsAbove = false }
+        assertCardDrawn("restored")
+    }
     @Test fun lineCountChangesKeepTheViewportStableWhileTextAndFocusUpdateImmediately() {
         val model = show()
         val before = compose.onNodeWithTag("speech-editor").fetchSemanticsNode().boundsInRoot.height
