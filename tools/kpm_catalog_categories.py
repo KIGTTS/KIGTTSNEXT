@@ -7,7 +7,7 @@ from pathlib import Path
 import unicodedata
 
 ROOT = Path(__file__).resolve().parent.parent
-LOCALES = ROOT / ".market/src/main/assets/market/i18n"
+LOCALES = ROOT / "market/src/main/assets/market/i18n"
 PLUGIN_KEYS = {
     "音频": ("audio", "graphic_eq"),
     "外观": ("appearance", "palette"),

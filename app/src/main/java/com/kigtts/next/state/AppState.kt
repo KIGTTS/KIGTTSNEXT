@@ -86,7 +86,9 @@ data class AppState(
     internal val pageVersion: Long = 0,
     val mediaQuickTextCollapse: MediaQuickTextCollapse = MediaQuickTextCollapse.KEEP,
     internal val mediaSingleRow: Boolean = false,
+    internal val webFullscreenOwner: Any? = null,
 ) {
     val editorText: String get() = editorValue.text
-    val subtitleExpanded: Boolean get() = editing || forcedFullscreen || mediaEditing
+    internal val fullscreen: Boolean get() = forcedFullscreen || webFullscreenOwner != null
+    val subtitleExpanded: Boolean get() = editing || fullscreen || mediaEditing
 }

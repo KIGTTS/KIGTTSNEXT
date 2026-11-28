@@ -18,24 +18,35 @@ import java.util.Locale
 import java.util.UUID
 
 internal data class WebPagePresentation(val owner: Any, val mediaId: String, val phraseId: String,
-    val appearance: ResolvedAppearance, val chrome: HomeChromePresentation) {
-    fun matches(state: AppState): Boolean = state.destination == Destination.Home && state.sidePage == null &&
-        state.mediaId == mediaId && state.webPermissionEntryId == phraseId
+    val appearance: ResolvedAppearance, val chrome: HomeChromePresentation, val fadeControlsWhenIdle: Boolean) {
+    fun matches(state: AppState): Boolean = state.isWebShortcut(mediaId, phraseId)
 }
+
+internal fun AppState.isWebShortcut(mediaId: String, phraseId: String): Boolean =
+    destination == Destination.Home && sidePage == null && this.mediaId == mediaId && webPermissionEntryId == phraseId
 
 internal class WebPresentationSession(private val context: Context, private val media: String,
     private val phrase: String, private val localRoot: File?, private val cleanupScope: CoroutineScope,
+    private val setFullscreen: (Any, Boolean) -> Boolean = { _, _ -> false },
     private val publish: (Any, WebPagePresentation?) -> Unit) {
     private val owner = Any()
     private var generation = 0
+    private var fullscreenGeneration = 0
     private var image: File? = null
 
     fun clear() {
         generation++
+        fullscreenGeneration++
         publish(owner, null)
         val previous = image
         image = null
         previous?.let { discard(it) }
+    }
+
+    suspend fun fullscreen(enabled: Boolean, active: () -> Boolean, authorize: suspend () -> Boolean): Boolean {
+        val request = ++fullscreenGeneration
+        if (!active() || enabled && !authorize()) return false
+        return request == fullscreenGeneration && active() && setFullscreen(owner, enabled)
     }
 
     suspend fun apply(data: JSONObject, projectOrigin: Boolean, active: () -> Boolean, authorize: suspend () -> Boolean): Boolean {
@@ -69,7 +80,8 @@ internal class WebPresentationSession(private val context: Context, private val 
                 if (file == null) patch else patch.copy(background = AppearanceBackground.Image(PluginResource(file.name))),
                 file?.name,
             )
-            publish(owner, WebPagePresentation(owner, media, phrase, resolved, chrome))
+            publish(owner, WebPagePresentation(owner, media, phrase, resolved, chrome,
+                controls.optBoolean("fadeControlsWhenIdle")))
             image?.let { discard(it) }
             image = file
             next = null

@@ -15,8 +15,6 @@ project(":plugin-android-api").projectDir = file(".sdk/plugin-android-api")
 check(file(".sdk/plugin-api/build.gradle.kts").isFile) { "Initialize the pinned SDK: git submodule update --init .sdk" }
 include(":manager-protocol", ":plugin-manager")
 include(":reading", ":speech-recognition", ":market")
-project(":market").projectDir = file(".market")
-check(file(".market/build.gradle.kts").isFile) { "Initialize the bundled Extension Market: git submodule update --init .market" }
 
 // Optional cross-repository tests; a normal application build never configures plugin projects.
 if (providers.gradleProperty("pluginIntegration").orNull == "true") {

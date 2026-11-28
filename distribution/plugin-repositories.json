@@ -35,15 +35,6 @@
     "sourceCommit": "bbed857113491f1c1e7957011623a2e0a10fc8a3"
   },
   {
-    "module": "package-store",
-    "repository": "https://github.com/KIGTTS/plugin-package-store",
-    "id": "tools.package-store",
-    "license": "MIT",
-    "sourceCommit": "841bbdc945978cf81154361e8f581bae90a24140",
-    "directory": "package-store",
-    "distribution": "bundled"
-  },
-  {
     "module": "piper-tts",
     "repository": "https://github.com/KIGTTS/plugin-piper-tts",
     "id": "engine.piper",
@@ -66,24 +57,6 @@
     "license": "MIT",
     "directory": "streaming-asr",
     "sourceCommit": "1b1deb16ed966071c9af711babbdfe3d1956a680"
-  },
-  {
-    "module": "speech-service",
-    "repository": "https://github.com/KIGTTS/plugin-speech-service",
-    "id": "service.speech-synthesis",
-    "license": "GPL-3.0-only",
-    "directory": "speech-service",
-    "distribution": "bundled",
-    "sourceCommit": "7f64b6d0ce632e52a5bb6dc641e9d9172c3d5844"
-  },
-  {
-    "module": "recognition-service",
-    "repository": "https://github.com/KIGTTS/plugin-recognition-service",
-    "id": "service.speech-recognition",
-    "license": "MIT",
-    "directory": "recognition-service",
-    "distribution": "bundled",
-    "sourceCommit": "4ffa61da26e144b913c3821e3116f17d564c56bb"
   },
   {
     "module": "ui-debug",

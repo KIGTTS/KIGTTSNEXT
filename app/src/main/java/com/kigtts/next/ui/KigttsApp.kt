@@ -138,6 +138,7 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             state.sidePage != null -> model.closeSidePage()
             state.quickTextEditing -> { focus.clearFocus(); keyboard?.hide(); model.finishQuickTextEditing() }
             state.mediaEditing -> { focus.clearFocus(); keyboard?.hide(); model.mediaEditing(false) }
+            state.mediaId != null && state.fullscreen -> model.exitSubtitleFullscreen()
             state.webCanGoBack -> model.webBack()
             state.subtitleExpanded -> { focus.clearFocus(); keyboard?.hide(); model.exitSubtitleFullscreen() }
             state.panel != null -> model.closePanel()

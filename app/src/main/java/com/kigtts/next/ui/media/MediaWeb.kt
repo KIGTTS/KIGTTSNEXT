@@ -61,7 +61,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val phrase = state.webPermissionEntryId?.takeIf { state.destination == Destination.Home }
             val presentation = phrase?.let {
                 WebPresentationSession(context, entry.id, it, localRoot.takeIf { entry.kind == MediaKind.HTML },
-                    model.viewModelScope, model::updateWebPresentation)
+                    model.viewModelScope, { owner, enabled -> model.setWebFullscreen(owner, entry.id, it, enabled) },
+                    model::updateWebPresentation)
             }
             val loader = WebResourceLoader(cache, localRoot, true,
                 pageOrigin = if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN,
@@ -89,8 +90,8 @@ fun MediaWeb(entry: MediaEntry, state: AppState, model: AppViewModel, modifier: 
             val relative = if(source!=null && localRoot!=null)source.relativeTo(localRoot).invariantSeparatorsPath else ""
             devices[0] = WebPagePrivileges(this, model.pluginManager.permissions, entryKey,
                 draft?.title?.ifBlank { draft.text }?.take(60) ?: entry.name, scope, {
-                    currentActive && (phrase == null || ownsPage() && model.state.value.webPermissionEntryId == phrase &&
-                        model.state.value.destination == Destination.Home)
+                    currentActive && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) &&
+                        (phrase == null || model.state.value.isWebShortcut(entry.id, phrase))
                 }, networkGate::authorize, presentation).also { it.install() }
             installKigttsThemeAtDocumentStart()
             loadUrl(if (entry.kind == MediaKind.WEB) entry.primary else WebContentPolicy.ORIGIN + "/content/" + android.net.Uri.encode(relative,"/"))

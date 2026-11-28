@@ -861,7 +861,7 @@
   "permission.camera": "use the camera",
   "permission.microphone": "use the microphone",
   "permission.web-presentation": "temporarily change appearance",
-  "permission.web-presentation-purpose": "Allow this web shortcut to temporarily change the theme, background and home controls. Your appearance returns when you leave the page.",
+  "permission.web-presentation-purpose": "Allow this web shortcut to temporarily change the theme, background and home controls, or enter full screen. Your appearance returns when you leave the page.",
   "permission.motion-sensors": "read motion and gravity sensors",
   "permission.downloads": "download files",
   "permission.review.new": "New permissions",

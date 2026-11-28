@@ -25,6 +25,7 @@ import android.icu.text.BreakIterator
 import androidx.core.content.edit
 import com.kigtts.next.media.MediaRepository
 import com.kigtts.next.media.WebPagePresentation
+import com.kigtts.next.media.isWebShortcut
 import com.kigtts.next.manager.HostPluginRuntime
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.plugins.control.hideBundledEntries
@@ -79,6 +80,21 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
             if (presentation?.matches(state.value) == true) presentation
             else if (previous?.owner === owner) null else previous
         }
+        if (presentation == null && state.value.webFullscreenOwner === owner) {
+            update { if (it.webFullscreenOwner === owner) it.copy(webFullscreenOwner = null) else it }
+        }
+    }
+    internal fun setWebFullscreen(owner: Any, mediaId: String, phraseId: String, enabled: Boolean): Boolean {
+        if (!state.value.isWebShortcut(mediaId, phraseId)) return false
+        update { current ->
+            when {
+                !current.isWebShortcut(mediaId, phraseId) -> current
+                enabled && current.fullscreen -> current
+                enabled -> current.copy(webFullscreenOwner = owner)
+                else -> current.copy(webFullscreenOwner = null, forcedFullscreen = false)
+            }
+        }
+        return true
     }
     internal val savedAppearance = MutableStateFlow<SavedAppearanceRequest?>(null)
     internal val homeChrome = MutableStateFlow<Map<KigPlugin, HomeChromePresentation>>(emptyMap())
@@ -375,9 +391,12 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     private fun update(transform: (AppState) -> AppState) {
         mutableState.update { previous ->
             val next = transform(previous)
-            if (next.destination != previous.destination || next.sidePage != previous.sidePage ||
-                next.navigationStack != previous.navigationStack) next.copy(pageVersion = previous.pageVersion + 1)
-            else next
+            val pageChanged = next.destination != previous.destination || next.sidePage != previous.sidePage ||
+                next.navigationStack != previous.navigationStack
+            val webChanged = pageChanged || next.mediaId != previous.mediaId ||
+                next.webPermissionEntryId != previous.webPermissionEntryId || next.contentRevision != previous.contentRevision
+            val scoped = if (webChanged && next.webFullscreenOwner != null) next.copy(webFullscreenOwner = null) else next
+            if (pageChanged) scoped.copy(pageVersion = previous.pageVersion + 1) else scoped
         }
         val page = state.value.pageVersion
         if (pageAppearance.value.any { it.page != page }) pageAppearance.update { patches -> patches.filter { it.page == page } }
@@ -513,7 +532,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     }
     fun closeSidePage() { update { it.copy(sidePage = null) } }
     fun closePanel() { update { it.copy(panel = null, quickTextEditing = false, mediaSingleRow = false) } }
-    fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false, forcedFullscreen = false, mediaSingleRow = false) } }
+    fun editQuickTexts() { update { it.copy(panel = HomePanel.QUICK_TEXT, quickTextEditing = true, editing = false,
+        forcedFullscreen = false, webFullscreenOwner = null, mediaSingleRow = false) } }
     fun editPhraseDetails(phrase: QuickPhrase?, category: String) {
         content.beginPhrase(phrase, category)
         navigate(Destination.PhraseEditor(requireNotNull(content.phraseDraft.value).key, phrase == null))
@@ -540,8 +560,8 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         if (current.mediaId == null && current.audioId == null) publishBluetoothSubtitle(current.editorText)
         if(state.value.autoPlayback && state.value.mediaId == null) autoRead()
     }
-    fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true) } }
-    fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false, mediaEditing = false) } }
+    fun enterSubtitleFullscreen() { update { it.copy(forcedFullscreen = true, webFullscreenOwner = null) } }
+    fun exitSubtitleFullscreen() { update { it.copy(editing = false, forcedFullscreen = false, webFullscreenOwner = null, mediaEditing = false) } }
     fun text(text: String) {
         content.resetSelection()
         if (audioSessionDelegate.isInitialized()) cardAudio.clear()

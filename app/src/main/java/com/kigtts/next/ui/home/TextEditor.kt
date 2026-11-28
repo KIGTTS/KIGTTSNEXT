@@ -34,7 +34,12 @@ fun TextEditor(
 ) {
     val media=model.mediaRepository.get(state.mediaId)
     val renderer by model.subtitleRenderer.selection.collectAsState()
-    val (idle, controlsAlpha) = rememberPanelIdleChrome(renderer?.presentation?.fadeControlsWhenIdle == true && media == null, state.editing)
+    val webPresentation by model.webPresentation.collectAsState()
+    val webFade = webPresentation?.takeIf { it.matches(state) }?.fadeControlsWhenIdle == true
+    val rendererFade = renderer?.presentation?.fadeControlsWhenIdle == true && media == null
+    val (idle, controlsAlpha) = rememberPanelIdleChrome(webFade || rendererFade,
+        state.editing || webFade && (state.mediaEditing || state.voiceInputActive || (LocalModalWindows.current?.count ?: 0) > 0),
+        reducedMotion = state.subtitleAppearance.reducedMotion)
     var top by remember { mutableIntStateOf(0) }; var bottom by remember { mutableIntStateOf(0) }
     val sliderAdjusting = remember { mutableStateOf(false) }
     val pinchAdjusting = remember { mutableStateOf(false) }

@@ -82,6 +82,13 @@ internal class WebPagePrivileges(private val web: WebView, private val ledger: P
                                 result.put("ok", allowed)
                             }
                             "clear-presentation" -> { presentation?.clear(); result.put("ok", presentation != null) }
+                            "request-fullscreen", "exit-fullscreen" -> {
+                                val enabled = data.getString("operation") == "request-fullscreen"
+                                val expected = origin(sourceOrigin.toString())
+                                val allowed = expected != null && presentation?.fullscreen(enabled,
+                                    { active() && origin(web.url) == expected }) { allow("web-presentation", expected) } == true
+                                result.put("ok", allowed)
+                            }
                             "motion" -> { val allowed = allow("motion-sensors"); motionWanted = allowed && motion.start(); result.put("ok", motionWanted) }
                             "download-url" -> {
                                 val url = data.getString("url"); require(WebContentPolicy.https(url) && URI(url).userInfo == null)

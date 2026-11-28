@@ -52,7 +52,7 @@ internal fun LandscapeHomeScreen(state: AppState, phrases: List<QuickPhrase>, ca
                     }
                     AnimatedVisibility(!state.quickTextEditing, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.weight(1f).fillMaxHeight()) {
                         TextEditor(state, model, false, false,
-                            Modifier.fillMaxSize().testTag("editor-area").then(if (state.forcedFullscreen && state.sidePage == null)
+                            Modifier.fillMaxSize().testTag("editor-area").then(if (state.fullscreen && state.sidePage == null)
                                 Modifier.predictiveReturn(back) else Modifier),
                             CornerNeighbors(start = showCaptions, end = !expanded && motion.visible))
                     }

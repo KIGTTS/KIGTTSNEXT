@@ -39,19 +39,19 @@ fun PageNavigationHost(navigation: PageNavigation, state: AppState, model: AppVi
     CompositionLocalProvider(LocalCameraPullState provides pull, LocalHomeSwipeExclusions provides swipeExclusions) {
     Box(Modifier.fillMaxSize().clipToBounds().homeSideDrawer(sideDrawer,
         when {
-            quickSwipe && state.forcedFullscreen -> ({ model.exitSubtitleFullscreen(); model.openPanel(HomePanel.QUICK_TEXT) })
+            quickSwipe && state.fullscreen -> ({ model.exitSubtitleFullscreen(); model.openPanel(HomePanel.QUICK_TEXT) })
             else -> null
         },
-        pagesEnabled = !state.forcedFullscreen, leftPageEnabled = false) {
+        pagesEnabled = !state.fullscreen, leftPageEnabled = false) {
         val value = latestState.value
         value.destination == Destination.Home && value.sidePage == null && !value.editing && !value.quickTextEditing &&
-            !value.voiceInputActive && (!value.forcedFullscreen || quickSwipe) &&
+            !value.voiceInputActive && (!value.fullscreen || quickSwipe) &&
             !latestDrawer.value && !latestNavigation.value.outgoingAbove && back.value.progress == 0f && !pull.active
     }.cameraPullNavigation(pull) {
         val value = latestNavigation.value; val foreground = value.current
         if (latestDrawer.value || value.outgoingAbove || back.value.progress > 0f) null
         else if (foreground.scene == PageScene.Home && latestState.value.let {
-                it.sidePage == null && !it.editing && !it.quickTextEditing && !it.voiceInputActive && !it.forcedFullscreen
+                it.sidePage == null && !it.editing && !it.quickTextEditing && !it.voiceInputActive && !it.fullscreen
             }) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity, horizontal = true)
         else if (foreground.isCardsBrowser) CameraPullOrigin(CameraPullMode.ENTER, foreground.identity)
         else foreground.cameraRequestId?.let { request -> value.wanted.getOrNull(value.wanted.lastIndex - 1)?.let {

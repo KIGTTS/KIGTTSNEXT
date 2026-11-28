@@ -33,7 +33,7 @@
 需要 JDK 17、Android SDK 36 与 PowerShell 7。在 `local.properties` 指定 `sdk.dir`。
 
 ```powershell
-git submodule update --init .sdk .market
+git submodule update --init .sdk
 ./gradlew.bat :app:assembleDebug
 ./gradlew.bat :app:assembleRelease
 ./gradlew.bat :plugin-api:test :plugin-runtime:testDebugUnitTest :app:testDebugUnitTest

@@ -1,6 +1,6 @@
 # KIGTTS仓库结构
 
-SDK与外置插件分别独立发布；本仓库负责Android宿主与运行时。主仓库已迁入组织，地址为 [KIGTTS/KIGTTSNEXT](https://github.com/KIGTTS/KIGTTSNEXT)，保留私有可见性及原提交历史。主程序默认构建只需初始化`.sdk`，不需要获取引擎、助手或商店源码。
+SDK 与外置插件独立发布。Android 宿主、运行时与内置功能在 [KIGTTS/KIGTTSNEXT](https://github.com/KIGTTS/KIGTTSNEXT) 维护。主程序默认构建只需初始化 `.sdk`。
 
 |组件|仓库|许可|
 |---|---|---|
@@ -9,18 +9,26 @@ SDK与外置插件分别独立发布；本仓库负责Android宿主与运行时�
 |cloud-agent|[plugin-cloud-agent](https://github.com/KIGTTS/plugin-cloud-agent)|MIT|
 |lua-runtime|[plugin-lua-runtime](https://github.com/KIGTTS/plugin-lua-runtime)|MIT|
 |native-builder|[plugin-native-builder](https://github.com/KIGTTS/plugin-native-builder)|MIT|
-|package-store|[plugin-package-store](https://github.com/KIGTTS/plugin-package-store)|MIT|
 |piper-tts|[plugin-piper-tts](https://github.com/KIGTTS/plugin-piper-tts)|GPL-3.0-only|
 |sensevoice-asr|[plugin-sensevoice-asr](https://github.com/KIGTTS/plugin-sensevoice-asr)|GPL-3.0-only|
 |streaming-asr|[plugin-streaming-asr](https://github.com/KIGTTS/plugin-streaming-asr)|MIT|
-|speech-service|[plugin-speech-service](https://github.com/KIGTTS/plugin-speech-service)|GPL-3.0-only|
-|recognition-service|[plugin-recognition-service](https://github.com/KIGTTS/plugin-recognition-service)|MIT|
 |ui-debug|[plugin-ui-debug](https://github.com/KIGTTS/plugin-ui-debug)|MIT|
 |quick-text-tools|[plugin-quick-text-tools](https://github.com/KIGTTS/plugin-quick-text-tools)|MIT|
 |kigusay-backup|[plugin-kigusay-backup](https://github.com/KIGTTS/plugin-kigusay-backup)|GPL-3.0-only|
 |led-caption|[plugin-led-caption](https://github.com/KIGTTS/plugin-led-caption)|MIT|
 
-各仓库有独立Gradle入口、固定SDK子模块、源码、测试和LICENSE/NOTICE；Piper、SenseVoice及合成服务保留GPL-3.0-only，MIT SDK不改变它们的许可。首次拆分的来源提交记录在各仓库SOURCE_ORIGIN.md；旧发布包保留原对应源码，不以新源码冒充历史二进制来源。
+各仓库有独立的 Gradle 入口、固定的 SDK 子模块、源码、测试和许可文件。Piper 和 SenseVoice 保留 GPL-3.0-only。首次拆分的来源提交记录在各仓库的 `SOURCE_ORIGIN.md`，旧发布包保留对应的历史源码。
+
+## 已并入主程序
+
+|功能|当前源码|历史仓库|
+|---|---|---|
+|拓展市场|[`market/`](../market)|[plugin-package-store](https://github.com/KIGTTS/plugin-package-store)|
+|朗读服务|[`reading/`](../reading)|[plugin-speech-service](https://github.com/KIGTTS/plugin-speech-service)|
+|识别服务|[`speech-recognition/`](../speech-recognition)|[plugin-recognition-service](https://github.com/KIGTTS/plugin-recognition-service)|
+|快捷手势|[`SubtitleGestures.kt`](../app/src/main/java/com/kigtts/next/quickactions/SubtitleGestures.kt)|[plugin-quick-text-gestures](https://github.com/KIGTTS/plugin-quick-text-gestures)|
+
+朗读服务保留 GPL-3.0-only。内置朗读和识别继续为独立语音引擎提供原有的服务标识。
 
 ## 构建与测试
 

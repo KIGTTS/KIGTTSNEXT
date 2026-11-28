@@ -43,7 +43,7 @@ fun HomeScreen(
     SideEffect { preview?.automaticRead = state.autoPlayback }
     val renderer by model.subtitleRenderer.selection.collectAsState()
     val fade = rememberHomeChromeFade(state, model, renderer?.presentation?.homeChrome)
-    val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.forcedFullscreen && state.mediaId == null }
+    val exterior = renderer?.presentation?.fullscreenBackground?.takeIf { state.fullscreen && state.mediaId == null }
     var backdropViewport by remember { mutableStateOf(Rect.Zero) }
     Box(Modifier.fillMaxSize().homePreviewRegion("viewport").onGloballyPositioned { backdropViewport = Rect(it.positionInWindow(), androidx.compose.ui.geometry.Size(it.size.width.toFloat(), it.size.height.toFloat())) }
         .then(if (exterior != null) Modifier.background(Color(exterior.toInt())) else Modifier).then(fade.wake)) {
@@ -96,7 +96,7 @@ private fun PortraitHomeScreen(
                     AnimatedVisibility(!state.quickTextEditing, enter = enter, exit = exit, modifier = Modifier.fillMaxWidth().weight(1f)) {
                         TextEditor(state, model, showCaptions, !state.subtitleExpanded && motion.panel == HomePanel.QUICK_TEXT,
                             Modifier.fillMaxSize().testTag("editor-area")
-                                .then(if (state.forcedFullscreen && state.sidePage == null) Modifier.predictiveReturn(back) else Modifier))
+                                .then(if (state.fullscreen && state.sidePage == null) Modifier.predictiveReturn(back) else Modifier))
                     }
                     Spacer(Modifier.heightFrom {
                         val reserve = if (motion.panel == HomePanel.QUICK_TEXT) motion.height else HomePanelSizes.COLLAPSED
