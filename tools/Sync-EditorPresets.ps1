@@ -6,7 +6,7 @@ $assetRoot = Join-Path (Split-Path -Parent $PSScriptRoot) 'app/src/main/assets/e
 [IO.Directory]::CreateDirectory($assetRoot) | Out-Null
 $guideRoot = Join-Path $assetRoot 'guides'
 [IO.Directory]::CreateDirectory($guideRoot) | Out-Null
-foreach ($guide in @('component-catalog.md','quick-text-web.md','contracts.md')) {
+foreach ($guide in @('plugin-template.md','plugin-ui.md','quick-text-web.md','contracts.md')) {
     Copy-Item -LiteralPath (Join-Path $source "docs/$guide") -Destination (Join-Path $guideRoot $guide)
 }
 & "$source/scripts/Sync-CatalogWeb.ps1" -Check

@@ -14,7 +14,7 @@
     "license": "MIT",
     "directory": "cloud-agent",
     "distribution": "bundled",
-    "sourceCommit": "e644824c67cb84bcea4f76a16b6a0f2271ebddd5"
+    "sourceCommit": "ac00923923c1230040308e3297b433daaa95af7d"
   },
   {
     "module": "lua-runtime",

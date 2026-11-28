@@ -7,6 +7,7 @@
 | 界面 | `index.html`、`gallery.css`、`gallery.js` | 表单、按钮组、开关、输入、语义配色、焦点和网页触感 |
 | Canvas 2D | `canvas.js` | 通过 Pointer Events 记录归一化笔迹。缩放时更新像素画布，笔迹保持，可清空 |
 | WebGL 3D | `webgl.js` | 使用 WebGL 1 绘制一个 36 顶点立方体。拖动或滑条调整视角，按需绘制，处理上下文丢失和硬件不支持 |
+| 宿主控件 | `index.html`、`gallery.js` | 分别开关网页周围按钮、顶栏、底栏的闲置淡化，进入或退出宿主全屏 |
 
 ## 网页 UI 规范
 
@@ -16,6 +17,19 @@
 - 画布在可见时按 CSS 尺寸和设备像素比绘制。绘图时限制像素倍率与笔迹数量，只有画布区域接管手势。三维模型可用滑条操作，WebGL 不可用时显示文本状态。
 - 网页无 CDN、联网权限和原生动作白名单。业务网页需要调用本插件时，先向宿主提交允许的动作 ID，再使用 `Kigtts.postMessage`。涉及相机、麦克风、体感和下载时，遵循宿主授权并在退出时释放资源。
 - 「触感反馈」演示从真实点击中调用 `KigttsUI.haptic('selection')` 和 `KigttsUI.haptic('confirm')`。请求遵循宿主设置和系统策略。
+
+## 网页主动控制淡化和全屏
+
+把网页保存到快捷文本，从主界面打开词条后体验「宿主控件」。默认关闭淡化。只在用户操作后调用，先检查方法是否存在，以及返回的 `ok`。普通浏览器和编辑器预览保留页面功能。
+
+```js
+const host = window.KigttsPresentation;
+await host?.setControls?.({ fadeControlsWhenIdle: true });
+await host?.setControls?.({ fadeControlsWhenIdle: false });
+// 上面两行分别放进开启和关闭的事件处理函数
+```
+
+`fadeControlsWhenIdle` 管网页周围的按钮。`fadeHeaderWhenIdle` 和 `fadeDockWhenIdle` 管主界面的顶栏和底栏。`setControls` 保留省略的选项以及已应用的临时主题和背景。使用 `requestFullscreen()` 和 `exitFullscreen()` 控制宿主全屏。启用淡化或进入全屏使用词条的网页外观权限，关闭淡化或退出全屏时无需重新授权。
 
 开发时保持网页主文件为 `index.html`，CSS、脚本和资源使用相对路径。执行 `./scripts/Sync-CatalogWeb.ps1` 同步两套插件资源，执行 `./scripts/Build-CatalogKit.ps1` 打包完整网页和开发套件。独立网页 ZIP 包含关联文件，插件中的「导出 HTML 主文件」用于演示单文件导出接口。
 

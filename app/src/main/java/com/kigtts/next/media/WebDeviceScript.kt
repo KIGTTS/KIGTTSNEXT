@@ -26,6 +26,7 @@ internal fun webDeviceScript(presentation: Boolean) = """
   ${if (presentation) """
   if(window===window.top)Object.defineProperty(window,'KigttsPresentation',{value:Object.freeze({
     apply({appearance,controls}={}){return request('presentation',{appearance,controls});},
+    setControls(controls){return request('presentation-controls',{controls});},
     clear(){return request('clear-presentation');},
     requestFullscreen(){return request('request-fullscreen');},
     exitFullscreen(){return request('exit-fullscreen');}

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "sourceRevision": "f309ef51e9aafadb5d685bcb39e91c91d0e9f84f",
+  "sourceRevision": "c7008dfbd36f401751ecc36a611f9985ee623efa",
   "items": [
     {
       "id": "lua-catalog",
@@ -12,7 +12,7 @@
       "name": "Lua 插件模板",
       "exampleId": "example.lua-smoke",
       "manifest": "manifest.json",
-      "sha256": "2851dc907953dbb0579ae54d9034e3c8add03a75db3f045939a7b9f027d82ac5"
+      "sha256": "dd2c11e3f5918f4afc4b2f144eb22fde129d9a4bd90bfb084c6199557e859ae8"
     },
     {
       "id": "native-catalog",
@@ -24,7 +24,7 @@
       "name": "原生插件模板",
       "exampleId": "example.native-smoke",
       "manifest": "plugin-spec.json",
-      "sha256": "b18fccfb2af81a955bb31fa8090577c83d2b0daeb30e955ea373a103b57aee1c"
+      "sha256": "d0919c02b190f7f36aa214026a1dab6218d6d83bfe92014028f9d0341be62f8e"
     }
   ]
 }

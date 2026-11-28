@@ -52,4 +52,13 @@ const result = await window.KigttsPresentation?.apply({
 
 每次 `apply()` 提交完整的临时覆盖，可省略任意字段以沿用软件外观。`mode` 接受 `system`、`light`、`dark`。`contrast` 接受 `default`、`medium`、`high`。`background: null` 临时移除背景。本地网页可用所属项目内的相对路径（最多 8 MiB）。本地及远程网页都可使用 PNG、JPEG 或 WebP Base64 data URL（解码后最多 4 MiB）。控件在静置后淡化，屏幕交互会重新显示控件。
 
-`fadeControlsWhenIdle` 使用字幕区域已有的淡化动效，覆盖网页周围的顶部按钮组和底部的关闭、全屏或退出全屏按钮。网页可调用 `await KigttsPresentation.requestFullscreen()` 进入宿主全屏，并用 `await KigttsPresentation.exitFullscreen()` 退出。两者返回 `{ ok }`。进入全屏沿用网页外观权限，退出时无需再次申请。系统返回键也可退出全屏。离开当前网页会解除网页发起的全屏。
+网页默认不开启淡化。单独开关淡化时用 `setControls()`，它只更新传入的布尔值，保留此前的临时外观、背景和其他按钮设置。开启沿用网页外观权限，传入 `false` 关闭时无需再次申请。
+
+```js
+await KigttsPresentation.setControls({ fadeControlsWhenIdle: true });
+await KigttsPresentation.setControls({ fadeControlsWhenIdle: false });
+```
+
+三个独立选项分别是 `fadeHeaderWhenIdle`（主界面顶栏）、`fadeDockWhenIdle`（主界面底栏）和 `fadeControlsWhenIdle`（网页周围的顶部按钮组，以及关闭、全屏和退出全屏）。控件淡化后仍可点击。建议在用户操作后才调用，并检查返回的 `{ ok }`。
+
+网页可调用 `await KigttsPresentation.requestFullscreen()` 进入宿主全屏，并用 `await KigttsPresentation.exitFullscreen()` 退出。进入全屏沿用网页外观权限，退出时无需再次申请。系统返回键也可退出全屏。

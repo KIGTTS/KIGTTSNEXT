@@ -81,6 +81,12 @@ internal class WebPagePrivileges(private val web: WebView, private val ledger: P
                                     { active() && origin(web.url) == expected }) { allow("web-presentation", expected) } == true
                                 result.put("ok", allowed)
                             }
+                            "presentation-controls" -> {
+                                val expected = origin(sourceOrigin.toString())
+                                val allowed = expected != null && presentation?.setControls(data.getJSONObject("controls"),
+                                    { active() && origin(web.url) == expected }) { allow("web-presentation", expected) } == true
+                                result.put("ok", allowed)
+                            }
                             "clear-presentation" -> { presentation?.clear(); result.put("ok", presentation != null) }
                             "request-fullscreen", "exit-fullscreen" -> {
                                 val enabled = data.getString("operation") == "request-fullscreen"

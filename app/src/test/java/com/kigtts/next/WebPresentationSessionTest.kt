@@ -88,6 +88,31 @@ class WebPresentationSessionTest {
         assertFalse(model.state.value.fullscreen)
     }
 
+    @Test fun controlsAreOffByDefaultAndCanBeChangedIndependently() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        var current: WebPagePresentation? = null
+        val session = WebPresentationSession(context, "web", "phrase", null, this) { _, next -> current = next }
+        val theme = JSONObject("""{"appearance":{"themeColor":"#038387"}}""")
+        assertTrue(session.apply(theme, false, { true }) { true })
+        val original = requireNotNull(current)
+        assertFalse(original.fadeControlsWhenIdle)
+        assertFalse(original.chrome.fadeHeaderWhenIdle)
+        assertFalse(original.chrome.fadeDockWhenIdle)
+
+        val on = JSONObject("""{"fadeControlsWhenIdle":true,"fadeHeaderWhenIdle":true}""")
+        val off = JSONObject("""{"fadeControlsWhenIdle":false}""")
+        assertFalse(session.setControls(on, { true }) { false })
+        assertEquals(original, current)
+        assertTrue(session.setControls(on, { true }) { true })
+        assertTrue(requireNotNull(current).fadeControlsWhenIdle)
+        assertTrue(session.setControls(off, { true }) { error("Disabling must not request permission") })
+        assertFalse(requireNotNull(current).fadeControlsWhenIdle)
+        assertTrue(requireNotNull(current).chrome.fadeHeaderWhenIdle)
+        assertEquals(original.appearance, current?.appearance)
+        assertFalse(session.setControls(on, { true }) { session.clear(); true })
+        assertNull(current)
+    }
+
     @Test fun aLocalImageIsReadOnlyFromTheOwningProject() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val project = folder.newFolder()
@@ -104,6 +129,8 @@ class WebPresentationSessionTest {
         assertNull(current)
         assertTrue(session.apply(data, true, { true }) { true })
         val asset = requireNotNull(current?.appearance?.background)
+        assertTrue(session.setControls(JSONObject("""{"fadeControlsWhenIdle":true}"""), { true }) { true })
+        assertEquals(asset, current?.appearance?.background)
         assertTrue(AppearanceAssets(context).file(asset)?.isFile == true)
         session.clear()
         assertNull(current)

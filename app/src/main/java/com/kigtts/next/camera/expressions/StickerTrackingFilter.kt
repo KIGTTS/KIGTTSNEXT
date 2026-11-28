@@ -14,7 +14,10 @@ internal class StickerTrackingFilter {
 
     fun update(faces: List<ExpressionFace>, timeMs: Long): List<ExpressionFace> {
         samples.values.removeAll { timeMs - it.timeMs > MAX_GAP_MS }
-        return faces.map { face ->
+        val visible = if (faces.size < 2) faces else faces.filterNot { face ->
+            faces.any { other -> other !== face && containsSmallFace(other, face) }
+        }
+        return visible.map { face ->
             val sample = samples[face.id]
             val elapsed = sample?.let { timeMs - it.timeMs }
             val shown = if (sample != null && elapsed != null && elapsed in 1..MAX_GAP_MS) {
@@ -23,6 +26,18 @@ internal class StickerTrackingFilter {
             samples[face.id] = Sample(shown, timeMs)
             shown
         }
+    }
+
+    private fun containsSmallFace(larger: ExpressionFace, smaller: ExpressionFace): Boolean {
+        if (larger.opacity < .5f || larger.eyeDistance <= 1f) return false
+        val outer = larger.bounds
+        val inner = smaller.bounds
+        val area = inner.width() * inner.height()
+        if (area <= 0f || area > outer.width() * outer.height() * .35f) return false
+        if (!outer.contains(inner.centerX(), inner.centerY())) return false
+        val overlapX = minOf(outer.right, inner.right) - maxOf(outer.left, inner.left)
+        val overlapY = minOf(outer.bottom, inner.bottom) - maxOf(outer.top, inner.top)
+        return overlapX * overlapY >= area * .9f
     }
 
     private fun smooth(previous: ExpressionFace, next: ExpressionFace, elapsedMs: Long): ExpressionFace {

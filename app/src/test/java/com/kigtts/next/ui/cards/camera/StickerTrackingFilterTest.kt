@@ -38,6 +38,22 @@ class StickerTrackingFilterTest {
         assertSame(original, filter.update(listOf(original), 366).single())
     }
 
+    @Test fun suppressesNestedSmallFacesAndRetainsOtherSubjects() {
+        val main = face(7, 0f)
+        val eye = face(8, 0f).copy(bounds = RectF(109f, 100f, 150f, 148f))
+        val ear = face(9, 0f).copy(bounds = RectF(212f, 57f, 242f, 101f))
+        val neighbor = face(10, 0f).copy(bounds = RectF(209f, 107f, 291f, 197f))
+        val comparable = face(11, 0f).copy(bounds = RectF(88f, 43f, 232f, 279f))
+        assertEquals(listOf(main, neighbor, comparable), filter.update(listOf(eye, main, ear, neighbor, comparable), 0))
+        assertSame(eye, filter.update(listOf(eye), 33).single())
+    }
+
+    @Test fun fadedParentDoesNotHideAnotherFace() {
+        val main = face(7, 0f).copy(opacity = .2f)
+        val small = face(8, 0f).copy(bounds = RectF(109f, 100f, 150f, 148f))
+        assertEquals(listOf(main, small), filter.update(listOf(main, small), 0))
+    }
+
     private fun face(id: Long, offset: Float): ExpressionFace {
         val base = ExpressionFace.SAMPLE
         return base.copy(id = id, bounds = RectF(base.bounds).apply { offset(offset, 0f) },

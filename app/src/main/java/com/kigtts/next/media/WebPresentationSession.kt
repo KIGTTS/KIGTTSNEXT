@@ -30,13 +30,20 @@ internal class WebPresentationSession(private val context: Context, private val 
     private val setFullscreen: (Any, Boolean) -> Boolean = { _, _ -> false },
     private val publish: (Any, WebPagePresentation?) -> Unit) {
     private val owner = Any()
+    private val initial = WebPagePresentation(owner, media, phrase, ResolvedAppearance(AppearancePatch()),
+        HomeChromePresentation(), false)
+    private var current = initial
     private var generation = 0
+    private var controlsSequence = 0
+    private var controlsRevision = 0
     private var fullscreenGeneration = 0
     private var image: File? = null
 
     fun clear() {
         generation++
+        controlsRevision = ++controlsSequence
         fullscreenGeneration++
+        current = initial
         publish(owner, null)
         val previous = image
         image = null
@@ -47,6 +54,24 @@ internal class WebPresentationSession(private val context: Context, private val 
         val request = ++fullscreenGeneration
         if (!active() || enabled && !authorize()) return false
         return request == fullscreenGeneration && active() && setFullscreen(owner, enabled)
+    }
+
+    suspend fun setControls(data: JSONObject, active: () -> Boolean, authorize: suspend () -> Boolean): Boolean {
+        fun fade(key: String): Boolean? = if (data.has(key)) data.get(key) as Boolean else null
+        val header = fade("fadeHeaderWhenIdle")
+        val dock = fade("fadeDockWhenIdle")
+        val subtitle = fade("fadeControlsWhenIdle")
+        if (header == null && dock == null && subtitle == null) return active()
+        val request = ++controlsSequence
+        if (!active() || ((header == true || dock == true || subtitle == true) && !authorize())) return false
+        if (request <= controlsRevision || !active()) return false
+        controlsRevision = request
+        current = current.copy(
+            chrome = HomeChromePresentation(header ?: current.chrome.fadeHeaderWhenIdle, dock ?: current.chrome.fadeDockWhenIdle),
+            fadeControlsWhenIdle = subtitle ?: current.fadeControlsWhenIdle,
+        )
+        publish(owner, current)
+        return true
     }
 
     suspend fun apply(data: JSONObject, projectOrigin: Boolean, active: () -> Boolean, authorize: suspend () -> Boolean): Boolean {
@@ -68,6 +93,7 @@ internal class WebPresentationSession(private val context: Context, private val 
         )
         val chrome = HomeChromePresentation(controls.optBoolean("fadeHeaderWhenIdle"), controls.optBoolean("fadeDockWhenIdle"))
         val request = ++generation
+        val controlRequest = ++controlsSequence
         if (!authorize() || request != generation || !active()) return false
         var next: File? = null
         try {
@@ -80,8 +106,12 @@ internal class WebPresentationSession(private val context: Context, private val 
                 if (file == null) patch else patch.copy(background = AppearanceBackground.Image(PluginResource(file.name))),
                 file?.name,
             )
-            publish(owner, WebPagePresentation(owner, media, phrase, resolved, chrome,
-                controls.optBoolean("fadeControlsWhenIdle")))
+            current = current.copy(appearance = resolved)
+            if (controlRequest > controlsRevision) {
+                controlsRevision = controlRequest
+                current = current.copy(chrome = chrome, fadeControlsWhenIdle = controls.optBoolean("fadeControlsWhenIdle"))
+            }
+            publish(owner, current)
             image?.let { discard(it) }
             image = file
             next = null
