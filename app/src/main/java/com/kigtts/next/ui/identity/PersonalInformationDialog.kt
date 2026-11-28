@@ -6,7 +6,8 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -41,7 +42,7 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
     var avatarSource by rememberSaveable(value.id) { mutableStateOf<String?>(null) }
     var working by remember { mutableStateOf(false) }; var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val picker = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         if (uri != null) scope.launch {
             working = true
             try { avatarSource = withContext(Dispatchers.IO) { prepareAvatarSource(stickers.context, uri).path } }
@@ -57,7 +58,7 @@ internal fun PersonalInformationDialog(value: IdentityCard, stickers: StickerRep
         text = { Column(Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PersonalCardView(value.copy(nickname = name, bio = bio, avatar = avatar, contacts = contacts, avatarFrame = avatarFrame), stickers,
                 Modifier.fillMaxWidth(), interactive = false)
-            TextButton(feedbackClick { picker.launch("image/*") }, enabled = !working) {
+            TextButton(feedbackClick { picker.launch(PickGalleryImage) }, enabled = !working) {
                 PersonalAvatar(avatar?.let(stickers::imageFile), Modifier.size(48.dp), avatarFrame); Spacer(Modifier.width(12.dp)); Text(uiText("profile.avatar_replace"))
             }
             Text(uiText("profile.avatar_shape"), style = MaterialTheme.typography.titleSmall)

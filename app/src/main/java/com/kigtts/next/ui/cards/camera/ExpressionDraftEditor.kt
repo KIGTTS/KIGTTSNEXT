@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +25,8 @@ import com.kigtts.next.camera.expressions.*
 import com.kigtts.next.cards.StickerRepository
 import com.kigtts.next.ui.cards.StickerPickerSheet
 import com.kigtts.next.ui.components.PillButton
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.theme.AppearanceAssets
@@ -38,14 +41,16 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
     stickers: StickerRepository, save: () -> Unit, error: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var index by remember(draft.id) { mutableIntStateOf(0) }
+    var index by rememberSaveable(draft.id) { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
-    var replaceSvg by remember { mutableStateOf<Int?>(null) }
+    var addLayer by remember { mutableStateOf(false) }
+    var replaceSvg by rememberSaveable(draft.id) { mutableStateOf<Int?>(null) }
+    var replacePhoto by rememberSaveable(draft.id) { mutableStateOf<Int?>(null) }
     var pickSticker by remember { mutableStateOf<Int?>(null) }
     val selected = index.coerceIn(draft.layers.indices)
     val layer = draft.layers[selected]
     val latest = rememberUpdatedState(draft)
-    fun loadArtwork(replace: Int?, read: () -> ExpressionLayer) {
+    fun loadArtwork(replace: Int?, failure: String = "expression.file_invalid", read: () -> ExpressionLayer) {
         if (!loading && !saving) {
             loading = true
             scope.launch {
@@ -65,7 +70,7 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
                         change(current.copy(layers = current.layers + artwork))
                     }
                 } catch (cancel: CancellationException) { throw cancel }
-                catch (_: Exception) { error(context.uiCopy("expression.file_invalid")) }
+                catch (_: Exception) { error(context.uiCopy(failure)) }
                 finally { loading = false }
             }
         }
@@ -80,6 +85,19 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
             ExpressionLayer(svg)
         }
     }
+    val selectPhoto = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
+        val replace = replacePhoto
+        replacePhoto = null
+        if (uri != null) loadArtwork(replace, "photo.sticker_import_failed") { expressionPhotoLayer(context, uri) }
+    }
+    fun openSvg(target: Int?) {
+        replaceSvg = target
+        selectSvg.launch(arrayOf("image/svg+xml", "application/octet-stream"))
+    }
+    fun openPhoto(target: Int?) {
+        replacePhoto = target
+        selectPhoto.launch(PickGalleryImage)
+    }
     pickSticker?.let { replace ->
         StickerPickerSheet(stickers, { pickSticker = null }) { item ->
             pickSticker = null
@@ -88,15 +106,27 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
             }
         }
     }
-    fun edit(value: ExpressionLayer) {
-        change(draft.copy(layers = draft.layers.toMutableList().apply { set(selected, value) }))
+    fun updateLayer(target: Int, value: ExpressionLayer) {
+        val current = latest.value
+        if (target in current.layers.indices) change(current.copy(layers = current.layers.toMutableList().apply { set(target, value) }))
+    }
+    fun edit(value: ExpressionLayer) = updateLayer(selected, value)
+    fun removeLayer(target: Int) {
+        val current = latest.value
+        if (current.layers.size <= 1 || target !in current.layers.indices) return
+        change(current.copy(layers = current.layers.filterIndexed { item, _ -> item != target }))
+        index = target.coerceAtMost(current.layers.lastIndex - 1)
     }
 
     Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)
         .testTag("camera-expression-editor"), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        ExpressionArtPreview(draft, layer.anchor)
+        ExpressionArtPreview(draft, selected, !loading && !saving, { index = it }, ::updateLayer, ::removeLayer)
         OutlinedTextField(draft.name, { change(draft.copy(name = it.take(80))) }, Modifier.fillMaxWidth(),
             singleLine = true, label = { Text(uiText("expression.name")) })
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(uiText("expression.blur_base"), Modifier.weight(1f))
+            Switch(draft.blurFaceEnabled, { change(latest.value.copy(blurFace = it)) }, enabled = !loading && !saving)
+        }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 items(draft.layers.indices.toList()) { item ->
@@ -105,19 +135,30 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
                     })
                 }
             }
-            IconButton({ replaceSvg = null; selectSvg.launch(arrayOf("image/svg+xml", "application/octet-stream")) }, enabled = !loading && !saving && draft.layers.size < 8) {
-                Icon(Icons.Default.Add, uiText("expression.add_svg"))
+            Box {
+                IconButton({ addLayer = true }, enabled = !loading && !saving && draft.layers.size < 8) {
+                    Icon(Icons.Default.Add, uiText("expression.add_layer"))
+                }
+                DropdownMenu(addLayer, { addLayer = false }) {
+                    DropdownMenuItem({ Text(uiText("expression.add_photo")) }, {
+                        addLayer = false
+                        openPhoto(null)
+                    }, leadingIcon = { Icon(Icons.Default.Collections, null) })
+                    DropdownMenuItem({ Text(uiText("expression.add_svg")) }, {
+                        addLayer = false
+                        openSvg(null)
+                    }, leadingIcon = { Icon(Icons.Default.Image, null) })
+                }
             }
-            IconButton({
-                change(draft.copy(layers = draft.layers.filterIndexed { item, _ -> item != selected }))
-                index = selected.coerceAtMost(draft.layers.lastIndex - 1)
-            }, enabled = !loading && !saving && draft.layers.size > 1) { Icon(Icons.Default.DeleteOutline, uiText("expression.remove_layer")) }
+            IconButton({ removeLayer(selected) }, enabled = !loading && !saving && draft.layers.size > 1) {
+                Icon(Icons.Default.DeleteOutline, uiText("expression.remove_layer"))
+            }
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            PillButton(uiText("expression.replace_svg"), Icons.Default.Image, {
-                replaceSvg = selected
-                selectSvg.launch(arrayOf("image/svg+xml", "application/octet-stream"))
-            }, Modifier.testTag("expression-replace-svg"), enabled = !loading && !saving)
+            PillButton(uiText("expression.replace_photo"), Icons.Default.Image, { openPhoto(selected) },
+                Modifier.testTag("expression-replace-photo"), enabled = !loading && !saving)
+            PillButton(uiText("expression.replace_svg"), Icons.Default.Image, { openSvg(selected) },
+                Modifier.testTag("expression-replace-svg"), enabled = !loading && !saving)
             PillButton(uiText("photo.choose_sticker"), Icons.Default.Collections, { pickSticker = selected },
                 Modifier.testTag("expression-layer-from-library"), enabled = !loading && !saving)
         }
@@ -132,10 +173,6 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(uiText("expression.fringe"), Modifier.weight(1f))
             Switch(layer.hideUnderFringe, { edit(layer.copy(hideUnderFringe = it)) })
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(uiText("expression.blur_base"), Modifier.weight(1f))
-            Switch(layer.blurBase, { edit(layer.copy(blurBase = it)) })
         }
         ExpressionSlider("scale", layer.scale, .15f..3f) { edit(layer.copy(scale = it)) }
         ExpressionSlider("x", layer.x, -1f..1f) { edit(layer.copy(x = it)) }

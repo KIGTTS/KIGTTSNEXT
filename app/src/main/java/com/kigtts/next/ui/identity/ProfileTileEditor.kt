@@ -4,7 +4,8 @@ import com.kigtts.next.i18n.uiText
 import com.kigtts.next.i18n.rememberUiCopy
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,7 +41,7 @@ import java.io.File
     var working by remember { mutableStateOf(false) }
     val copy = rememberUiCopy()
     val scope = rememberCoroutineScope()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> if (uri != null) scope.launch {
+    val picker = rememberLauncherForActivityResult(VisualMediaPicker()) { uri -> if (uri != null) scope.launch {
         working = true
         try { image = withContext(Dispatchers.IO) {
             // Preserve the original GIF bytes; the generic sticker importer rasterizes images.
@@ -90,7 +91,7 @@ import java.io.File
                     ProfileTileKind.LINK -> OutlinedTextField(text, { text = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.url")) }, singleLine = true)
                     ProfileTileKind.IMAGE -> {
                         if (image.isNotBlank()) ProfileTileImage(profileImageFile(stickers, image), Modifier.fillMaxWidth().height(160.dp))
-                        FilledTonalButton(feedbackClick { if (!working) picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) uiText("profile.opening_image") else uiText("profile.pick_image_or_gif")) }
+                        FilledTonalButton(feedbackClick { if (!working) picker.launch(PickGalleryImage) }, Modifier.fillMaxWidth(), enabled = !working) { Icon(Icons.Default.Image, null); Text(if (working) uiText("profile.opening_image") else uiText("profile.pick_image_or_gif")) }
                     }
                     ProfileTileKind.TITLE -> Unit
                     ProfileTileKind.DIVIDER -> {

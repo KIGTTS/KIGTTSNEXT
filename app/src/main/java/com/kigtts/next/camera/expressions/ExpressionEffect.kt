@@ -27,10 +27,15 @@ internal data class ExpressionLayer(
     val blurBase: Boolean = false,
     val pivotY: Float? = null,
     val bitmapWebp: String? = null,
+    val flipX: Boolean = false,
 )
 
 @Serializable
-internal data class ExpressionEffect(val id: String, val name: String, val layers: List<ExpressionLayer>)
+internal data class ExpressionEffect(val id: String, val name: String, val layers: List<ExpressionLayer>,
+    val blurFace: Boolean? = null) {
+    // Older packs stored blur on individual layers. An explicit whole-sticker choice takes precedence.
+    val blurFaceEnabled get() = blurFace ?: layers.any { it.blurBase }
+}
 
 @Serializable
 internal data class ExpressionPack(val version: Int = 1, val effects: List<ExpressionEffect>) {
@@ -84,41 +89,24 @@ internal data class ExpressionFace(
 
 internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Picture>) {
     private val layers = effect.layers.zip(artwork)
-    val samplesSurface = effect.layers.any { it.hideUnderFringe || it.blurBase }
+    private val blurFace = effect.blurFaceEnabled
+    val samplesSurface = blurFace || effect.layers.any { it.hideUnderFringe }
 
     fun draw(canvas: Canvas, faces: List<ExpressionFace>) {
         faces.forEach { face ->
-            val width = face.bounds.width()
-            if (width <= 0f || face.eyeDistance <= 1f || face.opacity <= 0f) return@forEach
+            if (face.bounds.width() <= 0f || face.eyeDistance <= 1f || face.opacity <= 0f) return@forEach
+            if (blurFace) face.surface?.drawBase(canvas, (255 * face.opacity).toInt().coerceIn(0, 255))
             layers.forEach { (layer, picture) ->
-                val eyes = face.eyeCenter
-                val point = when (layer.anchor) {
-                    ExpressionAnchor.FACE -> ExpressionPoint(face.bounds.centerX(), face.bounds.centerY())
-                    ExpressionAnchor.EYES -> eyes
-                    ExpressionAnchor.LEFT_EYE -> face.leftEye
-                    ExpressionAnchor.RIGHT_EYE -> face.rightEye
-                    ExpressionAnchor.MOUTH -> face.mouthCenter
-                    ExpressionAnchor.NOSE -> face.nose
-                    ExpressionAnchor.FOREHEAD -> ExpressionPoint(eyes.x, eyes.y - face.eyeDistance * .65f)
-                }
-                val base = when (layer.anchor) {
-                    ExpressionAnchor.FACE, ExpressionAnchor.FOREHEAD -> width
-                    ExpressionAnchor.EYES -> face.eyeDistance * 2f
-                    ExpressionAnchor.LEFT_EYE, ExpressionAnchor.RIGHT_EYE, ExpressionAnchor.NOSE -> face.eyeDistance * .72f
-                    ExpressionAnchor.MOUTH -> face.eyeDistance * 1.4f
-                }
-                val nominal = base * layer.scale
+                val placement = layer.placement(face)
                 val save = canvas.save()
                 if (layer.hideUnderFringe) face.surface?.clip(canvas)
                 val alpha = (255 * layer.opacity * face.opacity).toInt().coerceIn(0, 255)
-                if (layer.blurBase) face.surface?.drawBase(canvas, alpha)
-                canvas.translate(point.x, point.y)
-                canvas.rotate(face.roll)
-                canvas.translate(width * layer.x, width * layer.y)
-                canvas.rotate(layer.rotation)
-                // 1.1.8's ink sheets have the eye line on row 99 of the original 320px art.
-                val inset = layer.pivotY ?: if (layer.anchor == ExpressionAnchor.EYES) 99f / 320f else .5f
-                val target = RectF(-nominal / 2f, -nominal * inset, nominal / 2f, nominal * (1f - inset))
+                canvas.translate(placement.anchor.x, placement.anchor.y)
+                canvas.rotate(placement.faceRoll)
+                canvas.translate(placement.offset.x, placement.offset.y)
+                canvas.rotate(placement.rotation)
+                if (layer.flipX) canvas.scale(-1f, 1f)
+                val target = placement.bounds()
                 if (alpha < 255) {
                     val opacity = canvas.saveLayerAlpha(target, alpha)
                     canvas.drawPicture(picture, target)

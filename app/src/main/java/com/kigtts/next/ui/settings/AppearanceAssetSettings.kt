@@ -6,7 +6,8 @@ import com.kigtts.next.i18n.rememberUiCopy
 import com.kigtts.next.i18n.uiText
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -40,7 +41,7 @@ import kotlinx.coroutines.*
     var busy by remember { mutableStateOf(false) }
     var crop by rememberSaveable { mutableStateOf<String?>(null) }
     var prompt by rememberSaveable { mutableStateOf(false) }
-    val background = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> uri?.let {
+    val background = rememberLauncherForActivityResult(VisualMediaPicker()) { uri -> uri?.let {
         scope.launch { busy = true; try {
             crop = withContext(Dispatchers.IO) { AppearanceAssets(context).importBackground(it) }
         } catch (cancel: CancellationException) { throw cancel }
@@ -55,7 +56,7 @@ import kotlinx.coroutines.*
     }
     SettingItem(uiText("appearance.background_image"), if (!hasBackground) uiText("appearance.not_selected") else uiText("appearance.selected"),
         Icons.Default.Image, imagePosition, Modifier.testTag("appearance-background-image"),
-        onClick = { if (!busy) background.launch("image/*") }, trailing = {
+        onClick = { if (!busy) background.launch(PickGalleryImage) }, trailing = {
             if (busy) CircularProgressIndicator(Modifier.size(24.dp))
             else if (hasBackground) IconButton(feedbackClick {
                 onChange(settings.copy(background = null, backgroundSeed = null, backgroundColorEnabled = false))

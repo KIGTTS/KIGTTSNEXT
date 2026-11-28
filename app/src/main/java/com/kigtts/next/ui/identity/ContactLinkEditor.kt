@@ -3,7 +3,8 @@ package com.kigtts.next.ui.identity
 import com.kigtts.next.i18n.uiText
 
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -26,7 +27,7 @@ import kotlinx.coroutines.*
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current; val scope = rememberCoroutineScope()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val picker = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         if (uri != null) scope.launch {
             loading = true; error = null
             try { qr = withContext(Dispatchers.IO) { readContactQr(context, uri) } }
@@ -41,7 +42,7 @@ import kotlinx.coroutines.*
                 if (platform == SocialPlatform.LINK) OutlinedTextField(label, { label = it.take(24) }, Modifier.fillMaxWidth(), label = { Text(uiText("common.name")) }, singleLine = true)
                 OutlinedTextField(account, { account = it.take(512) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.account_link")) }, maxLines = 3)
                 OutlinedTextField(qr, { qr = it.take(2048) }, Modifier.fillMaxWidth(), label = { Text(uiText("profile.qr_optional")) }, maxLines = 3)
-                OutlinedButton(feedbackClick { picker.launch("image/*") }, Modifier.fillMaxWidth(), enabled = !loading) {
+                OutlinedButton(feedbackClick { picker.launch(PickGalleryImage) }, Modifier.fillMaxWidth(), enabled = !loading) {
                     Icon(Icons.Default.QrCodeScanner, null); Spacer(Modifier.width(8.dp)); Text(if (loading) uiText("profile.reading_qr") else uiText("profile.read_qr_image"))
                 }
                 Text(uiText("profile.contact_qr_hint"), style = MaterialTheme.typography.bodySmall)

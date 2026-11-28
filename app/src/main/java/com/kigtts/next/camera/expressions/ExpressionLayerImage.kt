@@ -1,17 +1,42 @@
 package com.kigtts.next.camera.expressions
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Paint
 import android.graphics.Picture
 import android.graphics.RectF
+import android.net.Uri
 import com.kigtts.next.media.MediaBitmapDecoder
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.Base64
 
 private const val EDGE = 320
+private const val MAX_PHOTO_BYTES = 32 * 1024 * 1024
 internal const val EMPTY_EXPRESSION_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320"/>"""
+
+internal fun expressionPhotoLayer(context: Context, uri: Uri): ExpressionLayer {
+    val source = File.createTempFile("expression-photo-", ".image", context.cacheDir)
+    return try {
+        requireNotNull(context.contentResolver.openInputStream(uri)).use { input ->
+            source.outputStream().use { output ->
+                val buffer = ByteArray(64 * 1024)
+                var remaining = MAX_PHOTO_BYTES
+                while (true) {
+                    val bytes = input.read(buffer)
+                    if (bytes == -1) break
+                    require(bytes <= remaining)
+                    output.write(buffer, 0, bytes)
+                    remaining -= bytes
+                }
+            }
+        }
+        ExpressionLayer(EMPTY_EXPRESSION_SVG, bitmapWebp = expressionStickerImage(source))
+    } finally {
+        source.delete()
+    }
+}
 
 /** Size the sticker once and embed the encoded copy so a pack can be shared independently. */
 @Suppress("DEPRECATION")

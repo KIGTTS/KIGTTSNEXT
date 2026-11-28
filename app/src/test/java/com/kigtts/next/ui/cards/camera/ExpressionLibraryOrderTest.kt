@@ -5,10 +5,13 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.camera.expressions.*
 import com.kigtts.plugin.api.PluginJson
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -33,18 +36,17 @@ class ExpressionLibraryOrderTest {
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    fun libraryImageIsEmbeddedInThePackAndRendersWithoutItsSourceFile() {
+    fun galleryImageIsEmbeddedInThePackAndRendersWithoutItsSourceFile() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = File.createTempFile("expression", ".png", context.cacheDir)
         val input = Bitmap.createBitmap(320, 160, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GREEN) }
-        val encoded = try {
+        val layer = try {
             file.outputStream().use { input.compress(Bitmap.CompressFormat.PNG, 100, it) }
-            expressionStickerImage(file)
+            expressionPhotoLayer(context, Uri.fromFile(file)).copy(scale = 1.2f)
         } finally {
             input.recycle()
             file.delete()
         }
-        val layer = ExpressionLayer(EMPTY_EXPRESSION_SVG, scale = 1.2f, bitmapWebp = encoded)
         val effect = ExpressionEffect("sticker", "Sticker", listOf(layer))
         val exported = PluginJson.encodeToString(ExpressionPack(effects = listOf(effect)))
         val restored = ExpressionPack.read(exported).effects.single()
@@ -57,6 +59,40 @@ class ExpressionLibraryOrderTest {
             org.junit.Assert.assertTrue(Color.green(green) > 225)
             assertEquals(0, Color.alpha(result.getPixel(160, 85)))
         } finally { result.recycle() }
+    }
+
+    @Test fun movingScalingAndRotatingAnEyeStickerKeepsItsVisualCenterUnderTheGesture() {
+        val layer = ExpressionLayer(EMPTY_EXPRESSION_SVG, anchor = ExpressionAnchor.EYES)
+        val center = layer.placement(expressionPreviewFace).center
+        val moved = layer.transform(expressionPreviewFace, ExpressionPoint(11f, -7f), 1.5f, 27f)
+        val movedCenter = moved.placement(expressionPreviewFace).center
+        assertEquals(center.x + 11f, movedCenter.x, .001f)
+        assertEquals(center.y - 7f, movedCenter.y, .001f)
+        assertEquals(1.5f, moved.scale, .001f)
+        assertEquals(27f, moved.rotation, .001f)
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun wholeStickerBlurOverridesOldLayerFlagsAndRemovesPortraitFeatures() {
+        val assets = ApplicationProvider.getApplicationContext<Context>().assets
+        val legacyLayer = ExpressionLayer(EMPTY_EXPRESSION_SVG, blurBase = true)
+        val legacy = ExpressionEffect("test", "Test", listOf(legacyLayer))
+        val serialized = PluginJson.encodeToString(ExpressionPack(effects = listOf(legacy)))
+        assertTrue(ExpressionPack.read(serialized).effects.single().blurFaceEnabled)
+        assertFalse(CompiledExpression.compile(legacy.copy(blurFace = false)).samplesSurface)
+        assertTrue(CompiledExpression.compile(legacy.copy(blurFace = false,
+            layers = listOf(legacyLayer.copy(hideUnderFringe = true)))).samplesSurface)
+        val image = Bitmap.createBitmap(EXPRESSION_PREVIEW_EDGE, EXPRESSION_PREVIEW_EDGE, Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = Canvas(image)
+            drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets))
+            val eye = image.getPixel(105, 177)
+            val hood = image.getPixel(150, 55)
+            image.eraseColor(Color.TRANSPARENT)
+            drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets, withoutFeatures = true))
+            assertTrue(Color.luminance(image.getPixel(105, 177)) > Color.luminance(eye))
+            assertEquals(hood, image.getPixel(150, 55))
+        } finally { image.recycle() }
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)

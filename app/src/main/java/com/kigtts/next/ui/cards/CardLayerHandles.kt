@@ -30,16 +30,19 @@ import kotlin.math.*
 /** Controls match the layer's bounds and never enlarge the paper canvas's measured size. */
 @Composable
 internal fun BoxScope.CardLayerHandles(layer: CardLayer, change: (CardLayer) -> Unit, remove: () -> Unit = {},
-    configure: (() -> Unit)? = null, handleActive: (Boolean) -> Unit) {
+    configure: (() -> Unit)? = null, canRemove: Boolean = true,
+    widthRange: ClosedFloatingPointRange<Double> = .01..(if (layer.kind == CardLayerKind.TEXT) .3 else 2.0),
+    handleActive: (Boolean) -> Unit) {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     Box(Modifier.matchParentSize().onGloballyPositioned { coordinates = it }) {
         fun center(): Offset? = coordinates?.takeIf { it.isAttached }?.let { it.localToRoot(Offset(it.size.width / 2f, it.size.height / 2f)) }
-        CardDragHandle("缩放并旋转贴纸", Icons.Default.OpenInFull, Modifier.align(Alignment.BottomEnd).testTag("card-layer-scale/" + layer.id),
-            layer, ::center, true, change, handleActive)
+        CardDragHandle(uiText("accessibility.scale_rotate_sticker"), Icons.Default.OpenInFull,
+            Modifier.align(Alignment.BottomEnd).testTag("card-layer-scale/" + layer.id),
+            layer, ::center, widthRange, change, handleActive)
         MotionIconButton(feedbackClick { change(layer.copy(flipX = !layer.flipX)) },
             Modifier.align(Alignment.TopStart).requiredSize(32.dp).testTag("card-layer-flip-x/" + layer.id),
             colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Flip, uiText("accessibility.mirror_horizontal"), Modifier.size(18.dp)) }
-        MotionIconButton(feedbackClick(remove), Modifier.align(Alignment.TopEnd).requiredSize(32.dp).testTag("card-layer-delete/" + layer.id),
+        if (canRemove) MotionIconButton(feedbackClick(remove), Modifier.align(Alignment.TopEnd).requiredSize(32.dp).testTag("card-layer-delete/" + layer.id),
             colors = IconButtonDefaults.filledTonalIconButtonColors()) { Icon(Icons.Default.Close, uiText("accessibility.remove_sticker"), Modifier.size(18.dp)) }
         if (configure != null) MotionIconButton(feedbackClick(configure), Modifier.align(Alignment.BottomStart).requiredSize(32.dp)
             .testTag("card-layer-settings/" + layer.id), colors = IconButtonDefaults.filledTonalIconButtonColors()) {
@@ -50,20 +53,21 @@ internal fun BoxScope.CardLayerHandles(layer: CardLayer, change: (CardLayer) -> 
 
 @Composable
 private fun CardDragHandle(label: String, icon: ImageVector, modifier: Modifier, layer: CardLayer,
-    center: () -> Offset?, scale: Boolean, change: (CardLayer) -> Unit, handleActive: (Boolean) -> Unit) {
+    center: () -> Offset?, widthRange: ClosedFloatingPointRange<Double>, change: (CardLayer) -> Unit,
+    handleActive: (Boolean) -> Unit) {
     var coordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var pressed by remember { mutableStateOf(false) }
     val latest = rememberUpdatedState(layer); val update = rememberUpdatedState(change)
     val feedback = rememberUpdatedState(LocalHapticFeedback.current)
     val corner by animateDpAsState(if (pressed) 8.dp else 24.dp, label = "card-handle-shape")
-    fun nudge(value: CardLayer) = if (scale) value.copy(width = (value.width * 1.1).coerceAtMost(2.0))
-        else value.copy(rotation = (value.rotation + 15).coerceIn(-36000.0, 36000.0))
+    val zoomLabel = uiText("accessibility.enlarge_sticker")
+    fun nudge(value: CardLayer) = value.copy(width = (value.width * 1.1).coerceIn(widthRange))
     Box(modifier.requiredSize(32.dp).onGloballyPositioned { coordinates = it }
         .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(corner))
         .semantics(mergeDescendants = true) {
             role = Role.Button
             contentDescription = label
-            onClick(if (scale) "放大10%" else "旋转15度") {
+            onClick(zoomLabel) {
                 update.value(nudge(latest.value))
                 true
             }
@@ -91,8 +95,8 @@ private fun CardDragHandle(label: String, icon: ImageVector, modifier: Modifier,
                                 var delta = nextAngle - lastAngle
                                 if (delta > PI) delta -= 2 * PI; if (delta < -PI) delta += 2 * PI
                                 angle += delta * 180 / PI; lastAngle = nextAngle
-                                origin.copy(width = (origin.width * vector.getDistance() / radius).coerceIn(.01,
-                                    if (origin.kind == CardLayerKind.TEXT) .3 else 2.0), rotation = angle.coerceIn(-36000.0, 36000.0))
+                                origin.copy(width = (origin.width * vector.getDistance() / radius).coerceIn(widthRange),
+                                    rotation = angle.coerceIn(-36000.0, 36000.0))
                             }
                             if (candidate != origin) { changed = true; update.value(candidate) }
                             input.consume()

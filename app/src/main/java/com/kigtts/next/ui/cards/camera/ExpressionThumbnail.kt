@@ -29,7 +29,7 @@ internal fun expressionThumbnail(effect: ExpressionEffect): ImageBitmap? {
                 val canvas = Canvas(image)
                 val scale = image.width.toFloat() / EXPRESSION_PREVIEW_EDGE
                 canvas.scale(scale, scale)
-                drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets))
+                drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets, effect.blurFaceEnabled))
                 picture.draw(canvas, listOf(expressionPreviewFace))
                 image.asImageBitmap().also { thumbnails.put(effect, it) }
             }.getOrNull()

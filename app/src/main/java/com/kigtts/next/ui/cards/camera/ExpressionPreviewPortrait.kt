@@ -8,6 +8,12 @@ import android.graphics.RectF
 import com.kigtts.next.camera.expressions.ExpressionFace
 import com.kigtts.next.camera.expressions.ExpressionPoint
 import com.kigtts.next.media.UiIcons
+import java.io.StringWriter
+import javax.xml.parsers.DocumentBuilderFactory
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamResult
+import org.w3c.dom.Element
 
 internal const val EXPRESSION_PREVIEW_EDGE = 320
 internal const val EXPRESSION_PORTRAIT_SCRIM = .72f
@@ -26,11 +32,37 @@ private fun portraitPoint(x: Float, y: Float): ExpressionPoint {
 
 internal object ExpressionPreviewPortrait {
     private var picture: Picture? = null
+    private var facelessPicture: Picture? = null
+    private val features = setOf(
+        "eyes", "nose", "mouth", "eyebrow-left", "eyebrow-right", "eyelashes-left", "eyelashes-right",
+        "eye-white-left", "eye-white-right", "eye-shadow-left", "eye-shadow-right",
+    )
 
     @Synchronized
-    fun load(assets: AssetManager): Picture = picture ?: assets.open("camera-expressions/preview-avatar.svg")
-        .bufferedReader(Charsets.UTF_8).use { UiIcons.renderSvgPicture(it.readText(), EXPRESSION_PREVIEW_EDGE) }
-        .also { picture = it }
+    fun load(assets: AssetManager, withoutFeatures: Boolean = false): Picture {
+        val cached = if (withoutFeatures) facelessPicture else picture
+        if (cached != null) return cached
+        return assets.open("camera-expressions/preview-avatar.svg").use { input ->
+            val svg = if (withoutFeatures) {
+                val document = DocumentBuilderFactory.newInstance().apply {
+                    isNamespaceAware = true
+                    isExpandEntityReferences = false
+                }.newDocumentBuilder().parse(input)
+                val elements = document.getElementsByTagName("*")
+                val hidden = (0 until elements.length).mapNotNull { elements.item(it) as? Element }
+                    .filter { it.getAttribute("id") in features }
+                hidden.forEach { it.parentNode.removeChild(it) }
+                val output = StringWriter()
+                TransformerFactory.newInstance().newTransformer().transform(DOMSource(document), StreamResult(output))
+                output.toString()
+            } else {
+                input.bufferedReader(Charsets.UTF_8).readText()
+            }
+            UiIcons.renderSvgPicture(svg, EXPRESSION_PREVIEW_EDGE)
+        }.also {
+            if (withoutFeatures) facelessPicture = it else picture = it
+        }
+    }
 }
 
 internal fun drawExpressionPortrait(canvas: Canvas, portrait: Picture, scrim: Paint? = null) {

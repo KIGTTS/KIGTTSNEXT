@@ -3,6 +3,8 @@ package com.kigtts.next.ui.plugins.editor
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.kigtts.next.ui.media.PickGalleryImage
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -50,7 +52,7 @@ internal fun EditorProjectHeader(model: AppViewModel, owner: String, item: Manag
             model.invoke(owner, "editor-icon-file/$project", mapOf("resourcePath" to path))
         } finally { file.delete() }
     }
-    val rasterPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val rasterPicker = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         if (uri != null) scope.launch {
             try { crop = withContext(Dispatchers.IO) { prepareAvatarSource(context, uri) } }
             catch (cancel: CancellationException) { throw cancel }
@@ -118,7 +120,7 @@ internal fun EditorProjectHeader(model: AppViewModel, owner: String, item: Manag
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 val choices = listOf(
                     Triple("editor.md_icon", "widgets", { iconDialog = false; symbolPicker = true }),
-                    Triple("editor.raster_icon", "crop", { iconDialog = false; rasterPicker.launch(arrayOf("image/png", "image/jpeg", "image/webp")) }),
+                    Triple("editor.raster_icon", "crop", { iconDialog = false; rasterPicker.launch(PickGalleryImage) }),
                     Triple("editor.svg_icon", "image", { iconDialog = false; vectorPicker.launch(arrayOf("image/svg+xml", "application/xml", "text/xml", "application/octet-stream")) })
                 )
                 choices.forEachIndexed { index, (label, symbol, select) ->
