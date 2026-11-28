@@ -20,7 +20,6 @@ import com.kigtts.next.state.Destination
 import com.kigtts.next.theme.AppearanceAssets
 import com.kigtts.next.ui.management.ManagedItemList
 import com.kigtts.next.ui.navigation.RegisterPageActions
-import com.kigtts.next.ui.navigation.RegisterPageLoading
 import com.kigtts.next.ui.navigation.ToolbarAction
 import com.kigtts.plugin.api.ManagementItem
 import com.kigtts.plugin.api.ManagementList
@@ -126,40 +125,5 @@ internal fun CameraExpressionManagementPage(model: AppViewModel) {
             Spacer(Modifier.width(8.dp))
             Text(uiText("option.off"))
         }
-    }
-}
-
-@Composable
-internal fun CameraExpressionEditPage(model: AppViewModel, effectId: String?) {
-    val context = LocalContext.current
-    val library = remember(context) { ExpressionLibrary.get(context) }
-    val options = rememberCameraOptions(loadWatermarks = false)
-    val scope = rememberCoroutineScope()
-    var draft by remember(effectId) { mutableStateOf<ExpressionEffect?>(null) }
-    var failed by remember(effectId) { mutableStateOf(false) }
-    var saving by remember { mutableStateOf(false) }
-    LaunchedEffect(library, effectId) {
-        draft = if (effectId == null) library.newDraft() else withContext(Dispatchers.IO) {
-            runCatching { library.find(effectId)?.let(library::editable) }.getOrNull()
-        }
-        failed = draft == null
-    }
-    RegisterPageLoading(saving || (draft == null && !failed))
-    if (failed) Text(uiText("expression.file_invalid"), Modifier.padding(20.dp))
-    draft?.let { effect ->
-        ExpressionDraftEditor(effect, saving, { draft = it }, stickers = model.stickers, save = {
-            if (!saving) {
-                saving = true
-                scope.launch {
-                    try {
-                        withContext(Dispatchers.IO) { library.save(effect) }
-                        options.chooseExpression(effect.id)
-                        model.navigateBack()
-                    } catch (cancel: CancellationException) { throw cancel }
-                    catch (_: Exception) { model.message(context.uiCopy("expression.file_invalid")) }
-                    finally { saving = false }
-                }
-            }
-        }, error = model::message)
     }
 }

@@ -2,18 +2,18 @@
 
 主程序 Release 启用 R8、资源收缩及 AGP 8.13 的一体化资源收缩。正式构建输出未签名 APK，不在生产构建中配置开发证书。`app/proguard-rules.pro` 保留插件 API、Android 插件环境及外置 DEX 共用的 Kotlin/协程/序列化运行时 ABI；安装在之后的插件不在 R8 的静态调用图中，不能仅保留入口类。
 
-## 本地测试包
+## 正式包验证
 
 使用 PowerShell 7、仓库 Gradle 8.13 与 JDK 17：
 
 ```powershell
 $env:JAVA_HOME='C:/Program Files/Microsoft/jdk-17.0.17.10-hotspot'
 ./.tools/gradle-8.13/bin/gradle.bat --gradle-user-home .gradle-user-home :app:assembleDebug :app:assembleRelease :app:lintRelease
-./tools/Build-ReleaseTest.ps1 -SkipBuild
-./tools/Measure-ApkSize.ps1 -Apk @('app/build/outputs/apk/debug/app-debug.apk','app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk')
+./tools/Build-OfficialRelease.ps1 -SkipBuild -SigningBackup $signingBackup
+./tools/Measure-ApkSize.ps1 -Apk @('app/build/outputs/apk/debug/app-debug.apk','app/build/outputs/apk/official/KIGTTS-1.0.0.apk')
 ```
 
-签名脚本生成 `app/build/outputs/apk/release-test/KIGTTSNEXT-release-localtest.apk`，使用本机已有默认开发证书，仅用于覆盖本机原有同签名安装。脚本检查签名与 Debug 相同、16 KiB 对齐；该 APK 仍为非 debuggable 的压缩 Release，生产签名配置保持独立。ZIP 分类统计不含签名块与对齐空隙，因此分类之和不等于 APK 文件大小。
+签名脚本生成 `app/build/outputs/apk/official/KIGTTS-1.0.0.apk`，用于覆盖使用正式证书的安装。ZIP 分类统计不含签名块与对齐空隙，因此分类之和不等于 APK 文件大小。
 
 ## 设备采样
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_personal_card">Personal card</string>
+    <string name="widget_personal_card_description">Show your profile and open its QR code or sharing menu</string>
+    <string name="widget_quick_entry">Quick access</string>
+    <string name="widget_quick_entry_description">Open captions, the drawing board or the camera</string>
+</resources>

@@ -1,6 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.ComponentActivity
+import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -9,13 +10,19 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.swipe
 import com.kigtts.next.camera.expressions.EMPTY_EXPRESSION_SVG
 import com.kigtts.next.camera.expressions.ExpressionEffect
 import com.kigtts.next.camera.expressions.ExpressionLayer
+import com.kigtts.next.camera.expressions.ExpressionLibrary
 import com.kigtts.next.camera.expressions.placement
 import com.kigtts.next.theme.KigttsTheme
 import com.kigtts.next.theme.ThemeSettings
+import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.ui.navigation.PageScaffold
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -66,5 +73,28 @@ class ExpressionEditorGestureUiTest {
         assertTrue(effect.layers.single().rotation > 10f)
         compose.onNodeWithTag("card-layer-flip-x/expression-0", useUnmergedTree = true).performTouchInput { click(center) }
         assertTrue(effect.layers.single().flipX)
+    }
+
+    @Test fun toolbarAndLeaveDialogSaveTheSamePreset() {
+        val app = compose.activity.application as Application
+        val model = AppViewModel(app, emptyList())
+        val library = ExpressionLibrary.get(app)
+        val id = "builtin.side_eye"
+        val original = requireNotNull(library.find(id)).name
+        compose.setContent { KigttsTheme(ThemeSettings()) {
+            PageScaffold("Editor", {}, largeBar = false) { CameraExpressionEditPage(model, id) }
+        } }
+        compose.waitUntil(8_000) { compose.onAllNodes(androidx.compose.ui.test.hasTestTag("expression-name")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("expression-name").performTextReplacement("Changed")
+        compose.onNodeWithTag("page-back").performClick()
+        compose.onNodeWithTag("save-changes-keep").performClick()
+        assertEquals(original, library.find(id)?.name)
+        compose.onNodeWithTag("camera-expression-save").performClick()
+        compose.waitUntil(8_000) { library.find(id)?.name == "Changed" }
+        assertEquals(1, library.choices().count { it.id == id })
+        compose.onNodeWithTag("expression-name").performTextReplacement("Changed again")
+        compose.onNodeWithTag("page-back").performClick()
+        compose.onNodeWithTag("save-changes-save").performClick()
+        compose.waitUntil(8_000) { library.find(id)?.name == "Changed again" }
     }
 }

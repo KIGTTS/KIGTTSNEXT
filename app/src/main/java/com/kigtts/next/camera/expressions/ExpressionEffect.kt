@@ -1,10 +1,10 @@
 package com.kigtts.next.camera.expressions
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Picture
+import android.graphics.Paint
 import android.graphics.RectF
 import com.kigtts.next.legacy.checkBackupJsonDepth
-import com.kigtts.next.media.UiIcons
 import com.kigtts.plugin.api.PluginJson
 import kotlinx.serialization.Serializable
 import kotlin.math.PI
@@ -87,31 +87,26 @@ internal data class ExpressionFace(
     }
 }
 
-internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Picture>) {
-    private val layers = effect.layers.zip(artwork)
+internal class CompiledExpression(val effect: ExpressionEffect, private val artwork: List<Bitmap>) {
     private val blurFace = effect.blurFaceEnabled
     val samplesSurface = blurFace || effect.layers.any { it.hideUnderFringe }
 
     fun draw(canvas: Canvas, faces: List<ExpressionFace>) {
+        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         faces.forEach { face ->
             if (face.bounds.width() <= 0f || face.eyeDistance <= 1f || face.opacity <= 0f) return@forEach
             if (blurFace) face.surface?.drawBase(canvas, (255 * face.opacity).toInt().coerceIn(0, 255))
-            layers.forEach { (layer, picture) ->
+            effect.layers.forEachIndexed { index, layer ->
                 val placement = layer.placement(face)
                 val save = canvas.save()
                 if (layer.hideUnderFringe) face.surface?.clip(canvas)
-                val alpha = (255 * layer.opacity * face.opacity).toInt().coerceIn(0, 255)
+                paint.alpha = (255 * layer.opacity * face.opacity).toInt().coerceIn(0, 255)
                 canvas.translate(placement.anchor.x, placement.anchor.y)
                 canvas.rotate(placement.faceRoll)
                 canvas.translate(placement.offset.x, placement.offset.y)
                 canvas.rotate(placement.rotation)
                 if (layer.flipX) canvas.scale(-1f, 1f)
-                val target = placement.bounds()
-                if (alpha < 255) {
-                    val opacity = canvas.saveLayerAlpha(target, alpha)
-                    canvas.drawPicture(picture, target)
-                    canvas.restoreToCount(opacity)
-                } else canvas.drawPicture(picture, target)
+                canvas.drawBitmap(artwork[index], null, placement.bounds(), paint)
                 canvas.restoreToCount(save)
             }
         }
@@ -124,6 +119,3 @@ internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Pi
         }
     }
 }
-
-internal fun renderExpressionArtwork(svg: String, bitmap: String?): Picture =
-    bitmap?.let(::expressionBitmapPicture) ?: UiIcons.renderSvgPicture(svg, 320)

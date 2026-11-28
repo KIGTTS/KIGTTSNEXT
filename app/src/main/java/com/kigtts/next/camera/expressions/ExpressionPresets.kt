@@ -3,7 +3,7 @@ package com.kigtts.next.camera.expressions
 import android.content.Context
 import com.kigtts.next.i18n.uiCopy
 
-/** KIGARFACE StickerArt shapes, expressed as editable SVG layers. */
+/** Compact packaged KIGARFACE artwork; the renderer rasterizes it when needed. */
 internal object ExpressionPresets {
     private fun layer(path: String, anchor: ExpressionAnchor, scale: Float, x: Float = 0f, y: Float = 0f,
         rotate: Float = 0f, blur: Boolean = false, underFringe: Boolean = false) =

@@ -70,8 +70,7 @@ android {
     namespace = "com.kigtts.next"
     compileSdk = 36
     defaultConfig {
-        applicationId = if (providers.gradleProperty("kigttsPreviewPackage").orNull == "true")
-            "com.kigtts.next" else "com.lhtstudio.kigtts.app"
+        applicationId = "com.lhtstudio.kigtts.app"
         minSdk = 26
         targetSdk = 36
         versionCode = 10000
@@ -132,6 +131,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.activity:activity-compose:1.11.0")
+    implementation("androidx.glance:glance-appwidget:1.2.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.media3:media3-exoplayer:1.11.1")

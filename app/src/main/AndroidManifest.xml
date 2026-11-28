@@ -54,6 +54,16 @@
         android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true" android:theme="@style/Theme.KigttsNext">
         <activity android:name="cn.kigarface.prototype.StickerActivity" tools:node="remove" />
+        <receiver android:name="com.lhtstudio.kigtts.app.widget.QuickCardWidgetProvider"
+            android:exported="false" android:label="@string/widget_personal_card" android:icon="@drawable/ic_desktop_profile">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_card_info" />
+        </receiver>
+        <receiver android:name="com.lhtstudio.kigtts.app.widget.QuickEntryWidgetProvider"
+            android:exported="false" android:label="@string/widget_quick_entry" android:icon="@mipmap/ic_launcher">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_quick_entry_info" />
+        </receiver>
         <activity android:name=".quickactions.LockScreenActivity" android:exported="false"
             android:showWhenLocked="true" android:excludeFromRecents="true"
             android:taskAffinity="${applicationId}.lockscreen" android:windowSoftInputMode="adjustResize" />

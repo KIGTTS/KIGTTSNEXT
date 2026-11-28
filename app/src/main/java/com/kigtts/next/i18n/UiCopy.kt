@@ -46,7 +46,10 @@ internal class UiLanguageStore(private val context: Context) {
         UiLanguage.SYSTEM -> UiLanguage.fromSystem(context.resources.configuration.locales).tag
         else -> selection.tag
     }
-    fun save(language: UiLanguage) { preferences.edit().putString("locale", language.tag).apply() }
+    fun save(language: UiLanguage) {
+        preferences.edit().putString("locale", language.tag).apply()
+        com.kigtts.next.desktop.DesktopUpdates.refresh(context)
+    }
 }
 
 internal val LocalUiLocale = staticCompositionLocalOf { UiLanguage.STANDARD.tag }

@@ -117,6 +117,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
     val stickers = hostRuntime?.stickers ?: com.kigtts.next.cards.StickerRepository(application, pluginManager.paths, mediaRepository)
     val cards = hostRuntime?.cards ?: com.kigtts.next.cards.CardRepository(application, stickers)
     val identities = com.kigtts.next.identity.IdentityRepository(application, cards)
+    internal val desktopProfileAction = kotlinx.coroutines.flow.MutableStateFlow<com.kigtts.next.desktop.DesktopEntry?>(null)
     internal val contactFavorites by lazy { com.kigtts.next.identity.ContactFavorites.get(application) }
     init { com.kigtts.next.identity.warmIdentityBackground(viewModelScope, stickers, identities) }
     val cardMotions = com.kigtts.next.cards.CardMotionRepository(stickers)

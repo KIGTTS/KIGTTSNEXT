@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_personal_card">个人名片</string>
+    <string name="widget_personal_card_description">在桌面查看名片、展示二维码或分享</string>
+    <string name="widget_quick_entry">快速入口</string>
+    <string name="widget_quick_entry_description">打开字幕板、画板或相机</string>
+</resources>

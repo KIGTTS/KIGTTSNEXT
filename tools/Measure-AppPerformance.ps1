@@ -29,7 +29,7 @@ function Number([string]$Text,[string]$Pattern) {
     return [double]::Parse($match.Groups[1].Value,[Globalization.CultureInfo]::InvariantCulture)
 }
 function Graphics([string]$Scene) {
-    $raw=Adb @('shell','dumpsys','gfxinfo','com.kigtts.next','framestats');Save "$Scene-gfx.txt" $raw
+    $raw=Adb @('shell','dumpsys','gfxinfo','com.lhtstudio.kigtts.app','framestats');Save "$Scene-gfx.txt" $raw
     $frames=Number $raw 'Total frames rendered: (\d+)'
     if(-not $frames){throw "No rendered frames recorded for $Scene"}
     return [PSCustomObject]@{
@@ -57,7 +57,7 @@ $width=[int]$dimensions.Groups[1].Value;$height=[int]$dimensions.Groups[2].Value
 $environment=@{Device=$Device;Sdk=Adb @('shell','getprop','ro.build.version.sdk');Model=Adb @('shell','getprop','ro.product.model')
     AlwaysFinishActivities=Adb @('shell','settings','get','global','always_finish_activities')
     PeakRefreshRate=Adb @('shell','settings','get','system','peak_refresh_rate');Size=$size;Density=Adb @('shell','wm','density')}
-$packagePath=[regex]::Match((Adb @('shell','pm','path','com.kigtts.next')),'package:([^\r\n]+)').Groups[1].Value
+$packagePath=[regex]::Match((Adb @('shell','pm','path','com.lhtstudio.kigtts.app')),'package:([^\r\n]+)').Groups[1].Value
 if(-not $packagePath){throw 'Installed APK path missing'}
 $environment.InstalledApkSha256=(Adb @('shell','sha256sum',$packagePath)).Split(' ')[0]
 # Process-cold first draw, not a device reboot / storage-cold launch / fully drawn metric.
@@ -66,11 +66,11 @@ $null=Adb @('shell','am','force-stop','com.kigtts.manager')
 try { $samples=for($i=0;$i -le $ColdStarts;$i++) {
     $null=Adb @('shell','input','keyevent','KEYCODE_HOME')
     Start-Sleep -Milliseconds 500
-    $null=Adb @('shell','am','force-stop','com.kigtts.next')
+    $null=Adb @('shell','am','force-stop','com.lhtstudio.kigtts.app')
     Start-Sleep -Milliseconds 500
-    $existing=& $adb -s $Device shell pidof com.kigtts.next
+    $existing=& $adb -s $Device shell pidof com.lhtstudio.kigtts.app
     if($existing){throw 'Application restarted in the background; this would not be a cold launch'}
-    $raw=Adb @('shell','am','start','-W','-n','com.kigtts.next/.MainActivity');Save "startup-$i.txt" $raw
+    $raw=Adb @('shell','am','start','-W','-n','com.lhtstudio.kigtts.app/com.kigtts.next.MainActivity');Save "startup-$i.txt" $raw
     if($raw -notmatch 'Status: ok' -or $raw -notmatch 'LaunchState: COLD'){throw 'Launch was not a successful process-cold start'}
     Write-Host "$Label cold start $i/$ColdStarts"
     Start-Sleep -Milliseconds 1500
@@ -79,7 +79,7 @@ try { $samples=for($i=0;$i -le $ColdStarts;$i++) {
     # Restore the companion's process after removing its auto-create binding from cold starts.
     # Preferences, monitoring settings, plugins and Appdata are never changed.
     $null=Adb @('shell','am','start','-W','-n','com.kigtts.manager/.ManagerActivity')
-    $null=Adb @('shell','am','start','-W','-n','com.kigtts.next/.MainActivity')
+    $null=Adb @('shell','am','start','-W','-n','com.lhtstudio.kigtts.app/com.kigtts.next.MainActivity')
 }
 $snapshot=& $bridge -Device $Device -Command snapshot -TimeoutSeconds 30
 if($LASTEXITCODE -ne 0){throw 'Plugin snapshot failed'}
@@ -95,7 +95,7 @@ $memory=foreach($line in ($processes -split "`n")) {
         [PSCustomObject]@{Process=$name;Pid=$processId;PssKiB=Number $raw 'TOTAL PSS:\s+(\d+)';RssKiB=Number $raw 'TOTAL RSS:\s+(\d+)'}
     }
 }
-$null=Adb @('shell','dumpsys','gfxinfo','com.kigtts.next','reset')
+$null=Adb @('shell','dumpsys','gfxinfo','com.lhtstudio.kigtts.app','reset')
 for($i=1;$i -le $NavigationCycles;$i++) {
     Write-Host "$Label navigation $i/$NavigationCycles"
     Page 'settings';Page 'appearance';Back;Back;Page 'plugins';Back
@@ -103,7 +103,7 @@ for($i=1;$i -le $NavigationCycles;$i++) {
 $navigation=Graphics 'navigation'
 if(-not $SkipScroll) {
 Page 'settings';Page 'appearance';Screen 'scroll-start'
-$null=Adb @('shell','dumpsys','gfxinfo','com.kigtts.next','reset')
+$null=Adb @('shell','dumpsys','gfxinfo','com.lhtstudio.kigtts.app','reset')
 # Use actual content: the device intercepts swipes in the edge padding.
 # Continuous vertical movement cancels clicks rather than tapping preferences.
 $x=[int]($width*.5);$low=[int]($height*.8);$high=[int]($height*.25)

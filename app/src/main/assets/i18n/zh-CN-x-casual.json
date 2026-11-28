@@ -1,4 +1,5 @@
 {
+  "desktop.captions": "字幕板",
   "permission.web-presentation": "临时调整界面",
   "permission.web-presentation-purpose": "这个网页词条想临时调整主题、背景和主界面控件，或进入全屏。离开网页就会恢复。",
   "settings.category.quick_actions": "快捷操作",

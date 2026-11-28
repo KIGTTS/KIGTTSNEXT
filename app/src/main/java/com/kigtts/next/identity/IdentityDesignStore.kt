@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /** Private card backgrounds. They share image assets, never the photo album or its lifecycle. */
-class IdentityDesignStore(context: Context) {
+class IdentityDesignStore(private val context: Context) {
     private val preferences = context.getSharedPreferences("identity-designs", Context.MODE_PRIVATE)
     private val state = MutableStateFlow(runCatching {
         PluginJson.decodeFromString<List<PolaroidCard>>(preferences.getString("designs", "[]")!!)
@@ -33,5 +33,6 @@ class IdentityDesignStore(context: Context) {
     private fun persist(next: List<PolaroidCard>) {
         check(preferences.edit().putString("designs", PluginJson.encodeToString(next)).commit()) { "背景未能保存，请重试" }
         state.value = next
+        com.kigtts.next.desktop.DesktopUpdates.refresh(context)
     }
 }

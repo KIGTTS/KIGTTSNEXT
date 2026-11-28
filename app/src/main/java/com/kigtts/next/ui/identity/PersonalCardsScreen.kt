@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.identity.*
+import com.kigtts.next.desktop.DesktopEntry
+import com.kigtts.next.desktop.desktopProfileQr
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.*
 import com.kigtts.next.ui.settings.*
@@ -59,6 +61,18 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
     var tileEditor by remember { mutableStateOf<ProfileTile?>(null) }
     var working by remember { mutableStateOf(false) }
     var contact by remember { mutableStateOf<ContactLink?>(null) }
+    var desktopQr by remember { mutableStateOf<ProfileTile?>(null) }
+    val desktopAction by model.desktopProfileAction.collectAsStateWithLifecycle()
+    LaunchedEffect(desktopAction) {
+        val action = desktopAction ?: return@LaunchedEffect
+        model.desktopProfileAction.value = null
+        val item = card ?: return@LaunchedEffect
+        when (action) {
+            DesktopEntry.PROFILE_QR -> desktopQr = desktopProfileQr(item)
+            DesktopEntry.PROFILE_SHARE -> model.sharing.shareMedia(listOf(item.designId))
+            else -> Unit
+        }
+    }
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     LaunchedEffect(card, editing) { if (!editing) draft = card }
@@ -131,4 +145,5 @@ internal fun PersonalCardsScreen(model: AppViewModel, initiallyEditing: Boolean 
         }
     }
     contact?.let { PersonalContactDialog(it) { contact = null } }
+    desktopQr?.let { ProfileQrPreview(it) { desktopQr = null } }
 }

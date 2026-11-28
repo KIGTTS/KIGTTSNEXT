@@ -33,16 +33,20 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
         changes.update { it + 1 }
     }
 
-    private fun catalog(): List<ExpressionEffect> = names.mapNotNull(::builtIn) + directory.listFiles().orEmpty()
-        .asSequence().filter { it.extension == "kigexpression" && it.length() in 1..ExpressionPack.MAX_PACK.toLong() }
+    private fun catalog(): List<ExpressionEffect> = names.mapNotNull { find("builtin.$it") } + directory.listFiles().orEmpty()
+        .asSequence().filter { it.extension == "kigexpression" && !it.name.startsWith("builtin.") &&
+            it.length() in 1..ExpressionPack.MAX_PACK.toLong() }
         .sortedBy { it.name }.take(128)
         .flatMap { runCatching { read(it).effects }.getOrDefault(emptyList()) }.toList()
 
     fun find(id: String): ExpressionEffect? {
-        if (id.startsWith("builtin.")) return builtIn(id.removePrefix("builtin."))
-        if (!id.matches(Regex("[a-z0-9.-]{1,96}"))) return null
-        val owner = if (id.startsWith("pack.")) id.split('.').take(2).joinToString(".") else id
-        return runCatching { read(File(directory, "$owner.kigexpression")).effects.firstOrNull { it.id == id } }.getOrNull()
+        if (!id.matches(Regex("[a-z0-9._-]{1,96}"))) return null
+        val preset = id.removePrefix("builtin.").takeIf { id.startsWith("builtin.") }
+        if (preset != null && preset !in names) return null
+        val stored = packFile(ownerOf(id)).takeIf(File::isFile)?.let { source ->
+            runCatching { read(source).effects.firstOrNull { it.id == id } }.getOrNull()
+        }
+        return stored ?: preset?.let(::builtIn)
     }
 
     private fun builtIn(name: String): ExpressionEffect? {
@@ -51,22 +55,32 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
             AppearanceAssets.readBounded(it, ExpressionPack.MAX_SVG).toString(Charsets.UTF_8)
         }
         return ExpressionEffect("builtin.$name", app.uiCopy("expression.ink.$name"),
-            listOf(ExpressionLayer(svg, ExpressionAnchor.EYES, scale = 1.32f,
-                hideUnderFringe = true, blurBase = true, pivotY = 99f / 320f)))
+            listOf(ExpressionLayer(svg, ExpressionAnchor.FACE, scale = .95f, x = .006f, y = .05f,
+                hideUnderFringe = true)), blurFace = true)
     }
 
     fun newDraft() = ExpressionEffect("local.${UUID.randomUUID()}", "", listOf(
         ExpressionLayer(DEFAULT_SPARKLE, ExpressionAnchor.FOREHEAD, scale = .65f, y = -.18f)
     ))
 
-    fun editable(effect: ExpressionEffect): ExpressionEffect = if (effect.id.startsWith("local.")) effect
-        else effect.copy(id = "local.${UUID.randomUUID()}")
+    fun editable(effect: ExpressionEffect): ExpressionEffect = effect.withBitmapArtwork()
 
     @Synchronized fun save(effect: ExpressionEffect) {
-        require(effect.id.matches(Regex("local\\.[a-f0-9-]{36}")))
-        val pack = ExpressionPack(effects = listOf(effect))
-        CompiledExpression.compile(effect)
-        write(effect.id, pack)
+        val packed = effect.withBitmapArtwork()
+        CompiledExpression.compile(packed)
+        val id = effect.id
+        val owner = ownerOf(id)
+        val replacement = when {
+            id.matches(Regex("local\\.[a-f0-9-]{36}")) ||
+                id.startsWith("builtin.") && id.removePrefix("builtin.") in names -> ExpressionPack(effects = listOf(packed))
+            id.matches(Regex("pack\\.[a-f0-9-]{36}\\.[a-f0-9-]{36}")) -> {
+                val installed = read(packFile(owner))
+                require(installed.effects.any { it.id == id })
+                installed.copy(effects = installed.effects.map { if (it.id == id) packed else it })
+            }
+            else -> error("Unknown sticker")
+        }
+        write(owner, replacement)
     }
 
     @Synchronized fun remove(id: String) {
@@ -81,14 +95,14 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
         val owner = packageId ?: com.kigtts.next.resources.ResourceArchive.hash(source)
         val namespace = "pack.${UUID.nameUUIDFromBytes(owner.toByteArray(Charsets.UTF_8))}"
         val installed = pack.copy(effects = pack.effects.map { effect ->
-            effect.copy(id = "$namespace.${UUID.nameUUIDFromBytes(effect.id.toByteArray(Charsets.UTF_8))}")
+            effect.withBitmapArtwork().copy(id = "$namespace.${UUID.nameUUIDFromBytes(effect.id.toByteArray(Charsets.UTF_8))}")
         })
         write(namespace, installed)
         return installed.effects.first().id
     }
 
     fun share(effect: ExpressionEffect): android.content.Intent {
-        val pack = ExpressionPack(effects = listOf(effect)).validate()
+        val pack = ExpressionPack(effects = listOf(effect.withBitmapArtwork())).validate()
         val file = File.createTempFile("expression-", ".kigexpression", app.cacheDir)
         try {
             file.writeText(PluginJson.encodeToString(pack), Charsets.UTF_8)
@@ -100,7 +114,7 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
         val data = PluginJson.encodeToString(pack).toByteArray(Charsets.UTF_8)
         require(data.size <= ExpressionPack.MAX_PACK)
         directory.mkdirs()
-        val file = File(directory, "$owner.kigexpression")
+        val file = packFile(owner)
         val others = directory.listFiles().orEmpty().filter { it != file && it.extension == "kigexpression" }
         require(others.size < 48 && others.sumOf { it.length() } + data.size <= 16L * 1024 * 1024)
         val stage = File.createTempFile("expression-", ".tmp", directory)
@@ -114,6 +128,10 @@ internal class ExpressionLibrary private constructor(private val app: Context) {
         } finally { stage.delete() }
         changes.update { it + 1 }
     }
+
+    private fun packFile(owner: String) = File(directory, "$owner.kigexpression")
+
+    private fun ownerOf(id: String) = if (id.startsWith("pack.")) id.substringBeforeLast('.') else id
 
     companion object {
         private const val ORDER_KEY = "camera-face-stickers"

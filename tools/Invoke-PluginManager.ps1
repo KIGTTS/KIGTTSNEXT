@@ -20,7 +20,7 @@ function Read-Control([string]$Method,[string]$Argument) {
 $managerPid=& $adb @targetArgs shell pidof com.kigtts.manager
 if(-not $managerPid){$null=Invoke-Adb -Arguments @('shell','am','start','-W','-n','com.kigtts.manager/.ManagerActivity')}
 if($Command -in @('present','select-media','remove-media','navigate','back')) {
-    $null=Invoke-Adb -Arguments @('shell','am','start','-W','-n','com.kigtts.next/.MainActivity')
+    $null=Invoke-Adb -Arguments @('shell','am','start','-W','-n','com.lhtstudio.kigtts.app/com.kigtts.next.MainActivity')
 }
 $request=@{command=$Command;payload=($Payload | ConvertFrom-Json -AsHashtable)}
 if($File) {

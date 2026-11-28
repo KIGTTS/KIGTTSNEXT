@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_personal_card">프로필 카드</string>
+    <string name="widget_personal_card_description">프로필을 보고 QR 코드를 표시하거나 공유합니다</string>
+    <string name="widget_quick_entry">빠른 실행</string>
+    <string name="widget_quick_entry_description">자막판, 그림판 또는 카메라를 엽니다</string>
+</resources>

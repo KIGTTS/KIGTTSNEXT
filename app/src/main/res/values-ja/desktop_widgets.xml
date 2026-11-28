@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_personal_card">プロフィールカード</string>
+    <string name="widget_personal_card_description">プロフィールを表示し、QR コードや共有を開きます</string>
+    <string name="widget_quick_entry">クイックアクセス</string>
+    <string name="widget_quick_entry_description">字幕ボード、描画ボード、カメラを開きます</string>
+</resources>

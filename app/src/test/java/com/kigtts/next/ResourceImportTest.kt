@@ -1,6 +1,8 @@
 @file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 package com.kigtts.next
 
+import com.kigtts.next.camera.expressions.withBitmapArtwork
+
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import com.kigtts.next.resources.*
@@ -41,7 +43,12 @@ class ResourceImportTest {
         val effects = library.choices()
         assertEquals(14, effects.count { it.id.startsWith("builtin.") })
         assertEquals(1, effects.count { it.name == art.name })
-        assertEquals(art.layers, library.find(effects.single { it.name == art.name }.id)?.layers)
+        val installed = requireNotNull(library.find(effects.single { it.name == art.name }.id))
+        assertEquals(art.withBitmapArtwork().layers, installed.layers)
+        val edited = library.editable(installed).copy(name = "Edited")
+        library.save(edited)
+        assertEquals(edited, library.find(installed.id))
+        assertEquals(1, library.choices().count { it.id == installed.id })
         assertFalse(model.registry.plugins.any { it.descriptor.id == "test.resources" })
         val unsafe = art.copy(layers = listOf(art.layers.single().copy(
             svg = """<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.invalid/a.png"/></svg>""")))
@@ -53,7 +60,7 @@ class ResourceImportTest {
         assertTrue(runCatching { ResourceArchive.read(old, destination, oldOwner) }.isFailure)
     }
 
-    @Test fun bundledFaceEffectsDrawWithNoBitmapAssets() {
+    @Test fun bundledSvgFaceEffectsDrawAsBitmaps() {
         val library = com.kigtts.next.camera.expressions.ExpressionLibrary.get(app)
         library.choices().filter { it.id.startsWith("builtin.") }.forEach { effect ->
             val image = android.graphics.Bitmap.createBitmap(320, 320, android.graphics.Bitmap.Config.ARGB_8888)

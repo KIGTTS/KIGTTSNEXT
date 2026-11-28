@@ -1,7 +1,7 @@
 package com.kigtts.next.ui.cards.camera
 
+import android.graphics.Bitmap
 import android.graphics.Paint
-import android.graphics.Picture
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -38,24 +38,28 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
+private val previewWorker = Dispatchers.Default.limitedParallelism(1)
+
 @Composable
 internal fun ExpressionArtPreview(effect: ExpressionEffect, selected: Int, editable: Boolean,
     select: (Int) -> Unit, change: (Int, ExpressionLayer) -> Unit, remove: (Int) -> Unit) {
     val assets = LocalContext.current.assets
     val blurFace = effect.blurFaceEnabled
-    val portrait by produceState<Pair<Boolean, Picture>?>(null, assets, blurFace) {
-        value = withContext(Dispatchers.Default) {
+    val portrait by produceState<Pair<Boolean, Bitmap>?>(null, assets, blurFace) {
+        value = withContext(previewWorker) {
             runCatching { blurFace to ExpressionPreviewPortrait.load(assets, blurFace) }.getOrNull()
         }
     }
     val artwork = remember(effect.layers) { effect.layers.map { it.svg to it.bitmapWebp } }
-    val pictures by produceState<Pair<List<Pair<String, String?>>, List<Picture>>?>(null, artwork) {
-        value = withContext(Dispatchers.Default) {
-            runCatching { artwork to artwork.map { (svg, bitmap) -> renderExpressionArtwork(svg, bitmap) } }.getOrNull()
+    val raster by produceState<Pair<List<Pair<String, String?>>, List<Bitmap>>?>(null, artwork) {
+        value = withContext(previewWorker) {
+            runCatching {
+                artwork to artwork.map { (svg, encoded) -> renderExpressionArtwork(svg, encoded) }
+            }.getOrNull()
         }
     }
-    val rendered = remember(effect, pictures) {
-        pictures?.takeIf { it.first == artwork }?.second?.let { CompiledExpression(effect, it) }
+    val rendered = remember(effect, raster) {
+        raster?.takeIf { it.first == artwork }?.second?.let { CompiledExpression(effect, it) }
     }
     val colors = MaterialTheme.colorScheme
     val accent = colors.primary
@@ -77,15 +81,15 @@ internal fun ExpressionArtPreview(effect: ExpressionEffect, selected: Int, edita
                     val native = it.nativeCanvas
                     val save = native.save()
                     native.scale(scale, scale)
-                    portrait?.takeIf { it.first == blurFace }?.let { (_, picture) ->
-                        drawExpressionPortrait(native, picture, scrim)
+                    portrait?.takeIf { it.first == blurFace }?.let { (_, image) ->
+                        drawExpressionPortrait(native, image, scrim)
                     }
                     rendered?.draw(native, listOf(expressionPreviewFace))
                     native.restoreToCount(save)
                 }
                 drawTrackingPoints(selectedLayer?.anchor, scale, accent)
             }
-            if (editable && selectedLayer != null) {
+            if (editable && selectedLayer != null && maxWidth > 2.dp) {
                 val placement = selectedLayer.placement(expressionPreviewFace)
                 val center = placement.center
                 val densityScale = maxWidth / EXPRESSION_PREVIEW_EDGE

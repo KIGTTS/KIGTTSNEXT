@@ -39,7 +39,7 @@ class ExpressionLibraryOrderTest {
     fun galleryImageIsEmbeddedInThePackAndRendersWithoutItsSourceFile() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val file = File.createTempFile("expression", ".png", context.cacheDir)
-        val input = Bitmap.createBitmap(320, 160, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GREEN) }
+        val input = Bitmap.createBitmap(642, 321, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.GREEN) }
         val layer = try {
             file.outputStream().use { input.compress(Bitmap.CompressFormat.PNG, 100, it) }
             expressionPhotoLayer(context, Uri.fromFile(file)).copy(scale = 1.2f)
@@ -88,11 +88,47 @@ class ExpressionLibraryOrderTest {
             drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets))
             val eye = image.getPixel(105, 177)
             val hood = image.getPixel(150, 55)
+            val brow = image.getPixel(101, 91)
             image.eraseColor(Color.TRANSPARENT)
             drawExpressionPortrait(canvas, ExpressionPreviewPortrait.load(assets, withoutFeatures = true))
             assertTrue(Color.luminance(image.getPixel(105, 177)) > Color.luminance(eye))
+            assertTrue(Color.luminance(image.getPixel(101, 91)) > Color.luminance(brow))
             assertEquals(hood, image.getPixel(150, 55))
+            val fringeShadow = image.getPixel(141, 169)
+            val uncoveredSkin = image.getPixel(94, 138)
+            assertTrue(Color.green(fringeShadow) + 24 < Color.green(uncoveredSkin))
+            assertTrue(kotlin.math.abs(Color.green(uncoveredSkin) - Color.green(image.getPixel(80, 155))) <= 7)
+            assertTrue(kotlin.math.abs(Color.green(uncoveredSkin) - Color.green(image.getPixel(222, 145))) <= 7)
         } finally { image.recycle() }
+    }
+
+    @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun grayscalePresetsUseTheWholeFacePlacementAndSaveInPlace() {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        val library = ExpressionLibrary.get(ctx)
+        listOf("agni", "side_eye", "kim", "lau").forEach { name ->
+            val layer = requireNotNull(library.find("builtin.$name")).layers.single()
+            assertEquals(ExpressionAnchor.FACE, layer.anchor)
+            assertEquals(.95f, layer.scale, .001f)
+            assertEquals(.05f, layer.y, .001f)
+        }
+        val preset = requireNotNull(library.find("builtin.agni"))
+        val original = preset.layers.single()
+        val asset = renderExpressionArtwork(original.svg, null)
+        assertEquals(320, asset.width)
+        assertEquals(320, asset.height)
+        assertTrue((0 until 320).any { y -> (0 until 320).any { x -> Color.alpha(asset.getPixel(x, y)) > 128 } })
+        val editable = library.editable(preset)
+        val layer = editable.layers.single()
+        assertEquals(EMPTY_EXPRESSION_SVG, layer.svg)
+        assertTrue(!layer.bitmapWebp.isNullOrBlank())
+        assertEquals(original.placement(expressionPreviewFace), layer.placement(expressionPreviewFace))
+        assertTrue(editable.blurFaceEnabled)
+        assertEquals(preset.id, editable.id)
+        val updated = editable.copy(name = "Edited")
+        library.save(updated)
+        assertEquals(updated, library.find(preset.id))
+        assertEquals(1, library.choices().count { it.id == preset.id })
     }
 
     @Test @GraphicsMode(GraphicsMode.Mode.NATIVE)

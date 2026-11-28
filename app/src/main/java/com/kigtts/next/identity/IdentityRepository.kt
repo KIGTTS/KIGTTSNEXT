@@ -1,6 +1,7 @@
 package com.kigtts.next.identity
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.kigtts.next.cards.CardRepository
 import com.kigtts.plugin.api.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,9 +22,9 @@ data class IdentityCard(val id: String = UUID.randomUUID().toString(), val desig
 }
 
 /** One personal profile and one editable design. Legacy presets are archived without deleting their artwork. */
-class IdentityRepository(context: Context, private val cards: CardRepository) {
+class IdentityRepository(private val context: Context, private val cards: CardRepository) {
     private val preferences = context.getSharedPreferences("personal-cards", Context.MODE_PRIVATE)
-    private val saved = load()
+    private val saved = load(preferences)
     private var profile = runCatching { preferences.getString("profile", null)?.let { PersonalProfile.from(JSONObject(it)) } }.getOrNull()
         ?: (saved.firstOrNull { it.id == preferences.getString("selected", null) } ?: saved.firstOrNull())?.let(PersonalProfile::from) ?: PersonalProfile()
     private val retained = saved.firstOrNull { it.id == preferences.getString("selected", null) } ?: saved.firstOrNull()
@@ -37,14 +38,6 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         }
         if (saved.isNotEmpty()) persist(mutable.value, profile)
     }
-    private fun load(): List<IdentityCard> = runCatching {
-        val list = JSONArray(preferences.getString("items", "[]"))
-        (0 until list.length()).map { index -> val item = list.getJSONObject(index)
-            val info = PersonalProfile.from(item)
-            info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", false),
-                gradientColor = item.optLong("gradientColor", 0xFF000000), pattern = item.optString("pattern"), cardFrameId = item.optString("cardFrameId", "none")))
-        }
-    }.getOrDefault(emptyList())
     @Synchronized fun create(): IdentityCard {
         current?.let { return it }
         val stickers = cards.stickers
@@ -84,5 +77,29 @@ class IdentityRepository(context: Context, private val cards: CardRepository) {
         // Preserve earlier per-card information when consolidating the selected identity.
         if (!preferences.contains("profile") && !preferences.contains("legacy-items-v1")) edit.putString("legacy-items-v1", preferences.getString("items", "[]"))
         check(edit.commit()) { "名片未能保存，请重试" }
+        com.kigtts.next.desktop.DesktopUpdates.refresh(context)
+    }
+
+    companion object {
+        internal fun storedCard(context: Context): IdentityCard? {
+            val preferences = context.getSharedPreferences("personal-cards", Context.MODE_PRIVATE)
+            val cards = load(preferences)
+            val identity = cards.firstOrNull { it.id == preferences.getString("selected", null) }
+                ?: cards.firstOrNull() ?: return null
+            return runCatching {
+                preferences.getString("profile", null)?.let { PersonalProfile.from(JSONObject(it)).on(identity) }
+            }.getOrNull() ?: identity
+        }
+
+        private fun load(preferences: SharedPreferences): List<IdentityCard> = runCatching {
+            val list = JSONArray(preferences.getString("items", "[]"))
+            (0 until list.length()).map { index ->
+                val item = list.getJSONObject(index)
+                val info = PersonalProfile.from(item)
+                info.on(IdentityCard(item.getString("id"), item.getString("designId"), gradient = item.optBoolean("gradient", false),
+                    gradientColor = item.optLong("gradientColor", 0xFF000000), pattern = item.optString("pattern"),
+                    cardFrameId = item.optString("cardFrameId", "none")))
+            }
+        }.getOrDefault(emptyList())
     }
 }

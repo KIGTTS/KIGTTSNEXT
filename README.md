@@ -39,6 +39,6 @@ git submodule update --init .sdk
 ./gradlew.bat :plugin-api:test :plugin-runtime:testDebugUnitTest :app:testDebugUnitTest
 ```
 
-APK 位于 `app/build/outputs/apk/`。用 `-PkigttsPreviewPackage=true` 构建可并存的预览包。正式覆盖安装的签名构建及版本冻结说明见 [1.0.0 发布准备](docs/release-1.0.0.md)。
+APK 位于 `app/build/outputs/apk/`。正式覆盖安装的签名构建及版本冻结说明见 [1.0.0 发布准备](docs/release-1.0.0.md)。
 
 主程序和 SDK 采用 MIT 开源许可，各插件和美术资源遵循各自附带的授权说明。 [美术物料](ARTS/README.md)

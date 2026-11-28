@@ -12,7 +12,7 @@
 ./tools/Build-OfficialRelease.ps1 -SigningBackup <本地正式签名备份>
 ```
 
-开发调试可用 `-PkigttsPreviewPackage=true` 构建 `com.kigtts.next`。Android 按包名区分这两套安装，正式包直接更新同包名的旧版，预览测试数据可通过备份迁移。
+主程序统一使用 `com.lhtstudio.kigtts.app`。原先装在 `com.kigtts.next` 里的测试数据可以先导出备份，再导入正式包。
 
 ## 升级和资源
 

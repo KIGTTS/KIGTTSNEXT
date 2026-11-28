@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.kigtts.next.state.AppViewModel
+import com.kigtts.next.desktop.DesktopEntry
+import com.kigtts.next.desktop.DesktopUpdates
 import com.kigtts.next.state.notificationLink
 import com.kigtts.next.overlay.overlayLink
 import com.kigtts.next.ui.onboarding.FirstRunHost
@@ -59,6 +61,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
     private fun deliverLaunch() {
         if (!pendingLaunch || onboarding.step() != FirstRunStep.COMPLETE) return
         pendingLaunch = false
+        DesktopEntry.from(intent)?.let { entry -> entry.open(model); return }
         model.sourceLink(intent?.data)
         model.externalIntent(intent)
         model.notificationLink(intent)
@@ -68,6 +71,7 @@ class MainActivity : ComponentActivity(), CameraShutterKeyOwner {
     override fun onStart() {
         super.onStart()
         model.refreshUiLanguage()
+        DesktopUpdates.refresh(application)
         if (model.quickActionPreferences.lockScreenShortcut) com.kigtts.next.quickactions.LockScreenShortcut.sync(this)
         com.kigtts.next.manager.HostPluginRuntime.get(application).resumeReadingCache()
         com.kigtts.next.overlay.NativeOverlayService.sync(this)

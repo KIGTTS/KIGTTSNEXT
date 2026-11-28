@@ -47,7 +47,7 @@ data class ThemeSettings(
         backgroundColorEnabled = source == ThemeColorSource.BACKGROUND)
 }
 
-class ThemeSettingsStore(context: Context) {
+class ThemeSettingsStore(private val context: Context) {
     private val preferences = context.getSharedPreferences("appearance", Context.MODE_PRIVATE)
     fun load() = ThemeSettings(
         seed = preferences.getLong("seed", DEFAULT_THEME_SEED),
@@ -78,5 +78,6 @@ class ThemeSettingsStore(context: Context) {
             .putBoolean("askBackgroundColor", settings.askBackgroundColor).apply {
                 if (settings.backgroundSeed == null) remove("backgroundSeed") else putLong("backgroundSeed", settings.backgroundSeed)
             }.apply()
+        com.kigtts.next.desktop.DesktopUpdates.refresh(context)
     }
 }
