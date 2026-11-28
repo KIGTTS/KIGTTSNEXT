@@ -88,7 +88,7 @@
     "repository": "https://github.com/KIGTTS/plugin-cloud-asr",
     "directory": "cloud-asr",
     "license": "MIT",
-    "sourceCommit": "7b4541ddacf10f0782a038fcefd6442d6a19faac"
+    "sourceCommit": "9e57cdf71d84ce45afb6b3058b6852f77259fd22"
   },
   {
     "module": "cloud-tts",
@@ -96,7 +96,7 @@
     "repository": "https://github.com/KIGTTS/plugin-cloud-tts",
     "directory": "cloud-tts",
     "license": "GPL-3.0-only",
-    "sourceCommit": "f1076980a6afead9e889f43dacdad9f1589aa397"
+    "sourceCommit": "f2aa2c951c416af3dd425121f81dc145e75e9a2b"
   },
   {
     "module": "led-caption",

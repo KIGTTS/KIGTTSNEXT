@@ -21,7 +21,7 @@
     "category": "语音合成",
     "summary": "选用云端声音，让文字读出喜欢的音色。",
     "symbol": "record_voice_over",
-    "description": "## 云端语音合成\n\n连接小米 MiMo、腾讯云、阿里云、Azure、百度云或讯飞，按需添加喜欢的预设声音。也可使用腾讯云已有的克隆声音与 Azure 自定义声音。各家 API 接入指南可在插件内查看。",
+    "description": "## 云端语音合成\n\n连接 DeepSeek、小米 MiMo、腾讯云、阿里云、Azure、百度云或讯飞。小米 MiMo 可使用预设音色、文字音色设计和参考音频克隆。也可使用腾讯云已有的克隆声音与 Azure 自定义声音。各家 API 接入指南可在插件内查看。",
     "notes": "KIGTTS 1.0.0 与正式插件 API 1。",
     "tags": [
       "语音合成"
