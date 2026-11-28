@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parent.parent
 LOCALES = ROOT / "market/src/main/assets/market/i18n"
 PLUGIN_KEYS = {
     "音频": ("audio", "graphic_eq"),
+    "语音合成": ("speech-synthesis", "record_voice_over"),
+    "语音识别": ("speech-recognition", "mic"),
     "外观": ("appearance", "palette"),
     "内容": ("content", "library_books"),
     "输入": ("input", "keyboard"),

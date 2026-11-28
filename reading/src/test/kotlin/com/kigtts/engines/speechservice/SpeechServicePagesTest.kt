@@ -76,10 +76,11 @@ class SpeechServicePagesTest {
         val engine = TtsProvider("test.cloud", "云端语音", TtsInfo(), settingsPages = listOf(AsrSettingsPage("accounts", "クラウド音声合成")))
         val pages = SpeechServicePages(settings()) { listOf(system, engine) }
         val group = pages.page("manager", true, "ja")!!.blocks.filterIsInstance<PageBlock.Group>().single { it.title == "エンジン設定" }
-        val row = group.children.filterIsInstance<PageBlock.Input>().single()
+        val row = group.children.filterIsInstance<PageBlock.Input>().single { it.actionId.startsWith("settings/") }
         assertEquals("クラウド音声合成", row.title)
         assertEquals("settings/${encodeId(engine.pluginId)}/${encodeId("accounts")}", row.actionId)
         val disabled = SpeechServicePages(settings()) { listOf(system, engine.copy(enabled = false)) }
-        assertFalse(disabled.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>().any { it.title == "引擎设置" })
+        val disabledGroup = disabled.page("manager", true)!!.blocks.filterIsInstance<PageBlock.Group>().single { it.title == "引擎设置" }
+        assertEquals("market-engines", (disabledGroup.children.single() as PageBlock.Input).actionId)
     }
 }

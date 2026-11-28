@@ -89,6 +89,8 @@
   "install_dependency": "Required plugin",
   "install_group": "In this install",
   "category.audio": "Audio",
+  "category.speech-synthesis": "Speech Synthesis",
+  "category.speech-recognition": "Speech Recognition",
   "category.appearance": "Appearance",
   "category.content": "Content",
   "category.input": "Input",

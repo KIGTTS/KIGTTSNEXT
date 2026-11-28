@@ -47,10 +47,12 @@ internal fun sectionPage(id: String, sources: SourceStore, jobs: StoreJobs, copy
 
 internal fun categorySymbol(category: String) = when (category) {
     "音频" -> "graphic_eq"; "外观" -> "palette"; "内容" -> "library_books"; "输入" -> "keyboard"
-    "开发" -> "code"; "扩展" -> "extension"; else -> ResourceType.entries.firstOrNull { it.label == category }?.symbol ?: "category"
+    "开发" -> "code"; "扩展" -> "extension"; "语音合成" -> "record_voice_over"; "语音识别" -> "mic"
+    else -> ResourceType.entries.firstOrNull { it.label == category }?.symbol ?: "category"
 }
 
 internal fun catalogScope(id: String, sources: SourceStore): StoreView? {
+    speechCategoryForPage(id)?.let { return StoreView(category = it.id) }
     val parts = id.split('/')
     if (parts.size != 3 || parts[0] != "catalog") return null
     val source = parts[1].takeUnless { it == "all" }
@@ -62,6 +64,7 @@ internal fun catalogScope(id: String, sources: SourceStore): StoreView? {
 private fun categoryForRoute(sources: SourceStore, source: String?, key: String): CatalogCategory? {
     val match = sources.categories(source).firstOrNull { categoryKey(it.id) == key || categoryKey(it.name) == key }
     if (match != null) return match
+    if (source == null) speechCategoryForKey(key)?.let { return it }
     return ResourceType.entries.firstOrNull { categoryKey(it.categoryId()) == key || categoryKey(it.label) == key }
         ?.let { CatalogCategory(it.categoryId(), it.label, SourceKind.RESOURCES, it.symbol) }
 }

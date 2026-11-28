@@ -65,7 +65,7 @@ class RecognitionServiceTest {
             assertEquals("음성 인식", plugin.page("manager", PluginContext("", "", locale = "ko-KR"))?.title)
             val japanese = PluginContext("", "", locale = "ja", recognitionServiceId = plugin.descriptor.id)
             val group = plugin.page("manager", japanese)!!.blocks.filterIsInstance<PageBlock.Group>().last()
-            val entry = group.children.filterIsInstance<PageBlock.Input>().single()
+            val entry = group.children.filterIsInstance<PageBlock.Input>().single { it.actionId.startsWith("settings/") }
             assertEquals("settings/test.online/packs", entry.actionId)
             assertEquals("ストリーミング認識パック", entry.title)
             val provider = plugin.page("engines", japanese)!!.management!!.items.first { it.id == "test.online" }
@@ -77,7 +77,10 @@ class RecognitionServiceTest {
     @Test fun enginePickerIsSelectionOnlyAndConfigurationLivesInService() = runBlocking {
         val broker = Broker(); val plugin = plugin(broker)
         val picker = plugin.page("engines", PluginContext("", ""))!!
-        assertTrue(picker.blocks.isEmpty())
+        val market = (picker.blocks.single() as PageBlock.Group).children.single() as PageBlock.Input
+        assertEquals("market-engines", market.actionId)
+        assertEquals(PluginOutcome.OpenPluginPage("tools.package-store", "speech/recognition"),
+            plugin.execute(market.actionId, PluginContext("", "")))
         assertNull(picker.management!!.reorderAction)
         assertTrue(picker.management!!.items.all { it.selection != null && it.toggle == null && it.actions.isEmpty() })
         assertEquals("disable-recognition", picker.management!!.items.first { it.selected }.primaryAction)

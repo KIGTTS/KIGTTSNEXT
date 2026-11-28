@@ -20,9 +20,11 @@ internal fun recognitionServicePage(id: String, settings: RecognitionServiceSett
         val entries = all.filter { it.enabled }.flatMap { provider -> provider.settingsPages.map { page ->
             PageBlock.Input(page.title, "", "settings/${provider.pluginId}/${page.id}", icon = page.icon)
         } }
-        if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), entries))
+        add(PageBlock.Group(t("engine_settings"), entries +
+            PageBlock.Input(t("market_engines"), "", "market-engines", symbol = "storefront")))
     })
-    if (id == "engines") return PluginPage(id, t("choose_engine"), emptyList(),
+    if (id == "engines") return PluginPage(id, t("choose_engine"), listOf(PageBlock.Group("", listOf(
+        PageBlock.Input(t("market_engines"), "", "market-engines", symbol = "storefront")))),
         ManagementList("recognition-engines", listOf(
             ManagementItem("recognition-disabled", t("disable"), "", PluginIcon.CLOSE, selected = selected == null,
                 primaryAction = "disable-recognition", selection = ManagementSelection("disable-recognition"))

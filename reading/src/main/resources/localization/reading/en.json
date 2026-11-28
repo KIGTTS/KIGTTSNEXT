@@ -6,6 +6,7 @@
   "system_default": "System default voice",
   "speed": "Speed",
   "engine_settings": "Engine settings",
+  "market_engines": "Get synthesis engines",
   "audio_cache": "Voice cache",
   "auto_cache": "Automatic caching",
   "cloud_cache_help": "Only Quick Text is prepared in advance. The last 30 other texts are cached after reading. Text is sent to the cloud service for synthesis.",

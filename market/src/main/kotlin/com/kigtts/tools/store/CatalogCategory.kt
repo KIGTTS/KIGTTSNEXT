@@ -17,6 +17,7 @@ import java.util.Locale
 private val pluginCategories = mapOf(
     "音频" to "audio", "外观" to "appearance", "内容" to "content",
     "输入" to "input", "开发" to "development", "扩展" to "extensions",
+    "语音合成" to "speech-synthesis", "语音识别" to "speech-recognition",
 )
 
 internal fun ResourceType.categoryId() = "resource." + name.lowercase(Locale.ROOT).replace('_', '-')

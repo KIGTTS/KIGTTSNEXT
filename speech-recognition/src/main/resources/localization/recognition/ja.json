@@ -21,6 +21,7 @@
   "idle_time": "待機時間",
   "seconds": " 秒",
   "engine_settings": "エンジン設定",
+  "market_engines": "マーケットで認識エンジンを追加",
   "choose_engine": "認識エンジンを選択",
   "disable": "音声認識を無効にする",
   "system": "システム音声認識",

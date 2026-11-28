@@ -21,6 +21,7 @@
   "idle_time": "保留时间",
   "seconds": "秒",
   "engine_settings": "引擎设置",
+  "market_engines": "从市场添加识别引擎",
   "choose_engine": "选择识别引擎",
   "disable": "不启用语音识别",
   "system": "系统识别引擎",

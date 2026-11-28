@@ -30,7 +30,7 @@ class SourceStore(private val storage: PluginStorage, private val builtinSources
         seed("kigtts-expressions", state.expressionSourceSeeded) { it.copy(expressionSourceSeeded = true) }
         state.records.forEach { source ->
             runCatching { CatalogCodec.parse(storage.file("catalogs/${source.key}.json").readBytes()) }
-                .getOrNull()?.takeIf { it.id == source.catalogId }?.let { catalogs[source.key] = it }
+                .getOrNull()?.takeIf { it.id == source.catalogId }?.let { catalogs[source.key] = it.withLegacySpeechCategories() }
         }
     }
     private fun seed(key: String, seeded: Boolean, mark: (SourceConfiguration) -> SourceConfiguration) {
@@ -104,7 +104,7 @@ class SourceStore(private val storage: PluginStorage, private val builtinSources
         require(previous.catalogId == null || previous.catalogId == catalog.id) { throw StoreSourceIssue("source.issue.changed", "源 ID 发生变化，请移除后重新确认") }
         require(key in previews || state.records.none { it.key != key && it.catalogId == catalog.id }) { throw StoreSourceIssue("source.issue.same", "这个源已通过其它地址添加，可在“插件来源”中查看。") }
         if (key !in previews) atomic(storage.file("catalogs/$key.json"), PluginJson.encodeToString(catalog))
-        catalogs[key] = catalog
+        catalogs[key] = catalog.withLegacySpeechCategories()
         update(previous.copy(name = catalog.name, catalogId = catalog.id, lastFetched = System.currentTimeMillis(), error = "", errorKey = null))
     }
     @Synchronized fun failed(key: String, message: String, errorKey: String? = null) {

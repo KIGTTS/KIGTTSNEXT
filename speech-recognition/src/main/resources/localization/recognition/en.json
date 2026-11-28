@@ -21,6 +21,7 @@
   "idle_time": "Idle time",
   "seconds": " s",
   "engine_settings": "Engine settings",
+  "market_engines": "Get recognition engines",
   "choose_engine": "Choose recognition engine",
   "disable": "Turn off speech recognition",
   "system": "System recognition",

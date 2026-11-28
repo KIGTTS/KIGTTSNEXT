@@ -89,6 +89,8 @@
   "install_dependency": "前置插件",
   "install_group": "本次安装",
   "category.audio": "音频",
+  "category.speech-synthesis": "语音合成",
+  "category.speech-recognition": "语音识别",
   "category.appearance": "外观",
   "category.content": "内容",
   "category.input": "输入",

@@ -146,6 +146,7 @@ class SpeechServicePlugin(private val shortcutTexts: Flow<Map<String, String>> =
                 settings.save(); facade.settingsChanged(); PluginOutcome.RefreshUi
             }
             "activate" -> PluginOutcome.SelectTtsService(descriptor.id)
+            "market-engines" -> PluginOutcome.OpenPluginPage("tools.package-store", "speech/synthesis")
             "sounds" -> PluginOutcome.OpenPage("packs")
             "system-default" -> { settings.provider = null; settings.voice = null; settings.systemVoice = null; settings.save(); PluginOutcome.RefreshUi }
             "system" -> { settings.provider = null; settings.voice = null; settings.save(); PluginOutcome.RefreshUi }

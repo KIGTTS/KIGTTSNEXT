@@ -6,6 +6,7 @@
   "system_default": "系统默认声音",
   "speed": "语速",
   "engine_settings": "引擎设置",
+  "market_engines": "从市场添加合成引擎",
   "audio_cache": "语音缓存",
   "auto_cache": "自动缓存",
   "cloud_cache_help": "只预先合成快捷文本。临时文本仅缓存实际朗读的最近 30 条。合成时会将文字发送给云端服务。",

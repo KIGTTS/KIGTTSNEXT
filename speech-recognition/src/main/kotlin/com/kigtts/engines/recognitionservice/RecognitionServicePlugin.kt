@@ -80,6 +80,7 @@ class RecognitionServicePlugin(private val legacyEnabled: () -> Boolean? = { nul
             }
             "activate" -> PluginOutcome.SelectRecognitionService(descriptor.id)
             "engines" -> PluginOutcome.OpenPage("engines")
+            "market-engines" -> PluginOutcome.OpenPluginPage("tools.package-store", "speech/recognition")
             "resident" -> {
                 settings.resident = context.inputs["checked"]?.toBooleanStrictOrNull() ?: !settings.resident
                 settings.save(); facade.settingsChanged(); PluginOutcome.RefreshUi

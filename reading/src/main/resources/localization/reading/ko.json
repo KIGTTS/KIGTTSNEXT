@@ -6,6 +6,7 @@
   "system_default": "시스템 기본 음성",
   "speed": "말하기 속도",
   "engine_settings": "엔진 설정",
+  "market_engines": "마켓에서 합성 엔진 추가",
   "audio_cache": "음성 캐시",
   "auto_cache": "자동 캐시",
   "cloud_cache_help": "빠른 문구만 미리 합성해요. 다른 텍스트는 실제 읽어준 최근 30개를 캐시해요. 합성 시 텍스트가 클라우드 서비스로 전송돼요",

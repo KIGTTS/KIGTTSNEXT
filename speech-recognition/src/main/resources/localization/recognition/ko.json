@@ -21,6 +21,7 @@
   "idle_time": "유휴 유지 시간",
   "seconds": "초",
   "engine_settings": "엔진 설정",
+  "market_engines": "마켓에서 인식 엔진 추가",
   "choose_engine": "인식 엔진 선택",
   "disable": "음성 인식 끄기",
   "system": "시스템 음성 인식",

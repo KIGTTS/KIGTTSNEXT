@@ -31,12 +31,12 @@ internal fun storePage(id: String, sources: SourceStore, jobs: StoreJobs, view: 
         PageBlock.Actions(listOf(PageAction("continue-install", copy.text("continue"), PluginIcon.EXPORT), PageAction("install-cancel", copy.text("return_store"), PluginIcon.CLOSE)))))
     else -> when {
         id.startsWith("categories/") -> sectionPage(id, sources, jobs, copy)
-        id.startsWith("catalog/") -> catalogListingPage(id, sources, jobs, view, device, copy)
+        id.startsWith("catalog/") || speechCategoryForPage(id) != null -> catalogListingPage(id, sources, jobs, view, device, copy)
         else -> null
     }
-}?.copy(loading = jobs.busy, refreshAction = if (id in setOf("store", "library", "updates", "sources", "categories", "source-sections") || id.startsWith("categories/") || id.startsWith("catalog/")) "refresh" else null,
+}?.copy(loading = jobs.busy, refreshAction = if (id in setOf("store", "library", "updates", "sources", "categories", "source-sections") || id.startsWith("categories/") || id.startsWith("catalog/") || speechCategoryForPage(id) != null) "refresh" else null,
     onEnterAction = when {
-        id == "store" -> "store-enter"
+        id == "store" || speechCategoryForPage(id) != null -> "store-enter"
         id.startsWith("catalog/") || id in setOf("search", "library", "updates", "downloads") -> "downloads-enter"
         id == "package" && jobs.downloads?.tasks.orEmpty().any {
             it.phase == StoreDownloadPhase.READY || it.phase == StoreDownloadPhase.INSTALLING

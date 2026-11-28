@@ -6,6 +6,7 @@
   "system_default": "システム既定の音声",
   "speed": "速度",
   "engine_settings": "エンジン設定",
+  "market_engines": "マーケットで合成エンジンを追加",
   "audio_cache": "音声キャッシュ",
   "auto_cache": "自動キャッシュ",
   "cloud_cache_help": "クイックテキストだけを事前に合成します。その他は読み上げた直近30件を保存します。合成時にテキストがクラウドへ送信されます",

@@ -27,7 +27,8 @@ internal class SpeechServicePages(private val settings: ServiceSettings, private
                 val entries = catalog.filter { it.enabled }.flatMap { provider -> provider.settingsPages.map { page ->
                     PageBlock.Input(page.title, "", "settings/${encodeId(provider.pluginId)}/${encodeId(page.id)}", icon = page.icon)
                 } }
-                if (entries.isNotEmpty()) add(PageBlock.Group(t("engine_settings"), entries))
+                add(PageBlock.Group(t("engine_settings"), entries +
+                    PageBlock.Input(t("market_engines"), "", "market-engines", symbol = "storefront")))
                 add(PageBlock.Group(t("audio_cache"), buildList {
                     add(PageBlock.Toggle(t("auto_cache"), settings.cacheEnabled, "cache-toggle",
                         if (source?.info?.packs?.isNotEmpty() == true && source.pluginId == "engine.cloud-tts")

@@ -19,8 +19,9 @@ internal class VoiceLibraryPages(private val settings: ServiceSettings, private 
                 ManagementFilter(it.pluginId, if (it.pluginId == SYSTEM_PROVIDER) t("system") else it.displayName,
                     "pack-filter/${encodeId(it.pluginId)}", library.filter == it.pluginId)
             }
-            return PluginPage(id, t("manage_packs"), listOf(PageBlock.Actions(listOf(
-                PageAction("import-voice-package", t("import_pack"), PluginIcon.ADD)))),
+            return PluginPage(id, t("manage_packs"), listOf(
+                PageBlock.Actions(listOf(PageAction("import-voice-package", t("import_pack"), PluginIcon.ADD))),
+                PageBlock.Group("", listOf(PageBlock.Input(t("market_engines"), "", "market-engines", symbol = "storefront")))),
                 ManagementList("voice-packs", visible().map { entry ->
                     val pack = entry.pack; val pinned = library.pinned(entry.key, pack.metadata.pinned)
                     val actions = mutableListOf(PageAction(packAction("pack-pin", entry), if (pinned) t("unpin") else t("pin"), PluginIcon.PIN),

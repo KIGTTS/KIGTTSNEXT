@@ -89,6 +89,8 @@
   "install_dependency": "필수 플러그인",
   "install_group": "이번에 설치",
   "category.audio": "오디오",
+  "category.speech-synthesis": "음성 합성",
+  "category.speech-recognition": "음성 인식",
   "category.appearance": "외관",
   "category.content": "콘텐츠",
   "category.input": "입력",

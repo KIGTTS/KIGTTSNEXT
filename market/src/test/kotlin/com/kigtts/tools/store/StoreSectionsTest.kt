@@ -10,6 +10,34 @@ import java.io.File
 
 class StoreSectionsTest {
     @get:Rule val temp = TemporaryFolder()
+    @Test fun speechLinksSeparateCachedOfficialEnginesAndMergeDeclaredSources() {
+        val storage = PluginStorage(temp.root)
+        val official = SourceRecord("kigtts-official", OfficialPluginSource.URL, OfficialPluginSource.NAME,
+            catalogId = OfficialPluginSource.ID)
+        val store = SourceStore(storage, listOf(official))
+        val audio = CatalogCategory("plugin.audio", "音频")
+        val tts = entry("test.tts", release(dependencies = mapOf("service.speech-synthesis" to "^1.0.0")))
+            .item.copy(category = audio.name, categoryId = audio.id)
+        val asr = entry("test.asr", release(dependencies = mapOf("service.speech-recognition" to "^1.0.0")))
+            .item.copy(category = audio.name, categoryId = audio.id)
+        store.fetched(official.key, catalog(OfficialPluginSource.ID, tts, asr).copy(categories = listOf(audio)))
+        val third = store.confirm(store.propose("https://example.invalid/speech.json").token)
+        val category = CatalogCategory("plugin.speech-recognition", "Speech recognition")
+        store.fetched(third.key, catalog("third.source",
+            asr.copy(id = "test.third", category = category.name, categoryId = category.id),
+            tts.copy(id = "test.custom", categoryId = audio.id)).copy(categories = listOf(audio, category)))
+
+        val reloaded = SourceStore(storage, listOf(official))
+        assertEquals(2, reloaded.categories(official.key).size)
+        assertEquals(1, reloaded.categories().count { it.id == category.id })
+        fun entries(page: String) = discover(
+            reloaded.entries(), requireNotNull(catalogScope(page, reloaded)), emptyMap(), testDevice,
+        ).map { it.item.id }.toSet()
+        assertEquals(setOf("test.tts"), entries("speech/synthesis"))
+        assertEquals(setOf("test.asr", "test.third"), entries("speech/recognition"))
+        assertEquals("plugin.speech-recognition", catalogScope("speech/recognition", SourceStore(PluginStorage(temp.newFolder()), emptyList()))?.category)
+    }
+
     @Test fun partitionsPageWithoutMixingSourcesOrRememberedPositions() = runTest {
         val environment = object : PluginEnvironment {
             override val storage = PluginStorage(temp.root); override val assets = temp.root
