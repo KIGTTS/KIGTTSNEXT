@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Intent
 import android.os.*
 import com.kigtts.plugin.api.*
-import dalvik.system.DexClassLoader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.flow
 import java.io.DataInputStream
@@ -58,8 +57,10 @@ open class PluginWorkerService : Service() {
             require(dex.isNotEmpty())
             val abi = Build.SUPPORTED_ABIS.firstOrNull { File(directory, "lib/$it").isDirectory }
             val libraries = abi?.let { File(directory, "lib/$it").absolutePath }
-            val loader = DexClassLoader(dex.joinToString(File.pathSeparator) { it.absolutePath },
-                File(paths.storage(pluginId).temporary, "dex").apply { mkdirs() }.absolutePath, libraries, classLoader)
+            val ownsOnnxRuntime = abi != null && "lib/$abi/libonnxruntime.so" in manifest.files &&
+                "lib/$abi/libonnxruntime4j_jni.so" in manifest.files
+            val loader = PluginClassLoader(dex.joinToString(File.pathSeparator) { it.absolutePath },
+                File(paths.storage(pluginId).temporary, "dex").apply { mkdirs() }.absolutePath, libraries, classLoader, ownsOnnxRuntime)
             val entry = loader.loadClass(manifest.entryClass)
             val instance = if (manifest.entryClass == "com.kigtts.engines.lua.LuaPackagedPlugin") {
                 val descriptor = PluginDescriptor(manifest.id, manifest.name, "", manifest.version,
