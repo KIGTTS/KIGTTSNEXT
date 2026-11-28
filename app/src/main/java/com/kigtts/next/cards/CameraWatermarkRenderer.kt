@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.text.TextPaint
@@ -93,33 +94,31 @@ internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: Camera
     val topText = band.top + bandHeight * if (centeredLogo) .34f else .10f
     val heightText = band.bottom - bandHeight * .10f - topText
     val units = lines.sumOf { it.weight.toDouble() }.toFloat()
-    val font = minOf(width * .037f * style.scale / 100, heightText / (units.coerceAtLeast(1f) * 1.31f))
-    var logoWidth = 0f
-    if (style.showLogo) {
-        val logo = context.getDrawable(R.drawable.logo_kigtts_wordmark)?.mutate()
-        val ratio = logo?.let { it.intrinsicWidth.toFloat() / it.intrinsicHeight.coerceAtLeast(1) }?.coerceIn(1f, 16f) ?: 4f
-        val logoHeight = minOf(watermarkLogoHeight(style.layout, centeredLogo, width, bandHeight, ratio),
-            if (lines.isNotEmpty()) font * .95f else Float.POSITIVE_INFINITY)
-        val fittedWidth = logoHeight * ratio
-        if (logo != null) logoWidth = fittedWidth
-        val x = if (style.overlay) width - margin - fittedWidth else if (centered) (width - fittedWidth) / 2 else margin
+    val contentScale = style.scale / 100f
+    val logo = if (style.showLogo) context.getDrawable(R.drawable.logo_kigtts_wordmark)?.mutate() else null
+    val ratio = logo?.let { it.intrinsicWidth.toFloat() / it.intrinsicHeight.coerceAtLeast(1) }?.coerceIn(1f, 16f) ?: 4f
+    val logoHeight = if (logo == null) 0f else
+        watermarkLogoHeight(style.layout, centeredLogo, width, bandHeight, ratio) * contentScale
+    val logoWidth = logoHeight * ratio
+    val font = minOf(width * .028f * contentScale, heightText / (units.coerceAtLeast(1f) * 1.31f),
+        if (logo == null || lines.isEmpty()) Float.POSITIVE_INFINITY else watermarkFontLimit(paint, lines, logoHeight))
+    logo?.apply {
+        val x = if (style.overlay) width - margin - logoWidth else if (centered) (width - logoWidth) / 2 else margin
         val y = when {
             style.overlay -> height - margin * .72f - logoHeight / 2
             centeredLogo -> band.top + bandHeight * .19f
             else -> band.centerY()
         }
-        logo?.apply {
-            if (style.overlay) {
-                setTint(0xCC000000.toInt())
-                val offset = (logoHeight * .08f).roundToInt().coerceAtLeast(1)
-                setBounds(x.roundToInt(), (y - logoHeight / 2).roundToInt() + offset,
-                    (x + fittedWidth).roundToInt(), (y + logoHeight / 2).roundToInt() + offset)
-                draw(canvas)
-            }
-            setTint(ink)
-            setBounds(x.roundToInt(), (y - logoHeight / 2).roundToInt(), (x + fittedWidth).roundToInt(), (y + logoHeight / 2).roundToInt())
+        if (style.overlay) {
+            setTint(0xCC000000.toInt())
+            val offset = (logoHeight * .08f).roundToInt().coerceAtLeast(1)
+            setBounds(x.roundToInt(), (y - logoHeight / 2).roundToInt() + offset,
+                (x + logoWidth).roundToInt(), (y + logoHeight / 2).roundToInt() + offset)
             draw(canvas)
         }
+        setTint(ink)
+        setBounds(x.roundToInt(), (y - logoHeight / 2).roundToInt(), (x + logoWidth).roundToInt(), (y + logoHeight / 2).roundToInt())
+        draw(canvas)
     }
     val left = margin + if (style.showLogo && !centered && !style.overlay) logoWidth + margin else 0f
     val right = width - margin - if (style.overlay && logoWidth > 0f) logoWidth + margin else 0f
@@ -134,6 +133,17 @@ internal fun drawCameraWatermark(context: Context, canvas: Canvas, style: Camera
     }
 }
 
+/** Compare visible ink, including CJK glyphs, to the lettering inside the padded vector. */
+private fun watermarkFontLimit(paint: TextPaint, lines: List<WatermarkLine>, logoHeight: Float): Float {
+    val sampleSize = 100f
+    val bounds = Rect()
+    paint.textSize = sampleSize
+    val largestInk = lines.maxOf { line ->
+        paint.getTextBounds(line.text, 0, line.text.length, bounds)
+        bounds.height() * line.weight / sampleSize
+    }
+    return logoHeight * .62f / largestInk.coerceAtLeast(.01f)
+}
 
 internal fun watermarkLogoHeight(layout: WatermarkLayout, centeredWithText: Boolean, width: Float, bandHeight: Float, ratio: Float): Float {
     val prominent = layout == WatermarkLayout.STANDARD && !centeredWithText

@@ -126,6 +126,45 @@ class CameraWatermarkGlassTest {
         assertEquals(19.8f, watermarkLogoHeight(WatermarkLayout.CLASSIC, false, 1000f, 90f, 4f), .01f)
     }
 
+    @Test fun visibleTextStaysInProportionToTheWordmarkAtDefaultAndMaximumSizes() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val facts = WatermarkFacts(time = "09:41", exposure = "24mm · ISO 100", location = "杭州")
+        val width = 640
+        for (asset in CameraWatermarkLibrary(context).choices().filter { it.id in listOf("standard", "check-in", "classic") }) {
+            fun measure(scale: Int): Pair<Int, Int> {
+                val style = asset.defaults.copy(scale = scale, showLocation = true)
+                val geometry = PhotoFrameSpec(4, 3, style.encode()).geometry()
+                val height = (width / geometry.aspectRatio).toInt()
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                val lightPaper = Color.luminance(style.paperColor) >= .42 && !style.overlay
+                try {
+                    val canvas = Canvas(bitmap)
+                    canvas.drawColor(if (lightPaper) Color.WHITE else Color.BLACK)
+                    drawCameraWatermark(context, canvas, style, geometry, facts, width.toFloat(), height.toFloat())
+                    val pixels = IntArray(width * height)
+                    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+                    fun tallestLine(xRange: IntRange): Int {
+                        var tallest = 0
+                        var rows = 0
+                        for (y in 0 until height) {
+                            val ink = xRange.any { x -> (Color.red(pixels[y * width + x]) > 128) != lightPaper }
+                            rows = if (ink) rows + 1 else 0
+                            tallest = maxOf(tallest, rows)
+                        }
+                        return tallest
+                    }
+                    val (left, right) = tallestLine(0 until width / 2) to tallestLine(width / 2 until width)
+                    return if (style.overlay) left to right else right to left
+                } finally { bitmap.recycle() }
+            }
+            val (text, logo) = measure(100)
+            val (largeText, largeLogo) = measure(140)
+            assertTrue("${asset.id} default text/logo=$text/$logo", text in 1..logo + 1)
+            assertTrue("${asset.id} larger text/logo=$largeText/$largeLogo", largeText in 1..largeLogo + 1)
+            assertTrue("${asset.id} must still scale both pieces", largeText > text && largeLogo > logo)
+        }
+    }
+
     @Test fun glassSamplesTheSelectedPhotoEdgeAndNeverPaintsThePhoto() {
         val image = Bitmap.createBitmap(184, 144, Bitmap.Config.ARGB_8888)
         try {
