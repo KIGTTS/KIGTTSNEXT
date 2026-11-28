@@ -54,9 +54,9 @@ fun MediaLibraryScreen(model: AppViewModel, target: String) {
             catch (e: Exception) { error = e.message ?: importFailed } finally { importing = false }
         }
     }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia(), ::import)
+    val picker = rememberLauncherForActivityResult(VisualMediaPicker(), ::import)
     val document = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument(), ::import)
-    val pair = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+    val pair = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         val id = pairing; pairing = null
         if (uri != null && id != null && model.state.value.appleLivePhotos) scope.launch {
             importing = true

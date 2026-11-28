@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.kigtts.next.cards.*
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.ui.components.ChoiceButtonGroup
+import com.kigtts.next.ui.components.ColorPickerDialog
 import com.kigtts.next.ui.cards.rememberPhotoFrameGlass
 import androidx.compose.foundation.selection.toggleable
 import kotlin.math.roundToInt
@@ -87,8 +88,24 @@ internal fun CameraWatermarkEditor(asset: CameraWatermarkAsset, options: CameraO
 internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boolean, change: (CameraWatermarkStyle) -> Unit,
     drag: (CameraWatermarkStyle) -> Unit = change, finishDrag: (() -> Unit)? = null) {
     val copy = rememberCameraCopy()
-    WatermarkChoices(copy.text("camera.watermark_background"), WatermarkPalette.entries, style.palette, { copy.label(it) }, enabled) { change(style.copy(palette = it)) }
-    WatermarkChoices(copy.text("camera.watermark_band_position"), WatermarkPosition.entries, style.position, { copy.label(it) }, enabled) { change(style.copy(position = it)) }
+    var choosingColor by remember { mutableStateOf(false) }
+    if (!style.overlay) {
+        val classic = style.layout == WatermarkLayout.CLASSIC
+        val palettes = if (classic) listOf(WatermarkPalette.WHITE, WatermarkPalette.BLACK, WatermarkPalette.CUSTOM, WatermarkPalette.GLASS)
+            else listOf(WatermarkPalette.LIGHT, WatermarkPalette.DARK, WatermarkPalette.WARM, WatermarkPalette.COOL, WatermarkPalette.GLASS)
+        WatermarkChoices(copy.text("camera.watermark_background"), palettes, style.palette, { copy.label(it) }, enabled) {
+            change(style.copy(palette = it, glassSource = if (classic && it == WatermarkPalette.GLASS) WatermarkGlassSource.FULL else style.glassSource))
+            if (it == WatermarkPalette.CUSTOM) choosingColor = true
+        }
+        if (style.palette == WatermarkPalette.CUSTOM) OutlinedButton(feedbackClick { choosingColor = true }, enabled = enabled) {
+            Text(copy.text("camera.watermark_custom_color"))
+        }
+        WatermarkChoices(copy.text("camera.watermark_band_position"), WatermarkPosition.entries, style.position, { copy.label(it) }, enabled) { change(style.copy(position = it)) }
+    }
+    if (choosingColor) ColorPickerDialog(style.customColor.toLong() and 0xFFFFFFFFL, onConfirm = {
+        choosingColor = false
+        change(style.copy(palette = WatermarkPalette.CUSTOM, customColor = it.toInt() or 0xFF000000.toInt()))
+    }, onDismiss = { choosingColor = false }, title = copy.text("camera.watermark_custom_color"))
     Text(copy.text("camera.watermark_content_size"), style = MaterialTheme.typography.titleSmall)
     Slider(style.scale.toFloat(), { drag(style.copy(scale = it.roundToInt())) },
         enabled = enabled, valueRange = 75f..140f, onValueChangeFinished = finishDrag)
@@ -99,12 +116,12 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
     if (style.layout == WatermarkLayout.CLASSIC) {
         WatermarkToggle(copy.text("camera.watermark_exposure"), style.showExposure, enabled) { change(style.copy(showExposure = it)) }
     }
-    if (style.layout == WatermarkLayout.CLASSIC || style.palette == WatermarkPalette.GLASS || style.edge > 0) {
+    if (!style.overlay && !style.lockEdge && (style.layout == WatermarkLayout.CLASSIC || style.palette == WatermarkPalette.GLASS || style.edge > 0)) {
         Text(copy.text("camera.watermark_width"), style = MaterialTheme.typography.titleSmall)
         Slider(style.edge.toFloat(), { drag(style.copy(edge = it.roundToInt())) },
             enabled = enabled, valueRange = 0f..12f, steps = 11, onValueChangeFinished = finishDrag)
     }
-    if (style.layout == WatermarkLayout.CHECK_IN) WatermarkToggle(copy.text("camera.watermark_center"), style.center, enabled) { change(style.copy(center = it)) }
+    if (style.layout == WatermarkLayout.CHECK_IN && !style.overlay) WatermarkToggle(copy.text("camera.watermark_center"), style.center, enabled) { change(style.copy(center = it)) }
     WatermarkToggle(copy.text("camera.watermark_logo"), style.showLogo, enabled) { change(style.copy(showLogo = it)) }
 }
 
@@ -143,7 +160,7 @@ internal fun CameraWatermarkControls(style: CameraWatermarkStyle, enabled: Boole
     BoxWithConstraints(modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
         val size = cameraPhotoWindow(maxWidth.value, maxHeight.value, geometry.aspectRatio.toFloat())
         val unit = size.width / geometry.paperWidth
-        Box(Modifier.size(size.width.dp, size.height.dp).background(Color(style.palette.color))) {
+        Box(Modifier.size(size.width.dp, size.height.dp).background(Color(style.paperColor))) {
             val photo = Modifier.offset((geometry.photoLeft * unit).dp, (geometry.photoTop * unit).dp)
                 .size((geometry.photoWidth * unit).dp, (geometry.photoHeight * unit).dp)
             if (preview != null) Image(preview, null, photo, contentScale = ContentScale.Fit)

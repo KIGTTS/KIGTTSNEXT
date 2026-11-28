@@ -15,6 +15,7 @@ import com.kigtts.next.cards.CameraWatermarkStyle
 import com.kigtts.next.cards.PhotoFrameGlass
 import com.kigtts.next.cards.PolaroidPhotoRenderer
 import com.kigtts.next.cards.WatermarkPalette
+import com.kigtts.next.cards.WatermarkLayout
 import com.kigtts.plugin.api.PolaroidCard
 import com.kigtts.plugin.api.PolaroidGeometry
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +32,7 @@ internal fun rememberPhotoFrameGlass(image: ImageBitmap?, style: CameraWatermark
     val frame = card?.frameStyleId?.substringAfter(".c-", "").orEmpty()
     val pose = card?.let { listOf(it.photoX, it.photoY, it.photoZoom, it.photoBackdrop) }
     val result by key(image) {
-        produceState<PhotoFrameGlass?>(null, style.position, style.band, sideEdges, style.glassSource, frame, pose) {
+        produceState<PhotoFrameGlass?>(null, style.position, style.band, sideEdges, style.glassSource, style.layout, frame, pose) {
             // During a drag retain the last prepared strip until the new pose settles.
             if (value != null) delay(65)
             value = withContext(Dispatchers.Default) {
@@ -49,7 +50,8 @@ internal fun rememberPhotoFrameGlass(image: ImageBitmap?, style: CameraWatermark
                         canvas.drawColor(android.graphics.Color.LTGRAY)
                         PolaroidPhotoRenderer.draw(canvas, source, rect, paint, card)
                     }
-                    PhotoFrameGlass.prepare(rendered, Rect(0, 0, width, height), style.position, style.band, sideEdges, style.glassSource)
+                    PhotoFrameGlass.prepare(rendered, Rect(0, 0, width, height), style.position, style.band, sideEdges,
+                        style.glassSource, wholeBackdrop = style.layout == WatermarkLayout.CLASSIC)
                 } finally { rendered.recycle() }
             }
         }

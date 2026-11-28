@@ -6,15 +6,16 @@ import com.kigtts.next.i18n.rememberUiCopy
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -45,28 +46,51 @@ fun TextEditor(
     val pinchAdjusting = remember { mutableStateOf(false) }
     val horizontal = with(LocalDensity.current) { (if (renderer != null) 2.dp else 12.dp).roundToPx() }
     val backgroundAlpha = if (state.theme.background == null) 1f else .88f
-    Surface(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle), shape = homeCardShape(neighbors),
-        color = Color.Transparent, contentColor = contentColorFor(subtitleCardColor(state.theme.background != null))) {
-        Box(Modifier.themeFill { it.surfaceContainerHigh.copy(alpha = backgroundAlpha) }) {
-            SubtitleRendererBackdrop(state, model,
-                com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal), Modifier.matchParentSize())
-            CompositionLocalProvider(com.kigtts.next.ui.media.LocalMediaSafeArea provides
-                com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal)) {
-                MediaTransition(media,state,model,Modifier.fillMaxSize())
-            }
-            Column {
-                Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }.padding(start = subtitleControlsInset, top = subtitleControlsInset, end = subtitleControlsInset)) {
-                    EditorToolbar(state, model, onFontAdjustment = { sliderAdjusting.value = it })
+    val square = state.fullscreen || state.editing || state.mediaEditing
+    val contentColor = contentColorFor(subtitleCardColor(state.theme.background != null))
+    Box(modifier.testTag("subtitle-card").homePreviewRegion("subtitle").panelIdleWake(idle)
+        .subtitleCardCorners(neighbors, square), propagateMinConstraints = true) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Box(Modifier.themeFill { it.surfaceContainerHigh.copy(alpha = backgroundAlpha) }) {
+                val safeArea = com.kigtts.next.ui.media.MediaSafeArea(top, horizontal, bottom, horizontal)
+                SubtitleRendererBackdrop(state, model, safeArea, Modifier.matchParentSize())
+                CompositionLocalProvider(com.kigtts.next.ui.media.LocalMediaSafeArea provides safeArea) {
+                    MediaTransition(media, state, model, Modifier.fillMaxSize())
                 }
-                Box(Modifier.weight(1f).fillMaxWidth()) { ProvideIconTextContextMenu(suspended = sliderAdjusting.value || pinchAdjusting.value,
-                    keepInEditor = true) {
-                    SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true,
-                        onFontAdjustment = { pinchAdjusting.value = it })
-                } }
-                if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
-                EditorFooter(state, model, Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { bottom = it.height })
+                Column {
+                    Box(Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { top = it.height }
+                        .padding(start = subtitleControlsInset, top = subtitleControlsInset, end = subtitleControlsInset)) {
+                        EditorToolbar(state, model, onFontAdjustment = { sliderAdjusting.value = it })
+                    }
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        ProvideIconTextContextMenu(suspended = sliderAdjusting.value || pinchAdjusting.value, keepInEditor = true) {
+                            SubtitleBody(state, model, Modifier.fillMaxSize(), rendererInBackground = true,
+                                onFontAdjustment = { pinchAdjusting.value = it })
+                        }
+                    }
+                    if (state.audioId != null) com.kigtts.next.ui.media.AudioCardControls(model.cardAudio, Modifier.fillMaxWidth().padding(bottom = 4.dp))
+                    EditorFooter(state, model, Modifier.graphicsLayer { alpha = controlsAlpha.value }.onSizeChanged { bottom = it.height })
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun Modifier.subtitleCardCorners(neighbors: CornerNeighbors, square: Boolean): Modifier {
+    val radius = LocalCornerRadius.current.coerceIn(4.dp, 20.dp)
+    val innerRadius = (LocalCornerRadius.current * .22f).coerceIn(4.dp, radius)
+    @Composable fun corner(connected: Boolean, label: String) =
+        animateDpAsState(if (square) 0.dp else if (connected) innerRadius else radius,
+            MaterialTheme.motionScheme.fastSpatialSpec(), label = label)
+    val topStart = corner(neighbors.start || neighbors.above, "subtitle-corner-top-start")
+    val topEnd = corner(neighbors.end || neighbors.above, "subtitle-corner-top-end")
+    val bottomEnd = corner(neighbors.end || neighbors.below, "subtitle-corner-bottom-end")
+    val bottomStart = corner(neighbors.start || neighbors.below, "subtitle-corner-bottom-start")
+    return graphicsLayer {
+        shape = RoundedCornerShape(topStart.value.coerceIn(0.dp, 20.dp), topEnd.value.coerceIn(0.dp, 20.dp),
+            bottomEnd.value.coerceIn(0.dp, 20.dp), bottomStart.value.coerceIn(0.dp, 20.dp))
+        clip = true
     }
 }
 

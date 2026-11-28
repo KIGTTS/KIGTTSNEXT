@@ -16,19 +16,22 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.remember
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.kigtts.next.ui.components.feedbackClick
 import com.kigtts.next.theme.themeFill
 import com.kigtts.next.theme.ThemeText
@@ -45,13 +48,24 @@ internal fun groupedSettingShape(position: SettingPosition, outer: CornerBasedSh
         bottomEnd = if (position in setOf(SettingPosition.SINGLE, SettingPosition.LAST)) outer.bottomEnd else inner)
 }
 
-@Composable internal fun animatedSettingShape(position: SettingPosition, outer: CornerBasedShape): RoundedCornerShape {
+private class SettingCorners(val topStart: State<Dp>, val topEnd: State<Dp>, val bottomEnd: State<Dp>,
+    val bottomStart: State<Dp>) {
+    fun shape() = RoundedCornerShape(topStart.value, topEnd.value, bottomEnd.value, bottomStart.value)
+}
+
+@Composable internal fun animatedSettingShape(position: SettingPosition, outer: CornerBasedShape): RoundedCornerShape =
+    animatedSettingCorners(position, outer).shape()
+
+@Composable private fun animatedSettingCorners(position: SettingPosition, outer: CornerBasedShape): SettingCorners {
     val density = LocalDensity.current
-    val target = groupedSettingShape(position, outer)
+    val target = remember(position, outer) { groupedSettingShape(position, outer) }
     @Composable fun corner(size: CornerSize, label: String) = animateDpAsState(
-        with(density) { size.toPx(Size.Zero, density).toDp() }, tween(180), label = label).value
-    return RoundedCornerShape(corner(target.topStart, "setting-top-start"), corner(target.topEnd, "setting-top-end"),
-        corner(target.bottomEnd, "setting-bottom-end"), corner(target.bottomStart, "setting-bottom-start"))
+        with(density) { size.toPx(Size.Zero, density).toDp() }, tween(180), label = label)
+    val topStart = corner(target.topStart, "setting-top-start")
+    val topEnd = corner(target.topEnd, "setting-top-end")
+    val bottomEnd = corner(target.bottomEnd, "setting-bottom-end")
+    val bottomStart = corner(target.bottomStart, "setting-bottom-start")
+    return remember(topStart, topEnd, bottomEnd, bottomStart) { SettingCorners(topStart, topEnd, bottomEnd, bottomStart) }
 }
 
 @Composable
@@ -89,11 +103,11 @@ internal fun SettingItem(title: String, summary: String, icon: ImageVector?, pos
     corners: CornerBasedShape = MaterialTheme.shapes.small,
     interaction: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit = {}) {
-    val shape = animatedSettingShape(position, corners)
+    val animatedCorners = animatedSettingCorners(position, corners)
     val action = if (onClick == null) interaction else Modifier.clickable(enabled = enabled, onClick = feedbackClick(onClick))
     val contentColor = contentColorFor(MaterialTheme.colorScheme.surfaceContainerLow)
     CompositionLocalProvider(LocalContentColor provides contentColor) {
-        Column(modifier.fillMaxWidth().clip(shape).settingFocus(title).then(action)
+        Column(modifier.fillMaxWidth().graphicsLayer { shape = animatedCorners.shape(); clip = true }.settingFocus(title).then(action)
             .themeFill { it.surfaceContainerLow }.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (leading != null || icon != null || badge != null) com.kigtts.next.ui.components.PluginIconBadge(badge) {

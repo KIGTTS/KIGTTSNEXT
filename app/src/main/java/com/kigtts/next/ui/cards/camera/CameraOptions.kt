@@ -10,6 +10,8 @@ import com.kigtts.next.media.color.PhotoEffects
 import com.kigtts.next.cards.CameraWatermarkAsset
 import com.kigtts.next.cards.CameraWatermarkLibrary
 import com.kigtts.next.cards.CameraWatermarkStyle
+import com.kigtts.next.cards.WatermarkGlassSource
+import com.kigtts.next.cards.WatermarkPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -65,7 +67,24 @@ internal class CameraOptions(private val preferences: SharedPreferences) {
         watermarkEnabled = value != null
         preferences.edit().putString("watermark-asset-v1", watermarkStyle).putBoolean("watermark-enabled-v1", watermarkEnabled).apply()
     }
-    fun watermarkSettings(asset: CameraWatermarkAsset) = watermarkEdits[asset.id]?.takeIf { it.layout == asset.defaults.layout } ?: asset.defaults
+    fun watermarkSettings(asset: CameraWatermarkAsset): CameraWatermarkStyle {
+        val saved = watermarkEdits[asset.id]?.takeIf { it.layout == asset.defaults.layout } ?: return asset.defaults
+        return when (asset.id) {
+            "standard" -> saved.copy(edge = asset.defaults.edge, lockEdge = true)
+            "check-in" -> if (saved.overlay) saved else saved.copy(overlay = true, showLogo = asset.defaults.showLogo)
+            "classic" -> saved.copy(
+                palette = when (saved.palette) {
+                    WatermarkPalette.LIGHT -> WatermarkPalette.WHITE
+                    WatermarkPalette.DARK -> WatermarkPalette.BLACK
+                    WatermarkPalette.WARM, WatermarkPalette.COOL -> WatermarkPalette.CUSTOM
+                    else -> saved.palette
+                },
+                customColor = if (saved.palette == WatermarkPalette.WARM || saved.palette == WatermarkPalette.COOL)
+                    saved.paperColor else saved.customColor,
+                glassSource = WatermarkGlassSource.FULL)
+            else -> saved
+        }
+    }
     fun editWatermark(asset: CameraWatermarkAsset, style: CameraWatermarkStyle, persist: Boolean = true) {
         require(style.layout == asset.defaults.layout && CameraWatermarkStyle.decode(style.encode()) == style)
         watermarkEdits = watermarkEdits + (asset.id to style)

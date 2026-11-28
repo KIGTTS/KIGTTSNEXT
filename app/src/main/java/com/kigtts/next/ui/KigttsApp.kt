@@ -27,6 +27,8 @@ import com.kigtts.next.ui.plugins.PluginExportRequest
 import com.kigtts.next.ui.onboarding.FirstRunStore
 import com.kigtts.next.ui.onboarding.HomeCoachMarks
 import com.kigtts.next.ui.onboarding.NativeStartup
+import com.kigtts.next.ui.settings.AppUpdateHost
+import com.kigtts.next.ui.settings.LocalAppUpdates
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
@@ -153,6 +155,7 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             CompositionLocalProvider(com.kigtts.next.ui.home.LocalHomePreviewGeometry provides homePreview,
                 com.kigtts.next.i18n.LocalUiLocale provides state.uiLocale,
                 com.kigtts.next.theme.LocalAppAppearanceSettings provides visibleAppearance,
+                LocalAppUpdates provides model.appUpdates,
                 LocalSnackbarAvoidance provides snackbarAvoidance, LocalModalWindows provides modalWindows,
                 com.kigtts.next.ui.plugins.LocalPluginEntryBlocked provides inputOverlay,
                 com.kigtts.next.sharing.LocalFaceShare provides com.kigtts.next.sharing.FaceShareActions(model.sharing::shareMedia,
@@ -181,6 +184,15 @@ internal fun KigttsApp(model: AppViewModel, onboarding: FirstRunStore?, startup:
             com.kigtts.next.resources.ResourceInstallHost(model)
             com.kigtts.next.overlay.OverlayEntrancePrompt(model)
             com.kigtts.next.recovery.SafeModePromptHost(model)
+            if (onboarding != null) {
+                AppUpdateHost(model.appUpdates, ready = state.destination == Destination.Home &&
+                    state.sidePage == null && !state.editing && !state.quickTextEditing &&
+                    state.mediaId == null && !state.voiceInputActive && !state.fullscreen &&
+                    !state.subtitleExpanded && !navigation.returningHome && !inputOverlay) { url ->
+                    model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url,
+                        mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
+                }
+            }
                 Scaffold(snackbarHost = { AppSnackbarHost(snackbar,snackbarAvoidance) },
                     contentWindowInsets = WindowInsets(0,0,0,0),
                     containerColor = MaterialTheme.colorScheme.background) { insets ->

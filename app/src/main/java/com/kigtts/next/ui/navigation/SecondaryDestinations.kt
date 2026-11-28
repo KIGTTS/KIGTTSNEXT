@@ -105,7 +105,8 @@ fun SecondaryDestination(destination: Destination, state: AppState, model: AppVi
     if (destination == Destination.SettingsDetail(SettingsCategory.ABOUT)) {
         AboutPage(model::navigateBack, openLink = { url ->
             model.externalLinks.offer(com.kigtts.next.links.ExternalLink(url = url, mode = com.kigtts.next.links.WebOpenMode.CUSTOM_TAB))
-        }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme)
+        }, openDocument = { model.navigate(Destination.SettingsDetail(it)) }, settings = state.theme,
+            reducedMotion = state.subtitleAppearance.reducedMotion)
         return
     }
     PageScaffold(title,model::navigateBack,largeBar=destination !is Destination.CardCamera && destination !is Destination.ContactFavoriteDetail &&

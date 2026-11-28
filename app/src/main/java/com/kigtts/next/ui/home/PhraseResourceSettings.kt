@@ -10,6 +10,7 @@ import com.kigtts.next.ui.components.MotionColumn
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import com.kigtts.next.media.*
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.components.feedbackClick
@@ -26,19 +28,24 @@ import com.kigtts.next.ui.media.ThumbnailFramingDialog
 import kotlinx.coroutines.launch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kigtts.next.ui.settings.SettingPosition
+import com.kigtts.next.ui.cards.StickerPickerSheet
+import kotlinx.coroutines.CancellationException
 
 @Composable
 internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, enabled: Boolean, leave: () -> Unit) {
     val scope = rememberCoroutineScope(); var importing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }; var framing by remember { mutableStateOf(false) }
     var selectMain by remember { mutableStateOf(false) }
-    fun import(uri: android.net.Uri?, type: QuickCardType) { if (uri == null) return
+    var selectSticker by remember { mutableStateOf(false) }
+    val importFailed = uiText("photo.sticker_import_failed")
+    fun import(uri: android.net.Uri?, type: QuickCardType, mime: String? = null) { if (uri == null) return
         scope.launch { importing = true; error = null
-            try { model.content.importPhrase(draft.key, type, uri) }
-            catch (e: Exception) { error = e.message ?: "导入失败" } finally { importing = false }
+            try { model.content.importPhrase(draft.key, type, uri, mime) }
+            catch (cancel: CancellationException) { throw cancel }
+            catch (e: Exception) { error = e.message ?: importFailed } finally { importing = false }
         }
     }
-    val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { import(it, QuickCardType.MEDIA) }
+    val mediaPicker = rememberLauncherForActivityResult(VisualMediaPicker()) { import(it, QuickCardType.MEDIA) }
     val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { import(it, QuickCardType.AUDIO) }
     val entries by model.mediaRepository.entries.collectAsStateWithLifecycle()
     val entry = entries.firstOrNull { it.id == draft.mediaId }
@@ -50,8 +57,14 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
         QuickCardType.TEXT -> Unit
         QuickCardType.AUDIO -> MotionOutlinedButton(feedbackClick { audioPicker.launch(arrayOf("audio/*")) }, enabled = enabled && !importing,
             modifier = Modifier.fillMaxWidth().testTag("phrase-choose-audio")) { Text(if (entry == null) uiText("quick.pick_audio") else uiText("quick.change_audio")) }
-        QuickCardType.MEDIA -> MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
-            enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) { Text(if (entry == null) uiText("quick.pick_media") else uiText("quick.change_media")) }
+        QuickCardType.MEDIA -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            MotionOutlinedButton(feedbackClick { mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)) },
+                enabled = enabled && !importing, modifier = Modifier.fillMaxWidth().testTag("phrase-choose-media")) {
+                Text(if (entry == null) uiText("quick.pick_media") else uiText("quick.change_media"))
+            }
+            MotionOutlinedButton(feedbackClick { selectSticker = true }, enabled = enabled && !importing,
+                modifier = Modifier.fillMaxWidth().testTag("phrase-choose-sticker")) { Text(uiText("photo.choose_sticker")) }
+        }
         QuickCardType.PAGE -> Row {
             MotionTextButton(feedbackClick { leave(); scope.launch { runCatching { model.content.htmlFiles("phrase:" + draft.key) }.onFailure { error=it.message } } }, enabled = enabled,
                 modifier = Modifier.testTag("phrase-edit-html")) { Text(if (entry == null) uiText("quick.create_page_files") else uiText("quick.manage_page_files")) }
@@ -84,4 +97,11 @@ internal fun PhraseResourceSettings(draft: PhraseDraft, model: AppViewModel, ena
     }
     if (framing && entry != null) ThumbnailFramingDialog(entry, model.mediaRepository) { framing = false }
     if (selectMain && entry?.kind == MediaKind.HTML) PhraseMainPagePicker(model, entry.id) { selectMain = false }
+    if (selectSticker && draft.type == QuickCardType.MEDIA) StickerPickerSheet(model.stickers, { selectSticker = false }) { item ->
+        selectSticker = false
+        val image = model.stickers.snapshot.value.images.firstOrNull { it.id == item.imageId }
+        val file = image?.let { model.stickers.imageFile(it.id) }
+        if (file == null) error = importFailed
+        else import(android.net.Uri.fromFile(file), QuickCardType.MEDIA, image.mime)
+    }
 }

@@ -3,9 +3,11 @@ package com.kigtts.next
 import android.app.Application
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.*
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.SemanticsActions
@@ -19,6 +21,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kigtts.next.state.*
 import com.kigtts.next.ui.home.SubtitleBody
+import com.kigtts.next.ui.home.TextEditor
+import com.kigtts.next.theme.KigttsTheme
+import com.kigtts.next.theme.ThemeSettings
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -50,6 +55,35 @@ class SubtitleInputMotionUiTest {
     private fun capture(name: String) {
         java.io.File("build/previews").mkdirs()
         compose.onRoot().captureRoboImage("build/previews/$name.png")
+    }
+
+    @Test fun subtitleCornersRoundTripThroughFullscreenAndKeyboardEditing() {
+        val model = testAppModel(ApplicationProvider.getApplicationContext<Application>())
+        var state by mutableStateOf(model.state.value)
+        compose.setContent {
+            KigttsTheme(ThemeSettings()) {
+                Box(Modifier.size(320.dp, 400.dp).background(Color.Magenta)) {
+                    TextEditor(state, model, false, false, Modifier.fillMaxSize())
+                }
+            }
+        }
+        fun corner(stage: String): Int {
+            val path = "build/previews/subtitle-corner-$stage.png"
+            compose.onNodeWithTag("subtitle-card").captureRoboImage(path)
+            return requireNotNull(android.graphics.BitmapFactory.decodeFile(path)).let { bitmap ->
+                try { bitmap.getPixel(2, 2) } finally { bitmap.recycle() }
+            }
+        }
+        val magenta = android.graphics.Color.MAGENTA
+        assertEquals(magenta, corner("initial"))
+        compose.runOnIdle { state = state.copy(forcedFullscreen = true) }
+        assertNotEquals(magenta, corner("fullscreen"))
+        compose.runOnIdle { state = state.copy(forcedFullscreen = false) }
+        assertEquals(magenta, corner("exit-fullscreen"))
+        compose.runOnIdle { state = state.copy(editing = true) }
+        assertNotEquals(magenta, corner("editing"))
+        compose.runOnIdle { state = state.copy(editing = false) }
+        assertEquals(magenta, corner("exit-editing"))
     }
     @Test fun lineCountChangesKeepTheViewportStableWhileTextAndFocusUpdateImmediately() {
         val model = show()

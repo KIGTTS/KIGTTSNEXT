@@ -26,6 +26,8 @@ import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.theme.ThemeIcon
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kigtts.plugin.api.PluginBadge
 
 @Composable
 internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistry? = null,
@@ -59,7 +61,8 @@ internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistr
                                 }
                                 if (link.id == "face-receive" && receiving != null) receiving(position)
                                 else SettingItem(link.title, link.summary, link.icon, position,
-                                    Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = active, badge = link.badge,
+                                    Modifier.testTag("settings-entry/${link.id}"), onClick = { open(link.destination) }, enabled = active,
+                                    badge = if (link.id == "about") aboutUpdateBadge() else link.badge,
                                     trailing = { ThemeIcon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null) })
                             }
                         }
@@ -68,4 +71,11 @@ internal fun SettingsScreen(open: (Destination) -> Unit, registry: PluginRegistr
             }
         }
     }
+}
+
+@Composable
+private fun aboutUpdateBadge(): PluginBadge? {
+    val updates = LocalAppUpdates.current ?: return null
+    val status by updates.state.collectAsStateWithLifecycle()
+    return if (status.release != null) PluginBadge(description = uiText("about.update.badge")) else null
 }

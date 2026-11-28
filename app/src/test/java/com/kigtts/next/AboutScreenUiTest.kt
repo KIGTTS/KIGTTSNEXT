@@ -13,6 +13,7 @@ import com.kigtts.next.i18n.LocalUiLocale
 import com.kigtts.next.state.*
 import com.kigtts.next.theme.*
 import com.kigtts.next.ui.settings.*
+import com.kigtts.next.updates.OFFICIAL_WEBSITE
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -66,6 +67,15 @@ class AboutScreenUiTest {
         compose.onNodeWithText("버전 0.1.0").assertExists()
         compose.onNode(hasText("개인정보 처리방침") and hasClickAction()).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("隐私政策").assertDoesNotExist()
+    }
+
+    @Test fun brandAndSupportRowGoToTheSameOfficialWebsite() {
+        val urls = mutableListOf<String>()
+        compose.setContent { KigttsTheme(ThemeSettings()) { AboutPage({}, urls::add, {}) } }
+        compose.onNodeWithTag("about-logo").performClick()
+        compose.onNode(hasText("访问官网") and hasClickAction()).performScrollTo().performClick()
+        compose.onNodeWithTag("about-mascot").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(listOf(OFFICIAL_WEBSITE, OFFICIAL_WEBSITE), urls) }
     }
 
     @Test fun searchRoutesDirectlyToTheAboutOption() {

@@ -15,12 +15,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.state.SettingsCategory
+import com.kigtts.next.updates.OFFICIAL_WEBSITE
 
 internal const val ABOUT_PROJECT_URL = "https://github.com/KIGTTS/KIGTTSNEXT"
 
 @Composable
 internal fun AboutScreen(openLink: (String) -> Unit, openDocument: (SettingsCategory) -> Unit,
-    version: String? = null) {
+    version: String? = null, reducedMotion: Boolean = false) {
     val copy = rememberUiCopy()
     val context = LocalContext.current
     val installedVersion = version ?: remember(context) {
@@ -30,12 +31,13 @@ internal fun AboutScreen(openLink: (String) -> Unit, openDocument: (SettingsCate
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag("about-brand")
             .settingFocus(copy("about.version_label")), horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            AboutBrand()
+            AboutBrand(onClick = { openLink(OFFICIAL_WEBSITE) })
             Text(copy("about.tagline"), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(copy("about.version", "version" to installedVersion), style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary)
         }
+        LocalAppUpdates.current?.let { AboutUpdateSettings(it) }
         SettingsGroup(copy("about.legal")) {
             SettingItem(copy("settings.category.user_agreement"), "", Icons.Default.Description, SettingPosition.FIRST,
                 onClick = { openDocument(SettingsCategory.USER_AGREEMENT) })
@@ -45,10 +47,13 @@ internal fun AboutScreen(openLink: (String) -> Unit, openDocument: (SettingsCate
                 onClick = { openDocument(SettingsCategory.OPEN_SOURCE_LICENSES) })
         }
         SettingsGroup(copy("about.help_feedback")) {
-            SettingItem(copy("about.project_home"), copy("about.project_hint"), Icons.Default.Code, SettingPosition.FIRST,
+            SettingItem(copy("about.website"), "", Icons.Default.Language, SettingPosition.FIRST,
+                onClick = { openLink(OFFICIAL_WEBSITE) }, trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) })
+            SettingItem(copy("about.project_home"), copy("about.project_hint"), Icons.Default.Code, SettingPosition.MIDDLE,
                 onClick = { openLink(ABOUT_PROJECT_URL) }, trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) })
             SettingItem(copy("about.feedback"), copy("about.feedback_hint"), Icons.Default.Feedback, SettingPosition.LAST,
                 onClick = { openLink("$ABOUT_PROJECT_URL/issues") }, trailing = { Icon(Icons.AutoMirrored.Filled.OpenInNew, null) })
         }
+        AboutMascot(reducedMotion)
     }
 }

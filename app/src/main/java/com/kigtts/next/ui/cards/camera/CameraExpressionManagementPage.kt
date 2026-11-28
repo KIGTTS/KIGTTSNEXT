@@ -147,7 +147,7 @@ internal fun CameraExpressionEditPage(model: AppViewModel, effectId: String?) {
     RegisterPageLoading(saving || (draft == null && !failed))
     if (failed) Text(uiText("expression.file_invalid"), Modifier.padding(20.dp))
     draft?.let { effect ->
-        ExpressionDraftEditor(effect, saving, { draft = it }, save = {
+        ExpressionDraftEditor(effect, saving, { draft = it }, stickers = model.stickers, save = {
             if (!saving) {
                 saving = true
                 scope.launch {

@@ -39,7 +39,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     cameraPhotoX: Double = .5, cameraPhotoY: Double = .5, cameraPhotoZoom: Double = 1.0,
     identity: IdentityCard? = null, personalDesign: PolaroidCard? = null,
     savePersonal: ((PolaroidCard, IdentityCard) -> PolaroidCard)? = null,
-    selectPhoto: (((PolaroidCard) -> Unit) -> Unit)? = null, cameraPhotoStyle: PolaroidPhotoStyle? = null, onSaved: (suspend (PolaroidCard) -> Unit)? = null) {
+    cameraPhotoStyle: PolaroidPhotoStyle? = null, onSaved: (suspend (PolaroidCard) -> Unit)? = null) {
     val catalog by stickers.snapshot.collectAsStateWithLifecycle()
     val identityFrames by stickers.identityFrames.items.collectAsStateWithLifecycle()
     val privateDesigns by stickers.identityDesigns.items.collectAsStateWithLifecycle()
@@ -67,6 +67,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
     var qrDialog by rememberSaveable { mutableStateOf(false) }
     var qrPayload by rememberSaveable { mutableStateOf("") }
     var stickerLibraryId by rememberSaveable { mutableStateOf<String?>(null) }
+    var replacingLayer by rememberSaveable { mutableStateOf<String?>(null) }
     var paperColor by rememberSaveable { mutableStateOf(false) }
     var textColor by rememberSaveable { mutableStateOf(false) }
     var discard by rememberSaveable(cardId) { mutableStateOf(false) }
@@ -167,7 +168,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
         } else backFromEditor()
     }
     RegisterPageBackGuard(active && (managedDraft || dirty || selectedId != null || textEditing || savedReturn || busy)) { requestClose() }
-    PredictiveBackHandler(active && (managedDraft || dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog) { events ->
+    PredictiveBackHandler(active && (managedDraft || dirty || selectedId != null || textEditing || savedReturn || busy) && !discard && !paperColor && !textColor && !qrDialog && replacingLayer == null) { events ->
         try { events.collect { }; requestClose() } catch (_: CancellationException) { }
     }
     CardEditorPanelScaffold(polaroidPaperGeometry(draft, stickers.frameStyle(draft)).aspectRatio.toFloat(),
@@ -193,6 +194,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             addText = { addLayer(CardLayer(kind = CardLayerKind.TEXT, text = "文字", width = .07)); textEditing = true }, addSticker = { cancelAdjustment() },
             addImage = { overlayImport = true; photo.gallery() }, addQrCode = { qrDialog = true }, frameColor = { paperColor = true },
             selected = selected, editText = { textEditing = true }, layerColor = { textColor = true },
+            replaceImage = { replacingLayer = selectedId },
             deleteLayer = { draft = draft.copy(layers = draft.layers.filterNot { it.id == selectedId }); selectedId = null },
             forwardLayer = { selected?.let { layer -> draft = draft.copy(layers = draft.layers.filterNot { it.id == layer.id } + layer) } },
             mode = mode, selectMode = { mode = it; cancelAdjustment() }, frames = if (persisted.frameStyleId == "identity.banner") frames.filter { it.id == "identity.banner" } else frames, openLibrary = openLibrary,
@@ -208,7 +210,7 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             }, designTools = { CardDesignTools(cards, draft, enabled, { draft = it }, message) },
             backgroundTools = personalDraft?.let { person -> {
                 com.kigtts.next.ui.identity.IdentityBackgroundTools(draft, person, enabled, { draft = it }, { personalDraft = it },
-                    { overlayImport = false; photo.gallery() }, { selectPhoto?.invoke { chosen -> draft = draft.copy(imageId = chosen.imageId, originalImageId = null, photoStyle = chosen.photoStyle, photoX = .5, photoY = .5, photoZoom = 1.0) } },
+                    { overlayImport = false; photo.gallery() },
                     { paperColor = true }, { maskColor = true }, identityFrames)
             } }, captureFields = { CardPhotoFieldTools(cards, draft, enabled, ::putPhotoField, { id -> draft = draft.copy(layers = draft.layers.filterNot { it.id == id }) }, message) },
             filterTools = { CardPhotoFilterTools(draft, stickers, enabled, { draft = it }, message) })
@@ -217,6 +219,15 @@ fun CardEditorScreen(cards: CardRepository, stickers: StickerRepository, cardId:
             work { addLayer(preparePhotoSticker(layer, draft, cards, stickers)); mode = CardEditorMode.STICKERS; textEditing = false }
         }, avoidTools = identity != null, photoViewport = viewport.takeIf { identity == null },
         transformPhoto = enabled && selected == null)
+    if (active) replacingLayer?.let { target ->
+        StickerPickerSheet(stickers, dismiss = { replacingLayer = null }) { item ->
+            replacingLayer = null
+            work {
+                val layer = draft.layers.firstOrNull { it.id == target && it.kind == CardLayerKind.IMAGE } ?: return@work
+                updateLayer(preparePhotoSticker(layer.copy(imageId = item.imageId, text = ""), draft, cards, stickers))
+            }
+        }
+    }
     if (active && cropOpen && identity == null) {
         val id = draft.imageId
         if (id != null) {

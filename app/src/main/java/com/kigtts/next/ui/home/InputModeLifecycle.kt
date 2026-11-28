@@ -15,15 +15,17 @@ import androidx.compose.ui.platform.LocalFocusManager
 fun ObserveImeDismissal(editing: Boolean, suspended: Boolean = false, finish: () -> Unit) {
     val visible = WindowInsets.isImeVisible
     val density = LocalDensity.current
-    val bottom = WindowInsets.ime.getBottom(density)
-    val target = WindowInsets.imeAnimationTarget.getBottom(density)
+    val ime = WindowInsets.ime
+    val target = WindowInsets.imeAnimationTarget
     val focus = LocalFocusManager.current
     val latestFinish by rememberUpdatedState(finish)
     val session = remember { ImeInputSession() }
-    LaunchedEffect(editing, visible, bottom, target, suspended) {
-        if (session.update(editing, suspended, visible, bottom, target)) {
-            focus.clearFocus()
-            latestFinish()
+    LaunchedEffect(editing, visible, ime, target, density, suspended) {
+        snapshotFlow { (ime.getBottom(density) > 0) to (target.getBottom(density) > 0) }.collect { (hasIme, targetHasIme) ->
+            if (session.update(editing, suspended, visible, if (hasIme) 1 else 0, if (targetHasIme) 1 else 0)) {
+                focus.clearFocus()
+                latestFinish()
+            }
         }
     }
 }

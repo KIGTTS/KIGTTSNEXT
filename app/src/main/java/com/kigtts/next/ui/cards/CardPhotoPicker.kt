@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,7 +34,7 @@ internal fun rememberCardPhotoSources(onSelected: (CardPhotoSelection) -> Unit,
     var fullCameraPreviousId by rememberSaveable { mutableLongStateOf(0L) }
     fun canReadPhotos() =
         ContextCompat.checkSelfPermission(context, SystemCameraPhotos.permission) == PackageManager.PERMISSION_GRANTED
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+    val picker = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         if (uri != null) selected.value(CardPhotoSelection(uri))
     }
     val fullCamera = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->

@@ -359,6 +359,7 @@ class AppViewModel @JvmOverloads constructor(application: Application, engineFix
         ready = { pluginCatalogReady }, missingStore = { message(hostCopy("market.unavailable")) }) }
     internal val externalFiles by lazy { ExternalFileOpen(this, viewModelScope) }
     val externalLinks by lazy { com.kigtts.next.links.ExternalLinks(this) }
+    internal val appUpdates by lazy { com.kigtts.next.updates.AppUpdates(application, viewModelScope) }
     val resourceInstalls by lazy { com.kigtts.next.resources.ResourceInstalls(this, viewModelScope) }
     init { if (engineFixtures.isEmpty()) viewModelScope.launch { refreshPlugins() } }
     @OptIn(kotlinx.coroutines.FlowPreview::class)

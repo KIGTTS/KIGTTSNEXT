@@ -53,6 +53,15 @@ internal class SubtitleGlyphMotion {
         val before = frame
         if (before?.layout === next.layout && before.origin == next.origin && before.viewport == next.viewport &&
             this.policy == policy && animationsEnabled == animate) return
+        if (before?.layout === next.layout && this.policy == policy && animationsEnabled == animate && !running) {
+            old = null
+            hops = emptyMap()
+            geometryOnly = true
+            if (clock - lastGeometryChange > 120f) hoppedDuringResize.clear()
+            lastGeometryChange = clock
+            frame = next
+            return
+        }
         val positions = before?.glyphs?.indices?.associateWith { outgoing(it) ?: pose(it) }.orEmpty()
         val layoutOnly = before?.layout?.layoutInput?.text == next.layout.layoutInput.text
         // A continuously dragged divider may cross the same wrap threshold every frame.
@@ -116,7 +125,11 @@ internal fun rememberSubtitleGlyphMotion(layout: TextLayoutResult?, width: Int, 
             val origin = alignment.align(layout.size, viewport, direction)
             if (motion.frame?.layout !== layout || motion.frame?.origin != Offset(origin.x.toFloat(), origin.y.toFloat()) || motion.frame?.viewport != viewport ||
                 motion.policy != policy || motion.animationsEnabled != animate) {
-                motion.update(subtitleGlyphFrame(layout, origin, viewport), editStart, animate, hopDistance, policy)
+                val previous = motion.frame
+                val next = if (previous?.layout === layout)
+                    previous.copy(origin = Offset(origin.x.toFloat(), origin.y.toFloat()), viewport = viewport)
+                else subtitleGlyphFrame(layout, origin, viewport)
+                motion.update(next, editStart, animate, hopDistance, policy)
                 if (motion.running && motion.job?.isActive != true) motion.job = scope.launch {
                     var previous = 0L
                     while (motion.running) withFrameNanos { now ->

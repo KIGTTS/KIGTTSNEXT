@@ -29,9 +29,11 @@ import java.io.File
     }
     if (drawable == null) Icon(Icons.Default.Image, description, modifier)
     else {
-        AndroidView(factory = { ImageView(it) }, modifier = modifier.onGloballyPositioned {
-            val bounds = it.boundsInWindow(); visible = bounds.bottom > 0 && bounds.top < view.rootView.height && bounds.right > 0 && bounds.left < view.rootView.width
-        },
+        val visibility = if (drawable is Animatable) Modifier.onGloballyPositioned {
+            val bounds = it.boundsInWindow()
+            visible = bounds.width > 0f && bounds.height > 0f
+        } else Modifier
+        AndroidView(factory = { ImageView(it) }, modifier = modifier.then(visibility),
             update = { view -> view.scaleType = if (fit) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
                 if (view.drawable !== drawable) view.setImageDrawable(drawable); view.contentDescription = description })
         DisposableEffect(drawable, visible, lifecycle) {

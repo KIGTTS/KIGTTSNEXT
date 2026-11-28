@@ -34,7 +34,8 @@ import com.kigtts.next.ui.navigation.PageScaffold
 
 /** Decorations belong to the window backdrop, including the transparent large toolbar. */
 @Composable internal fun AboutPage(back: () -> Unit, openLink: (String) -> Unit,
-    openDocument: (com.kigtts.next.state.SettingsCategory) -> Unit, settings: ThemeSettings? = null, version: String? = null) {
+    openDocument: (com.kigtts.next.state.SettingsCategory) -> Unit, settings: ThemeSettings? = null, version: String? = null,
+    reducedMotion: Boolean = false) {
     val copy = rememberUiCopy()
     val flowers = rememberSaveable(saver = listSaver<AboutFlowers, String>(
         save = { it.shapes.mapIndexed { i, shape -> "$shape:${it.turns[i]}" } },
@@ -45,7 +46,7 @@ import com.kigtts.next.ui.navigation.PageScaffold
         aboutFlowerBounds(size).indexOfLast { it.contains(point) }.takeIf { it >= 0 }?.let { taps[it]() }
     }, extendToBottom = true, backgroundSettings = settings,
         backgroundDecoration = { AboutBackdrop(flowers, taps, Modifier.matchParentSize()) }) {
-        AboutScreen(openLink, openDocument, version)
+        AboutScreen(openLink, openDocument, version, reducedMotion)
     }
 }
 

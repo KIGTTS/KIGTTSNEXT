@@ -56,7 +56,8 @@ internal object PolaroidRenderer {
         };canvas.restore()
         if (glassStyle != null) {
             // Bake from the already positioned and treated still. Motion uses the same frozen paper.
-            PhotoFrameGlass.prepare(result, imageArea.framePixelBounds(result), glassStyle.position, glassStyle.band, glassStyle.edge > 0, glassStyle.glassSource).use {
+            PhotoFrameGlass.prepare(result, imageArea.framePixelBounds(result), glassStyle.position, glassStyle.band,
+                glassStyle.edge > 0, glassStyle.glassSource, wholeBackdrop = glassStyle.layout == WatermarkLayout.CLASSIC).use {
                 it.draw(canvas, RectF(0f, 0f, width.toFloat(), height.toFloat()), imageArea)
             }
             if (transparentPhoto) {

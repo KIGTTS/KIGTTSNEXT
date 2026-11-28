@@ -7,6 +7,7 @@ import androidx.camera.view.PreviewView
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import com.kigtts.next.ui.media.VisualMediaPicker
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -107,7 +108,7 @@ internal fun CardCameraScreen(visit: String, onCapture: (PolaroidCameraCapture) 
     SideEffect { session.faceControls(options.faceFocus && mode != CameraMode.SCAN, enabledEffect) }
     var pickedCodes by remember { mutableStateOf<CameraCodeFrame?>(null) }
     var readingCodeImage by remember { mutableStateOf(false) }
-    val scanImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+    val scanImage = rememberLauncherForActivityResult(VisualMediaPicker()) { uri ->
         if (uri != null && mode == CameraMode.SCAN && !readingCodeImage) {
             readingCodeImage = true
             scope.launch {

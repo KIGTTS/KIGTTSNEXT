@@ -26,6 +26,7 @@ internal data class ExpressionLayer(
     val hideUnderFringe: Boolean = false,
     val blurBase: Boolean = false,
     val pivotY: Float? = null,
+    val bitmapWebp: String? = null,
 )
 
 @Serializable
@@ -40,6 +41,7 @@ internal data class ExpressionPack(val version: Int = 1, val effects: List<Expre
             require(effect.name.isNotBlank() && effect.name.length <= 80 && effect.layers.size in 1..8)
             effect.layers.forEach { layer ->
                 require(layer.svg.toByteArray(Charsets.UTF_8).size in 1..MAX_SVG &&
+                    (layer.bitmapWebp == null || layer.bitmapWebp.length in 16..MAX_SVG) &&
                     layer.scale in .15f..3f && layer.x in -1f..1f && layer.y in -1f..1f &&
                     layer.rotation in -180f..180f && layer.opacity in .1f..1f && (layer.pivotY == null || layer.pivotY in 0f..1f))
             }
@@ -130,7 +132,9 @@ internal class CompiledExpression(val effect: ExpressionEffect, artwork: List<Pi
     companion object {
         fun compile(effect: ExpressionEffect): CompiledExpression {
             ExpressionPack(effects = listOf(effect)).validate()
-            return CompiledExpression(effect, effect.layers.map { UiIcons.renderSvgPicture(it.svg, 320) })
+            return CompiledExpression(effect, effect.layers.map { layer ->
+                layer.bitmapWebp?.let(::expressionBitmapPicture) ?: UiIcons.renderSvgPicture(layer.svg, 320)
+            })
         }
     }
 }

@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.identity
 
 import com.kigtts.next.i18n.uiText
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.kigtts.next.ui.components.feedbackClick
+import com.kigtts.next.ui.components.PillButton
 
 /** Reused by the card page, personal-information preview and the live background editor. */
 @Composable internal fun PersonalCardOverlay(identity: IdentityCard, stickers: StickerRepository,
@@ -41,14 +43,13 @@ import com.kigtts.next.ui.components.feedbackClick
         CompositionLocalProvider(LocalContentColor provides ink) {
             Crossfade(editing, Modifier.align(Alignment.TopStart).padding(start = 8.dp, top = 8.dp, end = 56.dp).fillMaxWidth(),
                 tween(180), label = "profile-contact-edit") { edit ->
-                if (edit) PersonalCardActionButton("编辑联系方式", "profile-edit-contacts", true, editInformation) {
-                    Icon(Icons.Default.ContactPage, null, Modifier.size(22.dp), tint = Color.White)
-                } else PersonalContactButtons(identity.contacts, interactive, { contact = it })
+                if (edit) ProfileBannerButton(uiText("profile.edit_information"), "profile-edit-contacts",
+                    Icons.Default.ContactPage, editInformation)
+                else PersonalContactButtons(identity.contacts, interactive, { contact = it })
             }
             AnimatedVisibility(editing, Modifier.align(Alignment.TopEnd).padding(8.dp), enter = fadeIn(tween(180)), exit = fadeOut(tween(140))) {
-                PersonalCardActionButton("编辑名片背景", "profile-edit-background", true, editBackground) {
-                    Icon(Icons.Default.Wallpaper, null, Modifier.size(22.dp), tint = Color.White)
-                }
+                ProfileBannerButton(uiText("profile.change_background"), "profile-edit-background",
+                    Icons.Default.Wallpaper, editBackground)
             }
             if (!editing && interactive && faceShare != null) {
                 FilledTonalButton(onClick = feedbackClick { faceShare.send(listOf(identity.designId)) },
@@ -81,4 +82,10 @@ import com.kigtts.next.ui.components.feedbackClick
         }
     }
     contact?.let { PersonalContactDialog(it) { contact = null } }
+}
+
+@Composable
+private fun ProfileBannerButton(label: String, tag: String, icon: androidx.compose.ui.graphics.vector.ImageVector, action: () -> Unit) {
+    PillButton(label, icon, action, Modifier.testTag(tag), colors = ButtonDefaults.filledTonalButtonColors(
+        containerColor = Color.Black.copy(alpha = .36f), contentColor = Color.White))
 }

@@ -12,9 +12,9 @@ internal data class PhotoFrameSpec(val width: Int, val height: Int, val style: S
         val w = 100.0
         val h = w * height / width
         val asset = watermark
-        val edge = minOf(w, h) * (asset?.edge?.div(100.0) ?: if (style == "none") 0.0 else .025)
-        val strip = minOf(w, h) * (asset?.band?.div(100.0) ?: if (style == "none") 0.0 else .12)
-        val top = asset?.position == WatermarkPosition.TOP
+        val edge = if (asset?.overlay == true) 0.0 else minOf(w, h) * (asset?.edge?.div(100.0) ?: if (style == "none") 0.0 else .025)
+        val strip = if (asset?.overlay == true) 0.0 else minOf(w, h) * (asset?.band?.div(100.0) ?: if (style == "none") 0.0 else .12)
+        val top = asset?.position == WatermarkPosition.TOP && !asset.overlay
         val photoTop = if (top) strip else edge
         val labelTop = if (top) 0.0 else h + edge
         return PolaroidGeometry(w + edge * 2, h + edge + strip, edge, photoTop, w, h,
@@ -36,7 +36,7 @@ internal data class PhotoFrameSpec(val width: Int, val height: Int, val style: S
 internal fun photoFrame(card: PolaroidCard, frames: List<PolaroidFrameStyle>): PolaroidFrameStyle {
     val spec = PhotoFrameSpec.from(card.frameStyleId)
     spec?.watermark?.let {
-        return PolaroidFrameStyle(card.frameStyleId, "边框水印", color = it.palette.color.toLong() and 0xffffffffL,
+        return PolaroidFrameStyle(card.frameStyleId, "边框水印", color = it.paperColor.toLong() and 0xffffffffL,
             borderWidth = 0.0, photoCornerRadius = 0.0)
     }
     val frame = frames.firstOrNull { it.id == (spec?.style ?: card.frameStyleId) } ?: PolaroidFrames.defaults.first()

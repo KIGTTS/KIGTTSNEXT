@@ -117,8 +117,8 @@ class ContentWorkspace(context:Context,val repository:MediaRepository,private va
         val draft=PhraseDraftState.read(value) ?: return false
         phraseState.value=draft;return true
     }
-    suspend fun importPhrase(key: String, type: QuickCardType, uri: android.net.Uri) {
-        val entry = withContext(Dispatchers.IO) { repository.import(uri) }
+    suspend fun importPhrase(key: String, type: QuickCardType, uri: android.net.Uri, mime: String? = null) {
+        val entry = withContext(Dispatchers.IO) { repository.import(uri, mime) }
         val accepted = when (type) {
             QuickCardType.AUDIO -> entry.kind == MediaKind.AUDIO
             QuickCardType.MEDIA -> entry.kind in setOf(MediaKind.IMAGE, MediaKind.MOTION_PHOTO, MediaKind.VIDEO)

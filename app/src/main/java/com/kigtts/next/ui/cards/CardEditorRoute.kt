@@ -1,9 +1,9 @@
 package com.kigtts.next.ui.cards
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.*
-import com.kigtts.plugin.api.*
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kigtts.next.i18n.uiText
 import com.kigtts.next.state.AppViewModel
 import com.kigtts.next.state.Destination
 
@@ -13,9 +13,9 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
     val photo = result?.takeIf { it.cardId == destination.cardId }
     val identities by model.identities.items.collectAsStateWithLifecycle()
     val designs by model.stickers.identityDesigns.items.collectAsStateWithLifecycle()
-    var photoSelected by remember { mutableStateOf<((PolaroidCard) -> Unit)?>(null) }
     val personal = identities.firstOrNull { it.designId == destination.cardId }
-    CardPageScaffold(if (personal != null) "编辑名片背景" else "编辑图片", model::navigateBack, subtitle = null, avoidKeyboard = false, compactBar = true) {
+    CardPageScaffold(uiText(if (personal != null) "profile.change_background" else "nav.edit_image"),
+        model::navigateBack, subtitle = null, avoidKeyboard = false, compactBar = true) {
         CardEditorScreen(model.cards, model.stickers, destination.cardId, model::message,
             openLibrary = { model.navigate(Destination.StickerLibrary()) },
             openCamera = { model.cardCapture.open(destination.cardId) },
@@ -31,13 +31,6 @@ internal fun CardEditorRoute(model: AppViewModel, destination: Destination.CardE
                     if (previous != null) model.stickers.identityDesigns.put(previous) else model.stickers.identityDesigns.remove(design.id)
                     throw failure
                 }
-            }, selectPhoto = { photoSelected = it })
-    }
-    photoSelected?.let { selected ->
-        com.kigtts.next.ui.artwork.LibraryArtworkSelector(model, ArtworkSelectionRequest(ArtworkLibrary.POLAROIDS, "选择照片"),
-            { photoSelected = null }) { ids ->
-            ids.firstOrNull()?.let { id -> model.cards.cards.value.firstOrNull { it.id == id }?.let(selected) }
-            photoSelected = null
-        }
+            })
     }
 }

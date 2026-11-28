@@ -8,13 +8,28 @@ import android.graphics.Rect
 import android.graphics.RectF
 import com.kigtts.next.media.GaussianBackdrop
 import kotlin.math.roundToInt
+import kotlin.math.max
 
 /** Prepared photo samples. Any frame can paint these into its own outer margins. */
 internal class PhotoFrameGlass private constructor(private val strips: Array<Bitmap?>,
-    private val shared: Bitmap? = null, private val mainEdge: Int = 0, private val sideEdges: Boolean = false) : AutoCloseable {
+    private val shared: Bitmap? = null, private val mainEdge: Int = 0, private val sideEdges: Boolean = false,
+    private val wholeBackdrop: Boolean = false) : AutoCloseable {
     fun draw(canvas: Canvas, paper: RectF, photo: RectF) {
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
         val shade = Paint().apply { color = Color.argb(64, 0, 0, 0) }
+        if (wholeBackdrop && shared != null) {
+            val scale = max(paper.width() / shared.width, paper.height() / shared.height) * 1.08f
+            val w = shared.width * scale / 2
+            val h = shared.height * scale / 2
+            val backdrop = RectF(paper.centerX() - w, paper.centerY() - h, paper.centerX() + w, paper.centerY() + h)
+            val saved = canvas.save()
+            canvas.clipRect(paper)
+            canvas.clipOutRect(photo)
+            canvas.drawBitmap(shared, null, backdrop, paint)
+            canvas.drawRect(paper, shade)
+            canvas.restoreToCount(saved)
+            return
+        }
         val areas = arrayOf(
             RectF(paper.left, paper.top, paper.right, photo.top),
             RectF(paper.left, photo.bottom, paper.right, paper.bottom),
@@ -36,7 +51,7 @@ internal class PhotoFrameGlass private constructor(private val strips: Array<Bit
     companion object {
         /** `photo` is the exact rendered/cropped photo region of `source`, not the surrounding paper. */
         fun prepare(source: Bitmap, photo: Rect, position: WatermarkPosition, band: Int, sideEdges: Boolean,
-            sampling: WatermarkGlassSource = WatermarkGlassSource.AUTO): PhotoFrameGlass {
+            sampling: WatermarkGlassSource = WatermarkGlassSource.AUTO, wholeBackdrop: Boolean = false): PhotoFrameGlass {
             val depth = (minOf(photo.width(), photo.height()) * (band + 8) / 100f).roundToInt().coerceAtLeast(1)
             val mainEdge = if (position == WatermarkPosition.TOP) 0 else 1
             val strips = arrayOfNulls<Bitmap>(4)
@@ -50,7 +65,8 @@ internal class PhotoFrameGlass private constructor(private val strips: Array<Bit
                     WatermarkGlassSource.FULL -> photo
                     WatermarkGlassSource.AUTO -> error("Automatic sampling does not have a shared region")
                 }
-                return PhotoFrameGlass(strips, GaussianBackdrop.blurRegion(source, region, sigma = 10f), mainEdge, sideEdges)
+                return PhotoFrameGlass(strips, GaussianBackdrop.blurRegion(source, region, sigma = 10f),
+                    mainEdge, sideEdges, wholeBackdrop && sampling == WatermarkGlassSource.FULL)
             }
             val side = (minOf(photo.width(), photo.height()) * .10f).roundToInt().coerceAtLeast(1)
             val regions = arrayOf(

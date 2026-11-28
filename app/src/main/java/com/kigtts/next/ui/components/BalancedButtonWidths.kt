@@ -10,9 +10,10 @@ import androidx.compose.runtime.Composable
 
 /** Each press borrows the same number of dp, regardless of label length. */
 internal fun balancedButtonWidths(base: List<Float>, presses: List<Float>, minimum: Float, expansion: Float): List<Float> {
+    if (expansion <= 0f || presses.none { it > 0f }) return base
     val widths = base.toMutableList()
     base.indices.forEach { index ->
-        if (base[index] <= 0f) return@forEach
+        if (base[index] <= 0f || presses[index] <= 0f) return@forEach
         // Stable extension placeholders have zero width and are not visual neighbours.
         val neighbors = listOfNotNull((index - 1 downTo 0).firstOrNull { base[it] > 0f },
             (index + 1..base.lastIndex).firstOrNull { base[it] > 0f })

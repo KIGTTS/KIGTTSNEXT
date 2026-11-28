@@ -20,17 +20,54 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CameraWatermarkGlassTest {
-    @Test fun classicDefaultsToGlassButSavedSolidChoicesKeepTheirOriginalMeaning() {
+    @Test fun builtinWatermarksUseNewStylesAndOldSnapshotsStillDecode() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val classic = CameraWatermarkLibrary(context).choices().single { it.id == "classic" }.defaults
-        assertEquals(WatermarkPalette.GLASS, classic.palette)
+        val styles = CameraWatermarkLibrary(context).choices().associate { it.id to it.defaults }
+        val classic = styles.getValue("classic")
+        assertEquals(WatermarkPalette.WHITE, classic.palette)
+        assertEquals(WatermarkGlassSource.FULL, classic.glassSource)
         assertEquals(WatermarkPosition.BOTTOM, classic.position)
         assertEquals(classic, CameraWatermarkStyle.decode(classic.encode()))
-        val solid = classic.copy(palette = WatermarkPalette.LIGHT)
-        assertEquals(solid, CameraWatermarkStyle.decode(solid.encode()))
+        val custom = classic.copy(palette = WatermarkPalette.CUSTOM, customColor = 0xff387e88.toInt())
+        assertEquals(custom, PhotoFrameSpec.from(PhotoFrameSpec(3000, 4000, custom.encode()).id)?.watermark)
+        val standard = styles.getValue("standard")
+        assertEquals(WatermarkPalette.GLASS, standard.palette)
+        assertTrue(standard.lockEdge)
+        assertEquals(standard, CameraWatermarkStyle.decode(standard.encode()))
+        val overlay = styles.getValue("check-in")
+        assertTrue(overlay.showLogo)
+        assertTrue(overlay.overlay)
+        val geometry = PhotoFrameSpec(3000, 4000, overlay.encode()).geometry()
+        assertEquals(geometry.photoHeight, geometry.paperHeight, .001)
+        assertEquals(geometry.photoWidth, geometry.paperWidth, .001)
+        assertEquals(WatermarkPalette.LIGHT, CameraWatermarkStyle.decode("wm1-2-0-0-2s-3-e-c")?.palette)
         val thirdParty = CameraWatermarkAsset.parse(
             "<watermark version='1' id='sample' name='自定义' layout='STANDARD' palette='GLASS' position='TOP' edge='5'/>")
         assertEquals(WatermarkPalette.GLASS, thirdParty.defaults.palette)
+    }
+
+    @Test fun classicFullPhotoUsesOneCoverImageAndKeepsThePhotoSharp() {
+        val image = Bitmap.createBitmap(300, 200, Bitmap.Config.ARGB_8888)
+        try {
+            val canvas = Canvas(image)
+            canvas.drawColor(Color.BLACK)
+            val photo = RectF(24f, 32f, 276f, 168f)
+            val paint = Paint()
+            paint.color = Color.RED
+            canvas.drawRect(photo.left, photo.top, photo.right, photo.centerY(), paint)
+            paint.color = Color.BLUE
+            canvas.drawRect(photo.left, photo.centerY(), photo.right, photo.bottom, paint)
+            PhotoFrameGlass.prepare(image, Rect(24, 32, 276, 168), WatermarkPosition.BOTTOM, 14, true,
+                WatermarkGlassSource.FULL, wholeBackdrop = true).use {
+                it.draw(canvas, RectF(0f, 0f, 300f, 200f), photo)
+            }
+            assertTrue(Color.red(image.getPixel(150, 15)) > 150)
+            assertTrue(Color.blue(image.getPixel(150, 185)) > 150)
+            assertTrue(Color.red(image.getPixel(12, 55)) > 150)
+            assertTrue(Color.blue(image.getPixel(12, 145)) > 150)
+            assertEquals(Color.RED, image.getPixel(150, 45))
+            assertEquals(Color.BLUE, image.getPixel(150, 150))
+        } finally { image.recycle() }
     }
 
     @Test fun explicitSourcesRoundTripAndRemainIndependentOfPlacement() {

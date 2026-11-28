@@ -21,7 +21,7 @@ import com.kigtts.plugin.api.*
 internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (PolaroidCard) -> Unit,
     openCrop: () -> Unit, addText: () -> Unit, addSticker: () -> Unit, addImage: () -> Unit, addQrCode: () -> Unit,
     frameColor: () -> Unit, selected: CardLayer?, editText: () -> Unit, layerColor: () -> Unit,
-    deleteLayer: () -> Unit, forwardLayer: () -> Unit, mode: CardEditorMode, selectMode: (CardEditorMode) -> Unit,
+    deleteLayer: () -> Unit, forwardLayer: () -> Unit, replaceImage: () -> Unit, mode: CardEditorMode, selectMode: (CardEditorMode) -> Unit,
     frames: List<PolaroidFrameStyle>, openLibrary: () -> Unit, textEditing: Boolean = false,
     updateTextLayer: (CardLayer) -> Unit = {}, finishText: () -> Unit = {},
     showTabs: Boolean = true, stickerLibrary: @Composable () -> Unit = {},
@@ -51,6 +51,10 @@ internal fun CardEditorFields(card: PolaroidCard, enabled: Boolean, change: (Pol
                         if (selected?.kind == CardLayerKind.TEXT) {
                             ToolButton(uiText("photo.edit_layer_text"), Icons.Default.Edit, editText, Modifier.width(32.dp), enabled = enabled)
                             ToolButton(uiText("photo.text_color"), Icons.Default.Palette, layerColor, Modifier.width(32.dp), enabled = enabled)
+                        }
+                        if (selected?.kind == CardLayerKind.IMAGE) {
+                            ToolButton(uiText("photo.replace_layer_image"), Icons.Default.Collections, replaceImage,
+                                Modifier.width(32.dp).testTag("card-replace-layer-image"), enabled = enabled)
                         }
                         ToolButton(uiText("photo.layer_to_front"), Icons.Default.FlipToFront, forwardLayer, Modifier.width(32.dp), enabled = enabled)
                         ToolButton(uiText("photo.remove_layer"), Icons.Default.DeleteOutline, deleteLayer, Modifier.width(32.dp), enabled = enabled)

@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<watermark version="1" id="classic" name="经典水印" layout="CLASSIC" palette="GLASS" edge="3" band="14" time="false" date="false" exposure="true" logo="true"/>
+<watermark version="1" id="classic" name="经典水印" layout="CLASSIC" palette="WHITE" edge="3" band="14" time="false" date="false" exposure="true" logo="true" glassSource="FULL"/>

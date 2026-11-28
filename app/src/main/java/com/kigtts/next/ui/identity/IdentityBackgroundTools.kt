@@ -19,13 +19,10 @@ import com.kigtts.plugin.api.*
 
 @Composable internal fun IdentityBackgroundTools(card: PolaroidCard, identity: IdentityCard, enabled: Boolean,
     change: (PolaroidCard) -> Unit, changeIdentity: (IdentityCard) -> Unit,
-    gallery: () -> Unit, polaroids: () -> Unit, backgroundColor: () -> Unit, maskColor: () -> Unit, frames: List<IdentityFrame>) {
+    gallery: () -> Unit, backgroundColor: () -> Unit, maskColor: () -> Unit, frames: List<IdentityFrame>) {
     val primary = MaterialTheme.colorScheme.primary.toArgb().toLong() and 0xFFFFFFFFL
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PillButton("图片", Icons.Default.PhotoLibrary, gallery, Modifier.weight(1f), enabled = enabled)
-            PillButton("相册", Icons.Default.PhotoCamera, polaroids, Modifier.weight(1f), enabled = enabled)
-        }
+        PillButton(uiText("common.pick_image"), Icons.Default.PhotoLibrary, gallery, Modifier.fillMaxWidth(), enabled = enabled)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PillButton("仅用主色", Icons.Default.FormatColorFill, {
                 change(card.copy(imageId = null, originalImageId = null, photoStyle = null, frameColor = primary))

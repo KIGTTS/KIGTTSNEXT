@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3ExpressiveApi::class)
 package com.kigtts.next.ui.cards.camera
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,6 +11,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.kigtts.next.camera.expressions.*
+import com.kigtts.next.cards.StickerRepository
+import com.kigtts.next.ui.cards.StickerPickerSheet
+import com.kigtts.next.ui.components.PillButton
 import com.kigtts.next.i18n.uiCopy
 import com.kigtts.next.i18n.uiText
 import com.kigtts.next.theme.AppearanceAssets
@@ -29,35 +35,56 @@ import java.util.Locale
 
 @Composable
 internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, change: (ExpressionEffect) -> Unit,
-    save: () -> Unit, error: (String) -> Unit) {
+    stickers: StickerRepository, save: () -> Unit, error: (String) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var index by remember(draft.id) { mutableIntStateOf(0) }
     var loading by remember { mutableStateOf(false) }
+    var replaceSvg by remember { mutableStateOf<Int?>(null) }
+    var pickSticker by remember { mutableStateOf<Int?>(null) }
     val selected = index.coerceIn(draft.layers.indices)
     val layer = draft.layers[selected]
     val latest = rememberUpdatedState(draft)
-    val add = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && !loading) {
+    fun loadArtwork(replace: Int?, read: () -> ExpressionLayer) {
+        if (!loading && !saving) {
             loading = true
             scope.launch {
                 try {
-                    val added = withContext(Dispatchers.IO) {
-                        val svg = requireNotNull(context.contentResolver.openInputStream(uri)).use {
-                            AppearanceAssets.readBounded(it, ExpressionPack.MAX_SVG).toString(Charsets.UTF_8)
-                        }
-                        ExpressionLayer(svg).also {
+                    val artwork = withContext(Dispatchers.IO) {
+                        read().also {
                             CompiledExpression.compile(ExpressionEffect("preview", "SVG", listOf(it)))
                         }
                     }
                     val current = latest.value
-                    if (current.layers.size < 8) {
+                    if (replace != null && replace in current.layers.indices) {
+                        val layers = current.layers.toMutableList()
+                        layers[replace] = layers[replace].copy(svg = artwork.svg, bitmapWebp = artwork.bitmapWebp)
+                        change(current.copy(layers = layers))
+                    } else if (replace == null && current.layers.size < 8) {
                         index = current.layers.size
-                        change(current.copy(layers = current.layers + added))
+                        change(current.copy(layers = current.layers + artwork))
                     }
                 } catch (cancel: CancellationException) { throw cancel }
                 catch (_: Exception) { error(context.uiCopy("expression.file_invalid")) }
                 finally { loading = false }
+            }
+        }
+    }
+    val selectSvg = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val replace = replaceSvg
+        replaceSvg = null
+        if (uri != null) loadArtwork(replace) {
+            val svg = requireNotNull(context.contentResolver.openInputStream(uri)).use {
+                AppearanceAssets.readBounded(it, ExpressionPack.MAX_SVG).toString(Charsets.UTF_8)
+            }
+            ExpressionLayer(svg)
+        }
+    }
+    pickSticker?.let { replace ->
+        StickerPickerSheet(stickers, { pickSticker = null }) { item ->
+            pickSticker = null
+            loadArtwork(replace) {
+                ExpressionLayer(EMPTY_EXPRESSION_SVG, bitmapWebp = expressionStickerImage(requireNotNull(stickers.imageFile(item.imageId))))
             }
         }
     }
@@ -78,13 +105,21 @@ internal fun ExpressionDraftEditor(draft: ExpressionEffect, saving: Boolean, cha
                     })
                 }
             }
-            IconButton({ add.launch(arrayOf("image/svg+xml", "application/octet-stream")) }, enabled = !loading && draft.layers.size < 8) {
+            IconButton({ replaceSvg = null; selectSvg.launch(arrayOf("image/svg+xml", "application/octet-stream")) }, enabled = !loading && !saving && draft.layers.size < 8) {
                 Icon(Icons.Default.Add, uiText("expression.add_svg"))
             }
             IconButton({
                 change(draft.copy(layers = draft.layers.filterIndexed { item, _ -> item != selected }))
                 index = selected.coerceAtMost(draft.layers.lastIndex - 1)
-            }, enabled = draft.layers.size > 1) { Icon(Icons.Default.DeleteOutline, uiText("expression.remove_layer")) }
+            }, enabled = !loading && !saving && draft.layers.size > 1) { Icon(Icons.Default.DeleteOutline, uiText("expression.remove_layer")) }
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            PillButton(uiText("expression.replace_svg"), Icons.Default.Image, {
+                replaceSvg = selected
+                selectSvg.launch(arrayOf("image/svg+xml", "application/octet-stream"))
+            }, Modifier.testTag("expression-replace-svg"), enabled = !loading && !saving)
+            PillButton(uiText("photo.choose_sticker"), Icons.Default.Collections, { pickSticker = selected },
+                Modifier.testTag("expression-layer-from-library"), enabled = !loading && !saving)
         }
         Text(uiText("expression.anchor"), style = MaterialTheme.typography.labelLarge)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
